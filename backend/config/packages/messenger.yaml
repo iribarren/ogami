@@ -1,0 +1,18 @@
+framework:
+    messenger:
+        # CQRS buses (ADR 0002). All synchronous: commands, queries and domain
+        # events are handled in the same process and request.
+        default_bus: command.bus
+        buses:
+            command.bus:
+                middleware:
+                    - doctrine_transaction
+            query.bus: ~
+            event.bus:
+                default_middleware:
+                    enabled: true
+                    # A domain event may have no subscribers yet.
+                    allow_no_handlers: true
+
+        transports:
+            sync: 'sync://'

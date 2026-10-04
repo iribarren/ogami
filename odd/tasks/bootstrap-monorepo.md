@@ -24,7 +24,7 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 ## Tasks
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
-| T1 | Docker Compose (FrankenPHP, Postgres, Node, Mailpit) + Makefile (`up`, `down`, `sh`, `test`, `qa`) | delegated writer A (multi-file, needs research) | [ ] | |
+| T1 | Docker Compose (FrankenPHP, Postgres, Node, Mailpit) + Makefile (`up`, `down`, `sh`, `test`, `qa`) | delegated writer A (multi-file, needs research) | [x] | de932b5 |
 | T2 | Symfony skeleton: Doctrine, Messenger command/query buses, `src/{Play,Studio,Randomness,Identity,Admin,Shared}/{Domain,Application,Infrastructure}`, `GET /api/health` | writer A | [ ] | |
 | T3 | Backend QA: PHPStan max + PHPat rules (ADR 0012), CS-Fixer, Rector, PHPUnit, Behat; walking skeleton: Randomness `DiceExpression` (`2d6+1`) with an injected random source, RED→GREEN | writer A | [ ] | |
 | T4 | Frontend: Vite + React + TS (pnpm), Tailwind, shadcn/ui, TanStack Router/Query, ESLint/Prettier, Vitest, Storybook; `src/{play,studio,admin,shared}` | delegated writer B | [ ] | |
@@ -44,6 +44,9 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 
 ## Progress / Evidence
 - Issue #3 created, branch created.
+- **T1** (`de932b5`): `make build && make up` → `database`, `mailpit`, `php` healthy, `node` running (`docker compose ps`). Versions observed in the containers: PHP 8.5.11 (FrankenPHP `1-php8.5`, Debian trixie) with intl, pdo_pgsql, opcache, zip, Xdebug (mode `off`); Composer 2.10.3; PostgreSQL 18.6 (`postgres:18-alpine`); Node 24.21.0 LTS with pnpm 12.9.1 via corepack; Mailpit 1.31. Containers run as the host UID/GID (`id` → `uid=1001(app)`). Host ports: app 8080, Postgres 5433, Mailpit UI 8026 (all overridable in a root `.env`).
+  - Deviation: `.env.example` could not be written (agent permission rule on `.env*` files); the variables and defaults are documented in the `compose.yaml` header instead.
+  - Pitfall found: `docker compose build` without exported `UID`/`GID` builds for UID 1000 and breaks the Caddy data volume permissions; always go through `make` (it exports both).
 
 ## Next step
 T1–T3 (writer A).

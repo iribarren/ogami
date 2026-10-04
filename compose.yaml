@@ -1,7 +1,9 @@
 # Ogami development environment (ADR 0008).
 # Every variable has a safe default; override any of them in a git-ignored
 # root .env file:
-#   UID, GID            host user mapping (the Makefile sets them from `id -u`/`id -g`)
+#   UID, GID            host user mapping (the Makefile sets them from `id -u`/`id -g`;
+#                       when calling `docker compose` directly, export them first or
+#                       images get built for UID 1000)
 #   HTTP_PORT           API/app port on the host (default 8080)
 #   POSTGRES_PORT       database port on the host (default 5433, compose.override.yaml)
 #   MAILPIT_PORT        Mailpit web UI on the host (default 8026, compose.override.yaml)

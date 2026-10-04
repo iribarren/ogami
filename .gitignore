@@ -1,0 +1,28 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Env
+.env.local
+.env.*.local
+
+# Backend (Symfony)
+/backend/vendor/
+/backend/var/
+/backend/.phpunit.cache/
+/backend/.php-cs-fixer.cache
+
+# Frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/storybook-static/
+/frontend/playwright-report/
+/frontend/test-results/
+
+# Tooling
+.codegraph/
+
+# gentle-ai
+.atl/*.cache.json

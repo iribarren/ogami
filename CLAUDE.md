@@ -56,7 +56,9 @@ odd/tasks/            ODD feature docs
 |---|---|
 | Method | ODD (gentle-ai): explore → feature doc in `odd/tasks/<feature>.md` (+ Engram mirror) → task by task ([ADR 0011](docs/adr/0011-gentle-ai-workflow.md)) |
 | Tests | Test first (RED → GREEN → refactor) when a runnable deterministic test exists |
-| Branches | One branch per feature; nothing lands on `main` directly |
+| Branches | One branch per feature, named `type/description` (`feat/`, `fix/`, `docs/`, `chore/`…); nothing lands on `main` directly |
+| Issues and PRs | One GitHub issue per feature; one PR per feature with `Closes #N` and one type label. Above ~400 changed lines, split per the `ask-on-risk` strategy; passive docs may take a size exception |
+| Merging | Merge commit only (no squash, no rebase), so the commit hashes in feature docs stay valid |
 | Commits | One work-unit commit per task, Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`…) |
 | Delivery | Never push, open a PR or merge without the user |
 

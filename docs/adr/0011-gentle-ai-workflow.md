@@ -12,7 +12,10 @@ Learning the gentle-ai methodology is a project goal. Work is done by a human an
 | Practice | Rule |
 |---|---|
 | ODD | Every feature follows Organic Driven Development. Substantial work gets a feature doc in `odd/tasks/<feature>.md`, mirrored in Engram (`odd/<feature>/tasks`) |
-| Branches | One branch per feature; never commit features directly to `main` |
+| Branches | One branch per feature named `type/description` (gentle-ai `branch-pr` pattern); never commit features directly to `main` |
+| Issues | Lightweight issue-first: one GitHub issue per feature; no `status:approved` gate or blocking Action for now |
+| Pull requests | One PR per feature, body says `Closes #N`, exactly one type label. A PR over ~400 changed lines is split per the delivery strategy; passive documentation may take an explicit size exception |
+| Merge method | Merge commit. No squash or rebase: work-unit commits and the hashes recorded in feature docs must survive |
 | Work-unit commits | Each task closes with at least one commit that is a coherent unit (docs and tests with the change) |
 | Commit messages | Conventional Commits |
 | Delivery strategy | `ask-on-risk`: when a feature exceeds about 400 authored lines, decide how to slice PRs |

@@ -28,7 +28,7 @@ The project is new. Without written vision, context map, glossary and ADRs, DDD 
 | T1 | `.gitignore`, `README.md`, this feature doc | inline (mechanical) | [x] | 7afa950 |
 | T2 | `docs/vision.md` | delegated writer (2+ non-trivial files, T2–T5) | [x] | 87718d8 |
 | T3 | `docs/domain/context-map.md`, `docs/domain/glossary.md` | delegated writer | [x] | 1221113 |
-| T4 | `docs/adr/` index + ADRs 0001–0011 | delegated writer | [ ] | |
+| T4 | `docs/adr/` index + ADRs 0001–0011 | delegated writer | [x] | e16f97d |
 | T5 | project `CLAUDE.md` | delegated writer | [ ] | |
 | T6 | `.atl/skill-registry.md` via skill-registry skill | inline (skill) | [ ] | |
 
@@ -44,6 +44,7 @@ Passive documentation: no runnable RED/GREEN. Structural readback + link check (
 - Repo initialized, branch `docs/foundation` created.
 - T2 `87718d8`: `docs/vision.md` (problem, roles, goals, non-goals, pillars, success criteria, open questions). Structural readback OK.
 - T3 `1221113`: context map (6 contexts, Mermaid diagram, relationship table, per-context responsibilities/aggregates/roles) and glossary (terms → definition → context). Structural readback OK.
+- T4 `e16f97d`: ADR index + 11 Nygard ADRs (0001–0010 Accepted, 0011 gentle-ai workflow Proposed: RDD deferred). Structural readback OK.
 
 ## Next step
 T2–T5 (delegated writer).

@@ -23,3 +23,6 @@
 
 # Tooling
 .codegraph/
+
+# gentle-ai
+.atl/*.cache.json

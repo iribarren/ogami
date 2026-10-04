@@ -67,21 +67,29 @@ composer: ## Run Composer (ARGS="install")
 console: ## Run the Symfony console (ARGS="debug:router")
 	$(PHP_EXEC) php bin/console $(ARGS)
 
+# Installs Composer dependencies on a fresh clone (or after composer.lock changes).
+backend/vendor/autoload.php: backend/composer.lock
+	$(PHP_EXEC) composer install --no-interaction
+	@touch $@
+
+.PHONY: backend-install
+backend-install: backend/vendor/autoload.php ## Install backend Composer dependencies
+
 .PHONY: backend-test
-backend-test: ## Run backend tests: PHPUnit (unit + integration) and Behat
+backend-test: backend-install ## Run backend tests: PHPUnit (unit + integration) and Behat
 	$(PHP_EXEC) php bin/console doctrine:database:create --if-not-exists --env=test --quiet
 	$(PHP_EXEC) vendor/bin/phpunit
 	$(PHP_EXEC) vendor/bin/behat --strict
 
 .PHONY: backend-qa
-backend-qa: ## Run backend QA: PHPStan + PHPat, PHP-CS-Fixer and Rector (dry runs)
+backend-qa: backend-install ## Run backend QA: PHPStan + PHPat, PHP-CS-Fixer and Rector (dry runs)
 	$(PHP_EXEC) php bin/console cache:warmup --env=dev --quiet
 	$(PHP_EXEC) vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 	$(PHP_EXEC) vendor/bin/php-cs-fixer fix --dry-run --diff
 	$(PHP_EXEC) vendor/bin/rector process --dry-run --no-progress-bar
 
 .PHONY: backend-fix
-backend-fix: ## Apply Rector and PHP-CS-Fixer changes to the backend
+backend-fix: backend-install ## Apply Rector and PHP-CS-Fixer changes to the backend
 	$(PHP_EXEC) php bin/console cache:warmup --env=dev --quiet
 	$(PHP_EXEC) vendor/bin/rector process --no-progress-bar
 	$(PHP_EXEC) vendor/bin/php-cs-fixer fix

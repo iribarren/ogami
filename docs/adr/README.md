@@ -14,7 +14,8 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0008 | [Full Docker Compose dev environment and Makefile](0008-docker-compose-dev-env.md) | Accepted |
 | 0009 | [Testing and quality strategy](0009-testing-and-quality-strategy.md) | Accepted |
 | 0010 | [Versioned, immutable GameSystem releases](0010-versioned-gamesystem-releases.md) | Accepted |
-| 0011 | [gentle-ai development workflow](0011-gentle-ai-workflow.md) | Proposed |
+| 0011 | [gentle-ai development workflow](0011-gentle-ai-workflow.md) | Accepted |
+| 0012 | [Enforce DDD boundaries with PHPat](0012-phpat-boundary-enforcement.md) | Accepted |
 
 ## Template
 

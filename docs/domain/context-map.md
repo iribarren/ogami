@@ -108,6 +108,10 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 ## Open questions
 
-- Is Studio core or supporting? It is core for the authoring UX, supporting for Play's value. Kept as "core / supporting" until real features settle it.
-- Exact upgrade path for a campaign moving to a newer GameSystem release (migration rules for character data).
-- How context boundaries are enforced in code (PHPStan/PHPat rules are a candidate; Deptrac was not chosen).
+Answered when the first feature that needs them starts, not before (see [vision](../vision.md#open-questions)).
+
+| Question | Decide when |
+|---|---|
+| Is Studio core or supporting? Core for the authoring UX, supporting for Play's value | Studio's first feature |
+| Upgrade path for a campaign moving to a newer GameSystem release (character data migration). Default until then: a campaign stays pinned to its release | First Play feature that consumes a release |
+| ~~How context boundaries are enforced in code~~ | Resolved: PHPat ([ADR 0012](../adr/0012-phpat-boundary-enforcement.md)) |

@@ -23,6 +23,7 @@ Ogami is a web app for solo tabletop RPG play: **Play** (solo player runs campai
 | Studio → Play | Play reads only published GameSystem releases through its anti-corruption layer, never Studio drafts ([ADR 0010](docs/adr/0010-versioned-gamesystem-releases.md)) |
 | CQRS | Commands and queries go through Messenger buses; domain events in-process; no event sourcing ([ADR 0002](docs/adr/0002-modular-monolith-hexagonal-ddd.md)) |
 | API | REST + OpenAPI; frontend uses only the generated typed client ([ADR 0005](docs/adr/0005-rest-openapi-typed-client.md)) |
+| Enforcement | Dependency rule, framework-free Domain and context boundaries are checked by PHPat rules in `backend/tests/Architecture/`, run with PHPStan ([ADR 0012](docs/adr/0012-phpat-boundary-enforcement.md)) |
 | Frontend libraries | Add a library only when the feature that needs it starts ([ADR 0004](docs/adr/0004-react-vite-spa-ui-toolkit.md)) |
 
 ## Naming

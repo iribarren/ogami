@@ -71,10 +71,16 @@ Play and Studio are both shared with other users, so both are product surfaces, 
 
 ## Open questions
 
-- How should the flow be presented in Play (step-by-step wizard, journal with prompts, a mix)? To be refined iteratively with real play.
-- How far should structured checks go before they need a scripting language?
-- What does the Narrative-assist port need as input and output once AI is added?
-- When does player-created content enter scope, and who moderates it?
+Policy: decide at the last responsible moment. Each question is answered when the first feature that needs it starts. The ODD exploration step checks this list, asks one focused question if a feature is blocked, and records the answer as an ADR.
+
+| Question | Decide when | How |
+|---|---|---|
+| How is the flow presented in Play (step-by-step wizard, journal with prompts, a mix)? | First Play flow feature | Prototype two variants in Storybook, play them, pick one |
+| How far do structured checks go before they need a scripting language? | Randomness / Check feature | Start with dice + formulas + outcome bands; extend only on a real gap |
+| What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow; only the port exists until then |
+| When does player-created content enter scope, and who moderates it? | Later | Explicitly out of scope for now |
+
+Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)) and the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
 
 ## Related
 

@@ -31,4 +31,4 @@ The app serves 1 to a few users, so scaling is not a driver. Features will chang
 - Domain logic is testable without the framework; rules can change without touching controllers or persistence.
 - One process, one database, simple deploy and debugging.
 - More files and mapping code than a plain Symfony app.
-- Boundaries are enforced by convention first; an automated check (PHPStan/PHPat rules) is an open question.
+- Boundaries are enforced automatically with PHPat ([ADR 0012](0012-phpat-boundary-enforcement.md)).

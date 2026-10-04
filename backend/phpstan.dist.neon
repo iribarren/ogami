@@ -1,0 +1,34 @@
+# PHPStan (level max) + PHPat architecture rules (ADR 0009, ADR 0012).
+# Extensions (symfony, doctrine, phpunit, phpat) are loaded by phpstan/extension-installer.
+parameters:
+    level: max
+    paths:
+        - bin/
+        - config/
+        - public/
+        - src/
+        - tests/
+    excludePaths:
+        - config/reference.php
+    tmpDir: var/cache/phpstan
+
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+    doctrine:
+        objectManagerLoader: tests/object-manager.php
+
+    ignoreErrors:
+        # Called by Symfony's MicroKernelTrait, invisible to static analysis.
+        -
+            identifier: method.unused
+            path: src/Kernel.php
+
+    phpat:
+        ignore_built_in_classes: true
+        show_rule_names: true
+
+services:
+    -
+        class: App\Tests\Architecture\BoundedContextRulesTest
+        tags:
+            - phpat.test

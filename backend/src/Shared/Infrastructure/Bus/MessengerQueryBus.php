@@ -33,7 +33,6 @@ final readonly class MessengerQueryBus implements QueryBus
             throw new LogicException(\sprintf('Query "%s" must be handled by exactly one handler, %d found.', $query::class, \count($handled)));
         }
 
-        /** @var HandledStamp $stamp */
         $stamp = $handled[0];
 
         return $stamp->getResult();

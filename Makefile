@@ -15,8 +15,8 @@ export UID := $(shell id -u)
 export GID := $(shell id -g)
 
 DOCKER_COMPOSE ?= docker compose
-# Use `make <target> TTY=-T` in CI or when piping output (no pseudo-TTY).
-TTY ?=
+# No pseudo-TTY when stdin is not a terminal (CI, agents, pipes); override with TTY=.
+TTY ?= $(shell [ -t 0 ] || echo -T)
 PHP_EXEC := $(DOCKER_COMPOSE) exec $(TTY) php
 NODE_EXEC := $(DOCKER_COMPOSE) exec $(TTY) node
 
@@ -68,12 +68,23 @@ console: ## Run the Symfony console (ARGS="debug:router")
 	$(PHP_EXEC) php bin/console $(ARGS)
 
 .PHONY: backend-test
-backend-test: ## Run backend tests
-	@echo "No backend tests yet."
+backend-test: ## Run backend tests: PHPUnit (unit + integration) and Behat
+	$(PHP_EXEC) php bin/console doctrine:database:create --if-not-exists --env=test --quiet
+	$(PHP_EXEC) vendor/bin/phpunit
+	$(PHP_EXEC) vendor/bin/behat --strict
 
 .PHONY: backend-qa
-backend-qa: ## Run backend static analysis and style checks
-	@echo "No backend QA yet."
+backend-qa: ## Run backend QA: PHPStan + PHPat, PHP-CS-Fixer and Rector (dry runs)
+	$(PHP_EXEC) php bin/console cache:warmup --env=dev --quiet
+	$(PHP_EXEC) vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+	$(PHP_EXEC) vendor/bin/php-cs-fixer fix --dry-run --diff
+	$(PHP_EXEC) vendor/bin/rector process --dry-run --no-progress-bar
+
+.PHONY: backend-fix
+backend-fix: ## Apply Rector and PHP-CS-Fixer changes to the backend
+	$(PHP_EXEC) php bin/console cache:warmup --env=dev --quiet
+	$(PHP_EXEC) vendor/bin/rector process --no-progress-bar
+	$(PHP_EXEC) vendor/bin/php-cs-fixer fix
 
 ##@ Frontend
 

@@ -25,7 +25,7 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | Docker Compose (FrankenPHP, Postgres, Node, Mailpit) + Makefile (`up`, `down`, `sh`, `test`, `qa`) | delegated writer A (multi-file, needs research) | [x] | de932b5 |
-| T2 | Symfony skeleton: Doctrine, Messenger command/query buses, `src/{Play,Studio,Randomness,Identity,Admin,Shared}/{Domain,Application,Infrastructure}`, `GET /api/health` | writer A | [ ] | |
+| T2 | Symfony skeleton: Doctrine, Messenger command/query buses, `src/{Play,Studio,Randomness,Identity,Admin,Shared}/{Domain,Application,Infrastructure}`, `GET /api/health` | writer A | [x] | c42f7b6 |
 | T3 | Backend QA: PHPStan max + PHPat rules (ADR 0012), CS-Fixer, Rector, PHPUnit, Behat; walking skeleton: Randomness `DiceExpression` (`2d6+1`) with an injected random source, RED→GREEN | writer A | [ ] | |
 | T4 | Frontend: Vite + React + TS (pnpm), Tailwind, shadcn/ui, TanStack Router/Query, ESLint/Prettier, Vitest, Storybook; `src/{play,studio,admin,shared}` | delegated writer B | [ ] | |
 | T5 | OpenAPI export (backend) + generated TS client; health shown in the SPA; Playwright smoke test | writer B | [ ] | |
@@ -47,6 +47,9 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 - **T1** (`de932b5`): `make build && make up` → `database`, `mailpit`, `php` healthy, `node` running (`docker compose ps`). Versions observed in the containers: PHP 8.5.11 (FrankenPHP `1-php8.5`, Debian trixie) with intl, pdo_pgsql, opcache, zip, Xdebug (mode `off`); Composer 2.10.3; PostgreSQL 18.6 (`postgres:18-alpine`); Node 24.21.0 LTS with pnpm 12.9.1 via corepack; Mailpit 1.31. Containers run as the host UID/GID (`id` → `uid=1001(app)`). Host ports: app 8080, Postgres 5433, Mailpit UI 8026 (all overridable in a root `.env`).
   - Deviation: `.env.example` could not be written (agent permission rule on `.env*` files); the variables and defaults are documented in the `compose.yaml` header instead.
   - Pitfall found: `docker compose build` without exported `UID`/`GID` builds for UID 1000 and breaks the Caddy data volume permissions; always go through `make` (it exports both).
+- **T2** (`c42f7b6`): Symfony 8.1 (`symfony/skeleton`) created in the php container; Doctrine ORM + migrations (`symfony/orm-pack`), Messenger, serializer installed. `bin/console debug:messenger` → `CheckHealth` handled by `CheckHealthHandler` on `query.bus`; buses `command.bus` (default, `doctrine_transaction`), `query.bus`, `event.bus` (`allow_no_handlers`), sync transport. `debug:router` → `api_health GET /api/health`. `curl localhost:8080/api/health` → `{"status":"ok","database":"ok"}`; with `database` stopped → `{"status":"ok","database":"down"}`.
+  - Decisions: handlers implement framework-free marker interfaces (`CommandHandler`, `QueryHandler`, `EventHandler` in `Shared/Application/Bus`) that `services.yaml` tags for the right bus, so Application code needs no Symfony attribute. Health lives in **Shared**: it is a technical, cross-cutting probe with no Admin ubiquitous language (Admin = users, roles, settings). Doctrine maps each context with XML files under `<Context>/Infrastructure/Persistence/Doctrine/Mapping` (framework-free Domain). Recipe-generated `backend/AGENTS.md`, `backend/CLAUDE.md` and `backend/.editorconfig` removed: root `CLAUDE.md` and `.editorconfig` are the single source.
+  - Deviation: `backend/.env` keeps the recipe's placeholder `DATABASE_URL` (agents may not edit `.env*` files); compose injects the real `DATABASE_URL` into the php container, which takes precedence.
 
 ## Next step
 T1–T3 (writer A).

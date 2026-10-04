@@ -25,7 +25,7 @@ The project is new. Without written vision, context map, glossary and ADRs, DDD 
 ## Tasks
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
-| T1 | `.gitignore`, `README.md`, this feature doc | inline (mechanical) | [ ] | |
+| T1 | `.gitignore`, `README.md`, this feature doc | inline (mechanical) | [x] | 7afa950 |
 | T2 | `docs/vision.md` | delegated writer (2+ non-trivial files, T2–T5) | [ ] | |
 | T3 | `docs/domain/context-map.md`, `docs/domain/glossary.md` | delegated writer | [ ] | |
 | T4 | `docs/adr/` index + ADRs 0001–0010 | delegated writer | [ ] | |
@@ -44,4 +44,4 @@ Passive documentation: no runnable RED/GREEN. Structural readback + link check (
 - Repo initialized, branch `docs/foundation` created.
 
 ## Next step
-T1.
+T2–T5 (delegated writer).

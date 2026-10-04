@@ -1,0 +1,34 @@
+# Ogami dev server: FrankenPHP serves the Symfony API.
+# https://frankenphp.dev/docs/config
+{
+	skip_install_trust
+
+	{$CADDY_GLOBAL_OPTIONS}
+
+	frankenphp {
+		{$FRANKENPHP_CONFIG}
+	}
+}
+
+{$SERVER_NAME::80} {
+	root /app/public
+	encode zstd br gzip
+
+	# Backend: the JSON API (and Symfony dev tools) always go to PHP.
+	@backend path /api /api/* /_profiler* /_wdt* /bundles/*
+	handle @backend {
+		php_server
+	}
+
+	# Frontend hook (T4): the SPA shares this origin (ADR 0006), so no CORS.
+	# Drop a site snippet into /etc/frankenphp/frontend.d/ (mounted from
+	# docker/php/frontend.d/) that handles every non-API request, e.g. in dev:
+	#   handle { reverse_proxy node:5173 }
+	# and in production: handle { root * /srv/spa; try_files {path} /index.html; file_server }
+	import /etc/frankenphp/frontend.d/*.caddyfile
+
+	# Fallback until the frontend hook exists: let Symfony answer.
+	handle {
+		php_server
+	}
+}

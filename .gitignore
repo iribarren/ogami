@@ -4,7 +4,8 @@
 .vscode/
 *.swp
 
-# Env
+# Env (root .env holds local compose overrides; backend/.env is Symfony's committed defaults)
+/.env
 .env.local
 .env.*.local
 

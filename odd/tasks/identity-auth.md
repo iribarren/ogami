@@ -42,7 +42,7 @@ main ← feat/identity-auth (tracker, draft)
 | T3b | T3 review follow-ups: login timing enumeration, role enum from `Role`, throttle key normalization, trusted proxies | 2 | inline (bounded writer of T3) | [x] | `79990f4` |
 | T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [x] | `7a515a0` |
 | T4b | T4 review follow-ups: logout clears all cached queries, logout failure reported (401 counts as signed out), `safeRedirect` rejects control characters/whitespace and checks the resolved origin, `/login` renders when `/api/auth/me` fails | 3 | inline (bounded writer of T4) | [x] | `adf17cd` |
-| T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [ ] | |
+| T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [x] | `bb85303` (+ docs commit) |
 
 ## Acceptance criteria
 - `make console ARGS="app:user:create <email> --role=SOLO_PLAYER"` creates a user with a hashed password; duplicate email fails clearly.
@@ -103,5 +103,12 @@ main ← feat/identity-auth (tracker, draft)
   - R4 `/login` with a failing `/api/auth/me` (500/network): the route treats the visitor as anonymous and renders the form; the current-user query no longer retries (`retry: false`) so guards fail fast.
   - RED: 8 failed tests → GREEN: `make frontend-test` 5 files, 50 tests passed. `make frontend-qa`: ESLint, Prettier, tsc clean.
 
+- **T5** (`bb85303`):
+  - `app:user:create --if-missing`: an existing email prints a note ("… already exists. Left unchanged.") and exits 0; otherwise unchanged behavior. RED: 2 errors (option missing) → GREEN: `CreateUserConsoleCommandTest` OK (9 tests).
+  - `make e2e-seed` (dev migrations + `e2e-player@example.test` SOLO_PLAYER, `e2e-manager@example.test` GAME_MANAGER, `--if-missing`, password `E2E_PASSWORD ?= e2e-password-123`, exported); `make e2e` depends on it. `compose.yaml` passes `E2E_PASSWORD` to the `playwright` service. CI e2e step renamed; it still runs `make e2e`, which now seeds.
+  - Playwright: smoke keeps the public landing page + healthy API, then "Go to Play" → `/login?redirect=%2Fplay`. `auth.spec.ts`: anonymous `/play` → sign in → `/play`; wrong credentials (unknown email, so seeded users never get throttled) → "Invalid credentials."; player nav shows only Play; `/studio` → "Access denied"; sign out → `/login`, `/play` guarded again.
+  - `frontend/.gitignore` ignores `.tanstack/`. README: users and sign-in (create user, roles table, `--if-missing`, e2e seed, `TRUSTED_PROXIES`). Context map: Identity & Access published API row.
+  - Checks: `make backend-qa` PHPStan + PHPat no errors, CS-Fixer 0 files, Rector clean; `make backend-test` PHPUnit OK (87 tests, 2666 assertions), Behat 8 scenarios passed; `make frontend-qa` clean; `make frontend-test` 50 passed; `make api-check` up to date; `make e2e` 6 passed (users created), second run 6 passed (seed notes "already exists. Left unchanged.").
+
 ## Next step
-T5 on `feat/identity-auth-3-spa`: seeded e2e user, Playwright login and guard specs, smoke spec update, CI seeding step, docs.
+PRs: tracker draft PR + chained child PRs (user decision).

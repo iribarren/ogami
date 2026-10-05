@@ -9,6 +9,7 @@ use App\Identity\Application\UserView;
 use App\Identity\Infrastructure\Security\JsonAuthenticationEntryPoint;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Infrastructure\Http\ErrorResponse;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;

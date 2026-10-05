@@ -5,18 +5,13 @@ import { render } from '@testing-library/react'
 import { createQueryClient } from '@/app/queryClient'
 import { createAppRouter } from '@/app/router'
 import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
-import { createApiClient } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
 
+import { createFakeApiClient, type FakeHandler } from './fakeApi'
+
+export type { FakeApi, FakeHandler } from './fakeApi'
+
 type Role = components['schemas']['Role']
-
-/** Answers one fake API request; the key is `"<METHOD> <path>"`, e.g. `"GET /api/auth/me"`. */
-export type FakeHandler = (request: Request) => Response | Promise<Response>
-
-export interface FakeApi {
-  /** Every request the app sent, in order, as `"<METHOD> <path>"`. */
-  requests: string[]
-}
 
 const healthy: FakeHandler = () => Response.json({ status: 'ok', database: 'ok' })
 const anonymous: FakeHandler = () =>
@@ -34,24 +29,10 @@ export function signedInAs(...roles: Role[]): FakeHandler {
  * and nobody is signed in.
  */
 export function renderAppAt(path: string, handlers: Record<string, FakeHandler> = {}) {
-  const fakeApi: FakeApi = { requests: [] }
-  const routes: Record<string, FakeHandler> = {
+  const { api, fakeApi } = createFakeApiClient({
     'GET /api/health': healthy,
     'GET /api/auth/me': anonymous,
     ...handlers,
-  }
-
-  const api = createApiClient({
-    baseUrl: 'http://ogami.test',
-    fetch: (input: Request) => {
-      const key = `${input.method} ${new URL(input.url).pathname}`
-      fakeApi.requests.push(key)
-      const handler = routes[key]
-      if (!handler) {
-        return Promise.reject(new Error(`Unexpected API request: ${key}`))
-      }
-      return Promise.resolve(handler(input))
-    },
   })
   const queryClient = createQueryClient()
   const router = createAppRouter({

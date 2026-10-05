@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Behat;
 
 use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\DiceGroup;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\Roll;
+use App\Randomness\Domain\RolledDie;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use Behat\Behat\Context\Context;
 use Behat\Step\Given;
@@ -43,10 +45,24 @@ final class RandomnessContext implements Context
         }
     }
 
-    #[Then('/^the dice show '.self::NUMBER_LIST.'$/')]
-    public function theDiceShow(string $numbers): void
+    #[Then('/^the "(?P<notation>[^"]+)" dice show '.self::NUMBER_LIST.'$/')]
+    public function theDiceShow(string $notation, string $numbers): void
     {
-        Assert::assertSame($this->parseNumbers($numbers), $this->roll()->dice());
+        $group = $this->group($notation);
+
+        Assert::assertSame($this->parseNumbers($numbers), array_map(static fn (RolledDie $die): int => $die->value(), $group->dice()));
+    }
+
+    #[Then('/^the (?:die|dice) showing '.self::NUMBER_LIST.' (?:is|are) dropped$/')]
+    public function theDiceShowingAreDropped(string $numbers): void
+    {
+        Assert::assertSame($this->parseNumbers($numbers), $this->droppedDice());
+    }
+
+    #[Then('no dice are dropped')]
+    public function noDiceAreDropped(): void
+    {
+        Assert::assertSame([], $this->droppedDice());
     }
 
     #[Then('the total is :total')]
@@ -55,11 +71,12 @@ final class RandomnessContext implements Context
         Assert::assertSame($total, $this->roll()->total());
     }
 
-    #[Then('the dice expression is rejected')]
-    public function theDiceExpressionIsRejected(): void
+    #[Then('the dice expression is rejected because :reason')]
+    public function theDiceExpressionIsRejectedBecause(string $reason): void
     {
         Assert::assertNull($this->roll, 'Expected the dice expression to be rejected, but it was rolled.');
         Assert::assertInstanceOf(InvalidDiceExpression::class, $this->rejection);
+        Assert::assertStringContainsString($reason, $this->rejection->getMessage());
     }
 
     private function roll(): Roll
@@ -68,6 +85,34 @@ final class RandomnessContext implements Context
         Assert::assertNotNull($this->roll, 'No dice were rolled.');
 
         return $this->roll;
+    }
+
+    private function group(string $notation): DiceGroup
+    {
+        foreach ($this->roll()->groups() as $group) {
+            if ($notation === $group->notation()) {
+                return $group;
+            }
+        }
+
+        Assert::fail(\sprintf('No "%s" dice were rolled.', $notation));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function droppedDice(): array
+    {
+        $dropped = [];
+        foreach ($this->roll()->groups() as $group) {
+            foreach ($group->dice() as $die) {
+                if (!$die->isKept()) {
+                    $dropped[] = $die->value();
+                }
+            }
+        }
+
+        return $dropped;
     }
 
     /**

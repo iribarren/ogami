@@ -30,7 +30,7 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 | T4 | Frontend: Vite + React + TS (pnpm), Tailwind, shadcn/ui, TanStack Router/Query, ESLint/Prettier, Vitest, Storybook; `src/{play,studio,admin,shared}` | delegated writer B | [x] | 850fb35 |
 | T5 | OpenAPI export (backend) + generated TS client; health shown in the SPA; Playwright smoke test | writer B | [x] | fd2f757 |
 | T6 | GitHub Actions CI: backend QA + tests, frontend lint/test/build, Playwright | writer B | [x] | 444e835 |
-| T7 | Docs: `CLAUDE.md` commands section, README quick start; `codegraph init` | writer B + parent | [ ] | |
+| T7 | Docs: `CLAUDE.md` commands section, README quick start; `codegraph init` | writer B + parent | [x] docs · `codegraph init` pending (parent) | 1cdfecb |
 
 ## Acceptance criteria
 - `make up` starts every service; `make qa` and `make test` pass on a clean clone.
@@ -79,6 +79,9 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
   - Image layers are not cached: compose-built images would need a buildx bake + GHA cache setup whose image naming cannot be validated locally; left as a follow-up if CI time hurts.
   - `actionlint` 1.7.12 (`docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -no-color -verbose`) → `Found total 0 errors` (shellcheck included).
   - Local CI simulation in an isolated project (`DOCKER_COMPOSE="docker compose -p ogami-ci -f compose.yaml" HTTP_PORT=18080 CI=true`): `make build up`, `backend-qa`, `backend-test` (PHPUnit `OK (22 tests)`, Behat 4/4), `frontend-qa frontend-test` (Vitest 5/5), `api-check`, `e2e` (1 passed) → exit 0; project removed afterwards (`down -v`). The real run happens on the PR.
+- **T7** (`1cdfecb`): `CLAUDE.md` "Commands" (make targets by task, URLs/ports) and the real directory layout; README "Quick start" (Docker + make, `make build up`, http://localhost:8080, `make qa test e2e`) and a ports/environment table (stands in for the `.env.example` agents cannot write). `make up` now also runs `backend-install` when php is running, so a fresh clone needs only `make build up` (the node service installs pnpm deps itself). `codegraph init` is left to the parent.
+- **Final verification (writer B, after `1cdfecb`):** `make build up` exit 0, all four services healthy; `curl localhost:8080/` → Vite SPA HTML; `curl localhost:8080/api/health` → `{"status":"ok","database":"ok"}`; `make qa` exit 0 (PHPStan, CS-Fixer 0/37, Rector, ESLint, Prettier, tsc, `api-check`); `make test` exit 0 (PHPUnit `OK (22 tests, 2500 assertions)`, Behat 4 scenarios / 14 steps, Vitest 5/5); `make e2e` → 1 passed; `make frontend-build` and `make storybook-build` exit 0; actionlint 0 errors.
+- Engram mirror: not updated by writer B (parent owns it).
 
 ## Next step
-T7 (writer B), then parent.
+Parent: codegraph init, full verification, PR.

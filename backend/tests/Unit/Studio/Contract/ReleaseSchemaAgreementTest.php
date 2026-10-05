@@ -29,6 +29,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
     private const string SCHEMA_ID = 'https://ogami.app/contracts/gamesystem-release/v1.schema.json';
     private const string SCHEMA_FILE = __DIR__.'/../../../../contracts/gamesystem-release/v1.schema.json';
     private const string FIXTURES = __DIR__.'/../../../Fixtures/Studio/releases';
+    private const string PRESETS = __DIR__.'/../../../../presets';
 
     /**
      * Structural cases: name => [domain message prefix, schema error location].
@@ -121,11 +122,17 @@ final class ReleaseSchemaAgreementTest extends TestCase
     ];
 
     /**
+     * Valid fixtures and every shipped preset, so a new preset is checked without listing it here.
+     *
      * @return iterable<string, array{string}>
      */
     public static function validCases(): iterable
     {
-        return self::fixtures('valid');
+        yield from self::fixtures('valid');
+
+        foreach (self::jsonFiles(self::PRESETS) as $name => $json) {
+            yield 'preset: '.$name => $json;
+        }
     }
 
     /**
@@ -239,8 +246,16 @@ final class ReleaseSchemaAgreementTest extends TestCase
      */
     private static function fixtures(string $directory): array
     {
-        $files = glob(self::FIXTURES.'/'.$directory.'/*.json') ?: [];
-        self::assertNotSame([], $files, 'No fixtures in '.$directory);
+        return self::jsonFiles(self::FIXTURES.'/'.$directory);
+    }
+
+    /**
+     * @return array<string, array{string}> file contents by file name
+     */
+    private static function jsonFiles(string $directory): array
+    {
+        $files = glob($directory.'/*.json') ?: [];
+        self::assertNotSame([], $files, 'No JSON files in '.$directory);
 
         $fixtures = [];
         foreach ($files as $file) {

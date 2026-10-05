@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {
+    "key": "mythic-style",
+    "name": "Mythic-style",
+    "description": "Inspired by fate-chart style solo play: questions by likelihood shifted by a chaos factor, with exceptional answers, plus meaning and event focus tables. Original content; this is not the Mythic Game Master Emulator."
+  },
+  "oracles": {
+    "tables": [
+      {
+        "key": "meaning-action",
+        "name": "Meaning: action",
+        "entries": [
+          {"text": "Mend"},
+          {"text": "Hide"},
+          {"text": "Gather"},
+          {"text": "Bargain"},
+          {"text": "Climb"},
+          {"text": "Forge"},
+          {"text": "Whisper"},
+          {"text": "Unravel"},
+          {"text": "Shelter"},
+          {"text": "Wander"},
+          {"text": "Sow"},
+          {"text": "Kindle"},
+          {"text": "Smuggle"},
+          {"text": "Chart"},
+          {"text": "Lure"},
+          {"text": "Dig"},
+          {"text": "Bind"},
+          {"text": "Unmask"},
+          {"text": "Rescue"},
+          {"text": "Sabotage"},
+          {"text": "Hoard"},
+          {"text": "Confess"},
+          {"text": "Scatter"},
+          {"text": "Echo"},
+          {"text": "Weave"},
+          {"text": "Summon"},
+          {"text": "Hunt"},
+          {"text": "Bury"},
+          {"text": "Wait"},
+          {"text": "Awaken"}
+        ]
+      },
+      {
+        "key": "meaning-subject",
+        "name": "Meaning: subject",
+        "entries": [
+          {"text": "A debt"},
+          {"text": "An heirloom"},
+          {"text": "The border"},
+          {"text": "A hidden passage"},
+          {"text": "Family"},
+          {"text": "A guild"},
+          {"text": "The harvest"},
+          {"text": "A broken oath"},
+          {"text": "An omen"},
+          {"text": "A map"},
+          {"text": "The old road"},
+          {"text": "A forgotten name"},
+          {"text": "Ashes"},
+          {"text": "A ledger"},
+          {"text": "The tide"},
+          {"text": "A lantern"},
+          {"text": "A wager"},
+          {"text": "A crown"},
+          {"text": "A bridge"},
+          {"text": "A fever"},
+          {"text": "A song"},
+          {"text": "Memory"},
+          {"text": "A witness"},
+          {"text": "Coin"},
+          {"text": "A refuge"},
+          {"text": "A vow"},
+          {"text": "The night watch"},
+          {"text": "A relic"},
+          {"text": "The stars"},
+          {"text": "A key"}
+        ]
+      },
+      {
+        "key": "random-event-focus",
+        "name": "Random event focus",
+        "dice": "1d100",
+        "entries": [
+          {"min": 1, "max": 8, "text": "Something changes far away"},
+          {"min": 9, "max": 22, "text": "A rival makes a move"},
+          {"min": 23, "max": 30, "text": "A stranger enters the story"},
+          {"min": 31, "max": 40, "text": "A lead becomes clearer"},
+          {"min": 41, "max": 47, "text": "A lead goes cold"},
+          {"min": 48, "max": 52, "text": "A loose end is settled"},
+          {"min": 53, "max": 62, "text": "Trouble finds you"},
+          {"min": 63, "max": 70, "text": "Luck turns your way"},
+          {"min": 71, "max": 80, "text": "An ally needs something"},
+          {"min": 81, "max": 88, "text": "An old choice comes due"},
+          {"min": 89, "max": 94, "text": "The surroundings shift"},
+          {"min": 95, "max": 100, "text": "A quiet moment hides a clue"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "fate",
+        "name": "Fate question",
+        "sides": 100,
+        "levels": [
+          {"key": "impossible", "label": "Impossible", "target": 5},
+          {"key": "nearly-impossible", "label": "Nearly impossible", "target": 15},
+          {"key": "very-unlikely", "label": "Very unlikely", "target": 25},
+          {"key": "unlikely", "label": "Unlikely", "target": 35},
+          {"key": "even", "label": "Even odds", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 65},
+          {"key": "very-likely", "label": "Very likely", "target": 75},
+          {"key": "nearly-certain", "label": "Nearly certain", "target": 85},
+          {"key": "certain", "label": "Certain", "target": 95}
+        ],
+        "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5},
+        "exceptionalPercent": 20
+      }
+    ]
+  },
+  "flow": {
+    "steps": []
+  },
+  "sheet": {},
+  "checks": []
+}

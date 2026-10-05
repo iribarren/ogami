@@ -41,6 +41,10 @@ Roles are independent: repeat `--role` to give several. `--password=…` skips t
 
 Sign-in uses an HttpOnly session cookie. Behind a reverse proxy, set `TRUSTED_PROXIES` (backend environment) to the proxy addresses so client IPs, HTTPS and login throttling work.
 
+### GameSystem presets
+
+`make presets` publishes the shipped GameSystem presets (`backend/presets/*.json`: Free journal, Mythic-style) to the dev database. It skips a preset whose content has not changed, so it is safe to rerun. See the [release contract](docs/contracts/gamesystem-release.md).
+
 ### Ports and environment
 
 Defaults work out of the box. To change one, put it in a git-ignored `.env` file at the repository root (Compose reads it).

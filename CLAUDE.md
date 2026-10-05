@@ -85,6 +85,7 @@ Everything runs in Docker through `make` (it exports your UID/GID; a bare `docke
 | Fix style | `make backend-fix`, `make frontend-fix` | Apply Rector/CS-Fixer, ESLint/Prettier (Rector may need two passes) |
 | Tests | `make test` | PHPUnit (unit + integration on `ogami_test`), Behat, Vitest |
 | E2E | `make e2e` | Playwright smoke tests in the `playwright` container against the running stack |
+| Presets | `make presets` | Publish the GameSystem presets in `backend/presets/` as releases (skips unchanged ones) |
 | API contract | `make api` | After changing an endpoint: export the OpenAPI spec and regenerate `frontend/src/shared/api/schema.d.ts`; commit both |
 | Frontend builds | `make frontend-build`, `make storybook`, `make storybook-build` | Production SPA build; Storybook dev server / static build |
 

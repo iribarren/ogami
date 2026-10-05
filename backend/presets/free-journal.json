@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {
+    "key": "free-journal",
+    "name": "Free journal",
+    "description": "Play any setting as a journal: ask yes/no questions by likelihood and roll spark tables for ideas."
+  },
+  "oracles": {
+    "tables": [
+      {
+        "key": "action",
+        "name": "Action",
+        "entries": [
+          {"text": "Seek"},
+          {"text": "Guard"},
+          {"text": "Trade"},
+          {"text": "Escape"},
+          {"text": "Repair"},
+          {"text": "Follow"},
+          {"text": "Warn"},
+          {"text": "Steal"},
+          {"text": "Build"},
+          {"text": "Search"},
+          {"text": "Persuade"},
+          {"text": "Hide"},
+          {"text": "Chase"},
+          {"text": "Explore"},
+          {"text": "Protect"},
+          {"text": "Uncover"},
+          {"text": "Gather"},
+          {"text": "Delay"},
+          {"text": "Challenge"},
+          {"text": "Forgive"},
+          {"text": "Mislead"},
+          {"text": "Rescue"},
+          {"text": "Share"},
+          {"text": "Rest"}
+        ]
+      },
+      {
+        "key": "theme",
+        "name": "Theme",
+        "entries": [
+          {"text": "Loyalty"},
+          {"text": "Hunger"},
+          {"text": "Debt"},
+          {"text": "Rebirth"},
+          {"text": "Exile"},
+          {"text": "Duty"},
+          {"text": "Curiosity"},
+          {"text": "Grief"},
+          {"text": "Ambition"},
+          {"text": "Mercy"},
+          {"text": "Inheritance"},
+          {"text": "Rivalry"},
+          {"text": "Belonging"},
+          {"text": "Sacrifice"},
+          {"text": "Pride"},
+          {"text": "Kinship"},
+          {"text": "Secrets"},
+          {"text": "Survival"},
+          {"text": "Faith"},
+          {"text": "Regret"},
+          {"text": "Change"},
+          {"text": "Courage"},
+          {"text": "Greed"},
+          {"text": "Homecoming"}
+        ]
+      },
+      {
+        "key": "descriptor",
+        "name": "Descriptor",
+        "entries": [
+          {"text": "Rusted"},
+          {"text": "Quiet"},
+          {"text": "Bright"},
+          {"text": "Hollow"},
+          {"text": "Ancient"},
+          {"text": "Crowded"},
+          {"text": "Fragile"},
+          {"text": "Hidden"},
+          {"text": "Bitter"},
+          {"text": "Gentle"},
+          {"text": "Restless"},
+          {"text": "Broken"},
+          {"text": "Shining"},
+          {"text": "Damp"},
+          {"text": "Forgotten"},
+          {"text": "Sharp"},
+          {"text": "Warm"},
+          {"text": "Tangled"},
+          {"text": "Watchful"},
+          {"text": "Faded"},
+          {"text": "Heavy"},
+          {"text": "Strange"},
+          {"text": "Humble"},
+          {"text": "Gilded"}
+        ]
+      },
+      {
+        "key": "place",
+        "name": "Place",
+        "entries": [
+          {"text": "A crossroads inn"},
+          {"text": "A flooded cellar"},
+          {"text": "A market at dusk"},
+          {"text": "A collapsed bridge"},
+          {"text": "An empty chapel"},
+          {"text": "A hillside orchard"},
+          {"text": "A smugglers' cove"},
+          {"text": "A burned-out mill"},
+          {"text": "A busy harbor"},
+          {"text": "A frozen lake"},
+          {"text": "A library with locked shelves"},
+          {"text": "A camp in the rain"},
+          {"text": "A ruined watchtower"},
+          {"text": "A narrow alley"},
+          {"text": "A noble's garden"},
+          {"text": "A mine entrance"},
+          {"text": "A ferry crossing"},
+          {"text": "A silent village"},
+          {"text": "A cave behind a waterfall"},
+          {"text": "A roadside shrine"},
+          {"text": "A crowded workshop"},
+          {"text": "A field of standing stones"},
+          {"text": "A drowned forest"},
+          {"text": "A lighthouse with no keeper"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "yes-no",
+        "name": "Yes/no question",
+        "sides": 100,
+        "levels": [
+          {"key": "very-unlikely", "label": "Very unlikely", "target": 10},
+          {"key": "unlikely", "label": "Unlikely", "target": 30},
+          {"key": "even", "label": "Even odds", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 70},
+          {"key": "very-likely", "label": "Very likely", "target": 90}
+        ],
+        "exceptionalPercent": 10
+      }
+    ]
+  },
+  "flow": {
+    "steps": []
+  },
+  "sheet": {},
+  "checks": []
+}

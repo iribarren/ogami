@@ -157,6 +157,14 @@
                 },
                 "type": "object"
             },
+            "Role": {
+                "type": "string",
+                "enum": [
+                    "SOLO_PLAYER",
+                    "GAME_MANAGER",
+                    "OWNER"
+                ]
+            },
             "CurrentUserResponse": {
                 "required": [
                     "id",
@@ -176,12 +184,7 @@
                         "description": "Independent roles: none implies another (ADR 0006).",
                         "type": "array",
                         "items": {
-                            "type": "string",
-                            "enum": [
-                                "SOLO_PLAYER",
-                                "GAME_MANAGER",
-                                "OWNER"
-                            ]
+                            "$ref": "#/components/schemas/Role"
                         }
                     }
                 },

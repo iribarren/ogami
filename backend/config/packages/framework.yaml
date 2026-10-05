@@ -3,6 +3,12 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
+    # Behind a reverse proxy, trust its X-Forwarded-* headers so the client IP
+    # (login throttling) and HTTPS (Secure cookie) are the real ones. Empty in
+    # dev: Caddy runs in the same FrankenPHP container (ADR 0006).
+    trusted_proxies: '%env(default::TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-prefix']
+
     # Session cookie of the SPA (ADR 0006): Secure whenever served over HTTPS.
     session:
         cookie_httponly: true

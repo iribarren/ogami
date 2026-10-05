@@ -6,6 +6,7 @@ namespace App\Identity\Infrastructure\Http;
 
 use App\Identity\Application\UserView;
 use App\Identity\Domain\Role;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
@@ -25,7 +26,7 @@ final readonly class CurrentUserResponse
         #[OA\Property(
             description: 'Independent roles: none implies another (ADR 0006).',
             type: 'array',
-            items: new OA\Items(type: 'string', enum: [Role::SoloPlayer->value, Role::GameManager->value, Role::Owner->value]),
+            items: new OA\Items(ref: new Model(type: Role::class)),
         )]
         public array $roles,
     ) {

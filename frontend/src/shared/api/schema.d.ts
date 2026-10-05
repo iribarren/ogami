@@ -85,13 +85,15 @@ export interface components {
             /** Format: password */
             password: string;
         };
+        /** @enum {string} */
+        Role: "SOLO_PLAYER" | "GAME_MANAGER" | "OWNER";
         CurrentUserResponse: {
             /** Format: uuid */
             id: string;
             /** Format: email */
             email: string;
             /** @description Independent roles: none implies another (ADR 0006). */
-            roles: ("SOLO_PLAYER" | "GAME_MANAGER" | "OWNER")[];
+            roles: components["schemas"]["Role"][];
         };
         ErrorResponse: {
             /** @description A human-readable message; never says whether an email exists. */

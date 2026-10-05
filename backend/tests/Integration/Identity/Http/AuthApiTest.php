@@ -11,6 +11,8 @@ use App\Identity\Infrastructure\Security\IdentityUserProvider;
 use App\Identity\Infrastructure\Security\JsonAuthenticationFailureHandler;
 use App\Identity\Infrastructure\Security\JsonAuthenticationSuccessHandler;
 use App\Identity\Infrastructure\Security\JsonLogoutListener;
+use App\Identity\Infrastructure\Security\NormalizedLoginRateLimiter;
+use App\Identity\Infrastructure\Security\UnknownUserPasswordCheckListener;
 use App\Shared\Application\Bus\CommandBus;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,10 +29,13 @@ use Symfony\Component\HttpFoundation\Request;
 #[CoversClass(JsonAuthenticationSuccessHandler::class)]
 #[CoversClass(JsonAuthenticationFailureHandler::class)]
 #[CoversClass(JsonLogoutListener::class)]
+#[CoversClass(NormalizedLoginRateLimiter::class)]
+#[CoversClass(UnknownUserPasswordCheckListener::class)]
 final class AuthApiTest extends WebTestCase
 {
     private const string PASSWORD = 'secret123';
     private const string INVALID_CREDENTIALS = '{"error":"Invalid credentials."}';
+    private const string DUMMY_HASH_KEY = 'identity.login.dummy_password_hash';
     private const string AUTHENTICATION_REQUIRED = '{"error":"Authentication required."}';
 
     private KernelBrowser $client;
@@ -166,6 +171,45 @@ final class AuthApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(429);
         self::assertJsonStringEqualsJsonString('{"error":"Too many login attempts. Try again later."}', $this->content());
+    }
+
+    /**
+     * An unknown email must cost a password verification like a wrong
+     * password does. The dummy hash it verifies against is made by the login
+     * hasher on first use, so finding it cached proves the check ran.
+     */
+    #[Test]
+    public function anUnknownEmailIsCheckedAgainstADummyHash(): void
+    {
+        $cache = self::getContainer()->get('cache.app');
+        $cache->deleteItem(self::DUMMY_HASH_KEY);
+
+        $this->login('nobody@example.com', self::PASSWORD);
+
+        self::assertResponseStatusCodeSame(401);
+        $dummyHash = self::getContainer()->get('cache.app')->getItem(self::DUMMY_HASH_KEY);
+        self::assertTrue($dummyHash->isHit(), 'No dummy password verification on the unknown-email path.');
+        self::assertIsString($dummyHash->get());
+        self::assertNotNull(password_get_info($dummyHash->get())['algo']);
+    }
+
+    /**
+     * The limit is per email as the Email value object sees it: case and
+     * surrounding spaces do not open a new allowance.
+     */
+    #[Test]
+    public function spellingTheEmailDifferentlyDoesNotBypassTheThrottle(): void
+    {
+        $this->createUser('ada@example.com', ['SOLO_PLAYER']);
+
+        foreach ([' ada@example.com', 'ada@example.com ', 'Ada@Example.com', " ADA@example.com\t", '  ada@EXAMPLE.com'] as $email) {
+            $this->login($email, 'wrong-password');
+            self::assertResponseStatusCodeSame(401);
+        }
+
+        $this->login('ada@example.com', self::PASSWORD);
+
+        self::assertResponseStatusCodeSame(429);
     }
 
     #[Test]

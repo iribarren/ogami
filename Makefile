@@ -22,6 +22,8 @@ NODE_EXEC := $(DOCKER_COMPOSE) exec $(TTY) node
 
 # Pass-through arguments: make composer ARGS="require foo/bar"
 ARGS ?=
+# Limit build/up to some services (CI jobs): make build up SERVICES="php"
+SERVICES ?=
 
 ##@ Help
 
@@ -34,12 +36,12 @@ help: ## Show this help
 ##@ Docker
 
 .PHONY: build
-build: ## Build the container images
-	$(DOCKER_COMPOSE) build --pull
+build: ## Build the container images (SERVICES="php" to limit)
+	$(DOCKER_COMPOSE) build --pull $(SERVICES)
 
 .PHONY: up
-up: ## Start every service in the background and wait until healthy
-	$(DOCKER_COMPOSE) up --detach --wait
+up: ## Start the services in the background and wait until healthy (SERVICES="php" to limit)
+	$(DOCKER_COMPOSE) up --detach --wait $(SERVICES)
 
 .PHONY: down
 down: ## Stop and remove the containers (keeps volumes)

@@ -1,0 +1,120 @@
+# CI runs the same Makefile targets and compose services as local development
+# (ADR 0008), so a green `make qa test e2e` locally means a green CI run.
+# The Makefile exports UID/GID from the runner user, so files written through
+# the bind mounts (vendor/, node_modules/, reports) stay owned by the runner.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Skip compose.override.yaml (host ports, Xdebug host mapping): CI needs none of it.
+  DOCKER_COMPOSE: docker compose -f compose.yaml
+
+jobs:
+  backend:
+    name: Backend (QA + PHPUnit + Behat)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: vendor-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Build and start php + database
+        run: make build up SERVICES=php
+
+      - name: QA (PHPStan + PHPat, PHP-CS-Fixer, Rector)
+        run: make backend-qa
+
+      - name: Tests (PHPUnit unit + integration on PostgreSQL, Behat)
+        run: make backend-test
+
+      - name: Service logs
+        if: failure()
+        run: docker compose -f compose.yaml logs --no-color
+
+  frontend:
+    name: Frontend (QA + Vitest + builds)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          # Holds the pnpm store too (it lives inside node_modules in the container).
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+
+      - name: Build and start node
+        run: make build up SERVICES=node
+
+      - name: QA (ESLint, Prettier, TypeScript)
+        run: make frontend-qa
+
+      - name: Tests (Vitest)
+        run: make frontend-test
+
+      - name: Build the SPA and Storybook
+        run: make frontend-build storybook-build
+
+      - name: Service logs
+        if: failure()
+        run: docker compose -f compose.yaml logs --no-color
+
+  e2e:
+    name: Full stack (API contract + Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: vendor-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+
+      - name: Build and start every service
+        run: make build up
+
+      - name: OpenAPI spec and TypeScript types are up to date
+        run: make api-check
+
+      - name: Playwright smoke test
+        run: make e2e
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+
+      - name: Service logs
+        if: failure()
+        run: docker compose -f compose.yaml logs --no-color

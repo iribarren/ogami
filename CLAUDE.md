@@ -10,6 +10,7 @@ Ogami is a web app for solo tabletop RPG play: **Play** (solo player runs campai
 | Bounded contexts and relationships | [docs/domain/context-map.md](docs/domain/context-map.md) |
 | Ubiquitous language | [docs/domain/glossary.md](docs/domain/glossary.md) |
 | Architecture decisions | [docs/adr/README.md](docs/adr/README.md) |
+| Roadmap, milestones and feature prompts | [docs/roadmap.md](docs/roadmap.md) |
 | Current feature work | [odd/tasks/](odd/tasks/) |
 
 ## Architecture rules

@@ -84,6 +84,7 @@ Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.m
 
 ## Related
 
+- [Roadmap](roadmap.md)
 - [Context map](domain/context-map.md)
 - [Glossary](domain/glossary.md)
 - [Architecture decisions](adr/README.md)

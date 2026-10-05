@@ -1,0 +1,30 @@
+security:
+    # The domain User stays framework-free; Symfony Security sees it through
+    # SecurityUser. The Application PasswordHasher port hashes with this same
+    # configuration, so a created user's hash verifies at login (ADR 0006).
+    password_hashers:
+        App\Identity\Infrastructure\Security\SecurityUser: 'auto'
+
+    # Placeholder until the auth API adds the Identity user provider.
+    providers:
+        users_in_memory: { memory: null }
+
+    firewalls:
+        dev:
+            # Ensure dev tools and static assets are always allowed
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        main:
+            lazy: true
+            provider: users_in_memory
+
+when@test:
+    security:
+        password_hashers:
+            # Password hashers are resource-intensive by design to ensure security.
+            # In tests, it's safe to reduce their cost to improve performance.
+            App\Identity\Infrastructure\Security\SecurityUser:
+                algorithm: auto
+                cost: 4 # Lowest possible value for bcrypt
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon

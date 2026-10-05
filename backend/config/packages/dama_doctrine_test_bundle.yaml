@@ -1,0 +1,7 @@
+# Each PHPUnit test runs inside a transaction that is rolled back afterwards,
+# so integration tests stay isolated (extension enabled in phpunit.dist.xml).
+when@test:
+    dama_doctrine_test:
+        enable_static_connection: true
+        enable_static_meta_data_cache: true
+        enable_static_query_cache: true

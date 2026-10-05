@@ -84,6 +84,7 @@ backend-install: backend/vendor/autoload.php ## Install backend Composer depende
 .PHONY: backend-test
 backend-test: backend-install ## Run backend tests: PHPUnit (unit + integration) and Behat
 	$(PHP_EXEC) php bin/console doctrine:database:create --if-not-exists --env=test --quiet
+	$(PHP_EXEC) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test --quiet
 	$(PHP_EXEC) vendor/bin/phpunit
 	$(PHP_EXEC) vendor/bin/behat --strict
 

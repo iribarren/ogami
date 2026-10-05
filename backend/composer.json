@@ -21,7 +21,9 @@
         "symfony/property-access": "8.1.*",
         "symfony/property-info": "8.1.*",
         "symfony/runtime": "8.1.*",
+        "symfony/security-bundle": "8.1.*",
         "symfony/serializer": "8.1.*",
+        "symfony/uid": "8.1.*",
         "symfony/yaml": "8.1.*"
     },
     "config": {
@@ -80,6 +82,7 @@
     },
     "require-dev": {
         "behat/behat": "*",
+        "dama/doctrine-test-bundle": "^8.6",
         "friendsofphp/php-cs-fixer": "*",
         "phpat/phpat": "*",
         "phpstan/extension-installer": "*",

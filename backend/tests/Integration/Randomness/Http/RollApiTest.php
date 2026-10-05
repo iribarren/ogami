@@ -110,6 +110,7 @@ final class RollApiTest extends WebTestCase
         yield 'missing sides' => ['2d', 'Unexpected end of the dice expression; expected the number of sides or "%".'];
         yield 'keeping more dice than rolled' => ['4d6kh5', '"kh" keeps between 1 and 4 dice, 5 given.'];
         yield 'division by zero' => ['1d6/0', '"1d6/0" divides by zero.'];
+        yield 'non-ASCII character' => ['2d6+é', 'Unexpected "é" at position 5; a dice expression only contains numbers, dice ("d", "%"), selectors ("kh", "kl", "dh", "dl", "k"), "+", "-", "*", "/" and parentheses.'];
     }
 
     #[Test]

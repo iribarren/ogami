@@ -91,6 +91,8 @@ final class DiceExpressionParsingTest extends TestCase
         yield 'dice after dice' => ['1d6d6', '"d" at position 4'];
         yield 'fate dice' => ['4dF', '"f" at position 3'];
         yield 'position counts whitespace' => [' 2 d 6 + + 1', '"+" at position 10'];
+        yield 'multibyte character' => ['2d6+é', '"é" at position 5'];
+        yield 'invalid UTF-8 byte' => ["2d6+\xC3", '"\\xC3" at position 5'];
     }
 
     #[Test]

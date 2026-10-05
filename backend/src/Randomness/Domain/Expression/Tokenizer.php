@@ -36,7 +36,7 @@ final class Tokenizer
 
         while ($offset < $length) {
             if (1 !== preg_match(self::PATTERN, $notation, $matches, \PREG_UNMATCHED_AS_NULL, $offset)) {
-                throw InvalidDiceExpression::unexpectedCharacter($notation[$offset], $offset + 1);
+                throw InvalidDiceExpression::unexpectedCharacter(self::characterAt($notation, $offset), $offset + 1);
             }
 
             foreach (self::TYPES as $group => $type) {
@@ -51,5 +51,18 @@ final class Tokenizer
         $tokens[] = new Token(TokenType::End, '', $length + 1);
 
         return $tokens;
+    }
+
+    /**
+     * The whole UTF-8 character at a byte offset, or its first byte as "\xNN" when it is not valid UTF-8,
+     * so error messages always stay valid UTF-8.
+     */
+    private static function characterAt(string $notation, int $offset): string
+    {
+        if (1 === preg_match('/\G./su', $notation, $match, 0, $offset)) {
+            return $match[0];
+        }
+
+        return \sprintf('\x%02X', \ord($notation[$offset]));
     }
 }

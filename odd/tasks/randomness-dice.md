@@ -49,8 +49,8 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | Domain: tokenizer/parser to an expression tree, evaluator, `Roll` with per-die breakdown, limits; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | `e2703be` |
-| T1b | Fix review follow-ups: UTF-8-safe tokenizer error messages, oversized-literal message | inline | [ ] | |
-| T2 | `RollDice` query + handler + view; `POST /api/rolls` (auth required) with 200/400/422; OpenAPI; `make api`; integration test | delegated writer (multi-file) | [ ] | |
+| T1b | Fix review follow-up: UTF-8-safe tokenizer error messages (oversized-literal message deferred) | inline (one-file fix + tests) | [x] | see evidence |
+| T2 | `RollDice` query + handler + view; `POST /api/rolls` (auth required) with 200/400/422; OpenAPI; `make api`; integration test | delegated writer (multi-file) | [x] | `159b6db` |
 | T3 | Play `DiceRoller` component (input, roll, total, per-die breakdown with dropped dice, error state), mounted on Play home; Vitest, Storybook story, e2e smoke | delegated writer (multi-file) | [ ] | |
 
 ## Acceptance criteria
@@ -69,17 +69,21 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 
 - **T1** (`e2703be`): delegated writer. Unit RED 114 tests / 67 errors + 30 failures → GREEN `OK (114 tests, 2625 assertions)` (parent re-ran). `make backend-qa` exit 0; `make backend-test` OK (181 tests; Behat 12 scenarios). Expression tree under `Randomness/Domain/Expression/`; per-die class is `RolledDie` (`Die` is reserved in PHP); ties keep the earlier-rolled die; results ≥ 2^63 rejected. +1360 / −172 (incl. feature doc). Review assess: medium, `slice_budget_reached` → consent granted → **approved** (native review, reliability lens; acknowledged, authority burned). Reviewed boundary: `e2703be`.
 
-- **T2**: delegated writer. RED 17 tests / 9 errors + 8 failures → GREEN `OK (17 tests, 60 assertions)`. `RollDice` query → `RollView`; `RollController` returns 200 / 400 (bad JSON, missing or non-string `expression`) / 415 (non-JSON body, like login) / 422 (`InvalidDiceExpression`) / 401 (access_control). Integration test swaps the RNG with `disableReboot()` + `getContainer()->set()`. Parent moved `ErrorResponse` from Identity to `Shared/Infrastructure/Http` so the Randomness kernel does not depend on Identity. `make backend-qa` exit 0; `make backend-test` exit 0 (198 tests); `make api-check` up to date. Spec lives at `frontend/src/shared/api/openapi.json`.
+- **T2** (`159b6db`): delegated writer. RED 17 tests / 9 errors + 8 failures → GREEN `OK (17 tests, 60 assertions)`. `RollDice` query → `RollView`; `RollController` returns 200 / 400 (bad JSON, missing or non-string `expression`) / 415 (non-JSON body, like login) / 422 (`InvalidDiceExpression`) / 401 (access_control). Integration test swaps the RNG with `disableReboot()` + `getContainer()->set()`. Parent moved `ErrorResponse` from Identity to `Shared/Infrastructure/Http` so the Randomness kernel does not depend on Identity. `make backend-qa` exit 0; `make backend-test` exit 0 (198 tests); `make api-check` up to date. Spec lives at `frontend/src/shared/api/openapi.json`. Review assess: high (moved `ErrorResponse` import touches Identity Security handlers) → consent granted → **approved** (4 lenses; acknowledged, authority burned). Reviewed boundary: `159b6db`. All four lenses flagged the same non-blocking UTF-8 → 500 path (T1b).
+
+- **T1b**: inline. RED 3 failures (`2d6+é`, invalid byte `\xC3`, API `2d6+é` → 500) → GREEN `OK (59 tests, 173 assertions)`. `Tokenizer::characterAt()` reports the whole UTF-8 character, or `\xNN` for an invalid byte. `make backend-qa` exit 0; `make backend-test` exit 0.
 
 ## Follow-ups (non-blocking review findings)
 
-- T1 `R3-utf8-error-byte` (WARNING): `Tokenizer.php:38-39` puts a single byte of a multibyte character into the error message; invalid UTF-8 could break the JSON error body in T2. Fix before delivery (T1b).
-- T1 `R3-saturated-integer-message` (SUGGESTION): `Token.php:20-26` message for oversized integer literals.
+- T1 `R3-utf8-error-byte` (WARNING), T2 `R1-roll-error-invalid-utf8-500` / `R2-unescaped-domain-message-pending-followup` / `R3-utf8-error-500` / `R4-invalid-utf8-error-500` (WARNING): same root cause; **fixed in T1b**.
+- T1 `R3-saturated-integer-message` (SUGGESTION): `Token.php:20-26` oversized literals report the saturated value (PHP_INT_MAX) instead of the text written. Deferred: still rejected with a correct limit message.
+- T2 `R2-task-table-status-drift` (SUGGESTION): task table lagged the evidence; fixed in this doc update.
 
 ## Reviews
 
 - `f2d9ae5..e2703be` (doc + T1): medium, approved.
+- `e2703be..159b6db` (T2): high, approved (4 lenses).
 
 ## Next step
 
-T1.
+T3 (delegated writer running), then full checks and the PR.

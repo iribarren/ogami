@@ -73,6 +73,15 @@ composer: ## Run Composer (ARGS="install")
 console: ## Run the Symfony console (ARGS="debug:router")
 	$(PHP_EXEC) php bin/console $(ARGS)
 
+PRESETS := $(wildcard backend/presets/*.json)
+
+.PHONY: presets
+presets: backend-install ## Publish the shipped GameSystem presets (backend/presets) to the dev database, skipping unchanged ones
+	$(PHP_EXEC) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --quiet
+	@set -e; for preset in $(patsubst backend/%,%,$(PRESETS)); do \
+		$(PHP_EXEC) php bin/console app:gamesystem:publish $$preset --if-changed; \
+	done
+
 # Installs Composer dependencies on a fresh clone (or after composer.lock changes).
 backend/vendor/autoload.php: backend/composer.lock
 	$(PHP_EXEC) composer install --no-interaction

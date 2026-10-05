@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ogami.app/contracts/gamesystem-release/v1.schema.json",
+  "title": "GameSystem release, schema version 1",
+  "description": "The Published Language between Studio and Play: the content of one immutable GameSystem release. This schema encodes the structural rules only. Semantic rules are enforced by the Studio domain and are not expressible here: unique oracle keys across tables and likelihood oracles, unique flow step keys, unique level keys, table set rules (ranged vs weighted entries, no overlapping ranges, nested tables exist, no cycles, nesting depth), dice notation, trimmed lengths, level targets and chaos shift within 0..sides, chaos min <= neutral <= max. Optional fields may be omitted or null. See docs/contracts/gamesystem-release.md.",
+  "type": "object",
+  "required": ["schemaVersion", "gameSystem", "oracles", "flow", "sheet", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "description": "Version of this contract. Not the release version, which Studio assigns when publishing.",
+      "const": 1
+    },
+    "gameSystem": { "$ref": "#/$defs/gameSystem" },
+    "oracles": { "$ref": "#/$defs/oracles" },
+    "flow": { "$ref": "#/$defs/flow" },
+    "sheet": {
+      "description": "Reserved; must be empty in schema version 1.",
+      "type": "object",
+      "maxProperties": 0
+    },
+    "checks": {
+      "description": "Reserved; must be empty in schema version 1.",
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "$defs": {
+    "key": {
+      "description": "Lowercase identifier: a-z, 0-9 and \"-\", 1 to 64 characters.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$"
+    },
+    "gameSystem": {
+      "type": "object",
+      "required": ["key", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": ["string", "null"], "maxLength": 2000 }
+      }
+    },
+    "oracles": {
+      "type": "object",
+      "required": ["tables", "likelihood"],
+      "additionalProperties": false,
+      "properties": {
+        "tables": {
+          "description": "One oracle table set (Randomness OracleTableSet). May be empty.",
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/oracleTable" }
+        },
+        "likelihood": {
+          "description": "Likelihood oracles (Randomness LikelihoodOracle). May be empty.",
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/likelihoodOracle" }
+        }
+      }
+    },
+    "oracleTable": {
+      "description": "A ranged table has \"dice\" and entries with \"min\" and \"max\"; a weighted table has no \"dice\" and entries with an optional \"weight\".",
+      "type": "object",
+      "required": ["key", "name", "entries"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "dice": { "description": "Dice notation, e.g. 1d6; ranged tables only.", "type": ["string", "null"] },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": { "$ref": "#/$defs/oracleTableEntry" }
+        }
+      }
+    },
+    "oracleTableEntry": {
+      "description": "An entry needs a non-empty \"text\" unless it nests a \"table\".",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": ["integer", "null"] },
+        "max": { "type": ["integer", "null"] },
+        "weight": { "type": ["integer", "null"], "minimum": 1 },
+        "text": { "type": ["string", "null"], "maxLength": 500 },
+        "table": {
+          "description": "Key of a table of the same set to roll on next.",
+          "anyOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }]
+        }
+      }
+    },
+    "likelihoodOracle": {
+      "type": "object",
+      "required": ["key", "name", "sides", "levels"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "sides": { "type": "integer", "minimum": 2, "maximum": 1000 },
+        "levels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/likelihoodLevel" }
+        },
+        "chaos": {
+          "anyOf": [{ "$ref": "#/$defs/likelihoodChaos" }, { "type": "null" }]
+        },
+        "exceptionalPercent": { "type": ["integer", "null"], "minimum": 0, "maximum": 50 }
+      }
+    },
+    "likelihoodLevel": {
+      "type": "object",
+      "required": ["key", "label", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "target": { "description": "Highest roll that answers yes at the neutral chaos factor; 0..sides.", "type": "integer", "minimum": 0 }
+      }
+    },
+    "likelihoodChaos": {
+      "type": "object",
+      "required": ["min", "max", "neutral", "shiftPerPoint"],
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "integer", "minimum": -1000 },
+        "max": { "type": "integer", "maximum": 1000 },
+        "neutral": { "type": "integer" },
+        "shiftPerPoint": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": ["steps"],
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "description": "Provisional step shape; it grows under a new schema version. May be empty.",
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/flowStep" }
+        }
+      }
+    },
+    "flowStep": {
+      "type": "object",
+      "required": ["key", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "prompt": { "type": ["string", "null"], "maxLength": 2000 }
+      }
+    }
+  }
+}

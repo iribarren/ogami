@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1.0,
+  "gameSystem": {"key": "float-integers", "name": "Float integers"},
+  "oracles": {
+    "tables": [
+      {"key": "weather", "name": "Weather", "dice": "1d6", "entries": [{"min": 1.0, "max": 4.0, "text": "Clear"}, {"min": 5, "max": 6.0, "text": "Storm"}]},
+      {"key": "mood", "name": "Mood", "entries": [{"text": "Calm", "weight": 2.0}, {"text": "Tense"}]}
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate", "sides": 100.0, "levels": [{"key": "likely", "label": "Likely", "target": 65.0}], "chaos": {"min": 1.0, "max": 9.0, "neutral": 5.0, "shiftPerPoint": 5.0}, "exceptionalPercent": 20.0}
+    ]
+  },
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

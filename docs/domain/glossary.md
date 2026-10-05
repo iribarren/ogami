@@ -19,7 +19,7 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Term | Definition | Context |
 |---|---|---|
 | GameSystem | A TTRPG system as authored in Studio: its sheet templates, checks, narrative flow and oracles. Mutable draft | Studio |
-| GameSystem release | An immutable, versioned snapshot of a GameSystem, published by a game manager. The only form Play consumes | Studio (published), Play (snapshot) |
+| GameSystem release | An immutable, versioned snapshot of a GameSystem, published by a game manager. The only form Play consumes. Its release version counts up per GameSystem key (1, 2, …) | Studio (published), Play (snapshot) |
 | SheetTemplate | The definition of a character sheet for a GameSystem: its fields, layout and derived values | Studio |
 | Field | One input on a sheet template (e.g. a number, text, choice, track) | Studio |
 | DerivedValue | A sheet value computed by a formula from fields or other derived values (e.g. a modifier) | Studio |
@@ -28,6 +28,8 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | NarrativeFlow | The configurable procedure of play for a GameSystem: an ordered or branching set of flow steps | Studio |
 | Flow step | One step of a narrative flow (e.g. set the scene, ask the oracle, make a check, write a journal entry) | Studio |
 | Flow preset | A ready-made narrative flow (Mythic-style, free journal) usable for generic or unsupported systems | Studio |
+| Preset | A hand-authored GameSystem release file shipped with Ogami (e.g. Free journal, Mythic-style) and published by `make presets`. A preset may carry a flow preset, but it is a whole release: oracles, flow, sheet and checks | Studio |
+| Schema version | The version of the GameSystem release contract a release file follows (`schemaVersion`). Distinct from the release version | Studio → Play |
 | Oracle | Anything that answers a question with uncertainty: an oracle table or a likelihood oracle | Studio (defined), Randomness (resolved) |
 
 ## Play
@@ -56,7 +58,8 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 
 | Term | Definition | Context |
 |---|---|---|
-| Published Language | The shared, versioned contract Studio publishes (a GameSystem release) | Studio → Play |
+| Published Language | The shared, versioned contract Studio publishes (a GameSystem release); see the [release contract](../contracts/gamesystem-release.md) | Studio → Play |
 | Anti-corruption layer (ACL) | Play's translation from a release snapshot into Play's own model | Play |
+| GameSystemSnapshot | Play's own model of a GameSystem release, produced by the anti-corruption layer. Holds no Studio types | Play |
 | Shared kernel | Code shared by agreement between contexts; here, Randomness | Randomness |
 | Narrative assist | A port for AI-assisted ideas during play; implementation later | Play |

@@ -1,6 +1,6 @@
 # Context map
 
-Ogami has two core contexts, **Play** and **Studio**. Studio authors game content and publishes immutable, versioned **GameSystem releases**; Play runs campaigns against a release snapshot through an anti-corruption layer, so editing rules never breaks a running campaign. Both depend on **Randomness**, a pure shared kernel for dice and oracles.
+Ogami has two core contexts, **Play** and **Studio**. Studio authors game content and publishes immutable, versioned **GameSystem releases**; Play runs campaigns against a release snapshot through an anti-corruption layer, so editing rules never breaks a running campaign. Both are core ([ADR 0013](../adr/0013-studio-is-a-core-context.md)) and depend on **Randomness**, a pure shared kernel for dice and oracles.
 
 Terms in this document are defined in the [glossary](glossary.md).
 
@@ -9,7 +9,7 @@ Terms in this document are defined in the [glossary](glossary.md).
 | Context | Type | Purpose | Roles |
 |---|---|---|---|
 | Play | Core | Run solo campaigns: characters, sessions, scenes, flow runs, journal | `SOLO_PLAYER` |
-| Studio | Core / supporting | Author game systems and publish releases | `GAME_MANAGER` |
+| Studio | Core | Author game systems and publish releases | `GAME_MANAGER` |
 | Randomness | Shared kernel | Dice expressions, oracle tables, likelihood oracles | Used by Play and Studio (no direct users) |
 | Identity & Access | Generic | Users, authentication, roles | All roles |
 | Admin | Generic | App settings and user management | `OWNER` |
@@ -20,7 +20,7 @@ Terms in this document are defined in the [glossary](glossary.md).
 ```mermaid
 flowchart LR
     subgraph Core
-        Studio["Studio<br/>(core / supporting)"]
+        Studio["Studio<br/>(core)"]
         Play["Play<br/>(core)"]
     end
     Randomness["Randomness<br/>(shared kernel)"]
@@ -42,13 +42,22 @@ flowchart LR
 
 | Upstream | Downstream | Pattern | What crosses the boundary |
 |---|---|---|---|
-| Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release. Play stores a snapshot and translates it into its own model. A campaign stays on its release until the player chooses to upgrade |
+| Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release ([contract](../contracts/gamesystem-release.md)). Play stores a snapshot and translates it into its own model. A campaign stays on its release until the player chooses to upgrade |
 | Randomness | Play, Studio | Shared kernel | Pure domain types and services: `DiceExpression`, `Roll`, oracle resolution. Changes need agreement of both consumers |
 | Identity & Access | Play, Studio, Admin | Open host (conformist consumers) | Current user id and roles |
 | Admin | Identity & Access | Customer / supplier | Admin use cases call Identity & Access application services to manage users and roles |
 | Play | Narrative assist | Port (hexagonal) | A Play-owned interface; no adapter yet ([ADR 0002](../adr/0002-modular-monolith-hexagonal-ddd.md)) |
 
 Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-releases.md).
+
+### Published Language: the GameSystem release
+
+| Aspect | Detail |
+|---|---|
+| Contract | [GameSystem release contract](../contracts/gamesystem-release.md), versioned by schema version |
+| Producer | Studio validates and publishes immutable releases |
+| How Play reads it | Only through Studio's Application query `GetPublishedRelease`; Play's anti-corruption layer translates the result into its own `GameSystemSnapshot` |
+| Never | Play importing Studio `Domain/` or `Infrastructure/`, or reading Studio drafts |
 
 ## Contexts
 
@@ -61,7 +70,7 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 | Depends on | Studio (release snapshot via ACL), Randomness, Identity & Access, Narrative assist port |
 | Roles | `SOLO_PLAYER` |
 
-### Studio (core / supporting)
+### Studio (core)
 
 | Aspect | Detail |
 |---|---|
@@ -113,6 +122,6 @@ Answered when the first feature that needs them starts, not before (see [vision]
 
 | Question | Decide when |
 |---|---|
-| Is Studio core or supporting? Core for the authoring UX, supporting for Play's value | Studio's first feature |
+| ~~Is Studio core or supporting?~~ | Resolved: core ([ADR 0013](../adr/0013-studio-is-a-core-context.md)) |
 | Upgrade path for a campaign moving to a newer GameSystem release (character data migration). Default until then: a campaign stays pinned to its release | First Play feature that consumes a release |
 | ~~How context boundaries are enforced in code~~ | Resolved: PHPat ([ADR 0012](../adr/0012-phpat-boundary-enforcement.md)) |

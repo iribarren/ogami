@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!-- The file is named Release.GameSystemRelease because the simplified XML driver maps
+         sub-namespaces of the App\Studio\Domain prefix with dots.
+         Releases are immutable (ADR 0010): rows are only ever inserted. Content is JSONB; identity,
+         key, version and timestamps are relational columns (ADR 0007). -->
+    <entity name="App\Studio\Domain\Release\GameSystemRelease" table="studio_gamesystem_release">
+        <unique-constraints>
+            <!-- DoctrineGameSystemReleaseRepository relies on this name to report GameSystemReleaseAlreadyExists. -->
+            <unique-constraint name="uniq_studio_gamesystem_release_key_version" columns="game_system_key,version"/>
+        </unique-constraints>
+
+        <id name="id" type="guid" column="id"/>
+
+        <field name="gameSystemKey" type="string" column="game_system_key" length="64"/>
+        <field name="version" type="integer" column="version"/>
+        <field name="schemaVersion" type="integer" column="schema_version"/>
+        <field name="content" type="json" column="content">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="contentHash" type="string" column="content_hash" length="64">
+            <options>
+                <option name="fixed">true</option>
+            </options>
+        </field>
+        <field name="publishedAt" type="datetime_immutable" column="published_at"/>
+    </entity>
+</doctrine-mapping>

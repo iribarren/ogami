@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {"key": "null-optionals", "name": "Null optionals", "description": null},
+  "oracles": {
+    "tables": [
+      {"key": "mood", "name": "Mood", "dice": null, "entries": [{"text": "Calm", "weight": null, "min": null, "max": null, "table": null}]}
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate", "sides": 6, "levels": [{"key": "even", "label": "Even", "target": 3}], "chaos": null, "exceptionalPercent": null}
+    ]
+  },
+  "flow": {"steps": [{"key": "begin", "title": "Begin", "prompt": null}]},
+  "sheet": {},
+  "checks": []
+}

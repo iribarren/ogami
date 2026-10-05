@@ -4,30 +4,34 @@ declare(strict_types=1);
 
 namespace App\Randomness\Domain;
 
+use App\Randomness\Domain\Expression\Node;
+use App\Randomness\Domain\Expression\Parser;
+
 /**
- * A parsed dice notation such as "2d6+1" or "d20": roll N dice with M sides
- * and add the modifier K. Only NdM±K is supported for now.
+ * A parsed dice notation such as "4d6kh3", "2d6+1d4-2" or "(1d6+2)*3".
+ *
+ * Grammar (case-insensitive, whitespace ignored):
+ *
+ *     expression := term (("+" | "-") term)*
+ *     term       := unary (("*" | "/") unary)*
+ *     unary      := "-" unary | primary
+ *     primary    := integer | dice | "(" expression ")"
+ *     dice       := [count] "d" (sides | "%") [selector]
+ *     selector   := ("kh" | "kl" | "dh" | "dl" | "k") count
+ *
+ * Division rounds down. Rolling evaluates the dice from left to right.
  */
-final readonly class DiceExpression
+final readonly class DiceExpression implements \Stringable
 {
+    public const int MAX_LENGTH = 100;
     public const int MAX_DICE = 100;
     public const int MIN_SIDES = 2;
     public const int MAX_SIDES = 1000;
-
-    private const string PATTERN = '/^(?<count>\d+)?d(?<sides>\d+)(?:(?<sign>[+-])(?<modifier>\d+))?$/';
+    public const int MAX_INTEGER = 1_000_000;
 
     private function __construct(
-        private int $count,
-        private int $sides,
-        private int $modifier,
+        private Node $root,
     ) {
-        if ($count < 1 || $count > self::MAX_DICE) {
-            throw InvalidDiceExpression::diceCountOutOfRange($count, self::MAX_DICE);
-        }
-
-        if ($sides < self::MIN_SIDES || $sides > self::MAX_SIDES) {
-            throw InvalidDiceExpression::sidesOutOfRange($sides, self::MIN_SIDES, self::MAX_SIDES);
-        }
     }
 
     /**
@@ -35,55 +39,50 @@ final readonly class DiceExpression
      */
     public static function fromString(string $notation): self
     {
-        $normalized = strtolower(preg_replace('/\s+/', '', $notation) ?? '');
-
-        if (1 !== preg_match(self::PATTERN, $normalized, $matches)) {
-            throw InvalidDiceExpression::unparsable($notation);
+        if (\strlen($notation) > self::MAX_LENGTH) {
+            throw InvalidDiceExpression::tooLong(\strlen($notation), self::MAX_LENGTH);
         }
 
-        $modifier = (int) ($matches['modifier'] ?? 0);
+        if ('' === trim($notation)) {
+            throw InvalidDiceExpression::empty();
+        }
 
-        return new self(
-            '' === $matches['count'] ? 1 : (int) $matches['count'],
-            (int) $matches['sides'],
-            '-' === ($matches['sign'] ?? '+') ? -$modifier : $modifier,
-        );
-    }
+        $root = Parser::parse($notation);
+        if ($root->diceCount() > self::MAX_DICE) {
+            throw InvalidDiceExpression::tooManyDice($root->diceCount(), self::MAX_DICE);
+        }
 
-    public function count(): int
-    {
-        return $this->count;
-    }
-
-    public function sides(): int
-    {
-        return $this->sides;
-    }
-
-    public function modifier(): int
-    {
-        return $this->modifier;
+        return new self($root);
     }
 
     /**
-     * The canonical notation, e.g. "1d20" for "d20" or "2d6+1" for " 2D6 + 1 ".
+     * The normalized notation: lower case, no whitespace, "d" as "1d", "d%" as "d100" and "k" as "kh".
      */
-    public function toString(): string
+    public function notation(): string
     {
-        return match (true) {
-            $this->modifier > 0 => \sprintf('%dd%d+%d', $this->count, $this->sides, $this->modifier),
-            $this->modifier < 0 => \sprintf('%dd%d-%d', $this->count, $this->sides, -$this->modifier),
-            default => \sprintf('%dd%d', $this->count, $this->sides),
-        };
+        return $this->root->notation();
     }
 
+    public function __toString(): string
+    {
+        return $this->notation();
+    }
+
+    /**
+     * How many dice a roll of this expression rolls.
+     */
+    public function diceCount(): int
+    {
+        return $this->root->diceCount();
+    }
+
+    /**
+     * @throws InvalidDiceExpression when evaluation divides by zero or overflows
+     */
     public function roll(RandomNumberGenerator $random): Roll
     {
-        $dice = [];
-        for ($i = 0; $i < $this->count; ++$i) {
-            $dice[] = $random->between(1, $this->sides);
-        }
+        $outcome = $this->root->evaluate($random);
 
-        return new Roll($this, $dice);
+        return new Roll($this, $outcome->value, $outcome->groups);
     }
 }

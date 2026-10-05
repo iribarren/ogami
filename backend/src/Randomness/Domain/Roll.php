@@ -5,20 +5,18 @@ declare(strict_types=1);
 namespace App\Randomness\Domain;
 
 /**
- * The result of evaluating a dice expression: the individual dice and the total.
+ * The result of evaluating a dice expression: the total and every dice group rolled.
  */
 final readonly class Roll
 {
-    private int $total;
-
     /**
-     * @param list<int> $dice
+     * @param list<DiceGroup> $groups the dice groups in notation order, left to right
      */
     public function __construct(
         private DiceExpression $expression,
-        private array $dice,
+        private int $total,
+        private array $groups,
     ) {
-        $this->total = array_sum($dice) + $expression->modifier();
     }
 
     public function expression(): DiceExpression
@@ -26,16 +24,16 @@ final readonly class Roll
         return $this->expression;
     }
 
-    /**
-     * @return list<int>
-     */
-    public function dice(): array
-    {
-        return $this->dice;
-    }
-
     public function total(): int
     {
         return $this->total;
+    }
+
+    /**
+     * @return list<DiceGroup>
+     */
+    public function groups(): array
+    {
+        return $this->groups;
     }
 }

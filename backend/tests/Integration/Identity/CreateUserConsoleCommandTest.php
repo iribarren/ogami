@@ -77,6 +77,42 @@ final class CreateUserConsoleCommandTest extends KernelTestCase
     }
 
     #[Test]
+    public function itLeavesAnExistingUserAloneWhenAskedToCreateItOnlyIfMissing(): void
+    {
+        $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['SOLO_PLAYER'], '--password' => 's3cret'],
+            ['interactive' => false],
+        );
+        $existing = self::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString('ada@example.com'));
+        self::assertNotNull($existing);
+
+        $exitCode = $this->tester->execute(
+            ['email' => ' Ada@Example.com', '--role' => ['OWNER'], '--password' => 'other', '--if-missing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString('already exists', $this->tester->getDisplay());
+        $user = self::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString('ada@example.com'));
+        self::assertNotNull($user);
+        self::assertTrue($existing->id()->equals($user->id()));
+        self::assertSame([Role::SoloPlayer], $user->roles());
+    }
+
+    #[Test]
+    public function itCreatesAMissingUserWhenAskedToCreateItOnlyIfMissing(): void
+    {
+        $exitCode = $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['OWNER'], '--password' => 's3cret', '--if-missing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString('Created user', $this->tester->getDisplay());
+        self::assertNotNull(self::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString('ada@example.com')));
+    }
+
+    #[Test]
     public function itRejectsAnUnknownRole(): void
     {
         $exitCode = $this->tester->execute(

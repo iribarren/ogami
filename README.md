@@ -22,6 +22,25 @@ make qa test e2e     # static checks, unit/integration/Behat/Vitest, Playwright
 
 `make help` lists every command; [CLAUDE.md](CLAUDE.md#commands) groups them by task.
 
+### Users and sign-in
+
+There is no sign-up yet. Create a user from the console (the password is asked for, hidden):
+
+```bash
+make console ARGS="doctrine:migrations:migrate -n"   # once, on a fresh database
+make console ARGS="app:user:create you@example.com --role=SOLO_PLAYER"
+```
+
+| Role | Opens |
+|---|---|
+| `SOLO_PLAYER` | Play (`/play`) |
+| `GAME_MANAGER` | Studio (`/studio`) |
+| `OWNER` | Admin (`/admin`) |
+
+Roles are independent: repeat `--role` to give several. `--password=…` skips the prompt; `--if-missing` succeeds without changes when the email exists. `make e2e` seeds its own users (`make e2e-seed`, password `E2E_PASSWORD`, default `e2e-password-123`).
+
+Sign-in uses an HttpOnly session cookie. Behind a reverse proxy, set `TRUSTED_PROXIES` (backend environment) to the proxy addresses so client IPs, HTTPS and login throttling work.
+
 ### Ports and environment
 
 Defaults work out of the box. To change one, put it in a git-ignored `.env` file at the repository root (Compose reads it).

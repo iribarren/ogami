@@ -40,8 +40,9 @@ main ← feat/identity-auth (tracker, draft)
 | T2 | Infrastructure: security-bundle, uid, Doctrine XML mapping + migration, repository, hasher/id adapters, `app:user:create` console command; test DB migrated + isolated; integration tests | 1 | delegated writer (multi-file) | [x] | `0a55cc9` |
 | T3 | Auth API: firewall `json_login` `/api/auth/login`, logout `/api/auth/logout`, `GET /api/auth/me` (query), JSON 401/403, access control; OpenAPI docs + `make api`; integration tests + Behat scenario | 2 | delegated writer (multi-file) | [x] | `52d872c` |
 | T3b | T3 review follow-ups: login timing enumeration, role enum from `Role`, throttle key normalization, trusted proxies | 2 | inline (bounded writer of T3) | [x] | `79990f4` |
-| T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [ ] | |
-| T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [ ] | |
+| T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [x] | `7a515a0` |
+| T4b | T4 review follow-ups: logout clears all cached queries, logout failure reported (401 counts as signed out), `safeRedirect` rejects control characters/whitespace and checks the resolved origin, `/login` renders when `/api/auth/me` fails | 3 | inline (bounded writer of T4) | [x] | `adf17cd` |
+| T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [x] | `bb85303` (+ docs commit) |
 
 ## Acceptance criteria
 - `make console ARGS="app:user:create <email> --role=SOLO_PLAYER"` creates a user with a hashed password; duplicate email fails clearly.
@@ -82,5 +83,43 @@ main ← feat/identity-auth (tracker, draft)
   - R4 shared proxy IP: `framework.trusted_proxies: '%env(default::TRUSTED_PROXIES)%'`, `trusted_headers` X-Forwarded-For/Host/Proto/Port/Prefix; `TRUSTED_PROXIES=` (empty) in `backend/.env` with a comment. Production behind a proxy must set it (deployment requirement).
   - RED: 4 unit errors (listener missing) + 1 integration failure (throttle bypass), then the dummy-hash integration test failing at priority 1 → GREEN. `make backend-qa`: PHPStan + PHPat no errors, CS-Fixer 0 files, Rector clean. `make backend-test`: PHPUnit `OK (85 tests, 2657 assertions)`, Behat 8 scenarios passed. `make api-check`: up to date.
 
+- **T3b review**: approved (native review); reviewed boundary `8d8254f`. Non-blocking follow-ups:
+  - R2-normalization-duplicated: `NormalizedLoginRateLimiter` duplicates `Email` normalization.
+  - R4-stale-dummy-hash: the cached dummy hash isn't refreshed if the hasher config changes (clear the cache on hasher change).
+- **T4** (`7a515a0`), branch `feat/identity-auth-3-spa`:
+  - `shared/auth/`: `currentUserQueryOptions(api)` (`GET /api/auth/me`, 401 → `null`, other errors throw), `loadCurrentUser` for guards (`queryClient.query` with `staleTime: 'static'`; `ensureQueryData` is deprecated), `useCurrentUser`, `useLogin` (sets the cached user; throws `LoginError` with the API `error` message), `useLogout` (removes every other query, sets the user to `null`), `requireRole(options, role)` (anonymous → redirect `/login?redirect=<location.href>`; missing role → `ForbiddenError`), `safeRedirect` (only paths starting with `/`, not `//` or `/\`).
+  - Router context gains `api` (same client as `ApiClientProvider`, created once in `main.tsx`); `defaultErrorComponent: RouteErrorPage` renders `ForbiddenPage` ("Access denied" / "You don't have access to <Area>.") inside the shell, without redirecting. Guards on `/play` (SOLO_PLAYER), `/studio` (GAME_MANAGER), `/admin` (OWNER).
+  - `/login` (`routes/login.tsx` + `app/LoginPage.tsx`, shadcn `input` and `label`): `validateSearch` always returns the `redirect` key (`undefined` when unsafe), because the router merges validated search over the raw one and an omitted key keeps the raw value; signed-in visitors are redirected to `redirect` or their first area. `AppShell` links only permitted areas, shows "Sign in" to anonymous visitors, the email and "Sign out" (→ `/login`) when signed in.
+  - shadcn CLI again wrote `import { cn } from "cn"` and added a bogus `cn` dependency; imports fixed to `@/shared/lib/utils`, `package.json`/lock reverted.
+  - RED: 20 failed tests + `safeRedirect` module missing → GREEN: `make frontend-test` 5 files, 40 tests passed. `make frontend-qa`: ESLint, Prettier, tsc clean. `make frontend-build`: built. `make api-check`: up to date. Manual: `make console ARGS="app:user:create t4@example.com --role=SOLO_PLAYER --password=…"` OK; curl http://localhost:8080/login and `/studio` 200 serving the SPA; API login 200, me 200, wrong password 401. No browser walk-through (curl only).
+  - About 760 authored lines including tests (about half); above the ~400 heuristic because the guards, login page and shell only make sense together.
+  - Expected breakage: `frontend/e2e` smoke spec (areas now need a signed-in user) → T5.
+
+- **T4 review**: approved (native review, 5 non-blocking warnings → T4b); reviewed boundary `014837b`.
+- **T4b** (`adf17cd`):
+  - R2 logout scope: `useLogout` now calls `queryClient.clear()` (all API data is user-scoped), then caches the user as `null`; test seeds a user-scoped query and checks it is gone.
+  - R3/R4 silent logout failure: `AppShell` shows the logout error in `role=alert` and keeps the user; a `401` from logout counts as signed out.
+  - R3 `safeRedirect`: rejects whitespace and control characters (`/\t/evil.com`, `/\n/evil.com`, leading/trailing spaces, NUL) and accepts only when `new URL(value, origin).origin` matches.
+  - R4 `/login` with a failing `/api/auth/me` (500/network): the route treats the visitor as anonymous and renders the form; the current-user query no longer retries (`retry: false`) so guards fail fast.
+  - RED: 8 failed tests → GREEN: `make frontend-test` 5 files, 50 tests passed. `make frontend-qa`: ESLint, Prettier, tsc clean.
+
+- **T5** (`bb85303`):
+  - `app:user:create --if-missing`: an existing email prints a note ("… already exists. Left unchanged.") and exits 0; otherwise unchanged behavior. RED: 2 errors (option missing) → GREEN: `CreateUserConsoleCommandTest` OK (9 tests).
+  - `make e2e-seed` (dev migrations + `e2e-player@example.test` SOLO_PLAYER, `e2e-manager@example.test` GAME_MANAGER, `--if-missing`, password `E2E_PASSWORD ?= e2e-password-123`, exported); `make e2e` depends on it. `compose.yaml` passes `E2E_PASSWORD` to the `playwright` service. CI e2e step renamed; it still runs `make e2e`, which now seeds.
+  - Playwright: smoke keeps the public landing page + healthy API, then "Go to Play" → `/login?redirect=%2Fplay`. `auth.spec.ts`: anonymous `/play` → sign in → `/play`; wrong credentials (unknown email, so seeded users never get throttled) → "Invalid credentials."; player nav shows only Play; `/studio` → "Access denied"; sign out → `/login`, `/play` guarded again.
+  - `frontend/.gitignore` ignores `.tanstack/`. README: users and sign-in (create user, roles table, `--if-missing`, e2e seed, `TRUSTED_PROXIES`). Context map: Identity & Access published API row.
+  - Checks: `make backend-qa` PHPStan + PHPat no errors, CS-Fixer 0 files, Rector clean; `make backend-test` PHPUnit OK (87 tests, 2666 assertions), Behat 8 scenarios passed; `make frontend-qa` clean; `make frontend-test` 50 passed; `make api-check` up to date; `make e2e` 6 passed (users created), second run 6 passed (seed notes "already exists. Left unchanged.").
+
+## Follow-ups (non-blocking review findings)
+- T2 `R3-closed-entity-manager`: EntityManager is closed after a unique-constraint violation in `DoctrineUserRepository::save`; revisit if a long-running worker creates users.
+- T3b `R2-normalization-duplicated`: `NormalizedLoginRateLimiter` duplicates `Email` normalization.
+- T3b `R4-stale-dummy-hash`: cached dummy hash is not refreshed when the hasher config changes (clear cache on hasher change).
+- T5 `R2-e2e-password-default-triplicated`: the e2e password default lives in Makefile, compose and `auth.spec.ts`.
+- T5 `R3-seed-stale-credentials`: `--if-missing` leaves an existing e2e user's password/roles unchanged if they drift.
+- T5 `R4-current-user-no-retry`: the current-user query uses `retry: false`, so a transient `/me` failure fails the guard at once.
+
+## Reviews
+All work units reviewed (RDD, 4 lenses) and approved: `d87a622..74d356e` (doc + T1), `..cbbee0c` (T2), `..8fd8f82` (T3), `..8d8254f` (T3b), `..014837b` (T4), `..e07e41f` (T4b + T5).
+
 ## Next step
-T4 on `feat/identity-auth-3-spa` (cut from `feat/identity-auth-2-api`).
+PRs: tracker draft PR + chained child PRs (user decision).

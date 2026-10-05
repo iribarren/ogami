@@ -86,6 +86,7 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 |---|---|
 | Responsibilities | User accounts, authentication (session cookie), role assignment |
 | Aggregates / concepts | User, Role (`OWNER`, `GAME_MANAGER`, `SOLO_PLAYER`) |
+| Published API | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` (session cookie, [ADR 0006](../adr/0006-session-cookie-auth-roles.md)); console `app:user:create` |
 | Depends on | Nothing domain-specific |
 | Roles | All |
 

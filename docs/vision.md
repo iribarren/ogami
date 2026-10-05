@@ -64,7 +64,7 @@ Play and Studio are both shared with other users, so both are product surfaces, 
 | Criterion | Signal |
 |---|---|
 | A full solo session is playable end to end | Create campaign → character → run flow steps → oracle answers and checks → journal, without leaving the app |
-| A new game system needs no code | A game manager defines sheet, checks, flow and oracles in Studio and publishes a release |
+| A new game system usually needs no code | A game manager defines sheet, checks, flow and oracles in Studio and publishes a release; systems that need more get code-backed extensions, analyzed case by case ([ADR 0013](adr/0013-studio-is-a-core-context.md)) |
 | Rule edits are safe | Publishing a new GameSystem release never breaks a running campaign |
 | The flow feels clear | The player always knows the next step; validated by playing real sessions |
 | The method is learned | Each feature follows ODD with a feature doc, work-unit commits and tests |

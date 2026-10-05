@@ -8,8 +8,9 @@ use App\Identity\Domain\Role;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserId;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Bus\QueryHandler;
 
-final readonly class GetUserHandler
+final readonly class GetUserHandler implements QueryHandler
 {
     public function __construct(
         private UserRepository $users,

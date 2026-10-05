@@ -9,6 +9,7 @@ use App\Identity\Application\CreateUserHandler;
 use App\Identity\Application\EmailAlreadyInUse;
 use App\Identity\Application\PasswordMustNotBeEmpty;
 use App\Identity\Application\UnknownRole;
+use App\Identity\Application\UserIdAlreadyInUse;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\InvalidEmail;
 use App\Identity\Domain\Role;
@@ -26,6 +27,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(EmailAlreadyInUse::class)]
 #[CoversClass(PasswordMustNotBeEmpty::class)]
 #[CoversClass(UnknownRole::class)]
+#[CoversClass(UserIdAlreadyInUse::class)]
 final class CreateUserHandlerTest extends TestCase
 {
     private InMemoryUserRepository $users;
@@ -67,6 +69,24 @@ final class CreateUserHandlerTest extends TestCase
 
         self::assertSame(1, $this->users->count());
         self::assertNotNull($this->users->ofEmail(Email::fromString('ada@example.com')));
+    }
+
+    #[Test]
+    public function itRejectsAnIdAlreadyInUse(): void
+    {
+        $id = $this->ids->generate()->toString();
+        ($this->handler)(new CreateUser($id, 'ada@example.com', 's3cret', ['SOLO_PLAYER']));
+
+        try {
+            ($this->handler)(new CreateUser($id, 'bob@example.com', 'other', ['OWNER']));
+            self::fail('A user was created over an existing id.');
+        } catch (UserIdAlreadyInUse $exception) {
+            self::assertStringContainsString($id, $exception->getMessage());
+        }
+
+        $user = $this->users->ofId(UserId::fromString($id));
+        self::assertNotNull($user);
+        self::assertSame('ada@example.com', $user->email()->toString());
     }
 
     #[Test]

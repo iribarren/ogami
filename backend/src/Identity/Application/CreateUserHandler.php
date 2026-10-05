@@ -9,8 +9,9 @@ use App\Identity\Domain\Role;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserId;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Bus\CommandHandler;
 
-final readonly class CreateUserHandler
+final readonly class CreateUserHandler implements CommandHandler
 {
     public function __construct(
         private UserRepository $users,
@@ -18,8 +19,12 @@ final readonly class CreateUserHandler
     ) {
     }
 
+    /**
+     * @throws EmailAlreadyInUse also when a concurrent request wins the race (the repository translates the unique index violation)
+     */
     public function __invoke(CreateUser $command): void
     {
+        $id = UserId::fromString($command->userId);
         $email = Email::fromString($command->email);
 
         if ('' === trim($command->plainPassword)) {
@@ -31,12 +36,16 @@ final readonly class CreateUserHandler
             $command->roles,
         );
 
+        if ($this->users->ofId($id) instanceof User) {
+            throw UserIdAlreadyInUse::for($id);
+        }
+
         if ($this->users->ofEmail($email) instanceof User) {
             throw EmailAlreadyInUse::for($email);
         }
 
         $this->users->save(User::register(
-            UserId::fromString($command->userId),
+            $id,
             $email,
             $this->hasher->hash($command->plainPassword),
             $roles,

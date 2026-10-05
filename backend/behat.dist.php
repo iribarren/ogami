@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Tests\Behat\IdentityContext;
 use App\Tests\Behat\RandomnessContext;
 use Behat\Config\Config;
 use Behat\Config\Profile;
@@ -13,4 +14,7 @@ return new Config()
     ->withProfile(new Profile('default')
         ->withSuite(new Suite('randomness')
             ->withPaths('%paths.base%/features/randomness')
-            ->withContexts(RandomnessContext::class)));
+            ->withContexts(RandomnessContext::class))
+        ->withSuite(new Suite('identity')
+            ->withPaths('%paths.base%/features/identity')
+            ->withContexts(IdentityContext::class)));

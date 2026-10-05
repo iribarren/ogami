@@ -7,10 +7,15 @@ namespace App\Tests\Behat;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\DiceGroup;
 use App\Randomness\Domain\InvalidDiceExpression;
+use App\Randomness\Domain\Oracle\InvalidOracleTable;
+use App\Randomness\Domain\Oracle\OracleTableResult;
+use App\Randomness\Domain\Oracle\OracleTableSet;
+use App\Randomness\Domain\Oracle\OracleTableStep;
 use App\Randomness\Domain\Roll;
 use App\Randomness\Domain\RolledDie;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use Behat\Behat\Context\Context;
+use Behat\Gherkin\Node\TableNode;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
@@ -23,6 +28,11 @@ final class RandomnessContext implements Context
     private ScriptedRandomNumberGenerator $random;
     private ?Roll $roll = null;
     private ?InvalidDiceExpression $rejection = null;
+
+    /** @var list<array<string, mixed>> */
+    private array $oracleTables = [];
+    private ?OracleTableResult $oracleTableResult = null;
+    private ?InvalidOracleTable $oracleTableRejection = null;
 
     public function __construct()
     {
@@ -77,6 +87,88 @@ final class RandomnessContext implements Context
         Assert::assertNull($this->roll, 'Expected the dice expression to be rejected, but it was rolled.');
         Assert::assertInstanceOf(InvalidDiceExpression::class, $this->rejection);
         Assert::assertStringContainsString($reason, $this->rejection->getMessage());
+    }
+
+    #[Given('/^the oracle table "(?P<key>[^"]+)" rolls "(?P<dice>[^"]+)":$/')]
+    public function theOracleTableRolls(string $key, string $dice, TableNode $entries): void
+    {
+        $this->oracleTables[] = ['key' => $key, 'name' => ucfirst($key), 'dice' => $dice, 'entries' => $this->oracleTableEntries($entries)];
+    }
+
+    #[Given('/^the weighted oracle table "(?P<key>[^"]+)":$/')]
+    public function theWeightedOracleTable(string $key, TableNode $entries): void
+    {
+        $this->oracleTables[] = ['key' => $key, 'name' => ucfirst($key), 'entries' => $this->oracleTableEntries($entries)];
+    }
+
+    #[When('I consult the oracle table :key')]
+    public function iConsultTheOracleTable(string $key): void
+    {
+        try {
+            $this->oracleTableResult = OracleTableSet::fromArray($this->oracleTables)->resolve($key, $this->random);
+        } catch (InvalidOracleTable $rejection) {
+            $this->oracleTableRejection = $rejection;
+        }
+    }
+
+    #[Then('the oracle table answers :text')]
+    public function theOracleTableAnswers(string $text): void
+    {
+        $steps = $this->oracleTableResult()->steps();
+
+        Assert::assertSame($text, $steps[\count($steps) - 1]->text());
+    }
+
+    #[Then('the oracle table steps are:')]
+    public function theOracleTableStepsAre(TableNode $expected): void
+    {
+        Assert::assertSame($expected->getColumnsHash(), array_map(
+            static fn (OracleTableStep $step): array => [
+                'table' => $step->tableKey(),
+                'dice' => $step->dice(),
+                'total' => (string) $step->total(),
+                'text' => $step->text(),
+            ],
+            $this->oracleTableResult()->steps(),
+        ));
+    }
+
+    #[Then('/^the oracle table is rejected because "(?P<reason>.+)"$/')]
+    public function theOracleTableIsRejectedBecause(string $reason): void
+    {
+        Assert::assertNull($this->oracleTableResult, 'Expected the oracle table to be rejected, but it was consulted.');
+        Assert::assertInstanceOf(InvalidOracleTable::class, $this->oracleTableRejection);
+        Assert::assertStringContainsString($reason, $this->oracleTableRejection->getMessage());
+    }
+
+    private function oracleTableResult(): OracleTableResult
+    {
+        Assert::assertNull($this->oracleTableRejection, $this->oracleTableRejection?->getMessage() ?? '');
+        Assert::assertNotNull($this->oracleTableResult, 'No oracle table was consulted.');
+
+        return $this->oracleTableResult;
+    }
+
+    /**
+     * Turns rows such as "| min | max | text | table |" into entry definitions; empty cells are left out.
+     *
+     * @return list<array<string, int|string>>
+     */
+    private function oracleTableEntries(TableNode $entries): array
+    {
+        return array_map(
+            static function (array $row): array {
+                $entry = [];
+                foreach ($row as $field => $value) {
+                    if ('' !== $value) {
+                        $entry[$field] = \in_array($field, ['min', 'max', 'weight'], true) ? (int) $value : $value;
+                    }
+                }
+
+                return $entry;
+            },
+            $entries->getColumnsHash(),
+        );
     }
 
     private function roll(): Roll

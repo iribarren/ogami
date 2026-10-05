@@ -91,6 +91,7 @@ Let a solo player play free-form in a campaign. A campaign is created from a pub
 |---|---|---|---|---|---|
 | T1 | ADR 0014 (campaigns pinned to their release) + README index; ADR 0010 note; context map (open question resolved, relationship row); glossary (pinned release, entry kinds); roadmap: feature 5 settled, backlog item `play-journal-attachments` after all defined features | S1 | delegated writer (multi-file) | [x] | `79850ff` |
 | T2 | Play Domain `Campaign`: pinned release, sessions, scenes, limits, errors; repository port + in-memory repository; unit tests | S1 | delegated writer (multi-file) | [x] | `9cc3794` |
+| T2b | Fix S1 review follow-ups: reject a blank owner id; in-memory repository stores and returns copies so `save` is observable and the save test proves persistence; test the `ownedBy` same-`createdAt` id tie-break | S2 | delegated writer (multi-file) | [ ] | |
 | T3 | Play Domain `JournalEntry` + content value objects (note, roll, oracle-table, likelihood) built from Randomness results, with `toArray`/`fromArray`; repository port + in-memory; unit tests | S2 | delegated writer (multi-file) | [ ] | |
 | T4 | Studio `ListPublishedGameSystems`; Play port `latest()` + adapter; Play Application: `CreateCampaign`, `StartSession`, `StartScene`, `ListMyCampaigns`, `GetCampaign` (with release oracles) + views; owner check; unit tests; Behat `play` suite | S3 | delegated writer (multi-file) | [ ] | |
 | T5 | Play Application journal: `RecordNote`, `RecordRoll`, `RecordOracleTableResult`, `RecordLikelihoodAnswer`, `GetJournal` + views; unit tests; Behat scenarios | S4 | delegated writer (multi-file) | [ ] | |
@@ -121,10 +122,17 @@ Let a solo player play free-form in a campaign. A campaign is created from a pub
 - **T2**: delegated writer (multi-file trigger). `Play/Domain/Campaign/`: `Campaign` (create, startSession, startScene, current session/scene, isOwnedBy, `reconstitute`), `CampaignId`, `PinnedRelease`, `Session`/`Scene` immutable VOs identified by number (adding a scene replaces the last `Session`), errors extend `\DomainException` (`InvalidCampaignName`, `InvalidCampaignId`, `InvalidPinnedRelease`, `InvalidSceneTitle`, `NoCurrentSession`, `NoCurrentScene`, `CampaignLimitReached`); port `CampaignRepository` (add, save, ofId, ownedBy newest first); `tests/Support/Play/InMemoryCampaignRepository` (+contract test). RED 33 tests / 24 errors + 9 failures → GREEN `OK (59 tests)` Play unit (parent re-ran: `OK (59 tests, 148 assertions)`). `make backend-qa` exit 0, PHPStan clean (parent re-ran phpstan: exit 0); `make backend-test` exit 0 (687 tests). +1,096 lines (~485 tests), above the 400 heuristic: boundary tests and one-file VOs/errors. T6 note: no Doctrine Collections in Domain (PHPat), so map sessions via reconstitution or a JSONB type.
 - **Decisions (user):** results are recorded automatically (attachments go to the backlog, after all defined features, order decided later); feature-branch-chain delivery.
 
+## Follow-ups (non-blocking review findings)
+
+- S1 `R3-blank-owner-accepted` (SUGGESTION): `Campaign::create` accepts a blank owner id. **Fix in T2b**.
+- S1 `R3-inmemory-save-unobservable` (WARNING): in-memory repository holds the same instance, so `save` cannot be observed. **Fix in T2b**.
+- S1 `R3-save-test-proves-nothing` (WARNING): the save test passes even without `save`. **Fix in T2b**.
+- S1 `R3-ownedby-tiebreak-untested` (SUGGESTION): id tie-break for equal `createdAt` untested. **Fix in T2b**.
+
 ## Reviews
 
-_None yet._
+- `ff23856..9cc3794` (S1: T1 + T2): medium, consent granted → **approved** (reliability lens; 4 non-blocking findings; acknowledged, authority burned). Reviewed boundary: `9cc3794`. `787efa6` (doc progress): low, closed without review.
 
 ## Next step
 
-S1 review (T1 + T2, medium, consent pending); then T3 on `feat/play-campaign-journal-s2-journal-domain`.
+T2b + T3 on `feat/play-campaign-journal-s2-journal-domain`.

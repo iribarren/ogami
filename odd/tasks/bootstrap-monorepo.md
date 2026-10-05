@@ -30,7 +30,7 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 | T4 | Frontend: Vite + React + TS (pnpm), Tailwind, shadcn/ui, TanStack Router/Query, ESLint/Prettier, Vitest, Storybook; `src/{play,studio,admin,shared}` | delegated writer B | [x] | 850fb35 |
 | T5 | OpenAPI export (backend) + generated TS client; health shown in the SPA; Playwright smoke test | writer B | [x] | fd2f757 |
 | T6 | GitHub Actions CI: backend QA + tests, frontend lint/test/build, Playwright | writer B | [x] | 444e835 |
-| T7 | Docs: `CLAUDE.md` commands section, README quick start; `codegraph init` | writer B + parent | [x] docs · `codegraph init` pending (parent) | 1cdfecb |
+| T7 | Docs: `CLAUDE.md` commands section, README quick start; `codegraph init` | writer B + parent | [x] | 1cdfecb (docs) · codegraph: local index, nothing to commit |
 
 ## Acceptance criteria
 - `make up` starts every service; `make qa` and `make test` pass on a clean clone.
@@ -83,5 +83,8 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 - **Final verification (writer B, after `1cdfecb`):** `make build up` exit 0, all four services healthy; `curl localhost:8080/` → Vite SPA HTML; `curl localhost:8080/api/health` → `{"status":"ok","database":"ok"}`; `make qa` exit 0 (PHPStan, CS-Fixer 0/37, Rector, ESLint, Prettier, tsc, `api-check`); `make test` exit 0 (PHPUnit `OK (22 tests, 2500 assertions)`, Behat 4 scenarios / 14 steps, Vitest 5/5); `make e2e` → 1 passed; `make frontend-build` and `make storybook-build` exit 0; actionlint 0 errors.
 - Engram mirror: not updated by writer B (parent owns it).
 
+- **Parent (T7 codegraph + spot check):** `gentle-ai codegraph init` → index 94 files / 437 nodes (`.codegraph/` gitignored). Spot checks: `make e2e` → 1 passed; `make qa` → ok.
+- Size: ~4,650 authored changed lines (lock files and generated `routeTree.gen.ts`, `schema.d.ts`, `openapi.json` excluded), well above the 1,500 forecast, mostly Symfony recipe config and frontend tool config. Single PR + `size:exception` as chosen.
+
 ## Next step
-Parent: codegraph init, full verification, PR.
+Push and open the PR (closes #3) after user confirmation; CI must be green; then enable RDD for the clone.

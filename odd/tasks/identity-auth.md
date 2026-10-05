@@ -41,6 +41,7 @@ main ← feat/identity-auth (tracker, draft)
 | T3 | Auth API: firewall `json_login` `/api/auth/login`, logout `/api/auth/logout`, `GET /api/auth/me` (query), JSON 401/403, access control; OpenAPI docs + `make api`; integration tests + Behat scenario | 2 | delegated writer (multi-file) | [x] | `52d872c` |
 | T3b | T3 review follow-ups: login timing enumeration, role enum from `Role`, throttle key normalization, trusted proxies | 2 | inline (bounded writer of T3) | [x] | `79990f4` |
 | T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [x] | `7a515a0` |
+| T4b | T4 review follow-ups: logout clears all cached queries, logout failure reported (401 counts as signed out), `safeRedirect` rejects control characters/whitespace and checks the resolved origin, `/login` renders when `/api/auth/me` fails | 3 | inline (bounded writer of T4) | [x] | `adf17cd` |
 | T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [ ] | |
 
 ## Acceptance criteria
@@ -93,6 +94,14 @@ main ← feat/identity-auth (tracker, draft)
   - RED: 20 failed tests + `safeRedirect` module missing → GREEN: `make frontend-test` 5 files, 40 tests passed. `make frontend-qa`: ESLint, Prettier, tsc clean. `make frontend-build`: built. `make api-check`: up to date. Manual: `make console ARGS="app:user:create t4@example.com --role=SOLO_PLAYER --password=…"` OK; curl http://localhost:8080/login and `/studio` 200 serving the SPA; API login 200, me 200, wrong password 401. No browser walk-through (curl only).
   - About 760 authored lines including tests (about half); above the ~400 heuristic because the guards, login page and shell only make sense together.
   - Expected breakage: `frontend/e2e` smoke spec (areas now need a signed-in user) → T5.
+
+- **T4 review**: approved (native review, 5 non-blocking warnings → T4b); reviewed boundary `014837b`.
+- **T4b** (`adf17cd`):
+  - R2 logout scope: `useLogout` now calls `queryClient.clear()` (all API data is user-scoped), then caches the user as `null`; test seeds a user-scoped query and checks it is gone.
+  - R3/R4 silent logout failure: `AppShell` shows the logout error in `role=alert` and keeps the user; a `401` from logout counts as signed out.
+  - R3 `safeRedirect`: rejects whitespace and control characters (`/\t/evil.com`, `/\n/evil.com`, leading/trailing spaces, NUL) and accepts only when `new URL(value, origin).origin` matches.
+  - R4 `/login` with a failing `/api/auth/me` (500/network): the route treats the visitor as anonymous and renders the form; the current-user query no longer retries (`retry: false`) so guards fail fast.
+  - RED: 8 failed tests → GREEN: `make frontend-test` 5 files, 50 tests passed. `make frontend-qa`: ESLint, Prettier, tsc clean.
 
 ## Next step
 T5 on `feat/identity-auth-3-spa`: seeded e2e user, Playwright login and guard specs, smoke spec update, CI seeding step, docs.

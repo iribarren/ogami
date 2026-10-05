@@ -115,6 +115,77 @@
                 }
             }
         },
+        "/api/rolls": {
+            "post": {
+                "tags": [
+                    "Rolls"
+                ],
+                "summary": "Roll a dice expression",
+                "operationId": "rollDice",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RollRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The roll: its total and every die rolled, dropped ones included.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RollResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"expression\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The expression is not valid dice notation, exceeds a limit or divides by zero.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/health": {
             "get": {
                 "tags": [
@@ -202,6 +273,96 @@
                 },
                 "type": "object"
             },
+            "RollRequest": {
+                "required": [
+                    "expression"
+                ],
+                "properties": {
+                    "expression": {
+                        "description": "Dice notation: NdM, \"d%\", keep/drop selectors (kh, kl, dh, dl, k), integers, + - * / and parentheses. Case-insensitive; whitespace ignored.",
+                        "type": "string",
+                        "example": "4d6kh3+2",
+                        "maxLength": 100
+                    }
+                },
+                "type": "object"
+            },
+            "RolledDieResponse": {
+                "required": [
+                    "value",
+                    "kept"
+                ],
+                "properties": {
+                    "value": {
+                        "description": "The face the die landed on.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "kept": {
+                        "description": "Whether the die counts towards the total; false when a selector dropped it.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "DiceGroupResponse": {
+                "required": [
+                    "notation",
+                    "sides",
+                    "dice",
+                    "subtotal"
+                ],
+                "properties": {
+                    "notation": {
+                        "type": "string",
+                        "example": "4d6kh3"
+                    },
+                    "sides": {
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "dice": {
+                        "description": "Every die rolled, in roll order, dropped ones included.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RolledDieResponse"
+                        }
+                    },
+                    "subtotal": {
+                        "description": "The sum of the kept dice.",
+                        "type": "integer",
+                        "example": 14
+                    }
+                },
+                "type": "object"
+            },
+            "RollResponse": {
+                "required": [
+                    "expression",
+                    "total",
+                    "groups"
+                ],
+                "properties": {
+                    "expression": {
+                        "description": "The normalized notation: lower case, no whitespace, \"d\" as \"1d\", \"d%\" as \"d100\", \"k\" as \"kh\".",
+                        "type": "string",
+                        "example": "4d6kh3+2"
+                    },
+                    "total": {
+                        "description": "The value of the expression, counting kept dice only.",
+                        "type": "integer",
+                        "example": 16
+                    },
+                    "groups": {
+                        "description": "Every dice group, in notation order; empty when the expression rolls no dice.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DiceGroupResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "HealthResponse": {
                 "required": [
                     "status",
@@ -231,6 +392,9 @@
     "tags": [
         {
             "name": "Auth"
+        },
+        {
+            "name": "Rolls"
         },
         {
             "name": "Health"

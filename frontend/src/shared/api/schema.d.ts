@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rolls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll a dice expression */
+        post: operations["rollDice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -98,6 +115,49 @@ export interface components {
         ErrorResponse: {
             /** @description A human-readable message; never says whether an email exists. */
             error: string;
+        };
+        RollRequest: {
+            /**
+             * @description Dice notation: NdM, "d%", keep/drop selectors (kh, kl, dh, dl, k), integers, + - * / and parentheses. Case-insensitive; whitespace ignored.
+             * @example 4d6kh3+2
+             */
+            expression: string;
+        };
+        RolledDieResponse: {
+            /**
+             * @description The face the die landed on.
+             * @example 5
+             */
+            value: number;
+            /** @description Whether the die counts towards the total; false when a selector dropped it. */
+            kept: boolean;
+        };
+        DiceGroupResponse: {
+            /** @example 4d6kh3 */
+            notation: string;
+            /** @example 6 */
+            sides: number;
+            /** @description Every die rolled, in roll order, dropped ones included. */
+            dice: components["schemas"]["RolledDieResponse"][];
+            /**
+             * @description The sum of the kept dice.
+             * @example 14
+             */
+            subtotal: number;
+        };
+        RollResponse: {
+            /**
+             * @description The normalized notation: lower case, no whitespace, "d" as "1d", "d%" as "d100", "k" as "kh".
+             * @example 4d6kh3+2
+             */
+            expression: string;
+            /**
+             * @description The value of the expression, counting kept dice only.
+             * @example 16
+             */
+            total: number;
+            /** @description Every dice group, in notation order; empty when the expression rolls no dice. */
+            groups: components["schemas"]["DiceGroupResponse"][];
         };
         HealthResponse: {
             /**
@@ -216,6 +276,66 @@ export interface operations {
             };
             /** @description No session. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rollDice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollRequest"];
+            };
+        };
+        responses: {
+            /** @description The roll: its total and every die rolled, dropped ones included. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "expression". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The expression is not valid dice notation, exceeds a limit or divides by zero. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

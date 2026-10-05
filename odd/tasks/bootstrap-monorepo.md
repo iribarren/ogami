@@ -29,7 +29,7 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
 | T3 | Backend QA: PHPStan max + PHPat rules (ADR 0012), CS-Fixer, Rector, PHPUnit, Behat; walking skeleton: Randomness `DiceExpression` (`2d6+1`) with an injected random source, RED→GREEN | writer A | [x] | 3aa1048 |
 | T4 | Frontend: Vite + React + TS (pnpm), Tailwind, shadcn/ui, TanStack Router/Query, ESLint/Prettier, Vitest, Storybook; `src/{play,studio,admin,shared}` | delegated writer B | [x] | 850fb35 |
 | T5 | OpenAPI export (backend) + generated TS client; health shown in the SPA; Playwright smoke test | writer B | [x] | fd2f757 |
-| T6 | GitHub Actions CI: backend QA + tests, frontend lint/test/build, Playwright | writer B | [ ] | |
+| T6 | GitHub Actions CI: backend QA + tests, frontend lint/test/build, Playwright | writer B | [x] | 444e835 |
 | T7 | Docs: `CLAUDE.md` commands section, README quick start; `codegraph init` | writer B + parent | [ ] | |
 
 ## Acceptance criteria
@@ -74,6 +74,11 @@ About 1,500 authored changed lines, generated files excluded. Single PR with `si
   - RED (tests first): backend `ApiDocumentationTest` → `No route found for "GET http://localhost/api/doc.json"`; frontend `HealthStatus.test.tsx` → `Failed to resolve import "./HealthStatus"`. GREEN: integration suite `OK (2 tests, 58 assertions)`; Vitest `Tests 5 passed (5)`.
   - Checks: `make qa` exit 0 (incl. `api-check`), `make test` → PHPUnit `OK (22 tests, 2500 assertions)`, Behat 4/4, Vitest 5/5; `make e2e` → 1 passed.
   - Notes: Rector needed two `backend-fix` passes (its `LocallyCalledStaticMethodToNonStaticRector` fires only after a first change). `openapi-typescript` declares a `typescript ^5` peer; it works with TS 6.0 (peer warning only). `@playwright/test` is pinned exactly so it matches the image tag; bump both together. Symfony regenerated `config/reference.php` for the new bundle (committed).
+- **T6** (`444e835`): `.github/workflows/ci.yml` on `pull_request` and `push` to `main`, `concurrency` with `cancel-in-progress`, `permissions: contents: read`. Three parallel jobs, all through the Makefile + compose (parity with local; `make` exports the runner's UID/GID): **backend** (`make build up SERVICES=php`, `backend-qa`, `backend-test` incl. Behat and integration on PostgreSQL), **frontend** (`SERVICES=node`, `frontend-qa`, `frontend-test`, `frontend-build storybook-build`), **e2e** (full stack, `api-check`, `make e2e`, uploads `playwright-report/` + `test-results/` on failure). `DOCKER_COMPOSE=docker compose -f compose.yaml` skips the dev override. `actions/cache` for `backend/vendor` and `frontend/node_modules` (the pnpm store lives inside it). Service logs are dumped on failure.
+  - New Makefile variable `SERVICES` limits `build`/`up`.
+  - Image layers are not cached: compose-built images would need a buildx bake + GHA cache setup whose image naming cannot be validated locally; left as a follow-up if CI time hurts.
+  - `actionlint` 1.7.12 (`docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -no-color -verbose`) → `Found total 0 errors` (shellcheck included).
+  - Local CI simulation in an isolated project (`DOCKER_COMPOSE="docker compose -p ogami-ci -f compose.yaml" HTTP_PORT=18080 CI=true`): `make build up`, `backend-qa`, `backend-test` (PHPUnit `OK (22 tests)`, Behat 4/4), `frontend-qa frontend-test` (Vitest 5/5), `api-check`, `e2e` (1 passed) → exit 0; project removed afterwards (`down -v`). The real run happens on the PR.
 
 ## Next step
-T6–T7 (writer B).
+T7 (writer B), then parent.

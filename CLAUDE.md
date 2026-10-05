@@ -33,21 +33,28 @@ Ogami is a web app for solo tabletop RPG play: **Play** (solo player runs campai
 - Roles: `SOLO_PLAYER`, `GAME_MANAGER`, `OWNER`.
 - Technical artifacts (code, comments, docs, commits) are in English.
 
-## Directory layout (planned, Feature 2 `bootstrap-monorepo`)
+## Directory layout
 
 ```
-backend/              Symfony app
-  src/<Context>/      Play, Studio, Randomness, Identity, Admin, Shared
-    Domain/
-    Application/
-    Infrastructure/
-frontend/             Vite + React + TS
-  src/{play,studio,admin,shared}
-docker/               container config
-compose.yaml          full dev environment
-Makefile              common commands
-docs/                 vision, domain, ADRs
-odd/tasks/            ODD feature docs
+backend/                     Symfony app (PHP 8.5, Symfony 8.1)
+  src/<Context>/             Play, Studio, Randomness, Identity, Admin, Shared
+    Domain/                  framework-free model
+    Application/             commands, queries, handlers, ports
+    Infrastructure/          Doctrine, HTTP controllers (Http/), adapters
+  tests/                     Unit/, Integration/, Architecture/ (PHPat), Behat/
+  features/                  Gherkin specs (Behat)
+frontend/                    Vite + React + TypeScript SPA
+  src/routes/                TanStack Router file routes (thin; generate routeTree.gen.ts)
+  src/app/                   router, query client, app shell, landing page
+  src/{play,studio,admin}/   product areas
+  src/shared/                ui/ (shadcn), api/ (generated client), lib/, health/
+  e2e/                       Playwright tests
+docker/                      container config (php: FrankenPHP + Caddy, node)
+compose.yaml                 full dev environment (+ compose.override.yaml locally)
+Makefile                     every command, see below
+.github/workflows/ci.yml     CI: the same make targets
+docs/                        vision, domain, ADRs
+odd/tasks/                   ODD feature docs
 ```
 
 ## Workflow
@@ -64,4 +71,29 @@ odd/tasks/            ODD feature docs
 
 ## Commands
 
-TBD in `bootstrap-monorepo` (planned Make targets: `up`, `down`, `test`, `qa`, `sh`).
+Everything runs in Docker through `make` (it exports your UID/GID; a bare `docker compose build` breaks file ownership). `make help` lists every target.
+
+| When | Command | Does |
+|---|---|---|
+| First run | `make build up` | Build images, start every service, install dependencies |
+| Daily | `make up` / `make down` | Start / stop the stack |
+| Daily | `make logs ARGS=php`, `make ps` | Follow logs, show status |
+| Shells | `make sh`, `make node-sh` | Shell in the php / node container |
+| Tools | `make composer ARGS=…`, `make console ARGS=…`, `make pnpm ARGS=…` | Composer, Symfony console, pnpm |
+| QA | `make qa` | Backend (PHPStan + PHPat, CS-Fixer, Rector) + frontend (ESLint, Prettier, tsc) + `api-check` |
+| Fix style | `make backend-fix`, `make frontend-fix` | Apply Rector/CS-Fixer, ESLint/Prettier (Rector may need two passes) |
+| Tests | `make test` | PHPUnit (unit + integration on `ogami_test`), Behat, Vitest |
+| E2E | `make e2e` | Playwright smoke tests in the `playwright` container against the running stack |
+| API contract | `make api` | After changing an endpoint: export the OpenAPI spec and regenerate `frontend/src/shared/api/schema.d.ts`; commit both |
+| Frontend builds | `make frontend-build`, `make storybook`, `make storybook-build` | Production SPA build; Storybook dev server / static build |
+
+| URL | What |
+|---|---|
+| http://localhost:8080 | SPA (Vite, HMR) and API under `/api` — one origin, served by Caddy |
+| http://localhost:8080/api/health | Health check |
+| http://localhost:8080/api/doc.json | OpenAPI spec |
+| http://localhost:8026 | Mailpit (captured email) |
+| http://localhost:6006 | Storybook (while `make storybook` runs) |
+| localhost:5433 | PostgreSQL (`ogami` / `ogami`) |
+
+Ports and credentials are overridable; see the README.

@@ -40,8 +40,12 @@ build: ## Build the container images (SERVICES="php" to limit)
 	$(DOCKER_COMPOSE) build --pull $(SERVICES)
 
 .PHONY: up
-up: ## Start the services in the background and wait until healthy (SERVICES="php" to limit)
+up: ## Start the services in the background, wait until healthy, install dependencies (SERVICES="php" to limit)
 	$(DOCKER_COMPOSE) up --detach --wait $(SERVICES)
+	@# The node service installs its own dependencies on start; php needs Composer.
+	@if $(DOCKER_COMPOSE) ps --services --status running | grep -qx php; then \
+		$(MAKE) --no-print-directory --silent backend-install; \
+	fi
 
 .PHONY: down
 down: ## Stop and remove the containers (keeps volumes)
@@ -143,7 +147,7 @@ storybook-build: frontend-install ## Build the static Storybook into frontend/st
 	$(NODE_EXEC) pnpm build-storybook
 
 .PHONY: e2e
-e2e: frontend-install ## Run the Playwright end-to-end tests against the running stack (ARGS="--ui" etc.)
+e2e: frontend-install ## Run the Playwright end-to-end tests against the running stack (ARGS="--grep smoke")
 	$(DOCKER_COMPOSE) run --rm $(TTY) playwright node_modules/.bin/playwright test $(ARGS)
 
 ##@ API contract (ADR 0005)

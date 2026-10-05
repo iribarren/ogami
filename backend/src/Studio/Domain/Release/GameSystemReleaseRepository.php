@@ -9,6 +9,9 @@ namespace App\Studio\Domain\Release;
  */
 interface GameSystemReleaseRepository
 {
+    /**
+     * @throws GameSystemReleaseAlreadyExists when that GameSystem key and version is already kept
+     */
     public function add(GameSystemRelease $release): void;
 
     /**

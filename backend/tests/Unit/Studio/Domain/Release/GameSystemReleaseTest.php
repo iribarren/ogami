@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Studio\Domain\Release;
 
 use App\Studio\Domain\Release\GameSystemRelease;
+use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\InvalidGameSystemRelease;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
@@ -15,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(GameSystemRelease::class)]
 #[CoversClass(InvalidGameSystemRelease::class)]
+#[CoversClass(GameSystemReleaseAlreadyExists::class)]
 final class GameSystemReleaseTest extends TestCase
 {
     private function content(string $key = 'free-journal', string $name = 'Free journal'): ReleaseContent
@@ -88,7 +90,8 @@ final class GameSystemReleaseTest extends TestCase
         $repository = new InMemoryGameSystemReleaseRepository();
         $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-1'), self::content(), 1, new \DateTimeImmutable()));
 
-        $this->expectException(\LogicException::class);
+        $this->expectException(GameSystemReleaseAlreadyExists::class);
+        $this->expectExceptionMessageIsOrContains('Release free-journal v1 already exists.');
 
         $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-2'), self::content(name: 'Free journal 2'), 1, new \DateTimeImmutable()));
     }

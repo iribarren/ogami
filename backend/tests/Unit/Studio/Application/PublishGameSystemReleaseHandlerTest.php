@@ -7,11 +7,14 @@ namespace App\Tests\Unit\Studio\Application;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Application\PublishGameSystemReleaseHandler;
 use App\Studio\Domain\Release\GameSystemRelease;
+use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
+use App\Studio\Domain\Release\GameSystemReleaseRepository;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
+use App\Tests\Support\Studio\InterleavingGameSystemReleaseRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -118,6 +121,29 @@ final class PublishGameSystemReleaseHandlerTest extends TestCase
         }
 
         self::assertSame(0, $this->releases->count());
+    }
+
+    #[Test]
+    public function aConcurrentPublishOfTheSameVersionIsReported(): void
+    {
+        $racing = new InterleavingGameSystemReleaseRepository(
+            $this->releases,
+            beforeAdd: static function (GameSystemReleaseRepository $releases, GameSystemRelease $release): void {
+                $releases->add(GameSystemRelease::publish(ReleaseId::fromString('other'), $release->content(), $release->version(), $release->publishedAt()));
+            },
+        );
+        $handler = new PublishGameSystemReleaseHandler($racing, $this->clock);
+
+        try {
+            $handler(new PublishGameSystemRelease('r-1', $this->content(), false));
+            self::fail('Two releases share a version.');
+        } catch (GameSystemReleaseAlreadyExists $exception) {
+            self::assertSame('free-journal', $exception->gameSystemKey);
+            self::assertSame(1, $exception->version);
+        }
+
+        self::assertSame(1, $this->releases->count());
+        self::assertNull($this->releases->ofId(ReleaseId::fromString('r-1')));
     }
 
     /**

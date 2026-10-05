@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Studio;
 
 use App\Studio\Domain\Release\GameSystemRelease;
+use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Studio\Infrastructure\Persistence\Doctrine\DoctrineGameSystemReleaseRepository;
@@ -92,9 +93,13 @@ final class DoctrineGameSystemReleaseRepositoryTest extends KernelTestCase
     {
         $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::FIRST_ID), $this->contractDocExample(), 1, new \DateTimeImmutable()));
 
-        $this->expectException(UniqueConstraintViolationException::class);
-
-        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::SECOND_ID), $this->contractDocExample(), 1, new \DateTimeImmutable()));
+        try {
+            $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::SECOND_ID), $this->contractDocExample(), 1, new \DateTimeImmutable()));
+            self::fail('Two releases share a version.');
+        } catch (GameSystemReleaseAlreadyExists $exception) {
+            self::assertSame('Release example-journal v1 already exists.', $exception->getMessage());
+            self::assertInstanceOf(UniqueConstraintViolationException::class, $exception->getPrevious());
+        }
     }
 
     private function contractDocExample(): ReleaseContent

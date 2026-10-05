@@ -7,8 +7,11 @@ namespace App\Studio\Infrastructure\Console;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\GetPublishedRelease;
+use App\Studio\Application\GetPublishedReleaseById;
+use App\Studio\Application\PublishedReleaseView;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Application\ReleaseIdGenerator;
+use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -55,18 +58,27 @@ final class PublishGameSystemReleaseConsoleCommand extends Command
             $io->error(\sprintf('%s is not a valid GameSystem release. %s', $file, $exception->getMessage()));
 
             return Command::FAILURE;
+        } catch (GameSystemReleaseAlreadyExists $exception) {
+            // Another publish of this GameSystem took the version first; the transaction was rolled back.
+            $io->error(\sprintf('Another release of %s v%d was published at the same time; run the command again.', $exception->gameSystemKey, $exception->version));
+
+            return Command::FAILURE;
         }
 
-        // Valid content always has a string gameSystem.key.
+        // Decided from this run's own release id, so a publish that follows ours cannot change the outcome.
+        $published = $this->queryBus->ask(new GetPublishedReleaseById($id));
+        if ($published instanceof PublishedReleaseView) {
+            $io->success(\sprintf('Published %s v%d', $published->gameSystemKey, $published->version));
+
+            return Command::SUCCESS;
+        }
+
+        // Nothing was published, so the content was valid and unchanged: gameSystem.key is a string.
         $gameSystem = $content['gameSystem'];
         \assert(\is_array($gameSystem) && \is_string($gameSystem['key']));
 
         $latest = $this->queryBus->ask(new GetPublishedRelease($gameSystem['key']));
-        if ($latest->releaseId === $id) {
-            $io->success(\sprintf('Published %s v%d', $latest->gameSystemKey, $latest->version));
-        } else {
-            $io->note(\sprintf('Unchanged %s (v%d)', $latest->gameSystemKey, $latest->version));
-        }
+        $io->note(\sprintf('Unchanged %s (v%d)', $latest->gameSystemKey, $latest->version));
 
         return Command::SUCCESS;
     }

@@ -10,6 +10,7 @@
          key, version and timestamps are relational columns (ADR 0007). -->
     <entity name="App\Studio\Domain\Release\GameSystemRelease" table="studio_gamesystem_release">
         <unique-constraints>
+            <!-- DoctrineGameSystemReleaseRepository relies on this name to report GameSystemReleaseAlreadyExists. -->
             <unique-constraint name="uniq_studio_gamesystem_release_key_version" columns="game_system_key,version"/>
         </unique-constraints>
 

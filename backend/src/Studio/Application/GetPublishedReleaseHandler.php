@@ -28,13 +28,6 @@ final readonly class GetPublishedReleaseHandler implements QueryHandler
             throw PublishedReleaseNotFound::for($query->gameSystemKey, $query->version);
         }
 
-        return new PublishedReleaseView(
-            $release->id()->toString(),
-            $release->gameSystemKey(),
-            $release->version(),
-            $release->schemaVersion(),
-            $release->publishedAt(),
-            $release->content()->toArray(),
-        );
+        return PublishedReleaseViews::of($release);
     }
 }

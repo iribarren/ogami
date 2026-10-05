@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Support\Studio;
 
 use App\Studio\Domain\Release\GameSystemRelease;
+use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
 use App\Studio\Domain\Release\ReleaseId;
 
@@ -14,7 +15,8 @@ final class InMemoryGameSystemReleaseRepository implements GameSystemReleaseRepo
     private array $releases = [];
 
     /**
-     * @throws \LogicException on a duplicate id or (gameSystemKey, version), like the database's unique constraints
+     * @throws GameSystemReleaseAlreadyExists on a duplicate (gameSystemKey, version), like the database's unique index
+     * @throws \LogicException                on a duplicate id, like the primary key
      */
     public function add(GameSystemRelease $release): void
     {
@@ -23,7 +25,7 @@ final class InMemoryGameSystemReleaseRepository implements GameSystemReleaseRepo
         }
 
         if ($this->get($release->gameSystemKey(), $release->version()) instanceof GameSystemRelease) {
-            throw new \LogicException(\sprintf('Release %s v%d already exists.', $release->gameSystemKey(), $release->version()));
+            throw GameSystemReleaseAlreadyExists::for($release->gameSystemKey(), $release->version());
         }
 
         $this->releases[$release->id()->toString()] = $release;

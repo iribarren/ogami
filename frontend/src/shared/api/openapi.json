@@ -115,6 +115,148 @@
                 }
             }
         },
+        "/api/likelihood-answers": {
+            "post": {
+                "tags": [
+                    "Oracles"
+                ],
+                "summary": "Ask a likelihood oracle a yes/no question",
+                "operationId": "askLikelihoodOracle",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LikelihoodAnswerRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The answer, the roll and the effective target it was compared with.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LikelihoodAnswerResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no \"oracle\" object or no string \"likelihood\", or a non-integer \"chaosFactor\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The oracle is invalid, it has no such likelihood level, or the chaos factor is out of range or given without chaos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/oracle-table-results": {
+            "post": {
+                "tags": [
+                    "Oracles"
+                ],
+                "summary": "Roll on an oracle table, following nested tables",
+                "operationId": "resolveOracleTable",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OracleTableResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Every table rolled on, root first, with the dice, total and selected entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OracleTableResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, or has no \"tables\" list or no string \"table\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The tables are invalid, none has the key asked, or a roll matches no entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/rolls": {
             "post": {
                 "tags": [
@@ -273,6 +415,356 @@
                 },
                 "type": "object"
             },
+            "LikelihoodLevelDefinition": {
+                "required": [
+                    "key",
+                    "label",
+                    "target"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "a-z, 0-9 and \"-\".",
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]+$",
+                        "example": "likely",
+                        "maxLength": 64
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Likely",
+                        "maxLength": 500
+                    },
+                    "target": {
+                        "description": "The highest roll that answers yes at the neutral chaos factor; 0 to sides.",
+                        "type": "integer",
+                        "example": 65,
+                        "minimum": 0
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodChaosDefinition": {
+                "description": "The effective target is the level's target + (chaosFactor \u2212 neutral) \u00d7 shiftPerPoint, clamped to 0\u2026sides; min \u2264 neutral \u2264 max.",
+                "required": [
+                    "min",
+                    "max",
+                    "neutral",
+                    "shiftPerPoint"
+                ],
+                "properties": {
+                    "min": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "max": {
+                        "type": "integer",
+                        "example": 9
+                    },
+                    "neutral": {
+                        "description": "The chaos factor used when none is given.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "shiftPerPoint": {
+                        "description": "Target points added per chaos point above neutral; 0 to sides.",
+                        "type": "integer",
+                        "example": 5,
+                        "minimum": 0
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodOracleDefinition": {
+                "description": "Rolls 1d<sides> = R against the effective target T: yes when R \u2264 T. With p = exceptionalPercent, the yes is exceptional when R \u2264 floor(T \u00d7 p / 100), the no when R > sides \u2212 floor((sides \u2212 T) \u00d7 p / 100).",
+                "required": [
+                    "sides",
+                    "levels"
+                ],
+                "properties": {
+                    "sides": {
+                        "type": "integer",
+                        "example": 100,
+                        "maximum": 1000,
+                        "minimum": 2
+                    },
+                    "levels": {
+                        "description": "The likelihoods a question can be asked with; unique keys.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LikelihoodLevelDefinition"
+                        },
+                        "maxItems": 20,
+                        "minItems": 1
+                    },
+                    "chaos": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LikelihoodChaosDefinition"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Absent when the oracle has no chaos factor.",
+                        "default": null
+                    },
+                    "exceptionalPercent": {
+                        "description": "Size of the exceptional bands, in percent; 0 by default.",
+                        "type": "integer",
+                        "example": 20,
+                        "nullable": true,
+                        "default": null,
+                        "maximum": 50,
+                        "minimum": 0
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodAnswerRequest": {
+                "required": [
+                    "oracle",
+                    "likelihood"
+                ],
+                "properties": {
+                    "oracle": {
+                        "$ref": "#/components/schemas/LikelihoodOracleDefinition"
+                    },
+                    "likelihood": {
+                        "description": "The key of the likelihood level to ask with.",
+                        "type": "string",
+                        "example": "likely"
+                    },
+                    "chaosFactor": {
+                        "description": "Within the oracle's chaos range; the neutral one when absent. Only allowed when the oracle has chaos.",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true,
+                        "default": null
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodAnswerResponse": {
+                "required": [
+                    "answer",
+                    "roll",
+                    "sides",
+                    "effectiveTarget",
+                    "likelihood",
+                    "likelihoodLabel",
+                    "chaosFactor"
+                ],
+                "properties": {
+                    "answer": {
+                        "description": "Yes when the roll is at most the effective target, no otherwise; exceptional within the oracle's exceptional bands.",
+                        "type": "string",
+                        "example": "yes",
+                        "enum": [
+                            "exceptional_yes",
+                            "yes",
+                            "no",
+                            "exceptional_no"
+                        ]
+                    },
+                    "roll": {
+                        "description": "The roll on 1d<sides>.",
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "sides": {
+                        "type": "integer",
+                        "example": 100
+                    },
+                    "effectiveTarget": {
+                        "description": "The level's target shifted by the chaos factor and clamped to 0\u2026sides.",
+                        "type": "integer",
+                        "example": 65
+                    },
+                    "likelihood": {
+                        "description": "The key of the likelihood level asked with.",
+                        "type": "string",
+                        "example": "likely"
+                    },
+                    "likelihoodLabel": {
+                        "type": "string",
+                        "example": "Likely"
+                    },
+                    "chaosFactor": {
+                        "description": "The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableEntryDefinition": {
+                "description": "Ranged entries have \"min\" and \"max\"; weighted entries may have a \"weight\" (1 by default). An entry needs a \"text\" unless it nests a \"table\".",
+                "properties": {
+                    "min": {
+                        "description": "Lowest total this entry covers, on a ranged table.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true,
+                        "default": null
+                    },
+                    "max": {
+                        "description": "Highest total this entry covers, on a ranged table.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true,
+                        "default": null
+                    },
+                    "weight": {
+                        "description": "Relative chance of this entry, on a weighted table; 1 by default.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true,
+                        "default": null,
+                        "minimum": 1
+                    },
+                    "text": {
+                        "type": "string",
+                        "example": "Clear",
+                        "nullable": true,
+                        "default": null,
+                        "maxLength": 500
+                    },
+                    "table": {
+                        "description": "The key of a table of the set to roll on next when this entry is selected.",
+                        "type": "string",
+                        "example": "storm-kind",
+                        "nullable": true,
+                        "default": null,
+                        "maxLength": 64
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableDefinition": {
+                "description": "A ranged table has \"dice\" and entries with \"min\" and \"max\" that do not overlap; a weighted table has no \"dice\", entries with an optional \"weight\" and rolls 1dW for total weight W.",
+                "required": [
+                    "key",
+                    "name",
+                    "entries"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Unique within the table set: a-z, 0-9 and \"-\".",
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]+$",
+                        "example": "weather",
+                        "maxLength": 64
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Weather",
+                        "maxLength": 500
+                    },
+                    "entries": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OracleTableEntryDefinition"
+                        },
+                        "maxItems": 1000,
+                        "minItems": 1
+                    },
+                    "dice": {
+                        "description": "Dice notation rolled on a ranged table; absent on a weighted table.",
+                        "type": "string",
+                        "example": "1d6",
+                        "nullable": true,
+                        "default": null
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableResultRequest": {
+                "required": [
+                    "tables",
+                    "table"
+                ],
+                "properties": {
+                    "tables": {
+                        "description": "The table set: unique keys; nested tables must be in the set, never cycle and nest at most 10 levels deep.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OracleTableDefinition"
+                        },
+                        "maxItems": 50,
+                        "minItems": 1
+                    },
+                    "table": {
+                        "description": "The key of the table to roll on.",
+                        "type": "string",
+                        "example": "weather",
+                        "maxLength": 64
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableStepResponse": {
+                "required": [
+                    "tableKey",
+                    "tableName",
+                    "dice",
+                    "total",
+                    "text",
+                    "nestedTableKey"
+                ],
+                "properties": {
+                    "tableKey": {
+                        "type": "string",
+                        "example": "weather"
+                    },
+                    "tableName": {
+                        "type": "string",
+                        "example": "Weather"
+                    },
+                    "dice": {
+                        "description": "The normalized notation rolled: the table's dice, or \"1dW\" for a weighted table of total weight W.",
+                        "type": "string",
+                        "example": "1d6"
+                    },
+                    "total": {
+                        "description": "The total rolled, which selected the entry.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "text": {
+                        "description": "The selected entry's text; may be empty when the entry nests a table.",
+                        "type": "string",
+                        "example": "Storm"
+                    },
+                    "nestedTableKey": {
+                        "description": "The table the next step rolls on; null on the last step.",
+                        "type": "string",
+                        "example": "storm-kind",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableResultResponse": {
+                "required": [
+                    "table",
+                    "steps"
+                ],
+                "properties": {
+                    "table": {
+                        "description": "The key of the table rolled on first.",
+                        "type": "string",
+                        "example": "weather"
+                    },
+                    "steps": {
+                        "description": "One step per table rolled, root first; a step with a nestedTableKey is followed by the roll on that table.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OracleTableStepResponse"
+                        },
+                        "minItems": 1
+                    }
+                },
+                "type": "object"
+            },
             "RollRequest": {
                 "required": [
                     "expression"
@@ -392,6 +884,9 @@
     "tags": [
         {
             "name": "Auth"
+        },
+        {
+            "name": "Oracles"
         },
         {
             "name": "Rolls"

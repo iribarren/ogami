@@ -55,6 +55,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/likelihood-answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask a likelihood oracle a yes/no question */
+        post: operations["askLikelihoodOracle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oracle-table-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll on an oracle table, following nested tables */
+        post: operations["resolveOracleTable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rolls": {
         parameters: {
             query?: never;
@@ -115,6 +149,194 @@ export interface components {
         ErrorResponse: {
             /** @description A human-readable message; never says whether an email exists. */
             error: string;
+        };
+        LikelihoodLevelDefinition: {
+            /**
+             * @description a-z, 0-9 and "-".
+             * @example likely
+             */
+            key: string;
+            /** @example Likely */
+            label: string;
+            /**
+             * @description The highest roll that answers yes at the neutral chaos factor; 0 to sides.
+             * @example 65
+             */
+            target: number;
+        };
+        /** @description The effective target is the level's target + (chaosFactor − neutral) × shiftPerPoint, clamped to 0…sides; min ≤ neutral ≤ max. */
+        LikelihoodChaosDefinition: {
+            /** @example 1 */
+            min: number;
+            /** @example 9 */
+            max: number;
+            /**
+             * @description The chaos factor used when none is given.
+             * @example 5
+             */
+            neutral: number;
+            /**
+             * @description Target points added per chaos point above neutral; 0 to sides.
+             * @example 5
+             */
+            shiftPerPoint: number;
+        };
+        /** @description Rolls 1d<sides> = R against the effective target T: yes when R ≤ T. With p = exceptionalPercent, the yes is exceptional when R ≤ floor(T × p / 100), the no when R > sides − floor((sides − T) × p / 100). */
+        LikelihoodOracleDefinition: {
+            /** @example 100 */
+            sides: number;
+            /** @description The likelihoods a question can be asked with; unique keys. */
+            levels: components["schemas"]["LikelihoodLevelDefinition"][];
+            /**
+             * @description Absent when the oracle has no chaos factor.
+             * @default null
+             */
+            chaos: components["schemas"]["LikelihoodChaosDefinition"] | null;
+            /**
+             * @description Size of the exceptional bands, in percent; 0 by default.
+             * @default null
+             * @example 20
+             */
+            exceptionalPercent: number | null;
+        };
+        LikelihoodAnswerRequest: {
+            oracle: components["schemas"]["LikelihoodOracleDefinition"];
+            /**
+             * @description The key of the likelihood level to ask with.
+             * @example likely
+             */
+            likelihood: string;
+            /**
+             * @description Within the oracle's chaos range; the neutral one when absent. Only allowed when the oracle has chaos.
+             * @default null
+             * @example 5
+             */
+            chaosFactor: number | null;
+        };
+        LikelihoodAnswerResponse: {
+            /**
+             * @description Yes when the roll is at most the effective target, no otherwise; exceptional within the oracle's exceptional bands.
+             * @example yes
+             * @enum {string}
+             */
+            answer: "exceptional_yes" | "yes" | "no" | "exceptional_no";
+            /**
+             * @description The roll on 1d<sides>.
+             * @example 42
+             */
+            roll: number;
+            /** @example 100 */
+            sides: number;
+            /**
+             * @description The level's target shifted by the chaos factor and clamped to 0…sides.
+             * @example 65
+             */
+            effectiveTarget: number;
+            /**
+             * @description The key of the likelihood level asked with.
+             * @example likely
+             */
+            likelihood: string;
+            /** @example Likely */
+            likelihoodLabel: string;
+            /**
+             * @description The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.
+             * @example 5
+             */
+            chaosFactor: number | null;
+        };
+        /** @description Ranged entries have "min" and "max"; weighted entries may have a "weight" (1 by default). An entry needs a "text" unless it nests a "table". */
+        OracleTableEntryDefinition: {
+            /**
+             * @description Lowest total this entry covers, on a ranged table.
+             * @default null
+             * @example 1
+             */
+            min: number | null;
+            /**
+             * @description Highest total this entry covers, on a ranged table.
+             * @default null
+             * @example 3
+             */
+            max: number | null;
+            /**
+             * @description Relative chance of this entry, on a weighted table; 1 by default.
+             * @default null
+             * @example 2
+             */
+            weight: number | null;
+            /**
+             * @default null
+             * @example Clear
+             */
+            text: string | null;
+            /**
+             * @description The key of a table of the set to roll on next when this entry is selected.
+             * @default null
+             * @example storm-kind
+             */
+            table: string | null;
+        };
+        /** @description A ranged table has "dice" and entries with "min" and "max" that do not overlap; a weighted table has no "dice", entries with an optional "weight" and rolls 1dW for total weight W. */
+        OracleTableDefinition: {
+            /**
+             * @description Unique within the table set: a-z, 0-9 and "-".
+             * @example weather
+             */
+            key: string;
+            /** @example Weather */
+            name: string;
+            entries: components["schemas"]["OracleTableEntryDefinition"][];
+            /**
+             * @description Dice notation rolled on a ranged table; absent on a weighted table.
+             * @default null
+             * @example 1d6
+             */
+            dice: string | null;
+        };
+        OracleTableResultRequest: {
+            /** @description The table set: unique keys; nested tables must be in the set, never cycle and nest at most 10 levels deep. */
+            tables: components["schemas"]["OracleTableDefinition"][];
+            /**
+             * @description The key of the table to roll on.
+             * @example weather
+             */
+            table: string;
+        };
+        OracleTableStepResponse: {
+            /** @example weather */
+            tableKey: string;
+            /** @example Weather */
+            tableName: string;
+            /**
+             * @description The normalized notation rolled: the table's dice, or "1dW" for a weighted table of total weight W.
+             * @example 1d6
+             */
+            dice: string;
+            /**
+             * @description The total rolled, which selected the entry.
+             * @example 6
+             */
+            total: number;
+            /**
+             * @description The selected entry's text; may be empty when the entry nests a table.
+             * @example Storm
+             */
+            text: string;
+            /**
+             * @description The table the next step rolls on; null on the last step.
+             * @example storm-kind
+             */
+            nestedTableKey: string | null;
+        };
+        OracleTableResultResponse: {
+            /**
+             * @description The key of the table rolled on first.
+             * @example weather
+             */
+            table: string;
+            /** @description One step per table rolled, root first; a step with a nestedTableKey is followed by the roll on that table. */
+            steps: components["schemas"]["OracleTableStepResponse"][];
         };
         RollRequest: {
             /**
@@ -276,6 +498,126 @@ export interface operations {
             };
             /** @description No session. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    askLikelihoodOracle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LikelihoodAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description The answer, the roll and the effective target it was compared with. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LikelihoodAnswerResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no "oracle" object or no string "likelihood", or a non-integer "chaosFactor". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The oracle is invalid, it has no such likelihood level, or the chaos factor is out of range or given without chaos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resolveOracleTable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OracleTableResultRequest"];
+            };
+        };
+        responses: {
+            /** @description Every table rolled on, root first, with the dice, total and selected entry. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OracleTableResultResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, or has no "tables" list or no string "table". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The tables are invalid, none has the key asked, or a roll matches no entry. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

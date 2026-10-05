@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Identity\Domain\User" table="identity_user">
+        <unique-constraints>
+            <!-- DoctrineUserRepository relies on this name to report EmailAlreadyInUse. -->
+            <unique-constraint name="uniq_identity_user_email" columns="email"/>
+        </unique-constraints>
+
+        <id name="id" type="guid" column="id"/>
+
+        <field name="email" type="string" column="email" length="180"/>
+        <field name="passwordHash" type="string" column="password_hash" length="255"/>
+        <field name="roles" type="json" column="roles"/>
+    </entity>
+</doctrine-mapping>

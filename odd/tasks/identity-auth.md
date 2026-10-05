@@ -40,7 +40,7 @@ main ← feat/identity-auth (tracker, draft)
 | T2 | Infrastructure: security-bundle, uid, Doctrine XML mapping + migration, repository, hasher/id adapters, `app:user:create` console command; test DB migrated + isolated; integration tests | 1 | delegated writer (multi-file) | [x] | `0a55cc9` |
 | T3 | Auth API: firewall `json_login` `/api/auth/login`, logout `/api/auth/logout`, `GET /api/auth/me` (query), JSON 401/403, access control; OpenAPI docs + `make api`; integration tests + Behat scenario | 2 | delegated writer (multi-file) | [x] | `52d872c` |
 | T3b | T3 review follow-ups: login timing enumeration, role enum from `Role`, throttle key normalization, trusted proxies | 2 | inline (bounded writer of T3) | [x] | `79990f4` |
-| T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [ ] | |
+| T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [x] | `7a515a0` |
 | T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [ ] | |
 
 ## Acceptance criteria
@@ -82,5 +82,17 @@ main ← feat/identity-auth (tracker, draft)
   - R4 shared proxy IP: `framework.trusted_proxies: '%env(default::TRUSTED_PROXIES)%'`, `trusted_headers` X-Forwarded-For/Host/Proto/Port/Prefix; `TRUSTED_PROXIES=` (empty) in `backend/.env` with a comment. Production behind a proxy must set it (deployment requirement).
   - RED: 4 unit errors (listener missing) + 1 integration failure (throttle bypass), then the dummy-hash integration test failing at priority 1 → GREEN. `make backend-qa`: PHPStan + PHPat no errors, CS-Fixer 0 files, Rector clean. `make backend-test`: PHPUnit `OK (85 tests, 2657 assertions)`, Behat 8 scenarios passed. `make api-check`: up to date.
 
+- **T3b review**: approved (native review); reviewed boundary `8d8254f`. Non-blocking follow-ups:
+  - R2-normalization-duplicated: `NormalizedLoginRateLimiter` duplicates `Email` normalization.
+  - R4-stale-dummy-hash: the cached dummy hash isn't refreshed if the hasher config changes (clear the cache on hasher change).
+- **T4** (`7a515a0`), branch `feat/identity-auth-3-spa`:
+  - `shared/auth/`: `currentUserQueryOptions(api)` (`GET /api/auth/me`, 401 → `null`, other errors throw), `loadCurrentUser` for guards (`queryClient.query` with `staleTime: 'static'`; `ensureQueryData` is deprecated), `useCurrentUser`, `useLogin` (sets the cached user; throws `LoginError` with the API `error` message), `useLogout` (removes every other query, sets the user to `null`), `requireRole(options, role)` (anonymous → redirect `/login?redirect=<location.href>`; missing role → `ForbiddenError`), `safeRedirect` (only paths starting with `/`, not `//` or `/\`).
+  - Router context gains `api` (same client as `ApiClientProvider`, created once in `main.tsx`); `defaultErrorComponent: RouteErrorPage` renders `ForbiddenPage` ("Access denied" / "You don't have access to <Area>.") inside the shell, without redirecting. Guards on `/play` (SOLO_PLAYER), `/studio` (GAME_MANAGER), `/admin` (OWNER).
+  - `/login` (`routes/login.tsx` + `app/LoginPage.tsx`, shadcn `input` and `label`): `validateSearch` always returns the `redirect` key (`undefined` when unsafe), because the router merges validated search over the raw one and an omitted key keeps the raw value; signed-in visitors are redirected to `redirect` or their first area. `AppShell` links only permitted areas, shows "Sign in" to anonymous visitors, the email and "Sign out" (→ `/login`) when signed in.
+  - shadcn CLI again wrote `import { cn } from "cn"` and added a bogus `cn` dependency; imports fixed to `@/shared/lib/utils`, `package.json`/lock reverted.
+  - RED: 20 failed tests + `safeRedirect` module missing → GREEN: `make frontend-test` 5 files, 40 tests passed. `make frontend-qa`: ESLint, Prettier, tsc clean. `make frontend-build`: built. `make api-check`: up to date. Manual: `make console ARGS="app:user:create t4@example.com --role=SOLO_PLAYER --password=…"` OK; curl http://localhost:8080/login and `/studio` 200 serving the SPA; API login 200, me 200, wrong password 401. No browser walk-through (curl only).
+  - About 760 authored lines including tests (about half); above the ~400 heuristic because the guards, login page and shell only make sense together.
+  - Expected breakage: `frontend/e2e` smoke spec (areas now need a signed-in user) → T5.
+
 ## Next step
-T4 on `feat/identity-auth-3-spa` (cut from `feat/identity-auth-2-api`).
+T5 on `feat/identity-auth-3-spa`: seeded e2e user, Playwright login and guard specs, smoke spec update, CI seeding step, docs.

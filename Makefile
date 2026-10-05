@@ -147,8 +147,17 @@ storybook: frontend-install ## Run Storybook at http://localhost:6006 (Ctrl+C to
 storybook-build: frontend-install ## Build the static Storybook into frontend/storybook-static
 	$(NODE_EXEC) pnpm build-storybook
 
+# Password of the seeded e2e users; the playwright service reads it from the environment.
+export E2E_PASSWORD ?= e2e-password-123
+
+.PHONY: e2e-seed
+e2e-seed: backend-install ## Migrate the dev database and create the e2e users (idempotent)
+	$(PHP_EXEC) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+	$(PHP_EXEC) php bin/console app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
+	$(PHP_EXEC) php bin/console app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
+
 .PHONY: e2e
-e2e: frontend-install ## Run the Playwright end-to-end tests against the running stack (ARGS="--grep smoke")
+e2e: frontend-install e2e-seed ## Seed the e2e users, then run the Playwright tests against the running stack (ARGS="--grep smoke")
 	$(DOCKER_COMPOSE) run --rm $(TTY) playwright node_modules/.bin/playwright test $(ARGS)
 
 ##@ API contract (ADR 0005)

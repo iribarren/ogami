@@ -5,9 +5,9 @@ security:
     password_hashers:
         App\Identity\Infrastructure\Security\SecurityUser: 'auto'
 
-    # Placeholder until the auth API adds the Identity user provider.
     providers:
-        users_in_memory: { memory: null }
+        identity:
+            id: App\Identity\Infrastructure\Security\IdentityUserProvider
 
     firewalls:
         dev:
@@ -16,7 +16,32 @@ security:
             security: false
         main:
             lazy: true
-            provider: users_in_memory
+            provider: identity
+            # JSON in, JSON out: never an HTML login form or redirect.
+            entry_point: App\Identity\Infrastructure\Security\JsonAuthenticationEntryPoint
+            access_denied_handler: App\Identity\Infrastructure\Security\JsonAccessDeniedHandler
+            json_login:
+                # Route names: the routes accept POST only.
+                check_path: api_auth_login
+                username_path: email
+                password_path: password
+                success_handler: App\Identity\Infrastructure\Security\JsonAuthenticationSuccessHandler
+                failure_handler: App\Identity\Infrastructure\Security\JsonAuthenticationFailureHandler
+            # Counts failed logins per email + IP, and 5x that per IP.
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
+            logout:
+                path: api_auth_logout
+
+    # Secure by default: every API path needs a session unless listed here.
+    # Roles are independent (ADR 0006): there is no role_hierarchy.
+    # Non-API paths are the SPA, served by Vite/Caddy, and stay unguarded.
+    access_control:
+        - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/health$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc\.json$, roles: PUBLIC_ACCESS }
+        - { path: ^/api(/|$), roles: IS_AUTHENTICATED }
 
 when@test:
     security:

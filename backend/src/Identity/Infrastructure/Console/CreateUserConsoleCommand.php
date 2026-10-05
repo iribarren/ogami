@@ -39,7 +39,8 @@ final class CreateUserConsoleCommand extends Command
         $this
             ->addArgument('email', InputArgument::REQUIRED, 'The email the user signs in with')
             ->addOption('role', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, \sprintf('A role (%s); repeat for several', $roles))
-            ->addOption('password', null, InputOption::VALUE_REQUIRED, 'The password; asked for (hidden) when omitted in an interactive shell');
+            ->addOption('password', null, InputOption::VALUE_REQUIRED, 'The password; asked for (hidden) when omitted in an interactive shell')
+            ->addOption('if-missing', null, InputOption::VALUE_NONE, 'Succeed without changes when a user with this email already exists (idempotent seeding)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -65,7 +66,17 @@ final class CreateUserConsoleCommand extends Command
 
         try {
             $this->commandBus->dispatch(new CreateUser($id, $email, $password, $roles));
-        } catch (InvalidEmail|UnknownRole|PasswordMustNotBeEmpty|UserMustHaveARole|EmailAlreadyInUse|UserIdAlreadyInUse $exception) {
+        } catch (EmailAlreadyInUse $exception) {
+            if (true === $input->getOption('if-missing')) {
+                $io->note($exception->getMessage().' Left unchanged.');
+
+                return Command::SUCCESS;
+            }
+
+            $io->error($exception->getMessage());
+
+            return Command::FAILURE;
+        } catch (InvalidEmail|UnknownRole|PasswordMustNotBeEmpty|UserMustHaveARole|UserIdAlreadyInUse $exception) {
             $io->error($exception->getMessage());
 
             return Command::FAILURE;

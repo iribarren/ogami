@@ -92,6 +92,8 @@ services:
       HOME: /tmp
       CI: ${CI:-}
       E2E_BASE_URL: http://php
+      # Password of the users `make e2e-seed` creates.
+      E2E_PASSWORD: ${E2E_PASSWORD:-e2e-password-123}
     volumes:
       - ./frontend:/app
     # Chromium needs more shared memory than Docker's default.

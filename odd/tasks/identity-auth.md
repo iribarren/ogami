@@ -110,5 +110,16 @@ main ← feat/identity-auth (tracker, draft)
   - `frontend/.gitignore` ignores `.tanstack/`. README: users and sign-in (create user, roles table, `--if-missing`, e2e seed, `TRUSTED_PROXIES`). Context map: Identity & Access published API row.
   - Checks: `make backend-qa` PHPStan + PHPat no errors, CS-Fixer 0 files, Rector clean; `make backend-test` PHPUnit OK (87 tests, 2666 assertions), Behat 8 scenarios passed; `make frontend-qa` clean; `make frontend-test` 50 passed; `make api-check` up to date; `make e2e` 6 passed (users created), second run 6 passed (seed notes "already exists. Left unchanged.").
 
+## Follow-ups (non-blocking review findings)
+- T2 `R3-closed-entity-manager`: EntityManager is closed after a unique-constraint violation in `DoctrineUserRepository::save`; revisit if a long-running worker creates users.
+- T3b `R2-normalization-duplicated`: `NormalizedLoginRateLimiter` duplicates `Email` normalization.
+- T3b `R4-stale-dummy-hash`: cached dummy hash is not refreshed when the hasher config changes (clear cache on hasher change).
+- T5 `R2-e2e-password-default-triplicated`: the e2e password default lives in Makefile, compose and `auth.spec.ts`.
+- T5 `R3-seed-stale-credentials`: `--if-missing` leaves an existing e2e user's password/roles unchanged if they drift.
+- T5 `R4-current-user-no-retry`: the current-user query uses `retry: false`, so a transient `/me` failure fails the guard at once.
+
+## Reviews
+All work units reviewed (RDD, 4 lenses) and approved: `d87a622..74d356e` (doc + T1), `..cbbee0c` (T2), `..8fd8f82` (T3), `..8d8254f` (T3b), `..014837b` (T4), `..e07e41f` (T4b + T5).
+
 ## Next step
 PRs: tracker draft PR + chained child PRs (user decision).

@@ -93,4 +93,4 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 
 ## Next step
 
-All tasks done. Push `feat/randomness-dice` and open one PR (`Closes #12`, label `enhancement`, size exception) — user decision.
+Delivered for review in PR #13 (`Closes #12`, `type:feature`). Next: CI green, user merges (merge commit).

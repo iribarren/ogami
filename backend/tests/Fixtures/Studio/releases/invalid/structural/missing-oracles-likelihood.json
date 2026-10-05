@@ -1,1 +1,8 @@
-[]
+{
+  "schemaVersion": 1,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": []},
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

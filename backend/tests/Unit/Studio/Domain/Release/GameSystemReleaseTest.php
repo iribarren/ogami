@@ -70,4 +70,26 @@ final class GameSystemReleaseTest extends TestCase
         self::assertNull($repository->get('free-journal', 3));
         self::assertNull($repository->ofId(ReleaseId::fromString('r-9')));
     }
+
+    #[Test]
+    public function theInMemoryRepositoryRejectsADuplicateId(): void
+    {
+        $repository = new InMemoryGameSystemReleaseRepository();
+        $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-1'), self::content(), 1, new \DateTimeImmutable()));
+
+        $this->expectException(\LogicException::class);
+
+        $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-1'), self::content('mythic-style', 'Mythic style'), 1, new \DateTimeImmutable()));
+    }
+
+    #[Test]
+    public function theInMemoryRepositoryRejectsADuplicateKeyAndVersion(): void
+    {
+        $repository = new InMemoryGameSystemReleaseRepository();
+        $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-1'), self::content(), 1, new \DateTimeImmutable()));
+
+        $this->expectException(\LogicException::class);
+
+        $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-2'), self::content(name: 'Free journal 2'), 1, new \DateTimeImmutable()));
+    }
 }

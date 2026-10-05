@@ -13,8 +13,19 @@ final class InMemoryGameSystemReleaseRepository implements GameSystemReleaseRepo
     /** @var array<string, GameSystemRelease> by id */
     private array $releases = [];
 
+    /**
+     * @throws \LogicException on a duplicate id or (gameSystemKey, version), like the database's unique constraints
+     */
     public function add(GameSystemRelease $release): void
     {
+        if (isset($this->releases[$release->id()->toString()])) {
+            throw new \LogicException(\sprintf('A release with id "%s" already exists.', $release->id()->toString()));
+        }
+
+        if ($this->get($release->gameSystemKey(), $release->version()) instanceof GameSystemRelease) {
+            throw new \LogicException(\sprintf('Release %s v%d already exists.', $release->gameSystemKey(), $release->version()));
+        }
+
         $this->releases[$release->id()->toString()] = $release;
     }
 

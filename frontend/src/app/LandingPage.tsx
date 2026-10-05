@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 
+import { HealthStatus } from '@/shared/health/HealthStatus'
 import { Button } from '@/shared/ui/button'
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card'
 
@@ -30,6 +31,7 @@ export function LandingPage() {
           A companion for solo tabletop RPG play.
         </p>
       </section>
+      <HealthStatus />
       <section className="grid gap-4 sm:grid-cols-3">
         {areas.map(({ to, title, description }) => (
           <Card key={to}>

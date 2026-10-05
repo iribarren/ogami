@@ -14,6 +14,7 @@ export default defineConfig(
     'playwright-report',
     'test-results',
     'src/routeTree.gen.ts',
+    'src/shared/api/schema.d.ts',
   ]),
   {
     files: ['**/*.{ts,tsx}'],

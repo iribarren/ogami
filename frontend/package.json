@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "storybook": "storybook dev --port 6006 --host 0.0.0.0 --no-open",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "api:client": "openapi-typescript src/shared/api/openapi.json --output src/shared/api/schema.d.ts"
   },
   "packageManager": "pnpm@12.9.1",
   "dependencies": {
@@ -26,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.51.0",
+    "openapi-fetch": "^0.17.0",
     "radix-ui": "^1.6.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -36,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@storybook/react-vite": "^10.6.1",
     "@tanstack/react-query-devtools": "^5.104.1",
     "@tanstack/react-router-devtools": "^1.167.2",
@@ -54,6 +57,7 @@
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
     "jsdom": "^30.1.1",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "storybook": "^10.6.1",

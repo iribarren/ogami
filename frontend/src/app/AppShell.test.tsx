@@ -3,6 +3,9 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
+import { createApiClient } from '@/shared/api/client'
+
 import { createQueryClient } from './queryClient'
 import { createAppRouter } from './router'
 
@@ -13,9 +16,17 @@ function renderAppAt(path: string) {
     history: createMemoryHistory({ initialEntries: [path] }),
   })
 
+  // The landing page polls the health endpoint; answer it without a network.
+  const apiClient = createApiClient({
+    baseUrl: 'http://ogami.test',
+    fetch: () => Promise.resolve(Response.json({ status: 'ok', database: 'ok' })),
+  })
+
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ApiClientProvider client={apiClient}>
+        <RouterProvider router={router} />
+      </ApiClientProvider>
     </QueryClientProvider>,
   )
 }

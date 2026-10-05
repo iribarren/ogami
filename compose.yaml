@@ -81,6 +81,29 @@ services:
       retries: 10
       start_period: 120s
 
+  # End-to-end tests (`make e2e`), only started with the `e2e` profile. The image
+  # tag must match the @playwright/test version in frontend/package.json.
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    profiles: [e2e]
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /app
+    environment:
+      HOME: /tmp
+      CI: ${CI:-}
+      E2E_BASE_URL: http://php
+    volumes:
+      - ./frontend:/app
+    # Chromium needs more shared memory than Docker's default.
+    ipc: host
+    init: true
+    command: ["node_modules/.bin/playwright", "test"]
+    depends_on:
+      php:
+        condition: service_healthy
+      node:
+        condition: service_healthy
+
   mailpit:
     image: axllent/mailpit:v1.31
     environment:

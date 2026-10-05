@@ -140,10 +140,38 @@ storybook: frontend-install ## Run Storybook at http://localhost:6006 (Ctrl+C to
 storybook-build: frontend-install ## Build the static Storybook into frontend/storybook-static
 	$(NODE_EXEC) pnpm build-storybook
 
+.PHONY: e2e
+e2e: frontend-install ## Run the Playwright end-to-end tests against the running stack (ARGS="--ui" etc.)
+	$(DOCKER_COMPOSE) run --rm $(TTY) playwright node_modules/.bin/playwright test $(ARGS)
+
+##@ API contract (ADR 0005)
+
+API_DIR := frontend/src/shared/api
+
+.PHONY: api-spec
+api-spec: backend-install ## Export the backend OpenAPI spec to frontend/src/shared/api/openapi.json
+	$(PHP_EXEC) php bin/console nelmio:apidoc:dump --format=json > $(API_DIR)/openapi.json
+
+.PHONY: api-client
+api-client: frontend-install ## Generate the TypeScript API types from openapi.json (schema.d.ts)
+	$(NODE_EXEC) pnpm api:client
+
+.PHONY: api
+api: api-spec api-client ## Export the spec and regenerate the TypeScript API types
+
+.PHONY: api-check
+api-check: backend-install frontend-install ## Fail when the committed spec or API types are stale
+	@$(PHP_EXEC) php bin/console nelmio:apidoc:dump --format=json | diff -u $(API_DIR)/openapi.json - \
+		|| { echo "$(API_DIR)/openapi.json is stale: run 'make api' and commit the result." >&2; exit 1; }
+	@$(NODE_EXEC) sh -c 'pnpm exec openapi-typescript src/shared/api/openapi.json --output /tmp/schema.d.ts \
+		&& diff -u src/shared/api/schema.d.ts /tmp/schema.d.ts' \
+		|| { echo "$(API_DIR)/schema.d.ts is stale: run 'make api-client' and commit the result." >&2; exit 1; }
+	@echo "API spec and types are up to date."
+
 ##@ Quality
 
 .PHONY: test
 test: backend-test frontend-test ## Run every test suite
 
 .PHONY: qa
-qa: backend-qa frontend-qa ## Run every static check
+qa: backend-qa frontend-qa api-check ## Run every static check

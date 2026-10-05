@@ -144,7 +144,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed, has no \"oracle\" object or no string \"likelihood\", or a non-integer \"chaosFactor\".",
+                        "description": "The JSON body is malformed, has no \"oracle\" object (a non-empty JSON list is not one) or no string \"likelihood\", or a non-integer \"chaosFactor\".",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -215,7 +215,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed, or has no \"tables\" list or no string \"table\".",
+                        "description": "The JSON body is malformed, or has no \"tables\" list (a JSON object is not one) or no string \"table\".",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -503,15 +503,13 @@
                             }
                         ],
                         "nullable": true,
-                        "description": "Absent when the oracle has no chaos factor.",
-                        "default": null
+                        "description": "Absent when the oracle has no chaos factor."
                     },
                     "exceptionalPercent": {
                         "description": "Size of the exceptional bands, in percent; 0 by default.",
                         "type": "integer",
                         "example": 20,
                         "nullable": true,
-                        "default": null,
                         "maximum": 50,
                         "minimum": 0
                     }
@@ -536,8 +534,7 @@
                         "description": "Within the oracle's chaos range; the neutral one when absent. Only allowed when the oracle has chaos.",
                         "type": "integer",
                         "example": 5,
-                        "nullable": true,
-                        "default": null
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -603,29 +600,25 @@
                         "description": "Lowest total this entry covers, on a ranged table.",
                         "type": "integer",
                         "example": 1,
-                        "nullable": true,
-                        "default": null
+                        "nullable": true
                     },
                     "max": {
                         "description": "Highest total this entry covers, on a ranged table.",
                         "type": "integer",
                         "example": 3,
-                        "nullable": true,
-                        "default": null
+                        "nullable": true
                     },
                     "weight": {
                         "description": "Relative chance of this entry, on a weighted table; 1 by default.",
                         "type": "integer",
                         "example": 2,
                         "nullable": true,
-                        "default": null,
                         "minimum": 1
                     },
                     "text": {
                         "type": "string",
                         "example": "Clear",
                         "nullable": true,
-                        "default": null,
                         "maxLength": 500
                     },
                     "table": {
@@ -633,7 +626,6 @@
                         "type": "string",
                         "example": "storm-kind",
                         "nullable": true,
-                        "default": null,
                         "maxLength": 64
                     }
                 },
@@ -671,8 +663,7 @@
                         "description": "Dice notation rolled on a ranged table; absent on a weighted table.",
                         "type": "string",
                         "example": "1d6",
-                        "nullable": true,
-                        "default": null
+                        "nullable": true
                     }
                 },
                 "type": "object"

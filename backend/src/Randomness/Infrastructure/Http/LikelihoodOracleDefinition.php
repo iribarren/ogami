@@ -10,6 +10,9 @@ use OpenApi\Attributes as OA;
 
 /**
  * A likelihood oracle. Documents the contract only.
+ *
+ * Optional fields are nullable with no PHP default: a default makes Nelmio emit `default: null`,
+ * which the typed client turns into a required field. `required` lists the required ones.
  */
 #[OA\Schema(
     description: 'Rolls 1d<sides> = R against the effective target T: yes when R ≤ T. With p = exceptionalPercent, the yes is exceptional when R ≤ floor(T × p / 100), the no when R > sides − floor((sides − T) × p / 100).',
@@ -31,10 +34,10 @@ final readonly class LikelihoodOracleDefinition
             minItems: 1,
         )]
         public array $levels,
-        #[OA\Property(ref: new Model(type: LikelihoodChaosDefinition::class), description: 'Absent when the oracle has no chaos factor.')]
-        public ?LikelihoodChaosDefinition $chaos = null,
+        #[OA\Property(ref: new Model(type: LikelihoodChaosDefinition::class), description: 'Absent when the oracle has no chaos factor.', nullable: true)]
+        public ?LikelihoodChaosDefinition $chaos,
         #[OA\Property(description: 'Size of the exceptional bands, in percent; 0 by default.', example: 20, maximum: LikelihoodOracle::MAX_EXCEPTIONAL_PERCENT, minimum: 0)]
-        public ?int $exceptionalPercent = null,
+        public ?int $exceptionalPercent,
     ) {
     }
 }

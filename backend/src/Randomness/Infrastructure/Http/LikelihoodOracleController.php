@@ -40,7 +40,7 @@ final readonly class LikelihoodOracleController
         description: 'The answer, the roll and the effective target it was compared with.',
         content: new OA\JsonContent(ref: new Model(type: LikelihoodAnswerResponse::class)),
     )]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed, has no "oracle" object or no string "likelihood", or a non-integer "chaosFactor".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed, has no "oracle" object (a non-empty JSON list is not one) or no string "likelihood", or a non-integer "chaosFactor".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(
@@ -63,7 +63,7 @@ final readonly class LikelihoodOracleController
         $oracle = $body['oracle'] ?? null;
         $likelihood = $body['likelihood'] ?? null;
         $chaosFactor = $body['chaosFactor'] ?? null;
-        if (!\is_array($oracle) || !\is_string($likelihood) || (null !== $chaosFactor && !\is_int($chaosFactor))) {
+        if (!$this->isJsonObject($oracle) || !\is_string($likelihood) || (null !== $chaosFactor && !\is_int($chaosFactor))) {
             return $this->error(self::MALFORMED_BODY, Response::HTTP_BAD_REQUEST);
         }
 
@@ -74,6 +74,17 @@ final readonly class LikelihoodOracleController
         }
 
         return new JsonResponse(LikelihoodAnswerResponse::fromView($view));
+    }
+
+    /**
+     * A decoded JSON object is a non-list array. An empty object decodes to an empty array,
+     * indistinguishable from an empty list, so both pass here and the domain rejects them.
+     *
+     * @phpstan-assert-if-true array<mixed> $value
+     */
+    private function isJsonObject(mixed $value): bool
+    {
+        return \is_array($value) && ([] === $value || !array_is_list($value));
     }
 
     private function error(string $message, int $status): JsonResponse

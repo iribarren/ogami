@@ -187,17 +187,13 @@ export interface components {
             sides: number;
             /** @description The likelihoods a question can be asked with; unique keys. */
             levels: components["schemas"]["LikelihoodLevelDefinition"][];
-            /**
-             * @description Absent when the oracle has no chaos factor.
-             * @default null
-             */
-            chaos: components["schemas"]["LikelihoodChaosDefinition"] | null;
+            /** @description Absent when the oracle has no chaos factor. */
+            chaos?: components["schemas"]["LikelihoodChaosDefinition"] | null;
             /**
              * @description Size of the exceptional bands, in percent; 0 by default.
-             * @default null
              * @example 20
              */
-            exceptionalPercent: number | null;
+            exceptionalPercent?: number | null;
         };
         LikelihoodAnswerRequest: {
             oracle: components["schemas"]["LikelihoodOracleDefinition"];
@@ -208,10 +204,9 @@ export interface components {
             likelihood: string;
             /**
              * @description Within the oracle's chaos range; the neutral one when absent. Only allowed when the oracle has chaos.
-             * @default null
              * @example 5
              */
-            chaosFactor: number | null;
+            chaosFactor?: number | null;
         };
         LikelihoodAnswerResponse: {
             /**
@@ -249,33 +244,26 @@ export interface components {
         OracleTableEntryDefinition: {
             /**
              * @description Lowest total this entry covers, on a ranged table.
-             * @default null
              * @example 1
              */
-            min: number | null;
+            min?: number | null;
             /**
              * @description Highest total this entry covers, on a ranged table.
-             * @default null
              * @example 3
              */
-            max: number | null;
+            max?: number | null;
             /**
              * @description Relative chance of this entry, on a weighted table; 1 by default.
-             * @default null
              * @example 2
              */
-            weight: number | null;
-            /**
-             * @default null
-             * @example Clear
-             */
-            text: string | null;
+            weight?: number | null;
+            /** @example Clear */
+            text?: string | null;
             /**
              * @description The key of a table of the set to roll on next when this entry is selected.
-             * @default null
              * @example storm-kind
              */
-            table: string | null;
+            table?: string | null;
         };
         /** @description A ranged table has "dice" and entries with "min" and "max" that do not overlap; a weighted table has no "dice", entries with an optional "weight" and rolls 1dW for total weight W. */
         OracleTableDefinition: {
@@ -289,10 +277,9 @@ export interface components {
             entries: components["schemas"]["OracleTableEntryDefinition"][];
             /**
              * @description Dice notation rolled on a ranged table; absent on a weighted table.
-             * @default null
              * @example 1d6
              */
-            dice: string | null;
+            dice?: string | null;
         };
         OracleTableResultRequest: {
             /** @description The table set: unique keys; nested tables must be in the set, never cycle and nest at most 10 levels deep. */
@@ -529,7 +516,7 @@ export interface operations {
                     "application/json": components["schemas"]["LikelihoodAnswerResponse"];
                 };
             };
-            /** @description The JSON body is malformed, has no "oracle" object or no string "likelihood", or a non-integer "chaosFactor". */
+            /** @description The JSON body is malformed, has no "oracle" object (a non-empty JSON list is not one) or no string "likelihood", or a non-integer "chaosFactor". */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -589,7 +576,7 @@ export interface operations {
                     "application/json": components["schemas"]["OracleTableResultResponse"];
                 };
             };
-            /** @description The JSON body is malformed, or has no "tables" list or no string "table". */
+            /** @description The JSON body is malformed, or has no "tables" list (a JSON object is not one) or no string "table". */
             400: {
                 headers: {
                     [name: string]: unknown;

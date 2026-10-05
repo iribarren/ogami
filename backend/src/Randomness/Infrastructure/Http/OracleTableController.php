@@ -39,7 +39,7 @@ final readonly class OracleTableController
         description: 'Every table rolled on, root first, with the dice, total and selected entry.',
         content: new OA\JsonContent(ref: new Model(type: OracleTableResultResponse::class)),
     )]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed, or has no "tables" list or no string "table".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed, or has no "tables" list (a JSON object is not one) or no string "table".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(
@@ -61,7 +61,7 @@ final readonly class OracleTableController
 
         $tables = $body['tables'] ?? null;
         $table = $body['table'] ?? null;
-        if (!\is_array($tables) || !\is_string($table)) {
+        if (!\is_array($tables) || !array_is_list($tables) || !\is_string($table)) {
             return $this->error(self::MALFORMED_BODY, Response::HTTP_BAD_REQUEST);
         }
 

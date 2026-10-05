@@ -132,6 +132,33 @@ final class LikelihoodOracleApiTest extends WebTestCase
         );
     }
 
+    #[Test]
+    public function explicitNullOptionalFieldsCountAsAbsent(): void
+    {
+        $this->signIn(['SOLO_PLAYER']);
+        $this->script(1);
+
+        $this->ask([
+            'oracle' => [
+                'sides' => 6,
+                'levels' => [['key' => 'even', 'label' => 'Even odds', 'target' => 3]],
+                'chaos' => null,
+                'exceptionalPercent' => null,
+            ],
+            'likelihood' => 'even',
+            'chaosFactor' => null,
+        ]);
+
+        // Without exceptional bands, a roll of 1 is a plain yes.
+        self::assertResponseIsSuccessful();
+        self::assertJsonStringEqualsJsonString(
+            <<<'JSON'
+                {"answer": "yes", "roll": 1, "sides": 6, "effectiveTarget": 3, "likelihood": "even", "likelihoodLabel": "Even odds", "chaosFactor": null}
+                JSON,
+            $this->content(),
+        );
+    }
+
     /**
      * @return iterable<string, array{array<string, mixed>, string}>
      */
@@ -186,6 +213,7 @@ final class LikelihoodOracleApiTest extends WebTestCase
         yield 'not an object' => ['"likely"'];
         yield 'missing oracle' => ['{"likelihood": "likely"}'];
         yield 'non-object oracle' => ['{"oracle": "fate", "likelihood": "likely"}'];
+        yield 'list oracle' => ['{"oracle": [{"sides": 100}], "likelihood": "likely"}'];
         yield 'missing likelihood' => ['{"oracle": {}}'];
         yield 'non-string likelihood' => ['{"oracle": {}, "likelihood": 65}'];
         yield 'non-integer chaos factor' => ['{"oracle": {}, "likelihood": "likely", "chaosFactor": "5"}'];

@@ -70,7 +70,8 @@ Ask oracles: the Randomness shared kernel resolves oracle tables (ranged or weig
 |---|---|---|---|---|
 | T1 | Domain: `OracleTable`, entries, table set (validation, nesting, cycles), resolution with steps; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | `0472c3f` |
 | T2 | Domain: `LikelihoodOracle` (levels, chaos shift, exceptional bands) and answer; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | `11d7840` |
-| T3 | Queries + handlers + views; `POST /api/oracle-table-results`, `POST /api/likelihood-answers` (auth) with 200/400/422; OpenAPI; `make api`; integration tests | delegated writer (multi-file) | [x] | see evidence |
+| T3 | Queries + handlers + views; `POST /api/oracle-table-results`, `POST /api/likelihood-answers` (auth) with 200/400/422; OpenAPI; `make api`; integration tests | delegated writer (multi-file) | [x] | `2ea975a` |
+| T3b | Fix review follow-up: optional definition fields are optional (not required `T \| null`) in the generated types; explicit nulls accepted as absent; `tables` must be a JSON list and `oracle` a JSON object (400); integration tests | delegated writer (multi-file) | [x] | see evidence |
 | T4 | Play `OraclePanel` (likelihood: level, chaos factor, ask, answer; tables: roll a table, show steps; error states) with sample definitions on Play home; Vitest, story, e2e smoke | delegated writer (multi-file) | [ ] | |
 
 ## Acceptance criteria
@@ -91,18 +92,23 @@ Ask oracles: the Randomness shared kernel resolves oracle tables (ranged or weig
 
 - **T2**: delegated writer (multi-file trigger). `LikelihoodOracle::fromArray()` / `ask(levelKey, ?chaosFactor, rng): LikelihoodAnswer` (answer `YesNoAnswer` enum, roll, sides, effectiveTarget, levelKey, levelLabel, chaosFactor); failures `InvalidLikelihoodOracle` (DomainException → 422); key rule shared via `OracleTable::isValidKey()`. RED 159 tests / 39 errors + 37 failures (T1's 86 green) → GREEN `OK (178 tests, 389 assertions)` (parent re-ran). Behat +10 scenarios (written after the domain, no RED). `make backend-qa` exit 0; `make backend-test` exit 0 (379 tests; Behat 29 scenarios). ~1,140 lines. Commit `11d7840`. Review assess: medium, `slice_budget_reached` → consent granted → **approved** (reliability lens; acknowledged, authority burned). Reviewed boundary: `11d7840`.
 
-- **T3**: delegated writer (multi-file trigger). Queries `ResolveOracleTable` / `AskLikelihoodOracle` → views; controllers `OracleTableController` (`POST /api/oracle-table-results`, operationId `resolveOracleTable`) and `LikelihoodOracleController` (`POST /api/likelihood-answers`, `askLikelihoodOracle`), tag `Oracles`. Responses `OracleTableResultResponse {table, steps[]}`, `LikelihoodAnswerResponse {answer, roll, sides, effectiveTarget, likelihood, likelihoodLabel, chaosFactor}`. 200 / 400 (bad JSON, wrong top-level types; `chaosFactor: null` = absent) / 415 / 422 (domain errors) / 401. RED 43 failures (no route) → GREEN `OK (43 tests, 192 assertions)`. `make backend-qa` exit 0; `make backend-test` exit 0 (422 tests); `make api-check` up to date (parent re-ran integration tests and api-check). ~1,295 authored lines + generated API files.
+- **T3**: delegated writer (multi-file trigger). Queries `ResolveOracleTable` / `AskLikelihoodOracle` → views; controllers `OracleTableController` (`POST /api/oracle-table-results`, operationId `resolveOracleTable`) and `LikelihoodOracleController` (`POST /api/likelihood-answers`, `askLikelihoodOracle`), tag `Oracles`. Responses `OracleTableResultResponse {table, steps[]}`, `LikelihoodAnswerResponse {answer, roll, sides, effectiveTarget, likelihood, likelihoodLabel, chaosFactor}`. 200 / 400 (bad JSON, wrong top-level types; `chaosFactor: null` = absent) / 415 / 422 (domain errors) / 401. RED 43 failures (no route) → GREEN `OK (43 tests, 192 assertions)`. `make backend-qa` exit 0; `make backend-test` exit 0 (422 tests); `make api-check` up to date (parent re-ran integration tests and api-check). ~1,295 authored lines + generated API files. Commit `2ea975a`. Review assess: medium, `slice_budget_reached` → consent granted → **approved** (reliability lens; acknowledged, authority burned). Reviewed boundary: `2ea975a`.
+
+- **T3b**: delegated writer (multi-file trigger). Cause: Nelmio emitted `default: null` for `= null` constructor params and openapi-typescript 7 treats a default as required. Optional doc-DTO properties are nullable with no PHP default (and `chaos` ref gets `nullable: true`) → `field?: T | null`. `tables` must be a JSON list and `oracle` a JSON object (400); empty `{}` still reaches the domain 422. Explicit-null tests already green (domain treats null as absent). RED 62 tests / 3 failures → GREEN `OK (62 tests, 274 assertions)`. `make backend-qa` exit 0; `make backend-test` exit 0 (427 tests); `make api-check` up to date (parent re-ran integration tests and api-check).
 
 ## Follow-ups (non-blocking review findings)
 
 - T1 `R3-uncovered-ranges-fail-only-at-roll-time` (SUGGESTION): ranged tables with gaps or ranges outside the dice's reachable totals are accepted and fail only on some rolls. Matches the spec (uncovered roll fails at resolution); coverage validation needs dice min/max. Deferred.
 - T2 `R3-validation-order-unproved` (SUGGESTION): no test proves an unknown level is reported before a bad chaos factor, or that invalid asks fail before rolling. Deferred.
+- T3 `R3-explicit-null-optional-fields-unproved` (WARNING): generated types make optional definition fields required `T | null`, so the typed client would send explicit nulls, which no test covers. **Fixed in T3b**.
+- T3 `R3-tables-object-not-list-unproved` (SUGGESTION): a JSON object as `tables`, or a list as `oracle`, passes the 400 guard. **Fixed in T3b**.
 
 ## Reviews
 
 - `f9c4dba..0472c3f` (doc + T1): medium, approved.
 - `0472c3f..11d7840` (T2): medium, approved.
+- `11d7840..2ea975a` (T3): medium, approved.
 
 ## Next step
 
-Commit T3, review assess, then T4 (delegated writer).
+Commit T3b, review assess, then T4 (delegated writer).

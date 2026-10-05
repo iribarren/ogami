@@ -10,6 +10,9 @@ use OpenApi\Attributes as OA;
 
 /**
  * An oracle table of a table set. Documents the contract only.
+ *
+ * Optional fields are nullable with no PHP default: a default makes Nelmio emit `default: null`,
+ * which the typed client turns into a required field. `required` lists the required ones.
  */
 #[OA\Schema(
     description: 'A ranged table has "dice" and entries with "min" and "max" that do not overlap; a weighted table has no "dice", entries with an optional "weight" and rolls 1dW for total weight W.',
@@ -33,7 +36,7 @@ final readonly class OracleTableDefinition
         )]
         public array $entries,
         #[OA\Property(description: 'Dice notation rolled on a ranged table; absent on a weighted table.', example: '1d6')]
-        public ?string $dice = null,
+        public ?string $dice,
     ) {
     }
 }

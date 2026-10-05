@@ -108,6 +108,38 @@ final class OracleTableApiTest extends WebTestCase
         );
     }
 
+    #[Test]
+    public function explicitNullOptionalFieldsCountAsAbsent(): void
+    {
+        $this->signIn(['SOLO_PLAYER']);
+        $this->script(6, 3);
+
+        $this->resolve(['tables' => [
+            ['key' => 'weather', 'name' => 'Weather', 'dice' => '1d6', 'entries' => [
+                ['min' => 1, 'max' => 3, 'weight' => null, 'text' => 'Clear', 'table' => null],
+                ['min' => 4, 'max' => 6, 'weight' => null, 'text' => null, 'table' => 'storm-kind'],
+            ]],
+            ['key' => 'storm-kind', 'name' => 'Storm kind', 'dice' => null, 'entries' => [
+                ['min' => null, 'max' => null, 'weight' => 2, 'text' => 'Thunder', 'table' => null],
+                ['min' => null, 'max' => null, 'weight' => null, 'text' => 'Hail', 'table' => null],
+            ]],
+        ], 'table' => 'weather']);
+
+        self::assertResponseIsSuccessful();
+        self::assertJsonStringEqualsJsonString(
+            <<<'JSON'
+                {
+                    "table": "weather",
+                    "steps": [
+                        {"tableKey": "weather", "tableName": "Weather", "dice": "1d6", "total": 6, "text": "", "nestedTableKey": "storm-kind"},
+                        {"tableKey": "storm-kind", "tableName": "Storm kind", "dice": "1d3", "total": 3, "text": "Hail", "nestedTableKey": null}
+                    ]
+                }
+                JSON,
+            $this->content(),
+        );
+    }
+
     /**
      * @return iterable<string, array{list<mixed>, string, string}>
      */
@@ -182,6 +214,8 @@ final class OracleTableApiTest extends WebTestCase
         yield 'not an object' => ['"weather"'];
         yield 'missing tables' => ['{"table": "weather"}'];
         yield 'non-list tables' => ['{"tables": "weather", "table": "weather"}'];
+        yield 'tables object instead of a list' => ['{"tables": {"weather": {"key": "weather", "name": "Weather", "entries": [{"text": "Clear"}]}}, "table": "weather"}'];
+        yield 'tables list with gaps' => ['{"tables": {"1": {"key": "weather", "name": "Weather", "entries": [{"text": "Clear"}]}}, "table": "weather"}'];
         yield 'missing table' => ['{"tables": []}'];
         yield 'non-string table' => ['{"tables": [], "table": 1}'];
         yield 'null table' => ['{"tables": [], "table": null}'];

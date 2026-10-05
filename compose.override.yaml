@@ -10,6 +10,11 @@ services:
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
 
+  node:
+    ports:
+      # Storybook (`make storybook`); Vite itself is reached through Caddy.
+      - "${STORYBOOK_PORT:-6006}:6006"
+
   mailpit:
     ports:
       - "${MAILPIT_PORT:-8026}:8025"

@@ -7,6 +7,7 @@
 #   HTTP_PORT           API/app port on the host (default 8080)
 #   POSTGRES_PORT       database port on the host (default 5433, compose.override.yaml)
 #   MAILPIT_PORT        Mailpit web UI on the host (default 8026, compose.override.yaml)
+#   STORYBOOK_PORT      Storybook on the host (default 6006, compose.override.yaml; `make storybook`)
 #   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD   dev credentials (default ogami)
 #   XDEBUG_MODE         off (default) | debug | coverage | develop
 name: ogami
@@ -65,10 +66,20 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-    # Idles until the frontend exists (T4). Then mount ./frontend:/app and run Vite:
-    #   command: ["pnpm", "dev", "--host", "0.0.0.0"]
-    command: ["sleep", "infinity"]
+    # Vite dev server for the SPA. Caddy (php) proxies every non-API request to it
+    # (docker/php/frontend.d/), so the app is served at http://localhost:${HTTP_PORT}.
+    # `pnpm install` first makes a fresh clone start without a manual install step;
+    # with an up-to-date node_modules it is a no-op.
+    command: ["sh", "-c", "pnpm install --frozen-lockfile && exec pnpm dev"]
     init: true
+    volumes:
+      - ./frontend:/app
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
 
   mailpit:
     image: axllent/mailpit:v1.31

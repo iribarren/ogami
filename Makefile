@@ -4,7 +4,7 @@
 # Adding targets: give each target a `## description` comment so `help` lists it,
 # and group related targets under a `##@ Section` header (e.g. `##@ Frontend`).
 # Aggregate targets (`test`, `qa`) depend on per-area targets (`backend-test`,
-# `backend-qa`, later `frontend-test`, `frontend-qa`), so a new area only needs
+# `backend-qa`, `frontend-test`, `frontend-qa`), so a new area only needs
 # to add its own target and append it to the aggregate's prerequisites.
 
 .DEFAULT_GOAL := help
@@ -100,10 +100,50 @@ backend-fix: backend-install ## Apply Rector and PHP-CS-Fixer changes to the bac
 node-sh: ## Open a shell in the node container
 	$(NODE_EXEC) bash
 
+.PHONY: pnpm
+pnpm: ## Run pnpm in the frontend (ARGS="add zod")
+	$(NODE_EXEC) pnpm $(ARGS)
+
+# Installs pnpm dependencies on a fresh clone (or after pnpm-lock.yaml changes).
+# The node service also runs `pnpm install` when it starts.
+frontend/node_modules/.modules.yaml: frontend/pnpm-lock.yaml
+	$(NODE_EXEC) pnpm install --frozen-lockfile
+	@touch $@
+
+.PHONY: frontend-install
+frontend-install: frontend/node_modules/.modules.yaml ## Install frontend pnpm dependencies
+
+.PHONY: frontend-qa
+frontend-qa: frontend-install ## Run frontend QA: ESLint, Prettier (check) and TypeScript
+	$(NODE_EXEC) pnpm lint
+	$(NODE_EXEC) pnpm format:check
+	$(NODE_EXEC) pnpm typecheck
+
+.PHONY: frontend-fix
+frontend-fix: frontend-install ## Apply ESLint fixes and Prettier formatting to the frontend
+	$(NODE_EXEC) pnpm lint:fix
+	$(NODE_EXEC) pnpm format
+
+.PHONY: frontend-test
+frontend-test: frontend-install ## Run frontend unit and component tests (Vitest)
+	$(NODE_EXEC) pnpm test
+
+.PHONY: frontend-build
+frontend-build: frontend-install ## Build the SPA for production into frontend/dist
+	$(NODE_EXEC) pnpm build
+
+.PHONY: storybook
+storybook: frontend-install ## Run Storybook at http://localhost:6006 (Ctrl+C to stop)
+	$(NODE_EXEC) pnpm storybook
+
+.PHONY: storybook-build
+storybook-build: frontend-install ## Build the static Storybook into frontend/storybook-static
+	$(NODE_EXEC) pnpm build-storybook
+
 ##@ Quality
 
 .PHONY: test
-test: backend-test ## Run every test suite
+test: backend-test frontend-test ## Run every test suite
 
 .PHONY: qa
-qa: backend-qa ## Run every static check
+qa: backend-qa frontend-qa ## Run every static check

@@ -1,0 +1,5 @@
+# pnpm settings for the frontend (single package, not a multi-package workspace).
+# pnpm runs no dependency build scripts unless they are allowed here.
+allowBuilds:
+  # Its postinstall only verifies the native binary that pnpm already installed.
+  esbuild: true

@@ -39,6 +39,7 @@ main ← feat/identity-auth (tracker, draft)
 | T1 | Domain + Application: `User` aggregate, `UserId`, `Email`, `Role`; `CreateUser` command/handler with ports `UserRepository`, `PasswordHasher`, `UserIdGenerator`; unit tests RED→GREEN | 1 | delegated writer (multi-file) | [x] | `1a2ba38` |
 | T2 | Infrastructure: security-bundle, uid, Doctrine XML mapping + migration, repository, hasher/id adapters, `app:user:create` console command; test DB migrated + isolated; integration tests | 1 | delegated writer (multi-file) | [x] | `0a55cc9` |
 | T3 | Auth API: firewall `json_login` `/api/auth/login`, logout `/api/auth/logout`, `GET /api/auth/me` (query), JSON 401/403, access control; OpenAPI docs + `make api`; integration tests + Behat scenario | 2 | delegated writer (multi-file) | [x] | `52d872c` |
+| T3b | T3 review follow-ups: login timing enumeration, role enum from `Role`, throttle key normalization, trusted proxies | 2 | inline (bounded writer of T3) | [x] | `79990f4` |
 | T4 | SPA: current-user query, `/login` page, `beforeLoad` role guards on `/play`, `/studio`, `/admin`, forbidden view, logout in `AppShell`; Vitest | 3 | delegated writer (multi-file) | [ ] | |
 | T5 | E2E + CI + docs: seeded e2e user, Playwright login and guard specs (smoke updated), CI seeding step, README/context docs | 3 | delegated writer (multi-file) | [ ] | |
 
@@ -72,6 +73,14 @@ main ← feat/identity-auth (tracker, draft)
   - Note: unknown `/api/*` paths 404 at routing before the firewall runs, so secure-by-default is proven on the access map (`security.access_map`) plus `/api/auth/me`.
   - RED: `AuthApiTest` 11 tests, 10 failures (no routes, no access control) → GREEN. `make backend-qa`: PHPStan max + PHPat no errors, CS-Fixer 0 files, Rector clean. `make backend-test`: PHPUnit `OK (79 tests, 2642 assertions)`, Behat 8 scenarios passed. `make api-check`: up to date. Manual curl on http://localhost:8080 with `t3@example.com` (GAME_MANAGER): login 200 + `Set-Cookie: PHPSESSID=…; path=/; httponly; samesite=lax` + user body → me 200 → logout 204 (cookie deleted) → me 401; wrong password 401; form-encoded login 415; health 200.
   - About 880 authored lines (lock files and generated API files excluded), about half tests; above the ~400 heuristic because the firewall, its JSON handlers and the endpoint contract only make sense together.
+
+- **T3 review**: approved (native review, 4 non-blocking warnings → T3b); reviewed boundary `8fd8f82`.
+- **T3b** (`79990f4`):
+  - R1 login timing enumeration: `UnknownUserPasswordCheckListener` on `CheckPassportEvent` (main firewall, priority 512: after the user loader is set, before `UserCheckerListener` at 256, the first listener that loads the user). On `UserNotFoundException` it verifies the presented password against a dummy hash from the `SecurityUser` hasher, then rethrows. The dummy hash is made once and cached in `cache.app` (hashing costs as much as verifying). Dev curl: unknown email ~0.5 s, wrong password ~0.5 s (before: 0.04 s vs 0.5 s). A first attempt at priority 1 never ran, because `UserCheckerListener` already threw; the behavioral integration test caught it.
+  - R2 role enum: `CurrentUserResponse.roles` items reference `new Model(type: Role::class)`; Nelmio describes the backed enum as a named `Role` schema (`swagger-php` `enum: Role::class` was dumped as a literal class string by Nelmio, so not used). `schema.d.ts`: `components["schemas"]["Role"]` = `"SOLO_PLAYER" | "GAME_MANAGER" | "OWNER"`, `roles: components["schemas"]["Role"][]`.
+  - R3 throttle key: Symfony's `DefaultLoginRateLimiter` lowercases but does not trim, so `" ada@example.com"` got a fresh allowance (RED: 200 instead of 429). `NormalizedLoginRateLimiter` decorates `security.login_throttling.main.limiter` and trims + lowercases the username like `Email`.
+  - R4 shared proxy IP: `framework.trusted_proxies: '%env(default::TRUSTED_PROXIES)%'`, `trusted_headers` X-Forwarded-For/Host/Proto/Port/Prefix; `TRUSTED_PROXIES=` (empty) in `backend/.env` with a comment. Production behind a proxy must set it (deployment requirement).
+  - RED: 4 unit errors (listener missing) + 1 integration failure (throttle bypass), then the dummy-hash integration test failing at priority 1 → GREEN. `make backend-qa`: PHPStan + PHPat no errors, CS-Fixer 0 files, Rector clean. `make backend-test`: PHPUnit `OK (85 tests, 2657 assertions)`, Behat 8 scenarios passed. `make api-check`: up to date.
 
 ## Next step
 T4 on `feat/identity-auth-3-spa` (cut from `feat/identity-auth-2-api`).

@@ -51,7 +51,7 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 | T1 | Domain: tokenizer/parser to an expression tree, evaluator, `Roll` with per-die breakdown, limits; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | `e2703be` |
 | T1b | Fix review follow-up: UTF-8-safe tokenizer error messages (oversized-literal message deferred) | inline (one-file fix + tests) | [x] | see evidence |
 | T2 | `RollDice` query + handler + view; `POST /api/rolls` (auth required) with 200/400/422; OpenAPI; `make api`; integration test | delegated writer (multi-file) | [x] | `159b6db` |
-| T3 | Play `DiceRoller` component (input, roll, total, per-die breakdown with dropped dice, error state), mounted on Play home; Vitest, Storybook story, e2e smoke | delegated writer (multi-file) | [ ] | |
+| T3 | Play `DiceRoller` component (input, roll, total, per-die breakdown with dropped dice, error state), mounted on Play home; Vitest, Storybook story, e2e smoke | delegated writer (multi-file) | [x] | see evidence |
 
 ## Acceptance criteria
 
@@ -71,7 +71,9 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 
 - **T2** (`159b6db`): delegated writer. RED 17 tests / 9 errors + 8 failures → GREEN `OK (17 tests, 60 assertions)`. `RollDice` query → `RollView`; `RollController` returns 200 / 400 (bad JSON, missing or non-string `expression`) / 415 (non-JSON body, like login) / 422 (`InvalidDiceExpression`) / 401 (access_control). Integration test swaps the RNG with `disableReboot()` + `getContainer()->set()`. Parent moved `ErrorResponse` from Identity to `Shared/Infrastructure/Http` so the Randomness kernel does not depend on Identity. `make backend-qa` exit 0; `make backend-test` exit 0 (198 tests); `make api-check` up to date. Spec lives at `frontend/src/shared/api/openapi.json`. Review assess: high (moved `ErrorResponse` import touches Identity Security handlers) → consent granted → **approved** (4 lenses; acknowledged, authority burned). Reviewed boundary: `159b6db`. All four lenses flagged the same non-blocking UTF-8 → 500 path (T1b).
 
-- **T1b**: inline. RED 3 failures (`2d6+é`, invalid byte `\xC3`, API `2d6+é` → 500) → GREEN `OK (59 tests, 173 assertions)`. `Tokenizer::characterAt()` reports the whole UTF-8 character, or `\xNN` for an invalid byte. `make backend-qa` exit 0; `make backend-test` exit 0.
+- **T1b**: inline. RED 3 failures (`2d6+é`, invalid byte `\xC3`, API `2d6+é` → 500) → GREEN `OK (59 tests, 173 assertions)`. `Tokenizer::characterAt()` reports the whole UTF-8 character, or `\xNN` for an invalid byte. `make backend-qa` exit 0; `make backend-test` exit 0. Committed `1cef8e2`; review assess: medium, `under_budget` (34 lines) → pending in the T3 slice.
+
+- **T3**: delegated writer. RED 7/7 failing → GREEN 7 passed. `useRollDice` (typed `RollError` with the server message on 400/422) + `DiceRoller` (props `initialExpression`, `presets`, `onRolled`; presets `d20`, `2d6`, `4d6kh3`, `d%`; `aria-live` result, dropped dice struck through + sr-only "(dropped)", `role="alert"` errors) mounted in a "Dice" section on Play home. Shared `src/test/fakeApi.ts` + `renderWithApi.tsx` for tests and stories. Story `DiceRoller.stories.tsx`; e2e `dice.spec.ts` rolls `2d6+1`. `make frontend-qa` exit 0; `make frontend-test` 57 passed (parent re-ran); `make storybook-build` exit 0; `make e2e` 7 passed.
 
 ## Follow-ups (non-blocking review findings)
 
@@ -86,4 +88,4 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 
 ## Next step
 
-T3 (delegated writer running), then full checks and the PR.
+Full `make qa` + `make test`, then the PR (user decides push/PR).

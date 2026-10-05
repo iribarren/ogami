@@ -85,6 +85,7 @@
         "behat/behat": "*",
         "dama/doctrine-test-bundle": "^8.6",
         "friendsofphp/php-cs-fixer": "*",
+        "opis/json-schema": "^2.6",
         "phpat/phpat": "*",
         "phpstan/extension-installer": "*",
         "phpstan/phpstan": "*",

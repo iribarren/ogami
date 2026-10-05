@@ -1,0 +1,7 @@
+{
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {
+    "tables": [],
+    "likelihood": [
+      {"key": "fate", "name": "Fate", "sides": 100, "levels": [{"key": "likely", "label": "Likely", "target": 65}], "chaos": {"min": 1, "max": 9, "neutral": 10, "shiftPerPoint": 5}}
+    ]
+  },
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

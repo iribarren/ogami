@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {
+    "tables": [
+      {"key": "weather", "name": "Weather", "dice": "1d6", "entries": [{"min": 1.5, "max": 4, "text": "Clear"}, {"min": 5, "max": 6, "text": "Storm"}]}
+    ],
+    "likelihood": []
+  },
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

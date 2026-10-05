@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {
+    "tables": [
+      {"key": "mood", "name": "Mood", "entries": []}
+    ],
+    "likelihood": []
+  },
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

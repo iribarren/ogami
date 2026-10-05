@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {
+    "key": "example-journal",
+    "name": "Example journal",
+    "description": "A minimal game system that shows every part of the contract."
+  },
+  "oracles": {
+    "tables": [
+      {
+        "key": "weather",
+        "name": "Weather",
+        "dice": "1d6",
+        "entries": [
+          {"min": 1, "max": 4, "text": "Clear"},
+          {"min": 5, "max": 6, "text": "Storm", "table": "storm-kind"}
+        ]
+      },
+      {
+        "key": "storm-kind",
+        "name": "Storm kind",
+        "entries": [
+          {"text": "Rain", "weight": 2},
+          {"text": "Hail"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "fate",
+        "name": "Fate question",
+        "sides": 100,
+        "levels": [
+          {"key": "unlikely", "label": "Unlikely", "target": 35},
+          {"key": "even", "label": "50/50", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 65}
+        ],
+        "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5},
+        "exceptionalPercent": 20
+      }
+    ]
+  },
+  "flow": {
+    "steps": [
+      {"key": "set-scene", "title": "Set the scene", "prompt": "Where are you and what do you want?"}
+    ]
+  },
+  "sheet": {},
+  "checks": []
+}

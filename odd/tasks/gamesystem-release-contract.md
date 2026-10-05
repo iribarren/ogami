@@ -84,7 +84,7 @@ Define the Published Language between Studio and Play: a versioned JSON contract
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | ADR 0013 (Studio is core) + README index; context map (Studio Core, open question resolved, Published Language section); glossary (`Preset` / release terms); contract doc `docs/contracts/gamesystem-release.md`; JSON Schema `backend/contracts/gamesystem-release/v1.schema.json` | delegated writer (multi-file) | [x] | see Progress |
-| T2 | Studio Domain: `ReleaseContent::fromArray` (all rules above, reusing Randomness validators), normalized array + hash, `GameSystemRelease` aggregate, repository port, errors; unit tests; dev dep `opis/json-schema` + test that valid/invalid fixtures agree with the schema file | delegated writer (multi-file) | [ ] | |
+| T2 | Studio Domain: `ReleaseContent::fromArray` (all rules above, reusing Randomness validators), normalized array + hash, `GameSystemRelease` aggregate, repository port, errors; unit tests; dev dep `opis/json-schema` + test that valid/invalid fixtures agree with the schema file | delegated writer (multi-file) | [x] | see Progress |
 | T3 | Studio Application + Infrastructure: `PublishGameSystemRelease` command/handler, `GetPublishedRelease` query + view, Doctrine XML mapping (JSONB) + repository + migration, `app:gamesystem:publish` console; integration tests; Behat `studio` suite (publish, version increment, unchanged, invalid) | delegated writer (multi-file) | [ ] | |
 | T4 | Play ACL: `GameSystemSnapshot` (Domain), port `PublishedGameSystemReleases` + Studio-backed adapter + translator; unit tests for translation and errors; integration test publish → snapshot | delegated writer (multi-file) | [ ] | |
 | T5 | Presets `free-journal.json`, `mythic-style.json`; `make presets`; tests: each preset conforms to the schema, publishes, and snapshots in Play with resolvable oracles | delegated writer (multi-file) | [ ] | |
@@ -106,10 +106,18 @@ Define the Published Language between Studio and Play: a versioned JSON contract
 
 - **Exploration:** read-only explorer. Studio/Play contexts empty; Doctrine mapping dirs and PHPat entries registered; Randomness exposes `OracleTableSet::fromArray` / `LikelihoodOracle::fromArray`; no JSON-schema library; next ADR 0013; only console example `Identity/Infrastructure/Console/CreateUserConsoleCommand.php`.
 - **T1**: delegated writer (multi-file trigger). ADR 0013, README index, context map (Studio Core, Published Language subsection, open question resolved), glossary (`Preset`, `Schema version`, `GameSystemSnapshot`), `docs/contracts/gamesystem-release.md`, `backend/contracts/gamesystem-release/v1.schema.json` (draft 2020-12). Parent aligned `docs/vision.md` success criterion with ADR 0013. Passive docs: no RED; checks: `json.tool` exit 0; writer validated both examples against the schema (python jsonschema, 0 errors) and links resolve. Accepted refinement: optional fields (`description`, `prompt`, Randomness optionals) may be omitted **or `null`** (Randomness reads `?? null`); T2 must match. Randomness errors name table/entry, not paths: T2 prefixes paths.
+- **T2**: delegated writer (multi-file trigger). `Studio/Domain/Release/`: `ReleaseContent::fromArray` (path-prefixed `InvalidReleaseContent`; strict unknown-property checks at every level incl. oracle internals since Randomness ignores extra keys; int-valued floats normalized to `int`; empty `oracles.tables` skips `OracleTableSet::fromArray`, which throws on `[]`), canonical `toArray()` (`sheet` → `stdClass`) + sha256 `hash()`; `ReleaseId`, `GameSystemRelease` (readonly, version ≥ 1), `GameSystemReleaseRepository` port; `InMemoryGameSystemReleaseRepository`. Dev dep `opis/json-schema` ^2.6. Fixtures: 4 valid (incl. contract-doc example, int-floats), 58 structural invalid, 20 semantic invalid; `ReleaseSchemaAgreementTest` runs each through schema + domain (resolves both T1 follow-ups; schema needed no change). RED 154 tests / 73 errors + 81 failures → GREEN `OK (161 tests, 265 assertions)` (parent re-ran). `make backend-qa` exit 0; `make backend-test` exit 0 (588 tests). ~1,200 PHP lines + fixtures vs ~650 forecast (one case per rule). Review START refused the first version (`lens_context_budget_exceeded`, ~9.5k lines, mostly full-example fixtures): fixtures rebased on the minimal release and limit-exceeding cases generated in the test (fixtures 824 lines, same 82 cases); commit amended (unpushed). Known limit: array-decoded JSON cannot tell `"sheet": []` from `{}`; only the schema can.
 - **Decisions (user):** Studio is **core**, both `SOLO_PLAYER` and `GAME_MANAGER` UX are first class; game flows must be flexible enough that specific systems may later need new code (analyzed when needed). Issue #16 created. Single PR.
+
+## Follow-ups (non-blocking review findings)
+
+- T1 `R3-integer-float-divergence` (WARNING): JSON Schema treats `1.0` as an integer, `json_decode` yields a float. **Resolution in T2:** the domain accepts integer-valued floats as integers (normalized to `int`) and a fixture proves schema and domain agree.
+- T1 `R3-schema-agreement-unproved` (SUGGESTION): no executable proof yet that the schema accepts the doc example and rejects structural invalids. **Resolution in T2:** contract-doc example as a valid fixture + one invalid fixture per structural rule, run through both the schema and the domain.
 
 ## Reviews
 
+- `28a9e80..35abc89` (doc + T1): medium, consent granted → **approved** (reliability lens; acknowledged, authority burned). Reviewed boundary: `35abc89`.
+
 ## Next step
 
-T2.
+T3.

@@ -49,9 +49,9 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | Domain: tokenizer/parser to an expression tree, evaluator, `Roll` with per-die breakdown, limits; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | `e2703be` |
-| T1b | Fix review follow-up: UTF-8-safe tokenizer error messages (oversized-literal message deferred) | inline (one-file fix + tests) | [x] | see evidence |
+| T1b | Fix review follow-up: UTF-8-safe tokenizer error messages (oversized-literal message deferred) | inline (one-file fix + tests) | [x] | `1cef8e2` |
 | T2 | `RollDice` query + handler + view; `POST /api/rolls` (auth required) with 200/400/422; OpenAPI; `make api`; integration test | delegated writer (multi-file) | [x] | `159b6db` |
-| T3 | Play `DiceRoller` component (input, roll, total, per-die breakdown with dropped dice, error state), mounted on Play home; Vitest, Storybook story, e2e smoke | delegated writer (multi-file) | [x] | see evidence |
+| T3 | Play `DiceRoller` component (input, roll, total, per-die breakdown with dropped dice, error state), mounted on Play home; Vitest, Storybook story, e2e smoke | delegated writer (multi-file) | [x] | `29302af` |
 
 ## Acceptance criteria
 
@@ -73,19 +73,24 @@ selector   := ("kh" | "kl" | "dh" | "dl" | "k") count     "k" = "kh"
 
 - **T1b**: inline. RED 3 failures (`2d6+é`, invalid byte `\xC3`, API `2d6+é` → 500) → GREEN `OK (59 tests, 173 assertions)`. `Tokenizer::characterAt()` reports the whole UTF-8 character, or `\xNN` for an invalid byte. `make backend-qa` exit 0; `make backend-test` exit 0. Committed `1cef8e2`; review assess: medium, `under_budget` (34 lines) → pending in the T3 slice.
 
-- **T3**: delegated writer. RED 7/7 failing → GREEN 7 passed. `useRollDice` (typed `RollError` with the server message on 400/422) + `DiceRoller` (props `initialExpression`, `presets`, `onRolled`; presets `d20`, `2d6`, `4d6kh3`, `d%`; `aria-live` result, dropped dice struck through + sr-only "(dropped)", `role="alert"` errors) mounted in a "Dice" section on Play home. Shared `src/test/fakeApi.ts` + `renderWithApi.tsx` for tests and stories. Story `DiceRoller.stories.tsx`; e2e `dice.spec.ts` rolls `2d6+1`. `make frontend-qa` exit 0; `make frontend-test` 57 passed (parent re-ran); `make storybook-build` exit 0; `make e2e` 7 passed.
+- **T3** (`29302af`): delegated writer. RED 7/7 failing → GREEN 7 passed. `useRollDice` (typed `RollError` with the server message on 400/422) + `DiceRoller` (props `initialExpression`, `presets`, `onRolled`; presets `d20`, `2d6`, `4d6kh3`, `d%`; `aria-live` result, dropped dice struck through + sr-only "(dropped)", `role="alert"` errors) mounted in a "Dice" section on Play home. Shared `src/test/fakeApi.ts` + `renderWithApi.tsx` for tests and stories. Story `DiceRoller.stories.tsx`; e2e `dice.spec.ts` rolls `2d6+1`. `make frontend-qa` exit 0; `make frontend-test` 57 passed (parent re-ran); `make storybook-build` exit 0; `make e2e` 7 passed. Review assess (`159b6db..29302af`, T1b + T3): medium, `slice_budget_reached` → consent granted → **approved** (reliability lens; acknowledged, authority burned). Reviewed boundary: `29302af`.
+- **Closure:** `make qa` exit 0; `make test` exit 0 (PHPUnit 201 tests, Behat, Vitest).
 
 ## Follow-ups (non-blocking review findings)
 
 - T1 `R3-utf8-error-byte` (WARNING), T2 `R1-roll-error-invalid-utf8-500` / `R2-unescaped-domain-message-pending-followup` / `R3-utf8-error-500` / `R4-invalid-utf8-error-500` (WARNING): same root cause; **fixed in T1b**.
 - T1 `R3-saturated-integer-message` (SUGGESTION): `Token.php:20-26` oversized literals report the saturated value (PHP_INT_MAX) instead of the text written. Deferred: still rejected with a correct limit message.
+- T3 `R3-characterat-whole-subject-utf8` (SUGGESTION): `Tokenizer::characterAt()` uses `/u` on the whole subject, so any invalid byte elsewhere falls back to `\xNN` for the reported character. Message stays valid UTF-8; deferred.
+- T3 `R3-roll-400-branch-untested` (SUGGESTION): `useRollDice` 400 branch has no frontend test. Deferred.
+- T3 `R3-whitespace-submit-silent` (SUGGESTION): submitting only whitespace does nothing, with no feedback. Deferred.
 - T2 `R2-task-table-status-drift` (SUGGESTION): task table lagged the evidence; fixed in this doc update.
 
 ## Reviews
 
 - `f2d9ae5..e2703be` (doc + T1): medium, approved.
 - `e2703be..159b6db` (T2): high, approved (4 lenses).
+- `159b6db..29302af` (T1b + T3): medium, approved.
 
 ## Next step
 
-Full `make qa` + `make test`, then the PR (user decides push/PR).
+All tasks done. Push `feat/randomness-dice` and open one PR (`Closes #12`, label `enhancement`, size exception) — user decision.

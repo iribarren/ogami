@@ -141,4 +141,4 @@ Define the Published Language between Studio and Play: a versioned JSON contract
 
 ## Next step
 
-All tasks done and reviewed. Next: user decides push + PR (`Closes #16`, `type:feature`, single PR, merge commit). Dev DB holds `example-journal` v1 (from the T3 manual run) and both presets v1.
+Delivered for review in PR #17 (`Closes #16`, `type:feature`). Next: CI green, user merges (merge commit). Dev DB holds `example-journal` v1 (from the T3 manual run) and both presets v1.

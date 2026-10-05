@@ -15,6 +15,7 @@ use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -179,6 +180,76 @@ final class GameSystemReleaseTranslatorTest extends TestCase
 
         $this->expectException(InvalidGameSystemRelease::class);
         $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 cannot be read by Play: flow.steps[0].key: must be a string.');
+
+        $this->translator->translate(ReleaseViews::of($content));
+    }
+
+    #[Test]
+    public function aMalformedOracleTableIsAPlayError(): void
+    {
+        $content = ReleaseViews::contractDocExampleContent();
+        $content['oracles'] = ['tables' => [[
+            'key' => 'weather',
+            'name' => 'Weather',
+            'dice' => '1d6',
+            'entries' => [['min' => 1, 'max' => 4, 'text' => 'Clear'], ['min' => 3, 'max' => 6, 'text' => 'Storm']],
+        ]], 'likelihood' => []];
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 cannot be read by Play: oracles.tables: ');
+
+        $this->translator->translate(ReleaseViews::of($content));
+    }
+
+    /**
+     * @param array<string, mixed> $content
+     */
+    #[Test]
+    #[DataProvider('wronglyTypedContainers')]
+    public function aWronglyTypedContainerIsAPlayError(array $content, string $expectedMessage): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 cannot be read by Play: '.$expectedMessage);
+
+        $this->translator->translate(ReleaseViews::of($content));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function wronglyTypedContainers(): iterable
+    {
+        $content = ReleaseViews::contractDocExampleContent();
+
+        yield 'tables as an object' => [['oracles' => ['tables' => ['weather' => []], 'likelihood' => []]] + $content, 'oracles.tables: must be a list.'];
+        yield 'tables as a \stdClass' => [['oracles' => ['tables' => new \stdClass(), 'likelihood' => []]] + $content, 'oracles.tables: must be a list.'];
+        yield 'likelihood as a scalar' => [['oracles' => ['tables' => [], 'likelihood' => 'fate']] + $content, 'oracles.likelihood: must be a list.'];
+        yield 'steps as an object' => [['flow' => ['steps' => ['set-scene' => ['key' => 'set-scene', 'title' => 'Set the scene']]]] + $content, 'flow.steps: must be a list.'];
+        yield 'a step as a scalar' => [['flow' => ['steps' => ['set-scene']]] + $content, 'flow.steps[0]: must be an object.'];
+        yield 'a step as a list' => [['flow' => ['steps' => [['set-scene', 'Set the scene']]]] + $content, 'flow.steps[0]: must be an object.'];
+    }
+
+    #[Test]
+    public function aDuplicateLikelihoodOracleKeyIsAPlayError(): void
+    {
+        $oracle = ['key' => 'coin', 'name' => 'Coin flip', 'sides' => 6, 'levels' => [['key' => 'even', 'label' => 'Even', 'target' => 3]]];
+        $content = ReleaseViews::contractDocExampleContent();
+        $content['oracles'] = ['tables' => [], 'likelihood' => [$oracle, ['name' => 'Coin flip again'] + $oracle]];
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 cannot be read by Play: oracles.likelihood[1].key: duplicate key "coin".');
+
+        $this->translator->translate(ReleaseViews::of($content));
+    }
+
+    #[Test]
+    public function aDuplicateFlowStepKeyIsAPlayError(): void
+    {
+        $content = ReleaseViews::contractDocExampleContent();
+        $content['flow'] = ['steps' => [['key' => 'act', 'title' => 'Act'], ['key' => 'set-scene', 'title' => 'Set the scene'], ['key' => 'act', 'title' => 'Act again']]];
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 cannot be read by Play: flow.steps[2].key: duplicate key "act".');
 
         $this->translator->translate(ReleaseViews::of($content));
     }

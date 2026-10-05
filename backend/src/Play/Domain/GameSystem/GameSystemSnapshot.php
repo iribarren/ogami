@@ -20,7 +20,9 @@ final readonly class GameSystemSnapshot
     /**
      * @param ?OracleTableSet                $oracleTables      null when the release has no oracle tables
      * @param list<SnapshotLikelihoodOracle> $likelihoodOracles in definition order, unique keys
-     * @param list<FlowStep>                 $flowSteps         in flow order
+     * @param list<FlowStep>                 $flowSteps         in flow order, unique keys
+     *
+     * @throws InvalidGameSystemRelease when two likelihood oracles or two flow steps share a key
      */
     public function __construct(
         private string $gameSystemKey,
@@ -31,8 +33,15 @@ final readonly class GameSystemSnapshot
         private array $flowSteps,
     ) {
         $byKey = [];
-        foreach ($likelihoodOracles as $oracle) {
+        foreach ($likelihoodOracles as $index => $oracle) {
+            $this->assertUnique($oracle->key(), $byKey, \sprintf('oracles.likelihood[%d].key', $index));
             $byKey[$oracle->key()] = $oracle;
+        }
+
+        $stepKeys = [];
+        foreach ($flowSteps as $index => $step) {
+            $this->assertUnique($step->key(), $stepKeys, \sprintf('flow.steps[%d].key', $index));
+            $stepKeys[$step->key()] = true;
         }
 
         $this->likelihoodOracles = $byKey;
@@ -108,5 +117,15 @@ final readonly class GameSystemSnapshot
     public function flowSteps(): array
     {
         return $this->flowSteps;
+    }
+
+    /**
+     * @param array<string, mixed> $seen keys met so far
+     */
+    private function assertUnique(string $key, array $seen, string $path): void
+    {
+        if (\array_key_exists($key, $seen)) {
+            throw InvalidGameSystemRelease::of($this->gameSystemKey, $this->releaseVersion, $path, \sprintf('duplicate key "%s".', $key));
+        }
     }
 }

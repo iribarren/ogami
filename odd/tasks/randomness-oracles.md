@@ -115,4 +115,4 @@ Ask oracles: the Randomness shared kernel resolves oracle tables (ranged or weig
 
 ## Next step
 
-All tasks done and committed; not pushed. Delivery (push, PR with `Closes #14` and `type:feature`, merge commit) is the user's decision.
+Delivered for review in PR #15 (`Closes #14`, `type:feature`). Next: CI green, user merges (merge commit).

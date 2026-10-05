@@ -1,0 +1,116 @@
+# Ogami development environment (ADR 0008).
+# Every variable has a safe default; override any of them in a git-ignored
+# root .env file:
+#   UID, GID            host user mapping (the Makefile sets them from `id -u`/`id -g`;
+#                       when calling `docker compose` directly, export them first or
+#                       images get built for UID 1000)
+#   HTTP_PORT           API/app port on the host (default 8080)
+#   POSTGRES_PORT       database port on the host (default 5433, compose.override.yaml)
+#   MAILPIT_PORT        Mailpit web UI on the host (default 8026, compose.override.yaml)
+#   STORYBOOK_PORT      Storybook on the host (default 6006, compose.override.yaml; `make storybook`)
+#   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD   dev credentials (default ogami)
+#   XDEBUG_MODE         off (default) | debug | coverage | develop
+name: ogami
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    environment:
+      SERVER_NAME: ":80"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ogami}:${POSTGRES_PASSWORD:-ogami}@database:5432/${POSTGRES_DB:-ogami}?serverVersion=18&charset=utf8
+      MAILER_DSN: smtp://mailpit:1025
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
+    volumes:
+      - ./backend:/app
+      - ./docker/php/frontend.d:/etc/frankenphp/frontend.d:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      # Caddy's admin endpoint answers as soon as the server is up.
+      test: ["CMD", "curl", "-fsS", "http://localhost:2019/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  database:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ogami}
+      POSTGRES_USER: ${POSTGRES_USER:-ogami}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ogami}
+    volumes:
+      # PostgreSQL 18+ images keep data under /var/lib/postgresql/<major>/.
+      - database_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  node:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    # Vite dev server for the SPA. Caddy (php) proxies every non-API request to it
+    # (docker/php/frontend.d/), so the app is served at http://localhost:${HTTP_PORT}.
+    # `pnpm install` first makes a fresh clone start without a manual install step;
+    # with an up-to-date node_modules it is a no-op.
+    command: ["sh", "-c", "pnpm install --frozen-lockfile && exec pnpm dev"]
+    init: true
+    volumes:
+      - ./frontend:/app
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  # End-to-end tests (`make e2e`), only started with the `e2e` profile. The image
+  # tag must match the @playwright/test version in frontend/package.json.
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    profiles: [e2e]
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /app
+    environment:
+      HOME: /tmp
+      CI: ${CI:-}
+      E2E_BASE_URL: http://php
+    volumes:
+      - ./frontend:/app
+    # Chromium needs more shared memory than Docker's default.
+    ipc: host
+    init: true
+    command: ["node_modules/.bin/playwright", "test"]
+    depends_on:
+      php:
+        condition: service_healthy
+      node:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.31
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  database_data:
+  caddy_data:
+  caddy_config:

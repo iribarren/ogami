@@ -1,0 +1,9 @@
+# Generated or installed files
+pnpm-lock.yaml
+src/routeTree.gen.ts
+dist
+storybook-static
+playwright-report
+test-results
+src/shared/api/openapi.json
+src/shared/api/schema.d.ts

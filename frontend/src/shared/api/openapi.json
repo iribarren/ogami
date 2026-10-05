@@ -1,0 +1,64 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Ogami API",
+        "description": "JSON API of the Ogami solo tabletop RPG companion.",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/api/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Report whether the API and its database are up",
+                "operationId": "getHealth",
+                "responses": {
+                    "200": {
+                        "description": "The API is up; the database status is reported separately.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "HealthResponse": {
+                "required": [
+                    "status",
+                    "database"
+                ],
+                "properties": {
+                    "status": {
+                        "description": "The application answered the request.",
+                        "type": "string",
+                        "enum": [
+                            "ok"
+                        ]
+                    },
+                    "database": {
+                        "description": "Whether the database answers right now.",
+                        "type": "string",
+                        "enum": [
+                            "ok",
+                            "down"
+                        ]
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Health"
+        }
+    ]
+}

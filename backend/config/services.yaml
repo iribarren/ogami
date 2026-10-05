@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# Service wiring for every bounded context (ADR 0002).
+# Domain and Application code stays framework-free: handlers are registered on
+# their bus through the marker interfaces below, not through Symfony attributes.
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    _instanceof:
+        App\Shared\Application\Bus\CommandHandler:
+            tags: [{ name: messenger.message_handler, bus: command.bus }]
+        App\Shared\Application\Bus\QueryHandler:
+            tags: [{ name: messenger.message_handler, bus: query.bus }]
+        App\Shared\Application\Bus\EventHandler:
+            tags: [{ name: messenger.message_handler, bus: event.bus }]
+
+    # One service per class in src/. Unused definitions (value objects, entities)
+    # are removed at compile time. Controllers in <Context>/Infrastructure/Http
+    # are picked up here and their #[Route] attributes are imported (routes.yaml).
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'

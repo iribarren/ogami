@@ -1,0 +1,13 @@
+# OpenAPI spec of the JSON API (ADR 0005), built from controller attributes.
+# The SPA's typed client is generated from it: `make api-spec api-client`.
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Ogami API
+            description: JSON API of the Ogami solo tabletop RPG companion.
+            version: 0.1.0
+    areas:
+        default:
+            # Every /api route except the spec itself.
+            path_patterns:
+                - ^/api(?!/doc\.json$)

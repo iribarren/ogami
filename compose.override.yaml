@@ -1,0 +1,20 @@
+# Local development conveniences, applied automatically by `docker compose`.
+# CI can skip this file with `docker compose -f compose.yaml ...`.
+services:
+  php:
+    extra_hosts:
+      # Lets Xdebug reach the IDE on the host (Linux needs this mapping).
+      - host.docker.internal:host-gateway
+
+  database:
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+
+  node:
+    ports:
+      # Storybook (`make storybook`); Vite itself is reached through Caddy.
+      - "${STORYBOOK_PORT:-6006}:6006"
+
+  mailpit:
+    ports:
+      - "${MAILPIT_PORT:-8026}:8025"

@@ -1,0 +1,5 @@
+# Development: every non-API request goes to the Vite dev server (node service).
+# Caddy proxies WebSockets transparently, so Vite HMR works through this origin.
+handle {
+	reverse_proxy node:5173
+}

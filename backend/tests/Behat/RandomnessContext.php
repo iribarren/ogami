@@ -7,7 +7,10 @@ namespace App\Tests\Behat;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\DiceGroup;
 use App\Randomness\Domain\InvalidDiceExpression;
+use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\InvalidOracleTable;
+use App\Randomness\Domain\Oracle\LikelihoodAnswer;
+use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableSet;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -33,6 +36,11 @@ final class RandomnessContext implements Context
     private array $oracleTables = [];
     private ?OracleTableResult $oracleTableResult = null;
     private ?InvalidOracleTable $oracleTableRejection = null;
+
+    /** @var array<string, mixed> */
+    private array $likelihoodOracle = [];
+    private ?LikelihoodAnswer $likelihoodAnswer = null;
+    private ?InvalidLikelihoodOracle $likelihoodRejection = null;
 
     public function __construct()
     {
@@ -139,6 +147,55 @@ final class RandomnessContext implements Context
         Assert::assertNull($this->oracleTableResult, 'Expected the oracle table to be rejected, but it was consulted.');
         Assert::assertInstanceOf(InvalidOracleTable::class, $this->oracleTableRejection);
         Assert::assertStringContainsString($reason, $this->oracleTableRejection->getMessage());
+    }
+
+    #[Given('/^a likelihood oracle rolls 1d(?P<sides>\d+) with (?P<percent>\d+)% exceptional results and the levels:$/')]
+    public function aLikelihoodOracleRolls(int $sides, int $percent, TableNode $levels): void
+    {
+        $this->likelihoodOracle = [
+            'sides' => $sides,
+            'exceptionalPercent' => $percent,
+            'levels' => array_map(
+                static fn (array $row): array => ['key' => $row['key'], 'label' => $row['label'], 'target' => (int) $row['target']],
+                $levels->getColumnsHash(),
+            ),
+        ];
+    }
+
+    #[Given('/^its chaos factor goes from (?P<min>\d+) to (?P<max>\d+), neutral at (?P<neutral>\d+), shifting the target (?P<shift>\d+) per point$/')]
+    public function itsChaosFactorGoesFrom(int $min, int $max, int $neutral, int $shift): void
+    {
+        $this->likelihoodOracle['chaos'] = ['min' => $min, 'max' => $max, 'neutral' => $neutral, 'shiftPerPoint' => $shift];
+    }
+
+    #[When('/^I ask the likelihood oracle with the level "(?P<level>[^"]+)"(?: and the chaos factor (?P<chaosFactor>-?\d+))?$/')]
+    public function iAskTheLikelihoodOracle(string $level, ?string $chaosFactor = null): void
+    {
+        try {
+            $this->likelihoodAnswer = LikelihoodOracle::fromArray($this->likelihoodOracle)
+                ->ask($level, null === $chaosFactor || '' === $chaosFactor ? null : (int) $chaosFactor, $this->random);
+        } catch (InvalidLikelihoodOracle $rejection) {
+            $this->likelihoodRejection = $rejection;
+        }
+    }
+
+    #[Then('/^the likelihood oracle answers "(?P<answer>[a-z_]+)" with a roll of (?P<roll>\d+) against a target of (?P<target>\d+)$/')]
+    public function theLikelihoodOracleAnswers(string $answer, int $roll, int $target): void
+    {
+        Assert::assertNull($this->likelihoodRejection, $this->likelihoodRejection?->getMessage() ?? '');
+        Assert::assertNotNull($this->likelihoodAnswer, 'No likelihood oracle was asked.');
+        Assert::assertSame(
+            [$answer, $roll, $target],
+            [$this->likelihoodAnswer->answer()->value, $this->likelihoodAnswer->roll(), $this->likelihoodAnswer->effectiveTarget()],
+        );
+    }
+
+    #[Then('/^the likelihood oracle is rejected because "(?P<reason>.+)"$/')]
+    public function theLikelihoodOracleIsRejectedBecause(string $reason): void
+    {
+        Assert::assertNull($this->likelihoodAnswer, 'Expected the likelihood oracle to be rejected, but it answered.');
+        Assert::assertInstanceOf(InvalidLikelihoodOracle::class, $this->likelihoodRejection);
+        Assert::assertStringContainsString($reason, $this->likelihoodRejection->getMessage());
     }
 
     private function oracleTableResult(): OracleTableResult

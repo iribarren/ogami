@@ -86,9 +86,17 @@ final readonly class OracleTable
      */
     public static function assertKey(string $key): void
     {
-        if (1 !== preg_match('/^[a-z0-9-]{1,'.self::MAX_KEY_LENGTH.'}$/D', $key)) {
+        if (!self::isValidKey($key)) {
             throw InvalidOracleTable::invalidKey($key, self::MAX_KEY_LENGTH);
         }
+    }
+
+    /**
+     * Whether the key has 1 to 64 characters among a-z, 0-9 and "-": the rule for every oracle key.
+     */
+    public static function isValidKey(string $key): bool
+    {
+        return 1 === preg_match('/^[a-z0-9-]{1,'.self::MAX_KEY_LENGTH.'}$/D', $key);
     }
 
     public function key(): string

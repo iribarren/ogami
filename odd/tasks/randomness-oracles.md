@@ -57,7 +57,8 @@ Ask oracles: the Randomness shared kernel resolves oracle tables (ranged or weig
 - Effective target `T = clamp(target + (chaosFactor − neutral) × shiftPerPoint, 0, sides)`.
 - Roll `1d<sides>` = R. **Yes** when `R ≤ T`, else **No**.
 - **Exceptional yes** when `R ≤ floor(T × p / 100)`; **exceptional no** when `R > sides − floor((sides − T) × p / 100)` (p = `exceptionalPercent`).
-- Answer: `exceptional_yes | yes | no | exceptional_no`, with roll, effective target, level and chaos factor used.
+- Answer: `exceptional_yes | yes | no | exceptional_no`, with roll, sides, effective target, level and chaos factor used (neutral when omitted, null without chaos).
+- Labels trimmed, 1–500 chars; `null` fields count as absent; chaos `min`/`max` within ±1000 and `0 ≤ shiftPerPoint ≤ sides`; an unknown level is reported before a bad chaos factor, and both before any roll.
 
 ## Forecast
 
@@ -67,8 +68,8 @@ Ask oracles: the Randomness shared kernel resolves oracle tables (ranged or weig
 
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
-| T1 | Domain: `OracleTable`, entries, table set (validation, nesting, cycles), resolution with steps; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | see evidence |
-| T2 | Domain: `LikelihoodOracle` (levels, chaos shift, exceptional bands) and answer; unit tests + Behat scenarios | delegated writer (multi-file) | [ ] | |
+| T1 | Domain: `OracleTable`, entries, table set (validation, nesting, cycles), resolution with steps; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | `0472c3f` |
+| T2 | Domain: `LikelihoodOracle` (levels, chaos shift, exceptional bands) and answer; unit tests + Behat scenarios | delegated writer (multi-file) | [x] | see evidence |
 | T3 | Queries + handlers + views; `POST /api/oracle-table-results`, `POST /api/likelihood-answers` (auth) with 200/400/422; OpenAPI; `make api`; integration tests | delegated writer (multi-file) | [ ] | |
 | T4 | Play `OraclePanel` (likelihood: level, chaos factor, ask, answer; tables: roll a table, show steps; error states) with sample definitions on Play home; Vitest, story, e2e smoke | delegated writer (multi-file) | [ ] | |
 
@@ -86,8 +87,18 @@ Ask oracles: the Randomness shared kernel resolves oracle tables (ranged or weig
 
 ## Progress / Evidence
 
-- **T1**: delegated writer (multi-file trigger). Classes in `Randomness/Domain/Oracle/`: `OracleTableSet::fromArray()` / `resolve(key, rng): OracleTableResult` → `steps()` of `OracleTableStep` (tableKey, tableName, dice, total, text, nestedTableKey); all failures `InvalidOracleTable` (DomainException → 422). RED 86 tests / 35 errors + 51 failures → GREEN `OK (86 tests, 200 assertions)` (parent re-ran). Behat +7 scenarios. `make backend-qa` exit 0; `make backend-test` exit 0 (287 tests; Behat 19 scenarios). ~1,500 lines vs ~450 forecast, mostly exhaustive validation tests.
+- **T1**: delegated writer (multi-file trigger). Classes in `Randomness/Domain/Oracle/`: `OracleTableSet::fromArray()` / `resolve(key, rng): OracleTableResult` → `steps()` of `OracleTableStep` (tableKey, tableName, dice, total, text, nestedTableKey); all failures `InvalidOracleTable` (DomainException → 422). RED 86 tests / 35 errors + 51 failures → GREEN `OK (86 tests, 200 assertions)` (parent re-ran). Behat +7 scenarios. `make backend-qa` exit 0; `make backend-test` exit 0 (287 tests; Behat 19 scenarios). ~1,500 lines vs ~450 forecast, mostly exhaustive validation tests. Commit `0472c3f`. Review assess: medium, `slice_budget_reached` → consent granted → **approved** (reliability lens; acknowledged, authority burned). Reviewed boundary: `0472c3f`.
+
+- **T2**: delegated writer (multi-file trigger). `LikelihoodOracle::fromArray()` / `ask(levelKey, ?chaosFactor, rng): LikelihoodAnswer` (answer `YesNoAnswer` enum, roll, sides, effectiveTarget, levelKey, levelLabel, chaosFactor); failures `InvalidLikelihoodOracle` (DomainException → 422); key rule shared via `OracleTable::isValidKey()`. RED 159 tests / 39 errors + 37 failures (T1's 86 green) → GREEN `OK (178 tests, 389 assertions)` (parent re-ran). Behat +10 scenarios (written after the domain, no RED). `make backend-qa` exit 0; `make backend-test` exit 0 (379 tests; Behat 29 scenarios). ~1,140 lines.
+
+## Follow-ups (non-blocking review findings)
+
+- T1 `R3-uncovered-ranges-fail-only-at-roll-time` (SUGGESTION): ranged tables with gaps or ranges outside the dice's reachable totals are accepted and fail only on some rolls. Matches the spec (uncovered roll fails at resolution); coverage validation needs dice min/max. Deferred.
+
+## Reviews
+
+- `f9c4dba..0472c3f` (doc + T1): medium, approved.
 
 ## Next step
 
-Commit T1, review assess, then T2 (delegated writer).
+Commit T2, review assess, then T3 (delegated writer).

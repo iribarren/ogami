@@ -52,6 +52,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {currentUser && (
             <div className="flex items-center gap-3 text-sm">
               <span className="text-muted-foreground">{currentUser.email}</span>
+              {logout.error && (
+                <span role="alert" className="text-destructive">
+                  {logout.error.message}
+                </span>
+              )}
               <Button variant="outline" size="sm" onClick={signOut} disabled={logout.isPending}>
                 Sign out
               </Button>

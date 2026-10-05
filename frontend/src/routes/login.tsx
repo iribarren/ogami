@@ -17,7 +17,8 @@ export const Route = createFileRoute('/login')({
     redirect: safeRedirect(search.redirect),
   }),
   beforeLoad: async ({ context, search }) => {
-    const currentUser = await loadCurrentUser(context.queryClient, context.api)
+    // If the API cannot say who is signed in, still offer the form: treat as anonymous.
+    const currentUser = await loadCurrentUser(context.queryClient, context.api).catch(() => null)
     if (currentUser !== null) {
       // eslint-disable-next-line @typescript-eslint/only-throw-error -- TanStack Router redirects are thrown
       throw redirect({ href: search.redirect ?? homePathFor(currentUser), replace: true })

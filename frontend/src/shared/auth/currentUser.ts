@@ -20,6 +20,8 @@ const currentUserQueryKey = ['auth', 'currentUser'] as const
 export function currentUserQueryOptions(api: ApiClient) {
   return queryOptions({
     queryKey: currentUserQueryKey,
+    // Guards wait on this query; fail fast instead of retrying a broken API.
+    retry: false,
     queryFn: async ({ signal }): Promise<CurrentUser | null> => {
       const { data, response } = await api.GET('/api/auth/me', { signal })
       if (response.status === 401) {
@@ -70,7 +72,11 @@ export function useLogin() {
   })
 }
 
-/** `POST /api/auth/logout`; forgets the user and every query cached on their behalf. */
+/**
+ * `POST /api/auth/logout`; on success forgets every cached query (all API data
+ * is user-scoped) and caches the visitor as anonymous. A `401` means the session
+ * is already gone, which counts as signed out.
+ */
 export function useLogout() {
   const api = useApiClient()
   const queryClient = useQueryClient()
@@ -78,14 +84,12 @@ export function useLogout() {
   return useMutation({
     mutationFn: async () => {
       const { response } = await api.POST('/api/auth/logout')
-      if (!response.ok) {
+      if (!response.ok && response.status !== 401) {
         throw new Error(`Sign-out failed with HTTP ${String(response.status)}`)
       }
     },
     onSuccess: () => {
-      queryClient.removeQueries({
-        predicate: (query) => query.queryKey[0] !== currentUserQueryKey[0],
-      })
+      queryClient.clear()
       queryClient.setQueryData(currentUserQueryKey, null)
     },
   })

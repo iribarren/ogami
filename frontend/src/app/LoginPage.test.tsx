@@ -93,4 +93,13 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Play' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/play')
   })
+
+  it('still renders when the current user cannot be loaded', async () => {
+    renderAppAt('/login', {
+      'GET /api/auth/me': () => new Response(null, { status: 500 }),
+    })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+  })
 })

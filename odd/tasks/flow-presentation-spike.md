@@ -35,8 +35,8 @@ One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-pre
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | Mock session data + pure step-through logic (`advance`, branch on scripted result) shared by both prototypes; Vitest | delegated writer (multi-file, T1–T3 together) | [x] | `a948f36` |
-| T2 | Wizard prototype: one step per screen, step progress, previous results summary, next step visible; Storybook story playing the mock session | delegated writer | [x] | this commit |
-| T3 | Journal-with-inline-prompts prototype: journal stream with the current step as an inline prompt card at the end, results recorded as entries; Storybook story | delegated writer | [ ] | |
+| T2 | Wizard prototype: one step per screen, step progress, previous results summary, next step visible; Storybook story playing the mock session | delegated writer | [x] | `4243a19` |
+| T3 | Journal-with-inline-prompts prototype: journal stream with the current step as an inline prompt card at the end, results recorded as entries; Storybook story | delegated writer | [x] | this commit |
 | T4 | Play the mock session in both (Storybook in the browser), record findings; user picks; ADR 0016, vision open question resolved, roadmap feature 7 links the ADR | inline (docs) | [ ] | |
 
 ## Acceptance criteria
@@ -55,3 +55,4 @@ One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-pre
 - Exploration done: vision open question, roadmap feature 6/7 prompts, glossary, Storybook setup, journal fixtures.
 - T1: `frontend/src/play/flow-prototypes/` mock session `sunkenGateSession` (every step type, oracle and choice branches) + pure `flowRun` (`startRun`, `advance`, `addNote`, `upcomingSteps`, `progress`, `replay`); Vitest RED 13 failed → GREEN 13 passed; `make frontend-qa` green.
 - T2: `Wizard` prototype + shared `StepForm`/`UpcomingSteps`; stories `Play/Flow prototypes/Wizard` (FullSession, FullSessionGuarded, MidSession, Finished); smoke Vitest plays the scene to the end (15 passed); `make frontend-qa` green.
+- T3: `JournalWithPrompts` prototype (journal stream via `JournalEntryView`, inline prompt card with next step, free notes between steps); stories `Play/Flow prototypes/Journal with prompts` (same four); smoke Vitest plays the guarded branch with a free note; `make frontend-qa` green, `make frontend-test` 116 passed, `make storybook-build` succeeded.

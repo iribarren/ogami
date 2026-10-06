@@ -2031,15 +2031,13 @@
                         "description": "Within the oracle's chaos range; omitted or null for its neutral factor. Must be omitted or null when the oracle has no chaos.",
                         "type": "integer",
                         "example": 5,
-                        "nullable": true,
-                        "default": null
+                        "nullable": true
                     },
                     "question": {
                         "description": "Trimmed; omitted, null or blank for no question.",
                         "type": "string",
                         "example": "Is the door locked?",
                         "nullable": true,
-                        "default": null,
                         "maxLength": 500
                     }
                 },

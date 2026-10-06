@@ -14,6 +14,8 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlayRouteImport } from './routes/play'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as PlayIndexRouteImport } from './routes/play.index'
+import { Route as PlayCampaignsCampaignIdRouteImport } from './routes/play.campaigns.$campaignId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,42 +42,78 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayIndexRoute = PlayIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PlayRoute,
+} as any)
+const PlayCampaignsCampaignIdRoute = PlayCampaignsCampaignIdRouteImport.update({
+  id: '/campaigns/$campaignId',
+  path: '/campaigns/$campaignId',
+  getParentRoute: () => PlayRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
-  '/play': typeof PlayRoute
+  '/play': typeof PlayRouteWithChildren
   '/studio': typeof StudioRoute
+  '/play/': typeof PlayIndexRoute
+  '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
-  '/play': typeof PlayRoute
   '/studio': typeof StudioRoute
+  '/play': typeof PlayIndexRoute
+  '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
-  '/play': typeof PlayRoute
+  '/play': typeof PlayRouteWithChildren
   '/studio': typeof StudioRoute
+  '/play/': typeof PlayIndexRoute
+  '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/play' | '/studio'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/play'
+    | '/studio'
+    | '/play/'
+    | '/play/campaigns/$campaignId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/play' | '/studio'
-  id: '__root__' | '/' | '/admin' | '/login' | '/play' | '/studio'
+  to:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/studio'
+    | '/play'
+    | '/play/campaigns/$campaignId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/play'
+    | '/studio'
+    | '/play/'
+    | '/play/campaigns/$campaignId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
-  PlayRoute: typeof PlayRoute
+  PlayRoute: typeof PlayRouteWithChildren
   StudioRoute: typeof StudioRoute
 }
 
@@ -116,14 +154,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/play/': {
+      id: '/play/'
+      path: '/'
+      fullPath: '/play/'
+      preLoaderRoute: typeof PlayIndexRouteImport
+      parentRoute: typeof PlayRoute
+    }
+    '/play/campaigns/$campaignId': {
+      id: '/play/campaigns/$campaignId'
+      path: '/campaigns/$campaignId'
+      fullPath: '/play/campaigns/$campaignId'
+      preLoaderRoute: typeof PlayCampaignsCampaignIdRouteImport
+      parentRoute: typeof PlayRoute
+    }
   }
 }
+
+interface PlayRouteChildren {
+  PlayIndexRoute: typeof PlayIndexRoute
+  PlayCampaignsCampaignIdRoute: typeof PlayCampaignsCampaignIdRoute
+}
+
+const PlayRouteChildren: PlayRouteChildren = {
+  PlayIndexRoute: PlayIndexRoute,
+  PlayCampaignsCampaignIdRoute: PlayCampaignsCampaignIdRoute,
+}
+
+const PlayRouteWithChildren = PlayRoute._addFileChildren(PlayRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
-  PlayRoute: PlayRoute,
+  PlayRoute: PlayRouteWithChildren,
   StudioRoute: StudioRoute,
 }
 export const routeTree = rootRouteImport

@@ -144,6 +144,8 @@ describe('DiceRoller', () => {
   it('is on the Play home page', async () => {
     renderAppAt('/play', {
       'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+      'GET /api/campaigns': () => Response.json([]),
+      'GET /api/play/game-systems': () => Response.json([]),
       'POST /api/rolls': rollsWith(fourD6KeepThree),
     })
 

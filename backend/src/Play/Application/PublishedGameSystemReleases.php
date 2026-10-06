@@ -23,4 +23,11 @@ interface PublishedGameSystemReleases
      * @throws InvalidGameSystemRelease        when a supported release still cannot be read
      */
     public function get(string $gameSystemKey, ?int $version = null): GameSystemSnapshot;
+
+    /**
+     * The latest release of every GameSystem, ordered by name then key: the release catalog.
+     *
+     * @return list<GameSystemSummary>
+     */
+    public function latest(): array;
 }

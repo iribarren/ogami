@@ -70,6 +70,19 @@ final readonly class GameSystemSnapshot
         return $this->oracleTables?->keys() ?? [];
     }
 
+    /**
+     * @return array<string, string> table name by key, in definition order
+     */
+    public function oracleTableNames(): array
+    {
+        $names = [];
+        foreach ($this->oracleTableKeys() as $key) {
+            $names[$key] = $this->oracleTables?->table($key)->name() ?? $key;
+        }
+
+        return $names;
+    }
+
     public function hasOracleTable(string $key): bool
     {
         return \in_array($key, $this->oracleTableKeys(), true);

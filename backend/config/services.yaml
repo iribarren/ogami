@@ -26,3 +26,6 @@ services:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
+            # Not on the buses until Play has a Doctrine CampaignRepository
+            # (play-campaign-journal T6); they are unit- and Behat-tested on in-memory fakes.
+            - '../src/Play/Application/{CreateCampaign,StartSession,StartScene,ListMyCampaigns,GetCampaign}Handler.php'

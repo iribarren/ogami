@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tests\Behat\IdentityContext;
+use App\Tests\Behat\PlayContext;
 use App\Tests\Behat\RandomnessContext;
 use App\Tests\Behat\StudioContext;
 use Behat\Config\Config;
@@ -21,4 +22,7 @@ return new Config()
             ->withContexts(IdentityContext::class))
         ->withSuite(new Suite('studio')
             ->withPaths('%paths.base%/features/studio')
-            ->withContexts(StudioContext::class)));
+            ->withContexts(StudioContext::class))
+        ->withSuite(new Suite('play')
+            ->withPaths('%paths.base%/features/play')
+            ->withContexts(PlayContext::class)));

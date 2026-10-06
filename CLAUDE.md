@@ -70,7 +70,7 @@ odd/tasks/                   ODD feature docs
 | Issues and PRs | One GitHub issue per feature. One PR per slice, base `main`, title `type(scope): <feature> <n>/<total> <topic>`, one type label; `Part of #N`, the last slice `Closes #N`. **At most one open PR per feature** |
 | Shippable slices | Each slice is safe on `main` alone: backend unused until its UI lands, unfinished UI on an unlinked route |
 | Review sequencing | Per slice: writer finishes and commits → native review (assess, consent, capture, acknowledge) → PR → user merges → next slice. No writer runs during a review; answer the review stop hook only with a clean tree and no writer running |
-| Feature doc | The writer updates progress and evidence inside its work-unit commit; review outcomes and PR links go in the next slice's first commit. No doc-only progress commits, no uncommitted doc edits at the end of a turn |
+| Feature doc | The writer updates progress and evidence inside its work-unit commit; review outcomes and PR links go in the next slice's first commit; the last slice records them in one doc-only commit on its own branch after its review and PR. No other doc-only progress commits, no uncommitted doc edits at the end of a turn |
 | Merging | Merge commit only (no squash, no rebase), so the commit hashes in feature docs stay valid |
 | Commits | One work-unit commit per task, Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`…) |
 | Delivery | Never push, open a PR or merge without the user |

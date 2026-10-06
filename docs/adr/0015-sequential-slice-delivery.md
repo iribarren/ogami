@@ -21,7 +21,7 @@ Feature 5 `play-campaign-journal` (~14k changed lines) was delivered as a featur
 | Pull requests | One PR per slice, base `main`, title `type(scope): <feature> <n>/<total> <topic>`. **At most one open PR per feature.** The last slice's PR says `Closes #N`; earlier ones say `Part of #N` |
 | Shippable slices | Every slice must be safe on `main` alone: backend slices are unused until their UI lands; unfinished UI stays on an unlinked route |
 | Review sequencing | No writer runs while a native review starts or captures. Order per slice: writer finishes and commits → review (assess, consent, capture, acknowledge) → PR → user merges → next slice. Answer the review stop hook only when the working tree is clean and no writer is running |
-| Feature doc commits | The writer updates the feature doc (progress, evidence) inside its work-unit commit; review outcomes and PR links go into the next slice's first commit. No standalone doc-only progress commits, no uncommitted doc edits left at the end of a turn |
+| Feature doc commits | The writer updates the feature doc (progress, evidence) inside its work-unit commit; review outcomes and PR links go into the next slice's first commit. The **last** slice has no next slice: after its review and PR, one doc-only commit on the same branch records the review outcome, the PR link and the closing state. No other standalone doc-only progress commits, no uncommitted doc edits left at the end of a turn |
 | Repository setting | `delete_branch_on_merge` is on |
 
 Unchanged from ADR 0011: ODD, issue per feature, merge commits only, work-unit commits, Conventional Commits, RDD on, push/PR/merge stay human decisions.

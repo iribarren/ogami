@@ -55,6 +55,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my campaigns */
+        get: operations["listCampaigns"];
+        put?: never;
+        /** Create a campaign pinned to the latest release of a GameSystem */
+        post: operations["createCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one of my campaigns */
+        get: operations["getCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the next session of one of my campaigns */
+        post: operations["startSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/scenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the next scene in the current session of one of my campaigns */
+        post: operations["startScene"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/play/game-systems": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the GameSystems a campaign can be created with */
+        get: operations["listGameSystems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/likelihood-answers": {
         parameters: {
             query?: never;
@@ -149,6 +235,146 @@ export interface components {
         ErrorResponse: {
             /** @description A human-readable message; never says whether an email exists. */
             error: string;
+        };
+        CampaignSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example The lost mine */
+            name: string;
+            /** @example ironsworn */
+            gameSystemKey: string;
+            /** @example Ironsworn */
+            gameSystemName: string;
+            /**
+             * @description The release version the campaign is pinned to.
+             * @example 3
+             */
+            releaseVersion: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateCampaignRequest: {
+            /**
+             * @description Trimmed; not blank.
+             * @example The lost mine
+             */
+            name: string;
+            /**
+             * @description A GameSystem from `GET /api/play/game-systems`; the campaign is pinned to its latest release.
+             * @example ironsworn
+             */
+            gameSystemKey: string;
+        };
+        PinnedReleaseResponse: {
+            /** @example ironsworn */
+            gameSystemKey: string;
+            /** @example Ironsworn */
+            gameSystemName: string;
+            /** @example 3 */
+            version: number;
+        };
+        SceneResponse: {
+            /**
+             * @description Numbered from 1 within its session.
+             * @example 1
+             */
+            number: number;
+            /** @example At the gate */
+            title: string;
+            /** Format: date-time */
+            startedAt: string;
+        };
+        SessionResponse: {
+            /**
+             * @description Numbered from 1 within the campaign.
+             * @example 1
+             */
+            number: number;
+            /** Format: date-time */
+            startedAt: string;
+            /** @description In number order; empty right after the session starts. */
+            scenes: components["schemas"]["SceneResponse"][];
+        };
+        OracleTableResponse: {
+            /** @example weather */
+            key: string;
+            /** @example Weather */
+            name: string;
+        };
+        LikelihoodLevelResponse: {
+            /**
+             * @description The likelihood to ask the oracle with.
+             * @example likely
+             */
+            key: string;
+            /** @example Likely */
+            label: string;
+        };
+        LikelihoodChaosResponse: {
+            /** @example 1 */
+            min: number;
+            /** @example 9 */
+            max: number;
+            /** @example 5 */
+            neutral: number;
+        };
+        LikelihoodOracleResponse: {
+            /** @example fate */
+            key: string;
+            /** @example Fate question */
+            name: string;
+            /** @description In definition order. */
+            levels: components["schemas"]["LikelihoodLevelResponse"][];
+            /** @description Null when the oracle takes no chaos factor. */
+            chaos: components["schemas"]["LikelihoodChaosResponse"] | null;
+        };
+        CampaignResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example The lost mine */
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+            pinnedRelease: components["schemas"]["PinnedReleaseResponse"];
+            /** @description In number order. */
+            sessions: components["schemas"]["SessionResponse"][];
+            /**
+             * @description The latest session; null before the first one.
+             * @example 2
+             */
+            currentSessionNumber: number | null;
+            /**
+             * @description The latest scene of the current session; null when it has none yet.
+             * @example 1
+             */
+            currentSceneNumber: number | null;
+            /** @description The oracle tables of the pinned release, in definition order. */
+            oracleTables: components["schemas"]["OracleTableResponse"][];
+            /** @description The likelihood oracles of the pinned release, in definition order. */
+            likelihoodOracles: components["schemas"]["LikelihoodOracleResponse"][];
+        };
+        StartSceneRequest: {
+            /**
+             * @description Trimmed; not blank.
+             * @example At the gate
+             */
+            title: string;
+        };
+        GameSystemSummaryResponse: {
+            /**
+             * @description The key to create a campaign with.
+             * @example ironsworn
+             */
+            gameSystemKey: string;
+            /** @example Ironsworn */
+            name: string;
+            /** @description Null when the release has no description. */
+            description: string | null;
+            /**
+             * @description The version a new campaign is pinned to.
+             * @example 3
+             */
+            version: number;
         };
         LikelihoodLevelDefinition: {
             /**
@@ -485,6 +711,367 @@ export interface operations {
             };
             /** @description No session. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCampaigns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signed-in player's campaigns, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignSummaryResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description The new campaign; the Location header is its URL. */
+            201: {
+                headers: {
+                    /** @description The URL of the new campaign. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "name" or "gameSystemKey". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The GameSystem has no published release. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The generated campaign id is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The name is blank or too long. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The campaign. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The campaign, the new session current and without a scene. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already holds the most sessions it can. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startScene: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartSceneRequest"];
+            };
+        };
+        responses: {
+            /** @description The campaign, the new scene current. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "title". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no session yet, or the current session holds the most scenes it can. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The title is blank or too long. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGameSystems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The latest published release of each GameSystem, by name ignoring case, then key. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSummaryResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -115,6 +115,444 @@
                 }
             }
         },
+        "/api/campaigns": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "List my campaigns",
+                "operationId": "listCampaigns",
+                "responses": {
+                    "200": {
+                        "description": "The signed-in player's campaigns, newest first.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CampaignSummaryResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Create a campaign pinned to the latest release of a GameSystem",
+                "operationId": "createCampaign",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCampaignRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new campaign; the Location header is its URL.",
+                        "headers": {
+                            "Location": {
+                                "description": "The URL of the new campaign.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"name\" or \"gameSystemKey\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The GameSystem has no published release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The generated campaign id is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The name is blank or too long.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Read one of my campaigns",
+                "operationId": "getCampaign",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The campaign.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/sessions": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Start the next session of one of my campaigns",
+                "operationId": "startSession",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The campaign, the new session current and without a scene.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already holds the most sessions it can.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/scenes": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Start the next scene in the current session of one of my campaigns",
+                "operationId": "startScene",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartSceneRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The campaign, the new scene current.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"title\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no session yet, or the current session holds the most scenes it can.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The title is blank or too long.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/play/game-systems": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "List the GameSystems a campaign can be created with",
+                "operationId": "listGameSystems",
+                "responses": {
+                    "200": {
+                        "description": "The latest published release of each GameSystem, by name ignoring case, then key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/GameSystemSummaryResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/likelihood-answers": {
             "post": {
                 "tags": [
@@ -411,6 +849,335 @@
                     "error": {
                         "description": "A human-readable message; never says whether an email exists.",
                         "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignSummaryResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "gameSystemKey",
+                    "gameSystemName",
+                    "releaseVersion",
+                    "createdAt"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "The lost mine"
+                    },
+                    "gameSystemKey": {
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "gameSystemName": {
+                        "type": "string",
+                        "example": "Ironsworn"
+                    },
+                    "releaseVersion": {
+                        "description": "The release version the campaign is pinned to.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "CreateCampaignRequest": {
+                "required": [
+                    "name",
+                    "gameSystemKey"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Trimmed; not blank.",
+                        "type": "string",
+                        "example": "The lost mine",
+                        "maxLength": 100
+                    },
+                    "gameSystemKey": {
+                        "description": "A GameSystem from `GET /api/play/game-systems`; the campaign is pinned to its latest release.",
+                        "type": "string",
+                        "example": "ironsworn"
+                    }
+                },
+                "type": "object"
+            },
+            "PinnedReleaseResponse": {
+                "required": [
+                    "gameSystemKey",
+                    "gameSystemName",
+                    "version"
+                ],
+                "properties": {
+                    "gameSystemKey": {
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "gameSystemName": {
+                        "type": "string",
+                        "example": "Ironsworn"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "SceneResponse": {
+                "required": [
+                    "number",
+                    "title",
+                    "startedAt"
+                ],
+                "properties": {
+                    "number": {
+                        "description": "Numbered from 1 within its session.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "At the gate"
+                    },
+                    "startedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "SessionResponse": {
+                "required": [
+                    "number",
+                    "startedAt",
+                    "scenes"
+                ],
+                "properties": {
+                    "number": {
+                        "description": "Numbered from 1 within the campaign.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "startedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "scenes": {
+                        "description": "In number order; empty right after the session starts.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SceneResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableResponse": {
+                "required": [
+                    "key",
+                    "name"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "weather"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Weather"
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodLevelResponse": {
+                "required": [
+                    "key",
+                    "label"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The likelihood to ask the oracle with.",
+                        "type": "string",
+                        "example": "likely"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Likely"
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodChaosResponse": {
+                "required": [
+                    "min",
+                    "max",
+                    "neutral"
+                ],
+                "properties": {
+                    "min": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "max": {
+                        "type": "integer",
+                        "example": 9
+                    },
+                    "neutral": {
+                        "type": "integer",
+                        "example": 5
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodOracleResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "levels",
+                    "chaos"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "fate"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fate question"
+                    },
+                    "levels": {
+                        "description": "In definition order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LikelihoodLevelResponse"
+                        }
+                    },
+                    "chaos": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LikelihoodChaosResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Null when the oracle takes no chaos factor."
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "createdAt",
+                    "pinnedRelease",
+                    "sessions",
+                    "currentSessionNumber",
+                    "currentSceneNumber",
+                    "oracleTables",
+                    "likelihoodOracles"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "The lost mine"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "pinnedRelease": {
+                        "$ref": "#/components/schemas/PinnedReleaseResponse"
+                    },
+                    "sessions": {
+                        "description": "In number order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SessionResponse"
+                        }
+                    },
+                    "currentSessionNumber": {
+                        "description": "The latest session; null before the first one.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "currentSceneNumber": {
+                        "description": "The latest scene of the current session; null when it has none yet.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "oracleTables": {
+                        "description": "The oracle tables of the pinned release, in definition order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OracleTableResponse"
+                        }
+                    },
+                    "likelihoodOracles": {
+                        "description": "The likelihood oracles of the pinned release, in definition order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LikelihoodOracleResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "StartSceneRequest": {
+                "required": [
+                    "title"
+                ],
+                "properties": {
+                    "title": {
+                        "description": "Trimmed; not blank.",
+                        "type": "string",
+                        "example": "At the gate",
+                        "maxLength": 100
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemSummaryResponse": {
+                "required": [
+                    "gameSystemKey",
+                    "name",
+                    "description",
+                    "version"
+                ],
+                "properties": {
+                    "gameSystemKey": {
+                        "description": "The key to create a campaign with.",
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Ironsworn"
+                    },
+                    "description": {
+                        "description": "Null when the release has no description.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "version": {
+                        "description": "The version a new campaign is pinned to.",
+                        "type": "integer",
+                        "example": 3
                     }
                 },
                 "type": "object"
@@ -875,6 +1642,9 @@
     "tags": [
         {
             "name": "Auth"
+        },
+        {
+            "name": "Play"
         },
         {
             "name": "Oracles"

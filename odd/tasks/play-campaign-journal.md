@@ -182,4 +182,4 @@ Let a solo player play free-form in a campaign. A campaign is created from a pub
 
 ## Next step
 
-Delivery (user decision): push the tracker and slice branches, open the draft tracker PR (`feat/play-campaign-journal` → `main`, `Closes #18`) and slice PRs S1→tracker, S2→S1 … S9→S8; merge commits only.
+Delivered for review: draft tracker PR #19 (`feat/play-campaign-journal` → `main`, `Closes #18`); slice PRs #20 (S1 → tracker), #21 (S2 → S1), #22 (S3), #23 (S4), #24 (S5), #25 (S6), #26 (S7), #27 (S8), #28 (S9 → S8), all `type:feature` + `size:exception`. Merge in order S1 → S9 (merge commits), then mark #19 ready and merge it. Open follow-up: S9 `R3-journal-append-race`.

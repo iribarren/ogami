@@ -7,9 +7,11 @@ namespace App\Play\Infrastructure\Persistence\Doctrine;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\OptimisticLockException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -56,7 +58,12 @@ final readonly class DoctrineCampaignRepository implements CampaignRepository
      * whole unit of work: add() and save() also keep unsaved changes of other loaded campaigns,
      * which the port allows (CampaignRepository).
      *
-     * @throws \LogicException when the campaign was not added or loaded through this repository
+     * The version column is an optimistic lock: the update only matches the version this copy was
+     * loaded with, so a save in between (another request) makes it fail instead of being lost. The
+     * entity manager is closed afterwards; the command bus transaction rolls back.
+     *
+     * @throws CampaignModifiedConcurrently when another request saved the campaign since it was loaded
+     * @throws \LogicException              when the campaign was not added or loaded through this repository
      */
     public function save(Campaign $campaign): void
     {
@@ -64,7 +71,15 @@ final readonly class DoctrineCampaignRepository implements CampaignRepository
             throw new \LogicException(\sprintf('Campaign "%s" was not added or loaded through this repository.', $campaign->id()->toString()));
         }
 
-        $this->entityManager->flush();
+        try {
+            $this->entityManager->flush();
+        } catch (OptimisticLockException $exception) {
+            if ($exception->getEntity() !== $campaign) {
+                throw $exception;
+            }
+
+            throw CampaignModifiedConcurrently::withId($campaign->id());
+        }
     }
 
     public function ofId(CampaignId $id): ?Campaign

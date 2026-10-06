@@ -27,5 +27,8 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
+        <!-- Optimistic lock: every save bumps it, and a save of a copy loaded before another
+             request's save fails (DoctrineCampaignRepository::save). -->
+        <field name="version" type="integer" column="version" version="true"/>
     </entity>
 </doctrine-mapping>

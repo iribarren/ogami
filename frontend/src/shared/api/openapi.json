@@ -386,7 +386,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign already holds the most sessions it can.",
+                        "description": "The campaign already holds the most sessions it can, or another request changed it meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -477,7 +477,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign has no session yet, or the current session holds the most scenes it can.",
+                        "description": "The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {

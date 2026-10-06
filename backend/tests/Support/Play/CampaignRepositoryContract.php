@@ -7,6 +7,7 @@ namespace App\Tests\Support\Play;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\PinnedRelease;
 use PHPUnit\Framework\Attributes\Test;
@@ -15,8 +16,9 @@ use PHPUnit\Framework\Attributes\Test;
  * The CampaignRepository contract, shared by the in-memory double and the Doctrine adapter so the
  * double cannot drift from the real thing. Ids are UUIDs because the database stores them as such.
  *
- * The using test class provides the repository and forgetLoaded(): what a new request would see
- * (the Doctrine test clears its entity manager, the in-memory one has nothing to forget).
+ * The using test class provides the repository, forgetLoaded(): what a new request would see (the
+ * Doctrine test clears its entity managers, the in-memory one has nothing to forget), and
+ * campaignsElsewhere(): the same campaigns as another request working at the same time sees them.
  */
 trait CampaignRepositoryContract
 {
@@ -27,6 +29,8 @@ trait CampaignRepositoryContract
     abstract protected function campaigns(): CampaignRepository;
 
     abstract protected function forgetLoaded(): void;
+
+    abstract protected function campaignsElsewhere(): CampaignRepository;
 
     #[Test]
     public function itKeepsEveryFieldOfACampaignWithItsSessionsAndScenes(): void
@@ -169,6 +173,59 @@ trait CampaignRepositoryContract
         $this->forgetLoaded();
 
         self::assertSame('Departure', $this->campaigns()->ofId($id)?->currentScene()?->title());
+    }
+
+    #[Test]
+    public function savingACampaignChangedAndSavedElsewhereSinceItWasLoadedFails(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->campaigns()->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->forgetLoaded();
+        $mine = $this->campaigns()->ofId($id);
+        $theirs = $this->campaignsElsewhere()->ofId($id);
+        self::assertNotNull($mine);
+        self::assertNotNull($theirs);
+
+        $theirs->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
+        $theirs->startScene('Theirs', new \DateTimeImmutable('2026-10-06 11:01:00'));
+        $this->campaignsElsewhere()->save($theirs);
+        $mine->startSession(new \DateTimeImmutable('2026-10-06 11:02:00'));
+
+        try {
+            $this->campaigns()->save($mine);
+            self::fail('The stale campaign was saved over the newer one.');
+        } catch (CampaignModifiedConcurrently $exception) {
+            self::assertSame('Campaign "01890a5d-ac96-774b-bcce-b302099a8057" was changed by another request. Reload it and try again.', $exception->getMessage());
+        }
+
+        $this->forgetLoaded();
+        $kept = $this->campaignsElsewhere()->ofId($id);
+        self::assertSame([1], array_map(static fn ($session): int => $session->number(), $kept?->sessions() ?? []));
+        self::assertSame('Theirs', $kept?->currentScene()?->title());
+    }
+
+    #[Test]
+    public function aCampaignCanBeSavedAgainAfterItsOwnSave(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaign($id->toString(), self::OWNER, '2026-10-06');
+        $this->campaigns()->add($campaign);
+
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
+        $this->campaigns()->save($campaign);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06 12:00:00'));
+        $this->campaigns()->save($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->campaigns()->ofId($id);
+        self::assertSame(2, $loaded?->currentSession()?->number());
+
+        // A later load is not stale either: it sees the newest save.
+        $loaded->startSession(new \DateTimeImmutable('2026-10-06 13:00:00'));
+        $this->campaigns()->save($loaded);
+        $this->forgetLoaded();
+
+        self::assertSame(3, $this->campaigns()->ofId($id)?->currentSession()?->number());
     }
 
     private function campaign(string $id, string $ownerId, string $createdAt): Campaign

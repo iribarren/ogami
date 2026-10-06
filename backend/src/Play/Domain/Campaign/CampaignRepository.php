@@ -23,6 +23,9 @@ interface CampaignRepository
     /**
      * Keeps the changes of a campaign already added (new sessions and scenes). Every change must be
      * saved: only a saved change is guaranteed to be kept.
+     *
+     * @throws CampaignModifiedConcurrently when the campaign was saved elsewhere since this copy was
+     *                                      loaded (or added): nothing of this copy is kept
      */
     public function save(Campaign $campaign): void;
 

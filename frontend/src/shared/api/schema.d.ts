@@ -943,7 +943,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign already holds the most sessions it can. */
+            /** @description The campaign already holds the most sessions it can, or another request changed it meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1014,7 +1014,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign has no session yet, or the current session holds the most scenes it can. */
+            /** @description The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -6,6 +6,25 @@ A companion web app for **solo tabletop RPG play**.
 - **Studio**: game managers author game systems, sheet templates, checks, narrative flows and oracles, with rich editing tools.
 - **Admin**: the owner manages users and app settings.
 
+## Play locally
+
+From a fresh clone, with Docker (Compose v2) and `make` installed:
+
+```bash
+git clone git@github.com:iribarren/ogami.git && cd ogami
+make build up        # build the images, start the stack, install dependencies
+make presets         # run the database migrations and publish the Free journal and Mythic-style GameSystems
+make console ARGS="app:user:create you@example.com --role=SOLO_PLAYER"   # asks for a password
+```
+
+Then open http://localhost:8080, sign in and go to **Play**:
+
+1. Create a campaign: give it a name and pick a GameSystem. It stays pinned to that GameSystem's current release.
+2. Start a session, then start a scene with a title.
+3. Play: write notes, roll dice (`2d6+1`, `4d6kh3`…) and ask the oracles of the GameSystem. Every roll and oracle answer is recorded in the journal, under its session and scene.
+
+`make down` stops the stack; your campaigns stay in the database volume. Next time, `make up` is enough.
+
 ## Quick start
 
 **Prerequisites:** Docker (with Compose v2) and `make`. Nothing else runs on the host.
@@ -27,7 +46,7 @@ make qa test e2e     # static checks, unit/integration/Behat/Vitest, Playwright
 There is no sign-up yet. Create a user from the console (the password is asked for, hidden):
 
 ```bash
-make console ARGS="doctrine:migrations:migrate -n"   # once, on a fresh database
+make console ARGS="doctrine:migrations:migrate -n"   # once, on a fresh database (make presets also does it)
 make console ARGS="app:user:create you@example.com --role=SOLO_PLAYER"
 ```
 

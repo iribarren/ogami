@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Domain\Campaign;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
@@ -36,7 +37,8 @@ final class InMemoryCampaignRepositoryTest extends TestCase
         $repository = new InMemoryCampaignRepository();
         $repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', 'user-1', '2026-10-06'));
 
-        $this->expectException(\LogicException::class);
+        $this->expectException(CampaignAlreadyExists::class);
+        $this->expectExceptionMessageIsOrContains('A campaign with id "01890a5d-ac96-774b-bcce-b302099a8057" already exists.');
 
         $repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', 'user-2', '2026-10-07'));
     }

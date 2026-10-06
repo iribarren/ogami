@@ -11,6 +11,8 @@ interface CampaignRepository
 {
     /**
      * Keeps a new campaign.
+     *
+     * @throws CampaignAlreadyExists when a campaign with the same id is already kept
      */
     public function add(Campaign $campaign): void;
 

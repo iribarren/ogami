@@ -92,5 +92,9 @@ final class JournalEntryContentsTest extends TestCase
         yield 'likelihood unknown answer' => [['answer' => 'maybe'] + $likelihood];
         yield 'likelihood chaos factor not an int' => [['chaosFactor' => 'high'] + $likelihood];
         yield 'likelihood question too long' => [['question' => str_repeat('a', 501)] + $likelihood];
+        // A nullable field must still be present: null is stored explicitly, a missing key is malformed.
+        yield 'likelihood without question key' => [array_diff_key($likelihood, ['question' => true])];
+        yield 'likelihood without chaos factor key' => [array_diff_key($likelihood, ['chaosFactor' => true])];
+        yield 'oracle table step without nested table key' => [['steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear']]] + $oracleTable];
     }
 }

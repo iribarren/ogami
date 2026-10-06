@@ -14,11 +14,15 @@ use App\Play\Application\LikelihoodOracleView;
 use App\Play\Application\OracleTableView;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\PinnedReleaseView;
+use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Application\SceneView;
 use App\Play\Application\SessionView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\Snapshots;
@@ -128,5 +132,45 @@ final class GetCampaignHandlerTest extends TestCase
         $this->expectException(CampaignNotFound::class);
 
         ($this->handler)(new GetCampaign('campaign-9', 'user-1'));
+    }
+
+    #[Test]
+    public function aPinnedReleaseThatIsNoLongerPublishedIsNotFound(): void
+    {
+        $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The lost city', PinnedRelease::of('free-journal', 7, 'Free journal'), new \DateTimeImmutable('2026-10-05T10:00:00+00:00')));
+
+        $this->expectException(GameSystemReleaseNotFound::class);
+        $this->expectExceptionMessageIsOrContains('No published release v7 of GameSystem "free-journal" is available to Play.');
+
+        ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+    }
+
+    #[Test]
+    public function aPinnedReleaseThatCannotBeReadSurfacesThePlayError(): void
+    {
+        $unreadable = InvalidGameSystemRelease::of('free-journal', 1, 'oracles', 'broken.');
+        $releases = new readonly class($unreadable) implements PublishedGameSystemReleases {
+            public function __construct(private InvalidGameSystemRelease $error)
+            {
+            }
+
+            public function get(string $gameSystemKey, ?int $version = null): GameSystemSnapshot
+            {
+                throw $this->error;
+            }
+
+            public function latest(): array
+            {
+                return [];
+            }
+        };
+        $handler = new GetCampaignHandler(new OwnedCampaigns($this->campaigns), $releases);
+
+        try {
+            $handler(new GetCampaign('campaign-1', 'user-1'));
+            self::fail('An unreadable pinned release was accepted.');
+        } catch (InvalidGameSystemRelease $exception) {
+            self::assertSame($unreadable, $exception);
+        }
     }
 }

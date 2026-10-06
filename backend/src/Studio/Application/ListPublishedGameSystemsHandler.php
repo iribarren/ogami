@@ -16,13 +16,13 @@ final readonly class ListPublishedGameSystemsHandler implements QueryHandler
     }
 
     /**
-     * @return list<PublishedGameSystemSummary> ordered by name, then key
+     * @return list<PublishedGameSystemSummary> ordered by name ignoring case, then key
      */
     public function __invoke(ListPublishedGameSystems $query): array
     {
         $summaries = array_map($this->summary(...), $this->releases->latestOfEachKey());
 
-        usort($summaries, static fn (PublishedGameSystemSummary $a, PublishedGameSystemSummary $b): int => [$a->name, $a->gameSystemKey] <=> [$b->name, $b->gameSystemKey]);
+        usort($summaries, static fn (PublishedGameSystemSummary $a, PublishedGameSystemSummary $b): int => [mb_strtolower($a->name), $a->gameSystemKey] <=> [mb_strtolower($b->name), $b->gameSystemKey]);
 
         return $summaries;
     }

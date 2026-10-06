@@ -14,7 +14,7 @@ final readonly class ListGameSystemsHandler implements QueryHandler
     }
 
     /**
-     * @return list<GameSystemSummary> ordered by name, then key
+     * @return list<GameSystemSummary> ordered by name ignoring case, then key
      */
     public function __invoke(ListGameSystems $query): array
     {

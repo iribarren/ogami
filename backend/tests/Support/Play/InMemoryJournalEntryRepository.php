@@ -6,6 +6,8 @@ namespace App\Tests\Support\Play;
 
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Journal\JournalEntry;
+use App\Play\Domain\Journal\JournalEntryAlreadyExists;
+use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\JournalEntryRepository;
 
 /**
@@ -17,16 +19,21 @@ final class InMemoryJournalEntryRepository implements JournalEntryRepository
     private array $entries = [];
 
     /**
-     * @throws \LogicException on a duplicate id, like the primary key
+     * @throws JournalEntryAlreadyExists on a duplicate id, like the primary key
      */
     public function add(JournalEntry $entry): void
     {
         $id = $entry->id()->toString();
         if (isset($this->entries[$id])) {
-            throw new \LogicException(\sprintf('A journal entry with id "%s" already exists.', $id));
+            throw JournalEntryAlreadyExists::withId($entry->id());
         }
 
         $this->entries[$id] = $entry;
+    }
+
+    public function ofId(JournalEntryId $id): ?JournalEntry
+    {
+        return $this->entries[$id->toString()] ?? null;
     }
 
     public function ofCampaign(CampaignId $campaignId): array

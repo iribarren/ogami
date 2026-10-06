@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\InvalidCampaignId;
@@ -24,17 +25,23 @@ final readonly class CreateCampaignHandler implements CommandHandler
     }
 
     /**
-     * @throws GameSystemReleaseNotFound when the GameSystem has no published release
      * @throws InvalidCampaignId
+     * @throws CampaignAlreadyExists     when the id is already taken (checked first, whatever the repository does)
+     * @throws GameSystemReleaseNotFound when the GameSystem has no published release
      * @throws InvalidCampaignOwner
      * @throws InvalidCampaignName
      */
     public function __invoke(CreateCampaign $command): void
     {
+        $id = CampaignId::fromString($command->campaignId);
+        if ($this->campaigns->ofId($id) instanceof Campaign) {
+            throw CampaignAlreadyExists::withId($id);
+        }
+
         $latest = $this->releases->get($command->gameSystemKey);
 
         $this->campaigns->add(Campaign::create(
-            CampaignId::fromString($command->campaignId),
+            $id,
             $command->ownerId,
             $command->name,
             PinnedRelease::of($latest->gameSystemKey(), $latest->releaseVersion(), $latest->name()),

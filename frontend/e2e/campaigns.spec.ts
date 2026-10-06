@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// Users created by `make e2e-seed`; the "Free journal" preset is published by `make presets`.
+// Users and the "Free journal" preset are seeded by `make e2e-seed`.
 const player = 'e2e-player@example.test'
 const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 

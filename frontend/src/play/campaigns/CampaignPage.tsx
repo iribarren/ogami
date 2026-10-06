@@ -14,23 +14,35 @@ export function CampaignPage({ campaignId }: { campaignId: string }) {
   return (
     <div className="space-y-6">
       <BackLink />
-      {campaign.isPending && <p className="text-muted-foreground">Loading the campaign…</p>}
-      {campaign.isError &&
-        (campaign.error instanceof CampaignError && campaign.error.status === 404 ? (
-          <section className="space-y-3">
-            <h1 className="font-heading text-3xl font-bold tracking-tight">Campaign not found</h1>
-            <p className="text-muted-foreground">
-              This campaign does not exist, or it is not one of yours.
-            </p>
-          </section>
-        ) : (
-          <p role="alert" className="text-sm text-destructive">
-            {campaign.error.message}
-          </p>
-        ))}
-      {campaign.data && <CampaignOverview campaign={campaign.data} />}
+      <CampaignState campaign={campaign} />
     </div>
   )
+}
+
+/**
+ * One state at a time: a failed refetch shows the failure instead of the data it may no
+ * longer match (TanStack Query keeps the last data next to the error).
+ */
+function CampaignState({ campaign }: { campaign: ReturnType<typeof useCampaign> }) {
+  switch (campaign.status) {
+    case 'pending':
+      return <p className="text-muted-foreground">Loading the campaign…</p>
+    case 'error':
+      return campaign.error instanceof CampaignError && campaign.error.status === 404 ? (
+        <section className="space-y-3">
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Campaign not found</h1>
+          <p className="text-muted-foreground">
+            This campaign does not exist, or it is not one of yours.
+          </p>
+        </section>
+      ) : (
+        <p role="alert" className="text-sm text-destructive">
+          {campaign.error.message}
+        </p>
+      )
+    case 'success':
+      return <CampaignOverview campaign={campaign.data} />
+  }
 }
 
 function BackLink() {

@@ -553,6 +553,490 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/journal": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Read the journal of one of my campaigns",
+                "operationId": "getJournal",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Every entry, in recording order (then id order).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/JournalEntryResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/journal/notes": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Write a note in the current scene of one of my campaigns",
+                "operationId": "recordNote",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordNoteRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"text\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, or the generated entry id is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The text is blank or too long.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/journal/rolls": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Roll dice on the server and record the roll in the current scene of one of my campaigns",
+                "operationId": "recordRoll",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordRollRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"expression\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, or the generated entry id is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The dice expression is invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Roll on an oracle table of the pinned release and record the result in the current scene of one of my campaigns",
+                "operationId": "recordOracleTableResult",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "oracleKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The new entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or its pinned release has no oracle table with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, or the generated entry id is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/journal/likelihood-oracles/{oracleKey}": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Ask a likelihood oracle of the pinned release and record the answer in the current scene of one of my campaigns",
+                "operationId": "recordLikelihoodAnswer",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "oracleKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordLikelihoodAnswerRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed: no string \"likelihood\", a non-integer \"chaosFactor\" or a non-string \"question\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or its pinned release has no likelihood oracle with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, or the generated entry id is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The likelihood level is unknown, the chaos factor is out of range or not expected, or the question is too long.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/likelihood-answers": {
             "post": {
                 "tags": [
@@ -1178,6 +1662,385 @@
                         "description": "The version a new campaign is pinned to.",
                         "type": "integer",
                         "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "NoteContentResponse": {
+                "required": [
+                    "kind",
+                    "text"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "note"
+                        ]
+                    },
+                    "text": {
+                        "type": "string",
+                        "example": "The gate is open.",
+                        "maxLength": 10000
+                    }
+                },
+                "type": "object"
+            },
+            "JournalRolledDieResponse": {
+                "required": [
+                    "value",
+                    "kept"
+                ],
+                "properties": {
+                    "value": {
+                        "description": "The face the die landed on.",
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "kept": {
+                        "description": "Whether the die counts towards the total; false when a selector dropped it.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "JournalDiceGroupResponse": {
+                "required": [
+                    "notation",
+                    "sides",
+                    "dice",
+                    "subtotal"
+                ],
+                "properties": {
+                    "notation": {
+                        "type": "string",
+                        "example": "2d6"
+                    },
+                    "sides": {
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "dice": {
+                        "description": "Every die rolled, in roll order, dropped ones included.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalRolledDieResponse"
+                        }
+                    },
+                    "subtotal": {
+                        "description": "The sum of the kept dice.",
+                        "type": "integer",
+                        "example": 7
+                    }
+                },
+                "type": "object"
+            },
+            "RollContentResponse": {
+                "required": [
+                    "kind",
+                    "expression",
+                    "total",
+                    "groups"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "roll"
+                        ]
+                    },
+                    "expression": {
+                        "description": "The normalized notation rolled.",
+                        "type": "string",
+                        "example": "2d6+1"
+                    },
+                    "total": {
+                        "description": "The value of the expression, counting kept dice only.",
+                        "type": "integer",
+                        "example": 8
+                    },
+                    "groups": {
+                        "description": "Every dice group, in notation order; empty when the expression rolls no dice.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalDiceGroupResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "JournalOracleTableStepResponse": {
+                "required": [
+                    "tableKey",
+                    "tableName",
+                    "dice",
+                    "total",
+                    "text",
+                    "nestedTableKey"
+                ],
+                "properties": {
+                    "tableKey": {
+                        "type": "string",
+                        "example": "weather"
+                    },
+                    "tableName": {
+                        "type": "string",
+                        "example": "Weather"
+                    },
+                    "dice": {
+                        "description": "The normalized notation rolled: the table's dice, or \"1dW\" for a weighted table of total weight W.",
+                        "type": "string",
+                        "example": "1d6"
+                    },
+                    "total": {
+                        "description": "The total rolled, which selected the entry.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "text": {
+                        "description": "The selected entry's text; may be empty when the entry nests a table.",
+                        "type": "string",
+                        "example": "Storm"
+                    },
+                    "nestedTableKey": {
+                        "description": "The table the next step rolls on; null on the last step.",
+                        "type": "string",
+                        "example": "storm-kind",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableContentResponse": {
+                "required": [
+                    "kind",
+                    "oracleKey",
+                    "oracleName",
+                    "steps"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "oracle-table"
+                        ]
+                    },
+                    "oracleKey": {
+                        "description": "The oracle table asked.",
+                        "type": "string",
+                        "example": "weather"
+                    },
+                    "oracleName": {
+                        "type": "string",
+                        "example": "Weather"
+                    },
+                    "steps": {
+                        "description": "Root table first, then each nested table rolled.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalOracleTableStepResponse"
+                        },
+                        "minItems": 1
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodContentResponse": {
+                "required": [
+                    "kind",
+                    "oracleKey",
+                    "oracleName",
+                    "question",
+                    "answer",
+                    "roll",
+                    "sides",
+                    "effectiveTarget",
+                    "likelihood",
+                    "likelihoodLabel",
+                    "chaosFactor"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "likelihood"
+                        ]
+                    },
+                    "oracleKey": {
+                        "description": "The likelihood oracle asked.",
+                        "type": "string",
+                        "example": "fate"
+                    },
+                    "oracleName": {
+                        "type": "string",
+                        "example": "Fate question"
+                    },
+                    "question": {
+                        "description": "The question asked; null when none was given.",
+                        "type": "string",
+                        "example": "Is the door locked?",
+                        "nullable": true,
+                        "maxLength": 500
+                    },
+                    "answer": {
+                        "description": "Yes when the roll is at most the effective target, no otherwise; exceptional within the oracle's exceptional bands.",
+                        "type": "string",
+                        "example": "yes",
+                        "enum": [
+                            "exceptional_yes",
+                            "yes",
+                            "no",
+                            "exceptional_no"
+                        ]
+                    },
+                    "roll": {
+                        "description": "The roll on 1d<sides>.",
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "sides": {
+                        "type": "integer",
+                        "example": 100
+                    },
+                    "effectiveTarget": {
+                        "description": "The level's target shifted by the chaos factor and clamped to 0\u2026sides.",
+                        "type": "integer",
+                        "example": 65
+                    },
+                    "likelihood": {
+                        "description": "The key of the likelihood level asked with.",
+                        "type": "string",
+                        "example": "likely"
+                    },
+                    "likelihoodLabel": {
+                        "type": "string",
+                        "example": "Likely"
+                    },
+                    "chaosFactor": {
+                        "description": "The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "JournalEntryResponse": {
+                "required": [
+                    "id",
+                    "sessionNumber",
+                    "sceneNumber",
+                    "recordedAt",
+                    "kind",
+                    "content"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "sessionNumber": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "sceneNumber": {
+                        "description": "Numbered from 1 within the session.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "recordedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "kind": {
+                        "description": "The same as `content.kind`.",
+                        "type": "string",
+                        "enum": [
+                            "note",
+                            "roll",
+                            "oracle-table",
+                            "likelihood"
+                        ]
+                    },
+                    "content": {
+                        "discriminator": {
+                            "propertyName": "kind",
+                            "mapping": {
+                                "note": "#/components/schemas/NoteContentResponse",
+                                "roll": "#/components/schemas/RollContentResponse",
+                                "oracle-table": "#/components/schemas/OracleTableContentResponse",
+                                "likelihood": "#/components/schemas/LikelihoodContentResponse"
+                            }
+                        },
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/NoteContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/RollContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/OracleTableContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/LikelihoodContentResponse"
+                            }
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "RecordNoteRequest": {
+                "required": [
+                    "text"
+                ],
+                "properties": {
+                    "text": {
+                        "description": "Trimmed; not blank.",
+                        "type": "string",
+                        "example": "The gate is open.",
+                        "maxLength": 10000
+                    }
+                },
+                "type": "object"
+            },
+            "RecordRollRequest": {
+                "required": [
+                    "expression"
+                ],
+                "properties": {
+                    "expression": {
+                        "description": "Dice notation, rolled on the server (same grammar as `POST /api/rolls`).",
+                        "type": "string",
+                        "example": "2d6+1"
+                    }
+                },
+                "type": "object"
+            },
+            "RecordLikelihoodAnswerRequest": {
+                "required": [
+                    "likelihood"
+                ],
+                "properties": {
+                    "likelihood": {
+                        "description": "The key of one of the oracle's likelihood levels.",
+                        "type": "string",
+                        "example": "likely"
+                    },
+                    "chaosFactor": {
+                        "description": "Within the oracle's chaos range; omitted or null for its neutral factor. Must be omitted or null when the oracle has no chaos.",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true,
+                        "default": null
+                    },
+                    "question": {
+                        "description": "Trimmed; omitted, null or blank for no question.",
+                        "type": "string",
+                        "example": "Is the door locked?",
+                        "nullable": true,
+                        "default": null,
+                        "maxLength": 500
                     }
                 },
                 "type": "object"

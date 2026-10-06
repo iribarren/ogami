@@ -24,7 +24,6 @@ use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
-use Symfony\Component\HttpFoundation\Exception\JsonException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -41,6 +40,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[OA\Tag(name: 'Play')]
 final readonly class CampaignController
 {
+    use ReadsJsonBodies;
+
     private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name" and a string "gameSystemKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
     private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", such as {"title": "At the gate"}.';
 
@@ -194,26 +195,5 @@ final readonly class CampaignController
             CampaignResponse::fromView($this->queryBus->ask(new GetCampaign($campaignId, $user->id()))),
             $status,
         );
-    }
-
-    /**
-     * @return array<mixed>|JsonResponse the decoded body, or the error response to send
-     */
-    private function jsonBody(Request $request, string $notJson, string $malformed): array|JsonResponse
-    {
-        if ('json' !== $request->getContentTypeFormat()) {
-            return $this->error($notJson, Response::HTTP_UNSUPPORTED_MEDIA_TYPE);
-        }
-
-        try {
-            return $request->toArray();
-        } catch (JsonException) {
-            return $this->error($malformed, Response::HTTP_BAD_REQUEST);
-        }
-    }
-
-    private function error(string $message, int $status): JsonResponse
-    {
-        return new JsonResponse(ErrorResponse::withMessage($message), $status);
     }
 }

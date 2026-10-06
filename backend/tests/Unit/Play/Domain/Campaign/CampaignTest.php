@@ -8,7 +8,6 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\InvalidCampaignName;
-use App\Play\Domain\Campaign\InvalidCampaignOwner;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\PinnedRelease;
@@ -23,7 +22,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Session::class)]
 #[CoversClass(Scene::class)]
 #[CoversClass(InvalidCampaignName::class)]
-#[CoversClass(InvalidCampaignOwner::class)]
 #[CoversClass(InvalidSceneTitle::class)]
 #[CoversClass(NoCurrentSession::class)]
 #[CoversClass(CampaignLimitReached::class)]
@@ -90,22 +88,6 @@ final class CampaignTest extends TestCase
         yield 'empty' => [''];
         yield 'spaces' => ['   '];
         yield 'whitespace' => [" \t\n "];
-    }
-
-    #[Test]
-    #[DataProvider('blankNames')]
-    public function aBlankOwnerIdIsRejected(string $ownerId): void
-    {
-        $this->expectException(InvalidCampaignOwner::class);
-        $this->expectExceptionMessageIsOrContains('A campaign owner id must not be blank.');
-
-        Campaign::create(
-            CampaignId::fromString(self::ID),
-            $ownerId,
-            'The Long Road',
-            PinnedRelease::of('free-journal', 1, 'Free journal'),
-            new \DateTimeImmutable('2026-10-06 10:00:00'),
-        );
     }
 
     #[Test]

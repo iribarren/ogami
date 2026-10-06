@@ -36,7 +36,7 @@ Build in this order. Each feature follows ODD: feature doc in `odd/tasks/<featur
 | 2 | `randomness-dice` | M1 | 1 | — |
 | 3 | `randomness-oracles` | M1 | 2 | — |
 | 4 | `gamesystem-release-contract` | M1 | 3 | Is Studio core or supporting? |
-| 5 | `play-campaign-journal` | M1 | 4 | Campaign upgrade path (default: pinned to its release) |
+| 5 | `play-campaign-journal` | M1 | 4 | Campaign upgrade path: pinned to its release ([ADR 0014](adr/0014-campaigns-pinned-to-their-release.md)) |
 | 6 | `flow-presentation-spike` | M2 | 5 | How the flow is presented in Play |
 | 7 | `play-flow-run` | M2 | 6 | — |
 | 8 | `play-threads-npcs` | M2 | 7 | — |
@@ -52,6 +52,14 @@ Build in this order. Each feature follows ODD: feature doc in `odd/tasks/<featur
 | 18 | `studio-flow-editor` | M4 | 14, 9 | — |
 | 19 | `admin-users` | M5 | 1 | — |
 | 20 | `play-release-upgrade` | M5 | 14, 10 | — |
+
+## Backlog
+
+Items here come after every feature defined above. Their priority and order are decided later.
+
+| Item | Area | Idea |
+|---|---|---|
+| `play-journal-attachments` | Play | Write a note and attach hand-picked roll and oracle results from the current scene. `play-campaign-journal` records each result as its own entry |
 
 ## Starter prompts
 
@@ -185,6 +193,14 @@ Start feature `admin-users` (ODD). Admin: the owner lists users, invites by emai
 
 ```text
 Start feature `play-release-upgrade` (ODD). Play: let a player upgrade a campaign to a newer GameSystem release, with a preview of the character data migration; nothing changes without confirmation.
+```
+
+### Backlog
+
+**play-journal-attachments**
+
+```text
+Start feature `play-journal-attachments` (ODD). Play: write a journal note and attach hand-picked roll and oracle results from the current scene, shown together in the journal. Builds on the journal entries of `play-campaign-journal`, where each result is its own entry. Out of scope: attaching results from other scenes, editing entries.
 ```
 
 ## Related

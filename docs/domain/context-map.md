@@ -42,7 +42,7 @@ flowchart LR
 
 | Upstream | Downstream | Pattern | What crosses the boundary |
 |---|---|---|---|
-| Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release ([contract](../contracts/gamesystem-release.md)). Play stores a snapshot and translates it into its own model. A campaign stays on its release until the player chooses to upgrade |
+| Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release ([contract](../contracts/gamesystem-release.md)). Play translates it into its own model. A campaign pins one release by key and version and stays on it until the player chooses to upgrade ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) |
 | Randomness | Play, Studio | Shared kernel | Pure domain types and services: `DiceExpression`, `Roll`, oracle resolution. Changes need agreement of both consumers |
 | Identity & Access | Play, Studio, Admin | Open host (conformist consumers) | Current user id and roles |
 | Admin | Identity & Access | Customer / supplier | Admin use cases call Identity & Access application services to manage users and roles |
@@ -65,7 +65,7 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 | Aspect | Detail |
 |---|---|
-| Responsibilities | Create campaigns on a GameSystem release; create and update characters; run sessions and scenes; drive the FlowRun; ask oracles and make checks; keep the journal, threads and NPCs |
+| Responsibilities | Create campaigns pinned to a GameSystem release; create and update characters; run sessions and scenes; drive the FlowRun; ask oracles and make checks; keep the journal, threads and NPCs |
 | Aggregates / concepts | Campaign, Character, Session, Scene, FlowRun, JournalEntry, Thread, NPC |
 | Depends on | Studio (release snapshot via ACL), Randomness, Identity & Access, Narrative assist port |
 | Roles | `SOLO_PLAYER` |
@@ -123,5 +123,5 @@ Answered when the first feature that needs them starts, not before (see [vision]
 | Question | Decide when |
 |---|---|
 | ~~Is Studio core or supporting?~~ | Resolved: core ([ADR 0013](../adr/0013-studio-is-a-core-context.md)) |
-| Upgrade path for a campaign moving to a newer GameSystem release (character data migration). Default until then: a campaign stays pinned to its release | First Play feature that consumes a release |
+| ~~Upgrade path for a campaign moving to a newer GameSystem release~~ | Resolved: a campaign stays pinned to its release; upgrading is an explicit player action in `play-release-upgrade` ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) |
 | ~~How context boundaries are enforced in code~~ | Resolved: PHPat ([ADR 0012](../adr/0012-phpat-boundary-enforcement.md)) |

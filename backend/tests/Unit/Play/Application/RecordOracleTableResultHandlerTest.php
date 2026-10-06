@@ -8,9 +8,14 @@ use App\Play\Application\CampaignNotFound;
 use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordOracleTableResultHandler;
 use App\Play\Domain\Campaign\NoCurrentScene;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
+use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Test;
 
 #[CoversClass(RecordOracleTableResult::class)]
@@ -76,6 +81,22 @@ final class RecordOracleTableResultHandlerTest extends JournalTestCase
             self::fail('An oracle result was recorded without a scene.');
         } catch (NoCurrentScene) {
             self::assertSame([], $this->journalOf('campaign-2'));
+        }
+    }
+
+    #[Test]
+    #[DataProviderExternal(UnreadablePublishedGameSystemReleases::class, 'errors')]
+    public function aPinnedReleaseThatCannotBeReadSurfacesThePlayErrorAndRecordsNothing(GameSystemReleaseNotFound|InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion $error): void
+    {
+        $journal = $this->journalReadingFrom(new UnreadablePublishedGameSystemReleases($error));
+        $handler = new RecordOracleTableResultHandler($journal, new ScriptedRandomNumberGenerator(1));
+
+        try {
+            $handler(new RecordOracleTableResult('entry-1', 'campaign-1', 'user-1', 'weather'));
+            self::fail('An oracle table was rolled without its pinned release.');
+        } catch (GameSystemReleaseNotFound|InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion $exception) {
+            self::assertSame($error, $exception);
+            self::assertSame([], $this->journalOf('campaign-1'));
         }
     }
 }

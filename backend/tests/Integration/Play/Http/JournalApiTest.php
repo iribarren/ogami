@@ -449,6 +449,19 @@ final class JournalApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aChaosFactorForAnOracleWithoutChaosIsUnprocessableAndRecordsNothing(): void
+    {
+        $id = $this->campaignInAScene(fateWithoutChaos: true);
+        $this->scriptRandomNumbers(30);
+
+        $this->post($id, 'likelihood-oracles/fate', ['likelihood' => 'even', 'chaosFactor' => 5]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => 'This likelihood oracle has no chaos factor, 5 given.'], $this->json());
+        $this->assertJournalIsEmpty($id);
+    }
+
+    #[Test]
     public function nullOptionalLikelihoodFieldsAreAccepted(): void
     {
         $id = $this->campaignInAScene();
@@ -574,9 +587,9 @@ final class JournalApiTest extends WebTestCase
      * Publishes the example release, signs the player in and creates a campaign in session 1,
      * scene 1 (started at 09:10); the clock is left at 09:20.
      */
-    private function campaignInAScene(string $email = 'ada@example.com'): string
+    private function campaignInAScene(string $email = 'ada@example.com', bool $fateWithoutChaos = false): string
     {
-        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001', fateWithoutChaos: $fateWithoutChaos);
         $this->signIn($email, ['SOLO_PLAYER']);
         $id = $this->createCampaign();
         $this->clock->moveTo('2026-10-06T09:05:00+00:00');
@@ -633,9 +646,16 @@ final class JournalApiTest extends WebTestCase
         $this->random->script(...$numbers);
     }
 
-    private function publish(string $releaseId, bool $withoutLikelihoodOracles = false): void
+    private function publish(string $releaseId, bool $withoutLikelihoodOracles = false, bool $fateWithoutChaos = false): void
     {
         $content = ReleaseViews::contractDocExampleContent();
+        if ($fateWithoutChaos) {
+            /** @var array{likelihood: list<array<string, mixed>>} $oracles */
+            $oracles = $content['oracles'];
+            unset($oracles['likelihood'][0]['chaos']);
+            $content['oracles'] = $oracles;
+        }
+
         if ($withoutLikelihoodOracles) {
             /** @var array<string, mixed> $oracles */
             $oracles = $content['oracles'];

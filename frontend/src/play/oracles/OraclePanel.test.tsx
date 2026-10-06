@@ -252,7 +252,11 @@ describe('OraclePanel', () => {
   })
 
   it('is on the Play home page', async () => {
-    renderAppAt('/play', { 'GET /api/auth/me': signedInAs('SOLO_PLAYER') })
+    renderAppAt('/play', {
+      'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+      'GET /api/campaigns': () => Response.json([]),
+      'GET /api/play/game-systems': () => Response.json([]),
+    })
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Oracles' })).toBeInTheDocument()
     expect(screen.getByLabelText('Likelihood')).toBeInTheDocument()

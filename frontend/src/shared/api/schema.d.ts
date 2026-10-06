@@ -643,16 +643,14 @@ export interface components {
             likelihood: string;
             /**
              * @description Within the oracle's chaos range; omitted or null for its neutral factor. Must be omitted or null when the oracle has no chaos.
-             * @default null
              * @example 5
              */
-            chaosFactor: number | null;
+            chaosFactor?: number | null;
             /**
              * @description Trimmed; omitted, null or blank for no question.
-             * @default null
              * @example Is the door locked?
              */
-            question: string | null;
+            question?: string | null;
         };
         LikelihoodLevelDefinition: {
             /**

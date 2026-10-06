@@ -6,8 +6,14 @@ namespace App\Tests\Integration\Play\Http;
 
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
+use App\Play\Application\CampaignIdGenerator;
 use App\Play\Application\Clock;
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\Campaign\Session;
 use App\Play\Infrastructure\Http\CampaignController;
 use App\Play\Infrastructure\Http\CampaignResponse;
 use App\Play\Infrastructure\Http\CampaignSummaryResponse;
@@ -17,6 +23,9 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\ReleaseViews;
+use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -268,7 +277,7 @@ final class CampaignApiTest extends WebTestCase
     public static function invalidSceneTitles(): iterable
     {
         yield 'blank' => ['  ', 'A scene title must not be blank.'];
-        yield 'too long' => [str_repeat('a', 101), 'A scene title must be at most 100 characters, got 101.'];
+        yield 'too long' => [str_repeat('a', Scene::MAX_TITLE_LENGTH + 1), 'A scene title must be at most 100 characters, got 101.'];
     }
 
     #[Test]
@@ -284,6 +293,100 @@ final class CampaignApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(['error' => $error], $this->json());
+    }
+
+    #[Test]
+    public function aCampaignIdAlreadyTakenIsAConflict(): void
+    {
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
+        self::getContainer()->set(CampaignIdGenerator::class, new readonly class implements CampaignIdGenerator {
+            public function generate(): CampaignId
+            {
+                return CampaignId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001');
+            }
+        });
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $this->createCampaign('The lost mine');
+
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The sunken keep', 'gameSystemKey' => 'example-journal']);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'A campaign with id "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001" already exists.'], $this->json());
+        $this->client->request('GET', '/api/campaigns');
+        // Decoded here: PHPStan would carry the narrowed type of the previous json() over.
+        $campaigns = json_decode($this->content(), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($campaigns);
+        self::assertCount(1, $campaigns);
+        self::assertIsArray($campaigns[0] ?? null);
+        self::assertSame('The lost mine', $campaigns[0]['name'] ?? null);
+    }
+
+    #[Test]
+    public function aCampaignWithTheMostSessionsCannotStartAnother(): void
+    {
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
+        $userId = $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001';
+        $startedAt = new \DateTimeImmutable('2026-10-06T09:00:00+00:00');
+        self::getContainer()->get(CampaignRepository::class)->add(Campaign::reconstitute(
+            CampaignId::fromString($id),
+            $userId,
+            'The long road',
+            PinnedRelease::of('example-journal', 1, 'Example journal'),
+            $startedAt,
+            array_map(static fn (int $number): Session => Session::reconstitute($number, $startedAt, []), range(1, Campaign::MAX_SESSIONS)),
+        ));
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'A campaign holds at most 500 sessions.'], $this->json());
+    }
+
+    /**
+     * @return iterable<string, array{string, ?array<string, string>}>
+     */
+    public static function campaignChanges(): iterable
+    {
+        yield 'start session' => ['/api/campaigns/%s/sessions', null];
+        yield 'start scene' => ['/api/campaigns/%s/scenes', ['title' => 'At the gate']];
+    }
+
+    /**
+     * @param ?array<string, string> $body
+     */
+    #[Test]
+    #[DataProvider('campaignChanges')]
+    public function aCampaignSavedByAnotherRequestMeanwhileIsAConflict(string $path, ?array $body): void
+    {
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign('The lost mine');
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
+        self::assertResponseStatusCodeSame(201);
+
+        // Another request saves the campaign after this one loaded it, right before it flushes.
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $concurrentSave = new readonly class($entityManager->getConnection(), $id) {
+            public function __construct(private Connection $connection, private string $campaignId)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement('UPDATE play_campaign SET version = version + 1 WHERE id = ?', [$this->campaignId]);
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentSave);
+
+        try {
+            $this->client->jsonRequest('POST', \sprintf($path, $id), $body ?? []);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentSave);
+        }
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => \sprintf('Campaign "%s" was changed by another request. Reload it and try again.', $id)], $this->json());
     }
 
     #[Test]
@@ -527,8 +630,10 @@ final class CampaignApiTest extends WebTestCase
 
     /**
      * @param list<string> $roles
+     *
+     * @return string the user id
      */
-    private function signIn(string $email, array $roles): void
+    private function signIn(string $email, array $roles): string
     {
         $container = self::getContainer();
         $id = $container->get(UserIdGenerator::class)->generate()->toString();
@@ -536,6 +641,8 @@ final class CampaignApiTest extends WebTestCase
 
         $this->client->jsonRequest('POST', '/api/auth/login', ['email' => $email, 'password' => self::PASSWORD]);
         self::assertResponseIsSuccessful();
+
+        return $id;
     }
 
     private function content(): string

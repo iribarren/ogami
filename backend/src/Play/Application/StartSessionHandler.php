@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\CampaignLimitReached;
+use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Shared\Application\Bus\CommandHandler;
 
@@ -20,6 +21,7 @@ final readonly class StartSessionHandler implements CommandHandler
     /**
      * @throws CampaignNotFound
      * @throws CampaignLimitReached
+     * @throws CampaignModifiedConcurrently when another request saved the campaign meanwhile
      */
     public function __invoke(StartSession $command): void
     {

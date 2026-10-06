@@ -34,4 +34,10 @@ final class InMemoryCampaignRepositoryTest extends TestCase
     {
         // Nothing to forget: the double hands out copies.
     }
+
+    protected function campaignsElsewhere(): CampaignRepository
+    {
+        // Every load is already an independent copy, as another request would get.
+        return $this->repository;
+    }
 }

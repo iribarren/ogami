@@ -141,6 +141,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the journal of one of my campaigns */
+        get: operations["getJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/journal/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write a note in the current scene of one of my campaigns */
+        post: operations["recordNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/journal/rolls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll dice on the server and record the roll in the current scene of one of my campaigns */
+        post: operations["recordRoll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll on an oracle table of the pinned release and record the result in the current scene of one of my campaigns */
+        post: operations["recordOracleTableResult"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/journal/likelihood-oracles/{oracleKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask a likelihood oracle of the pinned release and record the answer in the current scene of one of my campaigns */
+        post: operations["recordLikelihoodAnswer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/likelihood-answers": {
         parameters: {
             query?: never;
@@ -375,6 +460,199 @@ export interface components {
              * @example 3
              */
             version: number;
+        };
+        NoteContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "note";
+            /** @example The gate is open. */
+            text: string;
+        };
+        JournalRolledDieResponse: {
+            /**
+             * @description The face the die landed on.
+             * @example 4
+             */
+            value: number;
+            /** @description Whether the die counts towards the total; false when a selector dropped it. */
+            kept: boolean;
+        };
+        JournalDiceGroupResponse: {
+            /** @example 2d6 */
+            notation: string;
+            /** @example 6 */
+            sides: number;
+            /** @description Every die rolled, in roll order, dropped ones included. */
+            dice: components["schemas"]["JournalRolledDieResponse"][];
+            /**
+             * @description The sum of the kept dice.
+             * @example 7
+             */
+            subtotal: number;
+        };
+        RollContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "roll";
+            /**
+             * @description The normalized notation rolled.
+             * @example 2d6+1
+             */
+            expression: string;
+            /**
+             * @description The value of the expression, counting kept dice only.
+             * @example 8
+             */
+            total: number;
+            /** @description Every dice group, in notation order; empty when the expression rolls no dice. */
+            groups: components["schemas"]["JournalDiceGroupResponse"][];
+        };
+        JournalOracleTableStepResponse: {
+            /** @example weather */
+            tableKey: string;
+            /** @example Weather */
+            tableName: string;
+            /**
+             * @description The normalized notation rolled: the table's dice, or "1dW" for a weighted table of total weight W.
+             * @example 1d6
+             */
+            dice: string;
+            /**
+             * @description The total rolled, which selected the entry.
+             * @example 6
+             */
+            total: number;
+            /**
+             * @description The selected entry's text; may be empty when the entry nests a table.
+             * @example Storm
+             */
+            text: string;
+            /**
+             * @description The table the next step rolls on; null on the last step.
+             * @example storm-kind
+             */
+            nestedTableKey: string | null;
+        };
+        OracleTableContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "oracle-table";
+            /**
+             * @description The oracle table asked.
+             * @example weather
+             */
+            oracleKey: string;
+            /** @example Weather */
+            oracleName: string;
+            /** @description Root table first, then each nested table rolled. */
+            steps: components["schemas"]["JournalOracleTableStepResponse"][];
+        };
+        LikelihoodContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "likelihood";
+            /**
+             * @description The likelihood oracle asked.
+             * @example fate
+             */
+            oracleKey: string;
+            /** @example Fate question */
+            oracleName: string;
+            /**
+             * @description The question asked; null when none was given.
+             * @example Is the door locked?
+             */
+            question: string | null;
+            /**
+             * @description Yes when the roll is at most the effective target, no otherwise; exceptional within the oracle's exceptional bands.
+             * @example yes
+             * @enum {string}
+             */
+            answer: "exceptional_yes" | "yes" | "no" | "exceptional_no";
+            /**
+             * @description The roll on 1d<sides>.
+             * @example 42
+             */
+            roll: number;
+            /** @example 100 */
+            sides: number;
+            /**
+             * @description The level's target shifted by the chaos factor and clamped to 0…sides.
+             * @example 65
+             */
+            effectiveTarget: number;
+            /**
+             * @description The key of the likelihood level asked with.
+             * @example likely
+             */
+            likelihood: string;
+            /** @example Likely */
+            likelihoodLabel: string;
+            /**
+             * @description The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.
+             * @example 5
+             */
+            chaosFactor: number | null;
+        };
+        JournalEntryResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example 1 */
+            sessionNumber: number;
+            /**
+             * @description Numbered from 1 within the session.
+             * @example 2
+             */
+            sceneNumber: number;
+            /** Format: date-time */
+            recordedAt: string;
+            /**
+             * @description The same as `content.kind`.
+             * @enum {string}
+             */
+            kind: "note" | "roll" | "oracle-table" | "likelihood";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"];
+        };
+        RecordNoteRequest: {
+            /**
+             * @description Trimmed; not blank.
+             * @example The gate is open.
+             */
+            text: string;
+        };
+        RecordRollRequest: {
+            /**
+             * @description Dice notation, rolled on the server (same grammar as `POST /api/rolls`).
+             * @example 2d6+1
+             */
+            expression: string;
+        };
+        RecordLikelihoodAnswerRequest: {
+            /**
+             * @description The key of one of the oracle's likelihood levels.
+             * @example likely
+             */
+            likelihood: string;
+            /**
+             * @description Within the oracle's chaos range; omitted or null for its neutral factor. Must be omitted or null when the oracle has no chaos.
+             * @default null
+             * @example 5
+             */
+            chaosFactor: number | null;
+            /**
+             * @description Trimmed; omitted, null or blank for no question.
+             * @default null
+             * @example Is the door locked?
+             */
+            question: string | null;
         };
         LikelihoodLevelDefinition: {
             /**
@@ -943,7 +1221,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign already holds the most sessions it can. */
+            /** @description The campaign already holds the most sessions it can, or another request changed it meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1014,7 +1292,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign has no session yet, or the current session holds the most scenes it can. */
+            /** @description The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1072,6 +1350,382 @@ export interface operations {
             };
             /** @description The user is not a solo player. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getJournal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every entry, in recording order (then id order). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description The new entry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "text". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or the generated entry id is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The text is blank or too long. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordRoll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordRollRequest"];
+            };
+        };
+        responses: {
+            /** @description The new entry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "expression". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or the generated entry id is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The dice expression is invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordOracleTableResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                oracleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new entry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or its pinned release has no oracle table with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or the generated entry id is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordLikelihoodAnswer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                oracleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordLikelihoodAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description The new entry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description The JSON body is malformed: no string "likelihood", a non-integer "chaosFactor" or a non-string "question". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or its pinned release has no likelihood oracle with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or the generated entry id is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The likelihood level is unknown, the chaos factor is out of range or not expected, or the question is too long. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -17,6 +17,8 @@ doctrine:
         # Introspected TIMESTAMP WITH TIME ZONE columns are read back as the microsecond type, so
         # schema:validate and migration diffs compare like with like. Map every timestamptz field
         # with it.
+        # This mapping is app-wide, not Play-only: it applies to every context's timestamptz
+        # columns (today only Play has them). A context adding one maps it with the type above.
         mapping_types:
             timestamptz: datetimetz_immutable_microseconds
     orm:

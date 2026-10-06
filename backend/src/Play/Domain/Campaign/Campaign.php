@@ -19,6 +19,12 @@ final class Campaign
     public const int MAX_SESSIONS = 500;
 
     /**
+     * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
+     * stale copy is refused (CampaignModifiedConcurrently). The model never changes it.
+     */
+    private int $version = 1;
+
+    /**
      * @param list<Session> $sessions in number order
      */
     private function __construct(
@@ -110,6 +116,15 @@ final class Campaign
         $this->sessions[$last] = $session;
 
         return $session->currentScene() ?? throw new \LogicException('A scene was just added.');
+    }
+
+    /**
+     * How many times the stored campaign had been saved when this copy was loaded (1 once added),
+     * as kept by the persistence adapter. Rules never depend on it.
+     */
+    public function version(): int
+    {
+        return $this->version;
     }
 
     public function id(): CampaignId

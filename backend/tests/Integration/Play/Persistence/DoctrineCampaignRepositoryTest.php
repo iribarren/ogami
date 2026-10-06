@@ -10,6 +10,7 @@ use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
+use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -24,6 +25,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
     private DoctrineCampaignRepository $repository;
     private EntityManagerInterface $entityManager;
+    private ?EntityManagerInterface $otherEntityManager = null;
 
     protected function setUp(): void
     {
@@ -40,6 +42,21 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     protected function forgetLoaded(): void
     {
         $this->entityManager->clear();
+        $this->otherEntityManager?->clear();
+    }
+
+    /**
+     * A second entity manager on the same connection (so inside the test's transaction): what
+     * another request, with its own unit of work, would load and save.
+     */
+    protected function campaignsElsewhere(): CampaignRepository
+    {
+        $this->otherEntityManager ??= new EntityManager(
+            $this->entityManager->getConnection(),
+            $this->entityManager->getConfiguration(),
+        );
+
+        return new DoctrineCampaignRepository($this->otherEntityManager);
     }
 
     #[Test]
@@ -80,6 +97,23 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00']]]],
             json_decode($sessions, true, flags: \JSON_THROW_ON_ERROR),
         );
+    }
+
+    #[Test]
+    public function everySaveBumpsTheVersionColumn(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaign($id->toString(), self::OWNER, '2026-10-06');
+        $this->repository->add($campaign);
+        self::assertSame(1, $campaign->version());
+
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
+        $this->repository->save($campaign);
+        self::assertSame(2, $campaign->version());
+
+        $this->forgetLoaded();
+        self::assertSame(2, $this->repository->ofId($id)?->version());
+        self::assertSame(2, $this->entityManager->getConnection()->fetchOne('SELECT version FROM play_campaign WHERE id = ?', [$id->toString()]));
     }
 
     #[Test]

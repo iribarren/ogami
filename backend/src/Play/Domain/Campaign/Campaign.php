@@ -34,10 +34,15 @@ final class Campaign
     }
 
     /**
-     * @throws InvalidCampaignName when the trimmed name is blank or longer than 100 characters
+     * @throws InvalidCampaignOwner when the owner id is blank
+     * @throws InvalidCampaignName  when the trimmed name is blank or longer than 100 characters
      */
     public static function create(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt): self
     {
+        if ('' === trim($ownerId)) {
+            throw InvalidCampaignOwner::blank();
+        }
+
         $name = trim($name);
         if ('' === $name) {
             throw InvalidCampaignName::blank();

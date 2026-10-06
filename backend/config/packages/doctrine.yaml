@@ -6,6 +6,21 @@ doctrine:
         server_version: '18'
 
         profiling_collect_backtrace: '%kernel.debug%'
+
+        # Value types that map domain objects to JSONB columns (ADR 0007).
+        types:
+            play_campaign_sessions: App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType
+            play_journal_entry_content: App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType
+            # TIMESTAMP(6) WITH TIME ZONE: keeps the microseconds the domain records.
+            datetimetz_immutable_microseconds: App\Play\Infrastructure\Persistence\Doctrine\MicrosecondDateTimeTzImmutableType
+
+        # Introspected TIMESTAMP WITH TIME ZONE columns are read back as the microsecond type, so
+        # schema:validate and migration diffs compare like with like. Map every timestamptz field
+        # with it.
+        # This mapping is app-wide, not Play-only: it applies to every context's timestamptz
+        # columns (today only Play has them). A context adding one maps it with the type above.
+        mapping_types:
+            timestamptz: datetimetz_immutable_microseconds
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore

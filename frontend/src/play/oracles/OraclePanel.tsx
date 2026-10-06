@@ -1,88 +1,126 @@
-import { useId, useState, type ReactNode, type SubmitEvent } from 'react'
+import { useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { NativeSelect } from '@/shared/ui/native-select'
 
-import {
-  useAskLikelihoodOracle,
-  useResolveOracleTable,
-  type LikelihoodAnswer,
-  type LikelihoodOracleDefinition,
-  type OracleTableDefinition,
-  type OracleTableResult,
-} from './useOracles'
+import type { Campaign } from '../campaigns/useCampaigns'
+import { useRecordLikelihoodAnswer, useRecordOracleTableResult } from '../journal/useJournal'
 
-const answerLabels: Record<LikelihoodAnswer['answer'], string> = {
-  exceptional_yes: 'Exceptional yes',
-  yes: 'Yes',
-  no: 'No',
-  exceptional_no: 'Exceptional no',
-}
+type OracleTable = Campaign['oracleTables'][number]
+type LikelihoodOracle = Campaign['likelihoodOracles'][number]
 
-// Native select styled like the shadcn Input; no select primitive is installed yet (ADR 0004).
-const selectClassName =
-  'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm dark:bg-input/30'
+/** The API's limit on a likelihood question (`LikelihoodContent::MAX_QUESTION_LENGTH`), after trimming. */
+const MAX_QUESTION_LENGTH = 500
 
 export interface OraclePanelProps {
-  /** The likelihood oracle asked yes/no questions. */
-  likelihoodOracle: LikelihoodOracleDefinition
-  /** The oracle table set; any table can be rolled on, nested tables are followed. */
-  tables: OracleTableDefinition[]
-  /** Called with every answer of the likelihood oracle. */
-  onAnswered?: (answer: LikelihoodAnswer) => void
-  /** Called with every resolved oracle table. */
-  onResolved?: (result: OracleTableResult) => void
+  campaignId: string
+  /** The oracle tables of the campaign's pinned release. */
+  tables: OracleTable[]
+  /** The likelihood oracles of the campaign's pinned release. */
+  likelihoodOracles: LikelihoodOracle[]
+  /** Disables every oracle, e.g. while there is no current scene to record the answer in. */
+  disabled?: boolean
 }
 
-/** Asks a likelihood oracle and rolls on oracle tables through the API. */
+/**
+ * Asks the oracles of the campaign's pinned release; every answer is rolled on the server
+ * and recorded in the journal, where it shows.
+ */
 export function OraclePanel({
-  likelihoodOracle,
+  campaignId,
   tables,
-  onAnswered,
-  onResolved,
+  likelihoodOracles,
+  disabled = false,
 }: OraclePanelProps) {
+  if (tables.length === 0 && likelihoodOracles.length === 0) {
+    return <p className="text-sm text-muted-foreground">This GameSystem release has no oracles.</p>
+  }
   return (
     <div className="space-y-6">
-      <LikelihoodOracleForm oracle={likelihoodOracle} onAnswered={onAnswered} />
-      {tables.length > 0 && <OracleTableForm tables={tables} onResolved={onResolved} />}
+      {likelihoodOracles.map((oracle) => (
+        <LikelihoodOracleForm
+          key={oracle.key}
+          campaignId={campaignId}
+          oracle={oracle}
+          disabled={disabled}
+        />
+      ))}
+      {tables.length > 0 && (
+        <OracleTables campaignId={campaignId} tables={tables} disabled={disabled} />
+      )}
     </div>
   )
 }
 
 function LikelihoodOracleForm({
+  campaignId,
   oracle,
-  onAnswered,
+  disabled,
 }: {
-  oracle: LikelihoodOracleDefinition
-  onAnswered?: (answer: LikelihoodAnswer) => void
+  campaignId: string
+  oracle: LikelihoodOracle
+  disabled: boolean
 }) {
   const middleLevel = oracle.levels[Math.floor((oracle.levels.length - 1) / 2)]
   const [likelihood, setLikelihood] = useState(middleLevel?.key ?? '')
-  const [chaosFactor, setChaosFactor] = useState(String(oracle.chaos?.neutral ?? ''))
-  const ask = useAskLikelihoodOracle()
+  const [question, setQuestion] = useState('')
+  const [chaosFactor, setChaosFactor] = useState(
+    oracle.chaos === null ? '' : String(oracle.chaos.neutral),
+  )
+  const ask = useRecordLikelihoodAnswer(campaignId)
+  const headingId = useId()
   const likelihoodId = useId()
+  const questionId = useId()
   const chaosId = useId()
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    const chosenChaos = oracle.chaos && chaosFactor.trim() !== '' ? Number(chaosFactor) : undefined
+    // Both are optional: an empty field is left out of the request.
+    const asked = question.trim()
+    const chaos = oracle.chaos !== null && chaosFactor.trim() !== '' ? Number(chaosFactor) : null
     ask.mutate(
-      { oracle, likelihood, ...(chosenChaos === undefined ? {} : { chaosFactor: chosenChaos }) },
-      { onSuccess: (result) => onAnswered?.(result) },
+      {
+        oracleKey: oracle.key,
+        likelihood,
+        ...(asked === '' ? {} : { question: asked }),
+        ...(chaos === null ? {} : { chaosFactor: chaos }),
+      },
+      {
+        onSuccess: () => {
+          setQuestion('')
+        },
+      },
     )
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-heading text-lg font-semibold">Likelihood oracle</h3>
-      <form className="flex flex-wrap items-end gap-2" onSubmit={handleSubmit}>
+    <form aria-labelledby={headingId} className="space-y-3" onSubmit={handleSubmit}>
+      <h3 id={headingId} className="font-heading font-semibold">
+        {oracle.name}
+      </h3>
+      <div className="space-y-2">
+        <Label htmlFor={questionId}>Question (optional)</Label>
+        <Input
+          id={questionId}
+          value={question}
+          maxLength={MAX_QUESTION_LENGTH}
+          autoComplete="off"
+          placeholder="Is the door locked?"
+          disabled={disabled}
+          onChange={(event) => {
+            setQuestion(event.target.value)
+          }}
+        />
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-40 flex-1 space-y-2">
           <Label htmlFor={likelihoodId}>Likelihood</Label>
-          <select
+          <NativeSelect
             id={likelihoodId}
-            className={selectClassName}
             value={likelihood}
+            disabled={disabled}
             onChange={(event) => {
               setLikelihood(event.target.value)
             }}
@@ -92,9 +130,9 @@ function LikelihoodOracleForm({
                 {level.label}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
-        {oracle.chaos && (
+        {oracle.chaos !== null && (
           <div className="w-28 space-y-2">
             <Label htmlFor={chaosId}>Chaos factor</Label>
             <Input
@@ -105,133 +143,65 @@ function LikelihoodOracleForm({
               max={oracle.chaos.max}
               step={1}
               value={chaosFactor}
+              disabled={disabled}
               onChange={(event) => {
                 setChaosFactor(event.target.value)
               }}
             />
           </div>
         )}
-        <Button type="submit" disabled={ask.isPending}>
+        <Button type="submit" disabled={disabled || likelihood === '' || ask.isPending}>
           Ask
         </Button>
-      </form>
-
+      </div>
       {ask.error && (
         <p role="alert" className="text-sm text-destructive">
           {ask.error.message}
         </p>
       )}
-
-      {/* Always rendered so screen readers announce each new answer. */}
-      <section aria-label="Likelihood answer" aria-live="polite" aria-atomic="true">
-        {ask.data && (
-          <div className="space-y-3 rounded-xl p-4 ring-1 ring-foreground/10">
-            <p className="text-3xl font-bold">{answerLabels[ask.data.answer]}</p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-              <Detail term="Roll">
-                {ask.data.roll} on d{ask.data.sides}
-              </Detail>
-              <Detail term="Target">{ask.data.effectiveTarget}</Detail>
-              <Detail term="Likelihood">{ask.data.likelihoodLabel}</Detail>
-              {ask.data.chaosFactor !== null && (
-                <Detail term="Chaos factor">{ask.data.chaosFactor}</Detail>
-              )}
-            </dl>
-          </div>
-        )}
-      </section>
-    </div>
+    </form>
   )
 }
 
-function Detail({ term, children }: { term: string; children: ReactNode }) {
-  return (
-    <>
-      <dt className="text-muted-foreground">{term}</dt>
-      <dd className="tabular-nums">{children}</dd>
-    </>
-  )
-}
-
-function OracleTableForm({
+function OracleTables({
+  campaignId,
   tables,
-  onResolved,
+  disabled,
 }: {
-  tables: OracleTableDefinition[]
-  onResolved?: (result: OracleTableResult) => void
+  campaignId: string
+  tables: OracleTable[]
+  disabled: boolean
 }) {
-  const [table, setTable] = useState(tables[0]?.key ?? '')
-  const resolve = useResolveOracleTable()
-  const tableId = useId()
-
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
-    resolve.mutate({ tables, table }, { onSuccess: (result) => onResolved?.(result) })
-  }
+  const roll = useRecordOracleTableResult(campaignId)
+  const headingId = useId()
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-heading text-lg font-semibold">Oracle tables</h3>
-      <form className="flex flex-wrap items-end gap-2" onSubmit={handleSubmit}>
-        <div className="min-w-40 flex-1 space-y-2">
-          <Label htmlFor={tableId}>Oracle table</Label>
-          <select
-            id={tableId}
-            className={selectClassName}
-            value={table}
-            onChange={(event) => {
-              setTable(event.target.value)
+    <div className="space-y-3">
+      <h3 id={headingId} className="font-heading font-semibold">
+        Oracle tables
+      </h3>
+      <div className="flex flex-wrap gap-2" role="group" aria-labelledby={headingId}>
+        {tables.map((table) => (
+          <Button
+            key={table.key}
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label={`Roll on ${table.name}`}
+            disabled={disabled || roll.isPending}
+            onClick={() => {
+              roll.mutate(table.key)
             }}
           >
-            {tables.map((definition) => (
-              <option key={definition.key} value={definition.key}>
-                {definition.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button type="submit" disabled={resolve.isPending}>
-          Roll on table
-        </Button>
-      </form>
-
-      {resolve.error && (
+            {table.name}
+          </Button>
+        ))}
+      </div>
+      {roll.error && (
         <p role="alert" className="text-sm text-destructive">
-          {resolve.error.message}
+          {roll.error.message}
         </p>
       )}
-
-      {/* Always rendered so screen readers announce each new result. */}
-      <section aria-label="Oracle table result" aria-live="polite" aria-atomic="true">
-        {resolve.data && (
-          <ol
-            className="space-y-2 rounded-xl p-4 ring-1 ring-foreground/10"
-            aria-label="Oracle table steps"
-          >
-            {resolve.data.steps.map((step, depth) => (
-              // Each step after the first rolls on the table its predecessor nests.
-              <li
-                key={depth}
-                className="flex flex-wrap items-baseline gap-x-2 text-sm"
-                style={{ paddingLeft: `${String(depth * 1.25)}rem` }}
-              >
-                {depth > 0 && (
-                  <>
-                    <span aria-hidden="true" className="text-muted-foreground">
-                      ↳
-                    </span>
-                    <span className="sr-only">Nested roll:</span>
-                  </>
-                )}
-                <span className="font-medium">{step.tableName}</span>
-                <span className="font-mono text-muted-foreground">{step.dice}</span>
-                <span className="text-muted-foreground tabular-nums">= {step.total}</span>
-                {step.text !== '' && <span className="font-semibold">{step.text}</span>}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
     </div>
   )
 }

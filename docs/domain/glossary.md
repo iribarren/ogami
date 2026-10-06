@@ -36,12 +36,13 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 
 | Term | Definition | Context |
 |---|---|---|
-| Campaign | A solo player's ongoing game, bound to one GameSystem release | Play |
+| Campaign | A solo player's ongoing game, pinned to one GameSystem release. Only its owner sees it | Play |
+| Pinned release | The GameSystem release a campaign uses: the latest release of the chosen GameSystem when the campaign is created, stored as key and release version. Newer releases never change it ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) | Play |
 | Character | A sheet instance: a sheet template filled in for one campaign | Play |
-| Session | One sitting of play within a campaign | Play |
-| Scene | A unit of story within a session | Play |
+| Session | One sitting of play within a campaign, numbered from 1. The latest session is the current session | Play |
+| Scene | A unit of story within a session, with a title, numbered from 1 within its session. The latest scene of the current session is the current scene | Play |
 | FlowRun | The live progress of a campaign through its narrative flow: current step and history | Play |
-| JournalEntry | A piece of written story or note, often produced by a flow step | Play |
+| JournalEntry | An immutable record in a campaign's journal, recorded in the current scene. Kinds: `note` (written text), `roll` (a dice roll result), `oracle-table` (an oracle table result), `likelihood` (a likelihood oracle answer) | Play |
 | Thread | An open story line or goal the player tracks | Play |
 | NPC | A non-player character the player tracks in a campaign | Play |
 

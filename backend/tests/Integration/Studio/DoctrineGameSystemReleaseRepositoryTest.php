@@ -80,9 +80,26 @@ final class DoctrineGameSystemReleaseRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function itListsTheLatestReleaseOfEachGameSystemOrderedByKey(): void
+    {
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::OTHER_ID), $this->minimal('other-journal'), 7, new \DateTimeImmutable()));
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::FIRST_ID), $this->contractDocExample(), 1, new \DateTimeImmutable()));
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::SECOND_ID), $this->contractDocExample(), 2, new \DateTimeImmutable()));
+        $this->entityManager->clear();
+
+        $latest = $this->releases->latestOfEachKey();
+
+        self::assertSame(
+            [['example-journal', 2, self::SECOND_ID], ['other-journal', 7, self::OTHER_ID]],
+            array_map(static fn (GameSystemRelease $release): array => [$release->gameSystemKey(), $release->version(), $release->id()->toString()], $latest),
+        );
+    }
+
+    #[Test]
     public function itFindsNothingForUnknownReleases(): void
     {
         self::assertNull($this->releases->latestFor('example-journal'));
+        self::assertSame([], $this->releases->latestOfEachKey());
         self::assertNull($this->releases->get('example-journal', 1));
         self::assertNull($this->releases->ofId(ReleaseId::fromString(self::FIRST_ID)));
         self::assertNull($this->releases->ofId(ReleaseId::fromString('not-a-uuid')));

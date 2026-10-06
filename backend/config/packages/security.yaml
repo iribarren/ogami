@@ -41,6 +41,8 @@ security:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc\.json$, roles: PUBLIC_ACCESS }
+        # Play is for solo players only: anyone else signed in gets a 403.
+        - { path: ^/api/(campaigns|play)(/|$), roles: ROLE_SOLO_PLAYER }
         - { path: ^/api(/|$), roles: IS_AUTHENTICATED }
 
 when@test:

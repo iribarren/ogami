@@ -43,6 +43,11 @@ final readonly class InterleavingGameSystemReleaseRepository implements GameSyst
         return $this->inner->latestFor($gameSystemKey);
     }
 
+    public function latestOfEachKey(): array
+    {
+        return $this->inner->latestOfEachKey();
+    }
+
     public function get(string $gameSystemKey, int $version): ?GameSystemRelease
     {
         return $this->inner->get($gameSystemKey, $version);

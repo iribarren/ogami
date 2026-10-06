@@ -1,53 +1,54 @@
 import { useId, useState, type SubmitEvent } from 'react'
 
-import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
-import { useRollDice, type DiceGroup, type Roll } from './useRollDice'
-
 const defaultPresets = ['d20', '2d6', '4d6kh3', 'd%'] as const
 
 export interface DiceRollerProps {
+  /** Rolls a dice expression; the caller decides where it is rolled and where the result shows. */
+  onRoll: (expression: string) => void
+  /** True while a roll is in flight: rolling again is disabled. */
+  pending?: boolean
+  /** Why the last roll was refused, shown under the form. */
+  error?: Error | null
+  /** Disables every control, e.g. while there is nowhere to record a roll. */
+  disabled?: boolean
   /** The dice expression the input starts with; empty by default. */
   initialExpression?: string
   /** Dice expressions offered as one-click rolls; pass `[]` to hide them. */
   presets?: readonly string[]
-  /** Called with every successful roll, e.g. to log it somewhere else. */
-  onRolled?: (roll: Roll) => void
 }
 
-/** Rolls a dice expression through the API and shows the total and every die rolled. */
+/** A dice expression form with one-click presets; the result is shown by the caller. */
 export function DiceRoller({
+  onRoll,
+  pending = false,
+  error = null,
+  disabled = false,
   initialExpression = '',
   presets = defaultPresets,
-  onRolled,
 }: DiceRollerProps) {
   const [expression, setExpression] = useState(initialExpression)
-  const rollDice = useRollDice()
   const inputId = useId()
-  const totalLabelId = useId()
-
-  function roll(notation: string) {
-    rollDice.mutate({ expression: notation }, { onSuccess: (result) => onRolled?.(result) })
-  }
+  const blocked = disabled || pending
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (expression.trim() !== '') {
-      roll(expression)
+    if (expression.trim() !== '' && !blocked) {
+      onRoll(expression)
     }
   }
 
   function rollPreset(preset: string) {
     setExpression(preset)
-    roll(preset)
+    onRoll(preset)
   }
 
   return (
-    <div className="space-y-4">
-      <form className="space-y-2" onSubmit={handleSubmit}>
+    <div className="space-y-3">
+      <form aria-label="Roll dice" className="space-y-2" onSubmit={handleSubmit}>
         <Label htmlFor={inputId}>Dice expression</Label>
         <div className="flex gap-2">
           <Input
@@ -60,9 +61,10 @@ export function DiceRoller({
             placeholder="2d6+1"
             autoComplete="off"
             spellCheck={false}
+            disabled={disabled}
             required
           />
-          <Button type="submit" disabled={rollDice.isPending}>
+          <Button type="submit" disabled={blocked}>
             Roll
           </Button>
         </div>
@@ -77,7 +79,7 @@ export function DiceRoller({
               variant="outline"
               size="sm"
               aria-label={`Roll ${preset}`}
-              disabled={rollDice.isPending}
+              disabled={blocked}
               onClick={() => {
                 rollPreset(preset)
               }}
@@ -88,60 +90,11 @@ export function DiceRoller({
         </div>
       )}
 
-      {rollDice.error && (
+      {error && (
         <p role="alert" className="text-sm text-destructive">
-          {rollDice.error.message}
+          {error.message}
         </p>
       )}
-
-      {/* Always rendered so screen readers announce each new result. */}
-      <section aria-label="Roll result" aria-live="polite" aria-atomic="true">
-        {rollDice.data && (
-          <div className="space-y-3 rounded-xl p-4 ring-1 ring-foreground/10">
-            <p className="font-mono text-sm text-muted-foreground">{rollDice.data.expression}</p>
-            <p className="flex items-baseline gap-2">
-              <span id={totalLabelId} className="text-sm text-muted-foreground">
-                Total
-              </span>
-              <span aria-describedby={totalLabelId} className="text-4xl font-bold tabular-nums">
-                {rollDice.data.total}
-              </span>
-            </p>
-            {rollDice.data.groups.length > 0 && (
-              <ul className="space-y-2" aria-label="Dice groups">
-                {rollDice.data.groups.map((group, index) => (
-                  <DiceGroupRow key={index} group={group} />
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </section>
     </div>
-  )
-}
-
-function DiceGroupRow({ group }: { group: DiceGroup }) {
-  return (
-    <li className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="font-mono">{group.notation}</span>
-      <ul className="flex flex-wrap gap-1" aria-label={`${group.notation} dice`}>
-        {group.dice.map((die, index) => (
-          <li
-            key={index}
-            className={cn(
-              'min-w-7 rounded-md px-1.5 py-0.5 text-center tabular-nums ring-1',
-              die.kept
-                ? 'font-semibold ring-foreground/20'
-                : 'text-muted-foreground line-through ring-foreground/10',
-            )}
-          >
-            {die.value}
-            {!die.kept && <span className="sr-only"> (dropped)</span>}
-          </li>
-        ))}
-      </ul>
-      <span className="text-muted-foreground">= {group.subtotal}</span>
-    </li>
   )
 }

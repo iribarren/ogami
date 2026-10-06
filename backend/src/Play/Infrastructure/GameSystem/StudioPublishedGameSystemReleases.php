@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\GameSystem;
 
+use App\Play\Application\GameSystemSummary;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\GetPublishedRelease;
+use App\Studio\Application\ListPublishedGameSystems;
+use App\Studio\Application\PublishedGameSystemSummary;
 use App\Studio\Application\PublishedReleaseNotFound;
 
 /**
  * Reads published GameSystem releases from Studio's Published Language (GetPublishedRelease on the
- * query bus) and translates them into Play snapshots.
+ * query bus) and translates them into Play snapshots; lists the release catalog with
+ * ListPublishedGameSystems.
  */
 final readonly class StudioPublishedGameSystemReleases implements PublishedGameSystemReleases
 {
@@ -32,5 +36,18 @@ final readonly class StudioPublishedGameSystemReleases implements PublishedGameS
         }
 
         return $this->translator->translate($view);
+    }
+
+    public function latest(): array
+    {
+        return array_map(
+            static fn (PublishedGameSystemSummary $summary): GameSystemSummary => new GameSystemSummary(
+                $summary->gameSystemKey,
+                $summary->name,
+                $summary->description,
+                $summary->version,
+            ),
+            $this->queries->ask(new ListPublishedGameSystems()),
+        );
     }
 }

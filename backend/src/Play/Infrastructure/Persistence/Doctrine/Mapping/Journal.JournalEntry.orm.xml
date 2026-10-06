@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!-- The file is named Journal.JournalEntry because the simplified XML driver maps sub-namespaces
+         of the App\Play\Domain prefix with dots.
+         Entries are immutable: rows are only ever inserted. The content varies by kind and is JSONB;
+         identity, campaign, position and time are relational columns (ADR 0007). campaign_id
+         references play_campaign through JournalEntryCampaignForeignKey (the entry holds the
+         campaign id, not an association). -->
+    <entity name="App\Play\Domain\Journal\JournalEntry" table="play_journal_entry">
+        <indexes>
+            <!-- A campaign's journal in recording order (DoctrineJournalEntryRepository::ofCampaign). -->
+            <index name="idx_play_journal_entry_campaign_recorded" columns="campaign_id,recorded_at"/>
+        </indexes>
+
+        <id name="id" type="guid" column="id"/>
+
+        <field name="campaignId" type="guid" column="campaign_id"/>
+        <field name="sessionNumber" type="integer" column="session_number"/>
+        <field name="sceneNumber" type="integer" column="scene_number"/>
+        <field name="recordedAt" type="datetimetz_immutable_microseconds" column="recorded_at"/>
+        <field name="content" type="play_journal_entry_content" column="content">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+    </entity>
+</doctrine-mapping>

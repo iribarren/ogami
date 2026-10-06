@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!-- The file is named Campaign.Campaign because the simplified XML driver maps sub-namespaces
+         of the App\Play\Domain prefix with dots.
+         Identity, ownership, the pinned release and the creation time are relational columns; the
+         sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType). -->
+    <entity name="App\Play\Domain\Campaign\Campaign" table="play_campaign">
+        <indexes>
+            <!-- A player's campaigns, newest first (DoctrineCampaignRepository::ownedBy). -->
+            <index name="idx_play_campaign_owner_created" columns="owner_id,created_at"/>
+        </indexes>
+
+        <id name="id" type="guid" column="id"/>
+
+        <field name="ownerId" type="guid" column="owner_id"/>
+        <field name="name" type="string" column="name" length="100"/>
+        <field name="gameSystemKey" type="string" column="game_system_key" length="64"/>
+        <field name="releaseVersion" type="integer" column="release_version"/>
+        <field name="gameSystemName" type="string" column="game_system_name" length="255"/>
+        <field name="createdAt" type="datetimetz_immutable_microseconds" column="created_at"/>
+        <field name="sessions" type="play_campaign_sessions" column="sessions">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <!-- Optimistic lock: every save bumps it, and a save of a copy loaded before another
+             request's save fails (DoctrineCampaignRepository::save). -->
+        <field name="version" type="integer" column="version" version="true"/>
+    </entity>
+</doctrine-mapping>

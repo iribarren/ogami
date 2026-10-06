@@ -21,7 +21,7 @@
         <field name="gameSystemKey" type="string" column="game_system_key" length="64"/>
         <field name="releaseVersion" type="integer" column="release_version"/>
         <field name="gameSystemName" type="string" column="game_system_name" length="255"/>
-        <field name="createdAt" type="datetimetz_immutable" column="created_at"/>
+        <field name="createdAt" type="datetimetz_immutable_microseconds" column="created_at"/>
         <field name="sessions" type="play_campaign_sessions" column="sessions">
             <options>
                 <option name="jsonb">true</option>

@@ -123,8 +123,12 @@ trait CampaignRepositoryContract
         ], $this->idsOf($this->campaigns()->ownedBy(self::OWNER)));
     }
 
+    /**
+     * What every adapter guarantees about an unsaved change: nothing keeps it when nothing is
+     * written. Another write may keep it in some adapters (see CampaignRepository).
+     */
     #[Test]
-    public function aChangeIsNotKeptUntilTheCampaignIsSaved(): void
+    public function anUnsavedChangeIsNotKeptWhenNothingIsWritten(): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
         $campaign = $this->campaign($id->toString(), self::OWNER, '2026-10-06');

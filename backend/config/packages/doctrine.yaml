@@ -11,6 +11,14 @@ doctrine:
         types:
             play_campaign_sessions: App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType
             play_journal_entry_content: App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType
+            # TIMESTAMP(6) WITH TIME ZONE: keeps the microseconds the domain records.
+            datetimetz_immutable_microseconds: App\Play\Infrastructure\Persistence\Doctrine\MicrosecondDateTimeTzImmutableType
+
+        # Introspected TIMESTAMP WITH TIME ZONE columns are read back as the microsecond type, so
+        # schema:validate and migration diffs compare like with like. Map every timestamptz field
+        # with it.
+        mapping_types:
+            timestamptz: datetimetz_immutable_microseconds
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore

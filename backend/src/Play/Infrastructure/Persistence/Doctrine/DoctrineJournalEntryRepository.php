@@ -14,8 +14,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Journal entries in play_journal_entry (Journal.JournalEntry.orm.xml). recordedAt is kept to the
- * second with its offset; entries recorded within one second keep their order through their
+ * Journal entries in play_journal_entry (Journal.JournalEntry.orm.xml). recordedAt keeps its
+ * microseconds and UTC offset; entries recorded at the same time keep their order through their
  * time-ordered ids (UUID v7).
  */
 final readonly class DoctrineJournalEntryRepository implements JournalEntryRepository

@@ -131,10 +131,14 @@ Let a solo player play free-form in a campaign. A campaign is created from a pub
 - S1 `R3-save-test-proves-nothing` (WARNING): the save test passes even without `save`. **Fix in T2b**.
 - S1 `R3-ownedby-tiebreak-untested` (SUGGESTION): id tie-break for equal `createdAt` untested. **Fix in T2b**.
 
+- S2 `R3-nullable-missing-key-untested` (SUGGESTION): `ContentData` nullable fields with a missing key untested (`ContentData.php:36-38`). Open, small; fold into T5.
+- S2 `R3-rehydration-revalidates-rules` (SUGGESTION): `fromArray` re-runs constructor rules on stored data (`NoteContent.php:44-47`), so a future rule tightening could make old entries unreadable. Open; accepted for now (rules only loosen until a schema change), revisit with T6.
+
 ## Reviews
 
 - `ff23856..9cc3794` (S1: T1 + T2): medium, consent granted → **approved** (reliability lens; 4 non-blocking findings; acknowledged, authority burned). Reviewed boundary: `9cc3794`. `787efa6` (doc progress): low, closed without review.
+- `9cc3794..dd4a9f1` (S2: docs + T2b + T3): medium, consent granted → **approved** (reliability lens; 2 non-blocking suggestions; acknowledged, authority burned). Reviewed boundary: `dd4a9f1`.
 
 ## Next step
 
-S2 review (medium, granted, running); T4 on `feat/play-campaign-journal-s3-campaign-app`.
+T4 on `feat/play-campaign-journal-s3-campaign-app`.

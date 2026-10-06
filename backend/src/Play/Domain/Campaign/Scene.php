@@ -37,6 +37,14 @@ final readonly class Scene
         return new self($number, $title, $startedAt);
     }
 
+    /**
+     * Rebuilds a stored scene, e.g. from persistence. No rule is checked again.
+     */
+    public static function reconstitute(int $number, string $title, \DateTimeImmutable $startedAt): self
+    {
+        return new self($number, $title, $startedAt);
+    }
+
     public function number(): int
     {
         return $this->number;

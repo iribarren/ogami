@@ -79,6 +79,27 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
     }
 
     #[Test]
+    public function playListsGameSystemsByNameWhateverTheCase(): void
+    {
+        $commands = self::getContainer()->get(CommandBus::class);
+        foreach (['0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a73' => 'beta', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a74' => 'Alpha', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a75' => 'gamma'] as $id => $name) {
+            $content = ReleaseViews::contractDocExampleContent();
+            self::assertIsArray($content['gameSystem']);
+            $content['gameSystem']['key'] = strtolower($name).'-journal';
+            $content['gameSystem']['name'] = $name;
+            $commands->dispatch(new PublishGameSystemRelease($id, $content, false));
+        }
+
+        $summaries = $this->queries->ask(new ListGameSystems());
+
+        // A byte-order sort would put "Example…" before "beta".
+        self::assertSame(
+            ['Alpha', 'beta', 'Example journal, revised', 'gamma'],
+            array_map(static fn (GameSystemSummary $summary): string => $summary->name, $summaries),
+        );
+    }
+
+    #[Test]
     public function anUnknownGameSystemIsPlaysOwnNotFoundError(): void
     {
         $this->expectException(GameSystemReleaseNotFound::class);

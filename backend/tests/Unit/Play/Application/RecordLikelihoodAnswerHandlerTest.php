@@ -8,12 +8,17 @@ use App\Play\Application\CampaignNotFound;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordLikelihoodAnswerHandler;
 use App\Play\Domain\Campaign\NoCurrentScene;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
+use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
+use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Test;
 
 #[CoversClass(RecordLikelihoodAnswer::class)]
@@ -112,6 +117,22 @@ final class RecordLikelihoodAnswerHandlerTest extends JournalTestCase
             self::fail('An answer was recorded without a scene.');
         } catch (NoCurrentScene) {
             self::assertSame([], $this->journalOf('campaign-2'));
+        }
+    }
+
+    #[Test]
+    #[DataProviderExternal(UnreadablePublishedGameSystemReleases::class, 'errors')]
+    public function aPinnedReleaseThatCannotBeReadSurfacesThePlayErrorAndRecordsNothing(GameSystemReleaseNotFound|InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion $error): void
+    {
+        $journal = $this->journalReadingFrom(new UnreadablePublishedGameSystemReleases($error));
+        $handler = new RecordLikelihoodAnswerHandler($journal, new ScriptedRandomNumberGenerator(30));
+
+        try {
+            $handler(new RecordLikelihoodAnswer('entry-1', 'campaign-1', 'user-1', 'fate', 'even'));
+            self::fail('A likelihood oracle was asked without its pinned release.');
+        } catch (GameSystemReleaseNotFound|InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion $exception) {
+            self::assertSame($error, $exception);
+            self::assertSame([], $this->journalOf('campaign-1'));
         }
     }
 }

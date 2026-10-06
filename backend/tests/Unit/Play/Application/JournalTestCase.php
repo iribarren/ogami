@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Application;
 
 use App\Play\Application\CampaignJournal;
 use App\Play\Application\OwnedCampaigns;
+use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
@@ -70,6 +71,14 @@ abstract class JournalTestCase extends TestCase
         self::assertCount(1, $entries);
 
         return $entries[0];
+    }
+
+    /**
+     * The same journal, reading releases from another port double.
+     */
+    protected function journalReadingFrom(PublishedGameSystemReleases $releases): CampaignJournal
+    {
+        return new CampaignJournal($this->ownedCampaigns, $this->entries, $releases, $this->clock);
     }
 
     private function campaign(string $id): Campaign

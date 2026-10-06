@@ -55,8 +55,42 @@ export const lostMineCampaign: Campaign = {
   ],
   currentSessionNumber: 2,
   currentSceneNumber: 1,
-  oracleTables: [],
-  likelihoodOracles: [],
+  oracleTables: [
+    { key: 'weather', name: 'Weather' },
+    { key: 'action', name: 'Action' },
+  ],
+  likelihoodOracles: [
+    {
+      key: 'fate',
+      name: 'Fate question',
+      levels: [
+        { key: 'unlikely', label: 'Unlikely' },
+        { key: 'even', label: 'Even odds' },
+        { key: 'likely', label: 'Likely' },
+      ],
+      chaos: { min: 1, max: 9, neutral: 5 },
+    },
+    {
+      key: 'yes-no',
+      name: 'Yes/no question',
+      levels: [
+        { key: 'even', label: 'Even odds' },
+        { key: 'likely', label: 'Likely' },
+      ],
+      chaos: null,
+    },
+  ],
+}
+
+/** `lostMineCampaign` right after starting session 3: no scene yet. */
+export const lostMineInNewSession: Campaign = {
+  ...lostMineCampaign,
+  sessions: [
+    ...lostMineCampaign.sessions,
+    { number: 3, startedAt: '2026-10-07T12:00:00+00:00', scenes: [] },
+  ],
+  currentSessionNumber: 3,
+  currentSceneNumber: null,
 }
 
 /** A campaign just created: no session yet. */

@@ -25,9 +25,9 @@ test('a solo player creates a campaign from a published GameSystem and opens it'
   const campaignUrl = page.url()
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
   await expect(page.getByText(/^Free journal v\d+$/)).toBeVisible()
-  const status = page.getByRole('region', { name: 'Where play stands' })
-  await expect(status).toContainText('Sessions0')
-  await expect(status).toContainText('Current sessionNone yet')
+  await expect(page.getByRole('region', { name: 'Where play stands' })).toContainText(
+    'No session yet',
+  )
 
   await page.getByRole('link', { name: 'Back to your campaigns' }).click()
   await expect(page).toHaveURL('/play')

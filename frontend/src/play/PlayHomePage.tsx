@@ -3,9 +3,6 @@ import { useId, type ReactNode } from 'react'
 import { CampaignList } from './campaigns/CampaignList'
 import { NewCampaignForm } from './campaigns/NewCampaignForm'
 import { useCampaigns, useGameSystems } from './campaigns/useCampaigns'
-import { DiceRoller } from './dice/DiceRoller'
-import { OraclePanel } from './oracles/OraclePanel'
-import { sampleLikelihoodOracle, sampleOracleTables } from './oracles/sampleOracles'
 
 /** `/play`: my campaigns and a form to start a new one. */
 export function PlayHomePage() {
@@ -17,21 +14,6 @@ export function PlayHomePage() {
       </Section>
       <Section title="New campaign">
         <NewCampaign />
-      </Section>
-      {/* Stand-alone tools until the campaign Play screen hosts them; nothing here is saved. */}
-      <Section title="Dice">
-        <p className="mb-3 text-sm text-muted-foreground">Rolls here are not saved.</p>
-        <div className="max-w-md">
-          <DiceRoller />
-        </div>
-      </Section>
-      <Section title="Oracles">
-        <p className="mb-3 text-sm text-muted-foreground">
-          Sample oracles; answers here are not saved.
-        </p>
-        <div className="max-w-md">
-          <OraclePanel likelihoodOracle={sampleLikelihoodOracle} tables={sampleOracleTables} />
-        </div>
       </Section>
     </div>
   )

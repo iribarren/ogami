@@ -8,6 +8,7 @@ export type CampaignSummary = components['schemas']['CampaignSummaryResponse']
 export type Campaign = components['schemas']['CampaignResponse']
 export type GameSystemSummary = components['schemas']['GameSystemSummaryResponse']
 type CreateCampaignRequest = components['schemas']['CreateCampaignRequest']
+type StartSceneRequest = components['schemas']['StartSceneRequest']
 
 /**
  * A campaign request the API refused or failed; `message` is the API's reason when it gave
@@ -25,7 +26,7 @@ export class CampaignError extends Error {
 }
 
 /** Uses the API's message for the statuses that explain the refusal, a generic one otherwise. */
-function campaignError(
+export function campaignError(
   response: Response,
   error: { error: string } | undefined,
   explained: readonly number[],
@@ -39,7 +40,10 @@ function campaignError(
 }
 
 const campaignsKey = ['play', 'campaigns'] as const
-const campaignKey = (campaignId: string) => [...campaignsKey, campaignId] as const
+export const campaignKey = (campaignId: string) => [...campaignsKey, campaignId] as const
+
+/** The statuses whose API message explains why a Play change was refused. */
+export const explainedRefusals = [400, 404, 409, 422] as const
 
 /** `GET /api/campaigns`: my campaigns, newest first. */
 export function useCampaigns() {
@@ -109,12 +113,61 @@ export function useCreateCampaign() {
       if (data !== undefined) {
         return data
       }
-      throw campaignError(response, error, [400, 404, 409, 422], 'Creating the campaign')
+      throw campaignError(response, error, explainedRefusals, 'Creating the campaign')
     },
     onSuccess: async (campaign) => {
       queryClient.setQueryData(campaignKey(campaign.id), campaign)
       void queryClient.invalidateQueries({ queryKey: campaignsKey, exact: true })
       await navigate({ to: '/play/campaigns/$campaignId', params: { campaignId: campaign.id } })
+    },
+  })
+}
+
+/**
+ * `POST /api/campaigns/{campaignId}/sessions`: starts the next session, which becomes the
+ * current one (without a scene yet). The answer replaces the cached campaign.
+ */
+export function useStartSession(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (): Promise<Campaign> => {
+      const { data, error, response } = await api.POST('/api/campaigns/{campaignId}/sessions', {
+        params: { path: { campaignId } },
+      })
+      if (data !== undefined) {
+        return data
+      }
+      throw campaignError(response, error, explainedRefusals, 'Starting the session')
+    },
+    onSuccess: (campaign) => {
+      queryClient.setQueryData(campaignKey(campaignId), campaign)
+    },
+  })
+}
+
+/**
+ * `POST /api/campaigns/{campaignId}/scenes`: starts the next scene of the current session,
+ * which becomes the current scene. The answer replaces the cached campaign.
+ */
+export function useStartScene(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (body: StartSceneRequest): Promise<Campaign> => {
+      const { data, error, response } = await api.POST('/api/campaigns/{campaignId}/scenes', {
+        params: { path: { campaignId } },
+        body,
+      })
+      if (data !== undefined) {
+        return data
+      }
+      throw campaignError(response, error, explainedRefusals, 'Starting the scene')
+    },
+    onSuccess: (campaign) => {
+      queryClient.setQueryData(campaignKey(campaignId), campaign)
     },
   })
 }

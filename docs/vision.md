@@ -75,6 +75,7 @@ Policy: decide at the last responsible moment. Each question is answered when th
 
 | Question | Decide when | How |
 |---|---|---|
+| How is a guided flow modeled (phases, scene types, steps, world turns, flow state), and which content is generic or specific to a game system? | Before `play-flow-run` (feature 7) | Brainstorm in feature 6b `flow-model-brainstorm`, record the model as an ADR |
 | How far do structured checks go before they need a scripting language? | Randomness / Check feature | Start with dice + formulas + outcome bands; extend only on a real gap |
 | What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow; only the port exists until then |
 | When does player-created content enter scope, and who moderates it? | Later | Explicitly out of scope for now |

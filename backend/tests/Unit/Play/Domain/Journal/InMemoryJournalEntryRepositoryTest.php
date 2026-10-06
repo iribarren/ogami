@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Domain\Journal;
 
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Journal\JournalEntry;
+use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\NoteContent;
 use App\Tests\Support\Play\InMemoryJournalEntryRepository;
@@ -53,9 +54,21 @@ final class InMemoryJournalEntryRepositoryTest extends TestCase
         $repository = new InMemoryJournalEntryRepository();
         $repository->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00'));
 
-        $this->expectException(\LogicException::class);
+        $this->expectException(JournalEntryAlreadyExists::class);
+        $this->expectExceptionMessageIsOrContains('A journal entry with id "01890a5d-ac96-774b-bcce-b302099a9001" already exists.');
 
         $repository->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::OTHER_CAMPAIGN, '2026-10-06 11:00:00'));
+    }
+
+    #[Test]
+    public function itFindsAnEntryById(): void
+    {
+        $repository = new InMemoryJournalEntryRepository();
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00');
+        $repository->add($entry);
+
+        self::assertEquals($entry, $repository->ofId(JournalEntryId::fromString('01890a5d-ac96-774b-bcce-b302099a9001')));
+        self::assertNull($repository->ofId(JournalEntryId::fromString('01890a5d-ac96-774b-bcce-b302099a9002')));
     }
 
     private function entry(string $id, string $campaignId, string $recordedAt): JournalEntry

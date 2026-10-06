@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Application;
 
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
+use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\InvalidCampaignName;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -80,5 +81,35 @@ final class CreateCampaignHandlerTest extends TestCase
         } catch (InvalidCampaignName) {
             self::assertSame([], $this->campaigns->ownedBy('user-1'));
         }
+    }
+
+    #[Test]
+    public function anIdAlreadyTakenIsRejectedAndTheExistingCampaignIsKept(): void
+    {
+        ($this->handler)(new CreateCampaign('campaign-1', 'user-1', 'The lost mine', 'free-journal'));
+
+        try {
+            ($this->handler)(new CreateCampaign('campaign-1', 'user-2', 'Another mine', 'free-journal'));
+            self::fail('A campaign id already taken was accepted.');
+        } catch (CampaignAlreadyExists $exception) {
+            self::assertSame('A campaign with id "campaign-1" already exists.', $exception->getMessage());
+        }
+
+        $campaign = $this->campaigns->ofId(CampaignId::fromString('campaign-1'));
+        self::assertNotNull($campaign);
+        self::assertTrue($campaign->isOwnedBy('user-1'));
+        self::assertSame('The lost mine', $campaign->name());
+        self::assertSame([], $this->campaigns->ownedBy('user-2'));
+    }
+
+    #[Test]
+    public function theIdIsCheckedBeforeAnythingElse(): void
+    {
+        ($this->handler)(new CreateCampaign('campaign-1', 'user-1', 'The lost mine', 'free-journal'));
+
+        // The handler guards the id itself, not only the repository: an unknown GameSystem is not even read.
+        $this->expectException(CampaignAlreadyExists::class);
+
+        ($this->handler)(new CreateCampaign('campaign-1', 'user-1', 'The lost mine', 'unknown'));
     }
 }

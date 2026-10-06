@@ -25,7 +25,7 @@ interface PublishedGameSystemReleases
     public function get(string $gameSystemKey, ?int $version = null): GameSystemSnapshot;
 
     /**
-     * The latest release of every GameSystem, ordered by name then key: the release catalog.
+     * The latest release of every GameSystem, ordered by name ignoring case, then key: the release catalog.
      *
      * @return list<GameSystemSummary>
      */

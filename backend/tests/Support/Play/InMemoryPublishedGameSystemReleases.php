@@ -46,7 +46,7 @@ final class InMemoryPublishedGameSystemReleases implements PublishedGameSystemRe
             $summaries[] = new GameSystemSummary($latest->gameSystemKey(), $latest->name(), $this->descriptions[$key][$version] ?? null, $version);
         }
 
-        usort($summaries, static fn (GameSystemSummary $a, GameSystemSummary $b): int => [$a->name, $a->gameSystemKey] <=> [$b->name, $b->gameSystemKey]);
+        usort($summaries, static fn (GameSystemSummary $a, GameSystemSummary $b): int => [mb_strtolower($a->name), $a->gameSystemKey] <=> [mb_strtolower($b->name), $b->gameSystemKey]);
 
         return $summaries;
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Support\Play;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignRepository;
 
@@ -18,13 +19,13 @@ final class InMemoryCampaignRepository implements CampaignRepository
     private array $campaigns = [];
 
     /**
-     * @throws \LogicException on a duplicate id, like the primary key
+     * @throws CampaignAlreadyExists on a duplicate id, like the primary key
      */
     public function add(Campaign $campaign): void
     {
         $id = $campaign->id()->toString();
         if (isset($this->campaigns[$id])) {
-            throw new \LogicException(\sprintf('A campaign with id "%s" already exists.', $id));
+            throw CampaignAlreadyExists::withId($campaign->id());
         }
 
         $this->campaigns[$id] = clone $campaign;

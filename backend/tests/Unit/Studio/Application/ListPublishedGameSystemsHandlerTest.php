@@ -70,6 +70,23 @@ final class ListPublishedGameSystemsHandlerTest extends TestCase
         self::assertSame(['middle', 'alpha', 'zeta'], $keys);
     }
 
+    #[Test]
+    public function namesAreOrderedIgnoringCase(): void
+    {
+        $this->publish('r-1', 'b-upper', 'Beta', 1, '2026-10-05T10:00:00+00:00');
+        $this->publish('r-2', 'a-lower', 'alpha', 1, '2026-10-05T10:00:00+00:00');
+        $this->publish('r-3', 'c-lower', 'charlie', 1, '2026-10-05T10:00:00+00:00');
+        $this->publish('r-4', 'a-upper', 'Alpha', 1, '2026-10-05T10:00:00+00:00');
+
+        $keys = array_map(
+            static fn (PublishedGameSystemSummary $summary): string => $summary->gameSystemKey,
+            ($this->handler)(new ListPublishedGameSystems()),
+        );
+
+        // "alpha" and "Alpha" tie on the name, so the key decides.
+        self::assertSame(['a-lower', 'a-upper', 'b-upper', 'c-lower'], $keys);
+    }
+
     private function publish(string $id, string $key, string $name, int $version, string $publishedAt, ?string $description = null): void
     {
         $gameSystem = ['key' => $key, 'name' => $name];

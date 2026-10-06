@@ -11,7 +11,12 @@ use App\Play\Domain\Campaign\CampaignId;
  */
 interface JournalEntryRepository
 {
+    /**
+     * @throws JournalEntryAlreadyExists when an entry with the same id is already kept
+     */
     public function add(JournalEntry $entry): void;
+
+    public function ofId(JournalEntryId $id): ?JournalEntry;
 
     /**
      * The journal of one campaign, in recording order (recordedAt, then id, ascending).

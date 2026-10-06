@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-05
+- **Amended by:** [ADR 0015](0015-sequential-slice-delivery.md) (branches, pull requests and delivery strategy: sequential slices to `main`)
 
 ## Context
 
@@ -18,7 +19,7 @@ Learning the gentle-ai methodology is a project goal. Work is done by a human an
 | Merge method | Merge commit. No squash or rebase: work-unit commits and the hashes recorded in feature docs must survive |
 | Work-unit commits | Each task closes with at least one commit that is a coherent unit (docs and tests with the change) |
 | Commit messages | Conventional Commits |
-| Delivery strategy | `ask-on-risk`: when a feature exceeds about 400 authored lines, decide how to slice PRs |
+| Delivery strategy | `ask-on-risk`: when a feature exceeds about 400 authored lines, decide how to slice PRs. **Superseded by ADR 0015: sequential slices to `main`** |
 | RDD (native review) | **Enabled for this clone right after Feature 2 `bootstrap-monorepo`**, before the first domain feature (`gentle-ai review mode enable --scope clone`). The bootstrap is built with ODD and ordinary checks only |
 | Push, PR, merge | Human decisions only; agents never push or open PRs without the user |
 

@@ -28,7 +28,7 @@ Terms are defined in the [glossary](domain/glossary.md). Contexts are described 
 
 ## Features
 
-Build in this order. Each feature follows ODD: feature doc in `odd/tasks/<feature>.md`, branch `type/<feature>`, work-unit commits.
+Build in this order. Each feature follows ODD: feature doc in `odd/tasks/<feature>.md`, delivered as sequential slices to `main` (one branch and one PR per slice, at most one open PR per feature; [ADR 0015](adr/0015-sequential-slice-delivery.md)), work-unit commits.
 
 | # | Feature | Milestone | Depends on | Settles |
 |---|---|---|---|---|

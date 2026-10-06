@@ -62,10 +62,15 @@ odd/tasks/                   ODD feature docs
 
 | Practice | Rule |
 |---|---|
-| Method | ODD (gentle-ai): explore → feature doc in `odd/tasks/<feature>.md` (+ Engram mirror) → task by task ([ADR 0011](docs/adr/0011-gentle-ai-workflow.md)) |
+| Method | ODD (gentle-ai): explore → feature doc in `odd/tasks/<feature>.md` (+ Engram mirror) → slice by slice, task by task ([ADR 0011](docs/adr/0011-gentle-ai-workflow.md), [ADR 0015](docs/adr/0015-sequential-slice-delivery.md)) |
 | Tests | Test first (RED → GREEN → refactor) when a runnable deterministic test exists |
-| Branches | One branch per feature, named `type/description` (`feat/`, `fix/`, `docs/`, `chore/`…); nothing lands on `main` directly |
-| Issues and PRs | One GitHub issue per feature; one PR per feature with `Closes #N` and one type label. Above ~400 changed lines, split per the `ask-on-risk` strategy; passive docs may take a size exception |
+| Delivery strategy | **Sequential slices to `main`** ([ADR 0015](docs/adr/0015-sequential-slice-delivery.md)). Never use feature-branch chains, stacked PRs or tracker branches, and don't ask for a chain strategy |
+| Slice plan | In the feature doc before the first write: slices with their tasks and a forecast of ~800–1,500 changed lines **including generated files** (OpenAPI spec, TS types, route tree). Split a slice that grows past that before review |
+| Branches | One branch per slice from the latest `main`: `type/<feature>-<n>-<topic>` (`feat/`, `fix/`, `docs/`, `chore/`…). Branch the next slice only after the previous one is merged; nothing lands on `main` directly |
+| Issues and PRs | One GitHub issue per feature. One PR per slice, base `main`, title `type(scope): <feature> <n>/<total> <topic>`, one type label; `Part of #N`, the last slice `Closes #N`. **At most one open PR per feature** |
+| Shippable slices | Each slice is safe on `main` alone: backend unused until its UI lands, unfinished UI on an unlinked route |
+| Review sequencing | Per slice: writer finishes and commits → native review (assess, consent, capture, acknowledge) → PR → user merges → next slice. No writer runs during a review; answer the review stop hook only with a clean tree and no writer running |
+| Feature doc | The writer updates progress and evidence inside its work-unit commit; review outcomes and PR links go in the next slice's first commit. No doc-only progress commits, no uncommitted doc edits at the end of a turn |
 | Merging | Merge commit only (no squash, no rebase), so the commit hashes in feature docs stay valid |
 | Commits | One work-unit commit per task, Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`…) |
 | Delivery | Never push, open a PR or merge without the user |

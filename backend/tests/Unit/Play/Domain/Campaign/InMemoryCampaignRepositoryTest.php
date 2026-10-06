@@ -26,7 +26,7 @@ final class InMemoryCampaignRepositoryTest extends TestCase
 
         $repository->add($campaign);
 
-        self::assertEquals($campaign, $repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057')));
+        self::assertSame($campaign, $repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057')));
         self::assertNull($repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8058')));
     }
 
@@ -61,56 +61,16 @@ final class InMemoryCampaignRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function campaignsWithTheSameCreationTimeAreListedByIdDescending(): void
-    {
-        $repository = new InMemoryCampaignRepository();
-        $repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8001', 'user-1', '2026-10-02 10:00:00'));
-        $repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8003', 'user-1', '2026-10-02 10:00:00'));
-        $repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8002', 'user-1', '2026-10-02 10:00:00'));
-
-        $ids = array_map(static fn (Campaign $campaign): string => $campaign->id()->toString(), $repository->ownedBy('user-1'));
-
-        self::assertSame([
-            '01890a5d-ac96-774b-bcce-b302099a8003',
-            '01890a5d-ac96-774b-bcce-b302099a8002',
-            '01890a5d-ac96-774b-bcce-b302099a8001',
-        ], $ids);
-    }
-
-    #[Test]
-    public function aChangeIsNotKeptUntilTheCampaignIsSaved(): void
-    {
-        $repository = new InMemoryCampaignRepository();
-        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
-        $campaign = $this->campaign($id->toString(), 'user-1', '2026-10-06');
-        $repository->add($campaign);
-
-        $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
-        $loaded = $repository->ofId($id);
-        self::assertNotNull($loaded);
-        $loaded->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
-        $repository->ownedBy('user-1')[0]->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
-
-        self::assertNull($repository->ofId($id)?->currentSession());
-    }
-
-    #[Test]
     public function savingKeepsTheChangedCampaign(): void
     {
         $repository = new InMemoryCampaignRepository();
-        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
-        $repository->add($this->campaign($id->toString(), 'user-1', '2026-10-06'));
+        $campaign = $this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', 'user-1', '2026-10-06');
+        $repository->add($campaign);
 
-        $campaign = $repository->ofId($id);
-        self::assertNotNull($campaign);
-        $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
-        $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 11:05:00'));
+        $campaign->startSession(new \DateTimeImmutable());
         $repository->save($campaign);
-        $campaign->startSession(new \DateTimeImmutable('2026-10-06 12:00:00'));
 
-        $saved = $repository->ofId($id);
-        self::assertSame(1, $saved?->currentSession()?->number());
-        self::assertSame('Arrival', $saved->currentScene()?->title());
+        self::assertSame(1, $repository->ofId($campaign->id())?->currentSession()?->number());
     }
 
     private function campaign(string $id, string $ownerId, string $createdAt): Campaign

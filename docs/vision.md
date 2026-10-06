@@ -75,12 +75,11 @@ Policy: decide at the last responsible moment. Each question is answered when th
 
 | Question | Decide when | How |
 |---|---|---|
-| How is the flow presented in Play (step-by-step wizard, journal with prompts, a mix)? | First Play flow feature | Prototype two variants in Storybook, play them, pick one |
 | How far do structured checks go before they need a scripting language? | Randomness / Check feature | Start with dice + formulas + outcome bands; extend only on a real gap |
 | What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow; only the port exists until then |
 | When does player-created content enter scope, and who moderates it? | Later | Explicitly out of scope for now |
 
-Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)) and the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
+Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)), the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)) and how the flow is presented in Play ([ADR 0016](adr/0016-flow-presentation-journal-with-focus-mode.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
 
 ## Related
 

@@ -108,7 +108,7 @@ Start feature `flow-presentation-spike` (ODD). Settle the vision open question "
 **7. play-flow-run**
 
 ```text
-Start feature `play-flow-run` (ODD). Play: FlowRun driving the release's NarrativeFlow. Step types: prompt, oracle question, roll, choice, journal entry; branching on results; the next step is always visible. Use the presentation chosen in the flow-presentation ADR. Works with the Free journal preset.
+Start feature `play-flow-run` (ODD). Play: FlowRun driving the release's NarrativeFlow. Step types: prompt, oracle question, roll, choice, journal entry; branching on results; the next step is always visible. Use the presentation from ADR 0016: the journal as the base, with an optional focus mode. Works with the Free journal preset.
 ```
 
 **8. play-threads-npcs**

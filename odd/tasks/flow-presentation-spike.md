@@ -16,7 +16,7 @@ Play is driven by a `NarrativeFlow`, and the vision calls its presentation "key"
 
 ## Scope
 
-- **In:** one static mock session (a short scene with every step type `play-flow-run` will need: prompt, oracle question, roll, choice, journal entry; one branch on a result); a **step-by-step wizard** prototype and a **journal with inline prompts** prototype, both as Storybook stories driven by the same mock data; playing the session in each; ADR with the choice and rationale; vision open question marked resolved; roadmap prompt for feature 7 points to the ADR.
+- **In:** one static mock session (a short scene with every step type `play-flow-run` will need: prompt, oracle question, roll, choice, journal entry; one branch on a result); a **step-by-step wizard** prototype and a **journal with inline prompts** prototype, both as Storybook stories driven by the same mock data; playing the session in each; ADR with the choice and rationale; vision open question marked resolved; roadmap prompt for feature 7 points to the ADR; roadmap feature 6b `flow-model-brainstorm` with its bootstrap prompt (added on user request after the play-through).
 - **Out:** backend, API, routes, real dice or oracle calls, persistence, production components. Prototypes live only in Storybook and are not imported by the app.
 
 ## Constraints
@@ -28,7 +28,7 @@ Play is driven by a `NarrativeFlow`, and the vision calls its presentation "key"
 
 ## Slice plan
 
-One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-presentation-spike 1/1 prototypes`). Forecast ~900–1,200 changed lines: T1 ~250, T2 ~350, T3 ~350, T4 ~150. No generated files.
+One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-presentation-spike 1/1 prototypes`). Forecast ~900–1,200 changed lines: T1 ~250, T2 ~350, T3 ~350, T4 ~150, T5 ~80. No generated files. T1–T3 landed at 1,369 lines (11 files) including tests and stories.
 
 ## Tasks
 
@@ -36,8 +36,9 @@ One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-pre
 |---|---|---|---|---|
 | T1 | Mock session data + pure step-through logic (`advance`, branch on scripted result) shared by both prototypes; Vitest | delegated writer (multi-file, T1–T3 together) | [x] | `a948f36` |
 | T2 | Wizard prototype: one step per screen, step progress, previous results summary, next step visible; Storybook story playing the mock session | delegated writer | [x] | `4243a19` |
-| T3 | Journal-with-inline-prompts prototype: journal stream with the current step as an inline prompt card at the end, results recorded as entries; Storybook story | delegated writer | [x] | this commit |
-| T4 | Play the mock session in both (Storybook in the browser), record findings; user picks; ADR 0016, vision open question resolved, roadmap feature 7 links the ADR | inline (docs) | [ ] | |
+| T3 | Journal-with-inline-prompts prototype: journal stream with the current step as an inline prompt card at the end, results recorded as entries; Storybook story | delegated writer | [x] | `c33e07d` |
+| T4 | Play the mock session in both (Storybook in the browser), record findings; user picks; ADR 0016, vision open question resolved, roadmap feature 7 links the ADR | inline (docs) | [x] | this commit |
+| T5 | Roadmap feature 6b `flow-model-brainstorm` (row + bootstrap prompt covering guided flows, scene types, generic vs game-specific content); vision open question for the flow model | inline (docs) | [ ] | |
 
 ## Acceptance criteria
 
@@ -56,3 +57,5 @@ One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-pre
 - T1: `frontend/src/play/flow-prototypes/` mock session `sunkenGateSession` (every step type, oracle and choice branches) + pure `flowRun` (`startRun`, `advance`, `addNote`, `upcomingSteps`, `progress`, `replay`); Vitest RED 13 failed → GREEN 13 passed; `make frontend-qa` green.
 - T2: `Wizard` prototype + shared `StepForm`/`UpcomingSteps`; stories `Play/Flow prototypes/Wizard` (FullSession, FullSessionGuarded, MidSession, Finished); smoke Vitest plays the scene to the end (15 passed); `make frontend-qa` green.
 - T3: `JournalWithPrompts` prototype (journal stream via `JournalEntryView`, inline prompt card with next step, free notes between steps); stories `Play/Flow prototypes/Journal with prompts` (same four); smoke Vitest plays the guarded branch with a free note; `make frontend-qa` green, `make frontend-test` 116 passed, `make storybook-build` succeeded.
+- Review of T1–T3 (medium risk, 11 files, 1,369 lines): consent **declined** by the user for this candidate; verification of record is the writer's `make frontend-qa`, `make frontend-test` (116 passed), `make storybook-build`, plus a parent re-run of `make frontend-test`.
+- T4: both prototypes played end to end on the guarded branch (oracle "Yes" → describe the guard → climb → roll → journal entry), the journal one with a free note mid-scene. The Chrome extension was not connected, so the play-through ran as a Playwright script in the `playwright` container against Storybook (`http://node:6006/iframe.html?id=…`), with screenshots per step. Findings in ADR 0016. User choice: **Mix** (journal as the base, optional wizard-style focus mode). The user also raised guided flows for novice players (Studio-authored scene types, Session Zero, world changes between scenes), which go to feature 6b. ADR 0016, ADR index, vision (question resolved) and roadmap feature 7 prompt updated; structural readback done.

@@ -1,6 +1,14 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 
-import { renderAppAt, signedInAs } from '@/test/renderApp'
+import { renderAppAt, signedInAs, type FakeHandler } from '@/test/renderApp'
+
+// What each area's home page requests besides the signed-in user.
+const areaRequests: Record<string, Record<string, FakeHandler>> = {
+  '/play': {
+    'GET /api/campaigns': () => Response.json([]),
+    'GET /api/play/game-systems': () => Response.json([]),
+  },
+}
 
 describe('role-guarded areas', () => {
   it.each([
@@ -23,9 +31,17 @@ describe('role-guarded areas', () => {
     ['/studio', 'GAME_MANAGER', 'Studio'],
     ['/admin', 'OWNER', 'Admin'],
   ] as const)('opens %s for a user with the %s role', async (path, role, heading) => {
-    renderAppAt(path, { 'GET /api/auth/me': signedInAs(role) })
+    const { fakeApi } = renderAppAt(path, {
+      ...areaRequests[path],
+      'GET /api/auth/me': signedInAs(role),
+    })
 
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fakeApi.requests).toEqual(
+        expect.arrayContaining(Object.keys(areaRequests[path] ?? {})),
+      )
+    })
   })
 
   it.each([

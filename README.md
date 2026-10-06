@@ -37,7 +37,7 @@ make console ARGS="app:user:create you@example.com --role=SOLO_PLAYER"
 | `GAME_MANAGER` | Studio (`/studio`) |
 | `OWNER` | Admin (`/admin`) |
 
-Roles are independent: repeat `--role` to give several. `--password=…` skips the prompt; `--if-missing` succeeds without changes when the email exists. `make e2e` seeds its own users (`make e2e-seed`, password `E2E_PASSWORD`, default `e2e-password-123`).
+Roles are independent: repeat `--role` to give several. `--password=…` skips the prompt; `--if-missing` succeeds without changes when the email exists. `make e2e` seeds its own users and publishes the presets (`make e2e-seed`, password `E2E_PASSWORD`, default `e2e-password-123`).
 
 Sign-in uses an HttpOnly session cookie. Behind a reverse proxy, set `TRUSTED_PROXIES` (backend environment) to the proxy addresses so client IPs, HTTPS and login throttling work.
 

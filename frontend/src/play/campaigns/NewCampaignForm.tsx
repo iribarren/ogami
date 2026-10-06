@@ -3,16 +3,13 @@ import { useId, useState, type SubmitEvent } from 'react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { NativeSelect } from '@/shared/ui/native-select'
 
 import { releaseLabel } from './releaseLabel'
 import { useCreateCampaign, type GameSystemSummary } from './useCampaigns'
 
 /** The API's limit on a campaign name (`Campaign::MAX_NAME_LENGTH`), after trimming. */
 const MAX_NAME_LENGTH = 100
-
-// Native select styled like the shadcn Input; no select primitive is installed yet (ADR 0004).
-const selectClassName =
-  'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm dark:bg-input/30'
 
 /**
  * Names a new campaign and picks the GameSystem it is pinned to (its latest release).
@@ -47,9 +44,8 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
       </div>
       <div className="space-y-2">
         <Label htmlFor={gameSystemId}>GameSystem</Label>
-        <select
+        <NativeSelect
           id={gameSystemId}
-          className={selectClassName}
           value={gameSystemKey}
           onChange={(event) => {
             setGameSystemKey(event.target.value)
@@ -60,7 +56,7 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
               {releaseLabel(gameSystem.name, gameSystem.version)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
       {create.error && (
         <p role="alert" className="text-sm text-destructive">

@@ -5,11 +5,19 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { useState, type ReactNode } from 'react'
+import { createContext, use, useState, type ReactNode } from 'react'
 
 import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 
 import { createFakeApiClient, type FakeHandler } from './fakeApi'
+
+// The router is created once, so the root route reads the current children from context
+// instead of closing over the first ones.
+const StoryChildren = createContext<ReactNode>(null)
+
+function RenderStoryChildren() {
+  return use(StoryChildren)
+}
 
 /**
  * Story wrapper for components that query the API and link or navigate: a fresh query
@@ -27,7 +35,7 @@ export function StoryProviders({
     api: createFakeApiClient(handlers).api,
     queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     router: createRouter({
-      routeTree: createRootRoute({ component: () => children }),
+      routeTree: createRootRoute({ component: RenderStoryChildren }),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     }),
   }))
@@ -35,7 +43,9 @@ export function StoryProviders({
   return (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={api}>
-        <RouterProvider router={router} />
+        <StoryChildren value={children}>
+          <RouterProvider router={router} />
+        </StoryChildren>
       </ApiClientProvider>
     </QueryClientProvider>
   )

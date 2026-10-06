@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Play;
 
+use App\Play\Application\GameSystemSummary;
 use App\Play\Application\GetGameSystemSnapshot;
+use App\Play\Application\ListGameSystems;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Infrastructure\GameSystem\StudioPublishedGameSystemReleases;
@@ -64,6 +66,16 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
         self::assertSame('Example journal', $snapshot->name());
         $result = $snapshot->resolveOracleTable('weather', new ScriptedRandomNumberGenerator(2));
         self::assertSame('Clear', $result->steps()[0]->text());
+    }
+
+    #[Test]
+    public function playListsTheLatestReleaseOfEachGameSystemThroughItsQuery(): void
+    {
+        $summaries = $this->queries->ask(new ListGameSystems());
+
+        self::assertEquals([
+            new GameSystemSummary('example-journal', 'Example journal, revised', 'A minimal game system that shows every part of the contract.', 2),
+        ], $summaries);
     }
 
     #[Test]

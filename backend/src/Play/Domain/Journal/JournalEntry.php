@@ -11,12 +11,14 @@ use App\Play\Domain\Campaign\NoCurrentScene;
 /**
  * One immutable record of a campaign's journal: a note or the result of a roll or an oracle,
  * recorded in the campaign's current session and scene.
+ *
+ * Ids are kept as strings (like Campaign), so an adapter can map them as plain columns.
  */
 final readonly class JournalEntry
 {
     private function __construct(
-        private JournalEntryId $id,
-        private CampaignId $campaignId,
+        private string $id,
+        private string $campaignId,
         private int $sessionNumber,
         private int $sceneNumber,
         private \DateTimeImmutable $recordedAt,
@@ -37,7 +39,7 @@ final readonly class JournalEntry
             throw NoCurrentScene::toRecordJournalEntry();
         }
 
-        return new self($id, $campaign->id(), $session->number(), $scene->number(), $recordedAt, $content);
+        return new self($id->toString(), $campaign->id()->toString(), $session->number(), $scene->number(), $recordedAt, $content);
     }
 
     /**
@@ -51,17 +53,17 @@ final readonly class JournalEntry
         \DateTimeImmutable $recordedAt,
         JournalEntryContent $content,
     ): self {
-        return new self($id, $campaignId, $sessionNumber, $sceneNumber, $recordedAt, $content);
+        return new self($id->toString(), $campaignId->toString(), $sessionNumber, $sceneNumber, $recordedAt, $content);
     }
 
     public function id(): JournalEntryId
     {
-        return $this->id;
+        return JournalEntryId::fromString($this->id);
     }
 
     public function campaignId(): CampaignId
     {
-        return $this->campaignId;
+        return CampaignId::fromString($this->campaignId);
     }
 
     public function sessionNumber(): int

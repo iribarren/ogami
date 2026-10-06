@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Identity\Application\AuthenticatedUser;
 use App\Identity\Domain\Role;
 use App\Identity\Domain\User;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -14,7 +15,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * role becomes "ROLE_<VALUE>" (e.g. ROLE_SOLO_PLAYER). Roles are independent:
  * no role hierarchy is configured (ADR 0006).
  */
-final readonly class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface
+final readonly class SecurityUser implements AuthenticatedUser, UserInterface, PasswordAuthenticatedUserInterface
 {
     /**
      * @param non-empty-string $email

@@ -231,7 +231,9 @@ final class AuthApiTest extends WebTestCase
     {
         $accessMap = self::getContainer()->get('security.access_map');
 
-        self::assertSame([['IS_AUTHENTICATED'], null], $accessMap->getPatterns(Request::create('/api/campaigns')));
+        self::assertSame([['IS_AUTHENTICATED'], null], $accessMap->getPatterns(Request::create('/api/rolls')));
+        self::assertSame([['ROLE_SOLO_PLAYER'], null], $accessMap->getPatterns(Request::create('/api/campaigns')));
+        self::assertSame([['ROLE_SOLO_PLAYER'], null], $accessMap->getPatterns(Request::create('/api/play/game-systems')));
         self::assertSame([['IS_AUTHENTICATED'], null], $accessMap->getPatterns(Request::create('/api/auth/me')));
         self::assertSame([['PUBLIC_ACCESS'], null], $accessMap->getPatterns(Request::create('/api/auth/login', 'POST')));
         self::assertSame([null, null], $accessMap->getPatterns(Request::create('/play')));

@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Play\Persistence;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineJournalEntryRepository;
@@ -14,6 +15,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType;
 use App\Tests\Support\Play\JournalEntryRepositoryContract;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -80,5 +82,55 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
         $this->expectException(ForeignKeyConstraintViolationException::class);
 
         $this->repository->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00'));
+    }
+
+    #[Test]
+    public function anEntryRecordedConcurrentlyWithTheSameIdIsRejectedByThePrimaryKey(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        // Another request inserts the same id after this one looked it up, right before it flushes.
+        $connection = $this->entityManager->getConnection();
+        $concurrentInsert = new readonly class($connection, self::CAMPAIGN) {
+            public function __construct(private \Doctrine\DBAL\Connection $connection, private string $campaignId)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement(
+                    "INSERT INTO play_journal_entry (id, campaign_id, session_number, scene_number, recorded_at, content) VALUES ('01890a5d-ac96-774b-bcce-b302099a9001', ?, 1, 1, '2026-10-06 10:00:00+00', '{\"kind\": \"note\", \"text\": \"Theirs\"}')",
+                    [$this->campaignId],
+                );
+            }
+        };
+        $this->entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentInsert);
+
+        try {
+            $this->repository->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00'));
+            self::fail('The concurrent duplicate was not rejected.');
+        } catch (JournalEntryAlreadyExists $exception) {
+            self::assertSame('A journal entry with id "01890a5d-ac96-774b-bcce-b302099a9001" already exists.', $exception->getMessage());
+        } finally {
+            $this->entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentInsert);
+        }
+    }
+
+    #[Test]
+    public function aReloadedEntryEqualsTheRecordedOneToTheMicrosecond(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00.654321');
+        $this->repository->add($entry);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($entry->id());
+
+        self::assertNotNull($loaded);
+        self::assertSame('2026-10-06T10:00:00.654321+00:00', $loaded->recordedAt()->format('Y-m-d\\TH:i:s.uP'));
+        self::assertEquals($entry, $loaded);
+        // The schema tool cannot see a column's precision (doctrine.yaml mapping_types): check it here.
+        self::assertSame(6, $this->entityManager->getConnection()->fetchOne(
+            "SELECT datetime_precision FROM information_schema.columns WHERE table_name = 'play_journal_entry' AND column_name = 'recorded_at'",
+        ));
     }
 }

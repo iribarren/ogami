@@ -13,8 +13,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Campaigns in play_campaign, sessions and scenes included (Campaign.Campaign.orm.xml). Times are
- * kept to the second with their offset; session and scene times keep their microseconds.
+ * Campaigns in play_campaign, sessions and scenes included (Campaign.Campaign.orm.xml). Every time
+ * keeps its microseconds and UTC offset.
  */
 final readonly class DoctrineCampaignRepository implements CampaignRepository
 {
@@ -52,7 +52,9 @@ final readonly class DoctrineCampaignRepository implements CampaignRepository
     }
 
     /**
-     * Doctrine tracks the campaigns it loaded, so saving flushes their changes.
+     * Doctrine tracks the campaigns it loaded, so saving flushes their changes. Flushing writes the
+     * whole unit of work: add() and save() also keep unsaved changes of other loaded campaigns,
+     * which the port allows (CampaignRepository).
      *
      * @throws \LogicException when the campaign was not added or loaded through this repository
      */

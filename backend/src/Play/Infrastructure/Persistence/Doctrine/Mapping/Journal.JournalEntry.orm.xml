@@ -21,7 +21,7 @@
         <field name="campaignId" type="guid" column="campaign_id"/>
         <field name="sessionNumber" type="integer" column="session_number"/>
         <field name="sceneNumber" type="integer" column="scene_number"/>
-        <field name="recordedAt" type="datetimetz_immutable" column="recorded_at"/>
+        <field name="recordedAt" type="datetimetz_immutable_microseconds" column="recorded_at"/>
         <field name="content" type="play_journal_entry_content" column="content">
             <options>
                 <option name="jsonb">true</option>

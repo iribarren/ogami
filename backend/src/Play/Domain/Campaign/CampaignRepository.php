@@ -6,6 +6,10 @@ namespace App\Play\Domain\Campaign;
 
 /**
  * Port: where campaigns are kept, with their sessions and scenes.
+ *
+ * A change to a campaign is kept once save() is called with it, so callers save every change they
+ * make. Until then it is not guaranteed either way: it is not kept when nothing else is written,
+ * but an adapter that writes a whole unit of work (Doctrine) may keep it along with another write.
  */
 interface CampaignRepository
 {
@@ -17,7 +21,8 @@ interface CampaignRepository
     public function add(Campaign $campaign): void;
 
     /**
-     * Keeps the changes of a campaign already added (new sessions and scenes).
+     * Keeps the changes of a campaign already added (new sessions and scenes). Every change must be
+     * saved: only a saved change is guaranteed to be kept.
      */
     public function save(Campaign $campaign): void;
 

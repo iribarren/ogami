@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Play\Persistence;
 
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
+use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -86,5 +88,70 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->expectException(\LogicException::class);
 
         $this->repository->save($this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', self::OWNER, '2026-10-06'));
+    }
+
+    #[Test]
+    public function aCampaignAddedConcurrentlyWithTheSameIdIsRejectedByThePrimaryKey(): void
+    {
+        // Another request inserts the same id after this one looked it up, right before it flushes.
+        $connection = $this->entityManager->getConnection();
+        $concurrentInsert = new readonly class($connection) {
+            public function __construct(private \Doctrine\DBAL\Connection $connection)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement(
+                    "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5002', 'Theirs', 'free-journal', 1, 'Free journal', '2026-10-06 10:00:00+00', '[]')",
+                );
+            }
+        };
+        $this->entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentInsert);
+
+        try {
+            $this->repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', self::OWNER, '2026-10-06'));
+            self::fail('The concurrent duplicate was not rejected.');
+        } catch (CampaignAlreadyExists $exception) {
+            self::assertSame('A campaign with id "01890a5d-ac96-774b-bcce-b302099a8057" already exists.', $exception->getMessage());
+        } finally {
+            $this->entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentInsert);
+        }
+    }
+
+    /**
+     * Documents why the port asks callers to save every change (CampaignRepository::save): Doctrine
+     * flushes its whole unit of work, so another write keeps an unsaved change of a loaded campaign.
+     */
+    #[Test]
+    public function anotherWriteAlsoKeepsAnUnsavedChangeOfALoadedCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->repository->ofId($id)?->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
+
+        $this->repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8058', self::OWNER, '2026-10-07'));
+        $this->forgetLoaded();
+
+        self::assertSame(1, $this->repository->ofId($id)?->currentSession()?->number());
+    }
+
+    #[Test]
+    public function theCreationTimeKeepsItsMicroseconds(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaign($id->toString(), self::OWNER, '2026-10-06 10:00:00.123456');
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertNotNull($loaded);
+        self::assertSame('2026-10-06T10:00:00.123456+00:00', $loaded->createdAt()->format('Y-m-d\\TH:i:s.uP'));
+        self::assertEquals($campaign, $loaded);
+        // The schema tool cannot see a column's precision (doctrine.yaml mapping_types): check it here.
+        self::assertSame(6, $this->entityManager->getConnection()->fetchOne(
+            "SELECT datetime_precision FROM information_schema.columns WHERE table_name = 'play_campaign' AND column_name = 'created_at'",
+        ));
     }
 }

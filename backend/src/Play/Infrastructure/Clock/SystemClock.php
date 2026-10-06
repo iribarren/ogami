@@ -7,7 +7,7 @@ namespace App\Play\Infrastructure\Clock;
 use App\Play\Application\Clock;
 
 /**
- * The real time, in UTC (timestamps are stored without a time zone).
+ * The real time, in UTC. Stored timestamps keep their UTC offset (TIMESTAMP WITH TIME ZONE).
  */
 final readonly class SystemClock implements Clock
 {

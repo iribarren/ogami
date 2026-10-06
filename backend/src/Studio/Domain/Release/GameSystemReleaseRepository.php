@@ -19,6 +19,13 @@ interface GameSystemReleaseRepository
      */
     public function latestFor(string $gameSystemKey): ?GameSystemRelease;
 
+    /**
+     * The latest release (highest version) of every GameSystem key, ordered by key.
+     *
+     * @return list<GameSystemRelease>
+     */
+    public function latestOfEachKey(): array;
+
     public function get(string $gameSystemKey, int $version): ?GameSystemRelease;
 
     public function ofId(ReleaseId $id): ?GameSystemRelease;

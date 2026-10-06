@@ -43,6 +43,21 @@ final class InMemoryGameSystemReleaseRepository implements GameSystemReleaseRepo
         return $latest;
     }
 
+    public function latestOfEachKey(): array
+    {
+        $latest = [];
+        foreach ($this->releases as $release) {
+            $key = $release->gameSystemKey();
+            if (!isset($latest[$key]) || $release->version() > $latest[$key]->version()) {
+                $latest[$key] = $release;
+            }
+        }
+
+        ksort($latest, \SORT_STRING);
+
+        return array_values($latest);
+    }
+
     public function get(string $gameSystemKey, int $version): ?GameSystemRelease
     {
         foreach ($this->releases as $release) {

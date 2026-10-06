@@ -50,6 +50,25 @@ final readonly class DoctrineGameSystemReleaseRepository implements GameSystemRe
             ->findOneBy(['gameSystemKey' => $gameSystemKey], ['version' => 'DESC']);
     }
 
+    /**
+     * One query: each release whose version is the highest of its key (the unique index on
+     * (game_system_key, version) serves the correlated subquery).
+     */
+    public function latestOfEachKey(): array
+    {
+        /** @var list<GameSystemRelease> $releases */
+        $releases = $this->entityManager->createQuery(
+            'SELECT r FROM '.GameSystemRelease::class.' r
+             WHERE r.version = (
+                 SELECT MAX(latest.version) FROM '.GameSystemRelease::class.' latest
+                 WHERE latest.gameSystemKey = r.gameSystemKey
+             )
+             ORDER BY r.gameSystemKey ASC',
+        )->getResult();
+
+        return $releases;
+    }
+
     public function get(string $gameSystemKey, int $version): ?GameSystemRelease
     {
         return $this->entityManager->getRepository(GameSystemRelease::class)

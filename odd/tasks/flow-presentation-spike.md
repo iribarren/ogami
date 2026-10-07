@@ -1,7 +1,7 @@
 # Feature: flow-presentation-spike
 
 - **Locator:** `odd/tasks/flow-presentation-spike.md` · Engram topic `odd/flow-presentation-spike/tasks`
-- **Issue:** to be opened with the user at PR time · **Branch:** `feat/flow-presentation-spike-1-prototypes` (from `main` `00167cf`)
+- **Issue:** #33 · **PR:** #34 · **Branch:** `feat/flow-presentation-spike-1-prototypes` (from `main` `00167cf`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-campaign-journal` (M1 complete)
@@ -38,7 +38,7 @@ One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-pre
 | T2 | Wizard prototype: one step per screen, step progress, previous results summary, next step visible; Storybook story playing the mock session | delegated writer | [x] | `4243a19` |
 | T3 | Journal-with-inline-prompts prototype: journal stream with the current step as an inline prompt card at the end, results recorded as entries; Storybook story | delegated writer | [x] | `c33e07d` |
 | T4 | Play the mock session in both (Storybook in the browser), record findings; user picks; ADR 0016, vision open question resolved, roadmap feature 7 links the ADR | inline (docs) | [x] | `9641013` |
-| T5 | Roadmap feature 6b `flow-model-brainstorm` (row + bootstrap prompt covering guided flows, scene types, generic vs game-specific content); vision open question for the flow model | inline (docs) | [x] | this commit |
+| T5 | Roadmap feature 6b `flow-model-brainstorm` (row + bootstrap prompt covering guided flows, scene types, generic vs game-specific content); vision open question for the flow model | inline (docs) | [x] | `45d0e28` |
 
 ## Acceptance criteria
 
@@ -60,3 +60,8 @@ One slice (`feat/flow-presentation-spike-1-prototypes`, PR `feat(play): flow-pre
 - Review of T1–T3 (medium risk, 11 files, 1,369 lines): consent **declined** by the user for this candidate; verification of record is the writer's `make frontend-qa`, `make frontend-test` (116 passed), `make storybook-build`, plus a parent re-run of `make frontend-test`.
 - T4: both prototypes played end to end on the guarded branch (oracle "Yes" → describe the guard → climb → roll → journal entry), the journal one with a free note mid-scene. The Chrome extension was not connected, so the play-through ran as a Playwright script in the `playwright` container against Storybook (`http://node:6006/iframe.html?id=…`), with screenshots per step. Findings in ADR 0016. User choice: **Mix** (journal as the base, optional wizard-style focus mode). The user also raised guided flows for novice players (Studio-authored scene types, Session Zero, world changes between scenes), which go to feature 6b. ADR 0016, ADR index, vision (question resolved) and roadmap feature 7 prompt updated; structural readback done.
 - T5: roadmap feature 6b `flow-model-brainstorm` (row, depends on 6; feature 7 now depends on 6b) with a bootstrap prompt covering 13 topics, including the user's addition: generic vs game-specific content (oracles, tables, scene types) and the game manager choosing which oracles and tables a flow makes available. Feature 7 prompt points to the 6b ADR. New vision open question for the flow model. Structural readback done.
+- Review of the whole slice (T1–T5, medium risk, 15 files, 1,453 lines; lineage `review-a539fd9f1222b204`): consent **granted**, one lens (reliability), **approved and acknowledged**. Advisory findings, carried to `play-flow-run` and not fixed in the throwaway prototypes:
+  - `JournalWithPrompts.tsx:90-99`: keys on `actions.length` remount the step form and the free-note form, so an unsent draft in one is lost when the other is submitted.
+  - `flowRun.ts:194-202`: `remaining()` has no cycle guard, and a choice step with no options gives "about Infinity".
+  - `flowRun.test.ts`: `exceptional_yes` / `exceptional_no` branch mapping untested.
+- Delivered: issue #33, PR #34 (`feat(play): flow-presentation-spike 1/1 prototypes`, closes #33). Feature complete once #34 is merged; next feature is 6b `flow-model-brainstorm`.

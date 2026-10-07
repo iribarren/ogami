@@ -19,6 +19,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0013 | [Studio is a core context](0013-studio-is-a-core-context.md) | Accepted |
 | 0014 | [Campaigns stay pinned to their GameSystem release](0014-campaigns-pinned-to-their-release.md) | Accepted |
 | 0015 | [Sequential slice delivery to main](0015-sequential-slice-delivery.md) | Accepted |
+| 0016 | [The flow is presented in the journal, with an optional focus mode](0016-flow-presentation-journal-with-focus-mode.md) | Accepted |
 
 ## Template
 

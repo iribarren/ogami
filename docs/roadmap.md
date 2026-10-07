@@ -38,7 +38,8 @@ Build in this order. Each feature follows ODD: feature doc in `odd/tasks/<featur
 | 4 | `gamesystem-release-contract` | M1 | 3 | Is Studio core or supporting? |
 | 5 | `play-campaign-journal` | M1 | 4 | Campaign upgrade path: pinned to its release ([ADR 0014](adr/0014-campaigns-pinned-to-their-release.md)) |
 | 6 | `flow-presentation-spike` | M2 | 5 | How the flow is presented in Play |
-| 7 | `play-flow-run` | M2 | 6 | — |
+| 6b | `flow-model-brainstorm` | M2 | 6 | How a guided flow is modeled; generic vs game-specific content |
+| 7 | `play-flow-run` | M2 | 6b | — |
 | 8 | `play-threads-npcs` | M2 | 7 | — |
 | 9 | `preset-mythic-flow` | M2 | 8 | — |
 | 10 | `play-characters` | M3 | 5 | — |
@@ -105,10 +106,45 @@ Start feature `play-campaign-journal` (ODD). Play: create/list/open campaigns pi
 Start feature `flow-presentation-spike` (ODD). Settle the vision open question "How is the flow presented in Play?". Build two Storybook prototypes with static data (step-by-step wizard vs journal with inline prompts), play a mock session in each, and record the choice and rationale as an ADR. No backend work.
 ```
 
+**6b. flow-model-brainstorm**
+
+Added after the flow-presentation spike. The release's `flow` is still a flat `{steps: []}` and both presets leave it empty, so its shape can change for free now. Once `play-flow-run` publishes presets with steps, campaigns pin them for good ([ADR 0014](adr/0014-campaigns-pinned-to-their-release.md)).
+
+```text
+Start feature `flow-model-brainstorm` (ODD). Brainstorming session, read-only until I approve outcomes, to settle the NarrativeFlow model before feature 7 `play-flow-run`. Timebox: one session. Every topic below must be addressed.
+
+Read first: docs/vision.md (open questions), docs/domain/glossary.md, docs/domain/context-map.md, docs/roadmap.md (M2–M4), ADR 0010, 0013, 0014, 0016 (flow presentation: journal with an optional focus mode), backend/presets/*.json, backend/src/Studio/Domain/Release/ReleaseContent.php (the current `flow` is a flat `{steps: []}`), frontend/src/play/flow-prototypes/ (spike prototypes).
+
+Problem: the current plan suits solo players with TTRPG and solo-play experience. Novice players need guided flows that a GAME_MANAGER authors in Studio for a specific game: a Session Zero (character creation and worldbuilding), sequences of scene types (e.g. Social → Exploration), suggested or mandatory oracle rolls per scene, and world changes between player scenes (NPCs acting, encounters). The SOLO_PLAYER may choose such a guided flow or play freely. Some content is generic and some is specific to a game system: a netrunning scene makes sense in Cyberpunk RED but not in Call of Cthulhu, and a name table differs between a fantasy setting and a samurai setting. The GAME_MANAGER chooses which oracles and tables are available to a flow.
+
+Goal: decide the shape of the flow model now, because published releases are pinned by campaigns for good. Do not design the Studio editor UX.
+
+Explore one topic at a time; ask me one focused question when a product decision is needed:
+1. Flow structure: phases (Session Zero, adventure loop, epilogue) → scene types → steps; a sequence, a graph or a loop; who picks the next scene type (the flow, the player, an oracle such as a random scene-type table)
+2. Scene Type: purpose, setup / play / closing steps, its own oracles; where Mythic's scene check (expected / altered / interrupted) fits
+3. Mandatory vs suggested steps in solo play: a gate or a strong default; can the player skip, and is the skip recorded in the journal
+4. Between-scene world turns: NPC agendas, faction clocks, random encounters, threads advancing; impact on feature 8 `play-threads-npcs` (NPC agenda or disposition fields); encounters as oracle tables
+5. Flow state and variables (Mythic's chaos factor, clocks, counters) and how they relate to M3 checks and derived values
+6. Session Zero: character creation depends on M3 sheets; where worldbuilding output lives (journal entries or a new campaign-facts concept)
+7. Several flows per GameSystem (quick one-shot, campaign with Session Zero); choosing one when creating a campaign; switching or turning guidance off mid-campaign; tutorial and tip text written by the GAME_MANAGER
+8. Presentation: how ADR 0016 adapts to guided flows (focus mode by default, scene-type cards); "next step always visible" across scene boundaries
+9. Studio's role and priority: is M4 / `studio-flow-editor` order still right; list vs visual-graph editor; a library of scene types
+10. Glossary: Scene Type, Phase, World turn / Interlude, Encounter, Suggested / Mandatory step, and any other new term
+11. Later, the Narrative-assist port: scene types as structured AI input (note only)
+12. Generic vs game-specific content: which entities (oracles, oracle tables, scene types, maybe flows) can be generic (usable by any game system) or specific to one GameSystem; who authors generic content and where it lives (a shared library published like a release, or copied into each release at publish time, keeping releases self-contained and immutable per ADR 0010); how a GameSystem picks or overrides generic content (e.g. a samurai name table instead of the fantasy one); how a GAME_MANAGER chooses which oracles and tables a flow makes available, and what Play shows outside that selection; the effect on pinning (ADR 0014) when a generic library changes
+13. Visual design: when a `design-foundation` feature fits (proposal: after `play-threads-npcs`, before M4 Studio), and whether each GameSystem may carry its own theme
+
+Deliverables, proposed for my approval before any write:
+- An ADR for the NarrativeFlow model: structure, generic vs game-specific content, the release schema change, what M2 implements and what is deferred
+- Glossary and context-map updates
+- A revised M2–M4 roadmap: adjusted feature prompts (7, 8, 9, 18 at least), a guided sample preset in M2 that proves the model without Studio UI, and a `design-foundation` feature
+- Remaining questions added to the vision's open questions, each with "decide when"
+```
+
 **7. play-flow-run**
 
 ```text
-Start feature `play-flow-run` (ODD). Play: FlowRun driving the release's NarrativeFlow. Step types: prompt, oracle question, roll, choice, journal entry; branching on results; the next step is always visible. Use the presentation chosen in the flow-presentation ADR. Works with the Free journal preset.
+Start feature `play-flow-run` (ODD). Play: FlowRun driving the release's NarrativeFlow. Step types: prompt, oracle question, roll, choice, journal entry; branching on results; the next step is always visible. Use the presentation from ADR 0016 (the journal as the base, with an optional focus mode) and the flow model from the feature 6b ADR. Works with the Free journal preset.
 ```
 
 **8. play-threads-npcs**

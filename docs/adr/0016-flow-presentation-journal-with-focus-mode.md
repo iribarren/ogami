@@ -7,7 +7,7 @@
 
 The [vision](../vision.md#open-questions) left open how a `NarrativeFlow` is presented in Play: a step-by-step wizard, a journal with prompts, or a mix. Feature 7 `play-flow-run` builds the FlowRun UI, so the question must be settled first.
 
-Feature `flow-presentation-spike` built two Storybook prototypes in `frontend/src/play/flow-prototypes/`. Both play the same static scene, "The Sunken Gate". It has every step type `play-flow-run` needs (prompt, oracle question, roll, choice, journal entry) and branches on an oracle answer and on a choice. Both prototypes were played end to end on both branches.
+Feature `flow-presentation-spike` built two Storybook prototypes in `frontend/src/play/flow-prototypes/`. Both play the same static scene, "The Sunken Gate". It has every step type `play-flow-run` needs (prompt, oracle question, roll, choice, journal entry) and branches on an oracle answer and on a choice. Both prototypes were played end to end in Storybook on the guarded branch (oracle "Yes", then climb). Their smoke tests play the other paths: the wizard plays "No" then climb, and the journal plays "Yes" then swim. Together they cover every branch, though no single prototype was played on every branch.
 
 | Variant | Worked | Did not work |
 |---|---|---|

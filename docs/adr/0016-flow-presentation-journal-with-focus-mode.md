@@ -1,6 +1,6 @@
 # 0016. The flow is presented in the journal, with an optional focus mode
 
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [ADR 0017](0017-narrativeflow-model.md): each flow sets its default view (`focus` or `journal`)
 - **Date:** 2026-10-07
 
 ## Context

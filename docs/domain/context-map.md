@@ -54,9 +54,10 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 | Aspect | Detail |
 |---|---|
-| Contract | [GameSystem release contract](../contracts/gamesystem-release.md), versioned by schema version |
+| Contract | [GameSystem release contract](../contracts/gamesystem-release.md), versioned by schema version. Schema version 2 adds Scene Types, trackers, fact slots and flows with phases ([ADR 0017](../adr/0017-narrativeflow-model.md)) |
 | Producer | Studio validates and publishes immutable releases |
 | How Play reads it | Only through Studio's Application query `GetPublishedRelease`; Play's anti-corruption layer translates the result into its own `GameSystemSnapshot` |
+| Generic content | Studio's library is copied into each release at publish, so a release is self-contained and Play never sees the library ([ADR 0017](../adr/0017-narrativeflow-model.md)) |
 | Never | Play importing Studio `Domain/` or `Infrastructure/`, or reading Studio drafts |
 
 ## Contexts
@@ -65,8 +66,8 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 | Aspect | Detail |
 |---|---|
-| Responsibilities | Create campaigns pinned to a GameSystem release; create and update characters; run sessions and scenes; drive the FlowRun; ask oracles and make checks; keep the journal, threads and NPCs |
-| Aggregates / concepts | Campaign, Character, Session, Scene, FlowRun, JournalEntry, Thread, NPC |
+| Responsibilities | Create campaigns pinned to a GameSystem release, guided by one of its flows or played freely; create and update characters; run sessions, scenes and world turns; drive the FlowRun; keep tracker values; ask oracles and make checks; keep the journal, threads, NPCs and Campaign facts |
+| Aggregates / concepts | Campaign (with tracker values), Character, Session, Scene (kind `scene` or `world-turn`, optional Scene Type), FlowRun, JournalEntry, Thread, NPC, Campaign fact |
 | Depends on | Studio (release snapshot via ACL), Randomness, Identity & Access, Narrative assist port |
 | Roles | `SOLO_PLAYER` |
 
@@ -74,8 +75,8 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 | Aspect | Detail |
 |---|---|
-| Responsibilities | Author game systems: sheet templates, fields, derived values, checks with outcome bands, narrative flows (including flow presets) and oracles; validate and publish GameSystem releases |
-| Aggregates / concepts | GameSystem, GameSystem release, SheetTemplate, Field, DerivedValue, Check, Outcome band, NarrativeFlow, Flow step, Flow preset, Oracle definition |
+| Responsibilities | Author game systems: sheet templates, fields, derived values, checks with outcome bands, oracles, Scene Types, trackers, fact slots and narrative flows; keep a library of generic content (M4) copied into releases at publish; validate and publish GameSystem releases |
+| Aggregates / concepts | GameSystem, GameSystem release, SheetTemplate, Field, DerivedValue, Check, Outcome band, NarrativeFlow, Phase, Scene Type, Flow step, Tracker, Fact slot, Oracle definition, Library (M4) |
 | Depends on | Randomness (validate dice expressions and oracle tables), Identity & Access |
 | Roles | `GAME_MANAGER` |
 | Note | Studio is a first-class product surface with rich editors, not an admin panel |
@@ -112,7 +113,7 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 | Aspect | Detail |
 |---|---|
-| Responsibilities | Suggest ideas for a flow step (e.g. scene prompts, interpretations of oracle answers) |
+| Responsibilities | Suggest ideas for a flow step (e.g. scene prompts, interpretations of oracle answers). Structured input: Scene Type, current step, Campaign facts, NPC agendas, Threads, trackers ([ADR 0017](../adr/0017-narrativeflow-model.md)) |
 | Shape | An interface owned by Play; implementation (AI adapter) comes later |
 | Roles | Used by Play on behalf of `SOLO_PLAYER` |
 

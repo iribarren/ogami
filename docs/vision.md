@@ -75,12 +75,18 @@ Policy: decide at the last responsible moment. Each question is answered when th
 
 | Question | Decide when | How |
 |---|---|---|
-| How is a guided flow modeled (phases, scene types, steps, world turns, flow state), and which content is generic or specific to a game system? | Before `play-flow-run` (feature 7) | Brainstorm in feature 6b `flow-model-brainstorm`, record the model as an ADR |
+| How does a world turn affect the player's next scene: must the player react, and does ignoring it have a consequence defined by the game manager? | `flow-model-examples` (6c) | Map real examples to [ADR 0017](adr/0017-narrativeflow-model.md); amend it |
+| How does a looping phase end: only by the player's choice, or also on a tracker condition? | `flow-model-examples` (6c) | Same examples; amend ADR 0017 |
+| Can an interruption switch a scene to another Scene Type (e.g. an altered or interrupted scene, an ambush)? | `flow-model-examples` (6c) | Same examples; amend ADR 0017 |
+| Do NPC disposition, factions or thread progress need their own fields? | When a preset needs them, starting at `flow-model-examples` (6c) | Try trackers and Campaign facts first; add fields only on a real gap |
+| Which curated themes may a GameSystem release name? | `design-foundation` (8c) | A few app-defined, contrast-checked themes |
+| Can flows be generic library content, like oracles and Scene Types? | `studio-library` (18b) | Decide from the library's first real uses |
+| How does a player move a campaign's story to another flow? | Backlog `play-campaign-transfer` | A new campaign carrying over facts, NPCs and Threads; until then the flow is fixed |
 | How far do structured checks go before they need a scripting language? | Randomness / Check feature | Start with dice + formulas + outcome bands; extend only on a real gap |
-| What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow; only the port exists until then |
+| What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow: structured input from the Scene Type, the current step, Campaign facts, NPC agendas, Threads and trackers ([ADR 0017](adr/0017-narrativeflow-model.md)); only the port exists until then |
 | When does player-created content enter scope, and who moderates it? | Later | Explicitly out of scope for now |
 
-Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)), the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)) and how the flow is presented in Play ([ADR 0016](adr/0016-flow-presentation-journal-with-focus-mode.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
+Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)), the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)), how the flow is presented in Play ([ADR 0016](adr/0016-flow-presentation-journal-with-focus-mode.md)) and how a guided flow is modeled, with generic vs game-specific content ([ADR 0017](adr/0017-narrativeflow-model.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
 
 ## Related
 

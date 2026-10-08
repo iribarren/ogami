@@ -46,7 +46,8 @@ One slice (`docs/flow-model-brainstorm-1-model`, PR `docs(flow): flow-model-brai
 | T1 | Feature doc; ADR 0017 NarrativeFlow model (decisions, schema v2 sketch, M2 scope, deferred list); ADR 0016 "amended by 0017" note; ADR 0010 library note; ADR index | delegated writer (T1–T4, 5+ doc files) | [x] | `2e1df4e` |
 | T2 | Glossary and context map | delegated writer | [x] | `fa94d5d` |
 | T3 | Roadmap: rows and prompts for 6c, 7, 8, 8b, 8c, 9, 9b, 10–12 notes, 18 (moved), 18b, backlog `play-campaign-transfer`, M2 exit signal | delegated writer | [x] | `bac33a7` |
-| T4 | Vision open questions: flow model resolved by ADR 0017; new questions with "decide when" | delegated writer | [x] | this commit |
+| T4 | Vision open questions: flow model resolved by ADR 0017; new questions with "decide when" | delegated writer | [x] | `3c0d770` |
+| T5 | Roadmap 6c prompt: the user's five examples (VtM sandbox chronicle, Cyberpunk RED heist one-shot, Mythic-style session, Cyberpunk RED campaign in acts, West Marches roster) and questions on sandbox goals, acts and several player characters; vision and glossary updates left to 6c | inline (one doc file) | [x] | this commit |
 
 ## Acceptance criteria
 
@@ -65,3 +66,4 @@ One slice (`docs/flow-model-brainstorm-1-model`, PR `docs(flow): flow-model-brai
 - T2: glossary adds Phase, Session Zero, Scene Type, Scene selection, World turn, Encounter, Effect, Tracker, Fact slot, Library, Theme, Guidance, Campaign fact; changes NarrativeFlow, Flow step, Scene, FlowRun, Preset; drops Flow preset. Context map: Play and Studio concepts, schema v2 and library notes on the Published Language, Narrative assist input. Structural readback done.
 - T3: roadmap strategy row (flow model before flows ship), M2 exit signal adds the guided sample played as a novice; rows 6c, 8b, 8c, 9b, 18b and backlog `play-campaign-transfer`; feature 7 depends on 6c, 9 on 8c, 18 on 15 and 9b and moves third in M4; prompts for 6c, 7, 8, 8b, 8c, 9, 9b, 18, 18b, transfer; notes in 10–12; 6b marked done. Structural readback done.
 - T4: vision resolves the flow-model question (ADR 0017) and adds seven open questions with "decide when" (6c ×4, 8c, 18b, backlog transfer); Narrative-assist "how" names its structured input. Structural readback done.
+- T5: on user request before pushing, the 6c `flow-model-examples` prompt maps five examples and settles three more questions (sandbox goals from ambitions, acts, several player characters per campaign: now or backlog). The vision and glossary stay as they are; 6c updates them with what it discovers. Structural readback done.

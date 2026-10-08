@@ -40,7 +40,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 | 5 | `play-campaign-journal` | M1 | 4 | Campaign upgrade path: pinned to its release ([ADR 0014](adr/0014-campaigns-pinned-to-their-release.md)) |
 | 6 | `flow-presentation-spike` | M2 | 5 | How the flow is presented in Play |
 | 6b | `flow-model-brainstorm` | M2 | 6 | How a guided flow is modeled; generic vs game-specific content ([ADR 0017](adr/0017-narrativeflow-model.md)) |
-| 6c | `flow-model-examples` | M2 | 6b | World-turn consequences for the next scene; how a loop phase ends; interrupting into another Scene Type |
+| 6c | `flow-model-examples` | M2 | 6b | World-turn consequences for the next scene; how a loop phase ends; interrupting into another Scene Type; sandbox goals; acts; several player characters per campaign |
 | 7 | `play-flow-run` | M2 | 6c | — |
 | 8 | `play-threads-npcs` | M2 | 7 | — |
 | 8b | `play-campaign-facts` | M2 | 8 | — |
@@ -158,18 +158,23 @@ Start feature `flow-model-examples` (ODD). Brainstorming session, read-only unti
 Read first: ADR 0017, ADR 0016, docs/domain/glossary.md, docs/vision.md (open questions marked "6c"), docs/roadmap.md (M2), backend/presets/*.json.
 
 Examples to map, step by step, as a GAME_MANAGER would author them and a SOLO_PLAYER would play them:
-- A Vampire chronicle in London: Session Zero worldbuilding with Campaign facts such as "The Camarilla rules London", "The Prince is a Ventrue", "The Prince is Mithras" (an `npc` fact slot), then social and investigation scenes with world turns where NPC agendas move.
-- A Cyberpunk netrun: a game-specific Scene Type with its own oracle tables and a clock.
-- A Mythic-style session: chaos tracker, scene check in the scene opening, altered and interrupted scenes, end-of-scene list updates.
+1. A Vampire: the Masquerade chronicle (sandbox). Session Zero worldbuilding decides the city, setting, tone and the city's factions as Campaign facts (e.g. "The Camarilla rules London", "The Prince is a Ventrue", "The Prince is Mithras" through an `npc` fact slot). With no set plot, the player turns their character's ambitions into goals that start each session; explore how the flow helps set those goals.
+2. A Cyberpunk RED one-shot heist. A short flow that mixes generic Scene Types (Social, Exploration) with game-specific ones (netrun, the heist itself), with their own oracle tables and a clock.
+3. A Mythic-style session: chaos tracker, scene check in the scene opening, altered and interrupted scenes, end-of-scene list updates.
+4. A Cyberpunk RED long campaign. The player starts small, surviving and making a living from small gigs, and rises from there in acts: Act 1 "Making a name / getting a crew", Act 2 "The big job", Act 3 "The twist and conclusion". Explore whether acts are phases, a new level above phases, or a later extension the model must leave room for.
+5. A West Marches-style fantasy campaign (D&D, or a simpler fantasy system if D&D is too complex for now). Session Zero creates a roster of characters, an adventuring group. Each session the player picks some of them to go on a specific quest or follow earlier clues.
 
 Questions to settle:
 1. How a world turn affects the player's next scene: must the player react, and does ignoring it have a consequence? Defined by the GAME_MANAGER how?
 2. How a loop phase ends: only by the player's choice, or also on a tracker condition (a full clock)?
 3. Can an interruption switch the current scene to another Scene Type (e.g. Mythic's interrupted scene, an ambush)?
 4. Do NPC disposition, factions or thread progress need fields now, or do trackers and facts cover them?
-5. Any gap in step kinds, effects or placeholders the examples reveal.
+5. How the player sets goals from their character's ambitions in a sandbox (example 1): Threads, Campaign facts, or a new concept?
+6. Acts (example 4): a phase, a new level of the flow, or deferred with room left in the schema?
+7. Several player characters per campaign (examples 4 and 5: a crew, a roster, picking who goes on each session): add it to the model from the start or defer it to the backlog?
+8. Any gap in step kinds, effects or placeholders the examples reveal.
 
-Deliverables, proposed for my approval before any write: amendments to ADR 0017 (or a new ADR), glossary updates, an adjusted feature 7 prompt, and answered vision open questions.
+Deliverables, proposed for my approval before any write: amendments to ADR 0017 (or a new ADR), glossary and vision updates with what the examples reveal (new terms, answered and new open questions), and an adjusted feature 7 prompt.
 ```
 
 **7. play-flow-run**

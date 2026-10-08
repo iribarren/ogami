@@ -25,10 +25,20 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | DerivedValue | A sheet value computed by a formula from fields or other derived values (e.g. a modifier) | Studio |
 | Check | A named rule that rolls a dice expression against sheet values and maps the result to outcome bands | Studio (defined), Play (performed) |
 | Outcome band | A range of check results with a meaning (e.g. "miss", "weak hit", "strong hit") | Studio |
-| NarrativeFlow | The configurable procedure of play for a GameSystem: an ordered or branching set of flow steps | Studio |
-| Flow step | One step of a narrative flow (e.g. set the scene, ask the oracle, make a check, write a journal entry) | Studio |
-| Flow preset | A ready-made narrative flow (Mythic-style, free journal) usable for generic or unsupported systems | Studio |
-| Preset | A hand-authored GameSystem release file shipped with Ogami (e.g. Free journal, Mythic-style) and published by `make presets`. A preset may carry a flow preset, but it is a whole release: oracles, flow, sheet and checks | Studio |
+| NarrativeFlow | A guided procedure of play for a GameSystem: ordered Phases of Scenes picked from Scene Types. A release has zero or more flows ([ADR 0017](../adr/0017-narrativeflow-model.md)) | Studio |
+| Phase | An ordered part of a NarrativeFlow (e.g. Session Zero, Adventure, Epilogue) that runs `once` or `loop`s. It has a scene selection rule, scene opening and closing steps, and a world turn | Studio |
+| Session Zero | By convention, a flow's first phase: character creation and worldbuilding | Studio |
+| Scene Type | A reusable kind of scene declared by a release (e.g. Social, Exploration), with a purpose, tips, `setup` / `play` / `closing` steps and oracle shortcuts | Studio (defined), Play (a Scene has one) |
+| Scene selection | A phase's rule for picking the next Scene Type: `sequence`, `player` or `oracle` | Studio |
+| World turn | Steps between scenes where the world moves: NPC agendas, clocks, encounters. Recorded in Play as a Scene of kind `world-turn`. Avoid "Interlude" | Studio (defined), Play (recorded) |
+| Encounter | An oracle table entry describing an unplanned event, usually rolled in a world turn. Not its own entity | Studio |
+| Flow step | One step of a Scene Type part or a phase hook (e.g. set the scene, ask the oracle, roll, choose, pick an NPC). **Suggested** (the player may skip it) by default, or **mandatory** (a hard gate) | Studio |
+| Effect | A change a step outcome applies: adjust a tracker, fill a Campaign fact, create an NPC or Thread | Studio |
+| Tracker | A campaign number declared by the release: a `counter` (e.g. chaos factor) or a `clock` (segments). Its value lives on the Campaign | Studio (declared), Play (value) |
+| Fact slot | A named, typed place for a Campaign fact, declared by the release: `text`, `npc` or `thread` | Studio |
+| Library | Studio-only generic content (oracles, Scene Types, trackers, fact slots), copied into a release at publish. A GameSystem overrides a library item by key | Studio |
+| Theme | One of a few app-defined visual themes a release may name (e.g. `parchment`, `neon`) | Studio → Play |
+| Preset | A hand-authored GameSystem release file shipped with Ogami (e.g. Free journal, Mythic-style) and published by `make presets`. A preset is a whole release: oracles, Scene Types, trackers, flows, sheet and checks | Studio |
 | Schema version | The version of the GameSystem release contract a release file follows (`schemaVersion`). Distinct from the release version | Studio → Play |
 | Oracle | Anything that answers a question with uncertainty: an oracle table or a likelihood oracle | Studio (defined), Randomness (resolved) |
 
@@ -40,11 +50,13 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Pinned release | The GameSystem release a campaign uses: the latest release of the chosen GameSystem when the campaign is created, stored as key and release version. Newer releases never change it ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) | Play |
 | Character | A sheet instance: a sheet template filled in for one campaign | Play |
 | Session | One sitting of play within a campaign, numbered from 1. The latest session is the current session | Play |
-| Scene | A unit of story within a session, with a title, numbered from 1 within its session. The latest scene of the current session is the current scene | Play |
-| FlowRun | The live progress of a campaign through its narrative flow: current step and history | Play |
+| Scene | A unit of story within a session, with a title, numbered from 1 within its session. Its kind is `scene` or `world-turn`; in a guided flow it has a Scene Type. The latest scene of the current session is the current scene | Play |
+| Guidance | Whether a campaign follows a NarrativeFlow. "Play freely" means no FlowRun; turning guidance off pauses the FlowRun | Play |
+| FlowRun | A campaign's progress through its NarrativeFlow: current phase, scene, part and step, and a history that includes skips and tracker edits. It can be paused | Play |
 | JournalEntry | An immutable record in a campaign's journal, recorded in the current scene. Kinds: `note` (written text), `roll` (a dice roll result), `oracle-table` (an oracle table result), `likelihood` (a likelihood oracle answer) | Play |
 | Thread | An open story line or goal the player tracks | Play |
 | NPC | A non-player character the player tracks in a campaign | Play |
+| Campaign fact | A statement about a campaign's world (e.g. "The Prince is Mithras"). It fills a fact slot or is free, and may link to NPCs, Threads or other facts | Play |
 
 ## Randomness
 

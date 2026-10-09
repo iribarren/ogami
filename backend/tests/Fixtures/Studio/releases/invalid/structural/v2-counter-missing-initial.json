@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [{"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3}],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** the schema file is in place. Studio validation and Play's anti-corruption layer for version 2 land in later slices of feature `play-flow-run`; until then publishing a version 2 file fails with "unsupported schema version".
+> **Status:** the schema file is in place. Studio validates the version 2 envelope, trackers, fact slots, table entry keys and the chaos tracker. Scene Types, flows and table entry `sceneType` / `effects` land in later slices of feature `play-flow-run`; until then they fail with "not supported yet" (`sceneTypes` and `flows` must be empty). Play still rejects version 2 releases ("unsupported schema version").
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 

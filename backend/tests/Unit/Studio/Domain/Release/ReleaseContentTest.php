@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Studio\Domain\Release;
 
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
+use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -60,9 +61,9 @@ final class ReleaseContentTest extends TestCase
     #[Test]
     public function itAcceptsEmptyOracleListsAndAnEmptyFlow(): void
     {
-        $release = self::with(self::release(), 'oracles', ['tables' => [], 'likelihood' => []]);
-        $release = self::with($release, 'flow', ['steps' => []]);
-        $release = self::without($release, 'gameSystem.description');
+        $release = ReleaseArrays::with(self::release(), 'oracles', ['tables' => [], 'likelihood' => []]);
+        $release = ReleaseArrays::with($release, 'flow', ['steps' => []]);
+        $release = ReleaseArrays::without($release, 'gameSystem.description');
 
         $content = ReleaseContent::fromArray($release);
 
@@ -81,12 +82,12 @@ final class ReleaseContentTest extends TestCase
             'oracles.tables.1.entries.1.max', 'oracles.tables.1.entries.1.table', 'oracles.likelihood.0.chaos',
             'oracles.likelihood.0.exceptionalPercent', 'flow.steps.0.prompt',
         ] as $path) {
-            $release = self::with($release, $path, null);
+            $release = ReleaseArrays::with($release, $path, null);
         }
 
         $withoutNulls = self::release();
         foreach (['gameSystem.description', 'oracles.likelihood.0.chaos', 'oracles.likelihood.0.exceptionalPercent', 'flow.steps.0.prompt'] as $path) {
-            $withoutNulls = self::without($withoutNulls, $path);
+            $withoutNulls = ReleaseArrays::without($withoutNulls, $path);
         }
 
         $content = ReleaseContent::fromArray($release);
@@ -104,7 +105,7 @@ final class ReleaseContentTest extends TestCase
             'oracles.likelihood.0.sides' => 100.0, 'oracles.likelihood.0.levels.0.target' => 35.0,
             'oracles.likelihood.0.chaos.neutral' => 5.0, 'oracles.likelihood.0.exceptionalPercent' => 20.0,
         ] as $path => $value) {
-            $release = self::with($release, $path, $value);
+            $release = ReleaseArrays::with($release, $path, $value);
         }
 
         $content = ReleaseContent::fromArray($release);
@@ -119,7 +120,7 @@ final class ReleaseContentTest extends TestCase
     public function itHashesTheCanonicalContentWhateverTheKeyOrder(): void
     {
         $content = ReleaseContent::fromArray(self::release());
-        $reordered = ReleaseContent::fromArray(self::reverseKeys(self::release()));
+        $reordered = ReleaseContent::fromArray(ReleaseArrays::reverseKeys(self::release()));
 
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $content->hash());
         self::assertSame($content->hash(), $reordered->hash());
@@ -133,7 +134,7 @@ final class ReleaseContentTest extends TestCase
     #[Test]
     public function differentContentHasADifferentHash(): void
     {
-        $changed = self::with(self::release(), 'gameSystem.name', 'Free journal 2');
+        $changed = ReleaseArrays::with(self::release(), 'gameSystem.name', 'Free journal 2');
 
         self::assertNotSame(ReleaseContent::fromArray(self::release())->hash(), ReleaseContent::fromArray($changed)->hash());
     }
@@ -161,15 +162,15 @@ final class ReleaseContentTest extends TestCase
      */
     public static function invalidReleases(): iterable
     {
-        $set = static fn (string $path, mixed $value): array => self::with(self::release(), $path, $value);
-        $unset = static fn (string $path): array => self::without(self::release(), $path);
+        $set = static fn (string $path, mixed $value): array => ReleaseArrays::with(self::release(), $path, $value);
+        $unset = static fn (string $path): array => ReleaseArrays::without(self::release(), $path);
         $likelihood = static fn (int $i): array => ['key' => 'fate-'.$i, 'name' => 'Fate', 'sides' => 6, 'levels' => [['key' => 'even', 'label' => 'Even', 'target' => 3]]];
 
         yield 'top level not an object' => [[self::release()], '(root): must be an object'];
         yield 'unknown top-level property' => [$set('extra', true), 'extra: unknown property'];
         yield 'missing top-level property' => [$unset('checks'), 'checks: required'];
         yield 'missing schema version' => [$unset('schemaVersion'), 'schemaVersion: required'];
-        yield 'unsupported schema version' => [$set('schemaVersion', 2), 'schemaVersion: unsupported schema version'];
+        yield 'unsupported schema version' => [$set('schemaVersion', 3), 'schemaVersion: unsupported schema version 3, expected 1 or 2'];
         yield 'schema version as string' => [$set('schemaVersion', '1'), 'schemaVersion: unsupported schema version'];
         yield 'fractional schema version' => [$set('schemaVersion', 1.5), 'schemaVersion: unsupported schema version'];
         yield 'game system not an object' => [$set('gameSystem', 'x'), 'gameSystem: must be an object'];
@@ -257,76 +258,6 @@ final class ReleaseContentTest extends TestCase
         $this->expectException(InvalidReleaseContent::class);
         $this->expectExceptionMessageMatches('/^oracles\.likelihood\[0\]: .*unlikely.*101/');
 
-        ReleaseContent::fromArray(self::with(self::release(), 'oracles.likelihood.0.levels.0.target', 101));
-    }
-
-    /**
-     * Sets the value at a dotted path ("oracles.tables.0.name"), creating the last segment.
-     *
-     * @param array<mixed> $node
-     *
-     * @return array<mixed>
-     */
-    private static function with(array $node, string $path, mixed $value): array
-    {
-        $segments = explode('.', $path, 2);
-        $segment = $segments[0];
-        $rest = $segments[1] ?? null;
-        if (null === $rest) {
-            $node[$segment] = $value;
-
-            return $node;
-        }
-
-        $child = $node[$segment] ?? null;
-        if (!\is_array($child)) {
-            throw new \LogicException(\sprintf('No array at "%s".', $segment));
-        }
-
-        $node[$segment] = self::with($child, $rest, $value);
-
-        return $node;
-    }
-
-    /**
-     * Removes the value at a dotted path.
-     *
-     * @param array<mixed> $node
-     *
-     * @return array<mixed>
-     */
-    private static function without(array $node, string $path): array
-    {
-        $segments = explode('.', $path, 2);
-        $segment = $segments[0];
-        $rest = $segments[1] ?? null;
-        if (null === $rest) {
-            unset($node[$segment]);
-
-            return $node;
-        }
-
-        $child = $node[$segment] ?? null;
-        if (!\is_array($child)) {
-            throw new \LogicException(\sprintf('No array at "%s".', $segment));
-        }
-
-        $node[$segment] = self::without($child, $rest);
-
-        return $node;
-    }
-
-    /**
-     * Reverses the key order of every object (string-keyed array), keeping lists in order.
-     *
-     * @param array<mixed> $node
-     *
-     * @return array<mixed>
-     */
-    private static function reverseKeys(array $node): array
-    {
-        $node = array_map(static fn (mixed $value): mixed => \is_array($value) ? self::reverseKeys($value) : $value, $node);
-
-        return array_is_list($node) ? $node : array_reverse($node, true);
+        ReleaseContent::fromArray(ReleaseArrays::with(self::release(), 'oracles.likelihood.0.levels.0.target', 101));
     }
 }

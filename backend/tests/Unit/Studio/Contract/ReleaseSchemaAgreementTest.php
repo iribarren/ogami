@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Proves the JSON Schema file and the Studio domain agree on the same cases: valid files pass
+ * Proves each JSON Schema file and the Studio domain agree on the same cases: valid files pass
  * both, structural invalid cases fail both, and semantic invalid cases pass the schema (it cannot
  * express them) but fail the domain. Every invalid case names why it fails: the domain message
  * prefix (the path) and, for structural cases, the schema error location (a JSON pointer).
@@ -22,12 +22,16 @@ use PHPUnit\Framework\TestCase;
  * JSON Schema reports "required" and "additionalProperties" on the object that holds the
  * keyword, so for a missing or unknown property the schema location is the parent object while
  * the domain path names the property itself.
+ *
+ * Each case is checked against the schema file of its "schemaVersion" (v1 for any version the
+ * contract does not define, whose "const" then fails). Schema version 2 cases are named "v2-…".
  */
 #[CoversNothing]
 final class ReleaseSchemaAgreementTest extends TestCase
 {
-    private const string SCHEMA_ID = 'https://ogami.app/contracts/gamesystem-release/v1.schema.json';
-    private const string SCHEMA_FILE = __DIR__.'/../../../../contracts/gamesystem-release/v1.schema.json';
+    private const string SCHEMA_ID = 'https://ogami.app/contracts/gamesystem-release/v%d.schema.json';
+    private const string SCHEMA_FILE = __DIR__.'/../../../../contracts/gamesystem-release/v%d.schema.json';
+    private const array SCHEMA_VERSIONS = [1, 2];
     private const string FIXTURES = __DIR__.'/../../../Fixtures/Studio/releases';
     private const string PRESETS = __DIR__.'/../../../../presets';
 
@@ -93,6 +97,20 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: too-long-step-title' => ['flow.steps[0].title: must be at most 100 characters', '/flow/steps/0/title'],
         'generated: too-long-step-prompt' => ['flow.steps[0].prompt: must be at most 2000 characters', '/flow/steps/0/prompt'],
         'generated: entry-text-too-long' => ['oracles.tables: ', '/oracles/tables/0/entries/0/text'],
+        'v2-bad-entry-key' => ['oracles.tables[0].entries[0].key: must be 1 to 64 characters', '/oracles/tables/0/entries/0/key'],
+        'v2-clock-with-min' => ['trackers[0].min: unknown property', '/trackers/0'],
+        'v2-counter-missing-initial' => ['trackers[0].initial: required', '/trackers/0'],
+        'v2-fact-slot-bad-type' => ['factSlots[0].type: must be one of', '/factSlots/0/type'],
+        'v2-flow-key' => ['flow: unknown property', '/'],
+        'v2-level-up-to-tracker' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
+        'v2-missing-flows' => ['flows: required', '/'],
+        'v2-non-empty-sheet' => ['sheet: not supported in schema version 2', '/sheet'],
+        'v2-segments-out-of-range' => ['trackers[0].segments: must be at most 20', '/trackers/0/segments'],
+        'v2-unknown-tracker-kind' => ['trackers[0].kind: must be one of', '/trackers/0/kind'],
+        'generated: v2-too-many-trackers' => ['trackers: at most 50 trackers', '/trackers'],
+        'generated: v2-too-many-fact-slots' => ['factSlots: at most 100 fact slots', '/factSlots'],
+        'generated: v2-too-many-levels' => ['trackers[0].levels: at most 20 levels', '/trackers/0/levels'],
+        'generated: v2-too-long-tracker-hint' => ['trackers[0].hint: must be at most 500 characters', '/trackers/0/hint'],
     ];
 
     /**
@@ -119,6 +137,19 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'whitespace-only-game-system-name' => 'gameSystem.name: must not be blank',
         'whitespace-only-likelihood-name' => 'oracles.likelihood[0].name: must not be blank',
         'whitespace-only-step-title' => 'flow.steps[0].title: must not be blank',
+        'v2-chaos-tracker-clock' => 'oracles.likelihood[0].chaos.tracker: must be a counter, "alarm" is a clock',
+        'v2-chaos-tracker-range' => 'oracles.likelihood[0].chaos.tracker: counter "chaos" must range 1..9 like the chaos factor, 0..10 given',
+        'v2-chaos-tracker-unknown' => 'oracles.likelihood[0].chaos.tracker: unknown tracker "chaos"',
+        'v2-duplicate-entry-key' => 'oracles.tables[0].entries[1].key: duplicate entry key "patrol"',
+        'v2-duplicate-fact-slot-key' => 'factSlots[1].key: duplicate fact slot key "city"',
+        'v2-duplicate-tracker-key' => 'trackers[1].key: duplicate tracker key "alarm"',
+        'v2-entry-effects-not-supported-yet' => 'oracles.tables[0].entries[0].effects: not supported yet',
+        'v2-entry-scene-type-not-supported-yet' => 'oracles.tables[0].entries[0].sceneType: not supported yet',
+        'v2-flows-not-supported-yet' => 'flows: not supported yet',
+        'v2-initial-out-of-range' => 'trackers[0].initial: must be within min..max (0..3), 4 given',
+        'v2-last-level-with-up-to' => 'trackers[0].levels[1].upTo: the last level catches the rest and must omit upTo',
+        'v2-level-up-to-not-increasing' => 'trackers[0].levels[1].upTo: must be greater than 2, the previous upTo, 2 given',
+        'v2-scene-types-not-supported-yet' => 'sceneTypes: not supported yet',
     ];
 
     /**
@@ -223,7 +254,40 @@ final class ReleaseSchemaAgreementTest extends TestCase
             $cases['generated: '.$name] = [json_encode([...self::minimalRelease(), ...$overrides], \JSON_THROW_ON_ERROR)];
         }
 
+        $clock = static fn (int $i): array => ['key' => 't-'.$i, 'name' => 'Tracker', 'kind' => 'clock', 'segments' => 4];
+        $level = static fn (int $i): array => ['upTo' => $i, 'label' => 'Level'];
+        $slot = static fn (int $i): array => ['key' => 's-'.$i, 'label' => 'Slot', 'type' => 'text'];
+        $counter = ['key' => 'edge', 'name' => 'Edge', 'kind' => 'counter', 'min' => 0, 'max' => 3, 'initial' => 0];
+
+        $generatedV2 = [
+            'v2-too-many-trackers' => ['trackers' => array_map($clock, range(1, 51))],
+            'v2-too-many-fact-slots' => ['factSlots' => array_map($slot, range(1, 101))],
+            'v2-too-many-levels' => ['trackers' => [['levels' => [...array_map($level, range(1, 20)), ['label' => 'Rest']]] + $counter]],
+            'v2-too-long-tracker-hint' => ['trackers' => [['hint' => str_repeat('h', 501)] + $clock(1)]],
+        ];
+
+        foreach ($generatedV2 as $name => $overrides) {
+            $cases['generated: '.$name] = [json_encode([...self::minimalReleaseV2(), ...$overrides], \JSON_THROW_ON_ERROR)];
+        }
+
         return $cases;
+    }
+
+    /**
+     * The valid fixture v2-minimal.json.
+     *
+     * @return array<string, mixed>
+     */
+    private static function minimalReleaseV2(): array
+    {
+        $json = file_get_contents(self::FIXTURES.'/valid/v2-minimal.json');
+        self::assertIsString($json);
+
+        /** @var array<string, mixed> $release */
+        $release = json_decode($json, true, flags: \JSON_THROW_ON_ERROR);
+        $release['sheet'] = new \stdClass();
+
+        return $release;
     }
 
     /**
@@ -296,9 +360,13 @@ final class ReleaseSchemaAgreementTest extends TestCase
     {
         $validator = new Validator();
         $validator->setMaxErrors(5);
-        $validator->resolver()?->registerFile(self::SCHEMA_ID, self::SCHEMA_FILE);
+        foreach (self::SCHEMA_VERSIONS as $version) {
+            $validator->resolver()?->registerFile(\sprintf(self::SCHEMA_ID, $version), \sprintf(self::SCHEMA_FILE, $version));
+        }
 
-        $error = $validator->validate(json_decode($json, flags: \JSON_THROW_ON_ERROR), self::SCHEMA_ID)->error();
+        $data = json_decode($json, flags: \JSON_THROW_ON_ERROR);
+        $version = $data instanceof \stdClass && \in_array($data->schemaVersion ?? null, self::SCHEMA_VERSIONS, true) ? $data->schemaVersion : 1;
+        $error = $validator->validate($data, \sprintf(self::SCHEMA_ID, $version))->error();
 
         return $error instanceof ValidationError ? array_values(array_unique(self::leafLocations($error))) : [];
     }

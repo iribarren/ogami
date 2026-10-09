@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [
+    {"key": "city", "label": "City", "type": "text"},
+    {"key": "city", "label": "Town", "type": "text"}
+  ],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

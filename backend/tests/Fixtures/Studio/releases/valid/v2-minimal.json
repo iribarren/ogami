@@ -1,8 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 2,
   "gameSystem": {"key": "minimal", "name": "Minimal"},
   "oracles": {"tables": [], "likelihood": []},
-  "flow": {"steps": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
   "sheet": {},
   "checks": []
 }

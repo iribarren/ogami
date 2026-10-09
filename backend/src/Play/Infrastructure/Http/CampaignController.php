@@ -10,14 +10,17 @@ use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\ListMyCampaigns;
+use App\Play\Application\SetTrackerValue;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
+use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\InvalidCampaignName;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -32,7 +35,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * A solo player's campaigns, with their sessions and scenes (security.yaml restricts these
+ * A solo player's campaigns, with their sessions, scenes and Trackers (security.yaml restricts these
  * routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly like an
  * unknown one.
  */
@@ -44,6 +47,7 @@ final readonly class CampaignController
 
     private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name" and a string "gameSystemKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
     private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", such as {"title": "At the gate"}.';
+    private const string MALFORMED_TRACKER = 'Send a JSON object with an integer "value", such as {"value": 3}.';
 
     public function __construct(
         private CommandBus $commandBus,
@@ -184,6 +188,44 @@ final readonly class CampaignController
         }
 
         return $this->campaign($campaignId, $user, Response::HTTP_CREATED);
+    }
+
+    #[Route('/api/campaigns/{campaignId}/trackers/{trackerKey}', name: 'api_campaigns_trackers_set', methods: ['PUT'])]
+    #[OA\Put(operationId: 'setTrackerValue', summary: 'Set the value of a Tracker of one of my campaigns by hand')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: SetTrackerValueRequest::class)))]
+    #[OA\Response(response: 200, description: 'The Tracker with the value kept, clamped to its range.', content: new OA\JsonContent(ref: new Model(type: TrackerResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or has no integer "value".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no Tracker with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function setTrackerValue(string $campaignId, string $trackerKey, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the value as JSON.', self::MALFORMED_TRACKER);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $value = $body['value'] ?? null;
+        if (!\is_int($value)) {
+            return $this->error(self::MALFORMED_TRACKER, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $this->commandBus->dispatch(new SetTrackerValue($campaignId, $user->id(), $trackerKey, $value));
+        } catch (CampaignNotFound|UnknownCampaignTracker $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        }
+
+        $trackers = array_filter(
+            $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->trackers,
+            static fn (TrackerView $tracker): bool => $tracker->key === $trackerKey,
+        );
+
+        return new JsonResponse(TrackerResponse::fromView(array_first($trackers) ?? throw new \LogicException('The Tracker was just set.')));
     }
 
     /**

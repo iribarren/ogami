@@ -14,6 +14,7 @@ use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordNote;
 use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordRoll;
+use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
@@ -157,7 +158,7 @@ final readonly class JournalController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no likelihood oracle with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign has no current scene, or the generated entry id is already taken.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The likelihood level is unknown, the chaos factor is out of range or not expected, or the question is too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the question is too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function recordLikelihoodAnswer(string $campaignId, string $oracleKey, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the question as JSON.', self::MALFORMED_LIKELIHOOD);
@@ -198,7 +199,7 @@ final readonly class JournalController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (NoCurrentScene|JournalEntryAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle $exception) {
+        } catch (InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

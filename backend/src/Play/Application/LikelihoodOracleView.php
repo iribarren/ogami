@@ -10,14 +10,16 @@ namespace App\Play\Application;
 final readonly class LikelihoodOracleView
 {
     /**
-     * @param list<LikelihoodLevelView> $levels in definition order
-     * @param ?LikelihoodChaosView      $chaos  null when the oracle takes no chaos factor
+     * @param list<LikelihoodLevelView> $levels       in definition order
+     * @param ?LikelihoodChaosView      $chaos        null when the oracle takes no chaos factor
+     * @param ?string                   $chaosTracker the key of the Tracker whose value is the chaos factor; null when the player picks it
      */
     public function __construct(
         public string $key,
         public string $name,
         public array $levels,
         public ?LikelihoodChaosView $chaos,
+        public ?string $chaosTracker = null,
     ) {
     }
 }

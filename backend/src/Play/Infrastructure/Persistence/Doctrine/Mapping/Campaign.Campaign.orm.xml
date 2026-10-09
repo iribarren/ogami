@@ -7,7 +7,8 @@
     <!-- The file is named Campaign.Campaign because the simplified XML driver maps sub-namespaces
          of the App\Play\Domain prefix with dots.
          Identity, ownership, the pinned release and the creation time are relational columns; the
-         sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType). -->
+         sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType), and so are
+         the tracker values, an object of integers by Tracker key (empty: {} or []). -->
     <entity name="App\Play\Domain\Campaign\Campaign" table="play_campaign">
         <indexes>
             <!-- A player's campaigns, newest first (DoctrineCampaignRepository::ownedBy). -->
@@ -23,6 +24,11 @@
         <field name="gameSystemName" type="string" column="game_system_name" length="255"/>
         <field name="createdAt" type="datetimetz_immutable_microseconds" column="created_at"/>
         <field name="sessions" type="play_campaign_sessions" column="sessions">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="trackerValues" type="json" column="tracker_values">
             <options>
                 <option name="jsonb">true</option>
             </options>

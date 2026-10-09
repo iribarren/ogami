@@ -12,7 +12,7 @@ use OpenApi\Attributes as OA;
 /**
  * A likelihood oracle of the campaign's pinned release: what the player picks to ask it.
  */
-#[OA\Schema(required: ['key', 'name', 'levels', 'chaos'])]
+#[OA\Schema(required: ['key', 'name', 'levels', 'chaos', 'chaosTracker'])]
 final readonly class LikelihoodOracleResponse
 {
     /**
@@ -31,6 +31,8 @@ final readonly class LikelihoodOracleResponse
         public array $levels,
         #[OA\Property(ref: new Model(type: LikelihoodChaosResponse::class), description: 'Null when the oracle takes no chaos factor.', nullable: true)]
         public ?LikelihoodChaosResponse $chaos,
+        #[OA\Property(description: 'The key of the campaign Tracker whose value is the chaos factor, so no chaos factor is sent; null when the player picks it.', example: 'chaos', nullable: true)]
+        public ?string $chaosTracker,
     ) {
     }
 
@@ -41,6 +43,7 @@ final readonly class LikelihoodOracleResponse
             $view->name,
             array_map(LikelihoodLevelResponse::fromView(...), $view->levels),
             $view->chaos instanceof LikelihoodChaosView ? LikelihoodChaosResponse::fromView($view->chaos) : null,
+            $view->chaosTracker,
         );
     }
 }

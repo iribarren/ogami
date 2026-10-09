@@ -6,6 +6,8 @@ namespace App\Tests\Support\Play;
 
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
+use App\Play\Domain\GameSystem\Tracker;
+use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use App\Randomness\Domain\Oracle\OracleTableSet;
 
@@ -51,5 +53,28 @@ final class Snapshots
             new SnapshotLikelihoodOracle('fate', 'Fate question', $fate),
             new SnapshotLikelihoodOracle('plain', 'Plain question', $plain),
         ], []);
+    }
+
+    /**
+     * A schema version 2 snapshot with trackers: "alarm" (clock of 6), "heat" (counter -5..5 from
+     * -5, levels Cold up to -1, Warm up to 2, Hot) and "chaos" (counter 1..9 from 5). Likelihood
+     * oracle "fate" takes its chaos factor from "chaos"; "omen" takes one from the request.
+     */
+    public static function withTrackers(string $key, string $name, int $version): GameSystemSnapshot
+    {
+        $chaos = static fn (int $min, int $max, int $neutral): LikelihoodOracle => LikelihoodOracle::fromArray([
+            'sides' => 100,
+            'levels' => [['key' => 'even', 'label' => '50/50', 'target' => 50]],
+            'chaos' => ['min' => $min, 'max' => $max, 'neutral' => $neutral, 'shiftPerPoint' => 5],
+        ]);
+
+        return new GameSystemSnapshot($key, $name, $version, null, [
+            new SnapshotLikelihoodOracle('fate', 'Fate question', $chaos(1, 9, 5), 'chaos'),
+            new SnapshotLikelihoodOracle('omen', 'Omen', $chaos(0, 2, 1)),
+        ], [], [
+            Tracker::clock('alarm', 'Alarm', 'At 6/6 security locks down', 6),
+            Tracker::counter('heat', 'Heat', null, -5, 5, -5, [new TrackerLevel(-1, 'Cold'), new TrackerLevel(2, 'Warm'), new TrackerLevel(null, 'Hot')]),
+            Tracker::counter('chaos', 'Chaos factor', null, 1, 9, 5),
+        ]);
     }
 }

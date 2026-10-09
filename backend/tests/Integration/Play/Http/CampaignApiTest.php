@@ -201,6 +201,7 @@ final class CampaignApiTest extends WebTestCase
                 'currentSceneNumber' => null,
                 'oracleTables' => self::ORACLE_TABLES,
                 'likelihoodOracles' => self::LIKELIHOOD_ORACLES,
+                'trackers' => [],
             ], \JSON_THROW_ON_ERROR),
             $this->content(),
         );
@@ -566,6 +567,7 @@ final class CampaignApiTest extends WebTestCase
                 ['key' => 'likely', 'label' => 'Likely'],
             ],
             'chaos' => ['min' => 1, 'max' => 9, 'neutral' => 5],
+            'chaosTracker' => null,
         ],
     ];
 
@@ -581,6 +583,7 @@ final class CampaignApiTest extends WebTestCase
             'currentSceneNumber' => null,
             'oracleTables' => self::ORACLE_TABLES,
             'likelihoodOracles' => self::LIKELIHOOD_ORACLES,
+            'trackers' => [],
         ], \JSON_THROW_ON_ERROR);
     }
 

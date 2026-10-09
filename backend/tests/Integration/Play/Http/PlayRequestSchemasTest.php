@@ -23,6 +23,7 @@ final class PlayRequestSchemasTest extends WebTestCase
     {
         yield 'create campaign' => ['CreateCampaignRequest', ['name', 'gameSystemKey'], []];
         yield 'start scene' => ['StartSceneRequest', ['title'], []];
+        yield 'set tracker value' => ['SetTrackerValueRequest', ['value'], []];
         yield 'record note' => ['RecordNoteRequest', ['text'], []];
         yield 'record roll' => ['RecordRollRequest', ['expression'], []];
         yield 'record likelihood answer' => ['RecordLikelihoodAnswerRequest', ['likelihood'], ['chaosFactor', 'question']];

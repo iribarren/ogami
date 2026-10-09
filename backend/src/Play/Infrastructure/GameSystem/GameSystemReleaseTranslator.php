@@ -159,7 +159,7 @@ final readonly class GameSystemReleaseTranslator
                 $this->string($view, $flow['name'] ?? null, $path.'.name'),
                 $this->optionalString($view, $flow['description'] ?? null, $path.'.description'),
                 $this->optionalString($view, $flow['introduction'] ?? null, $path.'.introduction'),
-                true === ($flow['default'] ?? false),
+                $this->flag($view, $flow['default'] ?? null, $path.'.default'),
                 FlowView::tryFrom($defaultView = $this->string($view, $flow['defaultView'] ?? null, $path.'.defaultView'))
                     ?? throw $this->invalid($view, $path.'.defaultView', \sprintf('unknown default view "%s".', $defaultView)),
                 $this->keys($view, $flow['oracles'] ?? [], $path.'.oracles'),
@@ -594,6 +594,14 @@ final readonly class GameSystemReleaseTranslator
     private function optionalString(PublishedReleaseView $view, mixed $value, string $path): ?string
     {
         return null === $value ? null : $this->string($view, $value, $path);
+    }
+
+    /**
+     * An optional boolean: absent or null is false.
+     */
+    private function flag(PublishedReleaseView $view, mixed $value, string $path): bool
+    {
+        return null === $value ? false : (\is_bool($value) ? $value : throw $this->invalid($view, $path, 'must be a boolean.'));
     }
 
     private function int(PublishedReleaseView $view, mixed $value, string $path): int

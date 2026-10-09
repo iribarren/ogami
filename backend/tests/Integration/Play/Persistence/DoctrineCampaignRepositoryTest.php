@@ -137,7 +137,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             public function preFlush(): void
             {
                 $this->connection->executeStatement(
-                    "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5002', 'Theirs', 'free-journal', 1, 'Free journal', '2026-10-06 10:00:00+00', '[]')",
+                    "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions, tracker_values) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5002', 'Theirs', 'free-journal', 1, 'Free journal', '2026-10-06 10:00:00+00', '[]', '{}')",
                 );
             }
         };

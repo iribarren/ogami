@@ -11,21 +11,15 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Checks the schema version 2 file on its own, before the Studio domain validates schema version 2:
- * the contract doc example conforms, and a few shape errors are rejected.
+ * Checks the schema version 2 file on its own: a few shape errors in the contract doc example are
+ * rejected. ReleaseSchemaAgreementTest runs the example itself through the schema and the domain.
  */
 #[CoversNothing]
 final class ReleaseSchemaVersion2Test extends TestCase
 {
     private const string SCHEMA_ID = 'https://ogami.app/contracts/gamesystem-release/v2.schema.json';
     private const string SCHEMA_FILE = __DIR__.'/../../../../contracts/gamesystem-release/v2.schema.json';
-    private const string EXAMPLE = __DIR__.'/../../../Fixtures/Studio/releases/schema-v2/contract-doc-example.json';
-
-    #[Test]
-    public function theContractDocExampleConformsToTheSchema(): void
-    {
-        self::assertTrue($this->conforms($this->example()));
-    }
+    private const string EXAMPLE = __DIR__.'/../../../Fixtures/Studio/releases/valid/v2-contract-doc-example.json';
 
     /**
      * @return iterable<string, array{\Closure(\stdClass): void}>

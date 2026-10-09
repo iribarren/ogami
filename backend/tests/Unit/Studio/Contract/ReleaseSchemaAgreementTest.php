@@ -107,15 +107,21 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'v2-effect-bad-op' => ['sceneTypes[0].play[0].effects[0].op: must be one of', '/sceneTypes/0/play/0/effects/0/op'],
         'v2-effect-unknown-kind' => ['sceneTypes[0].play[0].effects[0].kind: must be one of', '/sceneTypes/0/play/0/effects/0/kind'],
         'v2-fact-slot-bad-type' => ['factSlots[0].type: must be one of', '/factSlots/0/type'],
+        'v2-flow-bad-default-view' => ['flows[0].defaultView: must be one of', '/flows/0/defaultView'],
         'v2-flow-key' => ['flow: unknown property', '/'],
+        'v2-flow-no-phases' => ['flows[0].phases: at least 1 phases', '/flows/0/phases'],
         'v2-level-up-to-tracker' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
         'v2-missing-flows' => ['flows: required', '/'],
         'v2-non-empty-sheet' => ['sheet: not supported in schema version 2', '/sheet'],
+        'v2-phase-bad-mode' => ['flows[0].phases[0].mode: must be one of', '/flows/0/phases/0/mode'],
+        'v2-player-duplicate-scene-type' => ['flows[0].phases[0].selection.sceneTypes[1]: duplicate Scene Type "scene"', '/flows/0/phases/0/selection/sceneTypes'],
         'v2-scene-type-missing-purpose' => ['sceneTypes[0].purpose: required', '/sceneTypes/0'],
         'v2-segments-out-of-range' => ['trackers[0].segments: must be at most 20', '/trackers/0/segments'],
+        'v2-selection-bad-rule' => ['flows[0].phases[0].selection.rule: must be one of', '/flows/0/phases/0/selection/rule'],
         'v2-step-field-of-another-kind' => ['sceneTypes[0].play[0].dice: unknown property', '/sceneTypes/0/play/0'],
         'v2-step-key-end' => ['sceneTypes[0].play[0].key: "end" is reserved', '/sceneTypes/0/play/0/key'],
         'v2-step-unknown-kind' => ['sceneTypes[0].play[0].kind: must be one of', '/sceneTypes/0/play/0/kind'],
+        'v2-unknown-phase-hook' => ['flows[0].phases[0].dawn: unknown property', '/flows/0/phases/0'],
         'v2-unknown-tracker-kind' => ['trackers[0].kind: must be one of', '/trackers/0/kind'],
         'generated: v2-too-many-trackers' => ['trackers: at most 50 trackers', '/trackers'],
         'generated: v2-too-many-fact-slots' => ['factSlots: at most 100 fact slots', '/factSlots'],
@@ -123,6 +129,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-too-long-tracker-hint' => ['trackers[0].hint: must be at most 500 characters', '/trackers/0/hint'],
         'generated: v2-too-many-steps' => ['sceneTypes[0].play: at most 50 steps', '/sceneTypes/0/play'],
         'generated: v2-too-many-effects' => ['sceneTypes[0].play[0].effects: at most 10 effects', '/sceneTypes/0/play/0/effects'],
+        'generated: v2-too-many-flows' => ['flows: at most 20 flows', '/flows'],
+        'generated: v2-too-long-introduction' => ['flows[0].introduction: must be at most 5000 characters', '/flows/0/introduction'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
     ];
 
@@ -159,19 +167,28 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'v2-duplicate-branch-entry' => 'sceneTypes[0].play[1].branches[1].entry: duplicate branch entry "patrol"',
         'v2-duplicate-entry-key' => 'oracles.tables[0].entries[1].key: duplicate entry key "patrol"',
         'v2-duplicate-fact-slot-key' => 'factSlots[1].key: duplicate fact slot key "city"',
+        'v2-duplicate-flow-key' => 'flows[1].key: duplicate flow key "main"',
         'v2-duplicate-option-key' => 'sceneTypes[0].play[0].options[1].key: duplicate option key "a"',
+        'v2-duplicate-phase-key' => 'flows[0].phases[1].key: duplicate phase key "only"',
         'v2-duplicate-scene-type-key' => 'sceneTypes[1].key: duplicate Scene Type key "scene"',
         'v2-duplicate-step-key' => 'sceneTypes[0].play[1].key: duplicate step key "begin"',
         'v2-duplicate-tracker-key' => 'trackers[1].key: duplicate tracker key "alarm"',
-        'v2-flows-not-supported-yet' => 'flows: not supported yet',
         'v2-initial-out-of-range' => 'trackers[0].initial: must be within min..max (0..3), 4 given',
         'v2-invalid-roll-dice' => 'sceneTypes[0].play[1].dice: invalid dice notation',
         'v2-last-band-with-up-to' => 'sceneTypes[0].play[1].bands[1].upTo: the last band catches the rest and must omit upTo',
         'v2-last-level-with-up-to' => 'trackers[0].levels[1].upTo: the last level catches the rest and must omit upTo',
         'v2-level-up-to-not-increasing' => 'trackers[0].levels[1].upTo: must be greater than 2, the previous upTo, 2 given',
         'v2-next-backward' => 'sceneTypes[0].play[1].next: must name a later step of the same list or "end", "begin" given',
+        'v2-oracle-selection-entry-without-scene-type' => 'flows[0].phases[0].selection.table: every entry of table "scenes" must name a sceneType, oracles.tables[0].entries[1] does not',
+        'v2-placeholder-answer-in-step' => 'sceneTypes[0].play[0].title: placeholder {answer} is only allowed in effect text',
+        'v2-placeholder-unknown-step' => 'sceneTypes[0].play[0].tip: placeholder {step:nowhere}: unknown step "nowhere"',
+        'v2-placeholder-unknown-tracker' => 'sceneTypes[0].play[0].title: placeholder {tracker:noise}: unknown tracker "noise"',
+        'v2-placeholder-unsupported' => 'sceneTypes[0].play[0].prompt: placeholder {fact:city} is not supported in schema version 2',
+        'v2-scene-type-oracle-outside-flow' => 'sceneTypes[0].oracles[0]: oracle "fate" is not one of the oracles of flow "main"',
         'v2-skip-unknown-option' => 'sceneTypes[0].play[0].skip: unknown option "c"',
         'v2-suggested-choice-without-skip' => 'sceneTypes[0].play[0].skip: required, a suggested choice names the option a skip follows',
+        'v2-tracker-outside-flow' => 'sceneTypes[0].play[0].effects[0].tracker: tracker "noise" is not one of the trackers of flow "main"',
+        'v2-two-default-flows' => 'flows[1].default: at most one flow is the default, "main" already is',
         'v2-unknown-entry-scene-type' => 'oracles.tables[0].entries[0].sceneType: unknown Scene Type "dawn"',
         'v2-unknown-likelihood-level' => 'sceneTypes[0].play[1].likelihood: unknown level "certain" of likelihood oracle "fate"',
         'v2-unknown-oracle-in-step' => 'sceneTypes[0].play[1].oracle: unknown likelihood oracle "fate"',
@@ -290,6 +307,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
         $counter = ['key' => 'edge', 'name' => 'Edge', 'kind' => 'counter', 'min' => 0, 'max' => 3, 'initial' => 0];
         $prompt = static fn (int $i): array => ['key' => 's-'.$i, 'kind' => 'prompt', 'title' => 'Step'];
         $sceneType = static fn (array $play): array => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []]];
+        $flow = static fn (int $i): array => [
+            'key' => 'f-'.$i, 'name' => 'Flow', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => [],
+            'phases' => [['key' => 'only', 'name' => 'Only', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['scene']]]],
+        ];
 
         $generatedV2 = [
             'v2-too-many-trackers' => ['trackers' => array_map($clock, range(1, 51))],
@@ -299,6 +320,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-too-many-steps' => ['sceneTypes' => $sceneType(array_map($prompt, range(1, 51)))],
             'v2-too-many-effects' => ['sceneTypes' => $sceneType([['effects' => array_fill(0, 11, ['kind' => 'endPhase'])] + $prompt(1)])],
             'v2-too-long-step-tip' => ['sceneTypes' => $sceneType([['tip' => str_repeat('t', 2001)] + $prompt(1)])],
+            'v2-too-many-flows' => ['sceneTypes' => $sceneType([]), 'flows' => array_map($flow, range(1, 21))],
+            'v2-too-long-introduction' => ['sceneTypes' => $sceneType([]), 'flows' => [['introduction' => str_repeat('i', 5001)] + $flow(1)]],
         ];
 
         foreach ($generatedV2 as $name => $overrides) {

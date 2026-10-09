@@ -10,10 +10,9 @@ use App\Studio\Domain\Release\ReleaseOracles;
 
 /**
  * Validates the parts schema version 2 adds or changes (docs/contracts/gamesystem-release.md):
- * oracle table entry and chaos extensions, trackers, fact slots and Scene Types with their steps.
- * Returns them in canonical form; ReleaseContent handles the parts every version shares.
- *
- * Flows are not validated yet: until a later slice of feature play-flow-run they must be empty.
+ * oracle table entry and chaos extensions, trackers, fact slots, Scene Types and flows, then the
+ * references inside each flow. Returns them in canonical form; ReleaseContent handles the parts
+ * every version shares.
  *
  * @internal used by ReleaseContent only
  */
@@ -22,6 +21,9 @@ final class ReleaseVersion2
     public const int MAX_TRACKERS = 50;
     public const int MAX_FACT_SLOTS = 100;
     public const int MAX_SCENE_TYPES = 100;
+    public const int MAX_FLOWS = 20;
+    public const int MAX_PHASES = 20;
+    public const int MAX_SELECTION_SCENE_TYPES = 20;
     public const int MAX_ORACLE_SHORTCUTS = 70;
     public const int MAX_TRACKER_VALUE = 1000;
     public const int MAX_SEGMENTS = 20;
@@ -29,9 +31,11 @@ final class ReleaseVersion2
     public const int MAX_HINT_LENGTH = 500;
     public const int MAX_PURPOSE_LENGTH = 500;
     public const int MAX_TEXT_LENGTH = 2000;
+    public const int MAX_INTRODUCTION_LENGTH = 5000;
 
-    /** The step lists of a Scene Type, in schema order. */
+    /** The step lists of a Scene Type, and the hooks of a phase, in schema order. */
     public const array SCENE_TYPE_PARTS = ['setup', 'play', 'closing'];
+    public const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
@@ -39,7 +43,6 @@ final class ReleaseVersion2
         'sceneTypes' => true, 'flows' => true, 'sheet' => true, 'checks' => true,
     ];
 
-    private const string NOT_SUPPORTED_YET = 'not supported yet';
     private const array ENTRY = [...ReleaseOracles::ENTRY, 'key' => false, 'sceneType' => false, 'effects' => false];
     private const array CHAOS = [...ReleaseOracles::CHAOS, 'tracker' => false];
     private const array TRACKERS = [
@@ -48,6 +51,20 @@ final class ReleaseVersion2
     ];
     private const array FACT_SLOT = ['key' => true, 'label' => true, 'type' => true];
     private const array SCENE_TYPE = ['key' => true, 'name' => true, 'purpose' => true, 'tips' => false, 'oracles' => true, 'setup' => true, 'play' => true, 'closing' => true];
+    private const array FLOW = [
+        'key' => true, 'name' => true, 'description' => false, 'introduction' => false, 'default' => false, 'defaultView' => true,
+        'oracles' => true, 'trackers' => true, 'phases' => true,
+    ];
+    private const array PHASE = [
+        'key' => true, 'name' => true, 'act' => false, 'mode' => true, 'selection' => true,
+        'sessionOpening' => false, 'sessionClosing' => false, 'phaseOpening' => false, 'phaseClosing' => false,
+        'sceneOpening' => false, 'sceneClosing' => false, 'worldTurn' => false,
+    ];
+    private const array SELECTIONS = [
+        'sequence' => ['rule' => true, 'sceneTypes' => true],
+        'player' => ['rule' => true, 'sceneTypes' => true],
+        'oracle' => ['rule' => true, 'table' => true],
+    ];
 
     /**
      * @param array<string, mixed> $release the checked top-level object (RELEASE fields)
@@ -71,7 +88,8 @@ final class ReleaseVersion2
             }
         }
 
-        $flows = self::notSupportedYet($release['flows'], 'flows');
+        $flows = self::flows($release['flows'], $oracles, $catalog);
+        FlowReferences::check($oracles['tables'], $trackers, $sceneTypes, $flows);
 
         return ['oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots, 'sceneTypes' => $sceneTypes, 'flows' => $flows];
     }
@@ -185,8 +203,7 @@ final class ReleaseVersion2
     {
         $sceneTypes = [];
         $keys = [];
-        /** @var list<string> $oracleKeys */
-        $oracleKeys = [...array_column($oracles['tables'], 'key'), ...array_column($oracles['likelihood'], 'key')];
+        $oracleKeys = self::oracleKeys($oracles);
         foreach (ReleaseFields::sizedList($value, 'sceneTypes', 0, self::MAX_SCENE_TYPES, 'Scene Types') as $index => $sceneType) {
             $path = \sprintf('sceneTypes[%d]', $index);
             $sceneType = ReleaseFields::object($sceneType, $path, self::SCENE_TYPE);
@@ -202,7 +219,7 @@ final class ReleaseVersion2
                 ReleaseFields::text($sceneType['tips'], $path.'.tips', 0, self::MAX_TEXT_LENGTH);
             }
 
-            self::keyList($sceneType['oracles'], $path.'.oracles', self::MAX_ORACLE_SHORTCUTS, 'oracles', 'oracle', array_fill_keys($oracleKeys, true));
+            self::keyList($sceneType['oracles'], $path.'.oracles', self::MAX_ORACLE_SHORTCUTS, 'oracles', 'oracle', $oracleKeys);
             $sceneTypes[] = $sceneType;
         }
 
@@ -291,6 +308,123 @@ final class ReleaseVersion2
     }
 
     /**
+     * @param array{tables: list<array<string, mixed>>, likelihood: list<array<string, mixed>>} $oracles
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function flows(mixed $value, array $oracles, Catalog $catalog): array
+    {
+        $flows = [];
+        $keys = [];
+        $default = null;
+        $oracleKeys = self::oracleKeys($oracles);
+        foreach (ReleaseFields::sizedList($value, 'flows', 0, self::MAX_FLOWS, 'flows') as $index => $flow) {
+            $path = \sprintf('flows[%d]', $index);
+            $flow = ReleaseFields::object($flow, $path, self::FLOW);
+            $key = ReleaseFields::key($flow['key'], $path.'.key');
+            if (isset($keys[$key])) {
+                throw InvalidReleaseContent::at($path.'.key', \sprintf('duplicate flow key "%s"', $key));
+            }
+
+            $keys[$key] = true;
+            ReleaseFields::text($flow['name'], $path.'.name', 1, self::MAX_NAME_LENGTH);
+            if (isset($flow['description'])) {
+                ReleaseFields::text($flow['description'], $path.'.description', 0, self::MAX_TEXT_LENGTH);
+            }
+
+            if (isset($flow['introduction'])) {
+                ReleaseFields::text($flow['introduction'], $path.'.introduction', 0, self::MAX_INTRODUCTION_LENGTH);
+            }
+
+            if (isset($flow['default']) && ReleaseFields::boolean($flow['default'], $path.'.default')) {
+                if (null !== $default) {
+                    throw InvalidReleaseContent::at($path.'.default', \sprintf('at most one flow is the default, "%s" already is', $default));
+                }
+
+                $default = $key;
+            }
+
+            ReleaseFields::oneOf($flow['defaultView'], $path.'.defaultView', ['focus', 'journal']);
+            self::keyList($flow['oracles'], $path.'.oracles', self::MAX_ORACLE_SHORTCUTS, 'oracles', 'oracle', $oracleKeys);
+            self::keyList($flow['trackers'], $path.'.trackers', self::MAX_TRACKERS, 'trackers', 'tracker', $catalog->trackers);
+
+            $phases = [];
+            $phaseKeys = [];
+            foreach (ReleaseFields::sizedList($flow['phases'], $path.'.phases', 1, self::MAX_PHASES, 'phases') as $phaseIndex => $phase) {
+                $phasePath = \sprintf('%s.phases[%d]', $path, $phaseIndex);
+                $phase = self::phase($phase, $phasePath, $catalog);
+                /** @var string $phaseKey */
+                $phaseKey = $phase['key'];
+                if (isset($phaseKeys[$phaseKey])) {
+                    throw InvalidReleaseContent::at($phasePath.'.key', \sprintf('duplicate phase key "%s"', $phaseKey));
+                }
+
+                $phaseKeys[$phaseKey] = true;
+                $phases[] = $phase;
+            }
+
+            $flow['phases'] = $phases;
+            $flows[] = array_filter($flow, static fn (mixed $field): bool => false !== $field);
+        }
+
+        return $flows;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function phase(mixed $value, string $path, Catalog $catalog): array
+    {
+        $phase = ReleaseFields::object($value, $path, self::PHASE);
+        ReleaseFields::key($phase['key'], $path.'.key');
+        ReleaseFields::text($phase['name'], $path.'.name', 1, self::MAX_NAME_LENGTH);
+        if (isset($phase['act'])) {
+            ReleaseFields::text($phase['act'], $path.'.act', 1, self::MAX_NAME_LENGTH);
+        }
+
+        ReleaseFields::oneOf($phase['mode'], $path.'.mode', ['once', 'loop']);
+        $phase['selection'] = self::selection($phase['selection'], $path.'.selection', $catalog);
+        foreach (self::PHASE_HOOKS as $hook) {
+            if (isset($phase[$hook])) {
+                $phase[$hook] = Steps::list($phase[$hook], $path.'.'.$hook, $catalog);
+            }
+        }
+
+        return array_filter($phase, static fn (mixed $field): bool => [] !== $field);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function selection(mixed $value, string $path, Catalog $catalog): array
+    {
+        $rule = ReleaseFields::tag($value, $path, 'rule', array_keys(self::SELECTIONS));
+        $selection = ReleaseFields::object($value, $path, self::SELECTIONS[$rule]);
+        if ('oracle' !== $rule) {
+            $sceneTypes = ReleaseFields::sizedList($selection['sceneTypes'], $path.'.sceneTypes', 1, self::MAX_SELECTION_SCENE_TYPES, 'Scene Types');
+            $seen = [];
+            foreach ($sceneTypes as $index => $sceneType) {
+                $sceneTypePath = \sprintf('%s.sceneTypes[%d]', $path, $index);
+                $key = Effects::sceneType($sceneType, $sceneTypePath, $catalog);
+                if ('player' === $rule && isset($seen[$key])) {
+                    throw InvalidReleaseContent::at($sceneTypePath, \sprintf('duplicate Scene Type "%s"', $key));
+                }
+
+                $seen[$key] = true;
+            }
+
+            return $selection;
+        }
+
+        $table = ReleaseFields::key($selection['table'], $path.'.table');
+        if (!$catalog->hasTable($table)) {
+            throw InvalidReleaseContent::at($path.'.table', \sprintf('unknown oracle table "%s"', $table));
+        }
+
+        return $selection;
+    }
+
+    /**
      * A list of unique keys, each in $known.
      *
      * @param array<string, mixed> $known
@@ -314,14 +448,15 @@ final class ReleaseVersion2
     }
 
     /**
-     * @return list<array<string, mixed>> always empty
+     * @param array{tables: list<array<string, mixed>>, likelihood: list<array<string, mixed>>} $oracles
+     *
+     * @return array<string, true>
      */
-    private static function notSupportedYet(mixed $value, string $path): array
+    private static function oracleKeys(array $oracles): array
     {
-        if ([] !== ReleaseFields::list($value, $path)) {
-            throw InvalidReleaseContent::at($path, self::NOT_SUPPORTED_YET);
-        }
+        /** @var list<string> $keys */
+        $keys = [...array_column($oracles['tables'], 'key'), ...array_column($oracles['likelihood'], 'key')];
 
-        return [];
+        return array_fill_keys($keys, true);
     }
 }

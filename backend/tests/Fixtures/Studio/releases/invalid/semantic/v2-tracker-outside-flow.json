@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "kind": "clock", "segments": 6},
+    {"key": "noise", "name": "Noise", "kind": "clock", "segments": 4}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "tracker", "tracker": "noise", "op": "add", "value": 1}]}], "closing": []}
+  ],
+  "flows": [
+    {"key": "main", "name": "Main", "defaultView": "journal", "oracles": [], "trackers": ["alarm"], "phases": [{"key": "only", "name": "Only", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["scene"]}}]}
+  ],
+  "sheet": {},
+  "checks": []
+}

@@ -11,6 +11,8 @@ use App\Studio\Domain\Release\ReleaseOracles;
 use App\Studio\Domain\Release\Version2\Bands;
 use App\Studio\Domain\Release\Version2\Catalog;
 use App\Studio\Domain\Release\Version2\Effects;
+use App\Studio\Domain\Release\Version2\FlowReferences;
+use App\Studio\Domain\Release\Version2\Placeholders;
 use App\Studio\Domain\Release\Version2\ReleaseVersion2;
 use App\Studio\Domain\Release\Version2\StepParts;
 use App\Studio\Domain\Release\Version2\Steps;
@@ -31,6 +33,11 @@ use PHPUnit\Framework\TestCase;
  * Types legwork (0: setup goal, closing choice gain-edge), infiltration (1: play oracle slip-past,
  * table complication), firefight (2: setup who-shoots) and getaway (3: setup how, skipped, route,
  * chase; play ask, pick; closing conditions cool and lockdown).
+ *
+ * Flow rules run against valid/v2-contract-doc-example.json: tables heist-scenes (0) and
+ * complications (1: patrol, lucky-break, spotted); trackers alarm, edge, chaos; Scene Types legwork
+ * (0), infiltration (1), firefight (2); flow heist with phases legwork (0, player), the-heist (1,
+ * oracle) and getaway (2, sequence).
  */
 #[CoversClass(ReleaseContent::class)]
 #[CoversClass(ReleaseFields::class)]
@@ -41,6 +48,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Steps::class)]
 #[CoversClass(StepParts::class)]
 #[CoversClass(Effects::class)]
+#[CoversClass(FlowReferences::class)]
+#[CoversClass(Placeholders::class)]
 final class ReleaseContentVersion2Test extends TestCase
 {
     /**
@@ -83,6 +92,47 @@ final class ReleaseContentVersion2Test extends TestCase
         return null === $path ? $release : ReleaseArrays::with($release, $path, $value);
     }
 
+    /**
+     * valid/v2-contract-doc-example.json (or $release), with $value at $path when given.
+     *
+     * @param array<mixed> $release
+     *
+     * @return array<mixed>
+     */
+    private static function example(?string $path = null, mixed $value = null, ?array $release = null): array
+    {
+        $release ??= ReleaseArrays::fixture('valid/v2-contract-doc-example');
+
+        return null === $path ? $release : ReleaseArrays::with($release, $path, $value);
+    }
+
+    /**
+     * The example plus a "noise" clock no flow uses and a "dawn" Scene Type no flow reaches.
+     *
+     * @return array<mixed>
+     */
+    private static function withNoiseAndDawn(): array
+    {
+        return self::example('sceneTypes.3', [
+            'key' => 'dawn', 'name' => 'Dawn', 'purpose' => 'The night ends.', 'oracles' => ['heist-scenes'],
+            'setup' => [], 'play' => [['key' => 'sunrise', 'kind' => 'prompt', 'title' => 'Noise at {tracker:noise}', 'effects' => [['kind' => 'tracker', 'tracker' => 'noise', 'op' => 'add', 'value' => 1]]]],
+            'closing' => [],
+        ], self::example('trackers.3', ['key' => 'noise', 'name' => 'Noise', 'kind' => 'clock', 'segments' => 4]));
+    }
+
+    /**
+     * A one-phase flow on the legwork Scene Type.
+     *
+     * @return array<string, mixed>
+     */
+    private static function flowSummary(string $key): array
+    {
+        return [
+            'key' => $key, 'name' => 'Quick', 'defaultView' => 'journal', 'oracles' => ['fate'], 'trackers' => ['edge'],
+            'phases' => [['key' => 'only', 'name' => 'Only', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['legwork']]]],
+        ];
+    }
+
     #[Test]
     public function itAcceptsTheCatalog(): void
     {
@@ -116,6 +166,18 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'next naming end' => [self::scenes('sceneTypes.3.play.1.next', 'end')];
         yield 'a Scene Type without steps' => [self::scenes('sceneTypes.2.setup', [])];
         yield 'a band upTo of an integer-valued float' => [self::scenes('sceneTypes.3.closing.1.bands.0.upTo', 5.0)];
+        yield 'a roll step without bands' => [self::unset('flows.0.phases.0.worldTurn.0.bands', self::example())];
+
+        // Flows, references inside a flow and placeholders.
+        yield 'a sequence repeating a Scene Type' => [self::example('flows.0.phases.2.selection.sceneTypes', ['firefight', 'firefight'])];
+        yield 'a hook band bounded by a flow tracker' => [self::example('flows.0.phases.1.sceneOpening.0.bands.0.upTo', ['tracker' => 'edge'])];
+        yield 'a second flow that is not the default' => [self::example('flows.1', [...self::flowSummary('quick'), 'default' => false])];
+        yield 'an oracle selection table with nested entries' => [self::example('oracles.tables.0.entries.1.table', 'complications')];
+        yield 'an unreached Scene Type using trackers and oracles outside the flow' => [self::withNoiseAndDawn()];
+        yield 'braces that are not placeholders' => [self::example('flows.0.phases.1.sceneOpening.1.prompt', 'A {Locked} door, {a b} and {}')];
+        yield 'a step placeholder naming a step of a reachable Scene Type' => [self::example('flows.0.phases.0.sessionOpening.0.title', 'After {step:who-shoots}')];
+        yield 'a tracker placeholder in effect text' => [self::example('sceneTypes.2.setup.0.effects.1.title', 'Alarm {tracker:alarm}')];
+        yield 'placeholders outside any flow naming the release' => [self::example('flows', [], self::scenes('sceneTypes.0.setup.0.prompt', '{tracker:heat} after {step:chase}'))];
     }
 
     /**
@@ -201,14 +263,69 @@ final class ReleaseContentVersion2Test extends TestCase
     }
 
     #[Test]
-    public function itAcceptsItsOwnCanonicalArrayAndJson(): void
+    public function itOmitsEmptyHooksAndAFalseDefault(): void
     {
-        $content = ReleaseContent::fromArray(self::scenes());
+        $release = self::example('flows.0.phases.2.worldTurn', [], self::example('flows.0.phases.0.act'));
+        $release = self::example('flows.1', [...self::flowSummary('quick'), 'default' => false], $release);
+        $expected = self::example('flows.1', self::flowSummary('quick'), self::unset('flows.0.phases.0.act', self::example()));
+
+        self::assertSame(ReleaseContent::fromArray($expected)->hash(), ReleaseContent::fromArray($release)->hash());
+        self::assertSame(['key', 'name', 'act', 'mode', 'selection', 'sessionOpening', 'worldTurn'], array_keys($this->canonicalPhase(self::example(), 0)));
+    }
+
+    #[Test]
+    public function itKeepsTheFlowsInCanonicalForm(): void
+    {
+        $content = ReleaseContent::fromArray(ReleaseArrays::reverseKeys(self::example()));
+
+        /** @var list<array<string, mixed>> $flows */
+        $flows = $content->toArray()['flows'];
+
+        self::assertSame(ReleaseContent::fromArray(self::example())->hash(), $content->hash());
+        self::assertSame(['key', 'name', 'description', 'introduction', 'default', 'defaultView', 'oracles', 'trackers', 'phases'], array_keys($flows[0]));
+        self::assertSame(['key', 'name', 'act', 'mode', 'selection', 'sceneOpening', 'sceneClosing', 'worldTurn'], array_keys($this->canonicalPhase(self::example(), 1)));
+    }
+
+    /**
+     * @return iterable<string, array{array<mixed>}>
+     */
+    public static function canonicalRoundTrips(): iterable
+    {
+        yield 'version 2 with flows, empty bands, oracle branches and an empty sheet' => [ReleaseArrays::fixture('valid/v2-every-part')];
+        yield 'version 2 Scene Types' => [self::scenes()];
+        yield 'version 1' => [ReleaseArrays::fixture('valid/contract-doc-example')];
+    }
+
+    /**
+     * toArray() keeps empty objects (bands, sheet) as \stdClass; fromArray() takes them back.
+     *
+     * @param array<mixed> $release
+     */
+    #[Test]
+    #[DataProvider('canonicalRoundTrips')]
+    public function itAcceptsItsOwnCanonicalArrayAndJson(array $release): void
+    {
+        $content = ReleaseContent::fromArray($release);
+        $again = ReleaseContent::fromArray($content->toArray());
         /** @var array<mixed> $decoded */
         $decoded = json_decode(json_encode($content->toArray(), \JSON_THROW_ON_ERROR), true, flags: \JSON_THROW_ON_ERROR);
 
-        self::assertSame($content->hash(), ReleaseContent::fromArray($content->toArray())->hash());
+        self::assertSame(json_encode($content->toArray()), json_encode($again->toArray()));
+        self::assertSame($content->hash(), $again->hash());
         self::assertSame($content->hash(), ReleaseContent::fromArray($decoded)->hash());
+    }
+
+    /**
+     * @param array<mixed> $release
+     *
+     * @return array<string, mixed>
+     */
+    private function canonicalPhase(array $release, int $index): array
+    {
+        /** @var list<array{phases: list<array<string, mixed>>}> $flows */
+        $flows = ReleaseContent::fromArray($release)->toArray()['flows'];
+
+        return $flows[0]['phases'][$index];
     }
 
     /**
@@ -227,7 +344,6 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'missing Scene Types' => [self::unset('sceneTypes'), 'sceneTypes: required'];
         yield 'missing flows' => [self::unset('flows'), 'flows: required'];
         yield 'Scene Types not a list' => [self::set('sceneTypes', 'legwork'), 'sceneTypes: must be a list'];
-        yield 'flows not supported yet' => [self::set('flows', [['key' => 'heist']]), 'flows: not supported yet'];
         yield 'non-empty sheet' => [self::set('sheet', ['hp' => 1]), 'sheet: not supported in schema version 2'];
         yield 'non-empty checks' => [self::set('checks', [1]), 'checks: not supported in schema version 2'];
 
@@ -282,6 +398,84 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'too many fact slots' => [self::set('factSlots', array_map(static fn (int $i): array => ['key' => 's-'.$i, 'label' => 'S', 'type' => 'text'], range(1, 101))), 'factSlots: at most 100 fact slots, 101 given'];
 
         yield from self::invalidSceneTypes();
+        yield from self::invalidFlows();
+    }
+
+    /**
+     * @return iterable<string, array{array<mixed>, non-empty-string}>
+     */
+    private static function invalidFlows(): iterable
+    {
+        $noise = self::withNoiseAndDawn();
+        $dawnReached = self::example('flows.0.oracles.2', 'heist-scenes', $noise);
+
+        // Flows, phases and selections.
+        yield 'flows not a list' => [self::example('flows', 'heist'), 'flows: must be a list'];
+        yield 'too many flows' => [self::example('flows', array_map(static fn (int $i): array => self::flowSummary('f-'.$i), range(1, 21))), 'flows: at most 20 flows, 21 given'];
+        yield 'duplicate flow key' => [self::example('flows.1', self::flowSummary('heist')), 'flows[1].key: duplicate flow key "heist"'];
+        yield 'two default flows' => [self::example('flows.1', [...self::flowSummary('quick'), 'default' => true]), 'flows[1].default: at most one flow is the default, "heist" already is'];
+        yield 'default not a boolean' => [self::example('flows.0.default', 'yes'), 'flows[0].default: must be a boolean'];
+        yield 'blank flow name' => [self::example('flows.0.name', ' '), 'flows[0].name: must not be blank'];
+        yield 'too long flow description' => [self::example('flows.0.description', str_repeat('d', 2001)), 'flows[0].description: must be at most 2000 characters'];
+        yield 'too long introduction' => [self::example('flows.0.introduction', str_repeat('i', 5001)), 'flows[0].introduction: must be at most 5000 characters'];
+        yield 'unknown default view' => [self::example('flows.0.defaultView', 'map'), 'flows[0].defaultView: must be one of "focus", "journal", \'map\' given'];
+        yield 'unknown flow property' => [self::example('flows.0.theme', 'noir'), 'flows[0].theme: unknown property'];
+        yield 'unknown flow oracle' => [self::example('flows.0.oracles.0', 'dice'), 'flows[0].oracles[0]: unknown oracle "dice"'];
+        yield 'duplicate flow tracker' => [self::example('flows.0.trackers.1', 'alarm'), 'flows[0].trackers[1]: duplicate tracker "alarm"'];
+        yield 'unknown flow tracker' => [self::example('flows.0.trackers.2', 'noise'), 'flows[0].trackers[2]: unknown tracker "noise"'];
+        yield 'no phases' => [self::example('flows.0.phases', []), 'flows[0].phases: at least 1 phases, 0 given'];
+        yield 'too many phases' => [self::example('flows.0.phases', array_map(static fn (int $i): array => ['key' => 'p-'.$i, 'name' => 'P', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['legwork']]], range(1, 21))), 'flows[0].phases: at most 20 phases, 21 given'];
+        yield 'duplicate phase key' => [self::example('flows.0.phases.1.key', 'legwork'), 'flows[0].phases[1].key: duplicate phase key "legwork"'];
+        yield 'bad phase key' => [self::example('flows.0.phases.1.key', 'The heist'), 'flows[0].phases[1].key: must be 1 to 64 characters'];
+        yield 'empty act' => [self::example('flows.0.phases.0.act', ''), 'flows[0].phases[0].act: must not be empty'];
+        yield 'unknown phase mode' => [self::example('flows.0.phases.0.mode', 'always'), 'flows[0].phases[0].mode: must be one of "once", "loop", \'always\' given'];
+        yield 'unknown hook' => [self::example('flows.0.phases.0.dawn', []), 'flows[0].phases[0].dawn: unknown property'];
+        yield 'hook not a list' => [self::example('flows.0.phases.0.worldTurn', 'roll'), 'flows[0].phases[0].worldTurn: must be a list'];
+        yield 'hook steps checked like Scene Type steps' => [self::example('flows.0.phases.1.sceneOpening.0.next', 'pressure'), 'flows[0].phases[1].sceneOpening[0].next: must name a later step'];
+        yield 'hook step key end' => [self::example('flows.0.phases.0.sessionOpening.0.key', 'end'), 'flows[0].phases[0].sessionOpening[0].key: "end" is reserved'];
+        yield 'missing selection' => [self::unset('flows.0.phases.0.selection', self::example()), 'flows[0].phases[0].selection: required'];
+        yield 'unknown selection rule' => [self::example('flows.0.phases.0.selection.rule', 'random'), 'flows[0].phases[0].selection.rule: must be one of "sequence", "player", "oracle", \'random\' given'];
+        yield 'selection naming an unknown Scene Type' => [self::example('flows.0.phases.0.selection.sceneTypes.0', 'dawn'), 'flows[0].phases[0].selection.sceneTypes[0]: unknown Scene Type "dawn"'];
+        yield 'empty selection' => [self::example('flows.0.phases.0.selection.sceneTypes', []), 'flows[0].phases[0].selection.sceneTypes: at least 1 Scene Types, 0 given'];
+        yield 'too many selected Scene Types' => [self::example('flows.0.phases.2.selection.sceneTypes', array_fill(0, 21, 'firefight')), 'flows[0].phases[2].selection.sceneTypes: at most 20 Scene Types, 21 given'];
+        yield 'player selection repeating a Scene Type' => [self::example('flows.0.phases.0.selection.sceneTypes', ['legwork', 'legwork']), 'flows[0].phases[0].selection.sceneTypes[1]: duplicate Scene Type "legwork"'];
+        yield 'oracle selection naming a likelihood oracle' => [self::example('flows.0.phases.1.selection.table', 'fate'), 'flows[0].phases[1].selection.table: unknown oracle table "fate"'];
+        yield 'oracle selection with Scene Types' => [self::example('flows.0.phases.1.selection.sceneTypes', ['legwork']), 'flows[0].phases[1].selection.sceneTypes: unknown property'];
+        yield 'oracle selection table with an entry naming no Scene Type' => [
+            self::example('flows.0.phases.1.selection.table', 'complications'),
+            'flows[0].phases[1].selection.table: every entry of table "complications" must name a sceneType, oracles.tables[1].entries[0] does not',
+        ];
+
+        // References inside a flow.
+        yield 'Scene Type tracker outside the flow' => [self::example('flows.0.trackers', ['alarm', 'chaos']), 'sceneTypes[0].closing[0].options[0].effects[0].tracker: tracker "edge" is not one of the trackers of flow "heist"'];
+        yield 'phase tracker outside the flow' => [self::example('flows.0.trackers', ['edge', 'chaos']), 'flows[0].phases[0].worldTurn[0].bands[0].effects[0].tracker: tracker "alarm" is not one of the trackers of flow "heist"'];
+        yield 'condition on a tracker outside the flow' => [self::example('flows.0.phases.1.sceneOpening.0.tracker', 'noise', $noise), 'flows[0].phases[1].sceneOpening[0].tracker: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'band bound by a tracker outside the flow' => [self::example('flows.0.phases.1.sceneOpening.0.bands.0.upTo', ['tracker' => 'noise'], $noise), 'flows[0].phases[1].sceneOpening[0].bands[0].upTo.tracker: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'effect valued by a tracker outside the flow' => [self::example('sceneTypes.2.setup.0.effects.0.value', ['tracker' => 'noise'], $noise), 'sceneTypes[2].setup[0].effects[0].value.tracker: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'rolled entry effect on a tracker outside the flow' => [self::example('oracles.tables.1.entries.0.effects.0.tracker', 'noise', $noise), 'oracles.tables[1].entries[0].effects[0].tracker: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'Scene Type reached through a nextScene' => [self::example('flows.0.phases.1.worldTurn.1.bands.0.effects.0.sceneType', 'dawn', $dawnReached), 'sceneTypes[3].play[0].effects[0].tracker: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'Scene Type reached through a rolled entry' => [self::example('oracles.tables.1.entries.2.sceneType', 'dawn', $dawnReached), 'sceneTypes[3].play[0].effects[0].tracker: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'Scene Type reached through a nested table' => [
+            self::example('oracles.tables.2', ['key' => 'dawns', 'name' => 'Dawns', 'entries' => [['text' => 'Sunrise', 'sceneType' => 'dawn']]], self::example('oracles.tables.1.entries.0.table', 'dawns', $dawnReached)),
+            'sceneTypes[3].play[0].effects[0].tracker: tracker "noise" is not one of the trackers of flow "heist"',
+        ];
+        yield 'Scene Type shortcut outside the flow oracles' => [self::example('flows.0.oracles', ['fate']), 'sceneTypes[1].oracles[1]: oracle "complications" is not one of the oracles of flow "heist"'];
+
+        // Placeholders.
+        yield 'unsupported placeholder namespace' => [self::example('sceneTypes.0.setup.0.prompt', 'About {fact:target}'), 'sceneTypes[0].setup[0].prompt: placeholder {fact:target} is not supported in schema version 2'];
+        yield 'later-feature placeholder' => [self::example('sceneTypes.0.setup.0.title', '{picked} joins'), 'sceneTypes[0].setup[0].title: placeholder {picked} is not supported in schema version 2'];
+        yield 'tracker placeholder without key' => [self::example('sceneTypes.0.setup.0.title', 'At {tracker}'), 'sceneTypes[0].setup[0].title: placeholder {tracker} is not supported in schema version 2'];
+        yield 'answer placeholder with a key' => [self::example('sceneTypes.2.setup.0.effects.1.title', '{answer:x}'), 'sceneTypes[2].setup[0].effects[1].title: placeholder {answer:x} is not supported in schema version 2'];
+        yield 'answer placeholder in a step' => [self::example('sceneTypes.0.setup.0.tip', 'You said {answer}'), 'sceneTypes[0].setup[0].tip: placeholder {answer} is only allowed in effect text'];
+        yield 'unknown tracker placeholder' => [self::example('sceneTypes.0.setup.0.title', 'At {tracker:noise}'), 'sceneTypes[0].setup[0].title: placeholder {tracker:noise}: unknown tracker "noise"'];
+        yield 'unknown step placeholder' => [self::example('flows.0.phases.2.phaseClosing.0.title', 'Was {step:nowhere} worth it?'), 'flows[0].phases[2].phaseClosing[0].title: placeholder {step:nowhere}: unknown step "nowhere"'];
+        yield 'unknown placeholder outside any flow' => [self::scenes('sceneTypes.0.setup.0.prompt', 'At {step:nowhere}'), 'sceneTypes[0].setup[0].prompt: placeholder {step:nowhere}: unknown step "nowhere"'];
+        yield 'tracker placeholder outside the flow' => [self::example('flows.0.phases.1.sceneOpening.1.prompt', 'Noise at {tracker:noise}', $noise), 'flows[0].phases[1].sceneOpening[1].prompt: placeholder {tracker:noise}: tracker "noise" is not one of the trackers of flow "heist"'];
+        yield 'step placeholder outside the flow' => [self::example('flows.0.phases.2.phaseClosing.0.title', 'After {step:sunrise}', $noise), 'flows[0].phases[2].phaseClosing[0].title: placeholder {step:sunrise}: step "sunrise" is not in flow "heist" or its Scene Types'];
+        yield 'unknown tracker placeholder in a rolled entry effect' => [
+            self::example('oracles.tables.1.entries.0.effects.1', ['kind' => 'sceneTitle', 'title' => 'Patrol at {tracker:noise}']),
+            'oracles.tables[1].entries[0].effects[1].title: placeholder {tracker:noise}: unknown tracker "noise"',
+        ];
     }
 
     /**

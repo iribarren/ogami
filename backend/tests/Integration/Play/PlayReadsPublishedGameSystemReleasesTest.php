@@ -9,6 +9,7 @@ use App\Play\Application\GetGameSystemSnapshot;
 use App\Play\Application\ListGameSystems;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Infrastructure\GameSystem\StudioPublishedGameSystemReleases;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -16,6 +17,7 @@ use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -97,6 +99,37 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
             ['Alpha', 'beta', 'Example journal, revised', 'gamma'],
             array_map(static fn (GameSystemSummary $summary): string => $summary->name, $summaries),
         );
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function flowExamples(): iterable
+    {
+        foreach (glob(__DIR__.'/../../Fixtures/Studio/releases/examples/*.json') ?: [] as $file) {
+            yield basename($file, '.json') => ['examples/'.basename($file, '.json')];
+        }
+    }
+
+    /**
+     * The five flow examples, published in Studio's canonical form, pass the anti-corruption layer
+     * (their flows are read from slice 8).
+     */
+    #[Test]
+    #[DataProvider('flowExamples')]
+    public function playReadsTheSchemaVersion2FlowExamples(string $fixture): void
+    {
+        $content = ReleaseViews::fixtureContent($fixture);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a7f', $content, false));
+        self::assertIsArray($content['gameSystem']);
+        self::assertIsString($content['gameSystem']['key']);
+        self::assertIsArray($content['trackers']);
+        self::assertIsArray($content['sceneTypes']);
+
+        $snapshot = $this->queries->ask(new GetGameSystemSnapshot($content['gameSystem']['key']));
+
+        self::assertCount(\count($content['trackers']), $snapshot->trackers());
+        self::assertSame(array_column($content['sceneTypes'], 'key'), array_map(static fn (SceneType $type): string => $type->key, $snapshot->sceneTypes()));
     }
 
     #[Test]

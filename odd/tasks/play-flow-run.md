@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-6-example-fixtures` (from `main` `3c86363`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-7-acl-catalog` (from `main` `3db2e6c`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -116,21 +116,22 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/13 contract` | T1 | 1,423 (actual) |
-| 2 | `feat/play-flow-run-2-contract-catalog` | `feat(studio): play-flow-run 2/13 contract-catalog` | T2a | ~1,730 (actual) |
-| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/13 contract-steps` | T2b | 1,542 (actual) |
-| 4 | `feat/play-flow-run-4-contract-flows` | `feat(studio): play-flow-run 4/13 contract-flows` | T3 | ~1,500 |
-| 5 | `feat/play-flow-run-5-contract-warnings` | `feat(studio): play-flow-run 5/13 contract-warnings` | T4 | ~500 |
-| 6 | `feat/play-flow-run-6-example-fixtures` | `test(studio): play-flow-run 6/13 example-fixtures` | T5 | ~1,500 |
-| 7 | `feat/play-flow-run-7-acl` | `feat(play): play-flow-run 7/13 acl` | T6 | ~1,500 |
-| 8 | `feat/play-flow-run-8-campaign-state` | `feat(play): play-flow-run 8/13 campaign-state` | T7–T8 | ~1,500 |
-| 9 | `feat/play-flow-run-9-flow-run` | `feat(play): play-flow-run 9/13 flow-run` | T9–T10 | ~1,500 |
-| 10 | `feat/play-flow-run-10-control-flow` | `feat(play): play-flow-run 10/13 control-flow` | T11–T12 | ~1,500 |
-| 11 | `feat/play-flow-run-11-guided-journal` | `feat(play): play-flow-run 11/13 guided-journal` | T13–T14 | ~1,500 |
-| 12 | `feat/play-flow-run-12-trackers-oracles` | `feat(play): play-flow-run 12/13 trackers-oracles` | T15 | ~1,000 |
-| 13 | `feat/play-flow-run-13-focus-mode` | `feat(play): play-flow-run 13/13 focus-mode` | T16–T17 | ~1,000 |
+| 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/14 contract` | T1 | 1,423 (actual) |
+| 2 | `feat/play-flow-run-2-contract-catalog` | `feat(studio): play-flow-run 2/14 contract-catalog` | T2a | 1,729 (actual) |
+| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/14 contract-steps` | T2b | 1,542 (actual) |
+| 4 | `feat/play-flow-run-4-contract-flows` | `feat(studio): play-flow-run 4/14 contract-flows` | T3 | 1,302 (actual) |
+| 5 | `feat/play-flow-run-5-contract-warnings` | `feat(studio): play-flow-run 5/14 contract-warnings` | T4 | 532 (actual) |
+| 6 | `feat/play-flow-run-6-example-fixtures` | `test(studio): play-flow-run 6/14 example-fixtures` | T5 | 1,191 (actual) |
+| 7 | `feat/play-flow-run-7-acl-catalog` | `feat(play): play-flow-run 7/14 acl-catalog` | T5b, T6a | ~1,400 |
+| 8 | `feat/play-flow-run-8-acl-flows` | `feat(play): play-flow-run 8/14 acl-flows` | T6b | ~1,000 |
+| 9 | `feat/play-flow-run-9-campaign-state` | `feat(play): play-flow-run 9/14 campaign-state` | T7–T8 | ~1,500 |
+| 10 | `feat/play-flow-run-10-flow-run` | `feat(play): play-flow-run 10/14 flow-run` | T9–T10 | ~1,500 |
+| 11 | `feat/play-flow-run-11-control-flow` | `feat(play): play-flow-run 11/14 control-flow` | T11–T12 | ~1,500 |
+| 12 | `feat/play-flow-run-12-guided-journal` | `feat(play): play-flow-run 12/14 guided-journal` | T13–T14 | ~1,500 |
+| 13 | `feat/play-flow-run-13-trackers-oracles` | `feat(play): play-flow-run 13/14 trackers-oracles` | T15 | ~1,000 |
+| 14 | `feat/play-flow-run-14-focus-mode` | `feat(play): play-flow-run 14/14 focus-mode` | T16–T17 | ~1,000 |
 
-Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnings). The user chose to split it into slices 1–4 (2026-10-09). Re-forecast before slice 2 (shape validation ~2,800 lines on the tag) split shapes into catalog (2) and steps (3); the contract now spans slices 1–5. The full implementation is kept on the local tag `wip/play-flow-run-contract-full` (`66e1586`, never pushed); slices 2–5 port it from there. Before each later slice's writer starts, the parent re-forecasts it and splits it if it will pass ~1,500 lines; titles then use the new total.
+Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnings). The user chose to split it into slices 1–4 (2026-10-09). Re-forecast before slice 2 (shape validation ~2,800 lines on the tag) split shapes into catalog (2) and steps (3); the contract now spans slices 1–5. Re-forecast before slice 7 (ACL ~2,200 lines plus the warning fix) split the anti-corruption layer into catalog (7) and flows (8); 14 slices. The full implementation is kept on the local tag `wip/play-flow-run-contract-full` (`66e1586`, never pushed); slices 2–5 port it from there. Before each later slice's writer starts, the parent re-forecasts it and splits it if it will pass ~1,500 lines; titles then use the new total.
 
 ## Tasks
 
@@ -141,19 +142,21 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 | T2b | 3 | Scene Types; steps per kind, forward `next`, `end`, mandatory/skip rules; bands; effects (incl. table entry `effects` and `sceneType` shape); fixtures; unit tests | delegated writer (slice 3, 2+ non-trivial files) | [x] | `edb9e4c` |
 | T3 | 4 | Flows and phases (selection, hooks, `act`, `default`, `defaultView`); cross-references (trackers in `flow.trackers`, shortcuts ⊆ flow oracles, reachability, oracle/table/level/entry/Scene Type keys, oracle selection entries); placeholders; the contract doc example moves into `valid/`; fixtures; unit tests | delegated writer (slice 4, 2+ non-trivial files) | [x] | `2a93831` |
 | T4 | 5 | Authoring warnings: rule, `CheckGameSystemRelease` query, console output; tests | delegated writer (slice 5, 2+ non-trivial files) | [x] | `eebddad` |
-| T5 | 6 | The five examples as v2 fixtures (without 8/8b/10 parts), validated by schema and domain; expected warnings asserted (heist) | delegated writer (slice 6, 2+ non-trivial files) | [x] | |
-| T6 | 7 | Play snapshot v2 (trackers, Scene Types, flows, phases, steps, effects, bands) and translator v2; v1 → no flows; fixtures pass the ACL | | [ ] | |
-| T7 | 8 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | | [ ] | |
-| T8 | 8 | Scene Type, kind, titles; End session; manual scene type and switch; `flowKey` at creation; API, OpenAPI, Behat | | [ ] | |
-| T9 | 9 | FlowRun domain: phases, selection, parts, steps with default `next`, mandatory/skip, open play, completed, pause/resume, history | | [ ] | |
-| T10 | 9 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
-| T11 | 10 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
-| T12 | 10 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
-| T13 | 11 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
-| T14 | 11 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
-| T15 | 12 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
-| T16 | 13 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
-| T17 | 13 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
+| T5 | 6 | The five examples as v2 fixtures (without 8/8b/10 parts), validated by schema and domain; expected warnings asserted (heist) | delegated writer (slice 6, 2+ non-trivial files) | [x] | `5bc580f` |
+| T5b | 7 | Studio: the decision-7 warning follows branches (user decision after slice 6): warn only when the `nextScene` is reachable from a band of the `condition` on T (the band's own effects, or steps its `next` leads to); tests incl. the two-thresholds case and the slice 6 review suggestion; contract doc; VtM fixture may show the fixed-threshold style | delegated writer (slice 7, 2+ non-trivial files) | [x] | |
+| T6a | 7 | Play snapshot v2, part 1: trackers, fact slots, table entry `key` / `sceneType` / `effects`, chaos tracker binding, Scene Types with steps, bands and effects (typed, framework-free); translator v2 maps them (flows empty until T6b); v1 → no flows unchanged; tests | delegated writer (slice 7, 2+ non-trivial files) | [x] | |
+| T6b | 8 | Play snapshot v2, part 2: flows, phases, selection, hooks; the five example fixtures pass the ACL; tests | | [ ] | |
+| T7 | 9 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | | [ ] | |
+| T8 | 9 | Scene Type, kind, titles; End session; manual scene type and switch; `flowKey` at creation; API, OpenAPI, Behat | | [ ] | |
+| T9 | 10 | FlowRun domain: phases, selection, parts, steps with default `next`, mandatory/skip, open play, completed, pause/resume, history | | [ ] | |
+| T10 | 10 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
+| T11 | 11 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
+| T12 | 11 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
+| T13 | 12 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
+| T14 | 12 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
+| T15 | 13 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
+| T16 | 14 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
+| T17 | 14 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
 
 ## Acceptance criteria
 
@@ -165,7 +168,7 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 ## Checks
 
 - Backend: test first (RED → GREEN) with PHPUnit unit tests per rule; `make qa`, `make test`; `make api-check` when endpoints change.
-- Frontend: Vitest per component, `make e2e` for the guided flow (slices 11–13).
+- Frontend: Vitest per component, `make e2e` for the guided flow (slices 12–14).
 
 ## Progress
 
@@ -182,6 +185,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 - T4 done: `Version2\AuthoringWarnings` computes the decision-7 warning over flow phase hooks, then Scene Type step lists (condition on T, then a `nextScene S` in the same or a later step, S with no `set` / negative `add` on T); `ReleaseContent::warnings()` returns them for version 2 (version 1: none), outside the content and hash. Studio query `CheckGameSystemRelease` → `GameSystemReleaseCheck` (key, schema version, warnings); `app:gamesystem:publish` asks it first and prints `Warning: <message>` lines before `Published …` / `Unchanged …` (exit 0). Fixture `valid/v2-forced-scene-without-relief` (schema and domain). Contract doc top line, status note and Publishing note updated. Ported from the tag without its `Catalog::hasOracle` and test rewrites. Slice 4 review fix: `FlowReferences::checkTrackers` appends references in place instead of a spread per step / entry effect (same result; existing flow-tracker tests green). RED: `phpunit tests/Unit/Studio` + console integration test 508 tests, 18 errors, 3 failures; GREEN: 509 tests OK. Slice size: 532 changed lines (522 + 10).
 - The contract (slices 1–5: schema, Studio validation, authoring warnings) is complete; Play reads version 2 from slice 7.
 - T5 done: the five flow examples as schema version 2 releases in `backend/tests/Fixtures/Studio/releases/examples/` (`vtm-chronicle`, `cpr-heist`, `mythic-session`, `cpr-campaign-in-acts`, `west-marches`), original text, 3–8 entries per table; their `README.md` lists per example what waits for features 8, 8b and 10 (steps kept as plain prompts or tables, fact slots declared). `ReleaseSchemaAgreementTest` runs every example through the schema and the domain (valid cases, canonical form conforms); `ExampleReleasesTest` pins each example's warnings and that every example file has an expectation. Warnings: heist `flows[0].phases[2].worldTurn[1]: nextScene firefight does not lower tracker alarm` (intended); VtM, Mythic, campaign in acts and West Marches none (Hunters strike, Inquisition raid, Hit squad and Month's end lower their trackers; West Marches forces Encounter / Combat through table entry effects, which the rule does not check). VtM uses the roll-under masquerade style: the fixed threshold in the same world turn as the hunters `condition` would warn, because the rule counts every earlier `condition` of the list. Slice 5 review decision done: the contract doc states that only S's own step effects lower T, and `AuthoringWarningsTest` pins it (Firefight rolling `complications`, whose Lucky break lowers the alarm, still warns; passed on first run, the rule already behaved so). No production change and no validation case rejected. RED: `phpunit tests/Unit/Studio` 490 tests, 6 errors (no example files), 1 failure; GREEN: `phpunit tests/Unit/Studio/Contract` 182 tests OK. Slice size: 1,191 changed lines (1,186 + 5).
+- T5b done: `AuthoringWarnings` warns only for a `nextScene` the `condition` on T decides: reached from some of its bands but not from all. A band reaches its own effects and every effect of the steps it leads to (its `next`, else the condition's `next`, else the following step; then every outcome of each reached step, with the step's default unless its outcomes are exhaustive, forward until `end`). An effect every band reaches happens whatever T is, so it does not warn; a step forcing the scene warns once per tracker. The first band is not special (bands are plain ordered ranges). The VtM fixture now uses the fixed-threshold masquerade (`condition masquerade`: up to 7 nothing, above it Inquisition raid; hint "At 8+ the Second Inquisition moves") at the start of the world turn; README updated. Contract doc and class doc state the rule. New `AuthoringWarningsTest` cases: every band reaches the forced scene (no warning), a band jumps over it (warns), two thresholds in one world turn in both orders (no warning; slice 6 review suggestion) and, with an Inquisition raid that no longer lowers masquerade, only the masquerade warning. RED: `phpunit AuthoringWarningsTest ExampleReleasesTest` 30 tests, 6 failures (false `hunters-strike does not lower masquerade` / `inquisition-raid does not lower hunters`); GREEN: `phpunit tests/Unit/Studio` 515 tests OK, `tests/Integration/Studio` 18 OK. Heist and the example warnings unchanged.
+- T6a done: Play Domain catalog of schema version 2, framework-free and immutable. `GameSystem\`: `Tracker` (counter or clock; a clock runs 0..segments from 0), `TrackerKind`, `TrackerLevel`, `FactSlot`, `FactSlotType`, `TableEntryMetadata` (entry `key`, `sceneType`, effects), `SceneType` (purpose, tips, oracle shortcuts, `setup` / `play` / `closing`); `SnapshotLikelihoodOracle::chaosTracker()`. `GameSystem\Flow\`: `StepList` (`step(key)`), abstract `Step` (key, title, prompt, tip, mandatory, next, effects) with `PromptStep`, `OracleStep`, `TableStep` (`outcomeFor(entry)` → branch or `otherwise`), `RollStep`, `ChoiceStep` (`option(key)`, `skip`), `ConditionStep`; `Outcome` (next, effects), `Band` (`upTo`: int, `TrackerReference` or null), `TableBranch`, `ChoiceOption`, `OracleBranches` (`for(answer)`: an exceptional answer without its branch uses yes / no); effects `TrackerEffect` (`TrackerOperation` add / set, int or `TrackerReference`), `NextSceneEffect`, `SwitchSceneTypeEffect`, `EndPhaseEffect`, `SceneTitleEffect` behind the `Effect` interface. The new value objects expose public readonly properties (kept lean; the snapshot keeps getters). `GameSystemSnapshot` gains `trackers()` / `tracker(key)`, `factSlots()`, `sceneTypes()` / `sceneType(key)` (unique keys) and `rolledEntry(OracleTableStep)` (the metadata of the entry a roll selected, ranged or weighted); version 1 snapshots have none. `GameSystemReleaseTranslator` supports schema versions 1 and 2: version 2 strips entry `key` / `sceneType` / `effects` and `chaos.tracker` before the Randomness definitions, maps the catalog and fails closed (`InvalidGameSystemRelease` with the path) on unknown tracker, fact slot, step, effect or operation kinds, non-integer numbers, malformed `upTo` / values and duplicate step, tracker or Scene Type keys; flows are not read (slice 8). Contract doc status lines updated. Tests: `GameSystemReleaseTranslatorVersion2Test` (every part of `v2-scene-types` and `v2-contract-doc-example`, lookups, 11 malformed cases), the unsupported-version case now uses 3, and `PlayReadsPublishedGameSystemReleasesTest` publishes the five examples through Studio (canonical form) and reads them. RED: `phpunit tests/Unit/Play/Infrastructure/GameSystem` 40 tests, 8 errors, 12 failures (`unsupported schema version 2`); integration with version 2 unsupported: 11 tests, 5 errors; GREEN: `phpunit tests/Unit/Play` 205 tests OK, the integration test 11 OK. Slice size: 1,668 changed lines (1,600 + 68; T5b 288 incl. the parent's doc edits, T6a 1,380); over the ~1,400 target, under the ~1,700 stop.
 - Contract choices on unstated details (implemented on the tag, ported in slices 2–4) (consistent with ADR 0017/0018):
   - Limits the rules leave open: bands 1–20 (`condition`) or ≤20 (`roll`), counter `levels` ≤20, table `branches` ≤1000, Scene Type / flow `oracles` ≤70 (the oracle namespace size), tracker effect `value` ±1000, `roll` dice 1–100 characters.
   - Bands: every band but the last needs `upTo`; the last must omit it.
@@ -200,7 +205,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 | 3 | Medium risk; reliability lens; approved and acknowledged (lineage `review-d926c33ab402a0d8`). Non-blocking, done in T3: a valid `roll` without `bands`; a round-trip test (`toArray()` back into `fromArray()`) since `ReleaseFields::object` accepts an empty `\stdClass` everywhere | #42 (merged) |
 | 4 | Medium risk; reliability lens; approved and acknowledged (lineage `review-fbd39976b0423348`). Non-blocking, fixed in T4: `FlowReferences::checkTrackers` rebuilt its reference list with a spread per step (quadratic); now appends in place | #43 (merged) |
 | 5 | Medium risk; reliability lens; approved and acknowledged (lineage `review-36b1e75ab3bcebf5`). Non-blocking: only the forced Scene Type's own step effects count as lowering the tracker, not effects on table entries it rolls. User decision (2026-10-09): keep that rule (a rolled entry lowers the tracker only by chance); T5 documents it and pins it with a test | #44 (merged) |
+| 6 | Medium risk; reliability lens; approved and acknowledged (lineage `review-dc54d5e92eab40c3`). Non-blocking: pin the README claim that a fixed-threshold masquerade next to the hunters condition warns. The writer found that false positive; user decision (2026-10-09): the warning follows branches (T5b) | #45 (merged) |
 
 ## Next step
 
-Slice 6 (T5) review, then PR; slice 7 (T6, Play ACL) after the merge.
+Slice 7 (T5b, T6a) on `feat/play-flow-run-7-acl-catalog`.

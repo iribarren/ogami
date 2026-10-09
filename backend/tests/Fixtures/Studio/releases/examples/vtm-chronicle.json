@@ -39,7 +39,7 @@
     ]
   },
   "trackers": [
-    {"key": "masquerade", "name": "Masquerade breaches", "hint": "The higher it climbs, the likelier the Second Inquisition moves", "kind": "counter", "min": 0, "max": 10, "initial": 0},
+    {"key": "masquerade", "name": "Masquerade breaches", "hint": "At 8+ the Second Inquisition moves", "kind": "counter", "min": 0, "max": 10, "initial": 0},
     {"key": "hunters", "name": "Hunters", "hint": "When it fills, the hunters strike", "kind": "clock", "segments": 4},
     {"key": "night", "name": "Night", "kind": "counter", "min": 1, "max": 1000, "initial": 1}
   ],
@@ -159,7 +159,7 @@
             {"key": "got-it", "kind": "choice", "title": "Did you get what you wanted this session?", "options": [{"key": "yes", "label": "Yes"}, {"key": "no", "label": "No"}], "skip": "no"}
           ],
           "worldTurn": [
-            {"key": "inquisition", "kind": "roll", "title": "Does the Second Inquisition notice?", "dice": "1d10", "bands": [{"upTo": {"tracker": "masquerade"}, "effects": [{"kind": "nextScene", "sceneType": "inquisition-raid"}]}, {}]},
+            {"key": "inquisition", "kind": "condition", "title": "Does the Second Inquisition move?", "tracker": "masquerade", "bands": [{"upTo": 7}, {"effects": [{"kind": "nextScene", "sceneType": "inquisition-raid"}]}]},
             {"key": "stir", "kind": "roll", "title": "Does the night stir?", "tip": "On 1 to 3 the night stays quiet.", "dice": "1d6", "bands": [{"upTo": 3, "next": "end"}, {}]},
             {"key": "event", "kind": "table", "title": "What happens tonight?", "table": "night-events", "branches": [{"entry": "faction-move", "next": "faction"}, {"entry": "ally-in-trouble", "next": "ally"}, {"entry": "new-arrival", "next": "arrival"}, {"entry": "touchstone", "next": "touchstone"}, {"entry": "hunter-activity", "next": "hunters", "effects": [{"kind": "tracker", "tracker": "hunters", "op": "add", "value": 1}]}]},
             {"key": "faction", "kind": "prompt", "title": "Which faction moves?", "prompt": "What does its leader do toward their agenda?", "next": "end"},

@@ -135,6 +135,80 @@ final class AuthoringWarningsTest extends TestCase
     }
 
     #[Test]
+    public function itDoesNotWarnForAForcedSceneEveryBandOfTheConditionReaches(): void
+    {
+        $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
+        $release = ReleaseArrays::with($release, self::WORLD_TURN.'.0.bands.0', ['upTo' => 3]);
+
+        self::assertSame([], ReleaseContent::fromArray($release)->warnings());
+    }
+
+    #[Test]
+    public function itWarnsWhenABandJumpsOverTheForcedScene(): void
+    {
+        $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
+        $release = ReleaseArrays::with($release, self::WORLD_TURN.'.0.bands.0.next', 'quiet');
+        $release = ReleaseArrays::with($release, self::WORLD_TURN.'.2', ['key' => 'quiet', 'kind' => 'prompt', 'title' => 'Quiet night']);
+
+        self::assertSame([self::HEIST_WARNING], ReleaseContent::fromArray($release)->warnings());
+    }
+
+    /**
+     * Two thresholds in one world turn (the VtM example, fixed-threshold masquerade): each forced
+     * Scene Type depends only on its own condition, whichever comes first (slice 6 review).
+     *
+     * @return iterable<string, array{array<mixed>}>
+     */
+    public static function twoThresholdsInOneWorldTurn(): iterable
+    {
+        $release = ReleaseArrays::fixture('examples/vtm-chronicle');
+        $worldTurn = self::vtmWorldTurn($release);
+        self::assertSame('masquerade', $worldTurn[0]['tracker'] ?? null);
+
+        yield 'masquerade first' => [$release];
+        yield 'masquerade last' => [ReleaseArrays::with($release, 'flows.0.phases.1.worldTurn', [...\array_slice($worldTurn, 1), $worldTurn[0]])];
+    }
+
+    /**
+     * @param array<mixed> $release
+     */
+    #[Test]
+    #[DataProvider('twoThresholdsInOneWorldTurn')]
+    public function itDoesNotWarnForTwoThresholdsInOneStepList(array $release): void
+    {
+        self::assertSame([], ReleaseContent::fromArray($release)->warnings());
+    }
+
+    /**
+     * @param array<mixed> $release
+     */
+    #[Test]
+    #[DataProvider('twoThresholdsInOneWorldTurn')]
+    public function itWarnsOnlyForTheConditionOfAForcedSceneThatDoesNotLowerIt(array $release): void
+    {
+        $release = ReleaseArrays::with($release, 'sceneTypes.11.closing.0.effects', []);
+        $index = array_search('inquisition', array_column(self::vtmWorldTurn($release), 'key'), true);
+
+        self::assertSame(
+            [\sprintf('flows[0].phases[1].worldTurn[%d]: nextScene inquisition-raid does not lower tracker masquerade; the consequence may fire every turn', $index)],
+            ReleaseContent::fromArray($release)->warnings(),
+        );
+    }
+
+    /**
+     * @param array<mixed> $release
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function vtmWorldTurn(array $release): array
+    {
+        /** @var array{flows: list<array{phases: list<array{worldTurn: list<array<string, mixed>>}>}>} $typed */
+        $typed = $release;
+
+        return $typed['flows'][0]['phases'][1]['worldTurn'];
+    }
+
+    #[Test]
     public function itDoesNotWarnAcrossStepLists(): void
     {
         $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);

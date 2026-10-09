@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "cpr-heist", "name": "Cyberpunk RED heist (flow example)", "description": "Flow example 2: a heist one-shot driven by an alarm clock. Fan content; the game belongs to its publisher."},
+  "oracles": {
+    "tables": [
+      {
+        "key": "job-clients", "name": "Job clients",
+        "entries": [
+          {"text": "A fixer with a corp contact"},
+          {"text": "A nomad clan elder"},
+          {"text": "A media chasing a story"},
+          {"text": "A ripperdoc owed favors"},
+          {"text": "A corp exec going rogue"}
+        ]
+      },
+      {
+        "key": "job-targets", "name": "Job targets",
+        "entries": [
+          {"text": "A prototype in a lab safe"},
+          {"text": "A data shard in a penthouse"},
+          {"text": "A doctor held in a clinic"},
+          {"text": "A shipment at the docks"},
+          {"text": "A server in a basement"}
+        ]
+      },
+      {
+        "key": "payouts", "name": "Payouts", "dice": "1d6",
+        "entries": [
+          {"min": 1, "max": 2, "text": "500 eb"},
+          {"min": 3, "max": 4, "text": "1,000 eb"},
+          {"min": 5, "max": 5, "text": "2,000 eb"},
+          {"min": 6, "max": 6, "text": "A favor instead of eddies"}
+        ]
+      },
+      {
+        "key": "complications", "name": "Complications",
+        "entries": [
+          {"key": "patrol", "text": "A patrol walks by", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+          {"key": "lucky-break", "text": "A lucky break", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": -1}]},
+          {"key": "spotted", "text": "Spotted!", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 2}]},
+          {"key": "new-code", "text": "The door code changed"}
+        ]
+      },
+      {
+        "key": "net-floors", "name": "Net floors",
+        "entries": [
+          {"text": "A password gate"},
+          {"text": "A file cache"},
+          {"text": "A control node"},
+          {"text": "An empty floor"},
+          {"text": "Black ICE"}
+        ]
+      },
+      {
+        "key": "black-ice", "name": "Black ICE",
+        "entries": [
+          {"text": "A burning hound"},
+          {"text": "A black bird"},
+          {"text": "A static wraith"},
+          {"text": "A neural spike"}
+        ]
+      },
+      {
+        "key": "security-response", "name": "Security response",
+        "entries": [
+          {"text": "Two guards with smartguns"},
+          {"text": "A drone swarm"},
+          {"text": "Shutters slam down"},
+          {"text": "A corp solo walks in"}
+        ]
+      },
+      {
+        "key": "npc-name", "name": "Street names",
+        "entries": [
+          {"text": "Razor"},
+          {"text": "Juno"},
+          {"text": "Tinman"},
+          {"text": "Static"},
+          {"text": "Mama Lux"},
+          {"text": "Ghostwire"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "exceptionalPercent": 20}
+    ]
+  },
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "hint": "At 6/6 security locks down: you run", "kind": "clock", "segments": 6},
+    {"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3, "initial": 0},
+    {"key": "objective", "name": "Objective", "kind": "counter", "min": 0, "max": 1, "initial": 0, "levels": [{"upTo": 0, "label": "Not yet"}, {"label": "In hand"}]}
+  ],
+  "factSlots": [
+    {"key": "client", "label": "Client", "type": "npc"},
+    {"key": "target", "label": "Target", "type": "text"},
+    {"key": "payout", "label": "Payout", "type": "text"},
+    {"key": "plan", "label": "Plan", "type": "text"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "social", "name": "Social", "purpose": "Talk, bargain or bluff with someone.", "oracles": ["fate", "npc-name"], "setup": [],
+      "play": [
+        {"key": "talk", "kind": "prompt", "title": "Who do you talk to, and what do you want?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "exploration", "name": "Exploration", "purpose": "Look around a place and see what is there.", "oracles": ["fate"], "setup": [],
+      "play": [
+        {"key": "look", "kind": "prompt", "title": "Where do you look around?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "crew", "name": "Crew", "purpose": "Put the crew together.", "oracles": [],
+      "setup": [
+        {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "mandatory": true},
+        {"key": "second", "kind": "prompt", "title": "Who else is in?"}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "briefing", "name": "Briefing", "purpose": "Meet the client and hear the job.", "oracles": ["job-clients", "job-targets", "payouts"],
+      "setup": [
+        {"key": "client", "kind": "table", "title": "Who is the client?", "table": "job-clients"},
+        {"key": "target", "kind": "table", "title": "What is the target?", "table": "job-targets"},
+        {"key": "payout", "kind": "table", "title": "What does it pay?", "table": "payouts"},
+        {"key": "plan", "kind": "prompt", "title": "What's the plan?"},
+        {"key": "catch", "kind": "prompt", "title": "What's the catch?"}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "netrun", "name": "Netrun", "purpose": "Jack in and work the net architecture.", "tips": "Roll a floor for each level you go down; repeat floors in free play.", "oracles": ["net-floors", "black-ice"], "setup": [],
+      "play": [
+        {"key": "floor", "kind": "prompt", "title": "Which floor do you go for?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "infiltration", "name": "Infiltration", "purpose": "Get inside unseen.", "oracles": ["fate", "complications"], "setup": [],
+      "play": [
+        {"key": "slip-past", "kind": "oracle", "title": "Do you slip past?", "oracle": "fate", "likelihood": "even", "branches": {"no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}}}
+      ],
+      "closing": []
+    },
+    {
+      "key": "firefight", "name": "Firefight", "purpose": "Shoot your way through.", "tips": "Keep it short and loud.", "oracles": ["fate", "security-response"],
+      "setup": [
+        {"key": "who-shoots", "kind": "prompt", "title": "Who opens fire?", "effects": [{"kind": "sceneTitle", "title": "Firefight: {answer}"}]}
+      ],
+      "play": [
+        {"key": "response", "kind": "table", "title": "Who comes for you?", "table": "security-response"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "grab", "name": "Grab", "purpose": "Take what you came for.", "oracles": ["fate"], "setup": [],
+      "play": [
+        {"key": "reach", "kind": "prompt", "title": "How do you get to the target?"}
+      ],
+      "closing": [
+        {"key": "got-it", "kind": "choice", "title": "Got it?", "mandatory": true, "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "objective", "op": "set", "value": 1}, {"kind": "endPhase"}]}, {"key": "no", "label": "No"}]}
+      ]
+    },
+    {
+      "key": "getaway", "name": "Getaway", "purpose": "Get out before the doors close.", "oracles": ["fate"],
+      "setup": [
+        {"key": "heat", "kind": "condition", "title": "How hot is it out there?", "tracker": "alarm", "bands": [{"upTo": 3}, {"next": "end", "effects": [{"kind": "switchSceneType", "sceneType": "chase"}]}]},
+        {"key": "slip-out", "kind": "prompt", "title": "You slip out. How?"}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "chase", "name": "Chase", "purpose": "Lose the pursuit on the streets.", "oracles": ["fate"],
+      "setup": [
+        {"key": "wheel", "kind": "prompt", "title": "Who takes the wheel?", "tip": "A nomad in the crew is a good choice."}
+      ],
+      "play": [
+        {"key": "lose-them", "kind": "oracle", "title": "Do you lose them?", "oracle": "fate", "likelihood": "unlikely"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "payday", "name": "Payday", "purpose": "Get paid, or not.", "oracles": [],
+      "setup": [
+        {"key": "delivered", "kind": "condition", "title": "Did you get the objective?", "tracker": "objective", "bands": [{"upTo": 0, "next": "no-pay"}, {"next": "paid"}]},
+        {"key": "no-pay", "kind": "prompt", "title": "No job, no pay.", "next": "end"},
+        {"key": "paid", "kind": "prompt", "title": "The fixer pays up.", "prompt": "Was {step:plan} worth it?"},
+        {"key": "double-cross", "kind": "roll", "title": "Is it a double-cross?", "dice": "1d6", "bands": [{"upTo": 1, "next": "betrayed"}, {"next": "end"}]},
+        {"key": "betrayed", "kind": "prompt", "title": "Double-cross! Who sold you out?"}
+      ],
+      "play": [], "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "heist", "name": "Heist", "description": "A one-shot heist for one sitting: set it up, do the legwork, pull the job, get away.",
+      "introduction": "You play a crew pulling one job. Each step tells you what to decide or roll. Watch the alarm: when it fills, the job is over and you run.",
+      "default": true, "defaultView": "focus", "oracles": ["fate", "job-clients", "job-targets", "payouts", "complications", "net-floors", "black-ice", "security-response", "npc-name"], "trackers": ["alarm", "edge", "objective"],
+      "phases": [
+        {"key": "the-job", "name": "The job", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["crew", "briefing"]}},
+        {
+          "key": "legwork", "name": "Legwork", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["social", "exploration", "netrun"]},
+          "sceneClosing": [
+            {"key": "gain-edge", "kind": "choice", "title": "Did you gain an edge?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
+          ],
+          "worldTurn": [
+            {"key": "word", "kind": "roll", "title": "Does word get around?", "dice": "1d6", "bands": [{"upTo": 1, "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {}]}
+          ]
+        },
+        {
+          "key": "the-heist", "name": "The heist", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["infiltration", "netrun", "grab"]},
+          "sceneOpening": [
+            {"key": "pressure", "kind": "condition", "title": "How alert is security?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {"upTo": 5}, {"next": "end"}]},
+            {"key": "notice", "kind": "prompt", "title": "Security is on edge", "prompt": "The alarm is at {tracker:alarm}. What do you notice?"}
+          ],
+          "sceneClosing": [
+            {"key": "edge-left", "kind": "condition", "title": "Do you have an edge?", "tracker": "edge", "bands": [{"upTo": 0, "next": "complication"}, {}]},
+            {"key": "spend-edge", "kind": "choice", "title": "Spend an edge to avoid trouble?", "options": [{"key": "yes", "label": "Yes", "next": "lockdown", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": -1}]}, {"key": "no", "label": "No", "next": "complication"}], "skip": "no"},
+            {"key": "complication", "kind": "table", "title": "What goes wrong?", "table": "complications"},
+            {"key": "lockdown", "kind": "condition", "title": "Is the alarm full?", "tracker": "alarm", "bands": [{"upTo": 5}, {"effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "response", "kind": "condition", "title": "Does security respond?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {}]},
+            {"key": "guards", "kind": "roll", "title": "Do the guards find you?", "dice": "1d6", "bands": [{"upTo": 3, "effects": [{"kind": "nextScene", "sceneType": "firefight"}]}, {}]}
+          ]
+        },
+        {"key": "escape", "name": "Escape", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["getaway"]}},
+        {"key": "epilogue", "name": "Epilogue", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["payday"]}}
+      ]
+    }
+  ],
+  "sheet": {},
+  "checks": []
+}

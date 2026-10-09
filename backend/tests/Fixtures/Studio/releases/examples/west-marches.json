@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "west-marches", "name": "West Marches (flow example)", "description": "Flow example 5: light old-school fantasy with a town, a roster and one expedition per session."},
+  "oracles": {
+    "tables": [
+      {
+        "key": "rumors", "name": "Rumors",
+        "entries": [
+          {"text": "A tower lit again after fifty years"},
+          {"text": "Wolves that walk upright near the ford"},
+          {"text": "A caravan that never arrived"},
+          {"text": "Gold in the old mine"},
+          {"text": "A shrine that answers prayers"},
+          {"text": "A map sold cheap at the inn"}
+        ]
+      },
+      {
+        "key": "encounters-near", "name": "Encounters near town",
+        "entries": [
+          {"text": "Shepherds with bad news", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "A lost traveler", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "Bandits at the bridge", "effects": [{"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "Giant rats in a ditch", "effects": [{"kind": "nextScene", "sceneType": "combat"}]}
+        ]
+      },
+      {
+        "key": "encounters-mid", "name": "Encounters in the hills",
+        "entries": [
+          {"text": "A hermit who trades in secrets", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "A goblin patrol", "effects": [{"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "An ogre demanding a toll", "effects": [{"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "Pilgrims on the wrong road", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]}
+        ]
+      },
+      {
+        "key": "encounters-deep", "name": "Encounters in the deep wilds",
+        "entries": [
+          {"text": "A wyvern on the hunt", "effects": [{"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "An elf who knows your names", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "The dead walking in the fog", "effects": [{"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A rival party, battered", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]}
+        ]
+      },
+      {
+        "key": "site-features", "name": "Site features",
+        "entries": [
+          {"text": "A collapsed bridge"},
+          {"text": "Old standing stones"},
+          {"text": "A burned farmstead"},
+          {"text": "A cave with fresh tracks"},
+          {"text": "A ruined watchtower"}
+        ]
+      },
+      {
+        "key": "rooms", "name": "Rooms",
+        "entries": [
+          {"text": "An empty guard room"},
+          {"text": "A shrine to a forgotten god"},
+          {"text": "A flooded passage"},
+          {"text": "A trapped chest"},
+          {"text": "A sleeping monster"},
+          {"text": "Stairs going down"}
+        ]
+      },
+      {
+        "key": "stranded", "name": "Stranded",
+        "entries": [
+          {"text": "A cold night: a ration spoils", "effects": [{"kind": "tracker", "tracker": "rations", "op": "add", "value": -1}]},
+          {"text": "You lose the trail: one more day out", "effects": [{"kind": "tracker", "tracker": "away", "op": "add", "value": 1}]},
+          {"text": "Something follows you"},
+          {"text": "A storm drenches your torches", "effects": [{"kind": "tracker", "tracker": "torches", "op": "add", "value": 1}]}
+        ]
+      }
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "exceptionalPercent": 20}
+    ]
+  },
+  "trackers": [
+    {"key": "away", "name": "Days away", "hint": "End the session in town, or the wilds keep you", "kind": "counter", "min": 0, "max": 10, "initial": 0},
+    {"key": "rations", "name": "Rations", "kind": "counter", "min": 0, "max": 20, "initial": 6},
+    {"key": "torches", "name": "Torches burned", "hint": "Each room burns some of your light", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [
+    {"key": "town", "label": "Town", "type": "text"},
+    {"key": "expedition", "label": "Expedition", "type": "thread"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "town", "name": "Town", "purpose": "Buy supplies and hire help.", "oracles": ["rumors"], "setup": [],
+      "play": [
+        {"key": "supplies", "kind": "prompt", "title": "What do you buy?"},
+        {"key": "hirelings", "kind": "prompt", "title": "Do you hire anyone?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "roster", "name": "Roster", "purpose": "Name the adventurers who might go out.", "oracles": [],
+      "setup": [
+        {"key": "first", "kind": "prompt", "title": "Who is in the roster?", "mandatory": true},
+        {"key": "second", "kind": "prompt", "title": "Who else is in the roster?", "mandatory": true},
+        {"key": "third", "kind": "prompt", "title": "And one more?", "mandatory": true},
+        {"key": "more", "kind": "prompt", "title": "Anyone else?"},
+        {"key": "last", "kind": "prompt", "title": "Anyone else at all?"}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "travel", "name": "Travel", "purpose": "Cross the wilds toward your goal.", "oracles": [],
+      "setup": [
+        {"key": "route", "kind": "prompt", "title": "Where are you heading?", "effects": [{"kind": "tracker", "tracker": "away", "op": "add", "value": 1}, {"kind": "tracker", "tracker": "rations", "op": "add", "value": -1}]}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "explore-site", "name": "Explore site", "purpose": "Look over a place in the wilds.", "oracles": ["site-features"],
+      "setup": [
+        {"key": "feature", "kind": "table", "title": "What is here?", "table": "site-features"}
+      ],
+      "play": [
+        {"key": "search", "kind": "prompt", "title": "What do you search for?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "delve", "name": "Delve", "purpose": "Explore one room of a dungeon.", "oracles": ["rooms"],
+      "setup": [
+        {"key": "room", "kind": "table", "title": "What is in this room?", "table": "rooms", "effects": [{"kind": "tracker", "tracker": "torches", "op": "add", "value": 1}]}
+      ],
+      "play": [],
+      "closing": [
+        {"key": "onward", "kind": "choice", "title": "Next room, or leave?", "mandatory": true, "options": [{"key": "next", "label": "Next room", "effects": [{"kind": "nextScene", "sceneType": "delve"}]}, {"key": "leave", "label": "Leave", "effects": [{"kind": "nextScene", "sceneType": "travel"}]}]}
+      ]
+    },
+    {
+      "key": "encounter", "name": "Encounter", "purpose": "Meet someone or something on the way.", "oracles": ["fate"], "setup": [],
+      "play": [
+        {"key": "meet", "kind": "prompt", "title": "Who do you meet, and what do they want?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "combat", "name": "Combat", "purpose": "Fight for your lives.", "oracles": ["fate"], "setup": [],
+      "play": [
+        {"key": "fight", "kind": "prompt", "title": "How does the fight go?"}
+      ],
+      "closing": [
+        {"key": "cost", "kind": "prompt", "title": "What did it cost?"}
+      ]
+    },
+    {
+      "key": "return", "name": "Return", "purpose": "Come back to town.", "oracles": [],
+      "setup": [
+        {"key": "bring-back", "kind": "prompt", "title": "What do you bring back to town?", "effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]}
+      ],
+      "play": [], "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "west-marches", "name": "West Marches", "description": "A town, a roster of adventurers and one expedition per session.",
+      "introduction": "Found the town and its roster first. Then every session is one expedition: pick a rumor, head out, and try to be back in town when the session ends.",
+      "default": true, "defaultView": "journal", "oracles": ["fate", "rumors", "site-features", "rooms"], "trackers": ["away", "rations", "torches"],
+      "phases": [
+        {
+          "key": "founding", "name": "Founding", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["town", "roster"]},
+          "phaseOpening": [
+            {"key": "town", "kind": "prompt", "title": "What is the town like?", "mandatory": true},
+            {"key": "rumor-1", "kind": "table", "title": "What rumor is going around?", "table": "rumors"},
+            {"key": "rumor-2", "kind": "table", "title": "What other rumor?", "table": "rumors"}
+          ]
+        },
+        {
+          "key": "expeditions", "name": "Expeditions", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["town", "travel", "explore-site", "delve", "return"]},
+          "sessionOpening": [
+            {"key": "expedition", "kind": "prompt", "title": "Which rumor do you chase this session?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]},
+            {"key": "party", "kind": "prompt", "title": "Who goes on this expedition?"}
+          ],
+          "sessionClosing": [
+            {"key": "where", "kind": "condition", "title": "Where are you?", "tracker": "away", "bands": [{"upTo": 0, "next": "safe"}, {"next": "stranded"}]},
+            {"key": "safe", "kind": "prompt", "title": "Safe in town.", "next": "resolved"},
+            {"key": "stranded", "kind": "table", "title": "What happens out in the wilds?", "table": "stranded"},
+            {"key": "resolved", "kind": "choice", "title": "Is the expedition resolved?", "options": [{"key": "yes", "label": "Yes"}, {"key": "no", "label": "No"}], "skip": "no"},
+            {"key": "new-rumor", "kind": "table", "title": "What new rumor reaches town?", "table": "rumors"}
+          ],
+          "worldTurn": [
+            {"key": "in-town", "kind": "condition", "title": "Are you in town?", "tracker": "away", "bands": [{"upTo": 0, "next": "end"}, {}]},
+            {"key": "wander", "kind": "roll", "title": "Does something find you?", "dice": "1d6", "bands": [{"upTo": 1}, {"next": "end"}]},
+            {"key": "distance", "kind": "condition", "title": "How far out are you?", "tracker": "away", "bands": [{"upTo": 1, "next": "near"}, {"upTo": 3, "next": "mid"}, {"next": "deep"}]},
+            {"key": "near", "kind": "table", "title": "Who is near town?", "table": "encounters-near", "next": "end"},
+            {"key": "mid", "kind": "table", "title": "Who is in the hills?", "table": "encounters-mid", "next": "end"},
+            {"key": "deep", "kind": "table", "title": "What is in the deep wilds?", "table": "encounters-deep"}
+          ]
+        }
+      ]
+    }
+  ],
+  "sheet": {},
+  "checks": []
+}

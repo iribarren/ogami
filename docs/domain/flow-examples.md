@@ -2,6 +2,8 @@
 
 Five worked examples of the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md), as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md). Feature 6c `flow-model-examples` mapped them to find the model's limits.
 
+**Fixtures:** [`backend/tests/Fixtures/Studio/releases/examples/`](../../backend/tests/Fixtures/Studio/releases/examples/README.md) holds them as schema version 2 releases, with what each leaves out until features 8, 8b and 10.
+
 They serve as:
 - the reference for presets 9 `preset-mythic-flow`, 9b `preset-guided-sample` and the backlog presets ([roadmap](../roadmap.md));
 - input for Studio's flow editor;

@@ -200,6 +200,8 @@ In one step list, when a `condition` on tracker T is followed (in the same step 
 flows[0].phases[1].worldTurn[1]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn
 ```
 
+Only S's own step effects count as lowering T (in any of its parts, including bands, branches and options). Effects of table entries that S rolls do not: they lower T only by chance, so a forced Scene Type whose relief comes from a rolled entry still warns.
+
 The rule applies to the step lists of flow phases and of Scene Types (`sceneTypes[i].play[j]: …`). Warnings are returned with the validated content and printed by the console command; they are not stored.
 
 ### Canonical form

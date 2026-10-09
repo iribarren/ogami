@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "mythic-session", "name": "Mythic-style session (flow example)", "description": "Flow example 3: a solo adventure with a chaos factor, scene checks and random events. All table content is original."},
+  "oracles": {
+    "tables": [
+      {
+        "key": "scene-adjustments", "name": "Scene adjustments", "dice": "1d6",
+        "entries": [
+          {"min": 1, "max": 1, "text": "Someone you expected is missing"},
+          {"min": 2, "max": 2, "text": "Someone unexpected is there"},
+          {"min": 3, "max": 3, "text": "The place is not what you thought"},
+          {"min": 4, "max": 4, "text": "It happens later than planned"},
+          {"min": 5, "max": 5, "text": "The mood is wrong"},
+          {"min": 6, "max": 6, "text": "An obstacle is in the way"}
+        ]
+      },
+      {
+        "key": "random-event-focus", "name": "Random event focus",
+        "entries": [
+          {"key": "rival-acts", "text": "A rival acts"},
+          {"key": "stranger", "text": "A stranger appears"},
+          {"key": "lead-clearer", "text": "A lead gets clearer"},
+          {"key": "lead-cold", "text": "A lead goes cold"},
+          {"key": "loose-end", "text": "A loose end settles"},
+          {"key": "ally-help", "text": "An ally needs help"},
+          {"key": "far-away", "text": "Something happens far away"},
+          {"key": "odd-sign", "text": "An odd sign"}
+        ]
+      },
+      {
+        "key": "meaning-action", "name": "Meaning: action",
+        "entries": [
+          {"text": "Abandon"},
+          {"text": "Bargain"},
+          {"text": "Chase"},
+          {"text": "Deceive"},
+          {"text": "Guard"},
+          {"text": "Reveal"},
+          {"text": "Break"},
+          {"text": "Gather"}
+        ]
+      },
+      {
+        "key": "meaning-subject", "name": "Meaning: subject",
+        "entries": [
+          {"text": "A secret"},
+          {"text": "A debt"},
+          {"text": "A home"},
+          {"text": "A promise"},
+          {"text": "A weapon"},
+          {"text": "A rumor"},
+          {"text": "A border"},
+          {"text": "Someone's past"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5, "tracker": "chaos"}, "exceptionalPercent": 20}
+    ]
+  },
+  "trackers": [
+    {"key": "chaos", "name": "Chaos factor", "hint": "High chaos: more yes answers, more surprises", "kind": "counter", "min": 1, "max": 9, "initial": 5}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play out one scene of the adventure.", "oracles": ["fate", "meaning-action", "meaning-subject", "random-event-focus"], "setup": [], "play": [], "closing": []}
+  ],
+  "flows": [
+    {
+      "key": "mythic", "name": "Mythic-style adventure", "description": "Expected scenes, scene checks against the chaos factor, and lists you keep up to date.", "default": true, "defaultView": "journal", "oracles": ["fate", "scene-adjustments", "random-event-focus", "meaning-action", "meaning-subject"], "trackers": ["chaos"],
+      "phases": [
+        {
+          "key": "premise", "name": "Premise", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["scene"]},
+          "sceneOpening": [
+            {"key": "premise", "kind": "prompt", "title": "What is the premise?", "mandatory": true},
+            {"key": "goal", "kind": "prompt", "title": "What is your first goal?"},
+            {"key": "involved", "kind": "prompt", "title": "Who is involved?"}
+          ]
+        },
+        {
+          "key": "adventure", "name": "Adventure", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["scene"]},
+          "sceneOpening": [
+            {"key": "expected", "kind": "prompt", "title": "What scene do you expect?", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}]},
+            {"key": "check", "kind": "roll", "title": "Scene check", "tip": "Roll under the chaos factor ({tracker:chaos}) and the scene changes.", "dice": "1d10", "bands": [{"upTo": {"tracker": "chaos"}}, {"next": "end"}]},
+            {"key": "twist", "kind": "roll", "title": "Altered or interrupted?", "dice": "1d6", "bands": [{"upTo": 3}, {"next": "interrupt"}]},
+            {"key": "adjust", "kind": "table", "title": "How is it adjusted?", "table": "scene-adjustments"},
+            {"key": "altered", "kind": "prompt", "title": "How is the scene altered?", "next": "end"},
+            {"key": "interrupt", "kind": "table", "title": "What interrupts the scene?", "table": "random-event-focus", "branches": [{"entry": "far-away", "next": "action"}, {"entry": "odd-sign", "next": "action"}], "otherwise": {"next": "instead"}},
+            {"key": "action", "kind": "table", "title": "Meaning: what happens?", "table": "meaning-action"},
+            {"key": "subject", "kind": "table", "title": "Meaning: about what?", "table": "meaning-subject"},
+            {"key": "instead", "kind": "prompt", "title": "What happens instead?", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}]}
+          ],
+          "sceneClosing": [
+            {"key": "control", "kind": "choice", "title": "Were you in control?", "mandatory": true, "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "chaos", "op": "add", "value": -1}]}, {"key": "no", "label": "No", "effects": [{"kind": "tracker", "tracker": "chaos", "op": "add", "value": 1}]}]},
+            {"key": "lists", "kind": "prompt", "title": "Update your lists"}
+          ]
+        }
+      ]
+    }
+  ],
+  "sheet": {},
+  "checks": []
+}

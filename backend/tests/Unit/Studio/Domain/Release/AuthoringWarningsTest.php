@@ -91,6 +91,22 @@ final class AuthoringWarningsTest extends TestCase
         self::assertSame([self::HEIST_WARNING], ReleaseContent::fromArray($release)->warnings());
     }
 
+    /**
+     * Only the forced Scene Type's own step effects count: an entry of a table it rolls lowers
+     * the tracker only by chance (user decision after the slice 5 review).
+     */
+    #[Test]
+    public function itWarnsWhenOnlyATableEntryTheForcedSceneTypeRollsLowersTheTracker(): void
+    {
+        $release = ReleaseArrays::with(
+            self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']),
+            'sceneTypes.2.play',
+            [['key' => 'trouble', 'kind' => 'table', 'title' => 'What happens?', 'table' => 'complications']],
+        );
+
+        self::assertSame([self::HEIST_WARNING], ReleaseContent::fromArray($release)->warnings());
+    }
+
     #[Test]
     public function itWarnsAtTheConditionItselfWhenItsOwnBandForcesTheScene(): void
     {

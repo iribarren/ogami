@@ -105,8 +105,8 @@ One slice (`docs/flow-model-examples-1-model`, PR `docs(flow): flow-model-exampl
 
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
-| T1 | Feature doc; ADR 0018 "NarrativeFlow control flow and cast" (decisions, schema v2 additions, where each lands, accepted limits, deferred); ADR 0017 status note; ADR index | delegated writer (T1–T4, 7+ doc files) | [x] | |
-| T2 | Glossary (new: Hook, Condition step, Act, Tag, Scene cast, Party; updated: Effect, Scene, World turn, Flow step, Character, NPC, Thread, FlowRun, Session, Tracker, Fact slot, Outcome band) and context map | delegated writer | [ ] | |
+| T1 | Feature doc; ADR 0018 "NarrativeFlow control flow and cast" (decisions, schema v2 additions, where each lands, accepted limits, deferred); ADR 0017 status note; ADR index | delegated writer (T1–T4, 7+ doc files) | [x] | `e50b9be` |
+| T2 | Glossary (new: Hook, Condition step, Act, Tag, Scene cast, Party; updated: Effect, Scene, World turn, Flow step, Character, NPC, Thread, FlowRun, Session, Tracker, Fact slot, Outcome band) and context map | delegated writer | [x] | |
 | T3 | Vision (resolve the four 6c questions, add six open questions) and roadmap (6c done, feature 7 prompt, notes in 8, 8b, 9, 9b, 10, 12, 13, backlog presets) | delegated writer | [ ] | |
 | T4 | `docs/domain/flow-examples.md`: the five worked examples on the amended model | delegated writer | [ ] | |
 
@@ -124,3 +124,4 @@ One slice (`docs/flow-model-examples-1-model`, PR `docs(flow): flow-model-exampl
 
 - Brainstorm done in session, one example at a time; deliverables approved. Issue #37, branch created.
 - T1: ADR 0018 `docs/adr/0018-narrativeflow-control-flow-and-cast.md` records decisions 1–29 grouped as in this doc, answers the eight 6c questions in a table, sketches the schema version 2 additions (not-additive vs later-additive parts), the Play model changes, where each part lands, accepted limits and open questions; ADR 0017 status notes the amendment; ADR index row added. Its link to `docs/domain/flow-examples.md` resolves once T4 lands. Structural readback done.
+- T2: glossary adds Act, Hook, Condition step, Tag, Party and Scene cast; updates Outcome band, Phase, World turn (a hook), Flow step, Effect, Tracker, Fact slot, Character, Session, Scene, FlowRun, Thread and NPC, linking ADR 0018. Context map: schema version 2 additions on the Published Language, Play concepts (Characters, party, Scene kind `hook`, cast, tags) and Studio concepts (hooks, act label, Effect, Tag). Structural readback done.

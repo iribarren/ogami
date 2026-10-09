@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "catalog", "name": "Catalog", "description": "Every kind of tracker and fact slot, entry keys and a chaos factor bound to a counter."},
+  "oracles": {
+    "tables": [
+      {"key": "events", "name": "Events", "dice": "1d6", "entries": [{"min": 1, "max": 3, "text": "Patrol", "key": "patrol"}, {"min": 4, "max": 5, "text": "Lucky break", "key": "lucky-break"}, {"min": 6, "max": 6, "text": "", "table": "escape-routes", "key": "run"}]},
+      {"key": "escape-routes", "name": "Escape routes", "entries": [{"text": "Rooftops", "key": "rooftops", "weight": 2}, {"text": "Sewers", "key": "sewers"}, {"text": "Front door"}]}
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 35}, {"key": "even", "label": "50/50", "target": 50}], "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5, "tracker": "chaos"}, "exceptionalPercent": 20},
+      {"key": "omen", "name": "Omen", "sides": 6, "levels": [{"key": "even", "label": "Even", "target": 3}], "chaos": {"min": 0, "max": 2, "neutral": 1, "shiftPerPoint": 1}}
+    ]
+  },
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "hint": "At 6/6 security locks down: you run", "kind": "clock", "segments": 6},
+    {"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "No edge"}, {"label": "An edge"}]},
+    {"key": "chaos", "name": "Chaos factor", "kind": "counter", "min": 1, "max": 9, "initial": 5},
+    {"key": "heat", "name": "Heat", "hint": "Grows between jobs", "kind": "counter", "min": -5, "max": 5, "initial": -5, "levels": [{"upTo": -1, "label": "Cold"}, {"upTo": 2, "label": "Warm"}, {"label": "Hot"}]}
+  ],
+  "factSlots": [
+    {"key": "target", "label": "Target", "type": "text"},
+    {"key": "client", "label": "Client", "type": "npc"},
+    {"key": "ambition", "label": "Ambition", "type": "thread"}
+  ],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

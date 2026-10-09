@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal", "description": null},
+  "oracles": {
+    "tables": [{"key": "events", "name": "Events", "entries": [{"text": "Patrol", "key": null, "sceneType": null, "effects": null}]}],
+    "likelihood": [{"key": "fate", "name": "Fate", "sides": 6, "levels": [{"key": "even", "label": "Even", "target": 3}], "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 1, "tracker": null}}]
+  },
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "kind": "clock", "segments": 6, "hint": null},
+    {"key": "edge", "name": "Edge", "hint": null, "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": null}
+  ],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

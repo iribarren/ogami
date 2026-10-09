@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Branch (slice 1):** `feat/play-flow-run-1-contract` (from `main` `f4d775b`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-2-contract-catalog` (from `main` `08e347b`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -116,42 +116,44 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/12 contract` | T1 | ~1,300 (actual) |
-| 2 | `feat/play-flow-run-2-contract-shapes` | `feat(studio): play-flow-run 2/12 contract-shapes` | T2 | ~1,500 |
-| 3 | `feat/play-flow-run-3-contract-references` | `feat(studio): play-flow-run 3/12 contract-references` | T3 | ~1,500 |
-| 4 | `feat/play-flow-run-4-contract-warnings` | `feat(studio): play-flow-run 4/12 contract-warnings` | T4 | ~500 |
-| 5 | `feat/play-flow-run-5-example-fixtures` | `test(studio): play-flow-run 5/12 example-fixtures` | T5 | ~1,500 |
-| 6 | `feat/play-flow-run-6-acl` | `feat(play): play-flow-run 6/12 acl` | T6 | ~1,500 |
-| 7 | `feat/play-flow-run-7-campaign-state` | `feat(play): play-flow-run 7/12 campaign-state` | T7–T8 | ~1,500 |
-| 8 | `feat/play-flow-run-8-flow-run` | `feat(play): play-flow-run 8/12 flow-run` | T9–T10 | ~1,500 |
-| 9 | `feat/play-flow-run-9-control-flow` | `feat(play): play-flow-run 9/12 control-flow` | T11–T12 | ~1,500 |
-| 10 | `feat/play-flow-run-10-guided-journal` | `feat(play): play-flow-run 10/12 guided-journal` | T13–T14 | ~1,500 |
-| 11 | `feat/play-flow-run-11-trackers-oracles` | `feat(play): play-flow-run 11/12 trackers-oracles` | T15 | ~1,000 |
-| 12 | `feat/play-flow-run-12-focus-mode` | `feat(play): play-flow-run 12/12 focus-mode` | T16–T17 | ~1,000 |
+| 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/13 contract` | T1 | 1,423 (actual) |
+| 2 | `feat/play-flow-run-2-contract-catalog` | `feat(studio): play-flow-run 2/13 contract-catalog` | T2a | ~1,730 (actual) |
+| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/13 contract-steps` | T2b | ~1,500 |
+| 4 | `feat/play-flow-run-4-contract-flows` | `feat(studio): play-flow-run 4/13 contract-flows` | T3 | ~1,500 |
+| 5 | `feat/play-flow-run-5-contract-warnings` | `feat(studio): play-flow-run 5/13 contract-warnings` | T4 | ~500 |
+| 6 | `feat/play-flow-run-6-example-fixtures` | `test(studio): play-flow-run 6/13 example-fixtures` | T5 | ~1,500 |
+| 7 | `feat/play-flow-run-7-acl` | `feat(play): play-flow-run 7/13 acl` | T6 | ~1,500 |
+| 8 | `feat/play-flow-run-8-campaign-state` | `feat(play): play-flow-run 8/13 campaign-state` | T7–T8 | ~1,500 |
+| 9 | `feat/play-flow-run-9-flow-run` | `feat(play): play-flow-run 9/13 flow-run` | T9–T10 | ~1,500 |
+| 10 | `feat/play-flow-run-10-control-flow` | `feat(play): play-flow-run 10/13 control-flow` | T11–T12 | ~1,500 |
+| 11 | `feat/play-flow-run-11-guided-journal` | `feat(play): play-flow-run 11/13 guided-journal` | T13–T14 | ~1,500 |
+| 12 | `feat/play-flow-run-12-trackers-oracles` | `feat(play): play-flow-run 12/13 trackers-oracles` | T15 | ~1,000 |
+| 13 | `feat/play-flow-run-13-focus-mode` | `feat(play): play-flow-run 13/13 focus-mode` | T16–T17 | ~1,000 |
 
-Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnings). The user chose to split it into slices 1–4 (2026-10-09). The full implementation is kept on the local tag `wip/play-flow-run-contract-full` (`66e1586`, never pushed); slices 2–4 port it from there. Before each later slice's writer starts, the parent re-forecasts it and splits it if it will pass ~1,500 lines; titles then use the new total.
+Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnings). The user chose to split it into slices 1–4 (2026-10-09). Re-forecast before slice 2 (shape validation ~2,800 lines on the tag) split shapes into catalog (2) and steps (3); the contract now spans slices 1–5. The full implementation is kept on the local tag `wip/play-flow-run-contract-full` (`66e1586`, never pushed); slices 2–5 port it from there. Before each later slice's writer starts, the parent re-forecasts it and splits it if it will pass ~1,500 lines; titles then use the new total.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Feature doc; `v2.schema.json`; contract doc v2 section (structure, rules, example, v1 kept); schema-only test of the doc example | delegated writer (slice 1, 4+ non-trivial files); schema test inline | [x] | see Progress |
-| T2 | 2 | Studio `ReleaseContent` accepts v2: shape validation (envelope, trackers, fact slots, Scene Types, flows, phases, steps per kind, bands, effects, limits, key uniqueness, `end`, forward `next`) and canonical form; shape fixtures; agreement test per schema version; unit tests | | [ ] | |
-| T3 | 3 | Cross-references (trackers in `flow.trackers`, shortcuts ⊆ flow oracles, reachability, oracle/table/level/entry keys, oracle selection entries, chaos tracker) and placeholders; semantic fixtures; unit tests | | [ ] | |
-| T4 | 4 | Authoring warnings: rule, `CheckGameSystemRelease` query, console output; tests | | [ ] | |
-| T5 | 5 | The five examples as v2 fixtures (without 8/8b/10 parts), validated by schema and domain; expected warnings asserted (heist) | | [ ] | |
-| T6 | 6 | Play snapshot v2 (trackers, Scene Types, flows, phases, steps, effects, bands) and translator v2; v1 → no flows; fixtures pass the ACL | | [ ] | |
-| T7 | 7 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | | [ ] | |
-| T8 | 7 | Scene Type, kind, titles; End session; manual scene type and switch; `flowKey` at creation; API, OpenAPI, Behat | | [ ] | |
-| T9 | 8 | FlowRun domain: phases, selection, parts, steps with default `next`, mandatory/skip, open play, completed, pause/resume, history | | [ ] | |
-| T10 | 8 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
-| T11 | 9 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
-| T12 | 9 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
-| T13 | 10 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
-| T14 | 10 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
-| T15 | 11 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
-| T16 | 12 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
-| T17 | 12 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
+| T1 | 1 | Feature doc; `v2.schema.json`; contract doc v2 section (structure, rules, example, v1 kept); schema-only test of the doc example | delegated writer (slice 1, 4+ non-trivial files); schema test inline | [x] | `aece3b2` |
+| T2a | 2 | Studio `ReleaseContent` accepts v2, part 1: extract shared v1 helpers (fields, oracles); v2 envelope; trackers (counter with `levels`, clock, `hint`); fact slots; table entry `key`; likelihood `chaos.tracker` (counter with the same range); `sceneTypes` and `flows` must be empty until slices 3–4; canonical form; v2 fixtures in the agreement test; a check that the contract doc example equals its fixture (slice 1 review); unit tests | delegated writer (slice 2, 2+ non-trivial files) | [x] | |
+| T2b | 3 | Scene Types; steps per kind, forward `next`, `end`, mandatory/skip rules; bands; effects (incl. table entry `effects` and `sceneType` shape); fixtures; unit tests | | [ ] | |
+| T3 | 4 | Flows and phases (selection, hooks, `act`, `default`, `defaultView`); cross-references (trackers in `flow.trackers`, shortcuts ⊆ flow oracles, reachability, oracle/table/level/entry/Scene Type keys, oracle selection entries); placeholders; the contract doc example moves into `valid/`; fixtures; unit tests | | [ ] | |
+| T4 | 5 | Authoring warnings: rule, `CheckGameSystemRelease` query, console output; tests | | [ ] | |
+| T5 | 6 | The five examples as v2 fixtures (without 8/8b/10 parts), validated by schema and domain; expected warnings asserted (heist) | | [ ] | |
+| T6 | 7 | Play snapshot v2 (trackers, Scene Types, flows, phases, steps, effects, bands) and translator v2; v1 → no flows; fixtures pass the ACL | | [ ] | |
+| T7 | 8 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | | [ ] | |
+| T8 | 8 | Scene Type, kind, titles; End session; manual scene type and switch; `flowKey` at creation; API, OpenAPI, Behat | | [ ] | |
+| T9 | 9 | FlowRun domain: phases, selection, parts, steps with default `next`, mandatory/skip, open play, completed, pause/resume, history | | [ ] | |
+| T10 | 9 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
+| T11 | 10 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
+| T12 | 10 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
+| T13 | 11 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
+| T14 | 11 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
+| T15 | 12 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
+| T16 | 13 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
+| T17 | 13 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
 
 ## Acceptance criteria
 
@@ -163,13 +165,16 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 ## Checks
 
 - Backend: test first (RED → GREEN) with PHPUnit unit tests per rule; `make qa`, `make test`; `make api-check` when endpoints change.
-- Frontend: Vitest per component, `make e2e` for the guided flow (slices 10–12).
+- Frontend: Vitest per component, `make e2e` for the guided flow (slices 11–13).
 
 ## Progress
 
 - 2026-10-09: plan approved by the user; issue #39; branch `feat/play-flow-run-1-contract`.
+- Slice 1 merged (PR #40, `08e347b`). Slice 2 branch `feat/play-flow-run-2-contract-catalog`.
 - T1 done: `v2.schema.json` and the contract doc's schema version 2 section (structure, rules, references, placeholders, warning, canonical form, schema-vs-domain, example). Check: the v2 example and nine hand-made invalid variants validated with opis against the schema (example valid; `end` key, unknown step property, mandatory condition, duplicate flow oracles, 71 shortcuts, duplicate `player` types, bad effect, `flow` key all rejected; repeated `sequence` type accepted). Slice running count: 1,131 lines (1,118 + 13).
 - T1 schema-only test: `ReleaseSchemaVersion2Test` checks the contract doc example (fixture `schema-v2/contract-doc-example.json`, outside `valid/` until the domain accepts v2) and four shape errors. `phpunit tests/Unit/Studio/Contract`: 90 tests OK.
+- T2a done: `ReleaseFields` / `ReleaseOracles` extracted from `ReleaseContent` (v1 messages unchanged); `ReleaseContent` accepts schema versions 1 and 2; `Version2\ReleaseVersion2` validates the envelope, trackers (counter `levels` via `Version2\Bands`, clock, `hint`), fact slots, entry `key`, `chaos.tracker`; `sceneTypes` / `flows` must be empty and entry `sceneType` / `effects` fail with "not supported yet" (lifted in slices 3–4). Agreement test picks the schema file by `schemaVersion`: valid `v2-minimal`, `v2-catalog`, `v2-null-optionals`; 10 structural and 13 semantic v2 fixtures, 4 generated v2 cases; `unsupported-schema-version` now uses 3. `ReleaseContentVersion2Test` covers each rule on `v2-catalog`. RED: `phpunit tests/Unit/Studio` 287 tests, 12 errors, 86 failures (`unsupported schema version 2`); GREEN: 286 tests OK. `make qa` and `make test` green. Size accepted by the user at ~1,725 lines because ~300 are moved v1 code; the doc-example equality test was dropped: the php container mounts only `./backend`.
+- Follow-up: the contract doc example vs fixture equality check needs `docs/` inside the php container; not done.
 - Contract choices on unstated details (implemented on the tag, ported in slices 2–4) (consistent with ADR 0017/0018):
   - Limits the rules leave open: bands 1–20 (`condition`) or ≤20 (`roll`), counter `levels` ≤20, table `branches` ≤1000, Scene Type / flow `oracles` ≤70 (the oracle namespace size), tracker effect `value` ±1000, `roll` dice 1–100 characters.
   - Bands: every band but the last needs `upTo`; the last must omit it.
@@ -183,7 +188,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 
 | Slice | Review | PR |
 |---|---|---|
+| 1 | Medium risk; reliability lens; approved and acknowledged (lineage `review-3238b0d0acd25bd4`). Non-blocking: the schema test covers only four shape rules (fixtures in slices 2–4 cover the rest); the test validates a fixture copy of the doc example (T2a adds an equality check) | #40 (merged) |
 
 ## Next step
 
-Slice 1: review, then PR. Then slice 2 (T2) from the latest `main`.
+Slice 2 (T2a) native review, then PR; slice 3 (T2b) after the merge.

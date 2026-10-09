@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [{"key": "events", "name": "Events", "entries": [{"text": "Patrol", "key": "patrol"}, {"text": "Patrol again", "key": "patrol"}]}], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

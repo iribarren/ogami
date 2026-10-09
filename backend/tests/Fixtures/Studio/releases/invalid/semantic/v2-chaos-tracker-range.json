@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": [{"key": "fate", "name": "Fate", "sides": 100, "levels": [{"key": "even", "label": "Even", "target": 50}], "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5, "tracker": "chaos"}}]},
+  "trackers": [{"key": "chaos", "name": "Chaos", "kind": "counter", "min": 0, "max": 10, "initial": 5}],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

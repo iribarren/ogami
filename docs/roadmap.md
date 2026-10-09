@@ -45,12 +45,12 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 | 8 | `play-threads-npcs` | M2 | 7 | — |
 | 8b | `play-campaign-facts` | M2 | 8 | — |
 | 8c | `design-foundation` | M2 | 8b | The curated theme set |
-| 9 | `preset-mythic-flow` | M2 | 8c | — |
-| 9b | `preset-guided-sample` | M2 | 9 | — |
+| 9 | `preset-mythic-flow` | M2 | 8c | Random events from fate-question doubles |
+| 9b | `preset-guided-sample` | M2 | 9 | Release credits / license field for fan presets |
 | 10 | `play-characters` | M3 | 5 | — |
 | 11 | `rules-derived-values` | M3 | 10 | Where formula evaluation lives |
 | 12 | `play-checks` | M3 | 11 | How far checks go before scripting |
-| 13 | `preset-real-system` | M3 | 12 | — (MVP complete) |
+| 13 | `preset-real-system` | M3 | 12 | Items, inventory and a `shop` step kind, or moves them post-M3 (MVP complete) |
 | 14 | `studio-gamesystem-drafts` | M4 | 4 | — |
 | 15 | `studio-oracle-editor` | M4 | 14 | — |
 | 18 | `studio-flow-editor` | M4 | 15, 9b | — |
@@ -68,6 +68,9 @@ Items here come after every feature defined above. Their priority and order are 
 |---|---|---|
 | `play-journal-attachments` | Play | Write a note and attach hand-picked roll and oracle results from the current scene. `play-campaign-journal` records each result as its own entry |
 | `play-campaign-transfer` | Play | Start a new campaign with another flow of the same GameSystem, carrying over Campaign facts, NPCs and Threads (e.g. a one-shot that grows into a campaign). After every roadmap feature: until then a campaign's flow is fixed, with only guidance pause and resume ([ADR 0017](adr/0017-narrativeflow-model.md)) |
+| `preset-vtm-chronicle` | Preset | A Vampire: the Masquerade night-court sandbox fan preset ([example 1](domain/flow-examples.md#1-vtm-chronicle-sandbox)). After 8b |
+| `preset-cpr-campaign` | Preset | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)). After M3 and the items and economy question |
+| `preset-west-marches` | Preset | A West Marches fan preset on the 5e SRD or Knave ([example 5](domain/flow-examples.md#5-west-marches)). After 10 and the Places question |
 
 ## Starter prompts
 
@@ -150,7 +153,7 @@ Deliverables, proposed for my approval before any write:
 
 **6c. flow-model-examples**
 
-A second brainstorm, asked for during 6b: map real examples to the model in [ADR 0017](adr/0017-narrativeflow-model.md) and find its limits before `play-flow-run` implements schema version 2.
+Done: the five examples settled control flow, hooks, tags and the Scene cast in [ADR 0018](adr/0018-narrativeflow-control-flow-and-cast.md); the worked examples are in [Flow examples](domain/flow-examples.md). The prompt is kept for reference.
 
 ```text
 Start feature `flow-model-examples` (ODD). Brainstorming session, read-only until I approve outcomes. Map real play examples to the NarrativeFlow model of ADR 0017 and find its limits before feature 7 `play-flow-run` implements release schema version 2. Timebox: one session.
@@ -180,19 +183,19 @@ Deliverables, proposed for my approval before any write: amendments to ADR 0017 
 **7. play-flow-run**
 
 ```text
-Start feature `play-flow-run` (ODD). Implement the NarrativeFlow model of ADR 0017 (as amended by feature 6c). Release contract schema version 2: trackers, fact slots (declared only; Campaign facts arrive in 8b), Scene Types, flows with phases (once/loop, scene selection sequence/player/oracle, scene opening/closing, world turn), steps with mandatory/suggested, branches and effects; oracle table entries may point to a Scene Type. Studio validation and the anti-corruption layer; schema version 1 releases stay readable (no flows). Play: choose a flow or "Play freely" when creating a campaign; FlowRun across phases, scenes and parts with history (skips, tracker edits); step kinds prompt, oracle, table, roll with outcome bands, choice; tracker values on the Campaign, bound to the likelihood oracle's chaos; Scenes with a Scene Type and world-turn scenes; guidance pause/resume. Presentation per ADR 0016 as amended by ADR 0017: journal as the base, focus mode, each flow's defaultView, scene-type cards, the next step always named across boundaries; oracle panel with scene shortcuts, the flow's selection and "More oracles". Deliver as sequential slices (contract and ACL first, then FlowRun, then UI, then focus mode). Delete the flow prototypes. Works with the Free journal preset (no flows).
+Start feature `play-flow-run` (ODD). Implement the NarrativeFlow model of ADR 0017 as amended by ADR 0018. Release contract schema version 2 with ADR 0018 decisions 1–14, tracker `hint` (17), counter `levels` (18) and the phase `act` label (19): trackers, fact slots (declared only; Campaign facts arrive in 8b), Scene Types, flows with phases (once/loop, optional act label, scene selection sequence/player/oracle, hooks sessionOpening/sessionClosing, phaseOpening/phaseClosing, sceneOpening/sceneClosing, worldTurn), steps with mandatory/suggested, branches and effects. Effects are a tagged union: tracker (add/set), nextScene, switchSceneType, endPhase, sceneTitle. Outcome bands are ordered upper bounds (a literal or a tracker; the last catches the rest). Step kinds prompt, oracle (branches on its answer), table (branches per rolled entry), roll with bands, choice, condition (a tracker against bands; no dice, no journal entry). Oracle table entries may point to a Scene Type and carry effects. Placeholders {tracker:key}, {step:key}, {answer}. Contract fixtures: the five examples of docs/domain/flow-examples.md as schema version 2 JSON that must validate and pass the ACL (decision 26). Studio validation (warn when a threshold consequence does not lower its tracker) and the anti-corruption layer; schema version 1 releases stay readable (no flows). Play: choose a flow or "Play freely" when creating a campaign; FlowRun across phases, scenes and parts with history (skips, tracker edits, Scene Type switches), `completed` after its last phase; tracker values on the Campaign, bound to the likelihood oracle's chaos; Scenes with a Scene Type and Scene kind `scene` | `hook` (with the hook name, each hook rendered its own way); a Session is one sitting, with an "End session" action offered between scenes while guided; a loop phase ends by the player's choice or condition + endPhase; in-place switch to another Scene Type (at most one per scene through effects, by hand in free play); a phase with one Scene Type picks it automatically; scene titles (the Scene Type name, numbered, unless sceneTitle sets one); guidance pause/resume. Presentation per ADR 0016 as amended by ADR 0017: journal as the base, focus mode, each flow's defaultView, scene-type cards, the next step always named across boundaries, progress `Act › Phase › Scene type › part · step n/m`; oracle panel with scene shortcuts, the flow's selection and "More oracles". Deliver as sequential slices (contract and ACL first, then FlowRun, then control flow: conditions, effects, hooks and switches, then UI, then focus mode). Delete the flow prototypes. Works with the Free journal preset (no flows).
 ```
 
 **8. play-threads-npcs**
 
 ```text
-Start feature `play-threads-npcs` (ODD). Play: per-campaign Threads and NPCs lists (add, edit, close, weight), shown beside the journal. NPCs have an optional `agenda` (ADR 0017). Flow step kind `pick` (a random Thread or NPC, usable as `{picked}` in later step prompts) and effects that create an NPC or a Thread from a step's answer; extend release schema version 2 accordingly. Out of scope: relationship graphs, NPC disposition, factions, thread progress.
+Start feature `play-threads-npcs` (ODD). Play: per-campaign Threads and NPCs lists (add, edit, close, weight), shown beside the journal. NPCs have an optional `agenda` (ADR 0017). Tags (ADR 0018): the release declares `tags[] {key, label, hint?}` for NPCs and Threads, and the player may add free tags. Flow step kind `pick`: filter by tags (all must match), mode random or choose, a count (min/max, one by default), branches found/none, the result usable as `{picked}` in later step prompts. Effects `createNpc`, `createThread` and `closeThread`; `condition` steps count NPCs with a tag or open Threads. The NPC part of the Scene cast: the NPCs present in a Scene, added by picks and edited by the player. Extend release schema version 2 accordingly. Factions are Campaign facts (8b) plus a tagged leader NPC with an agenda; disposition is a fact linked to an NPC. Out of scope: relationship graphs, player-added trackers for thread progress or faction power (a vision open question).
 ```
 
 **8b. play-campaign-facts**
 
 ```text
-Start feature `play-campaign-facts` (ODD). Play: Campaign facts (ADR 0017). A fact has a label and text, optionally fills a fact slot declared by the release (typed `text`, `npc` or `thread`; an `npc` slot picks or creates an NPC), or is free. Any fact links to NPCs, Threads or other facts by reference. Facts panel beside the journal (add, edit, link); NPC and Thread details show their linked facts. Flow steps fill fact slots through effects; prompts render `{slot}` placeholders. Out of scope: mentions and backlinks from journal entries.
+Start feature `play-campaign-facts` (ODD). Play: Campaign facts (ADR 0017). A fact has a label and text, optionally fills a fact slot declared by the release (typed `text`, `npc` or `thread`; an `npc` slot picks or creates an NPC), or is free. Any fact links to NPCs, Threads or other facts by reference. Facts panel beside the journal (add, edit, link); NPC and Thread details show their linked facts. Flow steps fill fact slots through the `fillFact` effect; a slot has an optional `hint`, shown where it is filled; prompts render `{fact:key}` placeholders (ADR 0018). Out of scope: mentions and backlinks from journal entries.
 ```
 
 **8c. design-foundation**
@@ -204,13 +207,13 @@ Start feature `design-foundation` (ODD). Visual design foundation before the M2 
 **9. preset-mythic-flow**
 
 ```text
-Start feature `preset-mythic-flow` (ODD). Complete the Mythic-style preset release on the model of ADR 0017: a chaos-factor tracker bound to the fate question; one looping adventure phase; the scene check as a roll with outcome bands in the scene opening (expected / altered / interrupted); random events (focus, action/subject meaning tables); end-of-scene chaos adjustment and Thread/NPC list updates in the scene closing. Validate by playing a real session; log UX findings as follow-up tasks.
+Start feature `preset-mythic-flow` (ODD). Complete the Mythic-style preset release on the model of ADR 0017 as amended by ADR 0018, following example 3 of docs/domain/flow-examples.md: a chaos-factor tracker bound to the fate question; a premise phase; one looping adventure phase with a single Scene Type (picked automatically); the scene check in the scene opening (the expected scene, a roll against chaos, altered or interrupted scenes, a random-event focus table branching per entry); action/subject meaning tables; end-of-scene chaos adjustment and Thread/NPC list updates in the scene closing. Settle whether fate-question doubles trigger random events (vision open question). Validate by playing a real session; log UX findings as follow-up tasks.
 ```
 
 **9b. preset-guided-sample**
 
 ```text
-Start feature `preset-guided-sample` (ODD). Hand-author an original guided preset for novice players that proves the model of ADR 0017 without Studio: Session Zero (character concept and worldbuilding into fact slots, a rival NPC, a goal Thread), an adventure loop with game-specific Scene Types (sequence and oracle scene selection), mandatory and suggested steps, a world turn with an encounter table, NPC agendas and a clock, tips and an introduction, `defaultView: focus`, and a flow-specific oracle selection. Play a session as a novice; fix the gaps it reveals and log UX findings as follow-up tasks. This completes M2.
+Start feature `preset-guided-sample` (ODD). Hand-author a Cyberpunk RED heist one-shot fan preset for novice players, following example 2 of docs/domain/flow-examples.md, that proves the model of ADR 0017 and ADR 0018 without Studio: a crew and briefing phase that fills fact slots, legwork, heist, escape and epilogue phases; generic Scene Types (Social, Exploration) beside game-specific ones (Netrun, Infiltration, Firefight, Getaway, Chase…); mandatory and suggested steps; an alarm clock with condition steps, an in-place switch into a firefight, world turns that add pressure; tips and an introduction, `defaultView: focus`, and a flow-specific oracle selection. Fan-content rule (ADR 0018): no verbatim book text (own words or short summaries, page references to the books) and the publisher's fan-content disclaimer. Settle the release credits / license field (vision open question). Play a session as a novice; fix the gaps it reveals and log UX findings as follow-up tasks. This completes M2.
 ```
 
 ### M3 System rules
@@ -218,7 +221,7 @@ Start feature `preset-guided-sample` (ODD). Hand-author an original guided prese
 **10. play-characters**
 
 ```text
-Start feature `play-characters` (ODD). Extend the release schema with SheetTemplate and Field types (number, text, list, resource track). Play: create and edit characters from the campaign's release template. Add the `character` flow step kind (ADR 0017): it completes when a Character exists, so Session Zero can create one. Out of scope: derived values, checks.
+Start feature `play-characters` (ODD). Extend the release schema with SheetTemplate and Field types (number, text, list, resource track). Play: create and edit characters from the campaign's release template; list fields cover e.g. inventory and cyberware. A Campaign has zero or more Characters, and an NPC can be promoted to a Character (ADR 0018). Characters carry tags; the Character part of the Scene cast; the Session party (the Characters picked in a session opening; a Scene's cast starts as the party). Add the `character` flow step kind (ADR 0017): it completes when a Character exists, so Session Zero can create one. Effects on sheet fields arrive in an M3 schema version. Out of scope: derived values, checks.
 ```
 
 **11. rules-derived-values**
@@ -230,13 +233,13 @@ Start feature `rules-derived-values` (ODD). Formula language for DerivedValue ov
 **12. play-checks**
 
 ```text
-Start feature `play-checks` (ODD). Check definitions in the release (dice expression + formula modifiers + outcome bands). Run checks from the sheet and from flow steps (a `check` step kind, ADR 0017); log results to the journal. Settle the vision question "How far do structured checks go?" as an ADR (dice + formulas + outcome bands; scripting only on a real gap).
+Start feature `play-checks` (ODD). Check definitions in the release (dice expression + formula modifiers + outcome bands). Run checks from the sheet and from flow steps (a `check` step kind, ADR 0017), for a Character in the Scene cast (ADR 0018); log results to the journal. Settle the vision question "How far do structured checks go?" as an ADR (dice + formulas + outcome bands; scripting only on a real gap).
 ```
 
 **13. preset-real-system**
 
 ```text
-Start feature `preset-real-system` (ODD). Hand-author a release for a small, license-safe real game system (sheet, derived values, checks, flow). Play a full session with it and fix the schema gaps it reveals. This completes the MVP.
+Start feature `preset-real-system` (ODD). Hand-author a release for a small, license-safe real game system (sheet, derived values, checks, flow). Play a full session with it and fix the schema gaps it reveals. Settle the open question on items, inventory and a `shop` step kind, or move it to a post-M3 feature (ADR 0018). This completes the MVP.
 ```
 
 ### M4 Studio
@@ -303,6 +306,24 @@ Start feature `play-journal-attachments` (ODD). Play: write a journal note and a
 
 ```text
 Start feature `play-campaign-transfer` (ODD). Play: start a new campaign from an existing one with another flow of the same GameSystem (e.g. a one-shot that grows into a campaign), carrying over Campaign facts, NPCs and Threads; the source campaign stays unchanged. Out of scope: moving between GameSystems.
+```
+
+**preset-vtm-chronicle**
+
+```text
+Start feature `preset-vtm-chronicle` (ODD). Hand-author a Vampire: the Masquerade night-court sandbox fan preset, following example 1 of docs/domain/flow-examples.md: a Session Zero that fills city, era, tone, ruling sect, prince and faction facts with tagged leader NPCs; ambition and desire Threads in fact slots, driven by session hooks; a chronicle loop with a night counter, a masquerade tracker and a hunters clock; world turns with night events. Fan-content rule (ADR 0018): no verbatim book text, page references, the publisher's fan-content disclaimer. After 8b.
+```
+
+**preset-cpr-campaign**
+
+```text
+Start feature `preset-cpr-campaign` (ODD). Hand-author a Cyberpunk RED campaign-in-acts fan preset, following example 4 of docs/domain/flow-examples.md: Act 1 making a name (gigs as nextScene chains, rep and heat, recruiting a crew), Act 2 the big job, Act 3 the twist and conclusion; acts as phases with an `act` label; a survival economy (lifestyle and housing levels, Downtime, Night Market, Month's end). Fan-content rule (ADR 0018). After M3 and the items, inventory and `shop` question.
+```
+
+**preset-west-marches**
+
+```text
+Start feature `preset-west-marches` (ODD). Hand-author a West Marches fan preset on the 5e SRD or Knave, following example 5 of docs/domain/flow-examples.md: a founding phase with a town and a roster of adventurers; an expeditions loop where each session picks a rumor and a party, travels, explores and returns to town before the session ends; encounter tables by distance. Fan-content or open-license rule (ADR 0018). After 10 and the Places question.
 ```
 
 ## Related

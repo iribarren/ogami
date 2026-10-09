@@ -200,13 +200,18 @@ final class ReleaseSchemaAgreementTest extends TestCase
     ];
 
     /**
-     * Valid fixtures and every shipped preset, so a new preset is checked without listing it here.
+     * Valid fixtures, the flow example releases (docs/domain/flow-examples.md) and every shipped
+     * preset, so a new example or preset is checked without listing it here.
      *
      * @return iterable<string, array{string}>
      */
     public static function validCases(): iterable
     {
         yield from self::fixtures('valid');
+
+        foreach (self::fixtures('examples') as $name => $json) {
+            yield 'example: '.$name => $json;
+        }
 
         foreach (self::jsonFiles(self::PRESETS) as $name => $json) {
             yield 'preset: '.$name => $json;

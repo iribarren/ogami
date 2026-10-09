@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "vtm-chronicle", "name": "VtM chronicle (flow example)", "description": "Flow example 1: a sandbox chronicle with Session Zero, session goals and a city that moves between scenes. Fan content; the game belongs to its publisher."},
+  "oracles": {
+    "tables": [
+      {
+        "key": "night-events", "name": "Night events",
+        "entries": [
+          {"key": "faction-move", "text": "A faction makes a move"},
+          {"key": "ally-in-trouble", "text": "An ally is in trouble"},
+          {"key": "new-arrival", "text": "Someone new arrives in the city"},
+          {"key": "touchstone", "text": "Your touchstone's life shifts"},
+          {"key": "hunter-activity", "text": "Someone asks the wrong questions"}
+        ]
+      },
+      {
+        "key": "ally-problems", "name": "Ally problems",
+        "entries": [
+          {"text": "They owe a debt to the wrong Kindred"},
+          {"text": "Their haven is exposed"},
+          {"text": "A rival frames them for a breach"},
+          {"text": "They are starving and careless"},
+          {"text": "Their ghoul has gone missing"}
+        ]
+      },
+      {
+        "key": "arrivals", "name": "Arrivals",
+        "entries": [
+          {"text": "A refugee from a fallen city"},
+          {"text": "An envoy of a distant court"},
+          {"text": "A fledgling with no sire"},
+          {"text": "A hunter wearing a friendly face"},
+          {"text": "An old enemy, unchanged"}
+        ]
+      }
+    ],
+    "likelihood": [
+
+    ]
+  },
+  "trackers": [
+    {"key": "masquerade", "name": "Masquerade breaches", "hint": "The higher it climbs, the likelier the Second Inquisition moves", "kind": "counter", "min": 0, "max": 10, "initial": 0},
+    {"key": "hunters", "name": "Hunters", "hint": "When it fills, the hunters strike", "kind": "clock", "segments": 4},
+    {"key": "night", "name": "Night", "kind": "counter", "min": 1, "max": 1000, "initial": 1}
+  ],
+  "factSlots": [
+    {"key": "city", "label": "City", "type": "text"},
+    {"key": "era", "label": "Era", "type": "text"},
+    {"key": "tone", "label": "Tone", "type": "text"},
+    {"key": "ruling-sect", "label": "Ruling sect", "type": "text"},
+    {"key": "prince", "label": "Prince", "type": "npc"},
+    {"key": "ambition", "label": "Ambition", "type": "thread"},
+    {"key": "desire", "label": "Desire", "type": "thread"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "city", "name": "City", "purpose": "Choose the city, its era and its tone.", "oracles": [],
+      "setup": [
+        {"key": "city", "kind": "prompt", "title": "Which city, which era, what tone?", "mandatory": true}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "court", "name": "Court", "purpose": "Find out who rules the night.", "tips": "Write the Prince's clan as a free fact.", "oracles": [],
+      "setup": [
+        {"key": "sect", "kind": "prompt", "title": "Which sect rules the city?"},
+        {"key": "prince", "kind": "prompt", "title": "Who is the Prince?"}
+      ],
+      "play": [], "closing": []
+    },
+    {"key": "factions", "name": "Factions", "purpose": "Name the factions that matter in the city.", "tips": "In free play, write one free fact per faction and add its leader, with an agenda.", "oracles": [], "setup": [], "play": [], "closing": []},
+    {
+      "key": "character", "name": "Character", "purpose": "Create your Kindred.", "oracles": [],
+      "setup": [
+        {"key": "ambition", "kind": "prompt", "title": "What is your ambition?", "mandatory": true},
+        {"key": "touchstone", "kind": "prompt", "title": "Who keeps you human?"},
+        {"key": "ally", "kind": "prompt", "title": "Who stands by you?"}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "elysium", "name": "Elysium", "purpose": "Move among the Kindred under the court's rules.", "oracles": [], "setup": [],
+      "play": [
+        {"key": "seen", "kind": "prompt", "title": "Who do you need to be seen with tonight?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "hunt", "name": "Hunt", "purpose": "Feed without breaking the Masquerade.", "oracles": [], "setup": [],
+      "play": [
+        {"key": "prey", "kind": "prompt", "title": "Where do you feed, and on whom?"}
+      ],
+      "closing": [
+        {"key": "witness", "kind": "choice", "title": "Did anyone see you feed?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "masquerade", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "investigation", "name": "Investigation", "purpose": "Follow a lead through the city.", "oracles": ["arrivals"], "setup": [],
+      "play": [
+        {"key": "lead", "kind": "prompt", "title": "What do you want to find out?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "intrigue", "name": "Intrigue", "purpose": "Trade favors, threats and secrets.", "oracles": ["ally-problems"], "setup": [],
+      "play": [
+        {"key": "deal", "kind": "prompt", "title": "What do you offer, and what do you want back?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "haven", "name": "Haven", "purpose": "Tend your haven and the people in your life.", "oracles": [], "setup": [],
+      "play": [
+        {"key": "tend", "kind": "prompt", "title": "What needs tending at home?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "dawn", "name": "Dawn", "purpose": "The night ends and the city turns while you sleep.", "oracles": [],
+      "setup": [
+        {"key": "night-ends", "kind": "prompt", "title": "How does the night end?", "prompt": "Night {tracker:night} is over. What happens before sunrise?", "effects": [{"kind": "tracker", "tracker": "night", "op": "add", "value": 1}]}
+      ],
+      "play": [], "closing": []
+    },
+    {
+      "key": "hunters-strike", "name": "Hunters strike", "purpose": "The hunters close in on you.", "oracles": [],
+      "setup": [
+        {"key": "found", "kind": "prompt", "title": "How do the hunters find you?", "mandatory": true}
+      ],
+      "play": [],
+      "closing": [
+        {"key": "shake-off", "kind": "prompt", "title": "How do you throw them off your trail?", "effects": [{"kind": "tracker", "tracker": "hunters", "op": "set", "value": 0}]}
+      ]
+    },
+    {
+      "key": "inquisition-raid", "name": "Inquisition raid", "purpose": "The Second Inquisition raids the city's Kindred.", "oracles": [],
+      "setup": [
+        {"key": "raided", "kind": "prompt", "title": "Whose haven burns tonight?", "mandatory": true}
+      ],
+      "play": [],
+      "closing": [
+        {"key": "aftermath", "kind": "prompt", "title": "What does the city learn from the raid?", "effects": [{"kind": "tracker", "tracker": "masquerade", "op": "set", "value": 4}]}
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "key": "chronicle", "name": "Chronicle", "description": "A sandbox chronicle: build the city, then play it night by night.",
+      "introduction": "Session Zero builds the city, its court and your Kindred. After that, each session starts from what you want and the city answers between scenes.",
+      "default": true, "defaultView": "journal", "oracles": ["night-events", "ally-problems", "arrivals"], "trackers": ["masquerade", "hunters", "night"],
+      "phases": [
+        {"key": "session-zero", "name": "Session Zero", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["city", "court", "factions", "character"]}},
+        {
+          "key": "chronicle", "name": "The chronicle", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["elysium", "hunt", "investigation", "intrigue", "haven", "dawn"]},
+          "sessionOpening": [
+            {"key": "desire", "kind": "prompt", "title": "What do you want this session?", "prompt": "Keep your ambition in mind.", "mandatory": true}
+          ],
+          "sessionClosing": [
+            {"key": "got-it", "kind": "choice", "title": "Did you get what you wanted this session?", "options": [{"key": "yes", "label": "Yes"}, {"key": "no", "label": "No"}], "skip": "no"}
+          ],
+          "worldTurn": [
+            {"key": "inquisition", "kind": "roll", "title": "Does the Second Inquisition notice?", "dice": "1d10", "bands": [{"upTo": {"tracker": "masquerade"}, "effects": [{"kind": "nextScene", "sceneType": "inquisition-raid"}]}, {}]},
+            {"key": "stir", "kind": "roll", "title": "Does the night stir?", "tip": "On 1 to 3 the night stays quiet.", "dice": "1d6", "bands": [{"upTo": 3, "next": "end"}, {}]},
+            {"key": "event", "kind": "table", "title": "What happens tonight?", "table": "night-events", "branches": [{"entry": "faction-move", "next": "faction"}, {"entry": "ally-in-trouble", "next": "ally"}, {"entry": "new-arrival", "next": "arrival"}, {"entry": "touchstone", "next": "touchstone"}, {"entry": "hunter-activity", "next": "hunters", "effects": [{"kind": "tracker", "tracker": "hunters", "op": "add", "value": 1}]}]},
+            {"key": "faction", "kind": "prompt", "title": "Which faction moves?", "prompt": "What does its leader do toward their agenda?", "next": "end"},
+            {"key": "ally", "kind": "table", "title": "What trouble is your ally in?", "table": "ally-problems", "next": "end"},
+            {"key": "arrival", "kind": "table", "title": "Who arrives?", "table": "arrivals", "next": "end"},
+            {"key": "touchstone", "kind": "prompt", "title": "What happens to your touchstone?", "next": "end"},
+            {"key": "hunters", "kind": "condition", "title": "Are the hunters ready?", "tracker": "hunters", "bands": [{"upTo": 3}, {"effects": [{"kind": "nextScene", "sceneType": "hunters-strike"}]}]}
+          ]
+        }
+      ]
+    }
+  ],
+  "sheet": {},
+  "checks": []
+}

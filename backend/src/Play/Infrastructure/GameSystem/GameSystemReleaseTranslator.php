@@ -12,12 +12,17 @@ use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
+use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\Flow\NextSceneEffect;
 use App\Play\Domain\GameSystem\Flow\OracleBranches;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
+use App\Play\Domain\GameSystem\Flow\Phase;
+use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
+use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
@@ -45,12 +50,14 @@ use App\Studio\Application\PublishedReleaseView;
  * Play's anti-corruption layer over Studio's Published Language: turns a PublishedReleaseView into
  * a GameSystemSnapshot. It reads only the documented contract (docs/contracts/gamesystem-release.md),
  * lists the schema versions it supports explicitly, and fails with Play errors, never Studio or
- * Randomness ones. Schema version 2 flows are not read yet (slice 8): such a release has none.
+ * Randomness ones. A schema version 1 release has no version 2 parts.
  */
 final readonly class GameSystemReleaseTranslator
 {
     /** @var list<int> */
     public const array SUPPORTED_SCHEMA_VERSIONS = [1, 2];
+
+    private const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
     /**
      * @throws UnsupportedReleaseSchemaVersion
@@ -121,7 +128,83 @@ final readonly class GameSystemReleaseTranslator
             $this->factSlots($view, $this->list($view, $content['factSlots'] ?? null, 'factSlots')),
             $this->sceneTypes($view, $this->list($view, $content['sceneTypes'] ?? null, 'sceneTypes')),
             $entries,
+            $this->flows($view, $this->list($view, $content['flows'] ?? null, 'flows')),
         );
+    }
+
+    /**
+     * @param list<mixed> $flows
+     *
+     * @return list<Flow>
+     */
+    private function flows(PublishedReleaseView $view, array $flows): array
+    {
+        $snapshots = [];
+        foreach ($flows as $index => $flow) {
+            $path = \sprintf('flows[%d]', $index);
+            $flow = $this->object($view, $flow, $path);
+            $phases = [];
+            foreach ($this->list($view, $flow['phases'] ?? null, $path.'.phases') as $phaseIndex => $phase) {
+                $phasePath = \sprintf('%s.phases[%d]', $path, $phaseIndex);
+                $phase = $this->phase($view, $phase, $phasePath);
+                if (isset($phases[$phase->key])) {
+                    throw $this->invalid($view, $phasePath.'.key', \sprintf('duplicate key "%s".', $phase->key));
+                }
+
+                $phases[$phase->key] = $phase;
+            }
+
+            $snapshots[] = new Flow(
+                $this->string($view, $flow['key'] ?? null, $path.'.key'),
+                $this->string($view, $flow['name'] ?? null, $path.'.name'),
+                $this->optionalString($view, $flow['description'] ?? null, $path.'.description'),
+                $this->optionalString($view, $flow['introduction'] ?? null, $path.'.introduction'),
+                true === ($flow['default'] ?? false),
+                FlowView::tryFrom($defaultView = $this->string($view, $flow['defaultView'] ?? null, $path.'.defaultView'))
+                    ?? throw $this->invalid($view, $path.'.defaultView', \sprintf('unknown default view "%s".', $defaultView)),
+                $this->keys($view, $flow['oracles'] ?? [], $path.'.oracles'),
+                $this->keys($view, $flow['trackers'] ?? [], $path.'.trackers'),
+                [] !== $phases ? array_values($phases) : throw $this->invalid($view, $path.'.phases', 'must list at least one phase.'),
+            );
+        }
+
+        return $snapshots;
+    }
+
+    private function phase(PublishedReleaseView $view, mixed $phase, string $path): Phase
+    {
+        $phase = $this->object($view, $phase, $path);
+        $hooks = [];
+        foreach (self::PHASE_HOOKS as $hook) {
+            $hooks[$hook] = $this->steps($view, $phase[$hook] ?? [], $path.'.'.$hook);
+        }
+
+        return new Phase(
+            $this->string($view, $phase['key'] ?? null, $path.'.key'),
+            $this->string($view, $phase['name'] ?? null, $path.'.name'),
+            $this->optionalString($view, $phase['act'] ?? null, $path.'.act'),
+            PhaseMode::tryFrom($mode = $this->string($view, $phase['mode'] ?? null, $path.'.mode'))
+                ?? throw $this->invalid($view, $path.'.mode', \sprintf('unknown phase mode "%s".', $mode)),
+            $this->selection($view, $phase['selection'] ?? null, $path.'.selection'),
+            ...$hooks,
+        );
+    }
+
+    private function selection(PublishedReleaseView $view, mixed $selection, string $path): SceneSelection
+    {
+        $selection = $this->object($view, $selection, $path);
+        $sceneTypes = function () use ($view, $selection, $path): array {
+            $keys = $this->keys($view, $selection['sceneTypes'] ?? null, $path.'.sceneTypes');
+
+            return [] !== $keys ? $keys : throw $this->invalid($view, $path.'.sceneTypes', 'must list at least one Scene Type.');
+        };
+
+        return match ($rule = $this->string($view, $selection['rule'] ?? null, $path.'.rule')) {
+            'sequence' => SceneSelection::sequence($sceneTypes()),
+            'player' => SceneSelection::player($sceneTypes()),
+            'oracle' => SceneSelection::oracle($this->string($view, $selection['table'] ?? null, $path.'.table')),
+            default => throw $this->invalid($view, $path.'.rule', \sprintf('unknown selection rule "%s".', $rule)),
+        };
     }
 
     /**
@@ -213,7 +296,7 @@ final readonly class GameSystemReleaseTranslator
                 $this->string($view, $sceneType['name'] ?? null, $path.'.name'),
                 $this->string($view, $sceneType['purpose'] ?? null, $path.'.purpose'),
                 $this->optionalString($view, $sceneType['tips'] ?? null, $path.'.tips'),
-                array_map(fn (mixed $key): string => $this->string($view, $key, $path.'.oracles'), $this->list($view, $sceneType['oracles'] ?? [], $path.'.oracles')),
+                $this->keys($view, $sceneType['oracles'] ?? [], $path.'.oracles'),
                 $this->steps($view, $sceneType['setup'] ?? [], $path.'.setup'),
                 $this->steps($view, $sceneType['play'] ?? [], $path.'.play'),
                 $this->steps($view, $sceneType['closing'] ?? [], $path.'.closing'),
@@ -373,6 +456,14 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return $snapshots;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function keys(PublishedReleaseView $view, mixed $keys, string $path): array
+    {
+        return array_map(fn (mixed $key): string => $this->string($view, $key, $path), $this->list($view, $keys, $path));
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Play\Application\GameSystemSummary;
 use App\Play\Application\GetGameSystemSnapshot;
 use App\Play\Application\ListGameSystems;
 use App\Play\Application\PublishedGameSystemReleases;
+use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Infrastructure\GameSystem\StudioPublishedGameSystemReleases;
@@ -29,6 +30,39 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
 {
     private const string FIRST_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a71';
     private const string SECOND_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a72';
+
+    /**
+     * Per example: its default flow key, then each phase as [key, mode, selection rule, act].
+     */
+    private const array EXAMPLE_FLOWS = [
+        'cpr-campaign-in-acts' => ['campaign', [
+            ['street-zero', 'once', 'sequence', null],
+            ['making-a-name', 'loop', 'player', 'Act 1: Making a name'],
+            ['planning', 'loop', 'player', 'Act 2: The big job'],
+            ['the-job', 'loop', 'player', 'Act 2: The big job'],
+            ['fallout', 'once', 'sequence', 'Act 2: The big job'],
+            ['finale', 'once', 'sequence', 'Act 3: The twist and conclusion'],
+        ]],
+        'cpr-heist' => ['heist', [
+            ['the-job', 'once', 'sequence', null],
+            ['legwork', 'loop', 'player', null],
+            ['the-heist', 'loop', 'player', null],
+            ['escape', 'once', 'sequence', null],
+            ['epilogue', 'once', 'sequence', null],
+        ]],
+        'mythic-session' => ['mythic', [
+            ['premise', 'once', 'sequence', null],
+            ['adventure', 'loop', 'player', null],
+        ]],
+        'vtm-chronicle' => ['chronicle', [
+            ['session-zero', 'once', 'sequence', null],
+            ['chronicle', 'loop', 'player', null],
+        ]],
+        'west-marches' => ['west-marches', [
+            ['founding', 'once', 'sequence', null],
+            ['expeditions', 'loop', 'player', null],
+        ]],
+    ];
 
     private QueryBus $queries;
 
@@ -113,7 +147,7 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
 
     /**
      * The five flow examples, published in Studio's canonical form, pass the anti-corruption layer
-     * (their flows are read from slice 8).
+     * with their flow.
      */
     #[Test]
     #[DataProvider('flowExamples')]
@@ -130,6 +164,16 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
 
         self::assertCount(\count($content['trackers']), $snapshot->trackers());
         self::assertSame(array_column($content['sceneTypes'], 'key'), array_map(static fn (SceneType $type): string => $type->key, $snapshot->sceneTypes()));
+
+        $example = basename($fixture);
+        self::assertArrayHasKey($example, self::EXAMPLE_FLOWS);
+        [$flowKey, $phases] = self::EXAMPLE_FLOWS[$example];
+        self::assertCount(1, $snapshot->flows());
+        self::assertSame($flowKey, $snapshot->defaultFlow()?->key);
+        self::assertSame($phases, array_map(
+            static fn (Phase $phase): array => [$phase->key, $phase->mode->value, $phase->selection->rule->value, $phase->act],
+            $snapshot->defaultFlow()->phases,
+        ));
     }
 
     #[Test]

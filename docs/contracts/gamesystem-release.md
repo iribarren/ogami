@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads version 2 trackers, fact slots, table entry metadata, the chaos tracker and Scene Types with their steps; it reads flows from slice 8 of `play-flow-run` (until then a version 2 snapshot has no flows).
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots, table entry metadata, the chaos tracker, Scene Types with their steps, and flows with their phases, Scene selections and hooks.
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 
@@ -200,7 +200,7 @@ In one step list, when a `condition` on tracker T decides a `nextScene` S effect
 flows[0].phases[1].worldTurn[1]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn
 ```
 
-The condition decides the effect when some of its bands reach it and others do not. A band reaches its own effects and every effect of the steps it leads to: its `next` (or the condition's `next`, or the following step), then every outcome of each step reached, forward until `end`. An effect every band reaches happens whatever T is, so it does not warn: two thresholds in one world turn (a `condition` on `masquerade`, then one on `hunters`, each forcing its own Scene Type) warn only when a forced Scene Type does not lower its own tracker. A forced Scene Type warns once per step and tracker.
+The condition decides the effect when some of its bands reach a `nextScene` S and others do not. A band reaches its own effects and every effect of the steps it leads to: its `next` (or the condition's `next`, or the following step), then every outcome of each step reached, forward until `end`. Bands compare by Scene Type: bands forcing S through different effects or steps all reach S. A Scene Type every band reaches is forced whatever T is, so it does not warn: two thresholds in one world turn (a `condition` on `masquerade`, then one on `hunters`, each forcing its own Scene Type) warn only when a forced Scene Type does not lower its own tracker. A decided Scene Type warns once per condition and tracker, at the first step forcing it.
 
 Only S's own step effects count as lowering T (in any of its parts, including bands, branches and options). Effects of table entries that S rolls do not: they lower T only by chance, so a forced Scene Type whose relief comes from a rolled entry still warns.
 
@@ -249,7 +249,7 @@ Warnings never stop a publish and are not stored; the content hash ignores them.
 | 1 | Play's port `PublishedGameSystemReleases::get(key, ?version)` (Play Application) is called; `null` means latest |
 | 2 | Its adapter in Play Infrastructure sends Studio's Application query `GetPublishedRelease(key, ?version)` through the query bus |
 | 3 | Studio returns a `PublishedReleaseView {gameSystemKey, version, schemaVersion, publishedAt, content}`, or `PublishedReleaseNotFound` |
-| 4 | Play's translator turns the view into a `GameSystemSnapshot` (Play Domain). Unknown schema versions and missing releases fail with Play's own errors. The translator supports schema versions 1 and 2; a version 1 release becomes a snapshot with no trackers, Scene Types or flows |
+| 4 | Play's translator turns the view into a `GameSystemSnapshot` (Play Domain). Unknown schema versions and missing releases fail with Play's own errors. The translator supports schema versions 1 and 2 and reads all of version 2, flows included; a version 1 release becomes a snapshot with no trackers, Scene Types or flows |
 
 Play never imports Studio `Domain/` or `Infrastructure/` (enforced by PHPat, [ADR 0012](../adr/0012-phpat-boundary-enforcement.md)).
 

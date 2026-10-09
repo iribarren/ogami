@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {
+    "tables": [],
+    "likelihood": [
+      {"key": "fate", "name": "Fate", "sides": 6, "levels": [{"key": "even", "label": "Even", "target": 3}]}
+    ]
+  },
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": ["fate"], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin"}], "closing": []}
+  ],
+  "flows": [
+    {"key": "main", "name": "Main", "defaultView": "journal", "oracles": [], "trackers": ["alarm"], "phases": [{"key": "only", "name": "Only", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["scene"]}}]}
+  ],
+  "sheet": {},
+  "checks": []
+}

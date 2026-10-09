@@ -10,8 +10,14 @@
     {"key": "edge", "name": "Edge", "hint": null, "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": null}
   ],
   "factSlots": [],
-  "sceneTypes": [],
-  "flows": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "tips": null, "oracles": [], "setup": [], "play": [], "closing": []}
+  ],
+  "flows": [
+    {"key": "main", "name": "Main", "description": null, "introduction": null, "default": null, "defaultView": "journal", "oracles": [], "trackers": [], "phases": [
+      {"key": "only", "name": "Only", "act": null, "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["scene"]}, "sessionOpening": null, "sessionClosing": null, "phaseOpening": null, "phaseClosing": null, "sceneOpening": null, "sceneClosing": null, "worldTurn": null}
+    ]}
+  ],
   "sheet": {},
   "checks": []
 }

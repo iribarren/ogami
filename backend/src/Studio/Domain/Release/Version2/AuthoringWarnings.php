@@ -7,8 +7,8 @@ namespace App\Studio\Domain\Release\Version2;
 /**
  * Authoring warnings of a valid schema version 2 release (ADR 0018, decision 7): a threshold
  * consequence must lower its tracker, or it fires on every turn. In one step list, when a
- * "condition" on tracker T decides a nextScene S effect (some of its bands reach the effect, not
- * all of them), and Scene Type S has no effect lowering T ("set", or "add" with a negative
+ * "condition" on tracker T decides a nextScene S effect (some of its bands reach a nextScene S,
+ * not all of them), and Scene Type S has no effect lowering T ("set", or "add" with a negative
  * literal), the release publishes with a warning. Warnings are computed, never stored.
  *
  * @internal
@@ -65,9 +65,10 @@ final class AuthoringWarnings
     }
 
     /**
-     * The nextScene effects the condition at $index decides: reached from some of its bands but
-     * not from all of them. A band reaches its own effects and every effect of the steps its
-     * "next" (or the condition's default) leads to, following every outcome forward until "end".
+     * The Scene Types the condition at $index decides: forced by a nextScene effect some of its
+     * bands reach but not all of them. A band reaches its own effects and every effect of the
+     * steps its "next" (or the condition's default) leads to, following every outcome forward
+     * until "end". Each decided Scene Type is reported once, at the first step forcing it.
      *
      * @param list<array<string, mixed>> $steps
      *
@@ -86,7 +87,8 @@ final class AuthoringWarnings
         $reached = [];
         foreach (self::outcomes($condition['bands']) as $bandIndex => $band) {
             $stepPath = \sprintf('%s[%d]', $path, $index);
-            $found = self::nextScenes(StepParts::effectList($band, \sprintf('%s.bands[%d]', $stepPath, $bandIndex)), $stepPath);
+            $found = [];
+            self::nextScenes(StepParts::effectList($band, \sprintf('%s.bands[%d]', $stepPath, $bandIndex)), $stepPath, $found);
             $pending = [self::target($band['next'] ?? $condition['next'] ?? null, $index, $keys)];
             $visited = [];
             while ([] !== $pending) {
@@ -97,7 +99,7 @@ final class AuthoringWarnings
 
                 $visited[$at] = true;
                 $stepPath = \sprintf('%s[%d]', $path, $at);
-                $found += self::nextScenes(StepParts::effects($steps[$at], $stepPath), $stepPath);
+                self::nextScenes(StepParts::effects($steps[$at], $stepPath), $stepPath, $found);
                 foreach (self::successors($steps[$at]) as $next) {
                     $pending[] = self::target($next, $at, $keys);
                 }
@@ -106,28 +108,37 @@ final class AuthoringWarnings
             $reached[] = $found;
         }
 
-        $everyBand = array_intersect_key(...$reached);
-        $decided = array_diff_key(array_merge(...$reached), $everyBand);
-        ksort($decided, \SORT_NATURAL);
-
-        return array_values($decided);
-    }
-
-    /**
-     * @param iterable<string, array<string, mixed>> $effects
-     *
-     * @return array<string, array{string, string}> effect path => [step path, Scene Type key]
-     */
-    private static function nextScenes(iterable $effects, string $stepPath): array
-    {
-        $found = [];
-        foreach ($effects as $effectPath => $effect) {
-            if ('nextScene' === $effect['kind'] && \is_string($effect['sceneType'])) {
-                $found[$effectPath] = [$stepPath, $effect['sceneType']];
+        $stepPaths = [];
+        foreach ($reached as $found) {
+            foreach ($found as $sceneType => $paths) {
+                $stepPaths[$sceneType] = [...$stepPaths[$sceneType] ?? [], ...$paths];
             }
         }
 
-        return $found;
+        $decided = [];
+        foreach (array_diff_key($stepPaths, array_intersect_key(...$reached)) as $sceneType => $paths) {
+            usort($paths, strnatcmp(...));
+            $decided[] = [$paths[0], (string) $sceneType];
+        }
+
+        usort($decided, static fn (array $a, array $b): int => strnatcmp($a[0], $b[0]) ?: strcmp($a[1], $b[1]));
+
+        return $decided;
+    }
+
+    /**
+     * Adds the Scene Types these effects force to $found.
+     *
+     * @param iterable<string, array<string, mixed>> $effects
+     * @param array<string, list<string>>            $found   Scene Type key => step paths
+     */
+    private static function nextScenes(iterable $effects, string $stepPath, array &$found): void
+    {
+        foreach ($effects as $effect) {
+            if ('nextScene' === $effect['kind'] && \is_string($effect['sceneType'])) {
+                $found[$effect['sceneType']][] = $stepPath;
+            }
+        }
     }
 
     /**

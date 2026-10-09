@@ -108,7 +108,7 @@ final class AuthoringWarningsTest extends TestCase
     }
 
     #[Test]
-    public function itWarnsAtTheConditionItselfWhenItsOwnBandForcesTheScene(): void
+    public function itWarnsOnceAtTheFirstStepForcingASceneTypeTheConditionDecides(): void
     {
         $release = ReleaseArrays::with(
             self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']),
@@ -116,10 +116,37 @@ final class AuthoringWarningsTest extends TestCase
             [['kind' => 'nextScene', 'sceneType' => 'firefight']],
         );
 
-        self::assertSame([
-            'flows[0].phases[1].worldTurn[0]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn',
-            self::HEIST_WARNING,
-        ], ReleaseContent::fromArray($release)->warnings());
+        self::assertSame(
+            ['flows[0].phases[1].worldTurn[0]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn'],
+            ReleaseContent::fromArray($release)->warnings(),
+        );
+    }
+
+    /**
+     * Reached effects compare by Scene Type, not by path: each band forcing the same Scene Type
+     * (its own effect, or different steps) decides nothing (slice 7 review).
+     *
+     * @return iterable<string, array{array<mixed>}>
+     */
+    public static function everyBandForcingTheSameSceneType(): iterable
+    {
+        $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
+        $forced = [['kind' => 'nextScene', 'sceneType' => 'firefight']];
+
+        yield 'own effects' => [ReleaseArrays::with($release, self::WORLD_TURN, [
+            ['key' => 'response', 'kind' => 'condition', 'title' => 'Does security respond?', 'tracker' => 'alarm', 'bands' => [['upTo' => 3, 'effects' => $forced], ['effects' => $forced]]],
+        ])];
+        yield 'different steps' => [ReleaseArrays::with($release, self::WORLD_TURN.'.0.bands.0', ['upTo' => 3, 'next' => 'end', 'effects' => $forced])];
+    }
+
+    /**
+     * @param array<mixed> $release
+     */
+    #[Test]
+    #[DataProvider('everyBandForcingTheSameSceneType')]
+    public function itDoesNotWarnWhenEveryBandForcesTheSameSceneType(array $release): void
+    {
+        self::assertSame([], ReleaseContent::fromArray($release)->warnings());
     }
 
     #[Test]
@@ -267,7 +294,6 @@ final class AuthoringWarningsTest extends TestCase
     public function itWarnsOncePerTrackerAndForcedScene(): void
     {
         $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
-        $release = ReleaseArrays::with($release, self::WORLD_TURN.'.1.bands.1.effects', [['kind' => 'nextScene', 'sceneType' => 'firefight']]);
         $release = ReleaseArrays::with($release, self::WORLD_TURN.'.1.kind', 'condition');
         $release = ReleaseArrays::with($release, self::WORLD_TURN.'.1.tracker', 'edge');
         $release = ReleaseArrays::without($release, self::WORLD_TURN.'.1.dice');

@@ -43,7 +43,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Play's anti-corruption layer reads the catalog of schema version 2: trackers, fact slots, table
- * entry metadata, the chaos tracker and Scene Types with their steps (flows: slice 8).
+ * entry metadata, the chaos tracker and Scene Types with their steps (flows: the flows test).
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 #[CoversClass(GameSystemSnapshot::class)]
@@ -187,15 +187,6 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
 
         self::assertSame($branches->yes, $branches->for(YesNoAnswer::ExceptionalYes));
         self::assertSame($branches->no, $branches->for(YesNoAnswer::ExceptionalNo));
-    }
-
-    #[Test]
-    public function flowsAreNotReadYet(): void
-    {
-        $snapshot = $this->snapshot('valid/v2-every-part');
-
-        self::assertSame([], $snapshot->flowSteps());
-        self::assertNotSame([], $snapshot->sceneTypes());
     }
 
     #[Test]

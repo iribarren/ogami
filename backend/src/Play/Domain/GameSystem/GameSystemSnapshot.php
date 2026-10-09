@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\GameSystem;
 
+use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableSet;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -12,7 +13,7 @@ use App\Randomness\Domain\RandomNumberGenerator;
 /**
  * Play's own, immutable reading of one published GameSystem release: what a campaign plays with.
  * Built by Play's anti-corruption layer; it holds no Studio types. A schema version 1 release has
- * no trackers, fact slots, Scene Types or table entry metadata.
+ * no trackers, fact slots, Scene Types, table entry metadata or flows.
  */
 final readonly class GameSystemSnapshot
 {
@@ -25,6 +26,9 @@ final readonly class GameSystemSnapshot
     /** @var array<string, SceneType> */
     private array $sceneTypes;
 
+    /** @var array<string, Flow> */
+    private array $flows;
+
     /**
      * @param ?OracleTableSet                         $oracleTables      null when the release has no oracle tables
      * @param list<SnapshotLikelihoodOracle>          $likelihoodOracles in definition order, unique keys
@@ -33,8 +37,10 @@ final readonly class GameSystemSnapshot
      * @param list<FactSlot>                          $factSlots         in definition order
      * @param list<SceneType>                         $sceneTypes        in definition order, unique keys
      * @param array<string, list<TableEntryMetadata>> $tableEntries      per table key, one per entry in entry order
+     * @param list<Flow>                              $flows             in definition order, unique keys, at most one default
      *
-     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers or Scene Types share a key
+     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types or flows share a key,
+     *                                  or two flows are the default
      */
     public function __construct(
         private string $gameSystemKey,
@@ -47,6 +53,7 @@ final readonly class GameSystemSnapshot
         private array $factSlots = [],
         array $sceneTypes = [],
         private array $tableEntries = [],
+        array $flows = [],
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -63,6 +70,11 @@ final readonly class GameSystemSnapshot
         $this->likelihoodOracles = $byKey;
         $this->trackers = $this->byKey($trackers, 'trackers');
         $this->sceneTypes = $this->byKey($sceneTypes, 'sceneTypes');
+        $this->flows = $this->byKey($flows, 'flows');
+        $defaults = array_keys(array_filter($flows, static fn (Flow $flow): bool => $flow->default));
+        if (\count($defaults) > 1) {
+            throw InvalidGameSystemRelease::of($gameSystemKey, $releaseVersion, \sprintf('flows[%d].default', $defaults[1]), 'only one flow may be the default.');
+        }
     }
 
     public function gameSystemKey(): string
@@ -185,6 +197,27 @@ final readonly class GameSystemSnapshot
     }
 
     /**
+     * @return list<Flow> in definition order
+     */
+    public function flows(): array
+    {
+        return array_values($this->flows);
+    }
+
+    public function flow(string $key): ?Flow
+    {
+        return $this->flows[$key] ?? null;
+    }
+
+    /**
+     * The flow a new campaign preselects; null when no flow is the default.
+     */
+    public function defaultFlow(): ?Flow
+    {
+        return array_find($this->flows, static fn (Flow $flow): bool => $flow->default);
+    }
+
+    /**
      * The key, Scene Type and Effects of the entry a table roll selected; null without metadata.
      */
     public function rolledEntry(OracleTableStep $step): ?TableEntryMetadata
@@ -206,7 +239,7 @@ final readonly class GameSystemSnapshot
     }
 
     /**
-     * @template T of Tracker|SceneType
+     * @template T of Tracker|SceneType|Flow
      *
      * @param list<T> $parts
      *

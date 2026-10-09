@@ -24,6 +24,7 @@ final class PublishGameSystemReleaseConsoleCommandTest extends KernelTestCase
 {
     private const string RELEASES = __DIR__.'/../../Fixtures/Studio/releases';
     private const string EXAMPLE = self::RELEASES.'/valid/contract-doc-example.json';
+    private const string WARNING = self::RELEASES.'/valid/v2-forced-scene-without-relief.json';
     private const string OTHER_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a59';
 
     private CommandTester $tester;
@@ -77,6 +78,42 @@ final class PublishGameSystemReleaseConsoleCommandTest extends KernelTestCase
         self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
         self::assertStringContainsString('Unchanged example-journal (v1)', $this->tester->getDisplay());
         self::assertSame(1, $this->releases()->latestFor('example-journal')?->version());
+    }
+
+    #[Test]
+    public function itPublishesASchemaVersion2ReleaseWithoutWarnings(): void
+    {
+        $exitCode = $this->tester->execute(['file' => self::RELEASES.'/valid/v2-contract-doc-example.json']);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString('Published example-heist v1', $this->tester->getDisplay());
+        self::assertStringNotContainsString('Warning', $this->tester->getDisplay());
+    }
+
+    #[Test]
+    public function itPrintsAuthoringWarningsAndStillPublishes(): void
+    {
+        $exitCode = $this->tester->execute(['file' => self::WARNING]);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString(
+            "Warning: flows[0].phases[1].worldTurn[1]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn\n",
+            $this->tester->getDisplay(),
+        );
+        self::assertStringContainsString('Published warning-heist v1', $this->tester->getDisplay());
+        self::assertSame(1, $this->releases()->latestFor('warning-heist')?->version());
+    }
+
+    #[Test]
+    public function itPrintsAuthoringWarningsWhenTheContentIsUnchanged(): void
+    {
+        $this->tester->execute(['file' => self::WARNING, '--if-changed' => true]);
+
+        $exitCode = $this->tester->execute(['file' => self::WARNING, '--if-changed' => true]);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString('Warning: flows[0].phases[1].worldTurn[1]: ', $this->tester->getDisplay());
+        self::assertStringContainsString('Unchanged warning-heist (v1)', $this->tester->getDisplay());
     }
 
     #[Test]

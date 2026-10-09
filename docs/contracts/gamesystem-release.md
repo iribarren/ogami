@@ -14,7 +14,7 @@ Terms follow the [glossary](../domain/glossary.md).
 
 | Version | Field | Who sets it | Meaning |
 |---|---|---|---|
-| Schema version | `schemaVersion` in the file | The file author | Which version of **this contract** the file follows: 1 or 2. Version 1 releases stay valid and mean "no flows". Studio accepts version 2 once feature `play-flow-run` finishes its validation |
+| Schema version | `schemaVersion` in the file | The file author | Which version of **this contract** the file follows: 1 or 2. Version 1 releases stay valid and mean "no flows". Studio validates and publishes both; Play reads version 2 once its anti-corruption layer lands |
 | Release version | Not in the file | Studio, when publishing | Counts the releases of one GameSystem key: 1, 2, 3… |
 
 ## Structure (schema version 1)
@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders. Authoring warnings arrive in the next slice of feature `play-flow-run`. Play still rejects version 2 releases ("unsupported schema version") until its anti-corruption layer lands.
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play still rejects version 2 releases ("unsupported schema version") until its anti-corruption layer lands.
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 
@@ -233,6 +233,8 @@ bin/console app:gamesystem:publish <file> [--if-changed]
 | Published | `Published <key> v<N>`, after a `Warning: <message>` line per [authoring warning](#authoring-warning) | 0 |
 | Same content with `--if-changed` | `Unchanged <key> (v<N>)`, after the warning lines | 0 |
 | Invalid content, malformed JSON, missing file | The error message | 1 |
+
+Warnings never stop a publish and are not stored; the content hash ignores them. The console checks the content first (Studio query `CheckGameSystemRelease`), so the warnings come before the publish outcome.
 
 `make presets` publishes the shipped [presets](../domain/glossary.md#game-authoring) (`backend/presets/*.json`) with `--if-changed`.
 

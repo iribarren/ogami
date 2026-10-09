@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Studio\Domain\Release;
 
+use App\Studio\Domain\Release\Version2\AuthoringWarnings;
 use App\Studio\Domain\Release\Version2\ReleaseVersion2;
 
 /**
@@ -38,7 +39,8 @@ final readonly class ReleaseContent
     private const array STEP = ['key' => true, 'title' => true, 'prompt' => false];
 
     /**
-     * @param array<string, mixed> $content canonical content; "sheet" is kept as []
+     * @param array<string, mixed> $content  canonical content; "sheet" is kept as []
+     * @param list<string>         $warnings authoring warnings, each starting with its path
      */
     private function __construct(
         private array $content,
@@ -46,6 +48,7 @@ final readonly class ReleaseContent
         private string $gameSystemKey,
         private string $gameSystemName,
         private string $hash,
+        private array $warnings,
     ) {
     }
 
@@ -98,12 +101,30 @@ final readonly class ReleaseContent
         /** @var string $name */
         $name = $gameSystem['name'];
 
-        return new self($content, $version, $key, $name, hash('sha256', self::canonicalJson($content)));
+        /** @var list<array<string, mixed>> $sceneTypes */
+        $sceneTypes = $content['sceneTypes'] ?? [];
+        /** @var list<array<string, mixed>> $flows */
+        $flows = $content['flows'] ?? [];
+        $warnings = 2 === $version ? AuthoringWarnings::of($sceneTypes, $flows) : [];
+
+        return new self($content, $version, $key, $name, hash('sha256', self::canonicalJson($content)), $warnings);
     }
 
     public function schemaVersion(): int
     {
         return $this->schemaVersion;
+    }
+
+    /**
+     * Authoring warnings of this valid content (docs/contracts/gamesystem-release.md, "Authoring
+     * warning"): publishing succeeds, the author is told. Computed from the content, never stored,
+     * and not part of the hash.
+     *
+     * @return list<string> each starting with the path it is about
+     */
+    public function warnings(): array
+    {
+        return $this->warnings;
     }
 
     public function gameSystemKey(): string

@@ -6,6 +6,7 @@ namespace App\Studio\Infrastructure\Console;
 
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
+use App\Studio\Application\CheckGameSystemRelease;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\GetPublishedReleaseById;
 use App\Studio\Application\PublishedReleaseView;
@@ -53,6 +54,11 @@ final class PublishGameSystemReleaseConsoleCommand extends Command
         $id = $this->ids->generate()->toString();
 
         try {
+            // Valid content publishes; its authoring warnings are told first (decision 7, ADR 0018).
+            foreach ($this->queryBus->ask(new CheckGameSystemRelease($content))->warnings as $warning) {
+                $output->writeln(\sprintf('Warning: %s', $warning));
+            }
+
             $this->commandBus->dispatch(new PublishGameSystemRelease($id, $content, true === $input->getOption('if-changed')));
         } catch (InvalidReleaseContent $exception) {
             $io->error(\sprintf('%s is not a valid GameSystem release. %s', $file, $exception->getMessage()));

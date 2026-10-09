@@ -75,10 +75,12 @@ Policy: decide at the last responsible moment. Each question is answered when th
 
 | Question | Decide when | How |
 |---|---|---|
-| How does a world turn affect the player's next scene: must the player react, and does ignoring it have a consequence defined by the game manager? | `flow-model-examples` (6c) | Map real examples to [ADR 0017](adr/0017-narrativeflow-model.md); amend it |
-| How does a looping phase end: only by the player's choice, or also on a tracker condition? | `flow-model-examples` (6c) | Same examples; amend ADR 0017 |
-| Can an interruption switch a scene to another Scene Type (e.g. an altered or interrupted scene, an ambush)? | `flow-model-examples` (6c) | Same examples; amend ADR 0017 |
-| Do NPC disposition, factions or thread progress need their own fields? | When a preset needs them, starting at `flow-model-examples` (6c) | Try trackers and Campaign facts first; add fields only on a real gap |
+| Can a flow run a named, reusable list of steps (a procedure) from a step or the oracle panel? | When a preset repeats a step list | Chained steps and Scene Types until then |
+| Can the player add trackers linked to NPCs, Threads or facts (thread progress, faction power, disposition)? | When a preset needs them | Campaign facts and release trackers until then ([ADR 0018](adr/0018-narrativeflow-control-flow-and-cast.md)) |
+| How are places modeled (a map, regions, sites)? | When a map-focused preset needs them (West Marches) | Free Campaign facts until then |
+| Are items, inventory and a `shop` step kind needed? | `preset-real-system` (13) or a post-M3 feature | Trackers, tables and sheet list fields first |
+| Do fate-question doubles trigger random events? | `preset-mythic-flow` (9) | Decide while authoring the Mythic-style flow |
+| Does a release need a credits or license field for fan presets? | `preset-guided-sample` (9b) | Decide with the first fan preset; presets carry the publisher's fan-content disclaimer either way ([ADR 0018](adr/0018-narrativeflow-control-flow-and-cast.md)) |
 | Which curated themes may a GameSystem release name? | `design-foundation` (8c) | A few app-defined, contrast-checked themes |
 | Can flows be generic library content, like oracles and Scene Types? | `studio-library` (18b) | Decide from the library's first real uses |
 | How does a player move a campaign's story to another flow? | Backlog `play-campaign-transfer` | A new campaign carrying over facts, NPCs and Threads; until then the flow is fixed |
@@ -86,7 +88,7 @@ Policy: decide at the last responsible moment. Each question is answered when th
 | What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow: structured input from the Scene Type, the current step, Campaign facts, NPC agendas, Threads and trackers ([ADR 0017](adr/0017-narrativeflow-model.md)); only the port exists until then |
 | When does player-created content enter scope, and who moderates it? | Later | Explicitly out of scope for now |
 
-Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)), the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)), how the flow is presented in Play ([ADR 0016](adr/0016-flow-presentation-journal-with-focus-mode.md)) and how a guided flow is modeled, with generic vs game-specific content ([ADR 0017](adr/0017-narrativeflow-model.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
+Resolved: boundary enforcement ([ADR 0012](adr/0012-phpat-boundary-enforcement.md)), the RDD timing ([ADR 0011](adr/0011-gentle-ai-workflow.md)), how the flow is presented in Play ([ADR 0016](adr/0016-flow-presentation-journal-with-focus-mode.md)), how a guided flow is modeled, with generic vs game-specific content ([ADR 0017](adr/0017-narrativeflow-model.md)), and, from five worked examples, how a world turn affects the next scene, how a loop phase ends, interruptions that switch the Scene Type, and NPC disposition and factions ([ADR 0018](adr/0018-narrativeflow-control-flow-and-cast.md)). Context-level questions live in the [context map](domain/context-map.md#open-questions).
 
 ## Related
 

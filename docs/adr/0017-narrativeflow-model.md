@@ -1,6 +1,6 @@
 # 0017. The NarrativeFlow model
 
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party
 - **Date:** 2026-10-08
 
 ## Context

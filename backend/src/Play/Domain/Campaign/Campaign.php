@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\GameSystem\Flow\TrackerOperation;
+use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
+use App\Play\Domain\GameSystem\Tracker;
+
 /**
  * A solo player's ongoing game, pinned to one GameSystem release (ADR 0014). Play is organized in
  * sessions and scenes: the current session is the latest one, the current scene is the latest
  * scene of the current session.
  *
- * State is kept as scalars (id, owner, name, pinned release fields) plus the session list, so an
- * adapter can map it and rebuild it with reconstitute().
+ * The campaign holds a value for every Tracker of its pinned release (none for schema version 1).
+ * The definitions stay in the release: methods that change a value take the Tracker and clamp to
+ * its range.
+ *
+ * State is kept as scalars (id, owner, name, pinned release fields) plus the session list and the
+ * tracker values, so an adapter can map it and rebuild it with reconstitute().
  */
 final class Campaign
 {
@@ -25,7 +33,8 @@ final class Campaign
     private int $version = 1;
 
     /**
-     * @param list<Session> $sessions in number order
+     * @param list<Session>      $sessions      in number order
+     * @param array<string, int> $trackerValues by Tracker key
      */
     private function __construct(
         private readonly string $id,
@@ -36,14 +45,17 @@ final class Campaign
         private readonly string $gameSystemName,
         private readonly \DateTimeImmutable $createdAt,
         private array $sessions,
+        private array $trackerValues,
     ) {
     }
 
     /**
+     * @param list<Tracker> $trackers the Trackers of the pinned release: counters start at their initial value, clocks at 0
+     *
      * @throws InvalidCampaignOwner when the owner id is blank
      * @throws InvalidCampaignName  when the trimmed name is blank or longer than 100 characters
      */
-    public static function create(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt): self
+    public static function create(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $trackers = []): self
     {
         if ('' === trim($ownerId)) {
             throw InvalidCampaignOwner::blank();
@@ -59,15 +71,21 @@ final class Campaign
             throw InvalidCampaignName::tooLong(self::MAX_NAME_LENGTH, $length);
         }
 
-        return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, []);
+        $trackerValues = [];
+        foreach ($trackers as $tracker) {
+            $trackerValues[$tracker->key] = $tracker->initial;
+        }
+
+        return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues);
     }
 
     /**
      * Rebuilds a stored campaign, e.g. from persistence. No rule is checked again.
      *
-     * @param list<Session> $sessions in number order
+     * @param list<Session>      $sessions      in number order
+     * @param array<string, int> $trackerValues by Tracker key
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = []): self
     {
         return new self(
             $id->toString(),
@@ -78,6 +96,7 @@ final class Campaign
             $pinnedRelease->gameSystemName(),
             $createdAt,
             $sessions,
+            $trackerValues,
         );
     }
 
@@ -116,6 +135,69 @@ final class Campaign
         $this->sessions[$last] = $session;
 
         return $session->currentScene() ?? throw new \LogicException('A scene was just added.');
+    }
+
+    /**
+     * Sets a Tracker's value by hand, clamped to its range.
+     *
+     * @return int the value kept
+     *
+     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
+     */
+    public function setTrackerValue(Tracker $tracker, int $value): int
+    {
+        return $this->applyTrackerChange($tracker, TrackerOperation::Set, $value);
+    }
+
+    /**
+     * Adds to a Tracker's value or sets it, clamped to its range.
+     *
+     * @return int the value kept
+     *
+     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
+     */
+    public function applyTrackerChange(Tracker $tracker, TrackerOperation $operation, int $value): int
+    {
+        $current = $this->trackerValue($tracker->key);
+
+        return $this->trackerValues[$tracker->key] = $tracker->clamp(TrackerOperation::Add === $operation ? $current + $value : $value);
+    }
+
+    /**
+     * The chaos factor to ask a likelihood oracle with: the campaign's value of the Tracker its
+     * chaos is bound to, else the requested one (null for the oracle's neutral factor).
+     *
+     * @throws ChaosFactorBoundToTracker when the oracle is bound and a chaos factor is requested
+     * @throws UnknownCampaignTracker    when the campaign holds no value for the bound Tracker
+     */
+    public function chaosFactorFor(SnapshotLikelihoodOracle $oracle, ?int $requested): ?int
+    {
+        $tracker = $oracle->chaosTracker();
+        if (null === $tracker) {
+            return $requested;
+        }
+
+        if (null !== $requested) {
+            throw ChaosFactorBoundToTracker::for($oracle->key(), $tracker);
+        }
+
+        return $this->trackerValue($tracker);
+    }
+
+    /**
+     * @return array<string, int> the value of each Tracker by key; release order is not kept
+     */
+    public function trackerValues(): array
+    {
+        return $this->trackerValues;
+    }
+
+    /**
+     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
+     */
+    public function trackerValue(string $key): int
+    {
+        return $this->trackerValues[$key] ?? throw UnknownCampaignTracker::withKey($key);
     }
 
     /**

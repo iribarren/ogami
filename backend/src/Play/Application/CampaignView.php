@@ -6,7 +6,7 @@ namespace App\Play\Application;
 
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
- * session and scene, and the oracles of the pinned release.
+ * session and scene, the oracles of the pinned release and its Trackers with the campaign's values.
  */
 final readonly class CampaignView
 {
@@ -14,6 +14,7 @@ final readonly class CampaignView
      * @param list<SessionView>          $sessions          in number order
      * @param list<OracleTableView>      $oracleTables      in definition order
      * @param list<LikelihoodOracleView> $likelihoodOracles in definition order
+     * @param list<TrackerView>          $trackers          in definition order
      */
     public function __construct(
         public string $id,
@@ -25,6 +26,7 @@ final readonly class CampaignView
         public ?int $currentSceneNumber,
         public array $oracleTables,
         public array $likelihoodOracles,
+        public array $trackers,
     ) {
     }
 }

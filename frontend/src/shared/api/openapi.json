@@ -509,6 +509,115 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/trackers/{trackerKey}": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Set the value of a Tracker of one of my campaigns by hand",
+                "operationId": "setTrackerValue",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "trackerKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetTrackerValueRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The Tracker with the value kept, clamped to its range.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TrackerResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no integer \"value\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or its pinned release has no Tracker with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/play/game-systems": {
             "get": {
                 "tags": [
@@ -1025,7 +1134,7 @@
                         }
                     },
                     "422": {
-                        "description": "The likelihood level is unknown, the chaos factor is out of range or not expected, or the question is too long.",
+                        "description": "The likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the question is too long.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1528,7 +1637,8 @@
                     "key",
                     "name",
                     "levels",
-                    "chaos"
+                    "chaos",
+                    "chaosTracker"
                 ],
                 "properties": {
                     "key": {
@@ -1554,6 +1664,103 @@
                         ],
                         "nullable": true,
                         "description": "Null when the oracle takes no chaos factor."
+                    },
+                    "chaosTracker": {
+                        "description": "The key of the campaign Tracker whose value is the chaos factor, so no chaos factor is sent; null when the player picks it.",
+                        "type": "string",
+                        "example": "chaos",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "TrackerLevelResponse": {
+                "required": [
+                    "upTo",
+                    "label"
+                ],
+                "properties": {
+                    "upTo": {
+                        "description": "The highest value of the level; null for the last level, which catches the rest.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Warm"
+                    }
+                },
+                "type": "object"
+            },
+            "TrackerResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "kind",
+                    "hint",
+                    "min",
+                    "max",
+                    "segments",
+                    "levels",
+                    "value",
+                    "levelLabel"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "heat"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Heat"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "example": "counter",
+                        "enum": [
+                            "counter",
+                            "clock"
+                        ]
+                    },
+                    "hint": {
+                        "type": "string",
+                        "example": "Grows between jobs",
+                        "nullable": true
+                    },
+                    "min": {
+                        "description": "The lowest value; 0 for a clock.",
+                        "type": "integer",
+                        "example": -5
+                    },
+                    "max": {
+                        "description": "The highest value; the number of segments for a clock.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "segments": {
+                        "description": "The number of segments of a clock; null for a counter.",
+                        "type": "integer",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "levels": {
+                        "description": "The named ranges of a counter, in order; empty for a clock.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TrackerLevelResponse"
+                        }
+                    },
+                    "value": {
+                        "description": "The campaign's value, within min..max.",
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "levelLabel": {
+                        "description": "The label of the level the value falls in; null without levels.",
+                        "type": "string",
+                        "example": "Warm",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -1568,7 +1775,8 @@
                     "currentSessionNumber",
                     "currentSceneNumber",
                     "oracleTables",
-                    "likelihoodOracles"
+                    "likelihoodOracles",
+                    "trackers"
                 ],
                 "properties": {
                     "id": {
@@ -1618,6 +1826,13 @@
                         "items": {
                             "$ref": "#/components/schemas/LikelihoodOracleResponse"
                         }
+                    },
+                    "trackers": {
+                        "description": "The Trackers of the pinned release with the campaign's values, in definition order; empty for schema version 1.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TrackerResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -1632,6 +1847,19 @@
                         "type": "string",
                         "example": "At the gate",
                         "maxLength": 100
+                    }
+                },
+                "type": "object"
+            },
+            "SetTrackerValueRequest": {
+                "required": [
+                    "value"
+                ],
+                "properties": {
+                    "value": {
+                        "description": "Clamped to the Tracker's range (min..max, 0..segments for a clock).",
+                        "type": "integer",
+                        "example": 3
                     }
                 },
                 "type": "object"

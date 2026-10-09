@@ -45,4 +45,27 @@ final readonly class Tracker
     {
         return TrackerKind::Clock === $this->kind ? $this->max : null;
     }
+
+    /**
+     * The value within the Tracker's range: min..max for a counter, 0..segments for a clock.
+     */
+    public function clamp(int $value): int
+    {
+        return max($this->min, min($this->max, $value));
+    }
+
+    /**
+     * The level the value falls in: the first whose "upTo" it does not pass, or the last one,
+     * which has no "upTo". Null when the Tracker has no levels.
+     */
+    public function levelAt(int $value): ?TrackerLevel
+    {
+        foreach ($this->levels as $level) {
+            if (null === $level->upTo || $value <= $level->upTo) {
+                return $level;
+            }
+        }
+
+        return null;
+    }
 }

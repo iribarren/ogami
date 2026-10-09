@@ -69,6 +69,7 @@ export const lostMineCampaign: Campaign = {
         { key: 'likely', label: 'Likely' },
       ],
       chaos: { min: 1, max: 9, neutral: 5 },
+      chaosTracker: null,
     },
     {
       key: 'yes-no',
@@ -78,8 +79,10 @@ export const lostMineCampaign: Campaign = {
         { key: 'likely', label: 'Likely' },
       ],
       chaos: null,
+      chaosTracker: null,
     },
   ],
+  trackers: [],
 }
 
 /** `lostMineCampaign` right after starting session 3: no scene yet. */
@@ -109,5 +112,6 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     currentSceneNumber: null,
     oracleTables: [],
     likelihoodOracles: [],
+    trackers: [],
   }
 }

@@ -46,6 +46,7 @@ final readonly class CreateCampaignHandler implements CommandHandler
             $command->name,
             PinnedRelease::of($latest->gameSystemKey(), $latest->releaseVersion(), $latest->name()),
             $this->clock->now(),
+            $latest->trackers(),
         ));
     }
 }

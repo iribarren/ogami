@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Play\Application;
 
+use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
+use App\Play\Domain\GameSystem\Tracker;
+use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Randomness\Domain\Oracle\LikelihoodChaos;
 use App\Randomness\Domain\Oracle\LikelihoodLevel;
 use App\Shared\Application\Bus\QueryHandler;
@@ -42,6 +45,29 @@ final readonly class GetCampaignHandler implements QueryHandler
             $campaign->currentScene()?->number(),
             $this->oracleTables($snapshot),
             array_map($this->likelihoodOracle(...), $snapshot->likelihoodOracles()),
+            array_map(static fn (Tracker $tracker): TrackerView => self::tracker($tracker, $campaign), $snapshot->trackers()),
+        );
+    }
+
+    /**
+     * Every release Tracker gets a value when the campaign is created; a campaign stored before
+     * tracker values were (its column is empty) shows the initial value.
+     */
+    private static function tracker(Tracker $tracker, Campaign $campaign): TrackerView
+    {
+        $value = $campaign->trackerValues()[$tracker->key] ?? $tracker->initial;
+
+        return new TrackerView(
+            $tracker->key,
+            $tracker->name,
+            $tracker->kind->value,
+            $tracker->hint,
+            $tracker->min,
+            $tracker->max,
+            $tracker->segments(),
+            array_map(static fn (TrackerLevel $level): TrackerLevelView => new TrackerLevelView($level->upTo, $level->label), $tracker->levels),
+            $value,
+            $tracker->levelAt($value)?->label,
         );
     }
 
@@ -82,6 +108,7 @@ final readonly class GetCampaignHandler implements QueryHandler
                 $oracle->oracle()->levels(),
             ),
             $chaos instanceof LikelihoodChaos ? new LikelihoodChaosView($chaos->min(), $chaos->max(), $chaos->neutral()) : null,
+            $oracle->chaosTracker(),
         );
     }
 }

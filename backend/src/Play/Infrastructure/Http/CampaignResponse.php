@@ -10,15 +10,16 @@ use OpenApi\Attributes as OA;
 
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
- * session and scene, and the oracles of the pinned release.
+ * session and scene, the oracles of the pinned release and its Trackers with the campaign's values.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers'])]
 final readonly class CampaignResponse
 {
     /**
      * @param list<SessionResponse>          $sessions
      * @param list<OracleTableResponse>      $oracleTables
      * @param list<LikelihoodOracleResponse> $likelihoodOracles
+     * @param list<TrackerResponse>          $trackers
      */
     private function __construct(
         #[OA\Property(format: 'uuid')]
@@ -51,6 +52,12 @@ final readonly class CampaignResponse
             items: new OA\Items(ref: new Model(type: LikelihoodOracleResponse::class)),
         )]
         public array $likelihoodOracles,
+        #[OA\Property(
+            description: 'The Trackers of the pinned release with the campaign\'s values, in definition order; empty for schema version 1.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: TrackerResponse::class)),
+        )]
+        public array $trackers,
     ) {
     }
 
@@ -66,6 +73,7 @@ final readonly class CampaignResponse
             $view->currentSceneNumber,
             array_map(OracleTableResponse::fromView(...), $view->oracleTables),
             array_map(LikelihoodOracleResponse::fromView(...), $view->likelihoodOracles),
+            array_map(TrackerResponse::fromView(...), $view->trackers),
         );
     }
 }

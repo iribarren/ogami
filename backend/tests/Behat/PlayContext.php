@@ -27,10 +27,13 @@ use App\Play\Application\RecordOracleTableResultHandler;
 use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
 use App\Play\Application\SceneView;
+use App\Play\Application\SetTrackerValue;
+use App\Play\Application\SetTrackerValueHandler;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSceneHandler;
 use App\Play\Application\StartSession;
 use App\Play\Application\StartSessionHandler;
+use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -65,6 +68,7 @@ final class PlayContext implements Context
     private readonly CreateCampaignHandler $createCampaign;
     private readonly StartSessionHandler $startSession;
     private readonly StartSceneHandler $startScene;
+    private readonly SetTrackerValueHandler $setTrackerValue;
     private readonly ListMyCampaignsHandler $listMyCampaigns;
     private readonly GetCampaignHandler $getCampaign;
     private readonly SequentialJournalEntryIdGenerator $entryIds;
@@ -85,6 +89,7 @@ final class PlayContext implements Context
         $this->createCampaign = new CreateCampaignHandler($campaigns, $this->releases, $clock);
         $this->startSession = new StartSessionHandler($owned, $campaigns, $clock);
         $this->startScene = new StartSceneHandler($owned, $campaigns, $clock);
+        $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases);
         $this->listMyCampaigns = new ListMyCampaignsHandler($campaigns);
         $this->getCampaign = new GetCampaignHandler($owned, $this->releases);
         $entries = new InMemoryJournalEntryRepository();
@@ -107,6 +112,14 @@ final class PlayContext implements Context
         // Oracle tables "weather" (1d6: 1-4 Clear, 5-6 Storm → "storm-kind": Rain, Hail) and the
         // likelihood oracle "fate" (d100, "unlikely" 35, chaos 1-9, neutral 5, 5 per point).
         $this->releases->add(Snapshots::withOracles($key, $name, $version));
+    }
+
+    #[Given('release version :version of the GameSystem :key named :name is published with trackers')]
+    public function aReleaseWithTrackersIsPublished(int $version, string $key, string $name): void
+    {
+        // Trackers "alarm" (clock of 6), "heat" (-5..5 from -5: Cold up to -1, Warm up to 2, Hot)
+        // and "chaos" (1..9 from 5).
+        $this->releases->add(Snapshots::withTrackers($key, $name, $version));
     }
 
     #[Given('I created the campaign :name with the GameSystem :key')]
@@ -153,6 +166,12 @@ final class PlayContext implements Context
     public function anotherPlayerTriesToStartASession(): void
     {
         $this->attempt(fn () => ($this->startSession)(new StartSession($this->campaignId(), self::ANOTHER_PLAYER)));
+    }
+
+    #[When('I set the Tracker :key to :value')]
+    public function iSetTheTracker(string $key, int $value): void
+    {
+        ($this->setTrackerValue)(new SetTrackerValue($this->campaignId(), self::ME, $key, $value));
     }
 
     #[When('I write the note :text')]
@@ -239,6 +258,15 @@ final class PlayContext implements Context
         Assert::assertSame($key, $campaign->pinnedRelease->gameSystemKey);
         Assert::assertSame($version, $campaign->pinnedRelease->version);
         Assert::assertSame($gameSystemName, $campaign->pinnedRelease->gameSystemName);
+    }
+
+    #[Then("my campaign's Trackers are:")]
+    public function myCampaignsTrackersAre(TableNode $table): void
+    {
+        Assert::assertSame(
+            array_map(static fn (array $row): array => [$row['tracker'], (int) $row['value'], '' === $row['level'] ? null : $row['level']], $table->getColumnsHash()),
+            array_map(static fn (TrackerView $tracker): array => [$tracker->key, $tracker->value, $tracker->levelLabel], $this->myCampaign()->trackers),
+        );
     }
 
     #[Then('my campaign has no session')]

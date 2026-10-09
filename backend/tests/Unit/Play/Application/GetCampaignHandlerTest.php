@@ -17,6 +17,8 @@ use App\Play\Application\PinnedReleaseView;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Application\SceneView;
 use App\Play\Application\SessionView;
+use App\Play\Application\TrackerLevelView;
+use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
@@ -40,6 +42,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(LikelihoodOracleView::class)]
 #[CoversClass(LikelihoodLevelView::class)]
 #[CoversClass(LikelihoodChaosView::class)]
+#[CoversClass(TrackerView::class)]
+#[CoversClass(TrackerLevelView::class)]
 final class GetCampaignHandlerTest extends TestCase
 {
     private InMemoryCampaignRepository $campaigns;
@@ -75,7 +79,29 @@ final class GetCampaignHandlerTest extends TestCase
                 new LikelihoodOracleView('fate', 'Fate question', [new LikelihoodLevelView('unlikely', 'Unlikely'), new LikelihoodLevelView('even', '50/50')], new LikelihoodChaosView(1, 9, 5)),
                 new LikelihoodOracleView('plain', 'Plain question', [new LikelihoodLevelView('even', 'Even')], null),
             ],
+            [],
         ), $view);
+    }
+
+    #[Test]
+    public function itShowsTheTrackersOfThePinnedReleaseWithTheirValuesAndLevels(): void
+    {
+        $this->releases->add(Snapshots::withTrackers('heist', 'Heist', 1));
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-09T09:00:00+00:00'), Snapshots::withTrackers('heist', 'Heist', 1)->trackers());
+        $heat = Snapshots::withTrackers('heist', 'Heist', 1)->tracker('heat');
+        self::assertNotNull($heat);
+        $campaign->setTrackerValue($heat, 0);
+        $this->campaigns->add($campaign);
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        $levels = [new TrackerLevelView(-1, 'Cold'), new TrackerLevelView(2, 'Warm'), new TrackerLevelView(null, 'Hot')];
+        self::assertEquals([
+            new TrackerView('alarm', 'Alarm', 'clock', 'At 6/6 security locks down', 0, 6, 6, [], 0, null),
+            new TrackerView('heat', 'Heat', 'counter', null, -5, 5, null, $levels, 0, 'Warm'),
+            new TrackerView('chaos', 'Chaos factor', 'counter', null, 1, 9, null, [], 5, null),
+        ], $view->trackers);
+        self::assertSame(['fate' => 'chaos', 'omen' => null], array_column(array_map(static fn (LikelihoodOracleView $oracle): array => [$oracle->key, $oracle->chaosTracker], $view->likelihoodOracles), 1, 0));
     }
 
     #[Test]

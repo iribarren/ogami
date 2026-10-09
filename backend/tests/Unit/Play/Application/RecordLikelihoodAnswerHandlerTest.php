@@ -7,13 +7,18 @@ namespace App\Tests\Unit\Play\Application;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordLikelihoodAnswerHandler;
+use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\NoCurrentScene;
+use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
+use App\Tests\Support\Play\Snapshots;
 use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -65,6 +70,46 @@ final class RecordLikelihoodAnswerHandlerTest extends JournalTestCase
         self::assertSame('no', $content['answer']);
         self::assertSame(50, $content['effectiveTarget']);
         self::assertSame(5, $content['chaosFactor']);
+    }
+
+    #[Test]
+    public function anOracleBoundToATrackerTakesTheCampaignValueAsItsChaosFactor(): void
+    {
+        $this->playOnAReleaseWithTrackers(chaos: 8);
+        // "50/50" targets 50; chaos 8 is 3 above neutral, at 5 per point: 65. A roll of 60 is a yes.
+        $handler = new RecordLikelihoodAnswerHandler($this->journal, new ScriptedRandomNumberGenerator(60));
+
+        $handler(new RecordLikelihoodAnswer('entry-1', 'campaign-3', 'user-1', 'fate', 'even'));
+
+        $content = $this->onlyEntryOf('campaign-3')->content()->toArray();
+        self::assertSame(8, $content['chaosFactor']);
+        self::assertSame(65, $content['effectiveTarget']);
+        self::assertSame('yes', $content['answer']);
+    }
+
+    #[Test]
+    public function anOracleBoundToATrackerRefusesAChaosFactorAndRecordsNothing(): void
+    {
+        $this->playOnAReleaseWithTrackers(chaos: 8);
+        $handler = new RecordLikelihoodAnswerHandler($this->journal, new ScriptedRandomNumberGenerator(60));
+
+        try {
+            $handler(new RecordLikelihoodAnswer('entry-1', 'campaign-3', 'user-1', 'fate', 'even', 5));
+            self::fail('A chaos factor was accepted for a bound oracle.');
+        } catch (ChaosFactorBoundToTracker) {
+            self::assertSame([], $this->journalOf('campaign-3'));
+        }
+    }
+
+    #[Test]
+    public function anUnboundOracleOfAReleaseWithTrackersTakesTheRequestedChaosFactor(): void
+    {
+        $this->playOnAReleaseWithTrackers(chaos: 8);
+        $handler = new RecordLikelihoodAnswerHandler($this->journal, new ScriptedRandomNumberGenerator(60));
+
+        $handler(new RecordLikelihoodAnswer('entry-1', 'campaign-3', 'user-1', 'omen', 'even', 2));
+
+        self::assertSame(2, $this->onlyEntryOf('campaign-3')->content()->toArray()['chaosFactor']);
     }
 
     /**
@@ -134,5 +179,19 @@ final class RecordLikelihoodAnswerHandlerTest extends JournalTestCase
             self::assertSame($error, $exception);
             self::assertSame([], $this->journalOf('campaign-1'));
         }
+    }
+
+    /**
+     * "campaign-3" of "user-1" plays scene 1 of session 1 on release v1 of "heist", with trackers.
+     */
+    private function playOnAReleaseWithTrackers(int $chaos): void
+    {
+        $snapshot = Snapshots::withTrackers('heist', 'Heist', 1);
+        $this->releases->add($snapshot);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-3'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-09T09:00:00+00:00'), $snapshot->trackers());
+        $campaign->setTrackerValue($snapshot->tracker('chaos') ?? throw new \LogicException('No chaos tracker.'), $chaos);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-09T09:05:00+00:00'));
+        $campaign->startScene('The vault', new \DateTimeImmutable('2026-10-09T09:06:00+00:00'));
+        $this->campaigns->add($campaign);
     }
 }

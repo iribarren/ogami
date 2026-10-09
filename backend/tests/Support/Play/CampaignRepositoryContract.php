@@ -176,6 +176,35 @@ trait CampaignRepositoryContract
     }
 
     #[Test]
+    public function itKeepsTheTrackerValuesAndTheirChanges(): void
+    {
+        $snapshot = Snapshots::withTrackers('heist', 'Heist', 1);
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->campaigns()->add(Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-09T09:00:00+00:00'), $snapshot->trackers()));
+        $this->forgetLoaded();
+
+        $loaded = $this->campaigns()->ofId($id);
+        self::assertNotNull($loaded);
+        self::assertSame(['alarm' => 0, 'chaos' => 5, 'heat' => -5], $this->sorted($loaded->trackerValues()));
+
+        $loaded->setTrackerValue($snapshot->tracker('heat') ?? throw new \LogicException('No heat tracker.'), 3);
+        $this->campaigns()->save($loaded);
+        $this->forgetLoaded();
+
+        self::assertSame(['alarm' => 0, 'chaos' => 5, 'heat' => 3], $this->sorted($this->campaigns()->ofId($id)?->trackerValues() ?? []));
+    }
+
+    #[Test]
+    public function aCampaignWithoutTrackersKeepsNone(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->campaigns()->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->forgetLoaded();
+
+        self::assertSame([], $this->campaigns()->ofId($id)?->trackerValues());
+    }
+
+    #[Test]
     public function savingACampaignChangedAndSavedElsewhereSinceItWasLoadedFails(): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
@@ -237,6 +266,20 @@ trait CampaignRepositoryContract
             PinnedRelease::of('free-journal', 1, 'Free journal'),
             new \DateTimeImmutable($createdAt, new \DateTimeZone('UTC')),
         );
+    }
+
+    /**
+     * Stores need not keep the key order of tracker values (JSONB does not).
+     *
+     * @param array<string, int> $values
+     *
+     * @return array<string, int>
+     */
+    private function sorted(array $values): array
+    {
+        ksort($values);
+
+        return $values;
     }
 
     /**

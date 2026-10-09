@@ -124,6 +124,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/trackers/{trackerKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the value of a Tracker of one of my campaigns by hand */
+        put: operations["setTrackerValue"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/play/game-systems": {
         parameters: {
             query?: never;
@@ -412,6 +429,60 @@ export interface components {
             levels: components["schemas"]["LikelihoodLevelResponse"][];
             /** @description Null when the oracle takes no chaos factor. */
             chaos: components["schemas"]["LikelihoodChaosResponse"] | null;
+            /**
+             * @description The key of the campaign Tracker whose value is the chaos factor, so no chaos factor is sent; null when the player picks it.
+             * @example chaos
+             */
+            chaosTracker: string | null;
+        };
+        TrackerLevelResponse: {
+            /**
+             * @description The highest value of the level; null for the last level, which catches the rest.
+             * @example 2
+             */
+            upTo: number | null;
+            /** @example Warm */
+            label: string;
+        };
+        TrackerResponse: {
+            /** @example heat */
+            key: string;
+            /** @example Heat */
+            name: string;
+            /**
+             * @example counter
+             * @enum {string}
+             */
+            kind: "counter" | "clock";
+            /** @example Grows between jobs */
+            hint: string | null;
+            /**
+             * @description The lowest value; 0 for a clock.
+             * @example -5
+             */
+            min: number;
+            /**
+             * @description The highest value; the number of segments for a clock.
+             * @example 5
+             */
+            max: number;
+            /**
+             * @description The number of segments of a clock; null for a counter.
+             * @example null
+             */
+            segments: number | null;
+            /** @description The named ranges of a counter, in order; empty for a clock. */
+            levels: components["schemas"]["TrackerLevelResponse"][];
+            /**
+             * @description The campaign's value, within min..max.
+             * @example 0
+             */
+            value: number;
+            /**
+             * @description The label of the level the value falls in; null without levels.
+             * @example Warm
+             */
+            levelLabel: string | null;
         };
         CampaignResponse: {
             /** Format: uuid */
@@ -437,6 +508,8 @@ export interface components {
             oracleTables: components["schemas"]["OracleTableResponse"][];
             /** @description The likelihood oracles of the pinned release, in definition order. */
             likelihoodOracles: components["schemas"]["LikelihoodOracleResponse"][];
+            /** @description The Trackers of the pinned release with the campaign's values, in definition order; empty for schema version 1. */
+            trackers: components["schemas"]["TrackerResponse"][];
         };
         StartSceneRequest: {
             /**
@@ -444,6 +517,13 @@ export interface components {
              * @example At the gate
              */
             title: string;
+        };
+        SetTrackerValueRequest: {
+            /**
+             * @description Clamped to the Tracker's range (min..max, 0..segments for a clock).
+             * @example 3
+             */
+            value: number;
         };
         GameSystemSummaryResponse: {
             /**
@@ -1319,6 +1399,87 @@ export interface operations {
             };
         };
     };
+    setTrackerValue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                trackerKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetTrackerValueRequest"];
+            };
+        };
+        responses: {
+            /** @description The Tracker with the value kept, clamped to its range. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackerResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no integer "value". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or its pinned release has no Tracker with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listGameSystems: {
         parameters: {
             query?: never;
@@ -1722,7 +1883,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The likelihood level is unknown, the chaos factor is out of range or not expected, or the question is too long. */
+            /** @description The likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the question is too long. */
             422: {
                 headers: {
                     [name: string]: unknown;

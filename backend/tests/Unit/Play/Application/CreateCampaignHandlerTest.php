@@ -49,6 +49,17 @@ final class CreateCampaignHandlerTest extends TestCase
         self::assertSame('Free journal, revised', $campaign->pinnedRelease()->gameSystemName());
         self::assertEquals(new \DateTimeImmutable('2026-10-06T09:30:00+00:00'), $campaign->createdAt());
         self::assertSame([], $campaign->sessions());
+        self::assertSame([], $campaign->trackerValues());
+    }
+
+    #[Test]
+    public function itStartsEveryTrackerOfThePinnedRelease(): void
+    {
+        $this->releases->add(Snapshots::withTrackers('heist', 'Heist', 1));
+
+        ($this->handler)(new CreateCampaign('campaign-1', 'user-1', 'The job', 'heist'));
+
+        self::assertSame(['alarm' => 0, 'heat' => -5, 'chaos' => 5], $this->campaigns->ofId(CampaignId::fromString('campaign-1'))?->trackerValues());
     }
 
     #[Test]

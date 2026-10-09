@@ -192,6 +192,15 @@ final class GameSystemReleaseTranslatorFlowsTest extends TestCase
     }
 
     #[Test]
+    public function aNullDefaultIsNotTheDefault(): void
+    {
+        $snapshot = $this->translate(ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-every-part'), 'flows.0.default', null));
+
+        self::assertNull($snapshot->defaultFlow());
+        self::assertFalse($snapshot->flow('heist')?->default);
+    }
+
+    #[Test]
     public function releasesWithoutFlowsHaveNone(): void
     {
         foreach ([$this->snapshot('valid/v2-minimal'), $this->snapshot('valid/v2-scene-types'), $this->translate(ReleaseViews::contractDocExampleContent())] as $snapshot) {
@@ -217,6 +226,8 @@ final class GameSystemReleaseTranslatorFlowsTest extends TestCase
         yield 'duplicate phase key' => ['flows.0.phases.1.key', 'legwork', 'flows[0].phases[1].key: duplicate key "legwork".'];
         yield 'duplicate flow key' => ['flows.1.key', 'heist', 'flows[1].key: duplicate key "heist".'];
         yield 'second default' => ['flows.1.default', true, 'flows[1].default: only one flow may be the default.'];
+        yield 'non-boolean default' => ['flows.0.default', 'yes', 'flows[0].default: must be a boolean.'];
+        yield 'integer default' => ['flows.1.default', 1, 'flows[1].default: must be a boolean.'];
     }
 
     #[Test]

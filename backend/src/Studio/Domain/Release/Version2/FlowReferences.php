@@ -172,12 +172,16 @@ final class FlowReferences
         $references = [];
         foreach ($lists as $path => $steps) {
             foreach ($steps as $index => $step) {
-                $references = [...$references, ...StepParts::trackers($step, \sprintf('%s[%d]', $path, $index))];
+                foreach (StepParts::trackers($step, \sprintf('%s[%d]', $path, $index)) as $referencePath => $tracker) {
+                    $references[$referencePath] = $tracker;
+                }
             }
         }
 
         foreach (self::entryEffects($rolledTables, $tables) as $effectPath => $effect) {
-            $references = [...$references, ...StepParts::effectTrackers($effect, $effectPath)];
+            foreach (StepParts::effectTrackers($effect, $effectPath) as $referencePath => $tracker) {
+                $references[$referencePath] = $tracker;
+            }
         }
 
         foreach ($references as $path => $tracker) {

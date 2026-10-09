@@ -1,7 +1,7 @@
 # Feature: flow-model-examples
 
 - **Locator:** `odd/tasks/flow-model-examples.md` · Engram topic `odd/flow-model-examples/tasks`
-- **Issue:** #37 · **Branch:** `docs/flow-model-examples-1-model` (from `main` `b97b0c5`)
+- **Issue:** #37 · **PR:** #38 · **Branch:** `docs/flow-model-examples-1-model` (from `main` `b97b0c5`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-brainstorm` (ADR 0017)
@@ -107,8 +107,8 @@ One slice (`docs/flow-model-examples-1-model`, PR `docs(flow): flow-model-exampl
 |---|---|---|---|---|
 | T1 | Feature doc; ADR 0018 "NarrativeFlow control flow and cast" (decisions, schema v2 additions, where each lands, accepted limits, deferred); ADR 0017 status note; ADR index | delegated writer (T1–T4, 7+ doc files) | [x] | `e50b9be` |
 | T2 | Glossary (new: Hook, Condition step, Act, Tag, Scene cast, Party; updated: Effect, Scene, World turn, Flow step, Character, NPC, Thread, FlowRun, Session, Tracker, Fact slot, Outcome band) and context map | delegated writer | [x] | `f6bc14f` |
-| T3 | Vision (resolve the four 6c questions, add six open questions) and roadmap (6c done, feature 7 prompt, notes in 8, 8b, 9, 9b, 10, 12, 13, backlog presets) | delegated writer | [x]  `e809e93` |
-| T4 | `docs/domain/flow-examples.md`: the five worked examples on the amended model | delegated writer | [x] | |
+| T3 | Vision (resolve the four 6c questions, add six open questions) and roadmap (6c done, feature 7 prompt, notes in 8, 8b, 9, 9b, 10, 12, 13, backlog presets) | delegated writer | [x] | `e809e93` |
+| T4 | `docs/domain/flow-examples.md`: the five worked examples on the amended model | delegated writer | [x] | `2a10ec7` |
 
 ## Acceptance criteria
 
@@ -127,3 +127,6 @@ One slice (`docs/flow-model-examples-1-model`, PR `docs(flow): flow-model-exampl
 - T2: glossary adds Act, Hook, Condition step, Tag, Party and Scene cast; updates Outcome band, Phase, World turn (a hook), Flow step, Effect, Tracker, Fact slot, Character, Session, Scene, FlowRun, Thread and NPC, linking ADR 0018. Context map: schema version 2 additions on the Published Language, Play concepts (Characters, party, Scene kind `hook`, cast, tags) and Studio concepts (hooks, act label, Effect, Tag). Structural readback done.
 - T3: vision resolves the four 6c questions (ADR 0018 in the "Resolved:" sentence; thread progress moves to the player-added trackers question) and adds six open questions with "decide when". Roadmap: 6c marked done; feature 7 prompt rewritten for ADR 0018 (schema version 2 with decisions 1–14, 17–19, contract fixtures, control-flow slice); prompts 8, 8b, 9, 9b (now a Cyberpunk RED heist fan preset), 10, 12 and 13 updated; "Settles" for 9, 9b and 13; three backlog fan presets with prompts. Links to `docs/domain/flow-examples.md` resolve once T4 lands. Structural readback done.
 - T4: `docs/domain/flow-examples.md` maps the five examples on ADR 0017 as amended by ADR 0018, each with its release (trackers with hints, fact slots, tags, Scene Types, tables), flow (phases, hooks and key steps) and "What it shows" (decisions exercised); a notation table and the fan-content note lead. Links from ADR 0018 and the roadmap (including example anchors) now resolve. Structural readback done.
+- Fix (`38464a6`), from the writer's report: the feature 7 prompt says parts of the examples that need features 8, 8b or 10 join the contract fixtures when those features land; the feature 18 prompt cites ADR 0018. The T3 table row's missing cell separator is fixed in the review commit.
+- Review: native review rated T1–T4 and the fix (`38464a6`, lineage `review-34f2f9ab06204bd6`) low risk (non-executable only); approved and acknowledged with no lenses.
+- Delivered: issue #37, PR #38 (`docs(flow): flow-model-examples 1/1 model`, closes #37). Feature complete once #38 is merged; next feature is 7 `play-flow-run`.

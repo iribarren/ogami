@@ -7,9 +7,9 @@ namespace App\Studio\Domain\Release\Version2;
 /**
  * Authoring warnings of a valid schema version 2 release (ADR 0018, decision 7): a threshold
  * consequence must lower its tracker, or it fires on every turn. In one step list, when a
- * "condition" on tracker T is followed (in the same step or a later one) by a nextScene S effect,
- * and Scene Type S has no effect lowering T ("set", or "add" with a negative literal), the release
- * publishes with a warning. Warnings are computed, never stored.
+ * "condition" on tracker T decides a nextScene S effect (some of its bands reach the effect, not
+ * all of them), and Scene Type S has no effect lowering T ("set", or "add" with a negative
+ * literal), the release publishes with a warning. Warnings are computed, never stored.
  *
  * @internal
  */
@@ -48,28 +48,133 @@ final class AuthoringWarnings
 
         $warnings = [];
         foreach ($lists as $path => $steps) {
-            $conditioned = [];
             foreach ($steps as $index => $step) {
-                $stepPath = \sprintf('%s[%d]', $path, $index);
-                if ('condition' === $step['kind'] && \is_string($step['tracker'])) {
-                    $conditioned[$step['tracker']] = true;
+                if ('condition' !== $step['kind'] || !\is_string($step['tracker'])) {
+                    continue;
                 }
 
-                foreach (StepParts::effects($step, $stepPath) as $effect) {
-                    if ('nextScene' !== $effect['kind'] || !\is_string($effect['sceneType'])) {
-                        continue;
-                    }
-
-                    foreach (array_keys($conditioned) as $tracker) {
-                        if (!isset($lowered[$effect['sceneType']][$tracker])) {
-                            $warnings[] = \sprintf('%s: nextScene %s does not lower tracker %s; the consequence may fire every turn', $stepPath, $effect['sceneType'], $tracker);
-                        }
+                foreach (self::consequences($steps, $index, $path) as [$stepPath, $sceneType]) {
+                    if (!isset($lowered[$sceneType][$step['tracker']])) {
+                        $warnings[] = \sprintf('%s: nextScene %s does not lower tracker %s; the consequence may fire every turn', $stepPath, $sceneType, $step['tracker']);
                     }
                 }
             }
         }
 
         return array_values(array_unique($warnings));
+    }
+
+    /**
+     * The nextScene effects the condition at $index decides: reached from some of its bands but
+     * not from all of them. A band reaches its own effects and every effect of the steps its
+     * "next" (or the condition's default) leads to, following every outcome forward until "end".
+     *
+     * @param list<array<string, mixed>> $steps
+     *
+     * @return list<array{string, string}> [path of the step holding the effect, Scene Type key]
+     */
+    private static function consequences(array $steps, int $index, string $path): array
+    {
+        $keys = [];
+        foreach ($steps as $at => $step) {
+            if (\is_string($step['key'])) {
+                $keys[$step['key']] = $at;
+            }
+        }
+
+        $condition = $steps[$index];
+        $reached = [];
+        foreach (self::outcomes($condition['bands']) as $bandIndex => $band) {
+            $stepPath = \sprintf('%s[%d]', $path, $index);
+            $found = self::nextScenes(StepParts::effectList($band, \sprintf('%s.bands[%d]', $stepPath, $bandIndex)), $stepPath);
+            $pending = [self::target($band['next'] ?? $condition['next'] ?? null, $index, $keys)];
+            $visited = [];
+            while ([] !== $pending) {
+                $at = array_pop($pending);
+                if (null === $at || isset($visited[$at]) || !isset($steps[$at])) {
+                    continue;
+                }
+
+                $visited[$at] = true;
+                $stepPath = \sprintf('%s[%d]', $path, $at);
+                $found += self::nextScenes(StepParts::effects($steps[$at], $stepPath), $stepPath);
+                foreach (self::successors($steps[$at]) as $next) {
+                    $pending[] = self::target($next, $at, $keys);
+                }
+            }
+
+            $reached[] = $found;
+        }
+
+        $everyBand = array_intersect_key(...$reached);
+        $decided = array_diff_key(array_merge(...$reached), $everyBand);
+        ksort($decided, \SORT_NATURAL);
+
+        return array_values($decided);
+    }
+
+    /**
+     * @param iterable<string, array<string, mixed>> $effects
+     *
+     * @return array<string, array{string, string}> effect path => [step path, Scene Type key]
+     */
+    private static function nextScenes(iterable $effects, string $stepPath): array
+    {
+        $found = [];
+        foreach ($effects as $effectPath => $effect) {
+            if ('nextScene' === $effect['kind'] && \is_string($effect['sceneType'])) {
+                $found[$effectPath] = [$stepPath, $effect['sceneType']];
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * The "next" values a step may continue with (null: the following step).
+     *
+     * @param array<string, mixed> $step
+     *
+     * @return list<mixed>
+     */
+    private static function successors(array $step): array
+    {
+        $default = $step['next'] ?? null;
+        $outcomes = [...self::outcomes($step['bands'] ?? []), ...self::outcomes($step['options'] ?? []), ...self::outcomes($step['branches'] ?? []), ...self::outcomes([$step['otherwise'] ?? null])];
+        $nexts = array_map(static fn (array $outcome): mixed => $outcome['next'] ?? $default, $outcomes);
+        $exhaustive = \in_array($step['kind'], ['condition', 'choice'], true)
+            || ('roll' === $step['kind'] && [] !== $outcomes)
+            || isset($step['otherwise'])
+            || (\is_array($step['branches'] ?? null) && isset($step['branches']['yes'], $step['branches']['no']));
+
+        return $exhaustive ? $nexts : [...$nexts, $default];
+    }
+
+    /**
+     * The outcomes of a canonical list or map; an empty band is an \stdClass with no parts.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function outcomes(mixed $value): array
+    {
+        $outcomes = [];
+        foreach (\is_array($value) ? $value : [] as $outcome) {
+            if (\is_array($outcome) || $outcome instanceof \stdClass) {
+                /** @var array<string, mixed> $outcome */
+                $outcome = (array) $outcome;
+                $outcomes[] = $outcome;
+            }
+        }
+
+        return $outcomes;
+    }
+
+    /**
+     * @param array<string, int> $keys step key => index
+     */
+    private static function target(mixed $next, int $from, array $keys): ?int
+    {
+        return \is_string($next) ? $keys[$next] ?? null : $from + 1;
     }
 
     /**

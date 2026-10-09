@@ -18,7 +18,7 @@ Parts that need a later feature are left out: the step stays as a plain `prompt`
 | `createNpc` for the Prince, touchstone, ally and new arrivals; `createThread` for the ambition and the session desire; `closeThread` when the desire is met | 8 |
 | `fillFact` for every slot; slot hints "Long-term" / "Short-term, renewed each session"; `{fact:ambition}` in the session opening | 8b |
 
-The masquerade uses the roll-under style. The fixed-threshold style in the same world turn as the hunters `condition` would warn, since the warning counts every earlier `condition` of the step list: before it, Hunters strike "does not lower masquerade"; after it, Inquisition raid "does not lower hunters".
+The masquerade uses the fixed-threshold style (`condition masquerade`: up to 7 nothing, above it Inquisition raid) at the start of the world turn, next to the hunters `condition`. The warning follows branches, so each forced Scene Type is checked only against the condition that decides it (`AuthoringWarningsTest` pins both orders).
 
 Warnings: none (Hunters strike sets `hunters` to 0, Inquisition raid sets `masquerade` to 4).
 

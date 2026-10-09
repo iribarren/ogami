@@ -194,11 +194,13 @@ Any other placeholder fails with "not supported in schema version 2". Feature 8 
 
 Decision 7 of ADR 0018: a threshold consequence must lower its tracker, or it fires on every turn.
 
-In one step list, when a `condition` on tracker T is followed (in the same step or a later step) by a `nextScene` S effect, and Scene Type S has no effect lowering T (`set`, or `add` with a negative literal), the release is still valid and publishing succeeds with a warning:
+In one step list, when a `condition` on tracker T decides a `nextScene` S effect, and Scene Type S has no effect lowering T (`set`, or `add` with a negative literal), the release is still valid and publishing succeeds with a warning:
 
 ```text
 flows[0].phases[1].worldTurn[1]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn
 ```
+
+The condition decides the effect when some of its bands reach it and others do not. A band reaches its own effects and every effect of the steps it leads to: its `next` (or the condition's `next`, or the following step), then every outcome of each step reached, forward until `end`. An effect every band reaches happens whatever T is, so it does not warn: two thresholds in one world turn (a `condition` on `masquerade`, then one on `hunters`, each forcing its own Scene Type) warn only when a forced Scene Type does not lower its own tracker. A forced Scene Type warns once per step and tracker.
 
 Only S's own step effects count as lowering T (in any of its parts, including bands, branches and options). Effects of table entries that S rolls do not: they lower T only by chance, so a forced Scene Type whose relief comes from a rolled entry still warns.
 

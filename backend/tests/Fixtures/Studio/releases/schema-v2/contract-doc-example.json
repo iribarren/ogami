@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "example-heist",
+    "name": "Example heist",
+    "description": "A small game system that shows the parts of schema version 2."
+  },
+  "oracles": {
+    "tables": [
+      {
+        "key": "heist-scenes",
+        "name": "Heist scenes",
+        "dice": "1d6",
+        "entries": [
+          {"min": 1, "max": 4, "text": "Sneak in", "sceneType": "infiltration"},
+          {"min": 5, "max": 6, "text": "Shots fired", "sceneType": "firefight"}
+        ]
+      },
+      {
+        "key": "complications",
+        "name": "Complications",
+        "entries": [
+          {"text": "Patrol", "key": "patrol", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+          {"text": "Lucky break", "key": "lucky-break", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": -1}]},
+          {"text": "Spotted!", "key": "spotted", "sceneType": "firefight"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "fate",
+        "name": "Fate question",
+        "sides": 100,
+        "levels": [
+          {"key": "unlikely", "label": "Unlikely", "target": 35},
+          {"key": "even", "label": "50/50", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 65}
+        ],
+        "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5, "tracker": "chaos"},
+        "exceptionalPercent": 20
+      }
+    ]
+  },
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "hint": "At 6/6 security locks down: you run", "kind": "clock", "segments": 6},
+    {"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "No edge"}, {"label": "An edge"}]},
+    {"key": "chaos", "name": "Chaos factor", "kind": "counter", "min": 1, "max": 9, "initial": 5}
+  ],
+  "factSlots": [
+    {"key": "target", "label": "Target", "type": "text"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "legwork",
+      "name": "Legwork",
+      "purpose": "Learn about the target.",
+      "oracles": ["fate"],
+      "setup": [
+        {"key": "goal", "kind": "prompt", "title": "What do you want to learn?", "mandatory": true}
+      ],
+      "play": [],
+      "closing": [
+        {
+          "key": "gain-edge",
+          "kind": "choice",
+          "title": "Did you gain an edge?",
+          "options": [
+            {"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": 1}]},
+            {"key": "no", "label": "No"}
+          ],
+          "skip": "no"
+        }
+      ]
+    },
+    {
+      "key": "infiltration",
+      "name": "Infiltration",
+      "purpose": "Get inside unseen.",
+      "oracles": ["fate", "complications"],
+      "setup": [],
+      "play": [
+        {
+          "key": "slip-past",
+          "kind": "oracle",
+          "title": "Do you slip past?",
+          "oracle": "fate",
+          "likelihood": "even",
+          "branches": {
+            "no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+            "exceptionalNo": {"effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}
+          }
+        },
+        {
+          "key": "complication",
+          "kind": "table",
+          "title": "What gets in the way?",
+          "table": "complications",
+          "branches": [{"entry": "spotted", "effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}],
+          "otherwise": {"next": "end"}
+        }
+      ],
+      "closing": []
+    },
+    {
+      "key": "firefight",
+      "name": "Firefight",
+      "purpose": "Shoot your way out.",
+      "tips": "Keep it short and loud.",
+      "oracles": ["fate"],
+      "setup": [
+        {
+          "key": "who-shoots",
+          "kind": "prompt",
+          "title": "Who opens fire?",
+          "effects": [
+            {"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0},
+            {"kind": "sceneTitle", "title": "Firefight: {answer}"}
+          ]
+        }
+      ],
+      "play": [],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "heist",
+      "name": "Heist",
+      "description": "Plan the job, break in, get out.",
+      "introduction": "Learn what you can, then go in. Watch the alarm.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["fate", "complications"],
+      "trackers": ["alarm", "edge", "chaos"],
+      "phases": [
+        {
+          "key": "legwork",
+          "name": "Legwork",
+          "act": "Act 1",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["legwork"]},
+          "sessionOpening": [
+            {"key": "recap", "kind": "prompt", "title": "Where did you leave off?"}
+          ],
+          "worldTurn": [
+            {
+              "key": "word",
+              "kind": "roll",
+              "title": "Does word get around?",
+              "dice": "1d6",
+              "bands": [
+                {"upTo": 1, "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+                {}
+              ]
+            }
+          ]
+        },
+        {
+          "key": "the-heist",
+          "name": "The heist",
+          "act": "Act 2",
+          "mode": "loop",
+          "selection": {"rule": "oracle", "table": "heist-scenes"},
+          "sceneOpening": [
+            {"key": "pressure", "kind": "condition", "title": "How alert is security?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {}]},
+            {"key": "notice", "kind": "prompt", "title": "Security is on edge", "prompt": "The alarm is at {tracker:alarm}. What do you notice?"}
+          ],
+          "sceneClosing": [
+            {"key": "lockdown", "kind": "condition", "title": "Is the alarm full?", "tracker": "alarm", "bands": [{"upTo": 5}, {"effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "response", "kind": "condition", "title": "Does security respond?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {}]},
+            {"key": "guards", "kind": "roll", "title": "Do the guards find you?", "dice": "1d6", "bands": [{"upTo": 3, "effects": [{"kind": "nextScene", "sceneType": "firefight"}]}, {}]}
+          ]
+        },
+        {
+          "key": "getaway",
+          "name": "Getaway",
+          "mode": "once",
+          "selection": {"rule": "sequence", "sceneTypes": ["firefight"]},
+          "phaseClosing": [
+            {"key": "debrief", "kind": "prompt", "title": "Was {step:goal} worth it?"}
+          ]
+        }
+      ]
+    }
+  ],
+  "sheet": {},
+  "checks": []
+}

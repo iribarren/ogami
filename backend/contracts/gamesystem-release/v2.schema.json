@@ -1,0 +1,620 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ogami.app/contracts/gamesystem-release/v2.schema.json",
+  "title": "GameSystem release, schema version 2",
+  "description": "The Published Language between Studio and Play: the content of one immutable GameSystem release with trackers, fact slots, Scene Types and NarrativeFlows (ADR 0017, ADR 0018). This schema encodes the structural rules only. Semantic rules are enforced by the Studio domain and are not expressible here: every rule of schema version 1, unique keys (trackers, fact slots, Scene Types, flows, phases, steps, choice options, table entries, table branches), forward-only \"next\", band ordering, references to trackers, Scene Types, oracles, levels and entries, the trackers and oracles each flow may use, at most one default flow, counter and chaos tracker ranges, suggested choices naming \"skip\", oracle-selection tables, dice notation, placeholders and trimmed lengths. Optional fields may be omitted or null. See docs/contracts/gamesystem-release.md.",
+  "type": "object",
+  "required": ["schemaVersion", "gameSystem", "oracles", "trackers", "factSlots", "sceneTypes", "flows", "sheet", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "description": "Version of this contract. Not the release version, which Studio assigns when publishing.",
+      "const": 2
+    },
+    "gameSystem": { "$ref": "#/$defs/gameSystem" },
+    "oracles": { "$ref": "#/$defs/oracles" },
+    "trackers": {
+      "description": "Counters and clocks a Campaign holds a value for. May be empty.",
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/tracker" }
+    },
+    "factSlots": {
+      "description": "Declared only in schema version 2: feature 8b fills them. May be empty.",
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/factSlot" }
+    },
+    "sceneTypes": {
+      "description": "Release-level Scene Types the flows select. May be empty.",
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/sceneType" }
+    },
+    "flows": {
+      "description": "NarrativeFlows. May be empty: the GameSystem is then played freely.",
+      "type": "array",
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/flow" }
+    },
+    "sheet": {
+      "description": "Reserved; must be empty in schema version 2.",
+      "type": "object",
+      "maxProperties": 0
+    },
+    "checks": {
+      "description": "Reserved; must be empty in schema version 2.",
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "$defs": {
+    "key": {
+      "description": "Lowercase identifier: a-z, 0-9 and \"-\", 1 to 64 characters.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$"
+    },
+    "optionalKey": {
+      "anyOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }]
+    },
+    "uniqueKeys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/key" }
+    },
+    "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "optionalText2000": { "type": ["string", "null"], "maxLength": 2000 },
+    "optionalFlag": { "type": ["boolean", "null"] },
+    "trackerRef": {
+      "description": "The current value of a tracker.",
+      "type": "object",
+      "required": ["tracker"],
+      "additionalProperties": false,
+      "properties": {
+        "tracker": { "$ref": "#/$defs/key" }
+      }
+    },
+    "gameSystem": {
+      "type": "object",
+      "required": ["key", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": ["string", "null"], "maxLength": 2000 }
+      }
+    },
+    "oracles": {
+      "type": "object",
+      "required": ["tables", "likelihood"],
+      "additionalProperties": false,
+      "properties": {
+        "tables": {
+          "description": "One oracle table set (Randomness OracleTableSet). May be empty.",
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/oracleTable" }
+        },
+        "likelihood": {
+          "description": "Likelihood oracles (Randomness LikelihoodOracle). May be empty.",
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/likelihoodOracle" }
+        }
+      }
+    },
+    "oracleTable": {
+      "description": "A ranged table has \"dice\" and entries with \"min\" and \"max\"; a weighted table has no \"dice\" and entries with an optional \"weight\".",
+      "type": "object",
+      "required": ["key", "name", "entries"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "dice": { "description": "Dice notation, e.g. 1d6; ranged tables only.", "type": ["string", "null"] },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": { "$ref": "#/$defs/oracleTableEntry" }
+        }
+      }
+    },
+    "oracleTableEntry": {
+      "description": "An entry needs a non-empty \"text\" unless it nests a \"table\".",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": ["integer", "null"] },
+        "max": { "type": ["integer", "null"] },
+        "weight": { "type": ["integer", "null"], "minimum": 1 },
+        "text": { "type": ["string", "null"], "maxLength": 500 },
+        "table": {
+          "description": "Key of a table of the same set to roll on next.",
+          "$ref": "#/$defs/optionalKey"
+        },
+        "key": {
+          "description": "Names the entry for table-step branches; unique within its table.",
+          "$ref": "#/$defs/optionalKey"
+        },
+        "sceneType": {
+          "description": "A Scene Type this entry offers or selects.",
+          "$ref": "#/$defs/optionalKey"
+        },
+        "effects": {
+          "description": "Applied when a flow step rolls the entry.",
+          "$ref": "#/$defs/optionalEffects"
+        }
+      }
+    },
+    "likelihoodOracle": {
+      "type": "object",
+      "required": ["key", "name", "sides", "levels"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "sides": { "type": "integer", "minimum": 2, "maximum": 1000 },
+        "levels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/likelihoodLevel" }
+        },
+        "chaos": {
+          "anyOf": [{ "$ref": "#/$defs/likelihoodChaos" }, { "type": "null" }]
+        },
+        "exceptionalPercent": { "type": ["integer", "null"], "minimum": 0, "maximum": 50 }
+      }
+    },
+    "likelihoodLevel": {
+      "type": "object",
+      "required": ["key", "label", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "target": { "description": "Highest roll that answers yes at the neutral chaos factor; 0..sides.", "type": "integer", "minimum": 0 }
+      }
+    },
+    "likelihoodChaos": {
+      "type": "object",
+      "required": ["min", "max", "neutral", "shiftPerPoint"],
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "integer", "minimum": -1000 },
+        "max": { "type": "integer", "maximum": 1000 },
+        "neutral": { "type": "integer" },
+        "shiftPerPoint": { "type": "integer", "minimum": 0 },
+        "tracker": {
+          "description": "A counter tracker whose min and max equal this chaos min and max; its value is the chaos factor.",
+          "$ref": "#/$defs/optionalKey"
+        }
+      }
+    },
+    "tracker": {
+      "oneOf": [{ "$ref": "#/$defs/counterTracker" }, { "$ref": "#/$defs/clockTracker" }]
+    },
+    "counterTracker": {
+      "type": "object",
+      "required": ["key", "name", "kind", "min", "max", "initial"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "kind": { "const": "counter" },
+        "min": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+        "max": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+        "initial": { "description": "min <= initial <= max.", "type": "integer", "minimum": -1000, "maximum": 1000 },
+        "levels": {
+          "description": "Named ranges of the value, ordered like outcome bands with literal upTo only.",
+          "type": ["array", "null"],
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/counterLevel" }
+        }
+      }
+    },
+    "clockTracker": {
+      "type": "object",
+      "required": ["key", "name", "kind", "segments"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "kind": { "const": "clock" },
+        "segments": { "description": "A clock starts at 0 and fills up to segments.", "type": "integer", "minimum": 1, "maximum": 20 }
+      }
+    },
+    "counterLevel": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "upTo": { "type": ["integer", "null"] },
+        "label": { "$ref": "#/$defs/label" }
+      }
+    },
+    "factSlot": {
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "type": { "enum": ["text", "npc", "thread"] }
+      }
+    },
+    "sceneType": {
+      "type": "object",
+      "required": ["key", "name", "purpose", "oracles", "setup", "play", "closing"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/label" },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "tips": { "$ref": "#/$defs/optionalText2000" },
+        "oracles": {
+          "description": "Oracle shortcuts of this Scene Type: keys of oracle tables or likelihood oracles.",
+          "$ref": "#/$defs/uniqueKeys",
+          "maxItems": 70
+        },
+        "setup": { "$ref": "#/$defs/steps" },
+        "play": { "$ref": "#/$defs/steps" },
+        "closing": { "$ref": "#/$defs/steps" }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": ["key", "name", "defaultView", "oracles", "trackers", "phases"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/label" },
+        "description": { "$ref": "#/$defs/optionalText2000" },
+        "introduction": { "type": ["string", "null"], "maxLength": 5000 },
+        "default": { "$ref": "#/$defs/optionalFlag" },
+        "defaultView": { "enum": ["focus", "journal"] },
+        "oracles": {
+          "description": "Oracles the flow shows; every reachable Scene Type's oracles are among them.",
+          "$ref": "#/$defs/uniqueKeys",
+          "maxItems": 70
+        },
+        "trackers": {
+          "description": "Trackers the flow shows and uses; every tracker reference the flow reaches is among them.",
+          "$ref": "#/$defs/uniqueKeys",
+          "maxItems": 50
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/phase" }
+        }
+      }
+    },
+    "phase": {
+      "type": "object",
+      "required": ["key", "name", "mode", "selection"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/label" },
+        "act": { "type": ["string", "null"], "minLength": 1, "maxLength": 100 },
+        "mode": { "enum": ["once", "loop"] },
+        "selection": { "$ref": "#/$defs/selection" },
+        "sessionOpening": { "$ref": "#/$defs/optionalSteps" },
+        "sessionClosing": { "$ref": "#/$defs/optionalSteps" },
+        "phaseOpening": { "$ref": "#/$defs/optionalSteps" },
+        "phaseClosing": { "$ref": "#/$defs/optionalSteps" },
+        "sceneOpening": { "$ref": "#/$defs/optionalSteps" },
+        "sceneClosing": { "$ref": "#/$defs/optionalSteps" },
+        "worldTurn": { "$ref": "#/$defs/optionalSteps" }
+      }
+    },
+    "selection": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["rule", "sceneTypes"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": { "const": "sequence" },
+            "sceneTypes": { "description": "Played in order; a type may repeat.", "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/key" } }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "sceneTypes"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": { "const": "player" },
+            "sceneTypes": { "description": "One card per type.", "$ref": "#/$defs/uniqueKeys", "minItems": 1, "maxItems": 20 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["rule", "table"],
+          "additionalProperties": false,
+          "properties": {
+            "rule": { "const": "oracle" },
+            "table": { "description": "An oracle table whose every entry names a sceneType.", "$ref": "#/$defs/key" }
+          }
+        }
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "optionalSteps": {
+      "description": "A hook step list; empty by default.",
+      "type": ["array", "null"],
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "stepKey": {
+      "description": "Key rule; \"end\" is reserved for \"next\".",
+      "$ref": "#/$defs/key",
+      "not": { "const": "end" }
+    },
+    "next": {
+      "description": "A later step key of the same list, or \"end\" to end the part.",
+      "$ref": "#/$defs/optionalKey"
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/promptStep" },
+        { "$ref": "#/$defs/oracleStep" },
+        { "$ref": "#/$defs/tableStep" },
+        { "$ref": "#/$defs/rollStep" },
+        { "$ref": "#/$defs/choiceStep" },
+        { "$ref": "#/$defs/conditionStep" }
+      ]
+    },
+    "promptStep": {
+      "description": "The player writes an answer.",
+      "type": "object",
+      "required": ["key", "kind", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "prompt" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" }
+      }
+    },
+    "oracleStep": {
+      "description": "Asks a likelihood oracle and branches on its answer.",
+      "type": "object",
+      "required": ["key", "kind", "title", "oracle"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "oracle" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "oracle": { "description": "A likelihood oracle key.", "$ref": "#/$defs/key" },
+        "likelihood": { "description": "A level key of that oracle.", "$ref": "#/$defs/optionalKey" },
+        "branches": {
+          "description": "An exceptional answer without its branch uses yes / no.",
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "yes": { "$ref": "#/$defs/optionalOutcome" },
+                "no": { "$ref": "#/$defs/optionalOutcome" },
+                "exceptionalYes": { "$ref": "#/$defs/optionalOutcome" },
+                "exceptionalNo": { "$ref": "#/$defs/optionalOutcome" }
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "tableStep": {
+      "description": "Rolls an oracle table and branches per rolled entry.",
+      "type": "object",
+      "required": ["key", "kind", "title", "table"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "table" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "table": { "description": "An oracle table key.", "$ref": "#/$defs/key" },
+        "branches": {
+          "type": ["array", "null"],
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": ["entry"],
+            "additionalProperties": false,
+            "properties": {
+              "entry": { "description": "An entry key of the step's table, unique in the list.", "$ref": "#/$defs/key" },
+              "next": { "$ref": "#/$defs/next" },
+              "effects": { "$ref": "#/$defs/optionalEffects" }
+            }
+          }
+        },
+        "otherwise": { "$ref": "#/$defs/optionalOutcome" }
+      }
+    },
+    "rollStep": {
+      "description": "Rolls dice and branches on the total.",
+      "type": "object",
+      "required": ["key", "kind", "title", "dice"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "roll" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "dice": { "description": "Dice notation, e.g. 1d6.", "type": "string", "minLength": 1, "maxLength": 100 },
+        "bands": {
+          "type": ["array", "null"],
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/band" }
+        }
+      }
+    },
+    "choiceStep": {
+      "description": "The player picks one option. A suggested choice names the option a skip follows.",
+      "type": "object",
+      "required": ["key", "kind", "title", "options"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "choice" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["key", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "$ref": "#/$defs/key" },
+              "label": { "$ref": "#/$defs/label" },
+              "next": { "$ref": "#/$defs/next" },
+              "effects": { "$ref": "#/$defs/optionalEffects" }
+            }
+          }
+        },
+        "skip": { "description": "The option key a skipped choice follows.", "$ref": "#/$defs/optionalKey" }
+      }
+    },
+    "conditionStep": {
+      "description": "Compares a tracker to bands; never mandatory, never skipped, writes no entry.",
+      "type": "object",
+      "required": ["key", "kind", "title", "tracker", "bands"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "condition" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "enum": [false, null] },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "tracker": { "$ref": "#/$defs/key" },
+        "bands": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/band" }
+        }
+      }
+    },
+    "optionalOutcome": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "next": { "$ref": "#/$defs/next" },
+            "effects": { "$ref": "#/$defs/optionalEffects" }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "band": {
+      "description": "An outcome band: ordered upper bounds; only the last omits upTo and catches the rest.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "upTo": {
+          "anyOf": [{ "type": "integer" }, { "$ref": "#/$defs/trackerRef" }, { "type": "null" }]
+        },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" }
+      }
+    },
+    "optionalEffects": {
+      "type": ["array", "null"],
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/effect" }
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "tracker", "op", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "tracker" },
+            "tracker": { "$ref": "#/$defs/key" },
+            "op": { "enum": ["add", "set"] },
+            "value": {
+              "anyOf": [{ "type": "integer", "minimum": -1000, "maximum": 1000 }, { "$ref": "#/$defs/trackerRef" }]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "sceneType"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "nextScene" },
+            "sceneType": { "$ref": "#/$defs/key" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "sceneType"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "switchSceneType" },
+            "sceneType": { "$ref": "#/$defs/key" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "endPhase" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "title"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "sceneTitle" },
+            "title": { "$ref": "#/$defs/label" }
+          }
+        }
+      ]
+    }
+  }
+}

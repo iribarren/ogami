@@ -7,7 +7,7 @@ namespace App\Tests\Support\Play;
 use App\Studio\Application\PublishedReleaseView;
 
 /**
- * Builds the PublishedReleaseView Studio hands Play, from the contract-doc example release file.
+ * Builds the PublishedReleaseView Studio hands Play, from the release fixture files.
  */
 final class ReleaseViews
 {
@@ -20,6 +20,19 @@ final class ReleaseViews
     {
         /** @var array<string, mixed> $content */
         $content = json_decode((string) file_get_contents(self::CONTRACT_DOC_EXAMPLE), true, flags: \JSON_THROW_ON_ERROR);
+
+        return $content;
+    }
+
+    /**
+     * @param string $name a fixture of tests/Fixtures/Studio/releases, e.g. "valid/v2-scene-types"
+     *
+     * @return array<string, mixed> the decoded release file, objects as string-keyed arrays
+     */
+    public static function fixtureContent(string $name): array
+    {
+        /** @var array<string, mixed> $content */
+        $content = json_decode((string) file_get_contents(__DIR__.'/../../Fixtures/Studio/releases/'.$name.'.json'), true, flags: \JSON_THROW_ON_ERROR);
 
         return $content;
     }

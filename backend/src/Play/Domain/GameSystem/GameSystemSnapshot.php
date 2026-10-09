@@ -6,23 +6,35 @@ namespace App\Play\Domain\GameSystem;
 
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableSet;
+use App\Randomness\Domain\Oracle\OracleTableStep;
 use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
  * Play's own, immutable reading of one published GameSystem release: what a campaign plays with.
- * Built by Play's anti-corruption layer; it holds no Studio types.
+ * Built by Play's anti-corruption layer; it holds no Studio types. A schema version 1 release has
+ * no trackers, fact slots, Scene Types or table entry metadata.
  */
 final readonly class GameSystemSnapshot
 {
     /** @var array<string, SnapshotLikelihoodOracle> */
     private array $likelihoodOracles;
 
+    /** @var array<string, Tracker> */
+    private array $trackers;
+
+    /** @var array<string, SceneType> */
+    private array $sceneTypes;
+
     /**
-     * @param ?OracleTableSet                $oracleTables      null when the release has no oracle tables
-     * @param list<SnapshotLikelihoodOracle> $likelihoodOracles in definition order, unique keys
-     * @param list<FlowStep>                 $flowSteps         in flow order, unique keys
+     * @param ?OracleTableSet                         $oracleTables      null when the release has no oracle tables
+     * @param list<SnapshotLikelihoodOracle>          $likelihoodOracles in definition order, unique keys
+     * @param list<FlowStep>                          $flowSteps         in flow order, unique keys
+     * @param list<Tracker>                           $trackers          in definition order, unique keys
+     * @param list<FactSlot>                          $factSlots         in definition order
+     * @param list<SceneType>                         $sceneTypes        in definition order, unique keys
+     * @param array<string, list<TableEntryMetadata>> $tableEntries      per table key, one per entry in entry order
      *
-     * @throws InvalidGameSystemRelease when two likelihood oracles or two flow steps share a key
+     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers or Scene Types share a key
      */
     public function __construct(
         private string $gameSystemKey,
@@ -31,6 +43,10 @@ final readonly class GameSystemSnapshot
         private ?OracleTableSet $oracleTables,
         array $likelihoodOracles,
         private array $flowSteps,
+        array $trackers = [],
+        private array $factSlots = [],
+        array $sceneTypes = [],
+        private array $tableEntries = [],
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -45,6 +61,8 @@ final readonly class GameSystemSnapshot
         }
 
         $this->likelihoodOracles = $byKey;
+        $this->trackers = $this->byKey($trackers, 'trackers');
+        $this->sceneTypes = $this->byKey($sceneTypes, 'sceneTypes');
     }
 
     public function gameSystemKey(): string
@@ -130,6 +148,79 @@ final readonly class GameSystemSnapshot
     public function flowSteps(): array
     {
         return $this->flowSteps;
+    }
+
+    /**
+     * @return list<Tracker> in definition order
+     */
+    public function trackers(): array
+    {
+        return array_values($this->trackers);
+    }
+
+    public function tracker(string $key): ?Tracker
+    {
+        return $this->trackers[$key] ?? null;
+    }
+
+    /**
+     * @return list<FactSlot> in definition order
+     */
+    public function factSlots(): array
+    {
+        return $this->factSlots;
+    }
+
+    /**
+     * @return list<SceneType> in definition order
+     */
+    public function sceneTypes(): array
+    {
+        return array_values($this->sceneTypes);
+    }
+
+    public function sceneType(string $key): ?SceneType
+    {
+        return $this->sceneTypes[$key] ?? null;
+    }
+
+    /**
+     * The key, Scene Type and Effects of the entry a table roll selected; null without metadata.
+     */
+    public function rolledEntry(OracleTableStep $step): ?TableEntryMetadata
+    {
+        if (!$this->oracleTables instanceof OracleTableSet || !$this->hasOracleTable($step->tableKey())) {
+            return null;
+        }
+
+        $table = $this->oracleTables->table($step->tableKey());
+        $weight = 0;
+        foreach ($table->entries() as $index => $entry) {
+            $weight += $entry->weight() ?? 0;
+            if ($table->isRanged() ? $entry->covers($step->total()) : $step->total() <= $weight) {
+                return $this->tableEntries[$step->tableKey()][$index] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @template T of Tracker|SceneType
+     *
+     * @param list<T> $parts
+     *
+     * @return array<string, T>
+     */
+    private function byKey(array $parts, string $path): array
+    {
+        $byKey = [];
+        foreach ($parts as $index => $part) {
+            $this->assertUnique($part->key, $byKey, \sprintf('%s[%d].key', $path, $index));
+            $byKey[$part->key] = $part;
+        }
+
+        return $byKey;
     }
 
     /**

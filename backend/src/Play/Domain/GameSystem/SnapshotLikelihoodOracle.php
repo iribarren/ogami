@@ -7,7 +7,8 @@ namespace App\Play\Domain\GameSystem;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
 
 /**
- * A likelihood oracle of a GameSystem snapshot: its key and name in the GameSystem, and the oracle.
+ * A likelihood oracle of a GameSystem snapshot: its key and name in the GameSystem, the oracle and,
+ * when set, the Tracker whose value is its chaos factor.
  */
 final readonly class SnapshotLikelihoodOracle
 {
@@ -15,6 +16,7 @@ final readonly class SnapshotLikelihoodOracle
         private string $key,
         private string $name,
         private LikelihoodOracle $oracle,
+        private ?string $chaosTracker = null,
     ) {
     }
 
@@ -31,5 +33,10 @@ final readonly class SnapshotLikelihoodOracle
     public function oracle(): LikelihoodOracle
     {
         return $this->oracle;
+    }
+
+    public function chaosTracker(): ?string
+    {
+        return $this->chaosTracker;
     }
 }

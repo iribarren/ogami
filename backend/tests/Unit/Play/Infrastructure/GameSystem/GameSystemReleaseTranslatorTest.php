@@ -138,9 +138,9 @@ final class GameSystemReleaseTranslatorTest extends TestCase
     public function anUnsupportedSchemaVersionIsRejected(): void
     {
         $this->expectException(UnsupportedReleaseSchemaVersion::class);
-        $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 uses schema version 2; Play supports schema version(s) 1.');
+        $this->expectExceptionMessageIsOrContains('GameSystem "example-journal" v1 uses schema version 3; Play supports schema version(s) 1, 2.');
 
-        $this->translator->translate(ReleaseViews::of(ReleaseViews::contractDocExampleContent(), schemaVersion: 2));
+        $this->translator->translate(ReleaseViews::of(ReleaseViews::contractDocExampleContent(), schemaVersion: 3));
     }
 
     #[Test]

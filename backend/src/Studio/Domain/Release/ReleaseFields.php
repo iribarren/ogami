@@ -18,6 +18,7 @@ final class ReleaseFields
 
     /**
      * Checks a JSON object against its fields and returns it in field order, without null values.
+     * An empty \stdClass (an empty object of a canonical array) counts as an empty object.
      *
      * @param array<string, bool> $fields name => required, in schema order
      *
@@ -25,6 +26,10 @@ final class ReleaseFields
      */
     public static function object(mixed $value, string $path, array $fields): array
     {
+        if ($value instanceof \stdClass && [] === get_object_vars($value)) {
+            $value = [];
+        }
+
         if (!\is_array($value) || ([] !== $value && array_is_list($value))) {
             throw InvalidReleaseContent::at($path, 'must be an object');
         }
@@ -147,6 +152,15 @@ final class ReleaseFields
 
         if ($value > $max) {
             throw InvalidReleaseContent::at($path, \sprintf('must be at most %d, %d given', $max, $value));
+        }
+
+        return $value;
+    }
+
+    public static function boolean(mixed $value, string $path): bool
+    {
+        if (!\is_bool($value)) {
+            throw InvalidReleaseContent::at($path, 'must be a boolean');
         }
 
         return $value;

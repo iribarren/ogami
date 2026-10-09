@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin"}, {"key": "again", "kind": "prompt", "title": "Again", "next": "begin"}], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

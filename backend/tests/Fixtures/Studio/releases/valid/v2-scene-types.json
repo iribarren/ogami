@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "scene-types", "name": "Scene Types", "description": "Scene Types with every step kind, band and effect, and table entries naming a Scene Type or carrying effects."},
+  "oracles": {
+    "tables": [
+      {"key": "complications", "name": "Complications", "entries": [{"text": "Patrol", "key": "patrol", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {"text": "Spotted!", "key": "spotted", "sceneType": "firefight"}, {"text": "", "key": "run", "table": "escape-routes", "sceneType": "getaway"}]},
+      {"key": "escape-routes", "name": "Escape routes", "entries": [{"text": "Rooftops", "key": "rooftops", "weight": 2, "effects": [{"kind": "sceneTitle", "title": "Over the rooftops"}]}, {"text": "Sewers", "key": "sewers"}]}
+    ],
+    "likelihood": [
+      {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 35}, {"key": "even", "label": "50/50", "target": 50}], "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5, "tracker": "chaos"}, "exceptionalPercent": 20}
+    ]
+  },
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "kind": "clock", "segments": 6},
+    {"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3, "initial": 0},
+    {"key": "chaos", "name": "Chaos factor", "kind": "counter", "min": 1, "max": 9, "initial": 5},
+    {"key": "heat", "name": "Heat", "kind": "counter", "min": -5, "max": 5, "initial": 0}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "legwork", "name": "Legwork", "purpose": "Learn about the target.", "oracles": ["fate"], "setup": [{"key": "goal", "kind": "prompt", "title": "What do you want to learn?", "mandatory": true}], "play": [], "closing": [{"key": "gain-edge", "kind": "choice", "title": "Did you gain an edge?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}]},
+    {"key": "infiltration", "name": "Infiltration", "purpose": "Get inside unseen.", "oracles": ["fate", "complications"], "setup": [], "play": [{"key": "slip-past", "kind": "oracle", "title": "Do you slip past?", "oracle": "fate", "likelihood": "even", "branches": {"no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}}}, {"key": "complication", "kind": "table", "title": "What gets in the way?", "table": "complications", "branches": [{"entry": "spotted", "effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}], "otherwise": {"next": "end"}}], "closing": []},
+    {"key": "firefight", "name": "Firefight", "purpose": "Shoot your way out.", "tips": "Keep it short and loud.", "oracles": [], "setup": [{"key": "who-shoots", "kind": "prompt", "title": "Who opens fire?", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "sceneTitle", "title": "Firefight"}]}], "play": [], "closing": []},
+    {"key": "getaway", "name": "Getaway", "purpose": "Get away clean.", "oracles": ["escape-routes"], "setup": [{"key": "how", "kind": "prompt", "title": "How do you get out?", "prompt": "Name your way out.", "tip": "Think of the alarm.", "mandatory": true, "next": "route", "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": {"tracker": "alarm"}}]}, {"key": "skipped", "kind": "prompt", "title": "Never reached"}, {"key": "route", "kind": "table", "title": "Which way?", "table": "escape-routes", "branches": [{"entry": "rooftops", "next": "chase"}, {"entry": "sewers", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}]}], "otherwise": {"effects": [{"kind": "endPhase"}]}}, {"key": "chase", "kind": "roll", "title": "Do they follow?", "dice": "2d6+1", "bands": [{"upTo": {"tracker": "heat"}, "next": "end"}, {"upTo": 7, "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": -1}]}, {"next": "end"}]}], "play": [{"key": "ask", "kind": "oracle", "title": "Are they waiting?", "oracle": "fate", "branches": {"yes": {"next": "pick"}, "no": {"next": "end"}, "exceptionalYes": {"effects": [{"kind": "nextScene", "sceneType": "firefight"}]}, "exceptionalNo": {"effects": [{"kind": "sceneTitle", "title": "A clean getaway"}]}}}, {"key": "pick", "kind": "choice", "title": "Fight or flee?", "mandatory": true, "options": [{"key": "fight", "label": "Fight", "effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}, {"key": "flee", "label": "Flee", "next": "end"}]}], "closing": [{"key": "cool", "kind": "condition", "title": "How hot is it?", "tracker": "heat", "bands": [{"upTo": {"tracker": "edge"}, "next": "end"}, {"upTo": 3}, {"effects": [{"kind": "tracker", "tracker": "heat", "op": "set", "value": 0}, {"kind": "endPhase"}]}]}, {"key": "lockdown", "kind": "condition", "title": "Is the alarm full?", "tracker": "alarm", "bands": [{"upTo": 5}, {}]}]}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

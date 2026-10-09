@@ -10,11 +10,10 @@ use App\Studio\Domain\Release\ReleaseOracles;
 
 /**
  * Validates the parts schema version 2 adds or changes (docs/contracts/gamesystem-release.md):
- * oracle table entry and chaos extensions, trackers and fact slots. Returns them in canonical
- * form; ReleaseContent handles the parts every version shares.
+ * oracle table entry and chaos extensions, trackers, fact slots and Scene Types with their steps.
+ * Returns them in canonical form; ReleaseContent handles the parts every version shares.
  *
- * Scene Types, flows and the entry "sceneType" and "effects" are not validated yet: until later
- * slices of feature play-flow-run they must be absent or empty.
+ * Flows are not validated yet: until a later slice of feature play-flow-run they must be empty.
  *
  * @internal used by ReleaseContent only
  */
@@ -22,10 +21,17 @@ final class ReleaseVersion2
 {
     public const int MAX_TRACKERS = 50;
     public const int MAX_FACT_SLOTS = 100;
+    public const int MAX_SCENE_TYPES = 100;
+    public const int MAX_ORACLE_SHORTCUTS = 70;
     public const int MAX_TRACKER_VALUE = 1000;
     public const int MAX_SEGMENTS = 20;
     public const int MAX_NAME_LENGTH = 100;
     public const int MAX_HINT_LENGTH = 500;
+    public const int MAX_PURPOSE_LENGTH = 500;
+    public const int MAX_TEXT_LENGTH = 2000;
+
+    /** The step lists of a Scene Type, in schema order. */
+    public const array SCENE_TYPE_PARTS = ['setup', 'play', 'closing'];
 
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
@@ -41,6 +47,7 @@ final class ReleaseVersion2
         'clock' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'segments' => true],
     ];
     private const array FACT_SLOT = ['key' => true, 'label' => true, 'type' => true];
+    private const array SCENE_TYPE = ['key' => true, 'name' => true, 'purpose' => true, 'tips' => false, 'oracles' => true, 'setup' => true, 'play' => true, 'closing' => true];
 
     /**
      * @param array<string, mixed> $release the checked top-level object (RELEASE fields)
@@ -54,9 +61,16 @@ final class ReleaseVersion2
         self::chaosTrackers($oracles['likelihood'], $trackerRanges);
         $factSlots = self::factSlots($release['factSlots']);
 
-        self::entryKeys($oracles['tables']);
-        $oracles['tables'] = self::tableEntries($oracles['tables']);
-        $sceneTypes = self::notSupportedYet($release['sceneTypes'], 'sceneTypes');
+        [$sceneTypes, $sceneTypeKeys] = self::sceneTypes($release['sceneTypes'], $oracles);
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys);
+
+        $oracles['tables'] = self::tableEntries($oracles['tables'], $catalog);
+        foreach ($sceneTypes as $index => $sceneType) {
+            foreach (self::SCENE_TYPE_PARTS as $part) {
+                $sceneTypes[$index][$part] = Steps::list($sceneType[$part], \sprintf('sceneTypes[%d].%s', $index, $part), $catalog);
+            }
+        }
+
         $flows = self::notSupportedYet($release['flows'], 'flows');
 
         return ['oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots, 'sceneTypes' => $sceneTypes, 'flows' => $flows];
@@ -161,14 +175,82 @@ final class ReleaseVersion2
     }
 
     /**
-     * Entry keys are unique within their table.
+     * Scene Types without their steps, which need every Scene Type key first.
+     *
+     * @param array{tables: list<array<string, mixed>>, likelihood: list<array<string, mixed>>} $oracles
+     *
+     * @return array{list<array<string, mixed>>, array<string, true>}
+     */
+    private static function sceneTypes(mixed $value, array $oracles): array
+    {
+        $sceneTypes = [];
+        $keys = [];
+        /** @var list<string> $oracleKeys */
+        $oracleKeys = [...array_column($oracles['tables'], 'key'), ...array_column($oracles['likelihood'], 'key')];
+        foreach (ReleaseFields::sizedList($value, 'sceneTypes', 0, self::MAX_SCENE_TYPES, 'Scene Types') as $index => $sceneType) {
+            $path = \sprintf('sceneTypes[%d]', $index);
+            $sceneType = ReleaseFields::object($sceneType, $path, self::SCENE_TYPE);
+            $key = ReleaseFields::key($sceneType['key'], $path.'.key');
+            if (isset($keys[$key])) {
+                throw InvalidReleaseContent::at($path.'.key', \sprintf('duplicate Scene Type key "%s"', $key));
+            }
+
+            $keys[$key] = true;
+            ReleaseFields::text($sceneType['name'], $path.'.name', 1, self::MAX_NAME_LENGTH);
+            ReleaseFields::text($sceneType['purpose'], $path.'.purpose', 1, self::MAX_PURPOSE_LENGTH);
+            if (isset($sceneType['tips'])) {
+                ReleaseFields::text($sceneType['tips'], $path.'.tips', 0, self::MAX_TEXT_LENGTH);
+            }
+
+            self::keyList($sceneType['oracles'], $path.'.oracles', self::MAX_ORACLE_SHORTCUTS, 'oracles', 'oracle', array_fill_keys($oracleKeys, true));
+            $sceneTypes[] = $sceneType;
+        }
+
+        return [$sceneTypes, $keys];
+    }
+
+    /**
+     * Entry "sceneType" and "effects" name what exists; empty "effects" are omitted.
      *
      * @param list<array<string, mixed>> $tables
+     *
+     * @return list<array<string, mixed>>
      */
-    private static function entryKeys(array $tables): void
+    private static function tableEntries(array $tables, Catalog $catalog): array
     {
         foreach ($tables as $tableIndex => $table) {
-            $keys = [];
+            /** @var list<array<string, mixed>> $entries */
+            $entries = $table['entries'];
+            foreach ($entries as $entryIndex => $entry) {
+                $path = \sprintf('oracles.tables[%d].entries[%d]', $tableIndex, $entryIndex);
+                if (isset($entry['sceneType'])) {
+                    Effects::sceneType($entry['sceneType'], $path.'.sceneType', $catalog);
+                }
+
+                $entry['effects'] = Effects::list($entry['effects'] ?? null, $path.'.effects', $catalog);
+                $entries[$entryIndex] = array_filter($entry, static fn (mixed $field): bool => [] !== $field);
+            }
+
+            $tables[$tableIndex]['entries'] = $entries;
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Entry keys by table; they are unique within their table.
+     *
+     * @param list<array<string, mixed>> $tables
+     *
+     * @return array<string, array<string, true>>
+     */
+    private static function tableEntryKeys(array $tables): array
+    {
+        $tableEntryKeys = [];
+        foreach ($tables as $tableIndex => $table) {
+            /** @var string $tableKey */
+            $tableKey = $table['key'];
+            $tableEntryKeys[$tableKey] = [];
             /** @var list<array<string, mixed>> $entries */
             $entries = $table['entries'];
             foreach ($entries as $entryIndex => $entry) {
@@ -178,41 +260,57 @@ final class ReleaseVersion2
 
                 $path = \sprintf('oracles.tables[%d].entries[%d].key', $tableIndex, $entryIndex);
                 $key = ReleaseFields::key($entry['key'], $path);
-                if (isset($keys[$key])) {
+                if (isset($tableEntryKeys[$tableKey][$key])) {
                     throw InvalidReleaseContent::at($path, \sprintf('duplicate entry key "%s"', $key));
                 }
 
-                $keys[$key] = true;
+                $tableEntryKeys[$tableKey][$key] = true;
             }
         }
+
+        return $tableEntryKeys;
     }
 
     /**
-     * Entries with a "sceneType" or "effects" are not supported yet; empty "effects" are omitted.
+     * @param list<array<string, mixed>> $likelihood
      *
-     * @param list<array<string, mixed>> $tables
-     *
-     * @return list<array<string, mixed>>
+     * @return array<string, array<string, true>>
      */
-    private static function tableEntries(array $tables): array
+    private static function likelihoodLevels(array $likelihood): array
     {
-        foreach ($tables as $tableIndex => $table) {
-            /** @var list<array<string, mixed>> $entries */
-            $entries = $table['entries'];
-            foreach ($entries as $entryIndex => $entry) {
-                foreach (['sceneType', 'effects'] as $field) {
-                    if (isset($entry[$field]) && [] !== $entry[$field]) {
-                        throw InvalidReleaseContent::at(\sprintf('oracles.tables[%d].entries[%d].%s', $tableIndex, $entryIndex, $field), self::NOT_SUPPORTED_YET);
-                    }
-                }
-
-                unset($entries[$entryIndex]['effects']);
-            }
-
-            $tables[$tableIndex]['entries'] = $entries;
+        $levels = [];
+        foreach ($likelihood as $oracle) {
+            /** @var string $key */
+            $key = $oracle['key'];
+            /** @var list<array{key: string}> $oracleLevels */
+            $oracleLevels = $oracle['levels'];
+            $levels[$key] = array_fill_keys(array_column($oracleLevels, 'key'), true);
         }
 
-        return $tables;
+        return $levels;
+    }
+
+    /**
+     * A list of unique keys, each in $known.
+     *
+     * @param array<string, mixed> $known
+     */
+    private static function keyList(mixed $value, string $path, int $max, string $noun, string $singular, array $known): void
+    {
+        $seen = [];
+        foreach (ReleaseFields::sizedList($value, $path, 0, $max, $noun) as $index => $key) {
+            $keyPath = \sprintf('%s[%d]', $path, $index);
+            $key = ReleaseFields::key($key, $keyPath);
+            if (!isset($known[$key])) {
+                throw InvalidReleaseContent::at($keyPath, \sprintf('unknown %s "%s"', $singular, $key));
+            }
+
+            if (isset($seen[$key])) {
+                throw InvalidReleaseContent::at($keyPath, \sprintf('duplicate %s "%s"', $singular, $key));
+            }
+
+            $seen[$key] = true;
+        }
     }
 
     /**

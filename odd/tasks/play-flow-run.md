@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-2-contract-catalog` (from `main` `08e347b`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-3-contract-steps` (from `main` `19e5e0d`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -118,7 +118,7 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 |---|---|---|---|---|
 | 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/13 contract` | T1 | 1,423 (actual) |
 | 2 | `feat/play-flow-run-2-contract-catalog` | `feat(studio): play-flow-run 2/13 contract-catalog` | T2a | ~1,730 (actual) |
-| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/13 contract-steps` | T2b | ~1,500 |
+| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/13 contract-steps` | T2b | 1,542 (actual) |
 | 4 | `feat/play-flow-run-4-contract-flows` | `feat(studio): play-flow-run 4/13 contract-flows` | T3 | ~1,500 |
 | 5 | `feat/play-flow-run-5-contract-warnings` | `feat(studio): play-flow-run 5/13 contract-warnings` | T4 | ~500 |
 | 6 | `feat/play-flow-run-6-example-fixtures` | `test(studio): play-flow-run 6/13 example-fixtures` | T5 | ~1,500 |
@@ -137,8 +137,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Feature doc; `v2.schema.json`; contract doc v2 section (structure, rules, example, v1 kept); schema-only test of the doc example | delegated writer (slice 1, 4+ non-trivial files); schema test inline | [x] | `aece3b2` |
-| T2a | 2 | Studio `ReleaseContent` accepts v2, part 1: extract shared v1 helpers (fields, oracles); v2 envelope; trackers (counter with `levels`, clock, `hint`); fact slots; table entry `key`; likelihood `chaos.tracker` (counter with the same range); `sceneTypes` and `flows` must be empty until slices 3–4; canonical form; v2 fixtures in the agreement test; a check that the contract doc example equals its fixture (slice 1 review); unit tests | delegated writer (slice 2, 2+ non-trivial files) | [x] | |
-| T2b | 3 | Scene Types; steps per kind, forward `next`, `end`, mandatory/skip rules; bands; effects (incl. table entry `effects` and `sceneType` shape); fixtures; unit tests | | [ ] | |
+| T2a | 2 | Studio `ReleaseContent` accepts v2, part 1: extract shared v1 helpers (fields, oracles); v2 envelope; trackers (counter with `levels`, clock, `hint`); fact slots; table entry `key`; likelihood `chaos.tracker` (counter with the same range); `sceneTypes` and `flows` must be empty until slices 3–4; canonical form; v2 fixtures in the agreement test; a check that the contract doc example equals its fixture (slice 1 review); unit tests | delegated writer (slice 2, 2+ non-trivial files) | [x] | `481f78d` |
+| T2b | 3 | Scene Types; steps per kind, forward `next`, `end`, mandatory/skip rules; bands; effects (incl. table entry `effects` and `sceneType` shape); fixtures; unit tests | delegated writer (slice 3, 2+ non-trivial files) | [x] | |
 | T3 | 4 | Flows and phases (selection, hooks, `act`, `default`, `defaultView`); cross-references (trackers in `flow.trackers`, shortcuts ⊆ flow oracles, reachability, oracle/table/level/entry/Scene Type keys, oracle selection entries); placeholders; the contract doc example moves into `valid/`; fixtures; unit tests | | [ ] | |
 | T4 | 5 | Authoring warnings: rule, `CheckGameSystemRelease` query, console output; tests | | [ ] | |
 | T5 | 6 | The five examples as v2 fixtures (without 8/8b/10 parts), validated by schema and domain; expected warnings asserted (heist) | | [ ] | |
@@ -175,6 +175,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 - T1 schema-only test: `ReleaseSchemaVersion2Test` checks the contract doc example (fixture `schema-v2/contract-doc-example.json`, outside `valid/` until the domain accepts v2) and four shape errors. `phpunit tests/Unit/Studio/Contract`: 90 tests OK.
 - T2a done: `ReleaseFields` / `ReleaseOracles` extracted from `ReleaseContent` (v1 messages unchanged); `ReleaseContent` accepts schema versions 1 and 2; `Version2\ReleaseVersion2` validates the envelope, trackers (counter `levels` via `Version2\Bands`, clock, `hint`), fact slots, entry `key`, `chaos.tracker`; `sceneTypes` / `flows` must be empty and entry `sceneType` / `effects` fail with "not supported yet" (lifted in slices 3–4). Agreement test picks the schema file by `schemaVersion`: valid `v2-minimal`, `v2-catalog`, `v2-null-optionals`; 10 structural and 13 semantic v2 fixtures, 4 generated v2 cases; `unsupported-schema-version` now uses 3. `ReleaseContentVersion2Test` covers each rule on `v2-catalog`. RED: `phpunit tests/Unit/Studio` 287 tests, 12 errors, 86 failures (`unsupported schema version 2`); GREEN: 286 tests OK. `make qa` and `make test` green. Size accepted by the user at ~1,725 lines because ~300 are moved v1 code; the doc-example equality test was dropped: the php container mounts only `./backend`.
 - Follow-up: the contract doc example vs fixture equality check needs `docs/` inside the php container; not done.
+- T2b done: `ReleaseVersion2` validates Scene Types (shape, limits, unique keys, `oracles` in the oracle namespace) and their `setup` / `play` / `closing` step lists through `Version2\Steps` (every kind, unique keys per list, `end` reserved, forward `next`, mandatory/skip rules, dice, likelihood levels, table entry branches), `Version2\Bands::outcomes` (literal or `{tracker}` `upTo`, ordering, catch-all, empty band kept as `{}`) and `Version2\Effects` (tagged union, referenced trackers / Scene Types exist); `Version2\Catalog` holds the release keys, `Version2\StepParts` walks a step's outcomes. Table entry `sceneType` / `effects` are validated (no longer "not supported yet"); `flows` must still be empty; flow-scoped references and placeholders stay for slice 4. Fixtures: valid `v2-scene-types` (every step kind, band and effect) and `v2-integer-valued-floats`; 10 structural (+3 generated) and 20 semantic v2 cases; three "not supported yet" cases removed. RED: `phpunit tests/Unit/Studio` 392 tests, 15 errors, 96 failures; GREEN: 392 tests OK. `make qa` and `make test` green. Slice size: 1,542 changed lines (1,462 + 80).
+- Slice 2 review fixes: (1) chaos `1.0`/`9.0` and (2) integer-valued floats in tracker numbers, level and band `upTo` were already accepted, because `ReleaseContent::fromArray` normalizes them before version 2 validation; now proved by the `v2-integer-valued-floats` fixture (schema and domain, canonical ints) and unit cases (no RED: they passed first run). (3) An empty-array entry `sceneType` now fails (`must be a string`) instead of reaching the canonical content (RED → GREEN).
 - Contract choices on unstated details (implemented on the tag, ported in slices 2–4) (consistent with ADR 0017/0018):
   - Limits the rules leave open: bands 1–20 (`condition`) or ≤20 (`roll`), counter `levels` ≤20, table `branches` ≤1000, Scene Type / flow `oracles` ≤70 (the oracle namespace size), tracker effect `value` ±1000, `roll` dice 1–100 characters.
   - Bands: every band but the last needs `upTo`; the last must omit it.
@@ -189,7 +191,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 | Slice | Review | PR |
 |---|---|---|
 | 1 | Medium risk; reliability lens; approved and acknowledged (lineage `review-3238b0d0acd25bd4`). Non-blocking: the schema test covers only four shape rules (fixtures in slices 2–4 cover the rest); the test validates a fixture copy of the doc example (T2a adds an equality check) | #40 (merged) |
+| 2 | Medium risk; reliability lens; approved and acknowledged (lineage `review-b731c078a968d8b5`). Non-blocking, fixed in T2b: the chaos tracker range check rejects `1.0`/`9.0`; tracker numbers and band `upTo` reject integer-valued floats such as `6.0` (schema and v1 oracles accept them); an empty entry `sceneType` array is kept in the canonical content | #41 (merged) |
 
 ## Next step
 
-Slice 2 (T2a) native review, then PR; slice 3 (T2b) after the merge.
+Slice 3 (T2b) on `feat/play-flow-run-3-contract-steps`.

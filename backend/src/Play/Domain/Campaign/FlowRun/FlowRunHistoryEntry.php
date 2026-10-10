@@ -25,6 +25,43 @@ final readonly class FlowRunHistoryEntry
     }
 
     /**
+     * A Tracker edited by hand.
+     */
+    public static function trackerEdit(\DateTimeImmutable $at, string $tracker, int $from, int $to): self
+    {
+        return new self(FlowRunEvent::TrackerEdit, $at, ['tracker' => $tracker, 'from' => $from, 'to' => $to]);
+    }
+
+    /**
+     * A scene's Scene Type switched by hand.
+     *
+     * @param int     $scene the scene's number in the session under way
+     * @param ?string $from  the Scene Type key before, null for none
+     */
+    public static function sceneTypeSwitch(\DateTimeImmutable $at, int $scene, ?string $from, string $to): self
+    {
+        return new self(FlowRunEvent::SceneTypeSwitch, $at, ['scene' => $scene, 'from' => $from, 'to' => $to]);
+    }
+
+    public static function paused(\DateTimeImmutable $at): self
+    {
+        return new self(FlowRunEvent::Paused, $at);
+    }
+
+    public static function resumed(\DateTimeImmutable $at): self
+    {
+        return new self(FlowRunEvent::Resumed, $at);
+    }
+
+    /**
+     * The guided scene is left unfinished: it is no longer the current scene.
+     */
+    public static function sceneAbandoned(\DateTimeImmutable $at, int $session, int $scene): self
+    {
+        return new self(FlowRunEvent::SceneAbandoned, $at, ['session' => $session, 'scene' => $scene]);
+    }
+
+    /**
      * @param string $reason "finished" (a once phase played its scenes), "moveOn" or "endPhase"
      */
     public static function phaseEnded(\DateTimeImmutable $at, string $phase, string $reason): self

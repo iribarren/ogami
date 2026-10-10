@@ -17,6 +17,7 @@ use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Tests\Support\Play\CampaignCopies;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -160,9 +161,9 @@ final class CampaignSessionsTest extends TestCase
 
         $campaign = Campaign::reconstitute($original->id(), $original->ownerId(), $original->name(), $original->pinnedRelease(), $original->createdAt(), [], [], 'heist');
 
-        // The FlowRun is stored from play-flow-run slice 14 on.
+        // The FlowRun is stored from play-flow-run slice 15 on.
         self::assertNotNull($original->flowRun());
-        self::assertSame([$original->flowKey(), null], [$campaign->flowKey(), $campaign->flowRun()]);
+        self::assertEquals(CampaignCopies::withoutFlowRun($original), $campaign);
     }
 
     private function campaign(): Campaign

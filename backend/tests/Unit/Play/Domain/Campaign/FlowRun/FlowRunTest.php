@@ -6,7 +6,9 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
@@ -19,6 +21,7 @@ use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -75,6 +78,8 @@ final class FlowRunTest extends FlowRunTestCase
     public function anOracleSelectionPicksTheSceneTypeOfTheRolledEntry(): void
     {
         $campaign = $this->inASession();
+        $view = $campaign->flowRunView($this->release);
+        self::assertSame(['Next scene: roll on Scene kinds', [], 'scene-kinds', false], [$view?->next, $view?->pick?->cards, $view?->pick?->table, $view?->canMoveOn]);
         foreach ([
             'pick by hand' => fn () => $campaign->pickSceneType('talk', $this->release, self::at()),
             'another table' => fn () => $campaign->pickSceneTypeByOracle($this->rolled('other', 2), $this->release, self::at()),
@@ -114,6 +119,12 @@ final class FlowRunTest extends FlowRunTestCase
         }
 
         $campaign->pickSceneType('fight', $this->release, self::at());
+        try {
+            $campaign->moveOn($this->release, self::at());
+            self::fail('A once phase moved on during a scene.');
+        } catch (MoveOnNotAllowed) {
+        }
+
         $this->playFight($campaign);
 
         self::assertSame([FlowRunStatus::Completed, 4], [self::flowRunOf($campaign)->status(), self::flowRunOf($campaign)->phaseIndex()]);
@@ -121,24 +132,25 @@ final class FlowRunTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function aLoopPhaseRepeatsItsScenePickUntilThePlayerMovesOn(): void
+    public function aLoopPhaseRepeatsItsScenePickUntilThePlayerMovesOnWhichDuringASceneEndsThePhaseAfterIt(): void
     {
         $campaign = $this->inPhase('roam');
         $campaign->pickSceneType('fight', $this->release, self::at());
-
-        try {
-            $campaign->moveOn($this->release, self::at());
-            self::fail('A phase moved on in the middle of a scene.');
-        } catch (FlowRunPositionMismatch $exception) {
-            self::assertSame('The FlowRun is at step "opener", not at the scene pick.', $exception->getMessage());
-        }
-
         $this->playFight($campaign);
         self::assertSame(['sceneClosing', 'after'], self::position($campaign));
         $campaign->skipFlowStep('after', $this->release, self::at());
         $campaign->pickSceneType('talk', $this->release, self::at());
-
         self::assertSame([1, 2, FlowRunStage::Scene], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->scenesPlayed(), self::flowRunOf($campaign)->stage()]);
+
+        // Move on during a scene: the scene goes on to its closing parts, then the phase ends.
+        $campaign->moveOn($this->release, self::at());
+        self::assertSame([true, 'play', 'mood'], [self::flowRunOf($campaign)->phaseEnding(), ...self::position($campaign)]);
+        $this->playTalk($campaign);
+        self::assertSame(['sceneClosing', 'after'], self::position($campaign));
+        $campaign->skipFlowStep('after', $this->release, self::at());
+
+        self::assertSame([2, false, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->phaseEnding(), self::flowRunOf($campaign)->stage()]);
+        self::assertSame(['phaseEnded', 'roam', 'moveOn'], [array_last(self::flowRunOf($campaign)->history())?->event->value, ...array_values(array_last(self::flowRunOf($campaign)->history())->details ?? [])]);
     }
 
     #[Test]
@@ -317,8 +329,156 @@ final class FlowRunTest extends FlowRunTestCase
         $campaign->startScene('By hand', self::at());
 
         $this->expectException(FlowRunPositionMismatch::class);
-        $this->expectExceptionMessageIsOrContains('The guided scene is no longer the current scene.');
+        $this->expectExceptionMessageIsOrContains('The guided scene is no longer the current scene: pause and resume guidance to go on at the scene pick.');
         $campaign->skipFlowStep('mood', $this->release, self::at());
+    }
+
+    #[Test]
+    public function pausedGuidanceTakesNoFlowRunCommandAndResumesWhereItStopped(): void
+    {
+        $campaign = $this->inASession();
+        $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
+        $campaign->pauseGuidance(self::at());
+
+        self::assertSame(FlowRunStatus::Paused, self::flowRunOf($campaign)->status());
+        foreach ([
+            'complete' => fn () => $campaign->completeFlowStep('mood', StepResult::choice('calm'), $this->release, self::at()),
+            'skip' => fn () => $campaign->skipFlowStep('mood', $this->release, self::at()),
+            'end the scene' => fn () => $campaign->endFlowScene(1, $this->release, self::at()),
+            'pick' => fn () => $campaign->pickSceneType('talk', $this->release, self::at()),
+            'move on' => fn () => $campaign->moveOn($this->release, self::at()),
+            'pause again' => static fn () => $campaign->pauseGuidance(self::at()),
+        ] as $command => $run) {
+            try {
+                $run();
+                self::fail('Paused guidance took a command: '.$command);
+            } catch (FlowRunNotActive $exception) {
+                self::assertSame('pause again' === $command ? 'Guidance is already paused.' : 'Guidance is paused: resume it first.', $exception->getMessage(), $command);
+            }
+        }
+
+        $campaign->resumeGuidance($this->release, self::at());
+
+        self::assertSame([FlowRunStatus::Active, FlowRunStage::Scene, 'play', 'mood'], [self::flowRunOf($campaign)->status(), self::flowRunOf($campaign)->stage(), ...self::position($campaign)]);
+        self::assertSame(['paused', 'resumed'], self::history($campaign));
+        $this->expectException(FlowRunNotActive::class);
+        $this->expectExceptionMessageIsOrContains('Guidance is not paused.');
+        $campaign->resumeGuidance($this->release, self::at());
+    }
+
+    #[Test]
+    public function aSceneStartedByHandWhilePausedAbandonsTheGuidedSceneOnResume(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign->pauseGuidance(self::at());
+        $campaign->startScene('By hand', self::at());
+        $campaign->resumeGuidance($this->release, self::at());
+
+        self::assertSame([1, FlowRunStage::ScenePick, null], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->scene()]);
+        self::assertSame(['paused', 'resumed', 'sceneAbandoned:1'], \array_slice(self::history($campaign), -3));
+        self::assertSame(['session' => 1, 'scene' => 2], array_last(self::flowRunOf($campaign)->history())?->details);
+        $campaign->pickSceneType('fight', $this->release, self::at());
+        self::assertSame('Fight 1', $campaign->currentScene()?->title());
+    }
+
+    #[Test]
+    public function aNewSessionAbandonsTheGuidedSceneOfTheLastOne(): void
+    {
+        // Ended in the middle of the draw's scene: the once phase played it, the next one waits.
+        $campaign = $this->inASession();
+        $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
+        $campaign->endSession(self::at());
+        self::assertSame([1, 1], self::flowRunOf($campaign)->scene());
+        $campaign->startSession(self::at(), $this->release);
+
+        self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
+        self::assertSame(['sceneAbandoned:1', 'phaseEnded:draw'], self::history($campaign));
+
+        // A session started while the last one is under way: the loop phase picks again.
+        $campaign->pickSceneType('fight', $this->release, self::at());
+        $campaign->startSession(self::at(), $this->release);
+
+        self::assertSame([1, FlowRunStage::ScenePick, ['session' => 2, 'scene' => 1]], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage(), array_last(self::flowRunOf($campaign)->history())?->details]);
+    }
+
+    #[Test]
+    public function handTrackerEditsAndSceneTypeSwitchesAreInTheHistoryAndTheGuidedSceneFollowsItsSwitch(): void
+    {
+        $campaign = $this->inASession();
+        $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
+        $heat = $this->release->tracker('heat') ?? self::fail('No heat tracker.');
+
+        self::assertSame(5, $campaign->setTrackerValue($heat, 9, self::at()));
+        $campaign->switchSceneType($this->release->sceneType('fight') ?? self::fail('No fight.'), $this->release, self::at());
+
+        self::assertSame([
+            ['trackerEdit', ['tracker' => 'heat', 'from' => 0, 'to' => 5]],
+            ['sceneTypeSwitch', ['scene' => 1, 'from' => 'talk', 'to' => 'fight']],
+        ], array_map(static fn (FlowRunHistoryEntry $entry): array => [$entry->event->value, $entry->details], self::flowRunOf($campaign)->history()));
+        // The guided scene goes on at the new type's setup; the condition step passes on its own.
+        self::assertSame(['fight', 'setup', 'opener'], [self::flowRunOf($campaign)->sceneType(), ...self::position($campaign)]);
+
+        $campaign->completeFlowStep('opener', self::prompt('Ada'), $this->release, self::at());
+        self::assertSame(['play', 'response'], self::position($campaign));
+    }
+
+    /**
+     * @return iterable<string, array{string, \Closure(Campaign, GameSystemSnapshot): (\Closure(): void)}>
+     */
+    public static function commandsStartingTheNextScene(): iterable
+    {
+        yield 'completing a step' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            self::closeTalk($campaign, $release);
+
+            return static fn () => $campaign->completeFlowStep('wrap', self::prompt('Nothing'), $release, self::at());
+        }];
+        yield 'skipping a step' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            self::closeTalk($campaign, $release);
+
+            return static fn () => $campaign->skipFlowStep('wrap', $release, self::at());
+        }];
+        yield 'ending a scene' => ['fight', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            $campaign->pickSceneType('fight', $release, self::at());
+            $campaign->completeFlowStep('opener', self::prompt('Ada'), $release, self::at());
+            $campaign->skipFlowStep('response', $release, self::at());
+
+            return static fn () => $campaign->endFlowScene(Session::MAX_SCENES, $release, self::at());
+        }];
+        yield 'moving on' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            $campaign->startScene('By hand', self::at());
+
+            return static fn () => $campaign->moveOn($release, self::at());
+        }];
+    }
+
+    /**
+     * Two loop phases of one Scene Type each, so the next scene starts on its own, in a session
+     * one scene short of full.
+     *
+     * @param \Closure(Campaign, GameSystemSnapshot): (\Closure(): void) $prepare brings the campaign to the command
+     */
+    #[Test]
+    #[DataProvider('commandsStartingTheNextScene')]
+    public function aCommandThatCannotStartTheNextSceneChangesNothing(string $sceneType, \Closure $prepare): void
+    {
+        $release = self::translate($this->content(array_map(static fn (string $key): array => ['key' => $key, 'name' => ucfirst($key), 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => [$sceneType]]], ['alone', 'again'])));
+        $campaign = self::guided($release, 'test');
+        $campaign->startSession(self::at());
+        for ($scene = 1; $scene < Session::MAX_SCENES; ++$scene) {
+            $campaign->startScene('By hand', self::at());
+        }
+
+        $command = $prepare($campaign, $release);
+        $before = clone $campaign;
+
+        try {
+            $command();
+            self::fail('The next scene started in a full session.');
+        } catch (CampaignLimitReached) {
+        }
+
+        self::assertEquals($before, $campaign);
     }
 
     #[Test]
@@ -381,15 +541,27 @@ final class FlowRunTest extends FlowRunTestCase
         $campaign->endFlowScene((int) $campaign->currentScene()?->number(), $this->release, self::at());
     }
 
+    /**
+     * Picks Talk as the last scene the session holds and plays it to its closing step "wrap".
+     */
+    private static function closeTalk(Campaign $campaign, GameSystemSnapshot $release): void
+    {
+        $campaign->pickSceneType('talk', $release, self::at());
+        $campaign->skipFlowStep('mood', $release, self::at());
+        $campaign->endFlowScene(Session::MAX_SCENES, $release, self::at());
+    }
+
     private function rolled(string $table, int $total): OracleTableResult
     {
         return new OracleTableResult([new OracleTableStep($table, 'Scene kinds', '1d6', $total, 'A roll', null)]);
     }
 
     /**
+     * @param ?list<array<string, mixed>> $phases the Flow's phases instead of the four described above
+     *
      * @return array<string, mixed>
      */
-    private function content(): array
+    private function content(?array $phases = null): array
     {
         $prompt = static fn (string $key, string $title, bool $mandatory = false): array => ['key' => $key, 'kind' => 'prompt', 'title' => $title, 'mandatory' => $mandatory];
         $sceneType = static fn (string $key, string $name, array $setup, array $play, array $closing): array => ['key' => $key, 'name' => $name, 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => $play, 'closing' => $closing];
@@ -415,7 +587,7 @@ final class FlowRunTest extends FlowRunTestCase
                 ], [['key' => 'response', 'kind' => 'table', 'title' => 'Who comes?', 'table' => 'scene-kinds']], []),
                 $sceneType('legwork', 'Legwork', [], [], []),
             ],
-            'flows' => [['key' => 'test', 'name' => 'Test', 'defaultView' => 'journal', 'oracles' => ['scene-kinds'], 'trackers' => ['heat'], 'phases' => [
+            'flows' => [['key' => 'test', 'name' => 'Test', 'defaultView' => 'journal', 'oracles' => ['scene-kinds'], 'trackers' => ['heat'], 'phases' => $phases ?? [
                 $phase('draw', 'The draw', 'once', ['rule' => 'oracle', 'table' => 'scene-kinds']),
                 $phase('roam', 'Roaming', 'loop', ['rule' => 'player', 'sceneTypes' => ['talk', 'fight']], ['sceneClosing' => [$prompt('after', 'Anything else?')]]),
                 $phase('rounds', 'Rounds', 'loop', ['rule' => 'sequence', 'sceneTypes' => ['talk', 'fight']]),

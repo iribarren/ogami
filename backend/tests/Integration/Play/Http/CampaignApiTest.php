@@ -75,7 +75,8 @@ final class CampaignApiTest extends WebTestCase
                         "gameSystemKey": "example-journal",
                         "name": "Example journal, revised",
                         "description": "A minimal game system that shows every part of the contract.",
-                        "version": 2
+                        "version": 2,
+                        "flows": []
                     }
                 ]
                 JSON,
@@ -194,14 +195,18 @@ final class CampaignApiTest extends WebTestCase
                         'number' => 1,
                         'startedAt' => '2026-10-06T09:05:00+00:00',
                         'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T09:10:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null]],
+                        'endedAt' => null,
                     ],
-                    ['number' => 2, 'startedAt' => '2026-10-06T09:20:00+00:00', 'scenes' => []],
+                    ['number' => 2, 'startedAt' => '2026-10-06T09:20:00+00:00', 'scenes' => [], 'endedAt' => null],
                 ],
                 'currentSessionNumber' => 2,
                 'currentSceneNumber' => null,
                 'oracleTables' => self::ORACLE_TABLES,
                 'likelihoodOracles' => self::LIKELIHOOD_ORACLES,
                 'trackers' => [],
+                'flowKey' => null,
+                'flows' => [],
+                'sceneTypes' => [],
             ], \JSON_THROW_ON_ERROR),
             $this->content(),
         );
@@ -351,6 +356,7 @@ final class CampaignApiTest extends WebTestCase
     {
         yield 'start session' => ['/api/campaigns/%s/sessions', null];
         yield 'start scene' => ['/api/campaigns/%s/scenes', ['title' => 'At the gate']];
+        yield 'end session' => ['/api/campaigns/%s/sessions/current/end', null];
     }
 
     /**
@@ -412,6 +418,7 @@ final class CampaignApiTest extends WebTestCase
         yield 'missing game system' => ['{"name": "The lost mine"}'];
         yield 'non-string name' => ['{"name": 7, "gameSystemKey": "example-journal"}'];
         yield 'null game system' => ['{"name": "The lost mine", "gameSystemKey": null}'];
+        yield 'non-string Flow key' => ['{"name": "The lost mine", "gameSystemKey": "example-journal", "flowKey": ["heist"]}'];
     }
 
     #[Test]
@@ -423,7 +430,7 @@ final class CampaignApiTest extends WebTestCase
         $this->client->request('POST', '/api/campaigns', server: ['CONTENT_TYPE' => 'application/json'], content: $body);
 
         self::assertResponseStatusCodeSame(400);
-        self::assertSame(['error' => 'Send a JSON object with a string "name" and a string "gameSystemKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.'], $this->json());
+        self::assertSame(['error' => 'Send a JSON object with a string "name", a string "gameSystemKey" and, to play a Flow, a string "flowKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.'], $this->json());
     }
 
     /**
@@ -522,6 +529,7 @@ final class CampaignApiTest extends WebTestCase
         yield 'start session' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/sessions', null];
         yield 'start scene' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/scenes', ['title' => 'At the gate']];
         yield 'switch Scene Type' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/scenes/current/scene-type', ['sceneType' => 'legwork']];
+        yield 'end session' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/sessions/current/end', null];
     }
 
     /**
@@ -588,6 +596,9 @@ final class CampaignApiTest extends WebTestCase
             'oracleTables' => self::ORACLE_TABLES,
             'likelihoodOracles' => self::LIKELIHOOD_ORACLES,
             'trackers' => [],
+            'flowKey' => null,
+            'flows' => [],
+            'sceneTypes' => [],
         ], \JSON_THROW_ON_ERROR);
     }
 

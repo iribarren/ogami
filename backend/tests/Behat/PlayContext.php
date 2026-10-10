@@ -10,6 +10,8 @@ use App\Play\Application\CampaignSummaryView;
 use App\Play\Application\CampaignView;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
+use App\Play\Application\EndSession;
+use App\Play\Application\EndSessionHandler;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
 use App\Play\Application\GetJournal;
@@ -69,6 +71,7 @@ final class PlayContext implements Context
     private readonly SequentialCampaignIdGenerator $ids;
     private readonly CreateCampaignHandler $createCampaign;
     private readonly StartSessionHandler $startSession;
+    private readonly EndSessionHandler $endSession;
     private readonly StartSceneHandler $startScene;
     private readonly SwitchSceneTypeHandler $switchSceneType;
     private readonly SetTrackerValueHandler $setTrackerValue;
@@ -91,6 +94,7 @@ final class PlayContext implements Context
         $this->ids = new SequentialCampaignIdGenerator();
         $this->createCampaign = new CreateCampaignHandler($campaigns, $this->releases, $clock);
         $this->startSession = new StartSessionHandler($owned, $campaigns, $clock);
+        $this->endSession = new EndSessionHandler($owned, $campaigns, $clock);
         $this->startScene = new StartSceneHandler($owned, $campaigns, $this->releases, $clock);
         $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases);
         $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases);
@@ -133,6 +137,20 @@ final class PlayContext implements Context
         $this->releases->add(Snapshots::withSceneTypes($key, $name, $version));
     }
 
+    #[Given('release version :version of the GameSystem :key named :name is published with Flows')]
+    public function aReleaseWithFlowsIsPublished(int $version, string $key, string $name): void
+    {
+        // Scene Types "legwork" and "firefight"; Flows "the-heist" (the default) and "one-shot".
+        $this->releases->add(Snapshots::withFlows($key, $name, $version));
+    }
+
+    #[When('I create the campaign :name with the GameSystem :key playing the Flow :flow')]
+    public function iCreateTheCampaignPlayingTheFlow(string $name, string $key, string $flow): void
+    {
+        $this->createCampaign($name, $key, $flow);
+        Assert::assertNull($this->failure, $this->failure?->getMessage() ?? '');
+    }
+
     #[Given('I created the campaign :name with the GameSystem :key')]
     #[When('I create the campaign :name with the GameSystem :key')]
     public function iCreateTheCampaign(string $name, string $key): void
@@ -152,6 +170,12 @@ final class PlayContext implements Context
     public function iStartASession(): void
     {
         ($this->startSession)(new StartSession($this->campaignId(), self::ME));
+    }
+
+    #[When('I end the session')]
+    public function iEndTheSession(): void
+    {
+        ($this->endSession)(new EndSession($this->campaignId(), self::ME));
     }
 
     #[Given('I started the scene :title')]
@@ -289,6 +313,19 @@ final class PlayContext implements Context
         Assert::assertSame($gameSystemName, $campaign->pinnedRelease->gameSystemName);
     }
 
+    #[Then('my campaign plays the Flow :flow')]
+    public function myCampaignPlaysTheFlow(string $flow): void
+    {
+        Assert::assertSame($flow, $this->myCampaign()->flowKey);
+    }
+
+    #[Then('session :number has ended')]
+    public function sessionHasEnded(int $number): void
+    {
+        Assert::assertNotNull($this->myCampaign()->sessions[$number - 1]->endedAt ?? null);
+        Assert::assertNull($this->myCampaign()->currentSessionNumber);
+    }
+
     #[Then("my campaign's Trackers are:")]
     public function myCampaignsTrackersAre(TableNode $table): void
     {
@@ -380,10 +417,10 @@ final class PlayContext implements Context
         Assert::assertSame([$this->campaignId()], array_map(static fn (CampaignSummaryView $campaign): string => $campaign->id, ($this->listMyCampaigns)(new ListMyCampaigns(self::ME))));
     }
 
-    private function createCampaign(string $name, string $key): void
+    private function createCampaign(string $name, string $key, ?string $flow = null): void
     {
         $id = $this->ids->generate()->toString();
-        $this->attempt(fn () => ($this->createCampaign)(new CreateCampaign($id, self::ME, $name, $key)));
+        $this->attempt(fn () => ($this->createCampaign)(new CreateCampaign($id, self::ME, $name, $key, $flow)));
         if (!$this->failure instanceof \Throwable) {
             $this->campaignId = $id;
         }

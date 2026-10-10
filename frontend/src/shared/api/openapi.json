@@ -194,7 +194,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed or has no string \"name\" or \"gameSystemKey\".",
+                        "description": "The JSON body is malformed, has no string \"name\" or \"gameSystemKey\", or a \"flowKey\" that is not a string.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -224,7 +224,7 @@
                         }
                     },
                     "404": {
-                        "description": "The GameSystem has no published release.",
+                        "description": "The GameSystem has no published release, or its latest release has no Flow with this key.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -398,6 +398,77 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/sessions/current/end": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "End the current session of one of my campaigns",
+                "operationId": "endSession",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The ended session. No scene starts until the next session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/scenes": {
             "post": {
                 "tags": [
@@ -477,7 +548,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile.",
+                        "description": "No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1601,6 +1672,12 @@
                         "description": "A GameSystem from `GET /api/play/game-systems`; the campaign is pinned to its latest release.",
                         "type": "string",
                         "example": "ironsworn"
+                    },
+                    "flowKey": {
+                        "description": "A Flow of that release to play along; absent or null to play freely (the release's default Flow is not applied).",
+                        "type": "string",
+                        "example": "heist",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -1693,7 +1770,8 @@
                 "required": [
                     "number",
                     "startedAt",
-                    "scenes"
+                    "scenes",
+                    "endedAt"
                 ],
                 "properties": {
                     "number": {
@@ -1711,6 +1789,12 @@
                         "items": {
                             "$ref": "#/components/schemas/SceneResponse"
                         }
+                    },
+                    "endedAt": {
+                        "description": "When the session ended; null while it is under way.",
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -1905,6 +1989,72 @@
                 },
                 "type": "object"
             },
+            "FlowSummaryResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "introduction",
+                    "default",
+                    "defaultView"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "heist"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Heist"
+                    },
+                    "description": {
+                        "description": "Null when the Flow has none.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "introduction": {
+                        "description": "Shown when the campaign starts; null when the Flow has none.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "default": {
+                        "description": "Whether this is the release's default Flow (at most one is).",
+                        "type": "boolean"
+                    },
+                    "defaultView": {
+                        "description": "How a campaign playing it opens.",
+                        "type": "string",
+                        "example": "focus",
+                        "enum": [
+                            "focus",
+                            "journal"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "SceneTypeSummaryResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "purpose"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "legwork"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Legwork"
+                    },
+                    "purpose": {
+                        "type": "string",
+                        "example": "Learn about the target."
+                    }
+                },
+                "type": "object"
+            },
             "CampaignResponse": {
                 "required": [
                     "id",
@@ -1916,7 +2066,10 @@
                     "currentSceneNumber",
                     "oracleTables",
                     "likelihoodOracles",
-                    "trackers"
+                    "trackers",
+                    "flowKey",
+                    "flows",
+                    "sceneTypes"
                 ],
                 "properties": {
                     "id": {
@@ -1942,7 +2095,7 @@
                         }
                     },
                     "currentSessionNumber": {
-                        "description": "The latest session; null before the first one.",
+                        "description": "The session under way: the latest one unless it has ended; null before the first one or once it ends.",
                         "type": "integer",
                         "example": 2,
                         "nullable": true
@@ -1972,6 +2125,26 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/TrackerResponse"
+                        }
+                    },
+                    "flowKey": {
+                        "description": "The key of the Flow the campaign plays; null when played freely.",
+                        "type": "string",
+                        "example": "heist",
+                        "nullable": true
+                    },
+                    "flows": {
+                        "description": "The Flows of the pinned release, in definition order; empty for schema version 1.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlowSummaryResponse"
+                        }
+                    },
+                    "sceneTypes": {
+                        "description": "The Scene Types of the pinned release, in definition order; empty for schema version 1.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SceneTypeSummaryResponse"
                         }
                     }
                 },
@@ -2023,12 +2196,42 @@
                 },
                 "type": "object"
             },
+            "GameSystemFlowResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "default"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The key to create a campaign with.",
+                        "type": "string",
+                        "example": "heist"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Heist"
+                    },
+                    "description": {
+                        "description": "Null when the Flow has none.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "default": {
+                        "description": "Whether this is the release's default Flow (at most one is), to preselect.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemSummaryResponse": {
                 "required": [
                     "gameSystemKey",
                     "name",
                     "description",
-                    "version"
+                    "version",
+                    "flows"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -2049,6 +2252,13 @@
                         "description": "The version a new campaign is pinned to.",
                         "type": "integer",
                         "example": 3
+                    },
+                    "flows": {
+                        "description": "The Flows a new campaign can play, in definition order; empty for schema version 1 (a campaign is always played freely then).",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GameSystemFlowResponse"
+                        }
                     }
                 },
                 "type": "object"

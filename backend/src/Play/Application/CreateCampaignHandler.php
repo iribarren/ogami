@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\InvalidCampaignName;
 use App\Play\Domain\Campaign\InvalidCampaignOwner;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Shared\Application\Bus\CommandHandler;
 
 final readonly class CreateCampaignHandler implements CommandHandler
@@ -28,6 +29,7 @@ final readonly class CreateCampaignHandler implements CommandHandler
      * @throws InvalidCampaignId
      * @throws CampaignAlreadyExists     when the id is already taken (checked first, whatever the repository does)
      * @throws GameSystemReleaseNotFound when the GameSystem has no published release
+     * @throws UnknownFlow               when the latest release has no Flow with the given key
      * @throws InvalidCampaignOwner
      * @throws InvalidCampaignName
      */
@@ -39,6 +41,7 @@ final readonly class CreateCampaignHandler implements CommandHandler
         }
 
         $latest = $this->releases->get($command->gameSystemKey);
+        $flow = null === $command->flowKey ? null : ($latest->flow($command->flowKey) ?? throw UnknownFlow::withKey($command->flowKey));
 
         $this->campaigns->add(Campaign::create(
             $id,
@@ -47,6 +50,7 @@ final readonly class CreateCampaignHandler implements CommandHandler
             PinnedRelease::of($latest->gameSystemKey(), $latest->releaseVersion(), $latest->name()),
             $this->clock->now(),
             $latest->trackers(),
+            $flow,
         ));
     }
 }

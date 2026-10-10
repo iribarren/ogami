@@ -192,6 +192,17 @@ final class CampaignScenesTest extends TestCase
     }
 
     #[Test]
+    public function aSceneOfKindHookCannotSwitchItsSceneTypeEvenWithoutAHookName(): void
+    {
+        $scene = Scene::reconstitute(1, 'Session 1 begins', new \DateTimeImmutable(), SceneKind::Hook);
+
+        $this->expectException(HookSceneHasNoSceneType::class);
+        $this->expectExceptionMessageIsOrContains('The current scene is a hook scene: only a scene of play has a Scene Type to switch.');
+
+        $scene->withSceneType('legwork');
+    }
+
+    #[Test]
     public function switchingNeedsACurrentScene(): void
     {
         foreach ([$this->campaign(), $this->campaignInASession()] as $campaign) {

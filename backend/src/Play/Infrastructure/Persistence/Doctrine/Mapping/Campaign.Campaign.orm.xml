@@ -6,7 +6,7 @@
 
     <!-- The file is named Campaign.Campaign because the simplified XML driver maps sub-namespaces
          of the App\Play\Domain prefix with dots.
-         Identity, ownership, the pinned release and the creation time are relational columns; the
+         Identity, ownership, the pinned release, the Flow and the creation time are columns; the
          sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType), and so are
          the tracker values, an object of integers by Tracker key (empty: {} or []). -->
     <entity name="App\Play\Domain\Campaign\Campaign" table="play_campaign">
@@ -22,6 +22,8 @@
         <field name="gameSystemKey" type="string" column="game_system_key" length="64"/>
         <field name="releaseVersion" type="integer" column="release_version"/>
         <field name="gameSystemName" type="string" column="game_system_name" length="255"/>
+        <!-- The Flow played, a key of the pinned release; null when played freely. -->
+        <field name="flowKey" type="string" column="flow_key" length="64" nullable="true"/>
         <field name="createdAt" type="datetimetz_immutable_microseconds" column="created_at"/>
         <field name="sessions" type="play_campaign_sessions" column="sessions">
             <options>

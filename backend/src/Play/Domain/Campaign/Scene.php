@@ -64,7 +64,7 @@ final readonly class Scene
      */
     public function withSceneType(string $sceneType): self
     {
-        if ($this->hook instanceof Hook) {
+        if (SceneKind::Hook === $this->kind) {
             throw HookSceneHasNoSceneType::toSwitch($this->hook);
         }
 

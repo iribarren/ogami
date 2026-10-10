@@ -107,6 +107,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/sessions/current/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End the current session of one of my campaigns */
+        post: operations["endSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/scenes": {
         parameters: {
             query?: never;
@@ -383,6 +400,11 @@ export interface components {
              * @example ironsworn
              */
             gameSystemKey: string;
+            /**
+             * @description A Flow of that release to play along; absent or null to play freely (the release's default Flow is not applied).
+             * @example heist
+             */
+            flowKey?: string | null;
         };
         PinnedReleaseResponse: {
             /** @example ironsworn */
@@ -435,6 +457,11 @@ export interface components {
             startedAt: string;
             /** @description In number order; empty right after the session starts. */
             scenes: components["schemas"]["SceneResponse"][];
+            /**
+             * Format: date-time
+             * @description When the session ended; null while it is under way.
+             */
+            endedAt: string | null;
         };
         OracleTableResponse: {
             /** @example weather */
@@ -523,6 +550,32 @@ export interface components {
              */
             levelLabel: string | null;
         };
+        FlowSummaryResponse: {
+            /** @example heist */
+            key: string;
+            /** @example Heist */
+            name: string;
+            /** @description Null when the Flow has none. */
+            description: string | null;
+            /** @description Shown when the campaign starts; null when the Flow has none. */
+            introduction: string | null;
+            /** @description Whether this is the release's default Flow (at most one is). */
+            default: boolean;
+            /**
+             * @description How a campaign playing it opens.
+             * @example focus
+             * @enum {string}
+             */
+            defaultView: "focus" | "journal";
+        };
+        SceneTypeSummaryResponse: {
+            /** @example legwork */
+            key: string;
+            /** @example Legwork */
+            name: string;
+            /** @example Learn about the target. */
+            purpose: string;
+        };
         CampaignResponse: {
             /** Format: uuid */
             id: string;
@@ -534,7 +587,7 @@ export interface components {
             /** @description In number order. */
             sessions: components["schemas"]["SessionResponse"][];
             /**
-             * @description The latest session; null before the first one.
+             * @description The session under way: the latest one unless it has ended; null before the first one or once it ends.
              * @example 2
              */
             currentSessionNumber: number | null;
@@ -549,6 +602,15 @@ export interface components {
             likelihoodOracles: components["schemas"]["LikelihoodOracleResponse"][];
             /** @description The Trackers of the pinned release with the campaign's values, in definition order; empty for schema version 1. */
             trackers: components["schemas"]["TrackerResponse"][];
+            /**
+             * @description The key of the Flow the campaign plays; null when played freely.
+             * @example heist
+             */
+            flowKey: string | null;
+            /** @description The Flows of the pinned release, in definition order; empty for schema version 1. */
+            flows: components["schemas"]["FlowSummaryResponse"][];
+            /** @description The Scene Types of the pinned release, in definition order; empty for schema version 1. */
+            sceneTypes: components["schemas"]["SceneTypeSummaryResponse"][];
         };
         /** @description A title, a Scene Type, or both. */
         StartSceneRequest: {
@@ -577,6 +639,19 @@ export interface components {
              */
             value: number;
         };
+        GameSystemFlowResponse: {
+            /**
+             * @description The key to create a campaign with.
+             * @example heist
+             */
+            key: string;
+            /** @example Heist */
+            name: string;
+            /** @description Null when the Flow has none. */
+            description: string | null;
+            /** @description Whether this is the release's default Flow (at most one is), to preselect. */
+            default: boolean;
+        };
         GameSystemSummaryResponse: {
             /**
              * @description The key to create a campaign with.
@@ -592,6 +667,8 @@ export interface components {
              * @example 3
              */
             version: number;
+            /** @description The Flows a new campaign can play, in definition order; empty for schema version 1 (a campaign is always played freely then). */
+            flows: components["schemas"]["GameSystemFlowResponse"][];
         };
         NoteContentResponse: {
             /**
@@ -1190,7 +1267,7 @@ export interface operations {
                     "application/json": components["schemas"]["CampaignResponse"];
                 };
             };
-            /** @description The JSON body is malformed or has no string "name" or "gameSystemKey". */
+            /** @description The JSON body is malformed, has no string "name" or "gameSystemKey", or a "flowKey" that is not a string. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1217,7 +1294,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The GameSystem has no published release. */
+            /** @description The GameSystem has no published release, or its latest release has no Flow with this key. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1362,6 +1439,64 @@ export interface operations {
             };
         };
     };
+    endSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ended session. No scene starts until the next session. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     startScene: {
         parameters: {
             query?: never;
@@ -1422,7 +1557,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
+            /** @description No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

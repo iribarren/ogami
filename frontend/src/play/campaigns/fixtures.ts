@@ -7,6 +7,7 @@ export const freeJournal: GameSystemSummary = {
   name: 'Free journal',
   description: 'Play any setting as a journal.',
   version: 2,
+  flows: [],
 }
 
 export const mythicStyle: GameSystemSummary = {
@@ -14,6 +15,7 @@ export const mythicStyle: GameSystemSummary = {
   name: 'Mythic style',
   description: null,
   version: 1,
+  flows: [],
 }
 
 export const lostMine: CampaignSummary = {
@@ -56,6 +58,7 @@ export const lostMineCampaign: Campaign = {
           hook: null,
         },
       ],
+      endedAt: null,
     },
     {
       number: 2,
@@ -71,6 +74,7 @@ export const lostMineCampaign: Campaign = {
           hook: null,
         },
       ],
+      endedAt: null,
     },
   ],
   currentSessionNumber: 2,
@@ -103,6 +107,9 @@ export const lostMineCampaign: Campaign = {
     },
   ],
   trackers: [],
+  flowKey: null,
+  flows: [],
+  sceneTypes: [],
 }
 
 /** `lostMineCampaign` right after starting session 3: no scene yet. */
@@ -110,7 +117,7 @@ export const lostMineInNewSession: Campaign = {
   ...lostMineCampaign,
   sessions: [
     ...lostMineCampaign.sessions,
-    { number: 3, startedAt: '2026-10-07T12:00:00+00:00', scenes: [] },
+    { number: 3, startedAt: '2026-10-07T12:00:00+00:00', scenes: [], endedAt: null },
   ],
   currentSessionNumber: 3,
   currentSceneNumber: null,
@@ -133,5 +140,8 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     oracleTables: [],
     likelihoodOracles: [],
     trackers: [],
+    flowKey: null,
+    flows: [],
+    sceneTypes: [],
   }
 }

@@ -8,6 +8,7 @@ use App\Identity\Application\AuthenticatedUser;
 use App\Play\Application\CampaignIdGenerator;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CreateCampaign;
+use App\Play\Application\EndSession;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\ListMyCampaigns;
 use App\Play\Application\SetTrackerValue;
@@ -25,6 +26,7 @@ use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Play\Domain\GameSystem\UnknownSceneType;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -39,10 +41,10 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * A solo player's campaigns, with their sessions, scenes (with their Scene Types) and Trackers
- * (security.yaml restricts these routes to ROLE_SOLO_PLAYER). A campaign of another player is not
- * found, exactly like an unknown one. A key of the pinned release that does not exist (a Tracker,
- * a Scene Type) is not found either, whether it comes in the path or in the body.
+ * A solo player's campaigns, with their Flow, sessions, scenes (with their Scene Types) and
+ * Trackers (security.yaml restricts these routes to ROLE_SOLO_PLAYER). A campaign of another
+ * player is not found, exactly like an unknown one. A key of the release that does not exist (a
+ * Flow, a Tracker, a Scene Type) is not found either, whether it comes in the path or in the body.
  */
 #[AsController]
 #[OA\Tag(name: 'Play')]
@@ -50,7 +52,7 @@ final readonly class CampaignController
 {
     use ReadsJsonBodies;
 
-    private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name" and a string "gameSystemKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
+    private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name", a string "gameSystemKey" and, to play a Flow, a string "flowKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
     private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", a string "sceneType" or both, such as {"title": "At the gate"} or {"sceneType": "legwork"}.';
     private const string MALFORMED_SCENE_TYPE = 'Send a JSON object with a string "sceneType", such as {"sceneType": "firefight"}.';
     private const string MALFORMED_TRACKER = 'Send a JSON object with an integer "value", such as {"value": 3}.';
@@ -88,10 +90,10 @@ final readonly class CampaignController
         headers: [new OA\Header(header: 'Location', description: 'The URL of the new campaign.', schema: new OA\Schema(type: 'string'))],
         content: new OA\JsonContent(ref: new Model(type: CampaignResponse::class)),
     )]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed or has no string "name" or "gameSystemKey".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed, has no string "name" or "gameSystemKey", or a "flowKey" that is not a string.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 404, description: 'The GameSystem has no published release.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'The GameSystem has no published release, or its latest release has no Flow with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The generated campaign id is already taken.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The name is blank or too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
@@ -104,16 +106,17 @@ final readonly class CampaignController
 
         $name = $body['name'] ?? null;
         $gameSystemKey = $body['gameSystemKey'] ?? null;
-        if (!\is_string($name) || !\is_string($gameSystemKey)) {
+        $flowKey = $body['flowKey'] ?? null;
+        if (!\is_string($name) || !\is_string($gameSystemKey) || (null !== $flowKey && !\is_string($flowKey))) {
             return $this->error(self::MALFORMED_CAMPAIGN, Response::HTTP_BAD_REQUEST);
         }
 
         $campaignId = $this->campaignIds->generate()->toString();
         try {
-            $this->commandBus->dispatch(new CreateCampaign($campaignId, $user->id(), $name, $gameSystemKey));
+            $this->commandBus->dispatch(new CreateCampaign($campaignId, $user->id(), $name, $gameSystemKey, $flowKey));
         } catch (InvalidCampaignName $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (GameSystemReleaseNotFound $exception) {
+        } catch (GameSystemReleaseNotFound|UnknownFlow $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
@@ -160,6 +163,28 @@ final readonly class CampaignController
         return $this->campaign($campaignId, $user, Response::HTTP_CREATED);
     }
 
+    #[Route('/api/campaigns/{campaignId}/sessions/current/end', name: 'api_campaigns_sessions_current_end', methods: ['POST'])]
+    #[OA\Post(operationId: 'endSession', summary: 'End the current session of one of my campaigns')]
+    #[OA\Response(response: 200, description: 'The ended session. No scene starts until the next session.', content: new OA\JsonContent(ref: new Model(type: SessionResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function endSession(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        try {
+            $this->commandBus->dispatch(new EndSession($campaignId, $user->id()));
+        } catch (CampaignNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (NoCurrentSession|CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        }
+
+        $session = array_last($this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions) ?? throw new \LogicException('The session was just ended.');
+
+        return new JsonResponse(SessionResponse::fromView($session));
+    }
+
     #[Route('/api/campaigns/{campaignId}/scenes', name: 'api_campaigns_scenes_start', methods: ['POST'])]
     #[OA\Post(operationId: 'startScene', summary: 'Start the next scene in the current session of one of my campaigns')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: StartSceneRequest::class)))]
@@ -168,7 +193,7 @@ final readonly class CampaignController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no Scene Type with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The title is blank or too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function startScene(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse

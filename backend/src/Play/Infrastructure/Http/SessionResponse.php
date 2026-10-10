@@ -8,7 +8,10 @@ use App\Play\Application\SessionView;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
-#[OA\Schema(required: ['number', 'startedAt', 'scenes'])]
+/**
+ * One sitting of play: under way until it ends.
+ */
+#[OA\Schema(required: ['number', 'startedAt', 'scenes', 'endedAt'])]
 final readonly class SessionResponse
 {
     /**
@@ -25,6 +28,8 @@ final readonly class SessionResponse
             items: new OA\Items(ref: new Model(type: SceneResponse::class)),
         )]
         public array $scenes,
+        #[OA\Property(description: 'When the session ended; null while it is under way.', format: 'date-time', nullable: true)]
+        public ?string $endedAt,
     ) {
     }
 
@@ -34,6 +39,7 @@ final readonly class SessionResponse
             $view->number,
             $view->startedAt->format(\DATE_ATOM),
             array_map(SceneResponse::fromView(...), $view->scenes),
+            $view->endedAt?->format(\DATE_ATOM),
         );
     }
 }

@@ -105,6 +105,35 @@ trait CampaignRepositoryContract
     }
 
     #[Test]
+    public function itKeepsTheEndOfEverySessionAndTheFlowPlayed(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $flow = Snapshots::withFlows('heist', 'Heist', 1)->flow('the-heist');
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), [], $flow);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-10T12:30:00.654321+02:00'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-11T09:00:00+00:00'));
+
+        $this->campaigns()->add($campaign);
+        $this->forgetLoaded();
+        $loaded = $this->campaigns()->ofId($id);
+
+        self::assertNotNull($loaded);
+        self::assertSame('the-heist', $loaded->flowKey());
+        self::assertEquals(new \DateTimeImmutable('2026-10-10T12:30:00.654321+02:00'), $loaded->sessions()[0]->endedAt());
+        self::assertSame('+02:00', $loaded->sessions()[0]->endedAt()?->format('P'));
+        self::assertNull($loaded->sessions()[1]->endedAt());
+        self::assertSame(2, $loaded->currentSession()?->number());
+        self::assertEquals($campaign, $loaded);
+
+        $loaded->endSession(new \DateTimeImmutable('2026-10-11T12:00:00+00:00'));
+        $this->campaigns()->save($loaded);
+        $this->forgetLoaded();
+
+        self::assertNull($this->campaigns()->ofId($id)?->currentSession());
+    }
+
+    #[Test]
     public function anUnknownOrMalformedIdFindsNoCampaign(): void
     {
         $this->campaigns()->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', self::OWNER, '2026-10-06'));

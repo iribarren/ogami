@@ -64,6 +64,19 @@ final class JournalEntryTest extends TestCase
     }
 
     #[Test]
+    public function nothingIsRecordedOnceTheSessionHasEnded(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06 10:00:00'));
+        $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 10:05:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06 12:00:00'));
+
+        $this->expectException(NoCurrentScene::class);
+
+        JournalEntry::record(JournalEntryId::fromString(self::ENTRY_ID), $campaign, NoteContent::of('Hello'), new \DateTimeImmutable());
+    }
+
+    #[Test]
     public function aStoredEntryIsRebuiltAsIs(): void
     {
         $content = NoteContent::of('Hello');

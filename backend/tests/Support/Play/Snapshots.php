@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Support\Play;
 
+use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\FlowView;
+use App\Play\Domain\GameSystem\Flow\Phase;
+use App\Play\Domain\GameSystem\Flow\PhaseMode;
+use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
@@ -89,5 +94,20 @@ final class Snapshots
         $sceneType = static fn (string $key, string $name): SceneType => new SceneType($key, $name, 'Play out a '.$key.' scene.', null, [], new StepList(), new StepList(), new StepList());
 
         return new GameSystemSnapshot($key, $name, $version, null, [], [], sceneTypes: [$sceneType('legwork', 'Legwork'), $sceneType('firefight', 'Firefight')]);
+    }
+
+    /**
+     * withSceneTypes() plus two Flows: "the-heist" (The heist, the default, opens in focus) and
+     * "one-shot" (One shot, opens in the journal), each with one phase picking a Scene Type.
+     */
+    public static function withFlows(string $key, string $name, int $version): GameSystemSnapshot
+    {
+        $sceneTypes = self::withSceneTypes($key, $name, $version)->sceneTypes();
+        $phase = new Phase('plan', 'Plan', null, PhaseMode::Once, SceneSelection::player(['legwork', 'firefight']));
+
+        return new GameSystemSnapshot($key, $name, $version, null, [], [], sceneTypes: $sceneTypes, flows: [
+            new Flow('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, FlowView::Focus, [], [], [$phase]),
+            new Flow('one-shot', 'One shot', null, null, false, FlowView::Journal, [], [], [$phase]),
+        ]);
     }
 }

@@ -21,6 +21,6 @@ final class FlowRunPositionMismatch extends \DomainException
 
     public static function sceneNotCurrent(): self
     {
-        return new self('The guided scene is no longer the current scene.');
+        return new self('The guided scene is no longer the current scene: pause and resume guidance to go on at the scene pick.');
     }
 }

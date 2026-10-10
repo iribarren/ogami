@@ -29,11 +29,17 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * it as soon as a session is under way); picking starts a scene of play. In a scene the parts run
  * in order (ScenePart): scene opening, setup, play, open play until "End scene", closing, scene
  * closing. After the scene the phase goes on at the scene pick, or ends: a once phase after its
- * scenes, any phase on "Move on" (loop phases, at the pick) or when an effect ends it. After the
- * last phase the FlowRun is completed. Steps advance to the chosen option's "next", else the
- * step's "next", else the following step; "end" ends the part; a condition step advances on its own.
+ * scenes, a loop phase on "Move on" (at once at the pick, else after the scene) or when an effect
+ * ends it. After the last phase the FlowRun is completed. Steps advance to the chosen option's
+ * "next", else the step's "next", else the following step; "end" ends the part; a condition step
+ * advances on its own.
  *
- * Not run yet (play-flow-run slice 15): session, phase and world turn hooks, effects, bands and
+ * Paused, the FlowRun takes no command and the player plays freely; resuming goes on where it
+ * stopped. A guided scene that is no longer the current scene when guidance resumes or a session
+ * starts (the player started another by hand, or the session ended) is abandoned: the FlowRun goes
+ * on after it, at the scene pick.
+ *
+ * Not run yet (play-flow-run slice 16): session, phase and world turn hooks, effects, bands and
  * oracle/table branches, placeholders. The seams are marked "Hooks:" below.
  */
 final class FlowRun
@@ -63,7 +69,8 @@ final class FlowRun
 
     private ?string $forcedNextSceneType = null;
 
-    private bool $phaseEnding = false;
+    /** why the phase ends once the current scene finishes ("endPhase" or "moveOn"); null while it goes on */
+    private ?string $phaseEnding = null;
 
     private int $switchCount = 0;
 
@@ -83,13 +90,20 @@ final class FlowRun
     }
 
     /**
-     * A session started: at the scene pick, a selection with one Scene Type picks it.
+     * A session started: at the scene pick, a selection with one Scene Type picks it; a guided
+     * scene of an earlier session is abandoned.
      */
     public function sessionStarted(FlowRunContext $context): void
     {
         // Hooks: the session opening runs here.
-        if (FlowRunStatus::Active === $this->status && FlowRunStage::ScenePick === $this->stage) {
+        if (FlowRunStatus::Active !== $this->status) {
+            return;
+        }
+
+        if (FlowRunStage::ScenePick === $this->stage) {
             $this->reachScenePick($context);
+        } elseif (!$this->inCurrentScene($context)) {
+            $this->abandonScene($context);
         }
     }
 
@@ -209,21 +223,84 @@ final class FlowRun
     }
 
     /**
-     * Ends a loop phase at its scene pick, by the player's choice.
+     * Ends a loop phase by the player's choice: at once at the scene pick, else once the current
+     * scene finishes (its closing parts still run).
      *
-     * @throws FlowRunNotActive        when the Flow is complete
-     * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
-     * @throws MoveOnNotAllowed        when the phase plays once
+     * @throws FlowRunNotActive when guidance is paused or the Flow is complete
+     * @throws MoveOnNotAllowed when the phase plays once
      */
     public function moveOn(FlowRunContext $context): void
     {
-        $this->assertAtScenePick();
+        $this->assertActive();
         $phase = $this->phase($context->flow);
         if (PhaseMode::Once === $phase->mode) {
             throw MoveOnNotAllowed::oncePhase($phase->key);
         }
 
-        $this->finishPhase('moveOn', $context);
+        if (FlowRunStage::ScenePick === $this->stage) {
+            $this->finishPhase('moveOn', $context);
+        } else {
+            $this->phaseEnding ??= 'moveOn';
+        }
+    }
+
+    /**
+     * Turns guidance off: the player plays freely, and resume() goes on where it stopped.
+     *
+     * @throws FlowRunNotActive when guidance is already paused or the Flow is complete
+     */
+    public function pause(\DateTimeImmutable $at): void
+    {
+        if (FlowRunStatus::Active !== $this->status) {
+            throw FlowRunNotActive::toPause($this->status);
+        }
+
+        $this->status = FlowRunStatus::Paused;
+        $this->history[] = FlowRunHistoryEntry::paused($at);
+    }
+
+    /**
+     * Turns guidance back on at the stored position. A guided scene that is no longer the current
+     * one is abandoned, and the FlowRun goes on after it, at the scene pick.
+     *
+     * @throws FlowRunNotActive when guidance is not paused
+     */
+    public function resume(FlowRunContext $context): void
+    {
+        if (FlowRunStatus::Paused !== $this->status) {
+            throw FlowRunNotActive::toResume($this->status);
+        }
+
+        $this->status = FlowRunStatus::Active;
+        $this->history[] = FlowRunHistoryEntry::resumed($context->at);
+        if (FlowRunStage::ScenePick === $this->stage) {
+            $this->reachScenePick($context);
+        } elseif (!$this->inCurrentScene($context)) {
+            $this->abandonScene($context);
+        }
+    }
+
+    /**
+     * Records a Tracker edited by hand.
+     */
+    public function recordTrackerEdit(string $tracker, int $from, int $to, \DateTimeImmutable $at): void
+    {
+        $this->history[] = FlowRunHistoryEntry::trackerEdit($at, $tracker, $from, $to);
+    }
+
+    /**
+     * Records the current scene's Scene Type switched by hand. When it is the guided scene, the
+     * FlowRun follows: it goes on at the new type's setup (the scene opening does not run again).
+     *
+     * @param ?string $from the scene's Scene Type key before the switch
+     */
+    public function followSceneTypeSwitch(?string $from, SceneType $to, FlowRunContext $context): void
+    {
+        $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, (int) $context->sceneNumber(), $from, $to->key);
+        if (FlowRunStage::Scene === $this->stage && $this->inCurrentScene($context)) {
+            $this->sceneType = $to->key;
+            $this->enterPart(ScenePart::Setup, $context);
+        }
     }
 
     /**
@@ -240,7 +317,40 @@ final class FlowRun
      */
     public function endPhaseAfterScene(): void
     {
-        $this->phaseEnding = true;
+        $this->phaseEnding ??= 'endPhase';
+    }
+
+    /**
+     * What the player sees of the FlowRun.
+     *
+     * @param ?int $sessionNumber the number of the session under way, null when none is
+     */
+    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber): FlowRunView
+    {
+        if (FlowRunStatus::Completed === $this->status) {
+            return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete');
+        }
+
+        $phase = $this->phase($flow);
+        $step = $this->currentStep($release, $flow);
+        $shown = $this->part instanceof ScenePart ? array_values(array_filter($this->steps($this->part, $release, $flow)->steps, static fn (Step $step): bool => !$step instanceof ConditionStep)) : [];
+        $number = $step instanceof Step ? array_search($step, $shown, true) : false;
+        $pick = FlowRunStage::ScenePick === $this->stage ? new ScenePickView(
+            $phase->selection->rule,
+            $this->offered($release, $flow),
+            null === $this->forcedNextSceneType ? $phase->selection->table : null,
+            null !== $this->forcedNextSceneType,
+        ) : null;
+
+        return new FlowRunView(
+            $this->status,
+            null === $sessionNumber,
+            new FlowRunProgress($phase->act, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step) : null,
+            $pick,
+            FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
+            $this->nextLabel($step, $release, $flow),
+        );
     }
 
     /**
@@ -329,9 +439,12 @@ final class FlowRun
         return $this->forcedNextSceneType;
     }
 
+    /**
+     * Whether the phase ends once the current scene finishes (an effect or "Move on" ended it).
+     */
     public function phaseEnding(): bool
     {
-        return $this->phaseEnding;
+        return null !== $this->phaseEnding;
     }
 
     /**
@@ -384,7 +497,7 @@ final class FlowRun
     private function assertActive(): void
     {
         if (FlowRunStatus::Active !== $this->status) {
-            throw FlowRunNotActive::completed();
+            throw FlowRunNotActive::toPlay($this->status);
         }
     }
 
@@ -514,11 +627,20 @@ final class FlowRun
         $this->switchCount = 0;
         if ($this->phaseFinished($context->flow)) {
             // Hooks: the phase closing runs here.
-            $this->finishPhase($this->phaseEnding ? 'endPhase' : 'finished', $context);
+            $this->finishPhase($this->phaseEnding ?? 'finished', $context);
         } else {
             // Hooks: the world turn runs here.
             $this->reachScenePick($context);
         }
+    }
+
+    /**
+     * Leaves the guided scene unfinished (recorded) and goes on after it.
+     */
+    private function abandonScene(FlowRunContext $context): void
+    {
+        $this->history[] = FlowRunHistoryEntry::sceneAbandoned($context->at, (int) $this->sessionNumber, (int) $this->sceneNumber);
+        $this->afterScene($context);
     }
 
     private function finishPhase(string $reason, FlowRunContext $context): void
@@ -526,7 +648,7 @@ final class FlowRun
         $this->history[] = FlowRunHistoryEntry::phaseEnded($context->at, $this->phase($context->flow)->key, $reason);
         ++$this->phaseIndex;
         $this->sequencePosition = $this->scenesPlayed = 0;
-        $this->phaseEnding = false;
+        $this->phaseEnding = null;
         if (!$context->flow->phaseAt($this->phaseIndex) instanceof Phase) {
             $this->status = FlowRunStatus::Completed;
             $this->history[] = FlowRunHistoryEntry::completed($context->at);
@@ -548,7 +670,7 @@ final class FlowRun
         $selection = $phase->selection;
         $played = SelectionRule::Sequence === $selection->rule ? $this->sequencePosition >= \count($selection->sceneTypes) : $this->scenesPlayed >= 1;
 
-        return $this->phaseEnding || (PhaseMode::Once === $phase->mode && $played);
+        return null !== $this->phaseEnding || (PhaseMode::Once === $phase->mode && $played);
     }
 
     /**
@@ -565,6 +687,81 @@ final class FlowRun
         };
 
         return array_map(static fn (string $key): SceneType => $release->sceneType($key) ?? throw new \LogicException(\sprintf('The pinned release has no Scene Type "%s".', $key)), $keys);
+    }
+
+    /**
+     * The next step named: the step after the current one on its default path (condition steps
+     * are passed), across parts, past the scene to the next pick or phase.
+     */
+    private function nextLabel(?Step $step, GameSystemSnapshot $release, Flow $flow): string
+    {
+        if (!$this->part instanceof ScenePart) {
+            return $this->pickLabel($release, $flow);
+        }
+
+        $part = $this->part;
+        $steps = $this->steps($part, $release, $flow);
+        $next = $step instanceof Step ? $this->effective($steps, $this->target($steps, $step, null)) : null;
+        while (!$next instanceof Step) {
+            $part = $part->next();
+            if (!$part instanceof ScenePart) {
+                return $this->labelAfterScene($release, $flow);
+            }
+
+            if (ScenePart::Open === $part) {
+                return $part->label();
+            }
+
+            $steps = $this->steps($part, $release, $flow);
+            $next = $this->effective($steps, $steps->steps[0] ?? null);
+        }
+
+        return $part->label().': '.$next->title;
+    }
+
+    private function labelAfterScene(GameSystemSnapshot $release, Flow $flow): string
+    {
+        // Hooks: the scene closing, phase closing and world turn hooks are named here.
+        if (!$this->phaseFinished($flow)) {
+            return $this->pickLabel($release, $flow);
+        }
+
+        $next = $flow->phaseAt($this->phaseIndex + 1);
+
+        return $next instanceof Phase ? \sprintf('%s complete → %s', $this->phase($flow)->name, $next->name) : 'Flow complete';
+    }
+
+    /**
+     * The scene pick named: the next of a sequence, the forced or only Scene Type, else the choice
+     * or the table to roll.
+     */
+    private function pickLabel(GameSystemSnapshot $release, Flow $flow): string
+    {
+        $selection = $this->phase($flow)->selection;
+        $offered = $this->offered($release, $flow);
+        if (null === $this->forcedNextSceneType && SelectionRule::Sequence === $selection->rule) {
+            return 'Next: '.$offered[0]->name;
+        }
+
+        if (1 === \count($offered)) {
+            return 'Next scene: '.$offered[0]->name;
+        }
+
+        return SelectionRule::Oracle === $selection->rule
+            ? 'Next scene: roll on '.($release->oracleTableNames()[(string) $selection->table] ?? $selection->table)
+            : 'Next scene: choose a scene type';
+    }
+
+    /**
+     * The step a player meets from this one: condition steps pass on to their next.
+     */
+    private function effective(StepList $steps, ?Step $step): ?Step
+    {
+        while ($step instanceof ConditionStep) {
+            $step = $this->target($steps, $step, null);
+        }
+
+        return $step;
     }
 
     /**

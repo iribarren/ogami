@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\FlowRun;
 
 /**
- * Only a loop phase ends by the player's choice, at its scene pick.
+ * Only a loop phase ends by the player's choice ("Move on"), at its scene pick or after a scene.
  */
 final class MoveOnNotAllowed extends \DomainException
 {

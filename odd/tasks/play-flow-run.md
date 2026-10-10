@@ -109,14 +109,17 @@ Contract choices the ADRs leave open (consistent with ADR 0017/0018; implemented
 - **Guidance:** pause → `paused` (free play; notes, oracles, rolls, manual scenes and switches). Resume continues at the stored position. If the player started a new scene by hand while paused mid-scene, the paused scene is abandoned (history) and resume continues between scenes.
 - **Concurrency:** FlowRun commands carry the current step key (or stage); a mismatch fails with 409.
 
-### FlowRun model (T9a)
+### FlowRun model (T9a, T9b)
 
 - `Campaign\FlowRun\FlowRun`: an entity inside the Campaign (not persisted until slice 15). `FlowRunContext` passes the pinned release, the Flow, the time and the current session and scene.
-- `status` active | completed (paused in T9b); `stage` scenePick | scene; `ScenePart` sceneOpening → setup → play → open → closing → sceneClosing.
-- Commands on the Campaign: `pickSceneType`, `pickSceneTypeByOracle`, `completeFlowStep(stepKey, StepResult)`, `skipFlowStep`, `endFlowScene(sceneNumber)`, `moveOn`. Each names the step, scene or stage it expects (`FlowRunPositionMismatch`).
+- `status` active | paused | completed; `stage` scenePick | scene; `ScenePart` sceneOpening → setup → play → open → closing → sceneClosing.
+- Commands on the Campaign: `pickSceneType`, `pickSceneTypeByOracle`, `completeFlowStep(stepKey, StepResult)`, `skipFlowStep`, `endFlowScene(sceneNumber)`, `moveOn`, `pauseGuidance`, `resumeGuidance`. Each step/pick command names the step, scene or stage it expects (`FlowRunPositionMismatch`). Each runs on a copy of the Campaign and is kept only when it succeeds (all or nothing).
+- Guidance (T9b): paused, every step/pick command and Move on fail with `FlowRunNotActive`. A guided scene that is no longer the current scene is abandoned (history `sceneAbandoned {session, scene}`) when guidance resumes or when a session starts (`startSession` with the release: the session ended mid-scene, or a new one started); the FlowRun goes on as after a scene (the scene counts as played), at the scene pick. Until then an active FlowRun whose scene was replaced by hand refuses commands (pause and resume to go on).
+- Hand actions (T9b): `setTrackerValue(tracker, value, at)` records `trackerEdit {tracker, from, to}` and `switchSceneType(type, release, at)` records `sceneTypeSwitch {scene, from, to}` whenever a FlowRun exists; a switched guided scene goes on at the new type's setup.
+- Read model (T9b): `Campaign::flowRunView(release)` → `FlowRunView {status, waitsForSession, progress: FlowRunProgress {act, phase, sceneType, part, stepNumber, stepCount} (condition steps not counted), step: FlowStepView {kind, step}, pick: ScenePickView {rule, cards, table, forced}, canMoveOn, next}`. The next step is named on the default path (condition steps passed, branches ignored): `<part>: <title>`, `Open play`, `Next: <type>` (sequence), `Next scene: <type>` (forced or only type), `Next scene: choose a scene type`, `Next scene: roll on <table>`, `<phase> complete → <next phase>`, `Flow complete`.
 - Seams for slice 16 are marked `Hooks:`; effects call `forceNextSceneType()` and `endPhaseAfterScene()`.
 - Answer text: prompt text; table entry texts joined with " › "; oracle answer label; choice option label.
-- **Move on (user decision, 2026-10-10):** available at any time in a loop phase while guided, as a player-triggered `endPhase`: during a scene it ends the phase after the closing parts; at the scene pick it ends the phase at once. Single-type auto-pick stays (ADR 0018 decisions 8 and 11). T9a allows it at the pick only; T9b extends it.
+- **Move on (user decision, 2026-10-10):** available at any time in a loop phase while guided, as a player-triggered `endPhase`: during a scene it ends the phase after the closing parts; at the scene pick it ends the phase at once. Single-type auto-pick stays (ADR 0018 decisions 8 and 11). T9a allows it at the pick only; T9b extends it (history reason `moveOn` either way; the first of an `endPhase` effect and Move on names the reason).
 
 ### HTTP (under `/api`, `SOLO_PLAYER` and owner only)
 
@@ -178,7 +181,7 @@ From slice 10 on, the user set the per-slice planning limit for this feature to 
 | T8a | 10 | Scenes: optional Scene Type, kind `scene` \| `hook` with the hook name, default titles (`<Scene Type> <n>` per type; hook titles), start a scene by hand with an optional Scene Type, switch the current Scene's type by hand; API, OpenAPI, Behat | delegated writer (slice 10, 2+ non-trivial files) | [x] | `d5d3939` |
 | T8b | 11 | Sessions as sittings (`EndSession`, `endedAt`, no scenes until a new session); `flowKey` at creation (null = Play freely; must name a release flow), flows and Scene Types summary in the campaign view; API, OpenAPI, Behat | delegated writer (slice 11, 2+ non-trivial files) | [x] | `738829b` |
 | T9a | 13 | FlowRun core: started at creation for a `flowKey`; scene pick (sequence, player, oracle, auto-pick, forced slot); parts; steps with typed results and default `next`; skip/mandatory; condition auto-advance; position checks; phase modes, Move on at the pick, `completed`; history for skips, phase ends, completion | delegated writer (slice 12 writer, carried to slice 13) | [x] | `bbfc562` |
-| T9b | 14 | Guidance pause/resume and scene abandonment; history for hand tracker edits and Scene Type switches; "Move on" any time in a loop phase (user decision); UI read model (position, current step, pick offer, next step named) | | [ ] | |
+| T9b | 14 | Guidance pause/resume and scene abandonment; history for hand tracker edits and Scene Type switches; "Move on" any time in a loop phase (user decision); UI read model (position, current step, pick offer, next step named) | delegated writer (slice 14, 2+ non-trivial files) | [x] | |
 | T10 | 15 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
 | T11 | 16 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
 | T12 | 16 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
@@ -228,6 +231,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 
 - T9a: FlowRun core; 24 tests (22 rules + heist and Mythic walk-throughs). Code was written before its tests, so there is no real RED; the first test run failed only on wrong expectations. ~1,900 lines.
 - Slice 13 review fixes: Campaign FlowRun commands run on a copy of the campaign and keep the outcome only on success (a full session leaves FlowRun, sessions and Tracker values as before; RED 4 → GREEN); the repository contract and the stored-Flow-key test compare the whole Campaign without its FlowRun again (slice 14).
+- T9b: pause/resume, scene abandonment on resume and on session start, `trackerEdit` / `sceneTypeSwitch` history, Move on during a loop phase's scene, `FlowRunView` read model; ported from `wip/play-flow-run-flowrun-full` after the tests were written (RED: 12 tests, 10 errors on the missing API and 2 failures → GREEN, 36 FlowRun tests); slice 14: 997 lines.
 
 ## Reviews
 

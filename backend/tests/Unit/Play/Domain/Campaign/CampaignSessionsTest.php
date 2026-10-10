@@ -160,7 +160,9 @@ final class CampaignSessionsTest extends TestCase
 
         $campaign = Campaign::reconstitute($original->id(), $original->ownerId(), $original->name(), $original->pinnedRelease(), $original->createdAt(), [], [], 'heist');
 
-        self::assertEquals($original, $campaign);
+        // The FlowRun is stored from play-flow-run slice 14 on.
+        self::assertNotNull($original->flowRun());
+        self::assertSame([$original->flowKey(), null], [$campaign->flowKey(), $campaign->flowRun()]);
     }
 
     private function campaign(): Campaign

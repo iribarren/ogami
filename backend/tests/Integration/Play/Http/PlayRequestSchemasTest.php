@@ -27,6 +27,11 @@ final class PlayRequestSchemasTest extends WebTestCase
         yield 'set tracker value' => ['SetTrackerValueRequest', ['value'], []];
         yield 'record note' => ['RecordNoteRequest', ['text'], []];
         yield 'record roll' => ['RecordRollRequest', ['expression'], []];
+        yield 'complete FlowRun step' => ['CompleteFlowStepRequest', ['stepKey'], ['text', 'optionKey', 'likelihood', 'chaosFactor']];
+        yield 'skip FlowRun step' => ['SkipFlowStepRequest', ['stepKey'], []];
+        yield 'pick Scene Type' => ['PickSceneTypeRequest', ['sceneType'], []];
+        yield 'end FlowRun scene' => ['EndFlowSceneRequest', ['sceneNumber'], []];
+        yield 'move on' => ['MoveOnRequest', ['phase'], []];
         yield 'record likelihood answer' => ['RecordLikelihoodAnswerRequest', ['likelihood'], ['chaosFactor', 'question']];
     }
 

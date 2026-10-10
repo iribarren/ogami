@@ -91,7 +91,7 @@ final class FlowRunTest extends FlowRunTestCase
         $legacy->startSession(self::at(), $this->release);
 
         $view = $legacy->flowRunView($this->release);
-        self::assertSame([false, FlowRunStage::ScenePick], [$view?->waitsForSession, self::flowRunOf($legacy)->stage()]);
+        self::assertSame([false, FlowRunStage::ScenePick], [$view->waitsForSession, self::flowRunOf($legacy)->stage()]);
         self::assertSame([1, 1], [$legacy->currentSession()?->number(), self::flowRunOf($legacy)->phaseIndex() + 1]);
     }
 

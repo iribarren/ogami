@@ -10,6 +10,7 @@ use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
+use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Play\Domain\GameSystem\UnknownSceneType;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Shared\Application\Bus\CommandHandler;
@@ -20,6 +21,7 @@ final readonly class SwitchSceneTypeHandler implements CommandHandler
         private OwnedCampaigns $ownedCampaigns,
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
+        private Clock $clock,
     ) {
     }
 
@@ -32,13 +34,15 @@ final readonly class SwitchSceneTypeHandler implements CommandHandler
      * @throws GameSystemReleaseNotFound       when the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion
      * @throws InvalidGameSystemRelease
+     * @throws UnknownFlow                     when the campaign plays a Flow the pinned release no longer has
      */
     public function __invoke(SwitchSceneType $command): void
     {
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
 
-        // FlowRun history for hand switches comes with the FlowRun (play-flow-run T10).
-        $campaign->switchSceneType(SceneTypes::ofPinnedRelease($this->releases, $campaign, $command->sceneType));
+        $release = PinnedReleases::of($this->releases, $campaign);
+        // The release and the time put the switch in the FlowRun's history.
+        $campaign->switchSceneType($release->sceneType($command->sceneType) ?? throw UnknownSceneType::withKey($command->sceneType), $release, $this->clock->now());
         $this->campaigns->save($campaign);
     }
 }

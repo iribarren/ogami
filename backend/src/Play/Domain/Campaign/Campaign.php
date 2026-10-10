@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
@@ -465,6 +466,19 @@ final class Campaign
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
         return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number());
+    }
+
+    /**
+     * What the player sees of the FlowRun, which must be guiding: the view a FlowRun command acts on.
+     *
+     * @throws FlowRunNotActive when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws UnknownFlow      when the pinned release has no Flow with the campaign's key
+     */
+    public function activeFlowRunView(GameSystemSnapshot $release): FlowRunView
+    {
+        $view = $this->flowRunView($release) ?? throw FlowRunNotActive::none();
+
+        return FlowRunStatus::Active === $view->status ? $view : throw FlowRunNotActive::toPlay($view->status);
     }
 
     public function __clone()

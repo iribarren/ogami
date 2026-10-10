@@ -10,6 +10,7 @@ use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
@@ -51,12 +52,32 @@ final readonly class CampaignJournal
      */
     public function record(string $entryId, Campaign $campaign, JournalEntryContent $content): void
     {
+        $this->add($this->entry($entryId, $campaign, $content, $this->clock->now()));
+    }
+
+    /**
+     * Builds the entry the content makes in the campaign's current scene without recording it, so a
+     * change to the campaign can run in between (a Flow step is completed in the scene it was in).
+     *
+     * @param ?FlowStepSnapshot $flowStep the Flow step recording it, null for a free entry
+     *
+     * @throws InvalidJournalEntryId
+     * @throws JournalEntryAlreadyExists when the entry id is already taken (checked here, whatever the repository does)
+     * @throws NoCurrentScene
+     */
+    public function entry(string $entryId, Campaign $campaign, JournalEntryContent $content, \DateTimeImmutable $recordedAt, ?FlowStepSnapshot $flowStep = null): JournalEntry
+    {
         $id = JournalEntryId::fromString($entryId);
         if ($this->entries->ofId($id) instanceof JournalEntry) {
             throw JournalEntryAlreadyExists::withId($id);
         }
 
-        $this->entries->add(JournalEntry::record($id, $campaign, $content, $this->clock->now()));
+        return JournalEntry::record($id, $campaign, $content, $recordedAt, $flowStep);
+    }
+
+    public function add(JournalEntry $entry): void
+    {
+        $this->entries->add($entry);
     }
 
     /**

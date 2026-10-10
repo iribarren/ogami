@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Play\Application;
 
+use App\Play\Domain\Campaign\FlowRun\FlowRunView;
+
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
- * the Flow played (null when played freely), and the release's Flows and Scene Types.
+ * the Flow played (null when played freely) with the FlowRun guiding it, and the release's Flows
+ * and Scene Types.
  */
 final readonly class CampaignView
 {
@@ -31,6 +34,7 @@ final readonly class CampaignView
         public array $likelihoodOracles,
         public array $trackers,
         public ?string $flowKey,
+        public ?FlowRunView $flowRun,
         public array $flows,
         public array $sceneTypes,
     ) {

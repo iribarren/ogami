@@ -18,6 +18,7 @@ final readonly class SetTrackerValueHandler implements CommandHandler
         private OwnedCampaigns $ownedCampaigns,
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
+        private Clock $clock,
     ) {
     }
 
@@ -37,8 +38,8 @@ final readonly class SetTrackerValueHandler implements CommandHandler
         $tracker = $this->releases->get($pinned->gameSystemKey(), $pinned->releaseVersion())->tracker($command->trackerKey)
             ?? throw UnknownCampaignTracker::withKey($command->trackerKey);
 
-        // FlowRun history for hand edits comes with the FlowRun (play-flow-run T10).
-        $campaign->setTrackerValue($tracker, $command->value);
+        // The time puts the edit in the FlowRun's history.
+        $campaign->setTrackerValue($tracker, $command->value, $this->clock->now());
         $this->campaigns->save($campaign);
     }
 }

@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
+use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\Snapshots;
@@ -25,6 +26,7 @@ final class SetTrackerValueHandlerTest extends TestCase
 {
     private InMemoryCampaignRepository $campaigns;
     private SetTrackerValueHandler $handler;
+    private FixedClock $clock;
 
     protected function setUp(): void
     {
@@ -41,7 +43,7 @@ final class SetTrackerValueHandlerTest extends TestCase
             new \DateTimeImmutable('2026-10-09T09:00:00+00:00'),
             Snapshots::withTrackers('heist', 'Heist', 1)->trackers(),
         ));
-        $this->handler = new SetTrackerValueHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $releases);
+        $this->handler = new SetTrackerValueHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $releases, $this->clock = new FixedClock('2026-10-10T09:30:00+00:00'));
     }
 
     #[Test]
@@ -51,6 +53,20 @@ final class SetTrackerValueHandlerTest extends TestCase
         ($this->handler)(new SetTrackerValue('campaign-1', 'user-1', 'alarm', 9));
 
         self::assertSame(['alarm' => 6, 'heat' => 2, 'chaos' => 5], $this->campaigns->ofId(CampaignId::fromString('campaign-1'))?->trackerValues());
+    }
+
+    #[Test]
+    public function aGuidedCampaignRecordsTheEditInItsFlowRunHistoryAtTheClockTime(): void
+    {
+        $release = Snapshots::withFlows('heist', 'Heist', 1);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), Snapshots::withTrackers('heist', 'Heist', 1)->trackers(), $release->flow('one-shot'));
+        $this->campaigns->add($campaign);
+
+        ($this->handler)(new SetTrackerValue('campaign-2', 'user-1', 'heat', 2));
+
+        $history = $this->campaigns->ofId(CampaignId::fromString('campaign-2'))?->flowRun()?->history() ?? [];
+        self::assertSame([['trackerEdit', ['tracker' => 'heat', 'from' => -5, 'to' => 2]]], array_map(static fn (\App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry $entry): array => [$entry->event->value, $entry->details], $history));
+        self::assertEquals($this->clock->now(), $history[0]->at);
     }
 
     #[Test]

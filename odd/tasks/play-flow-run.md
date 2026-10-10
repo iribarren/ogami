@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-16-flow-run-commands` (from `main` `1aec165`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-17-flow-run-view` (from `main` `584e275`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -156,7 +156,7 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 | 14 | `feat/play-flow-run-14-flow-run-guidance` | `feat(play): play-flow-run 14/21 flow-run-guidance` | T9b | 997 (actual) |
 | 15 | `feat/play-flow-run-15-flow-run-persistence` | `feat(play): play-flow-run 15/21 flow-run-persistence` | T10a | ~1,300 |
 | 16 | `feat/play-flow-run-16-flow-run-commands` | `feat(play): play-flow-run 16/22 flow-run-commands` | T10b | 1,523 (actual) |
-| 17 | `feat/play-flow-run-17-flow-run-view` | `feat(play): play-flow-run 17/22 flow-run-view` | T10b2, T10c1 | ~1,500 |
+| 17 | `feat/play-flow-run-17-flow-run-view` | `feat(play): play-flow-run 17/22 flow-run-view` | T10b2, T10c1 | ~1,700 |
 | 18 | `feat/play-flow-run-18-flow-run-http` | `feat(play): play-flow-run 18/22 flow-run-http` | T10c2 | ~1,600 |
 | 19 | `feat/play-flow-run-19-control-flow` | `feat(play): play-flow-run 19/22 control-flow` | T11–T12 | ~1,600 |
 | 20 | `feat/play-flow-run-20-guided-journal` | `feat(play): play-flow-run 20/22 guided-journal` | T13–T14 | ~1,600 |
@@ -186,9 +186,9 @@ From slice 10 on, the user set the per-slice planning limit for this feature to 
 | T9a | 13 | FlowRun core: started at creation for a `flowKey`; scene pick (sequence, player, oracle, auto-pick, forced slot); parts; steps with typed results and default `next`; skip/mandatory; condition auto-advance; position checks; phase modes, Move on at the pick, `completed`; history for skips, phase ends, completion | delegated writer (slice 12 writer, carried to slice 13) | [x] | `bbfc562` |
 | T9b | 14 | Guidance pause/resume and scene abandonment; history for hand tracker edits and Scene Type switches; "Move on" any time in a loop phase (user decision); UI read model (position, current step, pick offer, next step named) | delegated writer (slice 14, 2+ non-trivial files) | [x] | `d04ee68` |
 | T10a | 15 | FlowRun persistence (JSONB on the campaign, migration, repository contract incl. FlowRun); journal results: new `choice` content kind and a `flowStep {key, title, prompt}` snapshot on entries recorded by steps | delegated writer (slice 15, 2+ non-trivial files) | [x] | `3494d1a` |
-| T10b | 16 | Application, part 1: FlowRun commands through the buses (complete step with server-side roll/table/likelihood and journal entry, pick, pause, resume), `StartSessionHandler` passes the release, FlowRun read model in `GetCampaign` | delegated writer (slice 16, 2+ non-trivial files) | [x] | `c4c7ba6` |
-| T10b2 | 17 | Application, part 2: skip, oracle pick, end scene, Move on (from `wip/play-flow-run-t10b-remainder`) | | [ ] | |
-| T10c1 | 17 | Campaign view `flowRun` in the API, `JournalEntryResponse` maps `choice` and `flowStep`, the slice 12 end-session HTTP test; OpenAPI and typed client | | [ ] | |
+| T10b | 16 | Application, part 1: FlowRun commands through the buses (complete step with server-side roll/table/likelihood and journal entry, pick, pause, resume), `StartSessionHandler` passes the release, FlowRun read model in `GetCampaign` | delegated writer (slice 16, 2+ non-trivial files) | [x] | `9666d16` |
+| T10b2 | 17 | Application, part 2: skip, oracle pick, end scene, Move on (from `wip/play-flow-run-t10b-remainder`) | delegated writer (slice 17, 2+ non-trivial files) | [ ] | |
+| T10c1 | 17 | Campaign view `flowRun` in the API, `JournalEntryResponse` maps `choice` and `flowStep`, the slice 12 end-session HTTP test; OpenAPI and typed client | delegated writer (slice 17, 2+ non-trivial files) | [ ] | |
 | T10c2 | 18 | HTTP endpoints for the FlowRun commands, API tests (404/409/422 per domain error, 409 on a concurrent save), Behat | | [ ] | |
 | T11 | 18 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
 | T12 | 18 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
@@ -243,6 +243,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 - T10a: `CampaignFlowRunType` (`flow_run`, every FlowRun field, history details per event, fails closed with `Stored campaign FlowRun: …`), `FlowRun::reconstitute`, `Campaign::reconstitute(…, flowRun)`, copy-on-write FlowRun; `ChoiceContent` (`choice` kind), `FlowStepSnapshot` on `JournalEntry` (`flow_step`, `JournalEntryFlowStepType`), `JournalEntryView::$flowStep`; both types registered with `#[AsDbalType]` (no config change); migration `Version20261010130000`; `CampaignCopies` removed, the contract compares whole campaigns (mid-scene, paused, forced pick, completed). RED: journal 9 errors and 11 failures, then FlowRun persistence 17 errors and 15 failures → GREEN (Play unit + integration: 627 tests); slice 15: ~1,300 lines, nothing generated.
 - Slice 15 review fixes: `Campaign::flowRun()` returns a copy (`Campaigns::withFlowRun` test helper builds states no command reaches yet); `startMissingFlowRun()` gives a campaign with a Flow and no stored FlowRun a fresh one on `reconstitute` and on load (Doctrine `postLoad` callback); pause → save → reload → resume round trip in the repository contract (RED: 3 failures of 7 focused tests, the round trip passed first as a characterization → GREEN, 632 Play tests).
 - T10b (part 1 of 2): `CompleteFlowStep` (one command for every completable kind; roll, table and likelihood server-side; fields of another kind refused with `InvalidStepResult`; the entry is built before the step completes so it files under the step's scene, and added only once the domain accepts), `PickSceneType`, `PauseGuidance`, `ResumeGuidance`; `StartSessionHandler` passes the pinned release (only for a campaign with a Flow), `SetTrackerValueHandler` and `SwitchSceneTypeHandler` pass the clock time (history); `CampaignView::$flowRun`; `Campaign::activeFlowRunView`, `PinnedReleases`, `GuidedReleases` test release. Tests written after the handlers (no RED for the new handler classes; RED for the changed constructors: 13 errors → GREEN, 1637 PHPUnit tests, 47 Behat scenarios); slice 16: 1,523 lines. `SkipFlowStep`, `PickSceneTypeByOracle`, `EndFlowScene`, `MoveOn` with their handler tests (572 lines, written and green) were held back by the size stop and move to T10b2.
+- Slice 16 review fixes: `CompleteFlowStepHandler` saves the campaign before adding the entry (adding flushes the whole unit of work, so a concurrent save surfaced as a raw `OptimisticLockException`, a 500, instead of `CampaignModifiedConcurrently`; the command bus transaction keeps entry and FlowRun all-or-nothing); a through-the-buses test with a flush listener bumping the stored version (RED: raw `OptimisticLockException` → GREEN, no entry, FlowRun unchanged); handler tests for an oracle step bound to a Tracker (chaos from the Tracker value; a sent `chaosFactor` is refused with `ChaosFactorBoundToTracker`, not `InvalidStepResult`; both passed first as characterizations); `GuidedReleases::tour(chaosFromTracker:)`.
 
 ## Reviews
 
@@ -263,7 +264,8 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 | 13 | Medium risk; reliability lens; approved and acknowledged (lineage `review-0a098ea5b125693d`); commit `bbfc562`. Non-blocking, fixed in slice 14: FlowRun commands are not atomic (a `CampaignLimitReached` while starting the next scene leaves a half-advanced FlowRun); a session change mid-scene leaves the FlowRun stuck; the repository round trip and a unit test compare only part of the Campaign | #52 (merged) |
 | 14 | Medium risk; reliability lens; approved and acknowledged (lineage `review-c90d115d04f78a18`); commits `4d70d54` (review fixes), `d04ee68` (T9b). Non-blocking, fixed in slice 15: a hand Scene Type switch moves the FlowRun while paused or completed; Move on on a replaced scene succeeds where other commands refuse, and has no position token | #53 (merged) |
 | 15 | Medium risk; reliability lens; approved and acknowledged (lineage not recorded); commits `5d43b91` (review fixes), `3494d1a` (T10a). Non-blocking, fixed in slice 16: `Campaign::flowRun()` hands out the live FlowRun, whose public seams (`forceNextSceneType`, `endPhaseAfterScene`) change it outside a command; campaigns with a Flow key stored before T10a have no FlowRun; no resume → save → reload round trip. For slice 17: `JournalEntryResponse` maps `choice`; the slice 12 end-session HTTP test | #54 (merged) |
+| 16 | Medium risk; reliability lens; approved and acknowledged (lineage `review-7a72bec78aa91f8c`); commits `6529cf2` (review fixes), `9666d16` (T10b). Non-blocking, fixed in slice 17: no through-the-buses test that a `CampaignModifiedConcurrently` on `CompleteFlowStep` leaves no orphan journal entry; no handler test for an oracle step bound to a Tracker (chaos from the Tracker, a sent `chaosFactor` refused) | #55 (merged) |
 
 ## Next step
 
-Slice 16 review, then slice 17 (T10b2 from `wip/play-flow-run-t10b-remainder`, T10c1). Engram mirror of this doc pending since slice 15.
+Slice 17 (review fixes, T10b2 from `wip/play-flow-run-t10b-remainder`, T10c1), its review and PR; then slice 18 (T10c2). Engram mirror of this doc pending since slice 15.

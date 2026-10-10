@@ -20,13 +20,14 @@ final class GuidedReleases
      * likelihood), "ask-even" (oracle at "even") and "fork" (choice: "left" Go left, "right" Go
      * right); "solo" closes with a prompt "wrap"; "quiet" has no steps. Flows: "draw" (the scene
      * pick rolls on "scene-kinds"), "tour" (the player picks "tour" or "quiet", any number of
-     * times) and "chain" (the sequence "solo" over and over).
+     * times) and "chain" (the sequence "solo" over and over). With $chaosFromTracker, "fate" takes
+     * its chaos factor from the counter Tracker "chaos" (1-9, starting at 5) instead.
      */
-    public static function tour(): GameSystemSnapshot
+    public static function tour(bool $chaosFromTracker = false): GameSystemSnapshot
     {
         $step = static fn (string $key, string $kind, string $title, array $fields = []): array => ['key' => $key, 'kind' => $kind, 'title' => $title] + $fields;
         $sceneType = static fn (string $key, string $name, array $setup = [], array $closing = []): array => ['key' => $key, 'name' => $name, 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => [], 'closing' => $closing];
-        $flow = static fn (string $key, string $mode, array $selection): array => ['key' => $key, 'name' => ucfirst($key), 'defaultView' => 'journal', 'oracles' => ['scene-kinds', 'omens', 'fate'], 'trackers' => [], 'phases' => [
+        $flow = static fn (string $key, string $mode, array $selection): array => ['key' => $key, 'name' => ucfirst($key), 'defaultView' => 'journal', 'oracles' => ['scene-kinds', 'omens', 'fate'], 'trackers' => $chaosFromTracker ? ['chaos'] : [], 'phases' => [
             ['key' => $key, 'name' => ucfirst($key), 'mode' => $mode, 'selection' => $selection],
         ]];
 
@@ -38,9 +39,9 @@ final class GuidedReleases
                     ['key' => 'scene-kinds', 'name' => 'Scene kinds', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'A tour', 'sceneType' => 'tour']]],
                     ['key' => 'omens', 'name' => 'Omens', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 3, 'text' => 'Calm'], ['min' => 4, 'max' => 6, 'text' => 'Storm']]],
                 ],
-                'likelihood' => [['key' => 'fate', 'name' => 'Fate question', 'sides' => 100, 'levels' => [['key' => 'unlikely', 'label' => 'Unlikely', 'target' => 35], ['key' => 'even', 'label' => '50/50', 'target' => 50]], 'chaos' => ['min' => 1, 'max' => 9, 'neutral' => 5, 'shiftPerPoint' => 5]]],
+                'likelihood' => [['key' => 'fate', 'name' => 'Fate question', 'sides' => 100, 'levels' => [['key' => 'unlikely', 'label' => 'Unlikely', 'target' => 35], ['key' => 'even', 'label' => '50/50', 'target' => 50]], 'chaos' => ['min' => 1, 'max' => 9, 'neutral' => 5, 'shiftPerPoint' => 5] + ($chaosFromTracker ? ['tracker' => 'chaos'] : [])]],
             ],
-            'trackers' => [],
+            'trackers' => $chaosFromTracker ? [['key' => 'chaos', 'name' => 'Chaos factor', 'kind' => 'counter', 'min' => 1, 'max' => 9, 'initial' => 5]] : [],
             'factSlots' => [],
             'sceneTypes' => [
                 $sceneType('tour', 'Tour', [

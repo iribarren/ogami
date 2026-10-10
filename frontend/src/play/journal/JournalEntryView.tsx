@@ -9,6 +9,8 @@ import type {
   RollContent,
 } from './useJournal'
 
+type ChoiceContent = Extract<JournalEntry['content'], { kind: 'choice' }>
+
 const recordedTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 
 const answerLabels: Record<LikelihoodContent['answer'], string> = {
@@ -28,6 +30,8 @@ function entryLabel(content: JournalEntry['content']) {
     case 'oracle-table':
     case 'likelihood':
       return `Oracle ${content.oracleName}`
+    case 'choice':
+      return `Choice ${content.question}`
   }
 }
 
@@ -56,7 +60,17 @@ function EntryContent({ content }: { content: JournalEntry['content'] }) {
       return <OracleTableView content={content} />
     case 'likelihood':
       return <LikelihoodView content={content} />
+    case 'choice':
+      return <ChoiceView content={content} />
   }
+}
+
+function ChoiceView({ content }: { content: ChoiceContent }) {
+  return (
+    <p>
+      {content.question} → <strong>{content.label}</strong>
+    </p>
+  )
 }
 
 function NoteView({ content }: { content: NoteContent }) {

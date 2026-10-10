@@ -8,6 +8,7 @@ export const gateNote: JournalEntry = {
   sceneNumber: 1,
   recordedAt: '2026-10-05T12:11:00+00:00',
   kind: 'note',
+  flowStep: null,
   content: { kind: 'note', text: 'The gate is open.\nNobody guards it.' },
 }
 
@@ -17,6 +18,7 @@ export const keepThreeRoll: JournalEntry = {
   sceneNumber: 1,
   recordedAt: '2026-10-05T12:12:00+00:00',
   kind: 'roll',
+  flowStep: null,
   content: {
     kind: 'roll',
     expression: '4d6kh3+2',
@@ -43,6 +45,7 @@ export const stormyWeather: JournalEntry = {
   sceneNumber: 1,
   recordedAt: '2026-10-06T12:06:00+00:00',
   kind: 'oracle-table',
+  flowStep: null,
   content: {
     kind: 'oracle-table',
     oracleKey: 'weather',
@@ -74,6 +77,7 @@ export const lockedDoorAnswer: JournalEntry = {
   sceneNumber: 1,
   recordedAt: '2026-10-06T12:07:00+00:00',
   kind: 'likelihood',
+  flowStep: null,
   content: {
     kind: 'likelihood',
     oracleKey: 'fate',
@@ -96,6 +100,7 @@ export const plainAnswer: JournalEntry = {
   sceneNumber: 1,
   recordedAt: '2026-10-06T12:08:00+00:00',
   kind: 'likelihood',
+  flowStep: null,
   content: {
     kind: 'likelihood',
     oracleKey: 'yes-no',
@@ -132,5 +137,16 @@ export function recordedEntry(
     recordedAt: '2026-10-06T12:30:00+00:00',
     kind: content.kind,
     content,
+    flowStep: null,
   }
+}
+
+export const chosenWay: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7006',
+  sessionNumber: 1,
+  sceneNumber: 1,
+  recordedAt: '2026-10-05T12:16:00+00:00',
+  kind: 'choice',
+  content: { kind: 'choice', question: 'Which way?', optionKey: 'right', label: 'Go right' },
+  flowStep: { key: 'fork', title: 'Which way?', prompt: null },
 }

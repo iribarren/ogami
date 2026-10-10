@@ -1989,6 +1989,289 @@
                 },
                 "type": "object"
             },
+            "FlowRunProgressResponse": {
+                "required": [
+                    "act",
+                    "phase",
+                    "sceneType",
+                    "part",
+                    "stepNumber",
+                    "stepCount"
+                ],
+                "properties": {
+                    "act": {
+                        "description": "The Act the phase belongs to; null when the Flow has none.",
+                        "type": "string",
+                        "example": "Preparation",
+                        "nullable": true
+                    },
+                    "phase": {
+                        "description": "The name of the phase.",
+                        "type": "string",
+                        "example": "The job"
+                    },
+                    "sceneType": {
+                        "description": "The name of the Scene Type being played; null at the scene pick.",
+                        "type": "string",
+                        "example": "Crew",
+                        "nullable": true
+                    },
+                    "part": {
+                        "description": "The part of the scene; null outside a scene.",
+                        "type": "string",
+                        "example": "setup",
+                        "nullable": true,
+                        "enum": [
+                            "sceneOpening",
+                            "setup",
+                            "play",
+                            "open",
+                            "closing",
+                            "sceneClosing",
+                            null
+                        ]
+                    },
+                    "stepNumber": {
+                        "description": "The number of the step, from 1; null when no step waits. Condition steps are not counted.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "stepCount": {
+                        "description": "The number of steps in the part; null when no step waits.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "FlowStepOptionResponse": {
+                "required": [
+                    "key",
+                    "label"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "yes"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Yes"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowStepResponse": {
+                "required": [
+                    "key",
+                    "kind",
+                    "title",
+                    "prompt",
+                    "tip",
+                    "mandatory",
+                    "oracle",
+                    "likelihood",
+                    "table",
+                    "dice",
+                    "options"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "slip-past"
+                    },
+                    "kind": {
+                        "description": "How the step is completed; a condition step never waits, so it is never the current one.",
+                        "type": "string",
+                        "example": "prompt",
+                        "enum": [
+                            "prompt",
+                            "oracle",
+                            "table",
+                            "roll",
+                            "choice"
+                        ]
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Who is on the crew?"
+                    },
+                    "prompt": {
+                        "description": "The text to read or answer.",
+                        "type": "string",
+                        "example": "Describe your first crew member.",
+                        "nullable": true
+                    },
+                    "tip": {
+                        "description": "An optional hint.",
+                        "type": "string",
+                        "example": "Think of a role: a netrunner, a fixer.",
+                        "nullable": true
+                    },
+                    "mandatory": {
+                        "description": "A mandatory step cannot be skipped.",
+                        "type": "boolean"
+                    },
+                    "oracle": {
+                        "description": "The key of the likelihood oracle asked (oracle step); null for the other kinds.",
+                        "type": "string",
+                        "example": "fate",
+                        "nullable": true
+                    },
+                    "likelihood": {
+                        "description": "The likelihood level the oracle step always asks at; null when the player picks it, and for the other kinds.",
+                        "type": "string",
+                        "example": "unlikely",
+                        "nullable": true
+                    },
+                    "table": {
+                        "description": "The key of the oracle table rolled (table step); null for the other kinds.",
+                        "type": "string",
+                        "example": "client",
+                        "nullable": true
+                    },
+                    "dice": {
+                        "description": "The dice expression rolled (roll step); null for the other kinds.",
+                        "type": "string",
+                        "example": "1d6",
+                        "nullable": true
+                    },
+                    "options": {
+                        "description": "The options to pick from (choice step); empty for the other kinds.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FlowStepOptionResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "SceneTypeSummaryResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "purpose"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "legwork"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Legwork"
+                    },
+                    "purpose": {
+                        "type": "string",
+                        "example": "Learn about the target."
+                    }
+                },
+                "type": "object"
+            },
+            "ScenePickResponse": {
+                "required": [
+                    "rule",
+                    "cards",
+                    "table",
+                    "forced"
+                ],
+                "properties": {
+                    "rule": {
+                        "description": "How the Scene Type is chosen: the Flow's sequence, the player, or an oracle table.",
+                        "type": "string",
+                        "example": "player",
+                        "enum": [
+                            "sequence",
+                            "player",
+                            "oracle"
+                        ]
+                    },
+                    "cards": {
+                        "description": "The Scene Types offered, in offer order; none when the table is to be rolled.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SceneTypeSummaryResponse"
+                        }
+                    },
+                    "table": {
+                        "description": "The key of the oracle table to roll for the Scene Type; null otherwise.",
+                        "type": "string",
+                        "example": "scene-kinds",
+                        "nullable": true
+                    },
+                    "forced": {
+                        "description": "Whether the only card is a Scene Type forced for the next scene.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowRunResponse": {
+                "required": [
+                    "status",
+                    "waitsForSession",
+                    "progress",
+                    "step",
+                    "pick",
+                    "canMoveOn",
+                    "next"
+                ],
+                "properties": {
+                    "status": {
+                        "description": "Active guides play; paused, the player plays freely and resumes later; completed after the last phase.",
+                        "type": "string",
+                        "example": "active",
+                        "enum": [
+                            "active",
+                            "paused",
+                            "completed"
+                        ]
+                    },
+                    "waitsForSession": {
+                        "description": "Whether no session is under way, so nothing can be played yet.",
+                        "type": "boolean"
+                    },
+                    "progress": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowRunProgressResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Where the FlowRun stands; null once the Flow is complete."
+                    },
+                    "step": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowStepResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The step the FlowRun waits on; null at the scene pick and in open play."
+                    },
+                    "pick": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ScenePickResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The scene pick the FlowRun waits on; null in a scene."
+                    },
+                    "canMoveOn": {
+                        "description": "Whether \"Move on\" ends the phase now (a loop phase that is not ending yet, while guided).",
+                        "type": "boolean"
+                    },
+                    "next": {
+                        "description": "The next step named, such as \"Closing: What changed?\" or \"Flow complete\".",
+                        "type": "string",
+                        "example": "Next scene: choose a scene type"
+                    }
+                },
+                "type": "object"
+            },
             "FlowSummaryResponse": {
                 "required": [
                     "key",
@@ -2033,28 +2316,6 @@
                 },
                 "type": "object"
             },
-            "SceneTypeSummaryResponse": {
-                "required": [
-                    "key",
-                    "name",
-                    "purpose"
-                ],
-                "properties": {
-                    "key": {
-                        "type": "string",
-                        "example": "legwork"
-                    },
-                    "name": {
-                        "type": "string",
-                        "example": "Legwork"
-                    },
-                    "purpose": {
-                        "type": "string",
-                        "example": "Learn about the target."
-                    }
-                },
-                "type": "object"
-            },
             "CampaignResponse": {
                 "required": [
                     "id",
@@ -2068,6 +2329,7 @@
                     "likelihoodOracles",
                     "trackers",
                     "flowKey",
+                    "flowRun",
                     "flows",
                     "sceneTypes"
                 ],
@@ -2132,6 +2394,15 @@
                         "type": "string",
                         "example": "heist",
                         "nullable": true
+                    },
+                    "flowRun": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowRunResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The FlowRun guiding the campaign; null when played freely."
                     },
                     "flows": {
                         "description": "The Flows of the pinned release, in definition order; empty for schema version 1.",
@@ -2522,6 +2793,63 @@
                 },
                 "type": "object"
             },
+            "ChoiceContentResponse": {
+                "required": [
+                    "kind",
+                    "question",
+                    "optionKey",
+                    "label"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "choice"
+                        ]
+                    },
+                    "question": {
+                        "description": "The question the step asked.",
+                        "type": "string",
+                        "example": "Did you gain an edge?",
+                        "maxLength": 500
+                    },
+                    "optionKey": {
+                        "description": "The key of the option chosen.",
+                        "type": "string",
+                        "example": "yes"
+                    },
+                    "label": {
+                        "description": "The label of the option chosen.",
+                        "type": "string",
+                        "example": "Yes",
+                        "maxLength": 100
+                    }
+                },
+                "type": "object"
+            },
+            "JournalFlowStepResponse": {
+                "required": [
+                    "key",
+                    "title",
+                    "prompt"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "slip-past"
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Who is on the crew?"
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "example": "Describe your first crew member.",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "JournalEntryResponse": {
                 "required": [
                     "id",
@@ -2529,7 +2857,8 @@
                     "sceneNumber",
                     "recordedAt",
                     "kind",
-                    "content"
+                    "content",
+                    "flowStep"
                 ],
                 "properties": {
                     "id": {
@@ -2556,7 +2885,8 @@
                             "note",
                             "roll",
                             "oracle-table",
-                            "likelihood"
+                            "likelihood",
+                            "choice"
                         ]
                     },
                     "content": {
@@ -2566,7 +2896,8 @@
                                 "note": "#/components/schemas/NoteContentResponse",
                                 "roll": "#/components/schemas/RollContentResponse",
                                 "oracle-table": "#/components/schemas/OracleTableContentResponse",
-                                "likelihood": "#/components/schemas/LikelihoodContentResponse"
+                                "likelihood": "#/components/schemas/LikelihoodContentResponse",
+                                "choice": "#/components/schemas/ChoiceContentResponse"
                             }
                         },
                         "oneOf": [
@@ -2581,8 +2912,20 @@
                             },
                             {
                                 "$ref": "#/components/schemas/LikelihoodContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ChoiceContentResponse"
                             }
                         ]
+                    },
+                    "flowStep": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/JournalFlowStepResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand."
                     }
                 },
                 "type": "object"

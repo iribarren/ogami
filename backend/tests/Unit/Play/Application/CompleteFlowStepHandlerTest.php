@@ -10,6 +10,7 @@ use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignLimitReached;
+use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
@@ -22,6 +23,7 @@ use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
+use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -107,6 +109,34 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
         self::assertSame(['fork' => 'Go right'], $this->stored('campaign-1')->flowRun()?->answers());
         $flowRun = $this->stored('campaign-1')->flowRun();
         self::assertSame([FlowRunStage::Scene, ScenePart::Open], [$flowRun->stage(), $flowRun->part()]);
+    }
+
+    #[Test]
+    public function anOracleStepBoundToATrackerTakesTheChaosFactorFromTheCampaignTracker(): void
+    {
+        $this->playOnAReleaseWithTrackers(chaos: 8);
+
+        // "Unlikely" targets 35; chaos 8 is 3 above neutral, at 5 per point: 50. A roll of 45 is a yes.
+        $this->complete(self::command('ask', likelihood: 'unlikely', campaignId: 'campaign-3'), 45);
+
+        $content = $this->onlyEntryOf('campaign-3')->content()->toArray();
+        self::assertSame(['yes', 8, 50], [$content['answer'], $content['chaosFactor'], $content['effectiveTarget']]);
+    }
+
+    #[Test]
+    public function anOracleStepBoundToATrackerRefusesAChaosFactorAndRecordsNothing(): void
+    {
+        $this->playOnAReleaseWithTrackers(chaos: 8);
+        $before = $this->stored('campaign-3');
+
+        try {
+            $this->complete(self::command('ask', likelihood: 'unlikely', chaosFactor: 5, campaignId: 'campaign-3'), 45);
+            self::fail('A chaos factor was accepted for a bound oracle.');
+        } catch (ChaosFactorBoundToTracker $exception) {
+            self::assertSame('Likelihood oracle "fate" takes its chaos factor from tracker "chaos": send no chaos factor.', $exception->getMessage());
+            self::assertSame([], $this->journalOf('campaign-3'));
+            self::assertEquals($before, $this->stored('campaign-3'));
+        }
     }
 
     /**
@@ -233,6 +263,25 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
             self::assertSame([], $this->journalOf('campaign-4'));
             self::assertEquals($full, $this->stored('campaign-4'));
         }
+    }
+
+    /**
+     * "campaign-3" of "user-1" plays the Tour scene on a release whose oracle "fate" takes its chaos
+     * factor from the Tracker "chaos", set to $chaos, at the step "intro" skipped to "ask".
+     */
+    private function playOnAReleaseWithTrackers(int $chaos): void
+    {
+        $release = GuidedReleases::tour(chaosFromTracker: true);
+        $this->releases->add($release);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-3'), 'user-1', 'The tracked tour', PinnedRelease::of('guided', 1, 'Guided'), self::at('09:00'), $release->trackers(), $release->flow('tour'));
+        $campaign->setTrackerValue($release->tracker('chaos') ?? throw new \LogicException('No chaos tracker.'), $chaos);
+        $campaign->startSession(self::at('09:05'), $release);
+        $campaign->pickSceneType('tour', $release, self::at('09:10'));
+        while ('ask' !== $campaign->flowRun()?->stepKey()) {
+            $campaign->skipFlowStep($campaign->flowRun()?->stepKey() ?? throw new \LogicException('No step.'), $release, self::at('09:11'));
+        }
+
+        $this->campaigns->add($campaign);
     }
 
     private function complete(CompleteFlowStep $command, int ...$rolls): void

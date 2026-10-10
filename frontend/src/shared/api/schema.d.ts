@@ -550,6 +550,139 @@ export interface components {
              */
             levelLabel: string | null;
         };
+        FlowRunProgressResponse: {
+            /**
+             * @description The Act the phase belongs to; null when the Flow has none.
+             * @example Preparation
+             */
+            act: string | null;
+            /**
+             * @description The name of the phase.
+             * @example The job
+             */
+            phase: string;
+            /**
+             * @description The name of the Scene Type being played; null at the scene pick.
+             * @example Crew
+             */
+            sceneType: string | null;
+            /**
+             * @description The part of the scene; null outside a scene.
+             * @example setup
+             * @enum {string|null}
+             */
+            part: "sceneOpening" | "setup" | "play" | "open" | "closing" | "sceneClosing" | null;
+            /**
+             * @description The number of the step, from 1; null when no step waits. Condition steps are not counted.
+             * @example 1
+             */
+            stepNumber: number | null;
+            /**
+             * @description The number of steps in the part; null when no step waits.
+             * @example 2
+             */
+            stepCount: number | null;
+        };
+        FlowStepOptionResponse: {
+            /** @example yes */
+            key: string;
+            /** @example Yes */
+            label: string;
+        };
+        FlowStepResponse: {
+            /** @example slip-past */
+            key: string;
+            /**
+             * @description How the step is completed; a condition step never waits, so it is never the current one.
+             * @example prompt
+             * @enum {string}
+             */
+            kind: "prompt" | "oracle" | "table" | "roll" | "choice";
+            /** @example Who is on the crew? */
+            title: string;
+            /**
+             * @description The text to read or answer.
+             * @example Describe your first crew member.
+             */
+            prompt: string | null;
+            /**
+             * @description An optional hint.
+             * @example Think of a role: a netrunner, a fixer.
+             */
+            tip: string | null;
+            /** @description A mandatory step cannot be skipped. */
+            mandatory: boolean;
+            /**
+             * @description The key of the likelihood oracle asked (oracle step); null for the other kinds.
+             * @example fate
+             */
+            oracle: string | null;
+            /**
+             * @description The likelihood level the oracle step always asks at; null when the player picks it, and for the other kinds.
+             * @example unlikely
+             */
+            likelihood: string | null;
+            /**
+             * @description The key of the oracle table rolled (table step); null for the other kinds.
+             * @example client
+             */
+            table: string | null;
+            /**
+             * @description The dice expression rolled (roll step); null for the other kinds.
+             * @example 1d6
+             */
+            dice: string | null;
+            /** @description The options to pick from (choice step); empty for the other kinds. */
+            options: components["schemas"]["FlowStepOptionResponse"][];
+        };
+        SceneTypeSummaryResponse: {
+            /** @example legwork */
+            key: string;
+            /** @example Legwork */
+            name: string;
+            /** @example Learn about the target. */
+            purpose: string;
+        };
+        ScenePickResponse: {
+            /**
+             * @description How the Scene Type is chosen: the Flow's sequence, the player, or an oracle table.
+             * @example player
+             * @enum {string}
+             */
+            rule: "sequence" | "player" | "oracle";
+            /** @description The Scene Types offered, in offer order; none when the table is to be rolled. */
+            cards: components["schemas"]["SceneTypeSummaryResponse"][];
+            /**
+             * @description The key of the oracle table to roll for the Scene Type; null otherwise.
+             * @example scene-kinds
+             */
+            table: string | null;
+            /** @description Whether the only card is a Scene Type forced for the next scene. */
+            forced: boolean;
+        };
+        FlowRunResponse: {
+            /**
+             * @description Active guides play; paused, the player plays freely and resumes later; completed after the last phase.
+             * @example active
+             * @enum {string}
+             */
+            status: "active" | "paused" | "completed";
+            /** @description Whether no session is under way, so nothing can be played yet. */
+            waitsForSession: boolean;
+            /** @description Where the FlowRun stands; null once the Flow is complete. */
+            progress: components["schemas"]["FlowRunProgressResponse"] | null;
+            /** @description The step the FlowRun waits on; null at the scene pick and in open play. */
+            step: components["schemas"]["FlowStepResponse"] | null;
+            /** @description The scene pick the FlowRun waits on; null in a scene. */
+            pick: components["schemas"]["ScenePickResponse"] | null;
+            /** @description Whether "Move on" ends the phase now (a loop phase that is not ending yet, while guided). */
+            canMoveOn: boolean;
+            /**
+             * @description The next step named, such as "Closing: What changed?" or "Flow complete".
+             * @example Next scene: choose a scene type
+             */
+            next: string;
+        };
         FlowSummaryResponse: {
             /** @example heist */
             key: string;
@@ -567,14 +700,6 @@ export interface components {
              * @enum {string}
              */
             defaultView: "focus" | "journal";
-        };
-        SceneTypeSummaryResponse: {
-            /** @example legwork */
-            key: string;
-            /** @example Legwork */
-            name: string;
-            /** @example Learn about the target. */
-            purpose: string;
         };
         CampaignResponse: {
             /** Format: uuid */
@@ -607,6 +732,8 @@ export interface components {
              * @example heist
              */
             flowKey: string | null;
+            /** @description The FlowRun guiding the campaign; null when played freely. */
+            flowRun: components["schemas"]["FlowRunResponse"] | null;
             /** @description The Flows of the pinned release, in definition order; empty for schema version 1. */
             flows: components["schemas"]["FlowSummaryResponse"][];
             /** @description The Scene Types of the pinned release, in definition order; empty for schema version 1. */
@@ -811,6 +938,36 @@ export interface components {
              */
             chaosFactor: number | null;
         };
+        ChoiceContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "choice";
+            /**
+             * @description The question the step asked.
+             * @example Did you gain an edge?
+             */
+            question: string;
+            /**
+             * @description The key of the option chosen.
+             * @example yes
+             */
+            optionKey: string;
+            /**
+             * @description The label of the option chosen.
+             * @example Yes
+             */
+            label: string;
+        };
+        JournalFlowStepResponse: {
+            /** @example slip-past */
+            key: string;
+            /** @example Who is on the crew? */
+            title: string;
+            /** @example Describe your first crew member. */
+            prompt: string | null;
+        };
         JournalEntryResponse: {
             /** Format: uuid */
             id: string;
@@ -827,8 +984,10 @@ export interface components {
              * @description The same as `content.kind`.
              * @enum {string}
              */
-            kind: "note" | "roll" | "oracle-table" | "likelihood";
-            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"];
+            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"];
+            /** @description The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand. */
+            flowStep: components["schemas"]["JournalFlowStepResponse"] | null;
         };
         RecordNoteRequest: {
             /**

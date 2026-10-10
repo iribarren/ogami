@@ -12,6 +12,7 @@ use App\Play\Application\PauseGuidance;
 use App\Play\Application\PickSceneType;
 use App\Play\Application\ResumeGuidance;
 use App\Play\Application\StartSession;
+use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
@@ -22,6 +23,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\ReleaseViews;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -84,6 +86,18 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
     }
 
     #[Test]
+    public function aStepCompletedWhileAnotherRequestSavedTheCampaignLeavesNoJournalEntryBehind(): void
+    {
+        $before = $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun;
+        $this->entityManager->getEventManager()->addEventListener(Events::preFlush, $this->anotherRequestSavesTheCampaign());
+
+        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null), CampaignModifiedConcurrently::class);
+
+        self::assertSame([], $this->queries->ask(new GetJournal(self::CAMPAIGN, self::PLAYER)));
+        self::assertEquals($before, $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun);
+    }
+
+    #[Test]
     public function pausedGuidanceRefusesStepsAndResumesWhereItStopped(): void
     {
         $this->dispatch(new PauseGuidance(self::CAMPAIGN, self::PLAYER));
@@ -93,6 +107,31 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
         $this->dispatch(new ResumeGuidance(self::CAMPAIGN, self::PLAYER));
 
         self::assertSame('first', $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun?->step?->step->key);
+    }
+
+    /**
+     * A flush listener that, once, bumps the stored version of the campaign being flushed, as another
+     * request saving it in between would: the optimistic lock of this request then fails.
+     */
+    private function anotherRequestSavesTheCampaign(): object
+    {
+        return new class($this->entityManager) {
+            private bool $done = false;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                if ($this->done) {
+                    return;
+                }
+
+                $this->done = true;
+                $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET version = version + 1');
+            }
+        };
     }
 
     /**

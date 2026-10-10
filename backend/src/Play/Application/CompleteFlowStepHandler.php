@@ -90,8 +90,11 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $at = $this->clock->now();
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $step->title, $step->prompt));
         $campaign->completeFlowStep($step->key, $result, $release, $at);
-        $this->journal->add($entry);
+        // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent
+        // save would surface there as a raw lock error instead of CampaignModifiedConcurrently. Both
+        // writes belong to the command bus transaction, so either both persist or neither does.
         $this->campaigns->save($campaign);
+        $this->journal->add($entry);
     }
 
     /**

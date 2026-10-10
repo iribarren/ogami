@@ -108,6 +108,7 @@ export const lostMineCampaign: Campaign = {
   ],
   trackers: [],
   flowKey: null,
+  flowRun: null,
   flows: [],
   sceneTypes: [],
 }
@@ -141,6 +142,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     likelihoodOracles: [],
     trackers: [],
     flowKey: null,
+    flowRun: null,
     flows: [],
     sceneTypes: [],
   }

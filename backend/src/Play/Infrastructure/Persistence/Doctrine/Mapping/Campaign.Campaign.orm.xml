@@ -44,5 +44,11 @@
         <!-- Optimistic lock: every save bumps it, and a save of a copy loaded before another
              request's save fails (DoctrineCampaignRepository::save). -->
         <field name="version" type="integer" column="version" version="true"/>
+
+        <!-- A row stored with a Flow and no FlowRun (before T10a) loads guided: a fresh FlowRun that
+             waits for the next session. -->
+        <lifecycle-callbacks>
+            <lifecycle-callback type="postLoad" method="startMissingFlowRun"/>
+        </lifecycle-callbacks>
     </entity>
 </doctrine-mapping>

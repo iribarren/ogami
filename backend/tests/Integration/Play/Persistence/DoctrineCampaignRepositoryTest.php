@@ -8,6 +8,8 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
@@ -96,6 +98,25 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             'phaseEnding' => null, 'switchCount' => 0, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
+    }
+
+    #[Test]
+    public function aCampaignStoredWithAFlowAndNoFlowRunLoadsGuided(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $this->repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8058', self::OWNER, '2026-10-06'));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = NULL WHERE id = ?', [$id->toString()]);
+        $this->forgetLoaded();
+
+        $legacy = $this->repository->ofId($id);
+
+        self::assertSame(['one-shot', FlowRunStatus::Active, FlowRunStage::ScenePick], [$legacy?->flowKey(), $legacy?->flowRun()?->status(), $legacy?->flowRun()?->stage()]);
+        self::assertNull($this->repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8058'))?->flowRun());
+
+        $this->forgetLoaded();
+        self::assertSame($id->toString(), $this->repository->ownedBy(self::OWNER)[0]->id()->toString());
+        self::assertNotNull($this->repository->ofId($id)?->flowRun());
     }
 
     /**

@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-17-flow-run-view` (from `main` `584e275`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-18-flow-run-http` (from `main` `0eb604a`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -156,8 +156,8 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 | 14 | `feat/play-flow-run-14-flow-run-guidance` | `feat(play): play-flow-run 14/21 flow-run-guidance` | T9b | 997 (actual) |
 | 15 | `feat/play-flow-run-15-flow-run-persistence` | `feat(play): play-flow-run 15/21 flow-run-persistence` | T10a | ~1,300 |
 | 16 | `feat/play-flow-run-16-flow-run-commands` | `feat(play): play-flow-run 16/22 flow-run-commands` | T10b | 1,523 (actual) |
-| 17 | `feat/play-flow-run-17-flow-run-view` | `feat(play): play-flow-run 17/22 flow-run-view` | T10b2, T10c1 | ~1,700 |
-| 18 | `feat/play-flow-run-18-flow-run-http` | `feat(play): play-flow-run 18/22 flow-run-http` | T10c2 | ~1,600 |
+| 17 | `feat/play-flow-run-17-flow-run-view` | `feat(play): play-flow-run 17/22 flow-run-view` | T10b2, T10c1 | 2,063 (actual, accepted by the user; reviewed as two candidates) |
+| 18 | `feat/play-flow-run-18-flow-run-http` | `feat(play): play-flow-run 18/22 flow-run-http` | T10c2 | ~2,050 (accepted by the user, 2026-10-10; the generated OpenAPI spec and TS types are committed and reviewed as a separate candidate) |
 | 19 | `feat/play-flow-run-19-control-flow` | `feat(play): play-flow-run 19/22 control-flow` | T11–T12 | ~1,600 |
 | 20 | `feat/play-flow-run-20-guided-journal` | `feat(play): play-flow-run 20/22 guided-journal` | T13–T14 | ~1,600 |
 | 21 | `feat/play-flow-run-21-trackers-oracles` | `feat(play): play-flow-run 21/22 trackers-oracles` | T15 | ~1,000 |
@@ -187,16 +187,16 @@ From slice 10 on, the user set the per-slice planning limit for this feature to 
 | T9b | 14 | Guidance pause/resume and scene abandonment; history for hand tracker edits and Scene Type switches; "Move on" any time in a loop phase (user decision); UI read model (position, current step, pick offer, next step named) | delegated writer (slice 14, 2+ non-trivial files) | [x] | `d04ee68` |
 | T10a | 15 | FlowRun persistence (JSONB on the campaign, migration, repository contract incl. FlowRun); journal results: new `choice` content kind and a `flowStep {key, title, prompt}` snapshot on entries recorded by steps | delegated writer (slice 15, 2+ non-trivial files) | [x] | `3494d1a` |
 | T10b | 16 | Application, part 1: FlowRun commands through the buses (complete step with server-side roll/table/likelihood and journal entry, pick, pause, resume), `StartSessionHandler` passes the release, FlowRun read model in `GetCampaign` | delegated writer (slice 16, 2+ non-trivial files) | [x] | `9666d16` |
-| T10b2 | 17 | Application, part 2: skip, oracle pick, end scene, Move on (from `wip/play-flow-run-t10b-remainder`) | delegated writer (slice 17, 2+ non-trivial files) | [x] | |
-| T10c1 | 17 | Campaign view `flowRun` in the API, `JournalEntryResponse` maps `choice` and `flowStep`, the slice 12 end-session HTTP test; OpenAPI and typed client | delegated writer (slice 17, 2+ non-trivial files) | [x] | |
+| T10b2 | 17 | Application, part 2: skip, oracle pick, end scene, Move on (from `wip/play-flow-run-t10b-remainder`) | delegated writer (slice 17, 2+ non-trivial files) | [x] | `83ed81b` |
+| T10c1 | 17 | Campaign view `flowRun` in the API, `JournalEntryResponse` maps `choice` and `flowStep`, the slice 12 end-session HTTP test; OpenAPI and typed client | delegated writer (slice 17, 2+ non-trivial files) | [x] | `f0fc90e`, `048a257` |
 | T10c2 | 18 | HTTP endpoints for the FlowRun commands, API tests (404/409/422 per domain error, 409 on a concurrent save), Behat | | [ ] | |
-| T11 | 18 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
-| T12 | 18 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
-| T13 | 19 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
-| T14 | 19 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
-| T15 | 20 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
-| T16 | 21 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
-| T17 | 21 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
+| T11 | 19 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
+| T12 | 19 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
+| T13 | 20 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
+| T14 | 20 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
+| T15 | 21 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
+| T16 | 22 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
+| T17 | 22 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
 
 ## Acceptance criteria
 
@@ -268,7 +268,8 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 | 14 | Medium risk; reliability lens; approved and acknowledged (lineage `review-c90d115d04f78a18`); commits `4d70d54` (review fixes), `d04ee68` (T9b). Non-blocking, fixed in slice 15: a hand Scene Type switch moves the FlowRun while paused or completed; Move on on a replaced scene succeeds where other commands refuse, and has no position token | #53 (merged) |
 | 15 | Medium risk; reliability lens; approved and acknowledged (lineage not recorded); commits `5d43b91` (review fixes), `3494d1a` (T10a). Non-blocking, fixed in slice 16: `Campaign::flowRun()` hands out the live FlowRun, whose public seams (`forceNextSceneType`, `endPhaseAfterScene`) change it outside a command; campaigns with a Flow key stored before T10a have no FlowRun; no resume → save → reload round trip. For slice 17: `JournalEntryResponse` maps `choice`; the slice 12 end-session HTTP test | #54 (merged) |
 | 16 | Medium risk; reliability lens; approved and acknowledged (lineage `review-7a72bec78aa91f8c`); commits `6529cf2` (review fixes), `9666d16` (T10b). Non-blocking, fixed in slice 17: no through-the-buses test that a `CampaignModifiedConcurrently` on `CompleteFlowStep` leaves no orphan journal entry; no handler test for an oracle step bound to a Tracker (chaos from the Tracker, a sent `chaosFactor` refused) | #55 (merged) |
+| 17 | Over the reviewer's context budget as one candidate; reviewed as two, both medium risk, reliability lens, approved and acknowledged: commits `2b1e7ff` (review fixes), `83ed81b` (T10b2), `f0fc90e` (T10c1) (lineage `review-e8d713e228ad2ce9`), and `048a257` (generated API; lineage `review-a23dfe267046c8b7`, no findings). Non-blocking, fixed in slice 18: no handler test that skipping a mandatory step is refused (`StepCannotBeSkipped`, campaign unchanged); no tests for `PickSceneTypeByOracle` failure paths (entry without `sceneType` → `SceneTypeNotOffered`, waiting for a session → `NoCurrentSession`, paused FlowRun) leaving the campaign unchanged; the `GuidedReleases` tests do not assert the fork skip target `left`'s effect. The writer touched `frontend/src/play/flow-prototypes/flowRun.ts` outside its surface (deleted in T13) | #56 (merged) |
 
 ## Next step
 
-Slice 17 (review fixes, T10b2 from `wip/play-flow-run-t10b-remainder`, T10c1), its review and PR; then slice 18 (T10c2). Engram mirror of this doc pending since slice 15.
+Slice 18 (slice 17 review fixes, T10c2), its review as two candidates and PR; then slice 19 (T11–T12).

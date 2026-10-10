@@ -9,6 +9,8 @@ use App\Play\Application\SkipFlowStep;
 use App\Play\Application\SkipFlowStepHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
+use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -38,6 +40,38 @@ final class SkipFlowStepHandlerTest extends FlowRunHandlerTestCase
         } catch (FlowRunPositionMismatch) {
             self::assertEquals($before, $this->stored('campaign-1'));
         }
+    }
+
+    #[Test]
+    public function aMandatoryStepIsRefusedAndChangesNothing(): void
+    {
+        $this->campaigns->add($this->guided('campaign-3', 'chain'));
+        $campaign = $this->stored('campaign-3');
+        $campaign->endFlowScene(1, $this->release, self::at('09:10'));
+        $this->campaigns->save($campaign);
+        $before = $this->stored('campaign-3');
+
+        try {
+            $this->skip(new SkipFlowStep('campaign-3', 'user-1', 'wrap'));
+            self::fail('A mandatory step was skipped.');
+        } catch (StepCannotBeSkipped) {
+            self::assertEquals($before, $this->stored('campaign-3'));
+            self::assertSame([ScenePart::Closing, 'wrap'], [$before->flowRun()?->part(), $before->flowRun()?->stepKey()]);
+        }
+    }
+
+    #[Test]
+    public function skippingAChoiceFollowsItsSkipOptionWithoutAnsweringIt(): void
+    {
+        $this->atStep('fork');
+
+        $this->skip(new SkipFlowStep('campaign-1', 'user-1', 'fork'));
+
+        // "left" is the fork's skip option; it has no outcome of its own yet (effects come with T11),
+        // so the skip ends setup like any step, records the skip and no answer, and writes no entry.
+        $flowRun = $this->stored('campaign-1')->flowRun();
+        self::assertSame([ScenePart::Open, null, [], 'skip'], [$flowRun?->part(), $flowRun?->stepKey(), $flowRun?->answers(), array_last($flowRun?->history() ?? [])?->event->value]);
+        self::assertSame([], $this->journalOf('campaign-1'));
     }
 
     #[Test]

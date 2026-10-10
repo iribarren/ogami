@@ -7,9 +7,16 @@ namespace App\Tests\Unit\Play\Application;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\PickSceneTypeByOracle;
 use App\Play\Application\PickSceneTypeByOracleHandler;
+use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
+use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
+use App\Tests\Support\Play\GuidedReleases;
+use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -44,6 +51,55 @@ final class PickSceneTypeByOracleHandlerTest extends FlowRunHandlerTestCase
             self::fail('A table was rolled for a pick by hand.');
         } catch (SceneTypeNotOffered) {
             self::assertEquals($before, $this->stored('campaign-6'));
+        }
+    }
+
+    #[Test]
+    public function anEntryThatNamesNoSceneTypeStartsNothing(): void
+    {
+        // Studio refuses such a table for a scene pick, so the release is changed after publishing.
+        /** @var array<string, mixed> $content */
+        $content = array_replace_recursive(GuidedReleases::content(), ['oracles' => ['tables' => [['entries' => [['max' => 5], ['min' => 6, 'max' => 6, 'text' => 'A quiet moment']]]]]]);
+        $this->releases->add(new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content)));
+        $before = $this->stored('campaign-5');
+
+        try {
+            $this->pick(new PickSceneTypeByOracle('campaign-5', 'user-1'), 6);
+            self::fail('A scene started from an entry without a Scene Type.');
+        } catch (SceneTypeNotOffered $exception) {
+            self::assertSame('The rolled entry of table "scene-kinds" names no Scene Type.', $exception->getMessage());
+            self::assertEquals($before, $this->stored('campaign-5'));
+        }
+    }
+
+    #[Test]
+    public function aFlowRunWaitingForASessionStartsNothing(): void
+    {
+        $campaign = Campaign::create(CampaignId::fromString('campaign-7'), 'user-1', 'Waiting', PinnedRelease::of('guided', 1, 'Guided'), self::at('09:00'), [], $this->release->flow('draw'));
+        $this->campaigns->add($campaign);
+        $before = $this->stored('campaign-7');
+
+        try {
+            $this->pick(new PickSceneTypeByOracle('campaign-7', 'user-1'), 3);
+            self::fail('A scene started without a session.');
+        } catch (NoCurrentSession) {
+            self::assertEquals($before, $this->stored('campaign-7'));
+        }
+    }
+
+    #[Test]
+    public function pausedGuidanceStartsNothing(): void
+    {
+        $campaign = $this->stored('campaign-5');
+        $campaign->pauseGuidance(self::at('09:10'));
+        $this->campaigns->save($campaign);
+        $before = $this->stored('campaign-5');
+
+        try {
+            $this->pick(new PickSceneTypeByOracle('campaign-5', 'user-1'), 3);
+            self::fail('A scene started while guidance was paused.');
+        } catch (FlowRunNotActive) {
+            self::assertEquals($before, $this->stored('campaign-5'));
         }
     }
 

@@ -17,8 +17,9 @@ final class GuidedReleases
      * and "omens" (1d6: 1-3 Calm, 4-6 Storm), and the likelihood oracle "fate" (d100; "even" 50,
      * "unlikely" 35; chaos 1-9, neutral 5, 5 per point). Scene Type "tour" sets up with the steps
      * "intro" (prompt), "dice" (roll 1d6), "omen" (table), "ask" (oracle, the player picks the
-     * likelihood), "ask-even" (oracle at "even") and "fork" (choice: "left" Go left, "right" Go
-     * right); "solo" closes with a prompt "wrap"; "quiet" has no steps. Flows: "draw" (the scene
+     * likelihood), "ask-even" (oracle at "even") and "fork" (choice: "left" Go left, which
+     * is what skipping it takes, "right" Go right); "solo" closes with the
+     * mandatory prompt "wrap"; "quiet" has no steps. Flows: "draw" (the scene
      * pick rolls on "scene-kinds"), "tour" (the player picks "tour" or "quiet", any number of
      * times) and "chain" (the sequence "solo" over and over). With $chaosFromTracker, "fate" takes
      * its chaos factor from the counter Tracker "chaos" (1-9, starting at 5) instead.
@@ -62,7 +63,7 @@ final class GuidedReleases
                     $step('ask-even', 'oracle', 'Is it guarded?', ['oracle' => 'fate', 'likelihood' => 'even']),
                     $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left'], ['key' => 'right', 'label' => 'Go right']], 'skip' => 'left']),
                 ]),
-                $sceneType('solo', 'Solo', [], [$step('wrap', 'prompt', 'What changed?')]),
+                $sceneType('solo', 'Solo', [], [$step('wrap', 'prompt', 'What changed?', ['mandatory' => true])]),
                 $sceneType('quiet', 'Quiet'),
             ],
             'flows' => [

@@ -12,7 +12,8 @@ use App\Play\Domain\Campaign\CampaignRepository;
 
 /**
  * Keeps copies, like a database: a change to a loaded campaign is only kept once it is saved.
- * Cloning is deep enough because a Campaign holds scalars and immutable sessions and scenes.
+ * Cloning is deep enough because a Campaign holds scalars and immutable sessions and scenes, and
+ * clones its FlowRun.
  *
  * Mimics the Doctrine optimistic lock: each stored campaign has a version bumped by every save,
  * and saving a copy loaded at an older version fails.

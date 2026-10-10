@@ -21,6 +21,19 @@ final class InvalidJournalEntryContent extends \DomainException
         return new self(\sprintf('A question must be at most %d characters, got %d.', $maxLength, $length));
     }
 
+    /**
+     * @param string $what e.g. "A choice label"
+     */
+    public static function blank(string $what): self
+    {
+        return new self(\sprintf('%s must not be blank.', $what));
+    }
+
+    public static function labelTooLong(int $maxLength, int $length): self
+    {
+        return new self(\sprintf('A choice label must be at most %d characters, got %d.', $maxLength, $length));
+    }
+
     public static function blankOracleKey(): self
     {
         return new self('An oracle key must not be blank.');

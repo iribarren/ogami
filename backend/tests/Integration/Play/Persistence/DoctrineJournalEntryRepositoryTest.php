@@ -12,6 +12,7 @@ use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineJournalEntryRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType;
+use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryFlowStepType;
 use App\Tests\Support\Play\JournalEntryRepositoryContract;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,6 +23,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 #[CoversClass(DoctrineJournalEntryRepository::class)]
 #[CoversClass(JournalEntryContentType::class)]
+#[CoversClass(JournalEntryFlowStepType::class)]
 final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
 {
     use JournalEntryRepositoryContract;
@@ -70,10 +72,10 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
         $this->repository->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00'));
 
         $types = $this->entityManager->getConnection()->fetchAllKeyValue(
-            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'play_journal_entry' AND column_name IN ('content', 'recorded_at') ORDER BY column_name",
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'play_journal_entry' AND column_name IN ('content', 'flow_step', 'recorded_at') ORDER BY column_name",
         );
 
-        self::assertSame(['content' => 'jsonb', 'recorded_at' => 'timestamp with time zone'], $types);
+        self::assertSame(['content' => 'jsonb', 'flow_step' => 'jsonb', 'recorded_at' => 'timestamp with time zone'], $types);
     }
 
     #[Test]
@@ -113,6 +115,20 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
         } finally {
             $this->entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentInsert);
         }
+    }
+
+    #[Test]
+    public function aMalformedStoredFlowStepFailsToLoad(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00');
+        $this->repository->add($entry);
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_journal_entry SET flow_step = ? WHERE id = ?', ['{"key": "plan", "title": "", "prompt": null}', $entry->id()->toString()]);
+        $this->forgetLoaded();
+
+        $this->expectExceptionMessageIsOrContains('A Flow step title must not be blank.');
+
+        $this->repository->ofId($entry->id());
     }
 
     #[Test]

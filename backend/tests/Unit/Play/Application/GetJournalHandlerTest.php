@@ -16,6 +16,10 @@ use App\Play\Application\RecordNoteHandler;
 use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Journal\ChoiceContent;
+use App\Play\Domain\Journal\FlowStepSnapshot;
+use App\Play\Domain\Journal\JournalEntry;
+use App\Play\Domain\Journal\JournalEntryId;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -88,6 +92,25 @@ final class GetJournalHandlerTest extends JournalTestCase
 
         self::assertEquals(
             new JournalEntryView('entry-1', 1, 2, new \DateTimeImmutable(self::NOW), 'note', ['kind' => 'note', 'text' => 'The gate is shut.']),
+            ($this->getEntry)(new GetJournalEntry('entry-1', 'campaign-1', 'user-1')),
+        );
+    }
+
+    #[Test]
+    public function anEntryRecordedByAFlowStepShowsTheStepAndItsChoice(): void
+    {
+        $this->entries->add(JournalEntry::reconstitute(
+            JournalEntryId::fromString('entry-1'),
+            CampaignId::fromString('campaign-1'),
+            1,
+            2,
+            new \DateTimeImmutable(self::NOW),
+            ChoiceContent::of('Did you gain an edge?', 'yes', 'Yes'),
+            FlowStepSnapshot::of('gain-edge', 'Did you gain an edge?', null),
+        ));
+
+        self::assertEquals(
+            new JournalEntryView('entry-1', 1, 2, new \DateTimeImmutable(self::NOW), 'choice', ['kind' => 'choice', 'question' => 'Did you gain an edge?', 'optionKey' => 'yes', 'label' => 'Yes'], ['key' => 'gain-edge', 'title' => 'Did you gain an edge?', 'prompt' => null]),
             ($this->getEntry)(new GetJournalEntry('entry-1', 'campaign-1', 'user-1')),
         );
     }

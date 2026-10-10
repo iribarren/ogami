@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\NoteContent;
@@ -40,6 +41,20 @@ final class JournalEntryTest extends TestCase
         self::assertSame(2, $entry->sceneNumber());
         self::assertSame($recordedAt, $entry->recordedAt());
         self::assertSame($content, $entry->content());
+        self::assertNull($entry->flowStep());
+    }
+
+    #[Test]
+    public function anEntryRecordedByAFlowStepKeepsItsSnapshot(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06 10:00:00'));
+        $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 10:05:00'));
+        $step = FlowStepSnapshot::of('plan', 'The plan', 'How do you get in?');
+
+        $entry = JournalEntry::record(JournalEntryId::fromString(self::ENTRY_ID), $campaign, NoteContent::of('Through the roof'), new \DateTimeImmutable('2026-10-06 10:06:00'), $step);
+
+        self::assertSame($step, $entry->flowStep());
     }
 
     #[Test]
@@ -89,6 +104,7 @@ final class JournalEntryTest extends TestCase
             7,
             $recordedAt,
             $content,
+            FlowStepSnapshot::of('plan', 'The plan', null),
         );
 
         self::assertSame(self::ENTRY_ID, $entry->id()->toString());
@@ -97,6 +113,7 @@ final class JournalEntryTest extends TestCase
         self::assertSame(7, $entry->sceneNumber());
         self::assertSame($recordedAt, $entry->recordedAt());
         self::assertSame($content, $entry->content());
+        self::assertEquals(FlowStepSnapshot::of('plan', 'The plan', null), $entry->flowStep());
     }
 
     private function campaign(): Campaign

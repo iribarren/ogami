@@ -12,8 +12,9 @@ use App\Play\Domain\Journal\JournalEntry;
 final readonly class JournalEntryView
 {
     /**
-     * @param string               $kind    "note", "roll", "oracle-table" or "likelihood"
-     * @param array<string, mixed> $content the content's canonical shape, "kind" included
+     * @param string                                              $kind     "note", "roll", "oracle-table", "likelihood" or "choice"
+     * @param array<string, mixed>                                $content  the content's canonical shape, "kind" included
+     * @param ?array{key: string, title: string, prompt: ?string} $flowStep the Flow step that recorded the entry, null when the player did
      */
     public function __construct(
         public string $id,
@@ -22,6 +23,7 @@ final readonly class JournalEntryView
         public \DateTimeImmutable $recordedAt,
         public string $kind,
         public array $content,
+        public ?array $flowStep = null,
     ) {
     }
 
@@ -34,6 +36,7 @@ final readonly class JournalEntryView
             $entry->recordedAt(),
             $entry->content()->kind(),
             $entry->content()->toArray(),
+            $entry->flowStep()?->toArray(),
         );
     }
 }

@@ -9,8 +9,9 @@ use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\NoCurrentScene;
 
 /**
- * One immutable record of a campaign's journal: a note or the result of a roll or an oracle,
- * recorded in the campaign's current session and scene.
+ * One immutable record of a campaign's journal: a note, the result of a roll or an oracle, or a
+ * choice, recorded in the campaign's current session and scene. An entry recorded by a Flow step
+ * keeps a snapshot of that step.
  *
  * Ids are kept as strings (like Campaign), so an adapter can map them as plain columns.
  */
@@ -23,15 +24,18 @@ final readonly class JournalEntry
         private int $sceneNumber,
         private \DateTimeImmutable $recordedAt,
         private JournalEntryContent $content,
+        private ?FlowStepSnapshot $flowStep,
     ) {
     }
 
     /**
      * Records the content in the campaign's current session and scene.
      *
+     * @param ?FlowStepSnapshot $flowStep the Flow step recording it, null when the player records it freely
+     *
      * @throws NoCurrentScene when the campaign has no session, or its current session has no scene
      */
-    public static function record(JournalEntryId $id, Campaign $campaign, JournalEntryContent $content, \DateTimeImmutable $recordedAt): self
+    public static function record(JournalEntryId $id, Campaign $campaign, JournalEntryContent $content, \DateTimeImmutable $recordedAt, ?FlowStepSnapshot $flowStep = null): self
     {
         $session = $campaign->currentSession();
         $scene = $session?->currentScene();
@@ -39,7 +43,7 @@ final readonly class JournalEntry
             throw NoCurrentScene::toRecordJournalEntry();
         }
 
-        return new self($id->toString(), $campaign->id()->toString(), $session->number(), $scene->number(), $recordedAt, $content);
+        return new self($id->toString(), $campaign->id()->toString(), $session->number(), $scene->number(), $recordedAt, $content, $flowStep);
     }
 
     /**
@@ -52,8 +56,9 @@ final readonly class JournalEntry
         int $sceneNumber,
         \DateTimeImmutable $recordedAt,
         JournalEntryContent $content,
+        ?FlowStepSnapshot $flowStep = null,
     ): self {
-        return new self($id->toString(), $campaignId->toString(), $sessionNumber, $sceneNumber, $recordedAt, $content);
+        return new self($id->toString(), $campaignId->toString(), $sessionNumber, $sceneNumber, $recordedAt, $content, $flowStep);
     }
 
     public function id(): JournalEntryId
@@ -84,5 +89,13 @@ final readonly class JournalEntry
     public function content(): JournalEntryContent
     {
         return $this->content;
+    }
+
+    /**
+     * The Flow step that recorded the entry; null when the player recorded it freely.
+     */
+    public function flowStep(): ?FlowStepSnapshot
+    {
+        return $this->flowStep;
     }
 }

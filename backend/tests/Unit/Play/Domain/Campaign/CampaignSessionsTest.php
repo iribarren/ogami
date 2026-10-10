@@ -17,7 +17,6 @@ use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\SceneType;
-use App\Tests\Support\Play\CampaignCopies;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -155,15 +154,14 @@ final class CampaignSessionsTest extends TestCase
     }
 
     #[Test]
-    public function aStoredCampaignKeepsItsFlowKey(): void
+    public function aStoredCampaignKeepsItsFlowKeyAndFlowRun(): void
     {
         $original = Campaign::create(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable(), [], $this->flow('heist'));
 
-        $campaign = Campaign::reconstitute($original->id(), $original->ownerId(), $original->name(), $original->pinnedRelease(), $original->createdAt(), [], [], 'heist');
+        $campaign = Campaign::reconstitute($original->id(), $original->ownerId(), $original->name(), $original->pinnedRelease(), $original->createdAt(), [], [], 'heist', $original->flowRun());
 
-        // The FlowRun is stored from play-flow-run slice 15 on.
-        self::assertNotNull($original->flowRun());
-        self::assertEquals(CampaignCopies::withoutFlowRun($original), $campaign);
+        self::assertNotNull($campaign->flowRun());
+        self::assertEquals($original, $campaign);
     }
 
     private function campaign(): Campaign

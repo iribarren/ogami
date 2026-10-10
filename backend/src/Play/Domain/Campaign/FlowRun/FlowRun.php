@@ -90,6 +90,52 @@ final class FlowRun
     }
 
     /**
+     * Rebuilds a stored FlowRun, e.g. from persistence. No rule is checked again.
+     *
+     * @param ?int                      $sessionNumber the guided scene's session, null outside a scene
+     * @param ?int                      $sceneNumber   the guided scene's number in it, null outside a scene
+     * @param array<string, string>     $answers       the latest answer text by step key
+     * @param ?string                   $phaseEnding   why the phase ends after the current scene ("endPhase" or "moveOn"), null while it goes on
+     * @param list<FlowRunHistoryEntry> $history       in the order things happened
+     */
+    public static function reconstitute(
+        FlowRunStatus $status,
+        int $phaseIndex,
+        FlowRunStage $stage,
+        ?int $sessionNumber,
+        ?int $sceneNumber,
+        ?string $sceneType,
+        ?ScenePart $part,
+        ?string $stepKey,
+        int $sequencePosition,
+        int $scenesPlayed,
+        array $answers,
+        ?string $forcedNextSceneType,
+        ?string $phaseEnding,
+        int $switchCount,
+        array $history,
+    ): self {
+        $flowRun = new self();
+        $flowRun->status = $status;
+        $flowRun->phaseIndex = $phaseIndex;
+        $flowRun->stage = $stage;
+        $flowRun->sessionNumber = $sessionNumber;
+        $flowRun->sceneNumber = $sceneNumber;
+        $flowRun->sceneType = $sceneType;
+        $flowRun->part = $part;
+        $flowRun->stepKey = $stepKey;
+        $flowRun->sequencePosition = $sequencePosition;
+        $flowRun->scenesPlayed = $scenesPlayed;
+        $flowRun->answers = $answers;
+        $flowRun->forcedNextSceneType = $forcedNextSceneType;
+        $flowRun->phaseEnding = $phaseEnding;
+        $flowRun->switchCount = $switchCount;
+        $flowRun->history = $history;
+
+        return $flowRun;
+    }
+
+    /**
      * A session started: at the scene pick, a selection with one Scene Type picks it; a guided
      * scene of an earlier session is abandoned.
      */
@@ -226,15 +272,27 @@ final class FlowRun
      * Ends a loop phase by the player's choice: at once at the scene pick, else once the current
      * scene finishes (its closing parts still run).
      *
-     * @throws FlowRunNotActive when guidance is paused or the Flow is complete
-     * @throws MoveOnNotAllowed when the phase plays once
+     * @param string $phaseKey the phase to end, the current one
+     *
+     * @throws FlowRunNotActive        when guidance is paused or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current phase is another, or the guided scene is no
+     *                                 longer the current scene
+     * @throws MoveOnNotAllowed        when the phase plays once
      */
-    public function moveOn(FlowRunContext $context): void
+    public function moveOn(string $phaseKey, FlowRunContext $context): void
     {
         $this->assertActive();
         $phase = $this->phase($context->flow);
+        if ($phaseKey !== $phase->key) {
+            throw FlowRunPositionMismatch::at(\sprintf('phase "%s"', $phaseKey), \sprintf('phase "%s"', $phase->key));
+        }
+
         if (PhaseMode::Once === $phase->mode) {
             throw MoveOnNotAllowed::oncePhase($phase->key);
+        }
+
+        if (FlowRunStage::Scene === $this->stage) {
+            $this->assertInCurrentScene($context);
         }
 
         if (FlowRunStage::ScenePick === $this->stage) {
@@ -289,15 +347,16 @@ final class FlowRun
     }
 
     /**
-     * Records the current scene's Scene Type switched by hand. When it is the guided scene, the
-     * FlowRun follows: it goes on at the new type's setup (the scene opening does not run again).
+     * Records the current scene's Scene Type switched by hand. While guidance is active and it is
+     * the guided scene, the FlowRun follows: it goes on at the new type's setup (the scene opening
+     * does not run again). Paused, it stays where resume() goes on.
      *
      * @param ?string $from the scene's Scene Type key before the switch
      */
     public function followSceneTypeSwitch(?string $from, SceneType $to, FlowRunContext $context): void
     {
         $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, (int) $context->sceneNumber(), $from, $to->key);
-        if (FlowRunStage::Scene === $this->stage && $this->inCurrentScene($context)) {
+        if (FlowRunStatus::Active === $this->status && FlowRunStage::Scene === $this->stage && $this->inCurrentScene($context)) {
             $this->sceneType = $to->key;
             $this->enterPart(ScenePart::Setup, $context);
         }
@@ -351,17 +410,6 @@ final class FlowRun
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow),
         );
-    }
-
-    /**
-     * Takes the state of a copy of this FlowRun (the Campaign runs commands on a copy and keeps the
-     * outcome only when they succeed).
-     */
-    public function replaceWith(self $copy): void
-    {
-        foreach (get_object_vars($copy) as $property => $value) {
-            $this->{$property} = $value;
-        }
     }
 
     public function status(): FlowRunStatus
@@ -445,6 +493,15 @@ final class FlowRun
     public function phaseEnding(): bool
     {
         return null !== $this->phaseEnding;
+    }
+
+    /**
+     * Why the phase ends once the current scene finishes: "endPhase" (an effect) or "moveOn"; null
+     * while it goes on.
+     */
+    public function phaseEndingReason(): ?string
+    {
+        return $this->phaseEnding;
     }
 
     /**

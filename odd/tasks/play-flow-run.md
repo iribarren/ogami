@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-13-flow-run` (from `main` `8a26ec7`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-14-flow-run-guidance` (from `main` `4fd22f6`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -149,7 +149,7 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 | 10 | `feat/play-flow-run-10-campaign-scenes` | `feat(play): play-flow-run 10/19 campaign-scenes` | T8a | ~2,100 (actual, accepted by the user) |
 | 11 | `feat/play-flow-run-11-campaign-flow` | `feat(play): play-flow-run 11/19 campaign-flow` | T8b | 1,956 (actual; reviewed as two candidates) |
 | 12 | `fix/play-flow-run-12-review-fixes` | `fix(play): play-flow-run 12/19 review-fixes` | — | 237 (actual) |
-| 13 | `feat/play-flow-run-13-flow-run` | `feat(play): play-flow-run 13/19 flow-run` | T9a | ~1,900 |
+| 13 | `feat/play-flow-run-13-flow-run` | `feat(play): play-flow-run 13/19 flow-run` | T9a | 1,930 (actual) |
 | 14 | `feat/play-flow-run-14-flow-run-guidance` | `feat(play): play-flow-run 14/19 flow-run-guidance` | T9b | ~1,000 |
 | 15 | `feat/play-flow-run-15-flow-run-api` | `feat(play): play-flow-run 15/19 flow-run-api` | T10 | ~1,600 |
 | 16 | `feat/play-flow-run-16-control-flow` | `feat(play): play-flow-run 16/19 control-flow` | T11–T12 | ~1,600 |
@@ -177,7 +177,7 @@ From slice 10 on, the user set the per-slice planning limit for this feature to 
 | T7 | 9 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | delegated writer (slice 9, 2+ non-trivial files) | [x] | `efe389a` |
 | T8a | 10 | Scenes: optional Scene Type, kind `scene` \| `hook` with the hook name, default titles (`<Scene Type> <n>` per type; hook titles), start a scene by hand with an optional Scene Type, switch the current Scene's type by hand; API, OpenAPI, Behat | delegated writer (slice 10, 2+ non-trivial files) | [x] | `d5d3939` |
 | T8b | 11 | Sessions as sittings (`EndSession`, `endedAt`, no scenes until a new session); `flowKey` at creation (null = Play freely; must name a release flow), flows and Scene Types summary in the campaign view; API, OpenAPI, Behat | delegated writer (slice 11, 2+ non-trivial files) | [x] | `738829b` |
-| T9a | 13 | FlowRun core: started at creation for a `flowKey`; scene pick (sequence, player, oracle, auto-pick, forced slot); parts; steps with typed results and default `next`; skip/mandatory; condition auto-advance; position checks; phase modes, Move on at the pick, `completed`; history for skips, phase ends, completion | delegated writer (slice 12 writer, carried to slice 13) | [x] | |
+| T9a | 13 | FlowRun core: started at creation for a `flowKey`; scene pick (sequence, player, oracle, auto-pick, forced slot); parts; steps with typed results and default `next`; skip/mandatory; condition auto-advance; position checks; phase modes, Move on at the pick, `completed`; history for skips, phase ends, completion | delegated writer (slice 12 writer, carried to slice 13) | [x] | `bbfc562` |
 | T9b | 14 | Guidance pause/resume and scene abandonment; history for hand tracker edits and Scene Type switches; "Move on" any time in a loop phase (user decision); UI read model (position, current step, pick offer, next step named) | | [ ] | |
 | T10 | 15 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
 | T11 | 16 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
@@ -227,6 +227,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 - Follow-up: the check that the contract doc example equals its fixture needs `docs/` inside the php container (it mounts only `./backend`); not done.
 
 - T9a: FlowRun core; 24 tests (22 rules + heist and Mythic walk-throughs). Code was written before its tests, so there is no real RED; the first test run failed only on wrong expectations. ~1,900 lines.
+- Slice 13 review fixes: Campaign FlowRun commands run on a copy of the campaign and keep the outcome only on success (a full session leaves FlowRun, sessions and Tracker values as before; RED 4 → GREEN); the repository contract and the stored-Flow-key test compare the whole Campaign without its FlowRun again (slice 14).
 
 ## Reviews
 
@@ -244,7 +245,8 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 | 10 | Medium risk; reliability lens; approved and acknowledged (lineage `review-319443b1ca8c6722`); commits `fe2fa6e` (review fixes), `d5d3939` (T8a). Non-blocking, fixed in slice 11: the Scene Type switch guards on the hook name, not on kind `hook`; the reader accepts kind `hook` without a hook name | #49 (merged) |
 | 11 | Over the reviewer's context budget as one candidate; reviewed per commit, both medium risk, reliability lens, approved and acknowledged: `738829b` (T8b) and `3432431` (fix + doc condense, in a temporary worktree). Non-blocking, fixed in slice 12: the end-session response re-reads the campaign and may return a newer session; no test for the end-session 409; `Scene::reconstitute` allows kind/hook combinations the reader rejects | #50 (merged) |
 | 12 | Medium risk; reliability lens; approved and acknowledged (lineage `review-0115893e19e37a99`); commit `b9c0d8d`. Non-blocking, for slice 15: an HTTP test that end-session returns the named session when a later one exists, and that a mismatch is 409 | #51 (merged) |
+| 13 | Medium risk; reliability lens; approved and acknowledged (lineage `review-0a098ea5b125693d`); commit `bbfc562`. Non-blocking, fixed in slice 14: FlowRun commands are not atomic (a `CampaignLimitReached` while starting the next scene leaves a half-advanced FlowRun); a session change mid-scene leaves the FlowRun stuck; the repository round trip and a unit test compare only part of the Campaign | #52 (merged) |
 
 ## Next step
 
-Slice 13 (T9a) review, then PR; slice 14 (T9b) from the latest `main`.
+Slice 14 (review fixes, T9b) on `feat/play-flow-run-14-flow-run-guidance`.

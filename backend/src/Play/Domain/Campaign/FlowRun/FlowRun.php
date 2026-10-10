@@ -243,6 +243,17 @@ final class FlowRun
         $this->phaseEnding = true;
     }
 
+    /**
+     * Takes the state of a copy of this FlowRun (the Campaign runs commands on a copy and keeps the
+     * outcome only when they succeed).
+     */
+    public function replaceWith(self $copy): void
+    {
+        foreach (get_object_vars($copy) as $property => $value) {
+            $this->{$property} = $value;
+        }
+    }
+
     public function status(): FlowRunStatus
     {
         return $this->status;

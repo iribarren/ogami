@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
@@ -19,6 +20,7 @@ use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -321,6 +323,64 @@ final class FlowRunTest extends FlowRunTestCase
         $campaign->skipFlowStep('mood', $this->release, self::at());
     }
 
+    /**
+     * @return iterable<string, array{string, \Closure(Campaign, GameSystemSnapshot): (\Closure(): void)}>
+     */
+    public static function commandsStartingTheNextScene(): iterable
+    {
+        yield 'completing a step' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            self::closeTalk($campaign, $release);
+
+            return static fn () => $campaign->completeFlowStep('wrap', self::prompt('Nothing'), $release, self::at());
+        }];
+        yield 'skipping a step' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            self::closeTalk($campaign, $release);
+
+            return static fn () => $campaign->skipFlowStep('wrap', $release, self::at());
+        }];
+        yield 'ending a scene' => ['fight', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            $campaign->pickSceneType('fight', $release, self::at());
+            $campaign->completeFlowStep('opener', self::prompt('Ada'), $release, self::at());
+            $campaign->skipFlowStep('response', $release, self::at());
+
+            return static fn () => $campaign->endFlowScene(Session::MAX_SCENES, $release, self::at());
+        }];
+        yield 'moving on' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
+            $campaign->startScene('By hand', self::at());
+
+            return static fn () => $campaign->moveOn($release, self::at());
+        }];
+    }
+
+    /**
+     * Two loop phases of one Scene Type each, so the next scene starts on its own, in a session
+     * one scene short of full.
+     *
+     * @param \Closure(Campaign, GameSystemSnapshot): (\Closure(): void) $prepare brings the campaign to the command
+     */
+    #[Test]
+    #[DataProvider('commandsStartingTheNextScene')]
+    public function aCommandThatCannotStartTheNextSceneChangesNothing(string $sceneType, \Closure $prepare): void
+    {
+        $release = self::translate($this->content(array_map(static fn (string $key): array => ['key' => $key, 'name' => ucfirst($key), 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => [$sceneType]]], ['alone', 'again'])));
+        $campaign = self::guided($release, 'test');
+        $campaign->startSession(self::at());
+        for ($scene = 1; $scene < Session::MAX_SCENES; ++$scene) {
+            $campaign->startScene('By hand', self::at());
+        }
+
+        $command = $prepare($campaign, $release);
+        $before = clone $campaign;
+
+        try {
+            $command();
+            self::fail('The next scene started in a full session.');
+        } catch (CampaignLimitReached) {
+        }
+
+        self::assertEquals($before, $campaign);
+    }
+
     #[Test]
     public function thePartsRunInOrderAndAStepKindIsNamed(): void
     {
@@ -381,15 +441,27 @@ final class FlowRunTest extends FlowRunTestCase
         $campaign->endFlowScene((int) $campaign->currentScene()?->number(), $this->release, self::at());
     }
 
+    /**
+     * Picks Talk as the last scene the session holds and plays it to its closing step "wrap".
+     */
+    private static function closeTalk(Campaign $campaign, GameSystemSnapshot $release): void
+    {
+        $campaign->pickSceneType('talk', $release, self::at());
+        $campaign->skipFlowStep('mood', $release, self::at());
+        $campaign->endFlowScene(Session::MAX_SCENES, $release, self::at());
+    }
+
     private function rolled(string $table, int $total): OracleTableResult
     {
         return new OracleTableResult([new OracleTableStep($table, 'Scene kinds', '1d6', $total, 'A roll', null)]);
     }
 
     /**
+     * @param ?list<array<string, mixed>> $phases the Flow's phases instead of the four described above
+     *
      * @return array<string, mixed>
      */
-    private function content(): array
+    private function content(?array $phases = null): array
     {
         $prompt = static fn (string $key, string $title, bool $mandatory = false): array => ['key' => $key, 'kind' => 'prompt', 'title' => $title, 'mandatory' => $mandatory];
         $sceneType = static fn (string $key, string $name, array $setup, array $play, array $closing): array => ['key' => $key, 'name' => $name, 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => $play, 'closing' => $closing];
@@ -415,7 +487,7 @@ final class FlowRunTest extends FlowRunTestCase
                 ], [['key' => 'response', 'kind' => 'table', 'title' => 'Who comes?', 'table' => 'scene-kinds']], []),
                 $sceneType('legwork', 'Legwork', [], [], []),
             ],
-            'flows' => [['key' => 'test', 'name' => 'Test', 'defaultView' => 'journal', 'oracles' => ['scene-kinds'], 'trackers' => ['heat'], 'phases' => [
+            'flows' => [['key' => 'test', 'name' => 'Test', 'defaultView' => 'journal', 'oracles' => ['scene-kinds'], 'trackers' => ['heat'], 'phases' => $phases ?? [
                 $phase('draw', 'The draw', 'once', ['rule' => 'oracle', 'table' => 'scene-kinds']),
                 $phase('roam', 'Roaming', 'loop', ['rule' => 'player', 'sceneTypes' => ['talk', 'fight']], ['sceneClosing' => [$prompt('after', 'Anything else?')]]),
                 $phase('rounds', 'Rounds', 'loop', ['rule' => 'sequence', 'sceneTypes' => ['talk', 'fight']]),

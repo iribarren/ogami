@@ -36,11 +36,11 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * campaigns held tracker values) reads as its starting value until it changes.
  *
  * A campaign created with a Flow holds its FlowRun, which guides play along it; the FlowRun commands
- * take the pinned release.
+ * take the pinned release and change the campaign all or nothing.
  *
  * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list and the
  * tracker values, so an adapter can map it and rebuild it with reconstitute(). The FlowRun is not
- * stored yet (play-flow-run slice 14): a stored campaign has none.
+ * stored yet (play-flow-run slice 15): a stored campaign has none.
  */
 final class Campaign
 {
@@ -137,7 +137,7 @@ final class Campaign
      * Type starts that scene.
      *
      * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told (until
-     *                                     play-flow-run slice 14 drives FlowRuns from the handlers)
+     *                                     play-flow-run slice 15 drives FlowRuns from the handlers)
      *
      * @throws CampaignLimitReached when the campaign already holds 500 sessions
      */
@@ -305,7 +305,9 @@ final class Campaign
      */
     public function completeFlowStep(string $stepKey, StepResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
-        $this->guided()->completeStep($stepKey, $result, $this->flowContext($release, $at));
+        $draft = clone $this;
+        $draft->guided()->completeStep($stepKey, $result, $draft->flowContext($release, $at));
+        $this->adopt($draft);
     }
 
     /**
@@ -318,7 +320,9 @@ final class Campaign
      */
     public function skipFlowStep(string $stepKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
-        $this->guided()->skipStep($stepKey, $this->flowContext($release, $at));
+        $draft = clone $this;
+        $draft->guided()->skipStep($stepKey, $draft->flowContext($release, $at));
+        $this->adopt($draft);
     }
 
     /**
@@ -332,7 +336,9 @@ final class Campaign
      */
     public function endFlowScene(int $sceneNumber, GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
-        $this->guided()->endScene($sceneNumber, $this->flowContext($release, $at));
+        $draft = clone $this;
+        $draft->guided()->endScene($sceneNumber, $draft->flowContext($release, $at));
+        $this->adopt($draft);
     }
 
     /**
@@ -346,7 +352,9 @@ final class Campaign
      */
     public function pickSceneType(string $sceneTypeKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
-        $this->guided()->pickSceneType($sceneTypeKey, $this->flowContext($release, $at));
+        $draft = clone $this;
+        $draft->guided()->pickSceneType($sceneTypeKey, $draft->flowContext($release, $at));
+        $this->adopt($draft);
     }
 
     /**
@@ -360,7 +368,9 @@ final class Campaign
      */
     public function pickSceneTypeByOracle(OracleTableResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
-        $this->guided()->pickSceneTypeByOracle($result, $this->flowContext($release, $at));
+        $draft = clone $this;
+        $draft->guided()->pickSceneTypeByOracle($result, $draft->flowContext($release, $at));
+        $this->adopt($draft);
     }
 
     /**
@@ -373,7 +383,9 @@ final class Campaign
      */
     public function moveOn(GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
-        $this->guided()->moveOn($this->flowContext($release, $at));
+        $draft = clone $this;
+        $draft->guided()->moveOn($draft->flowContext($release, $at));
+        $this->adopt($draft);
     }
 
     /**
@@ -397,6 +409,19 @@ final class Campaign
     private function guided(): FlowRun
     {
         return $this->flowRun ?? throw FlowRunNotActive::none();
+    }
+
+    /**
+     * Takes the state of a copy that ran a FlowRun command to its end. A command runs on a copy so
+     * that it changes the campaign all or nothing: when it fails, e.g. on a full session while
+     * starting the next scene, the copy is dropped.
+     */
+    private function adopt(self $draft): void
+    {
+        [$this->sessions, $this->trackerValues] = [$draft->sessions, $draft->trackerValues];
+        if ($draft->flowRun instanceof FlowRun) {
+            $this->flowRun?->replaceWith($draft->flowRun);
+        }
     }
 
     private function flowContext(GameSystemSnapshot $release, \DateTimeImmutable $at): FlowRunContext

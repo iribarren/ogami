@@ -36,6 +36,7 @@ use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use App\Randomness\Domain\Oracle\YesNoAnswer;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
+use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -181,6 +182,17 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
     }
 
     #[Test]
+    public function aNullMandatoryIsSuggested(): void
+    {
+        /** @var array<string, mixed> $content */
+        $content = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-scene-types'), 'sceneTypes.0.setup.0.mandatory', null);
+
+        $snapshot = new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
+
+        self::assertFalse($snapshot->sceneType('legwork')?->setup->step('goal')?->mandatory);
+    }
+
+    #[Test]
     public function anExceptionalAnswerWithoutItsBranchUsesThePlainOne(): void
     {
         $branches = new OracleBranches(new Outcome('yes'), new Outcome('no'));
@@ -218,6 +230,8 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         yield 'entry effects' => ['oracles.tables.0.entries.0.effects', 'none', 'oracles.tables[0].entries[0].effects: must be a list.'];
         yield 'duplicate Scene Type' => ['sceneTypes.1.key', 'legwork', 'sceneTypes[1].key: duplicate key "legwork".'];
         yield 'duplicate tracker' => ['trackers.1.key', 'alarm', 'trackers[1].key: duplicate key "alarm".'];
+        yield 'non-boolean mandatory' => ['sceneTypes.0.setup.0.mandatory', 'yes', 'sceneTypes[0].setup[0].mandatory: must be a boolean.'];
+        yield 'integer mandatory' => ['sceneTypes.3.play.1.mandatory', 1, 'sceneTypes[3].play[1].mandatory: must be a boolean.'];
     }
 
     #[Test]

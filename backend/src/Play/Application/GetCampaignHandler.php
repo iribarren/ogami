@@ -49,13 +49,9 @@ final readonly class GetCampaignHandler implements QueryHandler
         );
     }
 
-    /**
-     * Every release Tracker gets a value when the campaign is created; a campaign stored before
-     * tracker values were (its column is empty) shows the initial value.
-     */
     private static function tracker(Tracker $tracker, Campaign $campaign): TrackerView
     {
-        $value = $campaign->trackerValues()[$tracker->key] ?? $tracker->initial;
+        $value = $campaign->trackerValue($tracker);
 
         return new TrackerView(
             $tracker->key,

@@ -17,6 +17,9 @@ use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
+use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -103,6 +106,67 @@ final class CampaignTrackersApiTest extends WebTestCase
         $trackers = $this->json()['trackers'] ?? null;
         self::assertIsArray($trackers);
         self::assertSame($kept, array_column($trackers, 'value', 'key')[$key] ?? null);
+    }
+
+    #[Test]
+    public function aCampaignStoredWithoutTrackerValuesPlaysEachTrackerFromItsStartingValue(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->campaignInAScene();
+        // A schema version 2 campaign stored before campaigns held tracker values.
+        $this->connection()->executeStatement("UPDATE play_campaign SET tracker_values = '{}' WHERE id = ?", [$id]);
+
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['alarm' => 0, 'edge' => 0, 'chaos' => 5, 'heat' => -5], $this->trackerValues());
+
+        // The bound oracle asks with the starting value: chaos 5 is neutral, "50/50" stays at 50.
+        $this->random->script(60);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/likelihood-oracles/fate', $id), ['likelihood' => 'even']);
+        self::assertResponseStatusCodeSame(201);
+        $content = $this->json()['content'] ?? null;
+        self::assertIsArray($content);
+        self::assertSame([5, 50], [$content['chaosFactor'] ?? null, $content['effectiveTarget'] ?? null]);
+
+        $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/trackers/heat', $id), ['value' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->json()['value'] ?? null);
+
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        self::assertSame(['alarm' => 0, 'edge' => 0, 'chaos' => 5, 'heat' => 1], $this->trackerValues());
+        self::assertSame('{"heat": 1}', $this->connection()->fetchOne('SELECT tracker_values FROM play_campaign WHERE id = ?', [$id]));
+    }
+
+    #[Test]
+    public function aTrackerEditOnACampaignSavedByAnotherRequestMeanwhileIsAConflict(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+
+        // Another request saves the campaign after this one loaded it, right before it flushes.
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $concurrentSave = new readonly class($this->connection(), $id) {
+            public function __construct(private Connection $connection, private string $campaignId)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement('UPDATE play_campaign SET version = version + 1 WHERE id = ?', [$this->campaignId]);
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentSave);
+
+        try {
+            $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/trackers/heat', $id), ['value' => 2]);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentSave);
+        }
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => \sprintf('Campaign "%s" was changed by another request. Reload it and try again.', $id)], $this->json());
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        self::assertSame(-5, $this->trackerValues()['heat'] ?? null);
     }
 
     #[Test]
@@ -247,6 +311,22 @@ final class CampaignTrackersApiTest extends WebTestCase
     private function tracker(string $key, string $name, string $kind, ?string $hint, int $min, int $max, ?int $segments, array $levels, int $value, ?string $levelLabel): array
     {
         return ['key' => $key, 'name' => $name, 'kind' => $kind, 'hint' => $hint, 'min' => $min, 'max' => $max, 'segments' => $segments, 'levels' => $levels, 'value' => $value, 'levelLabel' => $levelLabel];
+    }
+
+    /**
+     * @return array<mixed> the value of each Tracker of the campaign in the last response, by key
+     */
+    private function trackerValues(): array
+    {
+        $trackers = $this->json()['trackers'] ?? null;
+        self::assertIsArray($trackers);
+
+        return array_column($trackers, 'value', 'key');
+    }
+
+    private function connection(): Connection
+    {
+        return self::getContainer()->get(EntityManagerInterface::class)->getConnection();
     }
 
     private function createCampaign(): string

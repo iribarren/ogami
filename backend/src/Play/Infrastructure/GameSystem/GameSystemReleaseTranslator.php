@@ -324,7 +324,7 @@ final readonly class GameSystemReleaseTranslator
                 'title' => $this->string($view, $step['title'] ?? null, $stepPath.'.title'),
                 'prompt' => $this->optionalString($view, $step['prompt'] ?? null, $stepPath.'.prompt'),
                 'tip' => $this->optionalString($view, $step['tip'] ?? null, $stepPath.'.tip'),
-                'mandatory' => true === ($step['mandatory'] ?? false),
+                'mandatory' => $this->flag($view, $step['mandatory'] ?? null, $stepPath.'.mandatory'),
                 'next' => $this->optionalString($view, $step['next'] ?? null, $stepPath.'.next'),
                 'effects' => $this->effects($view, $step['effects'] ?? [], $stepPath.'.effects'),
             ];

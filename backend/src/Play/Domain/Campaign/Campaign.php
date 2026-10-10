@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign;
 
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
 
@@ -14,8 +15,9 @@ use App\Play\Domain\GameSystem\Tracker;
  * scene of the current session.
  *
  * The campaign holds a value for every Tracker of its pinned release (none for schema version 1).
- * The definitions stay in the release: methods that change a value take the Tracker and clamp to
- * its range.
+ * The definitions stay in the release: methods that read or change a value take the Tracker and
+ * clamp to its range. A Tracker without a stored value (a schema version 2 campaign stored before
+ * campaigns held tracker values) reads as its starting value until it changes.
  *
  * State is kept as scalars (id, owner, name, pinned release fields) plus the session list and the
  * tracker values, so an adapter can map it and rebuild it with reconstitute().
@@ -141,8 +143,6 @@ final class Campaign
      * Sets a Tracker's value by hand, clamped to its range.
      *
      * @return int the value kept
-     *
-     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
      */
     public function setTrackerValue(Tracker $tracker, int $value): int
     {
@@ -153,12 +153,10 @@ final class Campaign
      * Adds to a Tracker's value or sets it, clamped to its range.
      *
      * @return int the value kept
-     *
-     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
      */
     public function applyTrackerChange(Tracker $tracker, TrackerOperation $operation, int $value): int
     {
-        $current = $this->trackerValue($tracker->key);
+        $current = $this->trackerValue($tracker);
 
         return $this->trackerValues[$tracker->key] = $tracker->clamp(TrackerOperation::Add === $operation ? $current + $value : $value);
     }
@@ -167,25 +165,28 @@ final class Campaign
      * The chaos factor to ask a likelihood oracle with: the campaign's value of the Tracker its
      * chaos is bound to, else the requested one (null for the oracle's neutral factor).
      *
+     * @param GameSystemSnapshot $release the pinned release, which declares the bound Tracker
+     *
      * @throws ChaosFactorBoundToTracker when the oracle is bound and a chaos factor is requested
-     * @throws UnknownCampaignTracker    when the campaign holds no value for the bound Tracker
+     * @throws UnknownCampaignTracker    when the release declares no Tracker with the bound key
      */
-    public function chaosFactorFor(SnapshotLikelihoodOracle $oracle, ?int $requested): ?int
+    public function chaosFactorFor(SnapshotLikelihoodOracle $oracle, ?int $requested, GameSystemSnapshot $release): ?int
     {
-        $tracker = $oracle->chaosTracker();
-        if (null === $tracker) {
+        $key = $oracle->chaosTracker();
+        if (null === $key) {
             return $requested;
         }
 
         if (null !== $requested) {
-            throw ChaosFactorBoundToTracker::for($oracle->key(), $tracker);
+            throw ChaosFactorBoundToTracker::for($oracle->key(), $key);
         }
 
-        return $this->trackerValue($tracker);
+        return $this->trackerValue($release->tracker($key) ?? throw UnknownCampaignTracker::withKey($key));
     }
 
     /**
-     * @return array<string, int> the value of each Tracker by key; release order is not kept
+     * @return array<string, int> the stored value of each Tracker by key; release order is not kept,
+     *                            and a Tracker without a stored value is missing (see trackerValue())
      */
     public function trackerValues(): array
     {
@@ -193,11 +194,12 @@ final class Campaign
     }
 
     /**
-     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
+     * The campaign's value of a Tracker of its pinned release: the stored one, else the Tracker's
+     * starting value (initial for a counter, 0 for a clock).
      */
-    public function trackerValue(string $key): int
+    public function trackerValue(Tracker $tracker): int
     {
-        return $this->trackerValues[$key] ?? throw UnknownCampaignTracker::withKey($key);
+        return $this->trackerValues[$tracker->key] ?? $tracker->initial;
     }
 
     /**

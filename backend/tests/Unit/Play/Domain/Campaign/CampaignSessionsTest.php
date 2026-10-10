@@ -112,6 +112,22 @@ final class CampaignSessionsTest extends TestCase
     }
 
     #[Test]
+    public function onlyTheSessionUnderWayEndsWhenTheCallerNamesIt(): void
+    {
+        $campaign = $this->campaignInASession();
+
+        try {
+            $campaign->endSession(new \DateTimeImmutable('2026-10-10 12:00:00'), 2);
+            self::fail('A session ended that is not the one under way.');
+        } catch (NoCurrentSession $exception) {
+            self::assertSame('Session 2 is not the session under way.', $exception->getMessage());
+        }
+
+        self::assertFalse($campaign->sessions()[0]->hasEnded());
+        self::assertSame(1, $campaign->endSession(new \DateTimeImmutable('2026-10-10 12:00:00'), 1)->number());
+    }
+
+    #[Test]
     public function noSessionEndsBeforeTheFirstOne(): void
     {
         $this->expectException(NoCurrentSession::class);

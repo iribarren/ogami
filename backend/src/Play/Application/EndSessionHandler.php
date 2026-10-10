@@ -20,13 +20,13 @@ final readonly class EndSessionHandler implements CommandHandler
 
     /**
      * @throws CampaignNotFound
-     * @throws NoCurrentSession             when no session is under way (none has started, or it has ended)
+     * @throws NoCurrentSession             when no session is under way (none has started, or it has ended), or another than the named one is
      * @throws CampaignModifiedConcurrently when another request saved the campaign meanwhile
      */
     public function __invoke(EndSession $command): void
     {
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
-        $campaign->endSession($this->clock->now());
+        $campaign->endSession($this->clock->now(), $command->sessionNumber);
         $this->campaigns->save($campaign);
     }
 }

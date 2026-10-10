@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Persistence\Doctrine;
 
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\InvalidSceneKind;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\Campaign\Session;
@@ -94,28 +95,24 @@ final class CampaignSessionsType extends JsonType
     }
 
     /**
-     * A hook Scene names its hook; a scene of play has none.
+     * A hook Scene names its hook; a scene of play has none (Scene::reconstitute() checks it).
      */
     private static function scene(mixed $scene): Scene
     {
         $kind = self::enum(SceneKind::class, $scene, 'kind') ?? SceneKind::Scene;
-        $hook = self::enum(Hook::class, $scene, 'hook');
-        if (SceneKind::Hook === $kind && !$hook instanceof Hook) {
-            throw self::malformed('hook', 'set on a hook scene');
-        }
 
-        if (SceneKind::Scene === $kind && $hook instanceof Hook) {
-            throw self::malformed('hook', 'null on a scene of play');
+        try {
+            return Scene::reconstitute(
+                self::int($scene, 'number'),
+                self::string($scene, 'title'),
+                self::time($scene, 'startedAt'),
+                $kind,
+                self::optionalString($scene, 'sceneType'),
+                self::enum(Hook::class, $scene, 'hook'),
+            );
+        } catch (InvalidSceneKind) {
+            throw self::malformed('hook', SceneKind::Hook === $kind ? 'set on a hook scene' : 'null on a scene of play');
         }
-
-        return Scene::reconstitute(
-            self::int($scene, 'number'),
-            self::string($scene, 'title'),
-            self::time($scene, 'startedAt'),
-            $kind,
-            self::optionalString($scene, 'sceneType'),
-            $hook,
-        );
     }
 
     private static function field(mixed $data, string $field): mixed

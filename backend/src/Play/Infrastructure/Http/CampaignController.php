@@ -11,6 +11,7 @@ use App\Play\Application\CreateCampaign;
 use App\Play\Application\EndSession;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\ListMyCampaigns;
+use App\Play\Application\SessionView;
 use App\Play\Application\SetTrackerValue;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
@@ -173,14 +174,18 @@ final readonly class CampaignController
     public function endSession(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         try {
-            $this->commandBus->dispatch(new EndSession($campaignId, $user->id()));
+            // The command names the session under way, so the one returned is the one it ended,
+            // whatever another request starts meanwhile.
+            $number = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->currentSessionNumber;
+            $this->commandBus->dispatch(new EndSession($campaignId, $user->id(), $number));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (NoCurrentSession|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
-        $session = array_last($this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions) ?? throw new \LogicException('The session was just ended.');
+        $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
+        $session = array_find($sessions, static fn (SessionView $session): bool => $session->number === $number) ?? throw new \LogicException('The session was just ended.');
 
         return new JsonResponse(SessionResponse::fromView($session));
     }

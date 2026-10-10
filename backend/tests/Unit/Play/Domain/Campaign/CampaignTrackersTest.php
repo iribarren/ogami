@@ -69,7 +69,7 @@ final class CampaignTrackersTest extends TestCase
         $campaign = $this->campaign();
 
         self::assertSame($expected, $campaign->setTrackerValue($this->tracker($key), $value));
-        self::assertSame($expected, $campaign->trackerValue($key));
+        self::assertSame($expected, $campaign->trackerValue($this->tracker($key)));
     }
 
     /**
@@ -94,7 +94,7 @@ final class CampaignTrackersTest extends TestCase
         $campaign = $this->campaign();
 
         self::assertSame($expected, $campaign->applyTrackerChange($this->tracker($key), $operation, $value));
-        self::assertSame($expected, $campaign->trackerValue($key));
+        self::assertSame($expected, $campaign->trackerValue($this->tracker($key)));
     }
 
     #[Test]
@@ -110,25 +110,29 @@ final class CampaignTrackersTest extends TestCase
     }
 
     #[Test]
-    public function aTrackerTheCampaignDoesNotHoldIsUnknown(): void
+    public function aCampaignStoredWithoutTrackerValuesReadsEachTrackerAtItsStartingValue(): void
+    {
+        // A schema version 2 campaign stored before campaigns held tracker values.
+        $campaign = $this->legacyCampaign();
+
+        self::assertSame([0, -5, 5], array_map($campaign->trackerValue(...), $this->snapshot->trackers()));
+        self::assertSame(5, $campaign->chaosFactorFor($this->snapshot->likelihoodOracle('fate'), null, $this->snapshot));
+        self::assertSame(-2, $campaign->applyTrackerChange($this->tracker('heat'), TrackerOperation::Add, 3));
+        self::assertSame(4, $campaign->setTrackerValue($this->tracker('alarm'), 4));
+        self::assertSame(['heat' => -2, 'alarm' => 4], $campaign->trackerValues());
+        self::assertSame(5, $campaign->trackerValue($this->tracker('chaos')));
+    }
+
+    #[Test]
+    public function aBoundTrackerTheReleaseDoesNotDeclareIsUnknown(): void
     {
         $campaign = $this->campaign();
-        $stranger = Tracker::counter('luck', 'Luck', null, 0, 3, 0);
+        $withoutTrackers = new GameSystemSnapshot('heist', 'Heist', 1, null, [$this->snapshot->likelihoodOracle('fate')], []);
 
-        foreach ([
-            static fn (): int => $campaign->setTrackerValue($stranger, 1),
-            static fn (): int => $campaign->applyTrackerChange($stranger, TrackerOperation::Add, 1),
-            static fn (): int => $campaign->trackerValue('luck'),
-        ] as $change) {
-            try {
-                $change();
-                self::fail('An unknown tracker was accepted.');
-            } catch (UnknownCampaignTracker $exception) {
-                self::assertSame('Tracker "luck" not found.', $exception->getMessage());
-            }
-        }
+        $this->expectException(UnknownCampaignTracker::class);
+        $this->expectExceptionMessageIsOrContains('Tracker "chaos" not found.');
 
-        self::assertSame(['alarm' => 0, 'heat' => -5, 'chaos' => 5], $campaign->trackerValues());
+        $campaign->chaosFactorFor($withoutTrackers->likelihoodOracle('fate'), null, $withoutTrackers);
     }
 
     #[Test]
@@ -137,7 +141,7 @@ final class CampaignTrackersTest extends TestCase
         $campaign = $this->campaign();
         $campaign->setTrackerValue($this->tracker('chaos'), 7);
 
-        self::assertSame(7, $campaign->chaosFactorFor($this->snapshot->likelihoodOracle('fate'), null));
+        self::assertSame(7, $campaign->chaosFactorFor($this->snapshot->likelihoodOracle('fate'), null, $this->snapshot));
     }
 
     #[Test]
@@ -146,7 +150,7 @@ final class CampaignTrackersTest extends TestCase
         $this->expectException(ChaosFactorBoundToTracker::class);
         $this->expectExceptionMessageIsOrContains('Likelihood oracle "fate" takes its chaos factor from tracker "chaos": send no chaos factor.');
 
-        $this->campaign()->chaosFactorFor($this->snapshot->likelihoodOracle('fate'), 5);
+        $this->campaign()->chaosFactorFor($this->snapshot->likelihoodOracle('fate'), 5, $this->snapshot);
     }
 
     #[Test]
@@ -155,8 +159,8 @@ final class CampaignTrackersTest extends TestCase
         $campaign = $this->campaign();
         $omen = $this->snapshot->likelihoodOracle('omen');
 
-        self::assertSame(2, $campaign->chaosFactorFor($omen, 2));
-        self::assertNull($campaign->chaosFactorFor($omen, null));
+        self::assertSame(2, $campaign->chaosFactorFor($omen, 2, $this->snapshot));
+        self::assertNull($campaign->chaosFactorFor($omen, null, $this->snapshot));
     }
 
     #[Test]
@@ -168,7 +172,7 @@ final class CampaignTrackersTest extends TestCase
         $campaign = Campaign::reconstitute($original->id(), $original->ownerId(), $original->name(), $original->pinnedRelease(), $original->createdAt(), [], $original->trackerValues());
 
         self::assertEquals($original, $campaign);
-        self::assertSame(2, $campaign->trackerValue('heat'));
+        self::assertSame(2, $campaign->trackerValue($this->tracker('heat')));
     }
 
     /**
@@ -206,6 +210,18 @@ final class CampaignTrackersTest extends TestCase
             PinnedRelease::of('heist', 1, 'Heist'),
             new \DateTimeImmutable('2026-10-09 09:00:00'),
             $this->snapshot->trackers(),
+        );
+    }
+
+    private function legacyCampaign(): Campaign
+    {
+        return Campaign::reconstitute(
+            CampaignId::fromString('campaign-1'),
+            'user-1',
+            'The job',
+            PinnedRelease::of('heist', 1, 'Heist'),
+            new \DateTimeImmutable('2026-10-09 09:00:00'),
+            [],
         );
     }
 

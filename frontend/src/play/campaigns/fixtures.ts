@@ -45,12 +45,32 @@ export const lostMineCampaign: Campaign = {
     {
       number: 1,
       startedAt: '2026-10-05T12:05:00+00:00',
-      scenes: [{ number: 1, title: 'At the gate', startedAt: '2026-10-05T12:10:00+00:00' }],
+      scenes: [
+        {
+          number: 1,
+          title: 'At the gate',
+          startedAt: '2026-10-05T12:10:00+00:00',
+          kind: 'scene',
+          sceneType: null,
+          sceneTypeName: null,
+          hook: null,
+        },
+      ],
     },
     {
       number: 2,
       startedAt: '2026-10-06T12:00:00+00:00',
-      scenes: [{ number: 1, title: 'Into the dark', startedAt: '2026-10-06T12:05:00+00:00' }],
+      scenes: [
+        {
+          number: 1,
+          title: 'Into the dark',
+          startedAt: '2026-10-06T12:05:00+00:00',
+          kind: 'scene',
+          sceneType: null,
+          sceneTypeName: null,
+          hook: null,
+        },
+      ],
     },
   ],
   currentSessionNumber: 2,

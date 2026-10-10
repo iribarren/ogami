@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support\Play;
 
+use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
@@ -76,5 +78,16 @@ final class Snapshots
             Tracker::counter('heat', 'Heat', null, -5, 5, -5, [new TrackerLevel(-1, 'Cold'), new TrackerLevel(2, 'Warm'), new TrackerLevel(null, 'Hot')]),
             Tracker::counter('chaos', 'Chaos factor', null, 1, 9, 5),
         ]);
+    }
+
+    /**
+     * A schema version 2 snapshot with the Scene Types "legwork" (Legwork) and "firefight"
+     * (Firefight), without steps.
+     */
+    public static function withSceneTypes(string $key, string $name, int $version): GameSystemSnapshot
+    {
+        $sceneType = static fn (string $key, string $name): SceneType => new SceneType($key, $name, 'Play out a '.$key.' scene.', null, [], new StepList(), new StepList(), new StepList());
+
+        return new GameSystemSnapshot($key, $name, $version, null, [], [], sceneTypes: [$sceneType('legwork', 'Legwork'), $sceneType('firefight', 'Firefight')]);
     }
 }

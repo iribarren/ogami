@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\Persistence\Doctrine;
 
+use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\Campaign\Session;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
@@ -16,9 +18,11 @@ use Doctrine\DBAL\Types\JsonType;
  * option). Sessions and scenes are immutable values identified by their number within the
  * campaign, always loaded and saved with it, so they need no table of their own (ADR 0007).
  *
- * Stored shape: [{number, startedAt, scenes: [{number, title, startedAt}]}], in number order.
- * Times keep their microseconds and UTC offset. Reading checks the shape, not the domain rules
- * (Session and Scene are rebuilt with reconstitute()).
+ * Stored shape: [{number, startedAt, scenes: [{number, title, startedAt, kind, sceneType, hook}]}],
+ * in number order; `kind` is "scene" or "hook", `sceneType` and `hook` may be null. A scene stored
+ * before scenes had a kind has none of the last three and reads as a scene of play without a
+ * Scene Type. Times keep their microseconds and UTC offset. Reading checks the shape, not the
+ * domain rules (Session and Scene are rebuilt with reconstitute()).
  */
 final class CampaignSessionsType extends JsonType
 {
@@ -50,6 +54,9 @@ final class CampaignSessionsType extends JsonType
                         'number' => $scene->number(),
                         'title' => $scene->title(),
                         'startedAt' => $scene->startedAt()->format(self::TIME_FORMAT),
+                        'kind' => $scene->kind()->value,
+                        'sceneType' => $scene->sceneType(),
+                        'hook' => $scene->hook()?->value,
                     ],
                     $session->scenes(),
                 ),
@@ -78,6 +85,9 @@ final class CampaignSessionsType extends JsonType
                         self::int($scene, 'number'),
                         self::string($scene, 'title'),
                         self::time($scene, 'startedAt'),
+                        self::enum(SceneKind::class, $scene, 'kind') ?? SceneKind::Scene,
+                        self::optionalString($scene, 'sceneType'),
+                        self::enum(Hook::class, $scene, 'hook'),
                     ),
                     self::list(self::field($session, 'scenes'), 'scenes'),
                 ),
@@ -121,6 +131,25 @@ final class CampaignSessionsType extends JsonType
         }
 
         return $value;
+    }
+
+    private static function optionalString(mixed $data, string $field): ?string
+    {
+        return null === self::field($data, $field) ? null : self::string($data, $field);
+    }
+
+    /**
+     * @template T of \BackedEnum
+     *
+     * @param class-string<T> $enum
+     *
+     * @return ?T null when the field is absent or null
+     */
+    private static function enum(string $enum, mixed $data, string $field): ?\BackedEnum
+    {
+        $value = self::optionalString($data, $field);
+
+        return null === $value ? null : ($enum::tryFrom($value) ?? throw self::malformed($field, 'one of '.implode(', ', array_map(static fn (\BackedEnum $case): string => '"'.$case->value.'"', $enum::cases()))));
     }
 
     private static function time(mixed $data, string $field): \DateTimeImmutable

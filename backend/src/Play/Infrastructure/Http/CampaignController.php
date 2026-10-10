@@ -13,15 +13,19 @@ use App\Play\Application\ListMyCampaigns;
 use App\Play\Application\SetTrackerValue;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
+use App\Play\Application\SwitchSceneType;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
+use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
 use App\Play\Domain\Campaign\InvalidCampaignName;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
+use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\UnknownSceneType;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -35,9 +39,10 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * A solo player's campaigns, with their sessions, scenes and Trackers (security.yaml restricts these
- * routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly like an
- * unknown one.
+ * A solo player's campaigns, with their sessions, scenes (with their Scene Types) and Trackers
+ * (security.yaml restricts these routes to ROLE_SOLO_PLAYER). A campaign of another player is not
+ * found, exactly like an unknown one. A key of the pinned release that does not exist (a Tracker,
+ * a Scene Type) is not found either, whether it comes in the path or in the body.
  */
 #[AsController]
 #[OA\Tag(name: 'Play')]
@@ -46,7 +51,8 @@ final readonly class CampaignController
     use ReadsJsonBodies;
 
     private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name" and a string "gameSystemKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
-    private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", such as {"title": "At the gate"}.';
+    private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", a string "sceneType" or both, such as {"title": "At the gate"} or {"sceneType": "legwork"}.';
+    private const string MALFORMED_SCENE_TYPE = 'Send a JSON object with a string "sceneType", such as {"sceneType": "firefight"}.';
     private const string MALFORMED_TRACKER = 'Send a JSON object with an integer "value", such as {"value": 3}.';
 
     public function __construct(
@@ -158,10 +164,10 @@ final readonly class CampaignController
     #[OA\Post(operationId: 'startScene', summary: 'Start the next scene in the current session of one of my campaigns')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: StartSceneRequest::class)))]
     #[OA\Response(response: 201, description: 'The campaign, the new scene current.', content: new OA\JsonContent(ref: new Model(type: CampaignResponse::class)))]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed or has no string "title".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed: neither a string "title" nor a string "sceneType", or one of them is not a string.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no Scene Type with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign has no session yet, the current session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The title is blank or too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
@@ -173,13 +179,14 @@ final readonly class CampaignController
         }
 
         $title = $body['title'] ?? null;
-        if (!\is_string($title)) {
+        $sceneType = $body['sceneType'] ?? null;
+        if ((null !== $title && !\is_string($title)) || (null !== $sceneType && !\is_string($sceneType)) || (null === $title && null === $sceneType)) {
             return $this->error(self::MALFORMED_SCENE, Response::HTTP_BAD_REQUEST);
         }
 
         try {
-            $this->commandBus->dispatch(new StartScene($campaignId, $user->id(), $title));
-        } catch (CampaignNotFound $exception) {
+            $this->commandBus->dispatch(new StartScene($campaignId, $user->id(), $title, $sceneType));
+        } catch (CampaignNotFound|UnknownSceneType $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (NoCurrentSession|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
@@ -188,6 +195,42 @@ final readonly class CampaignController
         }
 
         return $this->campaign($campaignId, $user, Response::HTTP_CREATED);
+    }
+
+    #[Route('/api/campaigns/{campaignId}/scenes/current/scene-type', name: 'api_campaigns_scenes_current_scene_type', methods: ['POST'])]
+    #[OA\Post(operationId: 'switchSceneType', summary: 'Switch the Scene Type of the current scene of one of my campaigns by hand')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: SwitchSceneTypeRequest::class)))]
+    #[OA\Response(response: 200, description: 'The current scene with its new Scene Type; its number, title and journal entries stay.', content: new OA\JsonContent(ref: new Model(type: SceneResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or has no string "sceneType".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no Scene Type with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function switchSceneType(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the Scene Type as JSON.', self::MALFORMED_SCENE_TYPE);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $sceneType = $body['sceneType'] ?? null;
+        if (!\is_string($sceneType)) {
+            return $this->error(self::MALFORMED_SCENE_TYPE, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $this->commandBus->dispatch(new SwitchSceneType($campaignId, $user->id(), $sceneType));
+        } catch (CampaignNotFound|UnknownSceneType $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (NoCurrentScene|HookSceneHasNoSceneType|CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        }
+
+        $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
+        $scene = array_last(array_last($sessions)->scenes ?? []) ?? throw new \LogicException('The current scene was just switched.');
+
+        return new JsonResponse(SceneResponse::fromView($scene));
     }
 
     #[Route('/api/campaigns/{campaignId}/trackers/{trackerKey}', name: 'api_campaigns_trackers_set', methods: ['PUT'])]

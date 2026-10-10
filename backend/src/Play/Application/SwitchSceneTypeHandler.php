@@ -4,44 +4,41 @@ declare(strict_types=1);
 
 namespace App\Play\Application;
 
-use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
-use App\Play\Domain\Campaign\InvalidSceneTitle;
-use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
+use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownSceneType;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Shared\Application\Bus\CommandHandler;
 
-final readonly class StartSceneHandler implements CommandHandler
+final readonly class SwitchSceneTypeHandler implements CommandHandler
 {
     public function __construct(
         private OwnedCampaigns $ownedCampaigns,
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
-        private Clock $clock,
     ) {
     }
 
     /**
      * @throws CampaignNotFound
      * @throws UnknownSceneType                when the pinned release has no Scene Type with this key
-     * @throws NoCurrentSession
-     * @throws CampaignLimitReached
+     * @throws NoCurrentScene
+     * @throws HookSceneHasNoSceneType         when the current scene is a hook Scene
      * @throws CampaignModifiedConcurrently    when another request saved the campaign meanwhile
-     * @throws InvalidSceneTitle               also when there is neither a title nor a Scene Type
      * @throws GameSystemReleaseNotFound       when the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion
      * @throws InvalidGameSystemRelease
      */
-    public function __invoke(StartScene $command): void
+    public function __invoke(SwitchSceneType $command): void
     {
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
-        $sceneType = null === $command->sceneType ? null : SceneTypes::ofPinnedRelease($this->releases, $campaign, $command->sceneType);
 
-        $campaign->startScene($command->title, $this->clock->now(), $sceneType);
+        // FlowRun history for hand switches comes with the FlowRun (play-flow-run T10).
+        $campaign->switchSceneType(SceneTypes::ofPinnedRelease($this->releases, $campaign, $command->sceneType));
         $this->campaigns->save($campaign);
     }
 }

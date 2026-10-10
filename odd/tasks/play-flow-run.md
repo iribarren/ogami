@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-9-campaign-trackers` (from `main` `7a9208e`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-10-campaign-scenes` (from `main` `efe3aa6`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -116,23 +116,26 @@ Forecasts include generated files (OpenAPI spec, TS types, route tree). Split a 
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/15 contract` | T1 | 1,423 (actual) |
-| 2 | `feat/play-flow-run-2-contract-catalog` | `feat(studio): play-flow-run 2/15 contract-catalog` | T2a | 1,729 (actual) |
-| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/15 contract-steps` | T2b | 1,542 (actual) |
-| 4 | `feat/play-flow-run-4-contract-flows` | `feat(studio): play-flow-run 4/15 contract-flows` | T3 | 1,302 (actual) |
-| 5 | `feat/play-flow-run-5-contract-warnings` | `feat(studio): play-flow-run 5/15 contract-warnings` | T4 | 532 (actual) |
-| 6 | `feat/play-flow-run-6-example-fixtures` | `test(studio): play-flow-run 6/15 example-fixtures` | T5 | 1,191 (actual) |
-| 7 | `feat/play-flow-run-7-acl-catalog` | `feat(play): play-flow-run 7/15 acl-catalog` | T5b, T6a | 1,668 (actual, accepted by the user) |
-| 8 | `feat/play-flow-run-8-acl-flows` | `feat(play): play-flow-run 8/15 acl-flows` | T6b | 709 (actual) |
-| 9 | `feat/play-flow-run-9-campaign-trackers` | `feat(play): play-flow-run 9/15 campaign-trackers` | T7 | ~1,810 (actual, accepted by the user) |
-| 10 | `feat/play-flow-run-10-campaign-scenes` | `feat(play): play-flow-run 10/15 campaign-scenes` | T8 | ~1,300 |
-| 11 | `feat/play-flow-run-11-flow-run` | `feat(play): play-flow-run 11/15 flow-run` | T9–T10 | ~1,500 |
-| 12 | `feat/play-flow-run-12-control-flow` | `feat(play): play-flow-run 12/15 control-flow` | T11–T12 | ~1,500 |
-| 13 | `feat/play-flow-run-13-guided-journal` | `feat(play): play-flow-run 13/15 guided-journal` | T13–T14 | ~1,500 |
-| 14 | `feat/play-flow-run-14-trackers-oracles` | `feat(play): play-flow-run 14/15 trackers-oracles` | T15 | ~1,000 |
-| 15 | `feat/play-flow-run-15-focus-mode` | `feat(play): play-flow-run 15/15 focus-mode` | T16–T17 | ~1,000 |
+| 1 | `feat/play-flow-run-1-contract` | `feat(studio): play-flow-run 1/16 contract` | T1 | 1,423 (actual) |
+| 2 | `feat/play-flow-run-2-contract-catalog` | `feat(studio): play-flow-run 2/16 contract-catalog` | T2a | 1,729 (actual) |
+| 3 | `feat/play-flow-run-3-contract-steps` | `feat(studio): play-flow-run 3/16 contract-steps` | T2b | 1,542 (actual) |
+| 4 | `feat/play-flow-run-4-contract-flows` | `feat(studio): play-flow-run 4/16 contract-flows` | T3 | 1,302 (actual) |
+| 5 | `feat/play-flow-run-5-contract-warnings` | `feat(studio): play-flow-run 5/16 contract-warnings` | T4 | 532 (actual) |
+| 6 | `feat/play-flow-run-6-example-fixtures` | `test(studio): play-flow-run 6/16 example-fixtures` | T5 | 1,191 (actual) |
+| 7 | `feat/play-flow-run-7-acl-catalog` | `feat(play): play-flow-run 7/16 acl-catalog` | T5b, T6a | 1,668 (actual, accepted by the user) |
+| 8 | `feat/play-flow-run-8-acl-flows` | `feat(play): play-flow-run 8/16 acl-flows` | T6b | 709 (actual) |
+| 9 | `feat/play-flow-run-9-campaign-trackers` | `feat(play): play-flow-run 9/16 campaign-trackers` | T7 | ~1,810 (actual, accepted by the user) |
+| 10 | `feat/play-flow-run-10-campaign-scenes` | `feat(play): play-flow-run 10/16 campaign-scenes` | T8a | ~2,100 (actual, accepted by the user) |
+| 11 | `feat/play-flow-run-11-campaign-flow` | `feat(play): play-flow-run 11/16 campaign-flow` | T8b | ~900 |
+| 12 | `feat/play-flow-run-12-flow-run` | `feat(play): play-flow-run 12/16 flow-run` | T9–T10 | ~1,500 |
+| 13 | `feat/play-flow-run-13-control-flow` | `feat(play): play-flow-run 13/16 control-flow` | T11–T12 | ~1,500 |
+| 14 | `feat/play-flow-run-14-guided-journal` | `feat(play): play-flow-run 14/16 guided-journal` | T13–T14 | ~1,500 |
+| 15 | `feat/play-flow-run-15-trackers-oracles` | `feat(play): play-flow-run 15/16 trackers-oracles` | T15 | ~1,000 |
+| 16 | `feat/play-flow-run-16-focus-mode` | `feat(play): play-flow-run 16/16 focus-mode` | T16–T17 | ~1,000 |
 
-Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnings). The user chose to split it into slices 1–4 (2026-10-09). Re-forecast before slice 2 (shape validation ~2,800 lines on the tag) split shapes into catalog (2) and steps (3); the contract now spans slices 1–5. Re-forecast before slice 7 (ACL ~2,200 lines plus the warning fix) split the anti-corruption layer into catalog (7) and flows (8); 14 slices. Re-forecast before slice 9 (~2,800 lines with generated API files) split campaign state into trackers (9) and scenes (10); 15 slices. The full implementation is kept on the local tag `wip/play-flow-run-contract-full` (`66e1586`, never pushed); slices 2–5 port it from there. Before each later slice's writer starts, the parent re-forecasts it and splits it if it will pass ~1,500 lines; titles then use the new total.
+Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnings). The user chose to split it into slices 1–4 (2026-10-09). Re-forecast before slice 2 (shape validation ~2,800 lines on the tag) split shapes into catalog (2) and steps (3); the contract now spans slices 1–5. Re-forecast before slice 7 (ACL ~2,200 lines plus the warning fix) split the anti-corruption layer into catalog (7) and flows (8); 14 slices. Re-forecast before slice 9 (~2,800 lines with generated API files) split campaign state into trackers (9) and scenes (10); 15 slices. Re-forecast before slice 10 (~2,000 with generated files and review fixes) split T8 into scenes (10) and sessions + flow choice (11); 16 slices. The full implementation is kept on the local tag `wip/play-flow-run-contract-full` (`66e1586`, never pushed); slices 2–5 port it from there. Before each later slice's writer starts, the parent re-forecasts it and splits it if it will pass ~1,500 lines; titles then use the new total.
+
+From slice 10 on, the user set the per-slice planning limit for this feature to ~2,000 lines including generated files and tests (2026-10-10).
 
 ## Tasks
 
@@ -147,17 +150,18 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 | T5b | 7 | Studio: the decision-7 warning follows branches (user decision after slice 6): warn only when the `nextScene` is reachable from a band of the `condition` on T (the band's own effects, or steps its `next` leads to); tests incl. the two-thresholds case and the slice 6 review suggestion; contract doc; VtM fixture may show the fixed-threshold style | delegated writer (slice 7, 2+ non-trivial files) | [x] | `387bb11` |
 | T6a | 7 | Play snapshot v2, part 1: trackers, fact slots, table entry `key` / `sceneType` / `effects`, chaos tracker binding, Scene Types with steps, bands and effects (typed, framework-free); translator v2 maps them (flows empty until T6b); v1 → no flows unchanged; tests | delegated writer (slice 7, 2+ non-trivial files) | [x] | `f499539` |
 | T6b | 8 | Play snapshot v2, part 2: flows, phases, selection, hooks; the five example fixtures pass the ACL; tests | delegated writer (slice 8, 2+ non-trivial files) | [x] | `ef1c66d` |
-| T7 | 9 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | delegated writer (slice 9, 2+ non-trivial files) | [x] | |
-| T8 | 10 | Scene Type, kind, titles; End session; manual scene type and switch; `flowKey` at creation; API, OpenAPI, Behat | | [ ] | |
-| T9 | 11 | FlowRun domain: phases, selection, parts, steps with default `next`, mandatory/skip, open play, completed, pause/resume, history | | [ ] | |
-| T10 | 11 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
-| T11 | 12 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
-| T12 | 12 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
-| T13 | 13 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
-| T14 | 13 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
-| T15 | 14 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
-| T16 | 15 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
-| T17 | 15 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
+| T7 | 9 | Campaign trackers: init, clamping, edit by hand, chaos binding; API, migration | delegated writer (slice 9, 2+ non-trivial files) | [x] | `efe389a` |
+| T8a | 10 | Scenes: optional Scene Type, kind `scene` \| `hook` with the hook name, default titles (`<Scene Type> <n>` per type; hook titles), start a scene by hand with an optional Scene Type, switch the current Scene's type by hand; API, OpenAPI, Behat | delegated writer (slice 10, 2+ non-trivial files) | [x] | |
+| T8b | 11 | Sessions as sittings (`EndSession`, `endedAt`, no scenes until a new session); `flowKey` at creation (null = Play freely; must name a release flow), flows and Scene Types summary in the campaign view; API, OpenAPI, Behat | | [ ] | |
+| T9 | 12 | FlowRun domain: phases, selection, parts, steps with default `next`, mandatory/skip, open play, completed, pause/resume, history | | [ ] | |
+| T10 | 12 | FlowRun application, persistence, HTTP, OpenAPI, Behat | | [ ] | |
+| T11 | 13 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | | [ ] | |
+| T12 | 13 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
+| T13 | 14 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
+| T14 | 14 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
+| T15 | 15 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
+| T16 | 16 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
+| T17 | 16 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
 
 ## Acceptance criteria
 
@@ -169,7 +173,7 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 ## Checks
 
 - Backend: test first (RED → GREEN) with PHPUnit unit tests per rule; `make qa`, `make test`; `make api-check` when endpoints change.
-- Frontend: Vitest per component, `make e2e` for the guided flow (slices 13–15).
+- Frontend: Vitest per component, `make e2e` for the guided flow (slices 14–16).
 
 ## Progress
 
@@ -193,6 +197,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 - Slice 8 review fix (slice 9): `GameSystemReleaseTranslator` reads a flow's `default` as an optional boolean: absent or `null` is false, any other non-boolean fails closed (`flows[i].default: must be a boolean.`). RED: `phpunit GameSystemReleaseTranslatorFlowsTest` 22 tests, 2 failures; GREEN: `phpunit tests/Unit/Play` 226 tests OK.
 - T7 done: the Campaign holds a value for every Tracker of its pinned release (`Campaign::create` takes the release Trackers: counters at `initial`, clocks at 0; schema version 1 campaigns have none). `setTrackerValue` (by hand) and `applyTrackerChange` (`add` / `set`) clamp through `Tracker::clamp` (min..max, 0..segments); a Tracker the campaign holds no value for fails with `UnknownCampaignTracker` (404). `Campaign::chaosFactorFor`: a likelihood oracle whose chaos is bound to a Tracker asks with the campaign's value, and a request carrying `chaosFactor` for it fails with `ChaosFactorBoundToTracker` (422); unbound oracles are unchanged. Application: `SetTrackerValue` command (Tracker range from the pinned release), `CreateCampaignHandler` starts the Trackers, `RecordLikelihoodAnswerHandler` uses the binding; `CampaignView` gains `trackers` (`TrackerView`: key, name, kind, hint, min, max, segments, levels, value, `levelLabel` via `Tracker::levelAt`), `LikelihoodOracleView` gains `chaosTracker`. HTTP: `GET /api/campaigns/{id}` adds `trackers` and `likelihoodOracles[].chaosTracker`; `PUT /api/campaigns/{campaignId}/trackers/{trackerKey}` `{value}` → 200 with the clamped Tracker (404 unknown campaign or Tracker, 400 malformed body, 415 not JSON, 409 concurrent change). Persistence: `tracker_values` JSONB on `play_campaign` (migration `Version20261009120000`, existing rows `{}`). OpenAPI spec and TS types regenerated; the SPA fixture `frontend/src/play/campaigns/fixtures.ts` gains the new required fields only. FlowRun history for hand edits comes later (T10). Decisions: a malformed PUT body is 400 like every other Play endpoint (any integer is valid, it is clamped); the column maps with Doctrine's built-in `json` type (jsonb), no custom type, so an empty map is stored as `[]` (old rows `{}`; both read as empty, JSONB does not keep key order, views follow release order); a schema version 2 campaign stored before this slice has no values: GET shows each Tracker's initial value, PUT answers 404. Tests: `CampaignTrackersTest` (init per kind, clamping both ways for counters and clocks, add/set, unknown key, v1 none, chaos binding, levels), `SetTrackerValueHandlerTest`, handler cases in `CreateCampaignHandlerTest` / `GetCampaignHandlerTest` / `RecordLikelihoodAnswerHandlerTest`, repository contract (round trip, save, none), `CampaignTrackersApiTest` on `valid/v2-catalog` (GET trackers and `chaosTracker`, PUT clamps, 404s, 400/415, 401/403, bound oracle uses the value, bound + `chaosFactor` → 422, unbound unchanged), `trackers.feature` (Behat). RED: `CampaignTrackersTest` 28 tests, 27 errors, 1 failure; `tests/Unit/Play/Application` 73 tests, 4 errors, 3 failures; `DoctrineCampaignRepositoryTest` 19 tests, 2 errors, 2 failures; `CampaignApiTest` 4 failures on the new fields; GREEN: `tests/Unit/Play` 262 OK, `tests/Integration/Play/Http` 129 OK, persistence 32 OK, Behat scenario passed. Slice size: ~1,810 changed lines incl. ~400 generated (OpenAPI spec, TS types), over the ~1,700 stop; accepted by the user as one PR.
 - Follow-up (slice 10): the translator still reads step `mandatory` with `true ===` (a non-boolean is silently not mandatory); make it fail closed like the flow `default`.
+- Slice 9 review fixes and the slice 8 follow-up (slice 10): `Campaign::trackerValue(Tracker)` reads a Tracker without a stored value (a schema version 2 campaign stored before T7) as its starting value (counter `initial`, clock 0) for reads, hand edits, `applyTrackerChange` and the bound oracle; `chaosFactorFor` takes the pinned release and fails with `UnknownCampaignTracker` only when the release declares no Tracker with the bound key; `JournalController` maps it to 404 (the tracker PUT already did). `trackerValues()` keeps only stored values. The translator reads step `mandatory` as an optional boolean (absent or `null` false, any other non-boolean fails closed: `sceneTypes[0].setup[0].mandatory: must be a boolean.`). Tests: `CampaignTrackersTest` (legacy campaign reads, edits and asks from starting values; a bound Tracker the release does not declare), `SetTrackerValueHandlerTest` (legacy campaign stores the edit), `CampaignTrackersApiTest` (legacy row with `tracker_values = '{}'`: GET starting values, bound oracle at chaos 5, PUT stores `{"heat": 1}`; PUT 409 on a concurrent save), translator (string / integer `mandatory` fail, `null` is suggested). RED: `CampaignTrackersTest` 29 tests, 16 errors, 1 failure; translator 22 tests, 2 failures; `CampaignTrackersApiTest` 20 tests, 1 failure (500 on the bound oracle); the 409 case passed first run (the mapping existed). GREEN: `tests/Unit/Play` + `CampaignTrackersApiTest` 289 tests OK.
+- T8a done: a Scene has a kind (`SceneKind` scene / hook), an optional Scene Type key (scenes of play) and, for hook Scenes, its `Hook` (`sessionOpening`, `sessionClosing`, `phaseOpening`, `phaseClosing`, `worldTurn`). `Campaign::startScene(?title, at, ?SceneType)`: without a title a scene with a Scene Type is named `<name> <n>`, n counting the campaign's scenes of that type (current type, all sessions) + 1, the name cut so the number fits 100 characters; a title given wins (and is validated: blank → 422); neither → `InvalidSceneTitle::missing()`. `Campaign::startHookScene(Hook, title, at)` (no HTTP yet) and `Hook::defaultTitle(sessionNumber, Phase)` (`Session N begins`, `Session N ends`, `<act>: <phase>` or `<phase>`, `<phase> ends`, `The world moves`, cut to 100) for slice 12. `Campaign::switchSceneType(SceneType)` keeps number, title (a default numbered one too) and entries; `NoCurrentScene` / `HookSceneHasNoSceneType` (409); FlowRun history for hand switches comes with T10. Application: `StartScene` takes `?title`, `?sceneType` (the pinned release is read only with a Scene Type), `SwitchSceneType` command, `SceneTypes::ofPinnedRelease` (`UnknownSceneType`, 404 like every unknown release key, path or body); `SceneView` adds `kind`, `sceneType`, `sceneTypeName` (pinned release), `hook`. HTTP: `POST /api/campaigns/{id}/scenes` `{title?, sceneType?}` (neither, or a non-string → 400); `POST /api/campaigns/{id}/scenes/current/scene-type` `{sceneType}` → 200 `SceneResponse` (400, 404, 409, 415). Persistence: scenes store `kind`, `sceneType`, `hook`; a stored scene without them reads as a scene of play without a Scene Type (no migration); unknown kind / hook or a non-string Scene Type fail to load. Tests: `CampaignScenesTest` (13), `StartSceneHandlerTest` (+3), `SwitchSceneTypeHandlerTest` (4), `GetCampaignHandlerTest` (+1), repository contract round trip, Doctrine legacy read and 3 malformed rows, `CampaignScenesApiTest` (10), `CampaignApiTest` and `PlayRequestSchemasTest` updated, `scene-types.feature`; the SPA fixture and the scene literals of `CampaignPage.test.tsx` / `groupJournal.test.ts` gain the new required fields only. RED: `CampaignScenesTest` 12 tests, 12 errors; `tests/Unit/Play/Application` 82 tests, 6 errors, 1 failure; persistence 37 tests, 5 failures; `tests/Integration/Play/Http` 148 tests, 22 failures; the Behat scenario was written with its steps and passed first run. GREEN: `tests/Integration/Play` 199 OK; `make test`: PHPUnit 1457 OK, Behat 46 scenarios passed, Vitest 116 passed. `make qa` and `make api-check` green. Slice size: ~2,140 changed lines vs `main` incl. 317 generated (OpenAPI spec, TS types); review fixes commit 294; over the ~1,700 stop, accepted by the user as one PR (2026-10-10).
 - Contract choices on unstated details (implemented on the tag, ported in slices 2–4) (consistent with ADR 0017/0018):
   - Limits the rules leave open: bands 1–20 (`condition`) or ≤20 (`roll`), counter `levels` ≤20, table `branches` ≤1000, Scene Type / flow `oracles` ≤70 (the oracle namespace size), tracker effect `value` ±1000, `roll` dice 1–100 characters.
   - Bands: every band but the last needs `upTo`; the last must omit it.
@@ -214,7 +220,8 @@ Slice 1 first came in at ~5,950 lines (schema, full validation, fixtures, warnin
 | 6 | Medium risk; reliability lens; approved and acknowledged (lineage `review-dc54d5e92eab40c3`). Non-blocking: pin the README claim that a fixed-threshold masquerade next to the hunters condition warns. The writer found that false positive; user decision (2026-10-09): the warning follows branches (T5b) | #45 (merged) |
 | 7 | Medium risk; reliability lens; approved and acknowledged (lineage `review-191a438771206817`). Non-blocking, fixed in T6b's slice: the "decided" check keys reached effects by path, not Scene Type, so every band forcing the same Scene Type still warns, twice | #46 (merged) |
 | 8 | Medium risk; reliability lens; approved and acknowledged (lineage `review-28ef6b16f762865d`); commits `eb62c16` (warning fix), `ef1c66d` (T6b). Non-blocking, fixed in slice 9: a non-boolean flow `default` is read as false instead of failing closed | #47 (merged) |
+| 9 | Medium risk; reliability lens; approved and acknowledged (lineage `review-f88c790fab5a6b38`); commits `f3087c7` (flow default fix), `efe389a` (T7). Non-blocking, fixed in slice 10: a v2 campaign stored before T7 has no tracker values, so its bound oracle throws an unmapped `UnknownCampaignTracker` (500); missing values now read as initial; tests for that fallback and for the tracker PUT 409 | #48 (merged) |
 
 ## Next step
 
-Slice 9 (T7) review on `feat/play-flow-run-9-campaign-trackers`, then PR; slice 10 (T8) after merge.
+Slice 10 (review fixes, T8a) on `feat/play-flow-run-10-campaign-scenes`.

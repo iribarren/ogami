@@ -66,6 +66,24 @@ final class SetTrackerValueHandlerTest extends TestCase
     }
 
     #[Test]
+    public function aCampaignStoredWithoutTrackerValuesKeepsTheEditedOne(): void
+    {
+        // A schema version 2 campaign stored before campaigns held tracker values.
+        $this->campaigns->add(Campaign::reconstitute(
+            CampaignId::fromString('campaign-2'),
+            'user-1',
+            'The old job',
+            PinnedRelease::of('heist', 1, 'Heist'),
+            new \DateTimeImmutable('2026-10-01T09:00:00+00:00'),
+            [],
+        ));
+
+        ($this->handler)(new SetTrackerValue('campaign-2', 'user-1', 'heat', 9));
+
+        self::assertSame(['heat' => 5], $this->campaigns->ofId(CampaignId::fromString('campaign-2'))?->trackerValues());
+    }
+
+    #[Test]
     public function anotherPlayersCampaignIsNotFound(): void
     {
         $this->expectException(CampaignNotFound::class);

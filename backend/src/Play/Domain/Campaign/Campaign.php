@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign;
 
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
 
 /**
  * A solo player's ongoing game, pinned to one GameSystem release (ADR 0014). Play is organized in
  * sessions and scenes: the current session is the latest one, the current scene is the latest
- * scene of the current session.
+ * scene of the current session. A scene of play may have a Scene Type of the pinned release; a
+ * hook Scene records a phase boundary.
  *
  * The campaign holds a value for every Tracker of its pinned release (none for schema version 1).
- * The definitions stay in the release: methods that change a value take the Tracker and clamp to
- * its range.
+ * The definitions stay in the release: methods that read or change a value take the Tracker and
+ * clamp to its range. A Tracker without a stored value (a schema version 2 campaign stored before
+ * campaigns held tracker values) reads as its starting value until it changes.
  *
  * State is kept as scalars (id, owner, name, pinned release fields) plus the session list and the
  * tracker values, so an adapter can map it and rebuild it with reconstitute().
@@ -118,31 +122,62 @@ final class Campaign
     }
 
     /**
-     * Starts scene m + 1 of the current session (the first is 1). It becomes the current scene.
+     * Starts scene m + 1 of the current session (the first is 1), a scene of play. It becomes the
+     * current scene.
+     *
+     * Without a title, a scene with a Scene Type is named after it, numbered per Scene Type across
+     * the campaign ("Legwork 2" for the second Legwork scene); a title given wins.
+     *
+     * @param ?SceneType $sceneType a Scene Type of the pinned release, or null
+     *
+     * @throws NoCurrentSession     when no session has started
+     * @throws CampaignLimitReached when the current session already holds 200 scenes
+     * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters, or
+     *                              there is neither a title nor a Scene Type
+     */
+    public function startScene(?string $title, \DateTimeImmutable $startedAt, ?SceneType $sceneType = null): Scene
+    {
+        $title ??= $sceneType instanceof SceneType ? $this->defaultSceneTitle($sceneType) : throw InvalidSceneTitle::missing();
+
+        return $this->addScene(static fn (Session $session): Session => $session->withNewScene($title, $startedAt, $sceneType?->key));
+    }
+
+    /**
+     * Starts scene m + 1 of the current session as a hook Scene (see Hook::defaultTitle() for the
+     * titles a FlowRun gives). It becomes the current scene.
      *
      * @throws NoCurrentSession     when no session has started
      * @throws CampaignLimitReached when the current session already holds 200 scenes
      * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters
      */
-    public function startScene(string $title, \DateTimeImmutable $startedAt): Scene
+    public function startHookScene(Hook $hook, string $title, \DateTimeImmutable $startedAt): Scene
     {
-        if ([] === $this->sessions) {
-            throw NoCurrentSession::toStartScene();
-        }
+        return $this->addScene(static fn (Session $session): Session => $session->withNewHookScene($hook, $title, $startedAt));
+    }
 
-        $last = array_key_last($this->sessions);
-        $session = $this->sessions[$last]->withNewScene($title, $startedAt);
-        $this->sessions[$last] = $session;
+    /**
+     * Switches the current scene to another Scene Type by hand (free play). Its number, title and
+     * journal entries stay, a default numbered title included.
+     *
+     * @param SceneType $sceneType a Scene Type of the pinned release
+     *
+     * @throws NoCurrentScene          when the current session has no scene, or there is no session
+     * @throws HookSceneHasNoSceneType when the current scene is a hook Scene
+     */
+    public function switchSceneType(SceneType $sceneType): Scene
+    {
+        $session = $this->currentSession();
+        $scene = $session?->currentScene() ?? throw NoCurrentScene::toSwitchSceneType();
+        $switched = $scene->withSceneType($sceneType->key);
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($switched)];
 
-        return $session->currentScene() ?? throw new \LogicException('A scene was just added.');
+        return $switched;
     }
 
     /**
      * Sets a Tracker's value by hand, clamped to its range.
      *
      * @return int the value kept
-     *
-     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
      */
     public function setTrackerValue(Tracker $tracker, int $value): int
     {
@@ -153,12 +188,10 @@ final class Campaign
      * Adds to a Tracker's value or sets it, clamped to its range.
      *
      * @return int the value kept
-     *
-     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
      */
     public function applyTrackerChange(Tracker $tracker, TrackerOperation $operation, int $value): int
     {
-        $current = $this->trackerValue($tracker->key);
+        $current = $this->trackerValue($tracker);
 
         return $this->trackerValues[$tracker->key] = $tracker->clamp(TrackerOperation::Add === $operation ? $current + $value : $value);
     }
@@ -167,25 +200,28 @@ final class Campaign
      * The chaos factor to ask a likelihood oracle with: the campaign's value of the Tracker its
      * chaos is bound to, else the requested one (null for the oracle's neutral factor).
      *
+     * @param GameSystemSnapshot $release the pinned release, which declares the bound Tracker
+     *
      * @throws ChaosFactorBoundToTracker when the oracle is bound and a chaos factor is requested
-     * @throws UnknownCampaignTracker    when the campaign holds no value for the bound Tracker
+     * @throws UnknownCampaignTracker    when the release declares no Tracker with the bound key
      */
-    public function chaosFactorFor(SnapshotLikelihoodOracle $oracle, ?int $requested): ?int
+    public function chaosFactorFor(SnapshotLikelihoodOracle $oracle, ?int $requested, GameSystemSnapshot $release): ?int
     {
-        $tracker = $oracle->chaosTracker();
-        if (null === $tracker) {
+        $key = $oracle->chaosTracker();
+        if (null === $key) {
             return $requested;
         }
 
         if (null !== $requested) {
-            throw ChaosFactorBoundToTracker::for($oracle->key(), $tracker);
+            throw ChaosFactorBoundToTracker::for($oracle->key(), $key);
         }
 
-        return $this->trackerValue($tracker);
+        return $this->trackerValue($release->tracker($key) ?? throw UnknownCampaignTracker::withKey($key));
     }
 
     /**
-     * @return array<string, int> the value of each Tracker by key; release order is not kept
+     * @return array<string, int> the stored value of each Tracker by key; release order is not kept,
+     *                            and a Tracker without a stored value is missing (see trackerValue())
      */
     public function trackerValues(): array
     {
@@ -193,11 +229,51 @@ final class Campaign
     }
 
     /**
-     * @throws UnknownCampaignTracker when the campaign holds no value for this Tracker
+     * The campaign's value of a Tracker of its pinned release: the stored one, else the Tracker's
+     * starting value (initial for a counter, 0 for a clock).
      */
-    public function trackerValue(string $key): int
+    public function trackerValue(Tracker $tracker): int
     {
-        return $this->trackerValues[$key] ?? throw UnknownCampaignTracker::withKey($key);
+        return $this->trackerValues[$tracker->key] ?? $tracker->initial;
+    }
+
+    /**
+     * @param \Closure(Session): Session $add adds the scene to the current session
+     *
+     * @throws NoCurrentSession
+     * @throws CampaignLimitReached
+     * @throws InvalidSceneTitle
+     */
+    private function addScene(\Closure $add): Scene
+    {
+        if ([] === $this->sessions) {
+            throw NoCurrentSession::toStartScene();
+        }
+
+        $session = $add(array_last($this->sessions));
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $session];
+
+        return $session->currentScene() ?? throw new \LogicException('A scene was just added.');
+    }
+
+    /**
+     * The Scene Type name numbered after the campaign's scenes of that type, cut so that the number
+     * fits the longest title.
+     */
+    private function defaultSceneTitle(SceneType $sceneType): string
+    {
+        $count = 0;
+        foreach ($this->sessions as $session) {
+            foreach ($session->scenes() as $scene) {
+                if ($scene->sceneType() === $sceneType->key) {
+                    ++$count;
+                }
+            }
+        }
+
+        $number = ' '.($count + 1);
+
+        return mb_substr($sceneType->name, 0, Scene::MAX_TITLE_LENGTH - \strlen($number)).$number;
     }
 
     /**

@@ -6,8 +6,8 @@ namespace App\Play\Domain\Campaign;
 
 /**
  * One sitting of play within a campaign. Numbered from 1 within its campaign; its identity is the
- * campaign and its number. Immutable: adding a scene returns a new Session, and the Campaign
- * aggregate replaces its current session.
+ * campaign and its number. Immutable: adding or changing a scene returns a new Session, and the
+ * Campaign aggregate replaces its current session.
  */
 final readonly class Session
 {
@@ -39,16 +39,40 @@ final readonly class Session
     }
 
     /**
+     * Adds scene m + 1, a scene of play.
+     *
+     * @param ?string $sceneType the key of a Scene Type of the pinned release, or null
+     *
      * @throws CampaignLimitReached when the session already holds 200 scenes
      * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters
      */
-    public function withNewScene(string $title, \DateTimeImmutable $startedAt): self
+    public function withNewScene(string $title, \DateTimeImmutable $startedAt, ?string $sceneType = null): self
     {
-        if (\count($this->scenes) >= self::MAX_SCENES) {
-            throw CampaignLimitReached::scenes(self::MAX_SCENES);
+        return $this->withScene(static fn (int $number): Scene => Scene::start($number, $title, $startedAt, $sceneType));
+    }
+
+    /**
+     * Adds scene m + 1, a hook Scene.
+     *
+     * @throws CampaignLimitReached when the session already holds 200 scenes
+     * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters
+     */
+    public function withNewHookScene(Hook $hook, string $title, \DateTimeImmutable $startedAt): self
+    {
+        return $this->withScene(static fn (int $number): Scene => Scene::startHook($number, $hook, $title, $startedAt));
+    }
+
+    /**
+     * Replaces the current scene with a changed copy of it (same number).
+     */
+    public function withCurrentScene(Scene $scene): self
+    {
+        $last = array_key_last($this->scenes);
+        if (null === $last || $this->scenes[$last]->number() !== $scene->number()) {
+            throw new \LogicException('Only the current scene can be replaced.');
         }
 
-        return new self($this->number, $this->startedAt, [...$this->scenes, Scene::start(\count($this->scenes) + 1, $title, $startedAt)]);
+        return new self($this->number, $this->startedAt, [...\array_slice($this->scenes, 0, -1), $scene]);
     }
 
     public function number(): int
@@ -75,5 +99,20 @@ final readonly class Session
     public function currentScene(): ?Scene
     {
         return array_last($this->scenes);
+    }
+
+    /**
+     * @param \Closure(int): Scene $start builds the new scene from its number
+     *
+     * @throws CampaignLimitReached
+     * @throws InvalidSceneTitle
+     */
+    private function withScene(\Closure $start): self
+    {
+        if (\count($this->scenes) >= self::MAX_SCENES) {
+            throw CampaignLimitReached::scenes(self::MAX_SCENES);
+        }
+
+        return new self($this->number, $this->startedAt, [...$this->scenes, $start(\count($this->scenes) + 1)]);
     }
 }

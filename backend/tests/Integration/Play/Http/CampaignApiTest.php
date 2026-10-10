@@ -205,6 +205,7 @@ final class CampaignApiTest extends WebTestCase
                 'likelihoodOracles' => self::LIKELIHOOD_ORACLES,
                 'trackers' => [],
                 'flowKey' => null,
+                'flowRun' => null,
                 'flows' => [],
                 'sceneTypes' => [],
             ], \JSON_THROW_ON_ERROR),
@@ -597,6 +598,7 @@ final class CampaignApiTest extends WebTestCase
             'likelihoodOracles' => self::LIKELIHOOD_ORACLES,
             'trackers' => [],
             'flowKey' => null,
+            'flowRun' => null,
             'flows' => [],
             'sceneTypes' => [],
         ], \JSON_THROW_ON_ERROR);

@@ -25,13 +25,23 @@ final class GuidedReleases
      */
     public static function tour(bool $chaosFromTracker = false): GameSystemSnapshot
     {
+        return new GameSystemReleaseTranslator()->translate(ReleaseViews::of(self::content($chaosFromTracker)));
+    }
+
+    /**
+     * The content of the release tour() translates, as a game manager publishes it.
+     *
+     * @return array<string, mixed>
+     */
+    public static function content(bool $chaosFromTracker = false): array
+    {
         $step = static fn (string $key, string $kind, string $title, array $fields = []): array => ['key' => $key, 'kind' => $kind, 'title' => $title] + $fields;
         $sceneType = static fn (string $key, string $name, array $setup = [], array $closing = []): array => ['key' => $key, 'name' => $name, 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => [], 'closing' => $closing];
         $flow = static fn (string $key, string $mode, array $selection): array => ['key' => $key, 'name' => ucfirst($key), 'defaultView' => 'journal', 'oracles' => ['scene-kinds', 'omens', 'fate'], 'trackers' => $chaosFromTracker ? ['chaos'] : [], 'phases' => [
             ['key' => $key, 'name' => ucfirst($key), 'mode' => $mode, 'selection' => $selection],
         ]];
 
-        return new GameSystemReleaseTranslator()->translate(ReleaseViews::of([
+        return [
             'schemaVersion' => 2,
             'gameSystem' => ['key' => 'guided', 'name' => 'Guided'],
             'oracles' => [
@@ -50,7 +60,7 @@ final class GuidedReleases
                     $step('omen', 'table', 'Read the omen', ['table' => 'omens']),
                     $step('ask', 'oracle', 'Is the gate open?', ['oracle' => 'fate']),
                     $step('ask-even', 'oracle', 'Is it guarded?', ['oracle' => 'fate', 'likelihood' => 'even']),
-                    $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left'], ['key' => 'right', 'label' => 'Go right']]]),
+                    $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left'], ['key' => 'right', 'label' => 'Go right']], 'skip' => 'left']),
                 ]),
                 $sceneType('solo', 'Solo', [], [$step('wrap', 'prompt', 'What changed?')]),
                 $sceneType('quiet', 'Quiet'),
@@ -61,6 +71,6 @@ final class GuidedReleases
                 $flow('chain', 'loop', ['rule' => 'sequence', 'sceneTypes' => ['solo']]),
             ],
             'checks' => [],
-        ]));
+        ];
     }
 }

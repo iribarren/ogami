@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Application\CampaignView;
+use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
@@ -13,7 +14,7 @@ use OpenApi\Attributes as OA;
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
  * the Flow played, and the release's Flows and Scene Types.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flows', 'sceneTypes'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes'])]
 final readonly class CampaignResponse
 {
     /**
@@ -63,6 +64,8 @@ final readonly class CampaignResponse
         public array $trackers,
         #[OA\Property(description: 'The key of the Flow the campaign plays; null when played freely.', example: 'heist', nullable: true)]
         public ?string $flowKey,
+        #[OA\Property(ref: new Model(type: FlowRunResponse::class), description: 'The FlowRun guiding the campaign; null when played freely.', nullable: true)]
+        public ?FlowRunResponse $flowRun,
         #[OA\Property(
             description: 'The Flows of the pinned release, in definition order; empty for schema version 1.',
             type: 'array',
@@ -92,6 +95,7 @@ final readonly class CampaignResponse
             array_map(LikelihoodOracleResponse::fromView(...), $view->likelihoodOracles),
             array_map(TrackerResponse::fromView(...), $view->trackers),
             $view->flowKey,
+            $view->flowRun instanceof FlowRunView ? FlowRunResponse::fromView($view->flowRun) : null,
             array_map(FlowSummaryResponse::fromView(...), $view->flows),
             array_map(SceneTypeSummaryResponse::fromView(...), $view->sceneTypes),
         );

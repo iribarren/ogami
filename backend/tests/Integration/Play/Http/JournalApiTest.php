@@ -72,6 +72,7 @@ final class JournalApiTest extends WebTestCase
             'sceneNumber' => 1,
             'recordedAt' => '2026-10-06T09:30:00+00:00',
             'kind' => 'note',
+            'flowStep' => null,
             'content' => ['kind' => 'note', 'text' => 'The gate is open.'],
         ]), $this->content());
     }
@@ -91,6 +92,7 @@ final class JournalApiTest extends WebTestCase
             'sceneNumber' => 1,
             'recordedAt' => '2026-10-06T09:20:00+00:00',
             'kind' => 'roll',
+            'flowStep' => null,
             'content' => [
                 'kind' => 'roll',
                 'expression' => '2d6kh1+1d4',
@@ -119,6 +121,7 @@ final class JournalApiTest extends WebTestCase
             'sceneNumber' => 1,
             'recordedAt' => '2026-10-06T09:20:00+00:00',
             'kind' => 'oracle-table',
+            'flowStep' => null,
             'content' => [
                 'kind' => 'oracle-table',
                 'oracleKey' => 'weather',
@@ -150,6 +153,7 @@ final class JournalApiTest extends WebTestCase
             'sceneNumber' => 1,
             'recordedAt' => '2026-10-06T09:20:00+00:00',
             'kind' => 'likelihood',
+            'flowStep' => null,
             'content' => [
                 'kind' => 'likelihood',
                 'oracleKey' => 'fate',
@@ -229,6 +233,7 @@ final class JournalApiTest extends WebTestCase
                 'sceneNumber' => 1,
                 'recordedAt' => '2026-10-06T09:30:00+00:00',
                 'kind' => 'note',
+                'flowStep' => null,
                 'content' => ['kind' => 'note', 'text' => 'The gate is open.'],
             ],
             [
@@ -237,6 +242,7 @@ final class JournalApiTest extends WebTestCase
                 'sceneNumber' => 1,
                 'recordedAt' => '2026-10-06T09:40:00+00:00',
                 'kind' => 'oracle-table',
+                'flowStep' => null,
                 'content' => [
                     'kind' => 'oracle-table',
                     'oracleKey' => 'weather',
@@ -250,6 +256,7 @@ final class JournalApiTest extends WebTestCase
                 'sceneNumber' => 2,
                 'recordedAt' => '2026-10-06T10:10:00+00:00',
                 'kind' => 'roll',
+                'flowStep' => null,
                 'content' => [
                     'kind' => 'roll',
                     'expression' => '1d20',
@@ -263,6 +270,7 @@ final class JournalApiTest extends WebTestCase
                 'sceneNumber' => 1,
                 'recordedAt' => '2026-10-07T18:05:00+00:00',
                 'kind' => 'likelihood',
+                'flowStep' => null,
                 'content' => [
                     'kind' => 'likelihood',
                     'oracleKey' => 'fate',

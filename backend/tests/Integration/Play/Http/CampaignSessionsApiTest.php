@@ -7,9 +7,14 @@ namespace App\Tests\Integration\Play\Http;
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
 use App\Play\Application\Clock;
+use App\Play\Application\GetCampaign;
+use App\Play\Application\StartSession;
 use App\Play\Infrastructure\Http\CampaignController;
 use App\Play\Infrastructure\Http\SessionResponse;
 use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\Query;
+use App\Shared\Application\Bus\QueryBus;
+use App\Shared\Infrastructure\Bus\MessengerQueryBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\ReleaseViews;
@@ -32,6 +37,8 @@ final class CampaignSessionsApiTest extends WebTestCase
 
     private KernelBrowser $client;
     private FixedClock $clock;
+    private string $userId;
+    private OtherRequestStartingASession $otherRequest;
 
     protected function setUp(): void
     {
@@ -41,8 +48,11 @@ final class CampaignSessionsApiTest extends WebTestCase
         $container = self::getContainer();
         $this->clock = new FixedClock('2026-10-10T09:00:00+00:00');
         $container->set(Clock::class, $this->clock);
+        // Wraps the query bus the controllers use, so that a test can interleave "another request".
+        $this->otherRequest = new OtherRequestStartingASession(new MessengerQueryBus($container->get('query.bus')), $container->get(CommandBus::class));
+        $container->set(QueryBus::class, $this->otherRequest);
         $container->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9201', ReleaseViews::contractDocExampleContent(), false));
-        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $this->userId = $this->signIn('ada@example.com', ['SOLO_PLAYER']);
     }
 
     #[Test]
@@ -142,6 +152,38 @@ final class CampaignSessionsApiTest extends WebTestCase
     }
 
     #[Test]
+    public function endingASessionReturnsTheNamedSessionEvenWhenALaterOneStartedMeanwhile(): void
+    {
+        $id = $this->campaignInASession();
+        // Another request starts session 2 right after this one ended session 1.
+        $this->otherRequest->startsASessionBeforeRead(2, $id, $this->userId);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([1, '2026-10-10T09:00:00+00:00'], [$this->json()['number'] ?? null, $this->json()['endedAt'] ?? null]);
+        $sessions = $this->campaign($id)['sessions'] ?? null;
+        self::assertIsArray($sessions);
+        self::assertSame([['2026-10-10T09:00:00+00:00'], [null]], array_map(static fn (mixed $session): array => \is_array($session) ? [$session['endedAt']] : ['missing'], $sessions));
+    }
+
+    #[Test]
+    public function endingASessionAnotherRequestSupersededMeanwhileIsAConflict(): void
+    {
+        $id = $this->campaignInASession();
+        // Another request starts session 2 after this one read session 1 as the current one.
+        $this->otherRequest->startsASessionAfterRead(1, $id, $this->userId);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'Session 1 is not the session under way.'], $this->json());
+        $sessions = $this->campaign($id)['sessions'] ?? null;
+        self::assertIsArray($sessions);
+        self::assertSame([null, null], array_map(static fn (mixed $session): mixed => \is_array($session) ? $session['endedAt'] : 'missing', $sessions));
+    }
+
+    #[Test]
     public function noSessionEndsBeforeTheFirstOne(): void
     {
         $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => 'example-journal']);
@@ -194,8 +236,10 @@ final class CampaignSessionsApiTest extends WebTestCase
 
     /**
      * @param list<string> $roles
+     *
+     * @return string the user id
      */
-    private function signIn(string $email, array $roles): void
+    private function signIn(string $email, array $roles): string
     {
         $container = self::getContainer();
         $id = $container->get(UserIdGenerator::class)->generate()->toString();
@@ -203,6 +247,8 @@ final class CampaignSessionsApiTest extends WebTestCase
 
         $this->client->jsonRequest('POST', '/api/auth/login', ['email' => $email, 'password' => self::PASSWORD]);
         self::assertResponseIsSuccessful();
+
+        return $id;
     }
 
     /**
@@ -214,5 +260,62 @@ final class CampaignSessionsApiTest extends WebTestCase
         self::assertIsArray($decoded);
 
         return $decoded;
+    }
+}
+
+/**
+ * A query bus that lets "another request" start a session of a campaign, before or after the
+ * given (1-based) campaign read counted from when it is armed, as a request running concurrently
+ * with the one under test would.
+ */
+final class OtherRequestStartingASession implements QueryBus
+{
+    private int $reads = 0;
+    private ?int $beforeRead = null;
+    private ?int $afterRead = null;
+    private string $campaignId = '';
+    private string $userId = '';
+
+    public function __construct(
+        private readonly QueryBus $queries,
+        private readonly CommandBus $commands,
+    ) {
+    }
+
+    public function startsASessionBeforeRead(int $read, string $campaignId, string $userId): void
+    {
+        [$this->reads, $this->beforeRead, $this->campaignId, $this->userId] = [0, $read, $campaignId, $userId];
+    }
+
+    public function startsASessionAfterRead(int $read, string $campaignId, string $userId): void
+    {
+        [$this->reads, $this->afterRead, $this->campaignId, $this->userId] = [0, $read, $campaignId, $userId];
+    }
+
+    public function ask(Query $query): mixed
+    {
+        if (!$this->interleavesWith($query)) {
+            return $this->queries->ask($query);
+        }
+
+        ++$this->reads;
+        if ($this->reads === $this->beforeRead) {
+            $this->commands->dispatch(new StartSession($this->campaignId, $this->userId));
+        }
+
+        $answer = $this->queries->ask($query);
+        if ($this->reads === $this->afterRead) {
+            $this->commands->dispatch(new StartSession($this->campaignId, $this->userId));
+        }
+
+        return $answer;
+    }
+
+    /**
+     * @param Query<mixed> $query
+     */
+    private function interleavesWith(Query $query): bool
+    {
+        return $query instanceof GetCampaign && (null !== $this->beforeRead || null !== $this->afterRead);
     }
 }

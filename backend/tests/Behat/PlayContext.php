@@ -93,11 +93,11 @@ final class PlayContext implements Context
         $this->releases = new InMemoryPublishedGameSystemReleases();
         $this->ids = new SequentialCampaignIdGenerator();
         $this->createCampaign = new CreateCampaignHandler($campaigns, $this->releases, $clock);
-        $this->startSession = new StartSessionHandler($owned, $campaigns, $clock);
+        $this->startSession = new StartSessionHandler($owned, $campaigns, $this->releases, $clock);
         $this->endSession = new EndSessionHandler($owned, $campaigns, $clock);
         $this->startScene = new StartSceneHandler($owned, $campaigns, $this->releases, $clock);
-        $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases);
-        $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases);
+        $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases, $clock);
+        $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases, $clock);
         $this->listMyCampaigns = new ListMyCampaignsHandler($campaigns);
         $this->getCampaign = new GetCampaignHandler($owned, $this->releases);
         $entries = new InMemoryJournalEntryRepository();

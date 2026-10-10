@@ -26,6 +26,7 @@ use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableStep;
 use App\Randomness\Domain\Oracle\YesNoAnswer;
+use App\Tests\Support\Play\Campaigns;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -61,6 +62,37 @@ final class FlowRunTest extends FlowRunTestCase
         $this->expectException(FlowRunNotActive::class);
         $this->expectExceptionMessageIsOrContains('The campaign plays freely: it follows no Flow.');
         $free->moveOn('draw', $this->release, self::at());
+    }
+
+    #[Test]
+    public function changingTheFlowRunHandedOutLeavesTheCampaignUnchanged(): void
+    {
+        $campaign = self::guided($this->release, 'test');
+        $campaign->startSession(self::at(), $this->release);
+
+        $campaign->flowRun()?->endPhaseAfterScene();
+        $campaign->flowRun()?->forceNextSceneType('fight');
+
+        self::assertSame([false, null], [self::flowRunOf($campaign)->phaseEnding(), self::flowRunOf($campaign)->forcedNextSceneType()]);
+        self::assertNotSame($campaign->flowRun(), $campaign->flowRun());
+    }
+
+    #[Test]
+    public function aCampaignStoredWithAFlowAndNoFlowRunWaitsForTheNextSession(): void
+    {
+        $guided = self::guided($this->release, 'test');
+        $legacy = Campaign::reconstitute($guided->id(), 'user-1', 'The job', $guided->pinnedRelease(), self::at(), [], [], 'test');
+        $free = Campaign::reconstitute($guided->id(), 'user-1', 'The job', $guided->pinnedRelease(), self::at(), []);
+
+        self::assertNull($free->flowRun());
+        self::assertEquals(FlowRun::start(), $legacy->flowRun());
+        self::assertTrue($legacy->flowRunView($this->release)?->waitsForSession);
+
+        $legacy->startSession(self::at(), $this->release);
+
+        $view = $legacy->flowRunView($this->release);
+        self::assertSame([false, FlowRunStage::ScenePick], [$view->waitsForSession, self::flowRunOf($legacy)->stage()]);
+        self::assertSame([1, 1], [$legacy->currentSession()?->number(), self::flowRunOf($legacy)->phaseIndex() + 1]);
     }
 
     #[Test]
@@ -178,7 +210,7 @@ final class FlowRunTest extends FlowRunTestCase
     public function aForcedNextSceneTypeIsTheOnlyPickAndDoesNotAdvanceASequence(): void
     {
         $campaign = $this->inPhase('rounds');
-        self::flowRunOf($campaign)->forceNextSceneType('fight');
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('fight'));
 
         try {
             $campaign->pickSceneType('talk', $this->release, self::at());
@@ -190,7 +222,7 @@ final class FlowRunTest extends FlowRunTestCase
 
         self::assertSame([null, 0, 'Fight 1'], [self::flowRunOf($campaign)->forcedNextSceneType(), self::flowRunOf($campaign)->sequencePosition(), $campaign->currentScene()?->title()]);
         $this->playFight($campaign);
-        self::flowRunOf($campaign)->forceNextSceneType('fight');
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('fight'));
         $this->expectException(SceneTypeNotOffered::class);
         $this->expectExceptionMessageIsOrContains('This scene pick does not roll on a table.');
         $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
@@ -201,7 +233,7 @@ final class FlowRunTest extends FlowRunTestCase
     {
         $campaign = $this->inASession();
         $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
-        self::flowRunOf($campaign)->forceNextSceneType('fight');
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('fight'));
         $this->playTalk($campaign);
 
         self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
@@ -214,7 +246,7 @@ final class FlowRunTest extends FlowRunTestCase
     {
         $campaign = $this->inPhase('roam');
         $campaign->pickSceneType('talk', $this->release, self::at());
-        self::flowRunOf($campaign)->endPhaseAfterScene();
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->endPhaseAfterScene());
         self::assertTrue(self::flowRunOf($campaign)->phaseEnding());
         $this->playTalk($campaign);
         $campaign->skipFlowStep('after', $this->release, self::at());
@@ -537,7 +569,7 @@ final class FlowRunTest extends FlowRunTestCase
         $campaign->pickSceneType('talk', $this->release, self::at());
         $campaign->completeFlowStep('mood', StepResult::choice('angry'), $this->release, self::at());
         $campaign->moveOn('roam', $this->release, self::at());
-        self::flowRunOf($campaign)->forceNextSceneType('fight');
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('fight'));
         $played = self::flowRunOf($campaign);
 
         $rebuilt = FlowRun::reconstitute(

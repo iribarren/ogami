@@ -9,6 +9,7 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
 use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
@@ -155,7 +156,7 @@ trait CampaignRepositoryContract
         $campaign->pickSceneType('crew', $release, $at('02'));
         $campaign->completeFlowStep('first', StepResult::prompt('Ada, a netrunner'), $release, $at('03'));
         // An endPhase effect (play-flow-run slice 18) ends the phase after this scene.
-        $campaign->flowRun()?->endPhaseAfterScene();
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->endPhaseAfterScene());
 
         // Mid-scene: at a step, with an answer and a phase ending.
         $this->campaigns()->add($campaign);
@@ -175,14 +176,41 @@ trait CampaignRepositoryContract
         // At the next phase's pick, with a forced Scene Type (a nextScene effect, slice 18).
         $paused->resumeGuidance($release, $at('08'));
         $paused->endFlowScene(1, $release, $at('09'));
-        $paused->flowRun()?->forceNextSceneType('getaway');
-        $this->campaigns()->save($paused);
-        $forced = $this->reloaded($paused);
+        $forcedCampaign = Campaigns::withFlowRun($paused, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('getaway'), CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8058'));
+        $this->campaigns()->add($forcedCampaign);
+        $forced = $this->reloaded($forcedCampaign);
         self::assertSame([1, FlowRunStage::ScenePick, 'getaway', null], [$forced->flowRun()?->phaseIndex(), $forced->flowRun()?->stage(), $forced->flowRun()?->forcedNextSceneType(), $forced->flowRun()?->scene()]);
         self::assertSame(['phase' => 'the-job', 'reason' => 'endPhase'], array_last($forced->flowRun()?->history() ?? [])?->details);
 
         $forced->pickSceneType('getaway', $release, $at('10'));
         self::assertSame('Getaway 1', $forced->currentScene()?->title());
+    }
+
+    /**
+     * Pause, save, reload, resume, save, reload: the whole campaign is the same at each step.
+     */
+    #[Test]
+    public function aPausedFlowRunResumesAcrossSaves(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $release = Snapshots::withFlows('heist', 'Heist', 1);
+        $at = static fn (string $minute): \DateTimeImmutable => new \DateTimeImmutable('2026-10-10T09:'.$minute.':00.500000+02:00');
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), $at('00'), [], $release->flow('one-shot'));
+        $campaign->startSession($at('01'), $release);
+        $campaign->pickSceneType('legwork', $release, $at('02'));
+        $this->campaigns()->add($campaign);
+
+        $loaded = $this->reloaded($campaign);
+        $loaded->pauseGuidance($at('03'));
+        $this->campaigns()->save($loaded);
+        $paused = $this->reloaded($loaded);
+        self::assertSame(FlowRunStatus::Paused, $paused->flowRun()?->status());
+
+        $paused->resumeGuidance($release, $at('04'));
+        $this->campaigns()->save($paused);
+        $resumed = $this->reloaded($paused);
+
+        self::assertSame([FlowRunStatus::Active, ['paused', 'resumed']], [$resumed->flowRun()?->status(), array_map(static fn (FlowRunHistoryEntry $entry): string => $entry->event->value, $resumed->flowRun()?->history() ?? [])]);
     }
 
     #[Test]

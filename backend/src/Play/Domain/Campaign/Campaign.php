@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
@@ -114,7 +115,8 @@ final class Campaign
      * @param list<Session>      $sessions      in number order
      * @param array<string, int> $trackerValues by Tracker key
      * @param ?string            $flowKey       the key of the Flow played, or null for free play
-     * @param ?FlowRun           $flowRun       the guidance along that Flow, null for free play
+     * @param ?FlowRun           $flowRun       the guidance along that Flow, null for free play; a campaign
+     *                                          with a Flow and no FlowRun gets a fresh one (see startMissingFlowRun())
      */
     public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null): self
     {
@@ -131,8 +133,22 @@ final class Campaign
             $flowKey,
         );
         $campaign->flowRun = $flowRun;
+        $campaign->startMissingFlowRun();
 
         return $campaign;
+    }
+
+    /**
+     * Gives a campaign with a Flow and no stored FlowRun a fresh one, which waits for the next
+     * session. Such campaigns were stored before FlowRuns existed (play-flow-run T10a). Called by
+     * reconstitute() and by the persistence adapter after it loads a campaign; free play and a
+     * campaign that has a FlowRun stay as they are.
+     */
+    public function startMissingFlowRun(): void
+    {
+        if (null !== $this->flowKey && !$this->flowRun instanceof FlowRun) {
+            $this->flowRun = FlowRun::start();
+        }
     }
 
     /**
@@ -140,8 +156,7 @@ final class Campaign
      * a session still under way stays as it is. A FlowRun waiting at a scene pick with one Scene
      * Type starts that scene; a guided scene of an earlier session is abandoned.
      *
-     * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told (until
-     *                                     play-flow-run slice 16 drives FlowRuns from the handlers)
+     * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told
      *
      * @throws CampaignLimitReached when the campaign already holds 500 sessions
      */
@@ -435,11 +450,12 @@ final class Campaign
     }
 
     /**
-     * The campaign's guidance along its Flow; null when played freely.
+     * The campaign's guidance along its Flow; null when played freely. It is a copy: change the
+     * FlowRun only through the Campaign commands, which keep the campaign consistent.
      */
     public function flowRun(): ?FlowRun
     {
-        return $this->flowRun;
+        return $this->flowRun instanceof FlowRun ? clone $this->flowRun : null;
     }
 
     /**
@@ -450,6 +466,19 @@ final class Campaign
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
         return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number());
+    }
+
+    /**
+     * What the player sees of the FlowRun, which must be guiding: the view a FlowRun command acts on.
+     *
+     * @throws FlowRunNotActive when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws UnknownFlow      when the pinned release has no Flow with the campaign's key
+     */
+    public function activeFlowRunView(GameSystemSnapshot $release): FlowRunView
+    {
+        $view = $this->flowRunView($release) ?? throw FlowRunNotActive::none();
+
+        return FlowRunStatus::Active === $view->status ? $view : throw FlowRunNotActive::toPlay($view->status);
     }
 
     public function __clone()

@@ -12,6 +12,7 @@ use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
+use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Randomness\Domain\Oracle\LikelihoodChaos;
 use App\Randomness\Domain\Oracle\LikelihoodLevel;
 use App\Shared\Application\Bus\QueryHandler;
@@ -27,6 +28,7 @@ final readonly class GetCampaignHandler implements QueryHandler
     /**
      * @throws CampaignNotFound
      * @throws GameSystemReleaseNotFound when the pinned release can no longer be read
+     * @throws UnknownFlow               when the pinned release has no Flow with the campaign's key
      */
     public function __invoke(GetCampaign $query): CampaignView
     {
@@ -47,6 +49,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map($this->likelihoodOracle(...), $snapshot->likelihoodOracles()),
             array_map(static fn (Tracker $tracker): TrackerView => self::tracker($tracker, $campaign), $snapshot->trackers()),
             $campaign->flowKey(),
+            $campaign->flowRunView($snapshot),
             array_map(FlowSummaryView::of(...), $snapshot->flows()),
             array_map(SceneTypeSummaryView::of(...), $snapshot->sceneTypes()),
         );

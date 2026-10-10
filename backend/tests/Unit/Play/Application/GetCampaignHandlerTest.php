@@ -23,6 +23,7 @@ use App\Play\Application\TrackerLevelView;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -86,6 +87,7 @@ final class GetCampaignHandlerTest extends TestCase
             ],
             [],
             null,
+            null,
             [],
             [],
         ), $view);
@@ -101,6 +103,7 @@ final class GetCampaignHandlerTest extends TestCase
         $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
 
         self::assertSame('one-shot', $view->flowKey);
+        self::assertSame([FlowRunStatus::Active, true, ['legwork', 'firefight']], [$view->flowRun?->status, $view->flowRun?->waitsForSession, array_map(static fn ($sceneType): string => $sceneType->key, $view->flowRun?->pick->cards ?? [])]);
         self::assertEquals([
             new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus'),
             new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal'),

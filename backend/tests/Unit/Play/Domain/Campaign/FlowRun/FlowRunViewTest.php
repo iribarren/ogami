@@ -15,6 +15,7 @@ use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Tests\Support\Play\Campaigns;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -133,7 +134,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         $campaign = self::guided($this->heist, 'heist');
         $campaign->startSession(self::at(), $this->heist);
         $this->playCrew($campaign);
-        self::flowRunOf($campaign)->forceNextSceneType('chase');
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('chase'));
         $view = $this->view($campaign);
 
         self::assertSame([['chase'], true, 'Next scene: Chase'], [$this->keys($view->pick->cards ?? []), $view->pick?->forced, $view->next]);

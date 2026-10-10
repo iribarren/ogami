@@ -8,8 +8,12 @@ use App\Play\Application\CampaignJournal;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignSummaryView;
 use App\Play\Application\CampaignView;
+use App\Play\Application\CompleteFlowStep;
+use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
+use App\Play\Application\EndFlowScene;
+use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Application\EndSession;
 use App\Play\Application\EndSessionHandler;
 use App\Play\Application\GetCampaign;
@@ -20,6 +24,10 @@ use App\Play\Application\JournalEntryView;
 use App\Play\Application\ListMyCampaigns;
 use App\Play\Application\ListMyCampaignsHandler;
 use App\Play\Application\OwnedCampaigns;
+use App\Play\Application\PauseGuidance;
+use App\Play\Application\PauseGuidanceHandler;
+use App\Play\Application\PickSceneType;
+use App\Play\Application\PickSceneTypeHandler;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordLikelihoodAnswerHandler;
 use App\Play\Application\RecordNote;
@@ -28,9 +36,13 @@ use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordOracleTableResultHandler;
 use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
+use App\Play\Application\ResumeGuidance;
+use App\Play\Application\ResumeGuidanceHandler;
 use App\Play\Application\SceneView;
 use App\Play\Application\SetTrackerValue;
 use App\Play\Application\SetTrackerValueHandler;
+use App\Play\Application\SkipFlowStep;
+use App\Play\Application\SkipFlowStepHandler;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSceneHandler;
 use App\Play\Application\StartSession;
@@ -38,11 +50,16 @@ use App\Play\Application\StartSessionHandler;
 use App\Play\Application\SwitchSceneType;
 use App\Play\Application\SwitchSceneTypeHandler;
 use App\Play\Application\TrackerView;
+use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\FlowRunView;
+use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Tests\Support\Play\FixedClock;
+use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryJournalEntryRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
@@ -81,6 +98,12 @@ final class PlayContext implements Context
     private readonly CampaignJournal $journal;
     private readonly RecordNoteHandler $recordNote;
     private readonly GetJournalHandler $getJournal;
+    private readonly CompleteFlowStepHandler $completeFlowStep;
+    private readonly SkipFlowStepHandler $skipFlowStep;
+    private readonly PickSceneTypeHandler $pickSceneType;
+    private readonly EndFlowSceneHandler $endFlowScene;
+    private readonly PauseGuidanceHandler $pauseGuidance;
+    private readonly ResumeGuidanceHandler $resumeGuidance;
 
     private ?string $campaignId = null;
     private ?\Throwable $failure = null;
@@ -105,6 +128,13 @@ final class PlayContext implements Context
         $this->journal = new CampaignJournal($owned, $entries, $this->releases, $clock);
         $this->recordNote = new RecordNoteHandler($this->journal);
         $this->getJournal = new GetJournalHandler($owned, $entries);
+        // Prompt steps only: the dice are never rolled.
+        $this->completeFlowStep = new CompleteFlowStepHandler($this->journal, $campaigns, new ScriptedRandomNumberGenerator(), $clock);
+        $this->skipFlowStep = new SkipFlowStepHandler($owned, $campaigns, $this->releases, $clock);
+        $this->pickSceneType = new PickSceneTypeHandler($owned, $campaigns, $this->releases, $clock);
+        $this->endFlowScene = new EndFlowSceneHandler($owned, $campaigns, $this->releases, $clock);
+        $this->pauseGuidance = new PauseGuidanceHandler($owned, $campaigns, $clock);
+        $this->resumeGuidance = new ResumeGuidanceHandler($owned, $campaigns, $this->releases, $clock);
     }
 
     // Behat matches steps by text whatever the keyword, so one attribute serves Given and When.
@@ -144,6 +174,7 @@ final class PlayContext implements Context
         $this->releases->add(Snapshots::withFlows($key, $name, $version));
     }
 
+    #[Given('I created the campaign :name with the GameSystem :key playing the Flow :flow')]
     #[When('I create the campaign :name with the GameSystem :key playing the Flow :flow')]
     public function iCreateTheCampaignPlayingTheFlow(string $name, string $key, string $flow): void
     {
@@ -268,6 +299,100 @@ final class PlayContext implements Context
         $handler = new RecordLikelihoodAnswerHandler($this->journal, $this->dice($numbers));
         $this->attempt(fn () => $handler(new RecordLikelihoodAnswer($this->entryId(), $this->campaignId(), self::ME, $key, $likelihood, $chaos, $question)));
         $this->assertNoFailure();
+    }
+
+    #[Given('the guided release of the GameSystem "guided" is published')]
+    public function theGuidedReleaseIsPublished(): void
+    {
+        // Flows "tour" (the player picks "tour", whose setup holds six steps from the prompt
+        // "intro", or "quiet") and "chain" (Solo scenes in a row, each closing with the mandatory
+        // prompt "wrap").
+        $this->releases->add(GuidedReleases::tour());
+    }
+
+    #[When('I pick the Scene Type :sceneType')]
+    public function iPickTheSceneType(string $sceneType): void
+    {
+        $this->iTryToPickTheSceneType($sceneType);
+        $this->assertNoFailure();
+    }
+
+    #[When('I try to pick the Scene Type :sceneType')]
+    public function iTryToPickTheSceneType(string $sceneType): void
+    {
+        $this->attempt(fn () => ($this->pickSceneType)(new PickSceneType($this->campaignId(), self::ME, $sceneType)));
+    }
+
+    #[When('I answer the step :stepKey with :text')]
+    public function iAnswerTheStep(string $stepKey, string $text): void
+    {
+        $this->attempt(fn () => ($this->completeFlowStep)(new CompleteFlowStep($this->campaignId(), self::ME, $this->entryId(), $stepKey, $text, null, null, null)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I skip the step :stepKey')]
+    public function iSkipTheStep(string $stepKey): void
+    {
+        $this->iTryToSkipTheStep($stepKey);
+        $this->assertNoFailure();
+    }
+
+    #[When('I try to skip the step :stepKey')]
+    public function iTryToSkipTheStep(string $stepKey): void
+    {
+        $this->attempt(fn () => ($this->skipFlowStep)(new SkipFlowStep($this->campaignId(), self::ME, $stepKey)));
+    }
+
+    #[When('I end the guided scene :number')]
+    public function iEndTheGuidedScene(int $number): void
+    {
+        $this->attempt(fn () => ($this->endFlowScene)(new EndFlowScene($this->campaignId(), self::ME, $number)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I pause the guidance')]
+    public function iPauseTheGuidance(): void
+    {
+        $this->attempt(fn () => ($this->pauseGuidance)(new PauseGuidance($this->campaignId(), self::ME)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I resume the guidance')]
+    public function iResumeTheGuidance(): void
+    {
+        $this->attempt(fn () => ($this->resumeGuidance)(new ResumeGuidance($this->campaignId(), self::ME)));
+        $this->assertNoFailure();
+    }
+
+    #[Then('the FlowRun waits at the step :stepKey')]
+    public function theFlowRunWaitsAtTheStep(string $stepKey): void
+    {
+        Assert::assertSame($stepKey, $this->flowRun()->step?->step->key);
+    }
+
+    #[Then('the FlowRun waits at the scene pick')]
+    public function theFlowRunWaitsAtTheScenePick(): void
+    {
+        Assert::assertNotNull($this->flowRun()->pick);
+        Assert::assertNull($this->flowRun()->step);
+    }
+
+    #[Then('the guidance is :status')]
+    public function theGuidanceIs(string $status): void
+    {
+        Assert::assertSame(FlowRunStatus::from($status), $this->flowRun()->status);
+    }
+
+    #[Then('I am told the step is mandatory')]
+    public function iAmToldTheStepIsMandatory(): void
+    {
+        Assert::assertInstanceOf(StepCannotBeSkipped::class, $this->failure);
+    }
+
+    #[Then('I am told the guidance is paused')]
+    public function iAmToldTheGuidanceIsPaused(): void
+    {
+        Assert::assertInstanceOf(FlowRunNotActive::class, $this->failure);
     }
 
     #[Then('my journal holds, in order:')]
@@ -490,6 +615,11 @@ final class PlayContext implements Context
         Assert::assertNull($this->failure, $this->failure?->getMessage() ?? '');
     }
 
+    private function flowRun(): FlowRunView
+    {
+        return $this->myCampaign()->flowRun ?? throw new \LogicException('The campaign plays freely.');
+    }
+
     private function myCampaign(): CampaignView
     {
         return ($this->getCampaign)(new GetCampaign($this->campaignId(), self::ME));
@@ -506,7 +636,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped $failure) {
             $this->failure = $failure;
         }
     }

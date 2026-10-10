@@ -39,7 +39,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 /**
  * The FlowRun of a guided campaign over the Play API, on the release "guided" (GuidedReleases) and
  * its Flow "tour": the scene pick, a step of each kind, a paused FlowRun, and the journal entries a
- * step records. The FlowRun is driven through the command bus; its HTTP commands come with T10c2.
+ * step records. The FlowRun is driven through the command bus; its HTTP commands are in CampaignFlowRunCommandsApiTest.
  */
 #[CoversClass(CampaignController::class)]
 #[CoversClass(JournalController::class)]

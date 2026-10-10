@@ -361,7 +361,7 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @param ?array<string, string> $body
+     * @param ?array<string, string|int> $body
      */
     #[Test]
     #[DataProvider('campaignChanges')]
@@ -472,7 +472,7 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @return iterable<string, array{string, string, ?array<string, string>}>
+     * @return iterable<string, array{string, string, ?array<string, string|int>}>
      */
     public static function campaignEndpoints(): iterable
     {
@@ -483,7 +483,7 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @param ?array<string, string> $body
+     * @param ?array<string, string|int> $body
      */
     #[Test]
     #[DataProvider('campaignEndpoints')]
@@ -502,7 +502,7 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @param ?array<string, string> $body
+     * @param ?array<string, string|int> $body
      */
     #[Test]
     #[DataProvider('campaignEndpoints')]
@@ -519,7 +519,7 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @return iterable<string, array{string, string, ?array<string, string>}>
+     * @return iterable<string, array{string, string, ?array<string, string|int>}>
      */
     public static function playEndpoints(): iterable
     {
@@ -531,10 +531,18 @@ final class CampaignApiTest extends WebTestCase
         yield 'start scene' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/scenes', ['title' => 'At the gate']];
         yield 'switch Scene Type' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/scenes/current/scene-type', ['sceneType' => 'legwork']];
         yield 'end session' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/sessions/current/end', null];
+        yield 'answer a FlowRun step' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/answer', ['stepKey' => 'intro', 'text' => 'Ada']];
+        yield 'skip a FlowRun step' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/skip', ['stepKey' => 'intro']];
+        yield 'pick a Scene Type' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/pick', ['sceneType' => 'tour']];
+        yield 'pick a Scene Type by oracle' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/pick/roll', null];
+        yield 'end a FlowRun scene' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/end-scene', ['sceneNumber' => 1]];
+        yield 'move on' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/move-on', ['phase' => 'tour']];
+        yield 'pause guidance' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/pause', null];
+        yield 'resume guidance' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/flow-run/resume', null];
     }
 
     /**
-     * @param ?array<string, string> $body
+     * @param ?array<string, string|int> $body
      */
     #[Test]
     #[DataProvider('playEndpoints')]
@@ -547,7 +555,7 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @param ?array<string, string> $body
+     * @param ?array<string, string|int> $body
      */
     #[Test]
     #[DataProvider('playEndpoints')]

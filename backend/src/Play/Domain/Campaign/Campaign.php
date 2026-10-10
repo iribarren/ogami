@@ -4,12 +4,23 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
+use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
+use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
+use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
+use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
+use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
+use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
+use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
+use App\Play\Domain\GameSystem\UnknownFlow;
+use App\Randomness\Domain\Oracle\OracleTableResult;
 
 /**
  * A solo player's ongoing game, pinned to one GameSystem release (ADR 0014), played freely or along
@@ -24,8 +35,12 @@ use App\Play\Domain\GameSystem\Tracker;
  * clamp to its range. A Tracker without a stored value (a schema version 2 campaign stored before
  * campaigns held tracker values) reads as its starting value until it changes.
  *
+ * A campaign created with a Flow holds its FlowRun, which guides play along it; the FlowRun commands
+ * take the pinned release.
+ *
  * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list and the
- * tracker values, so an adapter can map it and rebuild it with reconstitute().
+ * tracker values, so an adapter can map it and rebuild it with reconstitute(). The FlowRun is not
+ * stored yet (play-flow-run slice 14): a stored campaign has none.
  */
 final class Campaign
 {
@@ -38,6 +53,8 @@ final class Campaign
      * stale copy is refused (CampaignModifiedConcurrently). The model never changes it.
      */
     private int $version = 1;
+
+    private ?FlowRun $flowRun = null;
 
     /**
      * @param list<Session>      $sessions      in number order
@@ -85,7 +102,10 @@ final class Campaign
             $trackerValues[$tracker->key] = $tracker->initial;
         }
 
-        return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues, $flow?->key);
+        $campaign = self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues, $flow?->key);
+        $campaign->flowRun = $flow instanceof Flow ? FlowRun::start() : null;
+
+        return $campaign;
     }
 
     /**
@@ -113,11 +133,15 @@ final class Campaign
 
     /**
      * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet;
-     * a session still under way stays as it is.
+     * a session still under way stays as it is. A FlowRun waiting at a scene pick with one Scene
+     * Type starts that scene.
+     *
+     * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told (until
+     *                                     play-flow-run slice 14 drives FlowRuns from the handlers)
      *
      * @throws CampaignLimitReached when the campaign already holds 500 sessions
      */
-    public function startSession(\DateTimeImmutable $startedAt): Session
+    public function startSession(\DateTimeImmutable $startedAt, ?GameSystemSnapshot $release = null): Session
     {
         if (\count($this->sessions) >= self::MAX_SESSIONS) {
             throw CampaignLimitReached::sessions(self::MAX_SESSIONS);
@@ -125,6 +149,9 @@ final class Campaign
 
         $session = Session::start(\count($this->sessions) + 1, $startedAt);
         $this->sessions[] = $session;
+        if ($release instanceof GameSystemSnapshot) {
+            $this->flowRun?->sessionStarted($this->flowContext($release, $startedAt));
+        }
 
         return $session;
     }
@@ -266,6 +293,127 @@ final class Campaign
     public function trackerValue(Tracker $tracker): int
     {
         return $this->trackerValues[$tracker->key] ?? $tracker->initial;
+    }
+
+    /**
+     * Completes the FlowRun's current step with a result of its kind.
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current step is another
+     * @throws InvalidStepResult       when the result does not complete the step
+     * @throws CampaignLimitReached    when the next scene does not fit the session
+     */
+    public function completeFlowStep(string $stepKey, StepResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    {
+        $this->guided()->completeStep($stepKey, $result, $this->flowContext($release, $at));
+    }
+
+    /**
+     * Skips the FlowRun's current suggested step.
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current step is another
+     * @throws StepCannotBeSkipped     when the step is mandatory
+     * @throws CampaignLimitReached    when the next scene does not fit the session
+     */
+    public function skipFlowStep(string $stepKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    {
+        $this->guided()->skipStep($stepKey, $this->flowContext($release, $at));
+    }
+
+    /**
+     * Ends open play in the guided scene ("End scene"): its closing starts.
+     *
+     * @param int $sceneNumber the guided scene, by its number in the session under way
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely or the Flow is complete
+     * @throws FlowRunPositionMismatch when the FlowRun is not in open play in that scene
+     * @throws CampaignLimitReached    when the next scene does not fit the session
+     */
+    public function endFlowScene(int $sceneNumber, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    {
+        $this->guided()->endScene($sceneNumber, $this->flowContext($release, $at));
+    }
+
+    /**
+     * Picks a Scene Type the FlowRun's scene pick offers; its scene starts.
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely or the Flow is complete
+     * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
+     * @throws SceneTypeNotOffered     when the pick does not offer it
+     * @throws NoCurrentSession        when no session is under way
+     * @throws CampaignLimitReached    when the session already holds 200 scenes
+     */
+    public function pickSceneType(string $sceneTypeKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    {
+        $this->guided()->pickSceneType($sceneTypeKey, $this->flowContext($release, $at));
+    }
+
+    /**
+     * Picks the Scene Type of the entry rolled on the oracle table the scene pick rolls on.
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely or the Flow is complete
+     * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
+     * @throws SceneTypeNotOffered     when the pick does not roll on that table, or the entry names no Scene Type
+     * @throws NoCurrentSession        when no session is under way
+     * @throws CampaignLimitReached    when the session already holds 200 scenes
+     */
+    public function pickSceneTypeByOracle(OracleTableResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    {
+        $this->guided()->pickSceneTypeByOracle($result, $this->flowContext($release, $at));
+    }
+
+    /**
+     * Ends the FlowRun's loop phase at its scene pick ("Move on").
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely or the Flow is complete
+     * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
+     * @throws MoveOnNotAllowed        when the phase plays once
+     * @throws CampaignLimitReached    when the next scene does not fit the session
+     */
+    public function moveOn(GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    {
+        $this->guided()->moveOn($this->flowContext($release, $at));
+    }
+
+    /**
+     * The campaign's guidance along its Flow; null when played freely.
+     */
+    public function flowRun(): ?FlowRun
+    {
+        return $this->flowRun;
+    }
+
+    public function __clone()
+    {
+        if ($this->flowRun instanceof FlowRun) {
+            $this->flowRun = clone $this->flowRun;
+        }
+    }
+
+    /**
+     * @throws FlowRunNotActive
+     */
+    private function guided(): FlowRun
+    {
+        return $this->flowRun ?? throw FlowRunNotActive::none();
+    }
+
+    private function flowContext(GameSystemSnapshot $release, \DateTimeImmutable $at): FlowRunContext
+    {
+        return new FlowRunContext($this, $release, $this->playedFlow($release), $at);
+    }
+
+    /**
+     * @throws UnknownFlow when the pinned release has no Flow with the campaign's key
+     */
+    private function playedFlow(GameSystemSnapshot $release): Flow
+    {
+        if ($release->gameSystemKey() !== $this->gameSystemKey || $release->releaseVersion() !== $this->releaseVersion) {
+            throw new \LogicException('A FlowRun plays the campaign\'s pinned release.');
+        }
+
+        return $release->flow((string) $this->flowKey) ?? throw UnknownFlow::withKey((string) $this->flowKey);
     }
 
     /**

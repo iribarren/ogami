@@ -124,7 +124,8 @@ trait CampaignRepositoryContract
         self::assertSame('+02:00', $loaded->sessions()[0]->endedAt()?->format('P'));
         self::assertNull($loaded->sessions()[1]->endedAt());
         self::assertSame(2, $loaded->currentSession()?->number());
-        self::assertEquals($campaign, $loaded);
+        // The FlowRun is stored from play-flow-run slice 14 on.
+        self::assertEquals($campaign->sessions(), $loaded->sessions());
 
         $loaded->endSession(new \DateTimeImmutable('2026-10-11T12:00:00+00:00'));
         $this->campaigns()->save($loaded);

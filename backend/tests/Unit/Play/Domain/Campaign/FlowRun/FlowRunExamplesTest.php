@@ -30,11 +30,10 @@ final class FlowRunExamplesTest extends FlowRunTestCase
     {
         $release = self::release('examples/cpr-heist');
         $campaign = self::guided($release, 'heist');
-        $flowRun = self::flowRunOf($campaign);
 
         // The job: a sequence of two Scene Types, picked one after the other.
         $campaign->startSession(self::at(), $release);
-        self::assertSame(FlowRunStage::ScenePick, $flowRun->stage());
+        self::assertSame(FlowRunStage::ScenePick, self::flowRunOf($campaign)->stage());
         $campaign->pickSceneType('crew', $release, self::at());
         self::assertSame(['Crew 1', 'setup', 'first'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
         try {
@@ -58,13 +57,13 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         $campaign->endFlowScene(2, $release, self::at());
 
         // Legwork: the player's pick in a loop, until "Move on".
-        self::assertSame([1, FlowRunStage::ScenePick], [$flowRun->phaseIndex(), $flowRun->stage()]);
+        self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
         $campaign->pickSceneType('social', $release, self::at());
         $campaign->completeFlowStep('talk', self::prompt('The bartender, for gossip'), $release, self::at());
         $campaign->endFlowScene(3, $release, self::at());
         self::assertSame(['sceneClosing', 'gain-edge'], self::position($campaign));
         $campaign->completeFlowStep('gain-edge', StepResult::choice('yes'), $release, self::at());
-        self::assertSame([1, FlowRunStage::ScenePick], [$flowRun->phaseIndex(), $flowRun->stage()]);
+        self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
         $campaign->moveOn('legwork', $release, self::at());
 
         // The heist: the scene opening's condition advances on its own.
@@ -89,14 +88,14 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         self::assertSame(['open', null], self::position($campaign));
         $campaign->endFlowScene(6, $release, self::at());
 
-        self::assertSame(FlowRunStatus::Completed, $flowRun->status());
+        self::assertSame(FlowRunStatus::Completed, self::flowRunOf($campaign)->status());
         self::assertSame(['Crew 1', 'Briefing 1', 'Social 1', 'Infiltration 1', 'Getaway 1', 'Payday 1'], array_map(static fn (Scene $scene): string => $scene->title(), $campaign->sessions()[0]->scenes()));
         self::assertSame([
             'skip:second', 'skip:catch', 'phaseEnded:the-job', 'phaseEnded:legwork', 'skip:notice', 'skip:spend-edge',
             'phaseEnded:the-heist', 'phaseEnded:escape', 'phaseEnded:epilogue', 'completed',
         ], self::history($campaign));
-        self::assertSame(['finished', 'moveOn'], [$flowRun->history()[2]->details['reason'], $flowRun->history()[3]->details['reason']]);
-        self::assertSame(['first' => 'Ada, a netrunner', 'client' => 'A desperate fixer', 'gain-edge' => 'Yes', 'slip-past' => 'Exceptional no'], array_intersect_key($flowRun->answers(), array_flip(['first', 'client', 'gain-edge', 'slip-past'])));
+        self::assertSame(['finished', 'moveOn'], [self::flowRunOf($campaign)->history()[2]->details['reason'], self::flowRunOf($campaign)->history()[3]->details['reason']]);
+        self::assertSame(['first' => 'Ada, a netrunner', 'client' => 'A desperate fixer', 'gain-edge' => 'Yes', 'slip-past' => 'Exceptional no'], array_intersect_key(self::flowRunOf($campaign)->answers(), array_flip(['first', 'client', 'gain-edge', 'slip-past'])));
 
         $this->expectException(FlowRunNotActive::class);
         $this->expectExceptionMessageIsOrContains('The Flow is complete: play goes on freely.');
@@ -108,7 +107,6 @@ final class FlowRunExamplesTest extends FlowRunTestCase
     {
         $release = self::release('examples/mythic-session');
         $campaign = self::guided($release, 'mythic');
-        $flowRun = self::flowRunOf($campaign);
         $campaign->startSession(self::at(), $release);
 
         self::assertSame(['Scene 1', 'sceneOpening', 'premise'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
@@ -131,8 +129,8 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         $campaign->skipFlowStep('lists', $release, self::at());
 
         self::assertSame(['Scene 3', 'sceneOpening', 'expected'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
-        self::assertSame([1, 2], [$flowRun->phaseIndex(), $flowRun->scenesPlayed()]);
+        self::assertSame([1, 2], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->scenesPlayed()]);
         self::assertSame(['skip:goal', 'skip:involved', 'phaseEnded:premise', 'skip:lists'], self::history($campaign));
-        self::assertSame(['7', 'No'], [$flowRun->answers()['check'], $flowRun->answers()['control']]);
+        self::assertSame(['7', 'No'], [self::flowRunOf($campaign)->answers()['check'], self::flowRunOf($campaign)->answers()['control']]);
     }
 }

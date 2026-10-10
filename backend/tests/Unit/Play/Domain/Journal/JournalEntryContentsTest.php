@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Domain\Journal;
 
+use App\Play\Domain\Journal\ChoiceContent;
 use App\Play\Domain\Journal\ContentData;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryContent;
@@ -28,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(RollContent::class)]
 #[CoversClass(OracleTableContent::class)]
 #[CoversClass(LikelihoodContent::class)]
+#[CoversClass(ChoiceContent::class)]
 #[CoversClass(InvalidJournalEntryContent::class)]
 final class JournalEntryContentsTest extends TestCase
 {
@@ -52,6 +54,7 @@ final class JournalEntryContentsTest extends TestCase
         yield 'oracle table' => [OracleTableContent::fromResult('weather', 'Weather', OracleTableContentTest::stormResult())];
         yield 'likelihood' => [LikelihoodContent::fromAnswer('fate', 'Fate', 'Is the gate open?', LikelihoodContentTest::likelyAnswer())];
         yield 'likelihood without question' => [LikelihoodContent::fromAnswer('fate', 'Fate', null, LikelihoodContentTest::likelyAnswer())];
+        yield 'choice' => [ChoiceContent::of('Did you gain an edge?', 'yes', 'Yes')];
     }
 
     /**
@@ -95,6 +98,9 @@ final class JournalEntryContentsTest extends TestCase
         // A nullable field must still be present: null is stored explicitly, a missing key is malformed.
         yield 'likelihood without question key' => [array_diff_key($likelihood, ['question' => true])];
         yield 'likelihood without chaos factor key' => [array_diff_key($likelihood, ['chaosFactor' => true])];
+        yield 'choice without option key' => [['kind' => 'choice', 'question' => 'Did you?', 'label' => 'Yes']];
+        yield 'choice label not a string' => [['kind' => 'choice', 'question' => 'Did you?', 'optionKey' => 'yes', 'label' => 1]];
+        yield 'choice blank question' => [['kind' => 'choice', 'question' => '', 'optionKey' => 'yes', 'label' => 'Yes']];
         yield 'oracle table step without nested table key' => [['steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear']]] + $oracleTable];
     }
 }

@@ -40,9 +40,10 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * take the pinned release and change the campaign all or nothing. Hand Tracker edits and Scene Type
  * switches are recorded in its history.
  *
- * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list and the
- * tracker values, so an adapter can map it and rebuild it with reconstitute(). The FlowRun is not
- * stored yet (play-flow-run slice 15): a stored campaign has none.
+ * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list, the
+ * tracker values and the FlowRun, so an adapter can map it and rebuild it with reconstitute(). Every
+ * change to the FlowRun replaces it with a changed copy, as changes to sessions replace the list, so
+ * that an adapter comparing stored values by identity sees it.
  */
 final class Campaign
 {
@@ -104,10 +105,7 @@ final class Campaign
             $trackerValues[$tracker->key] = $tracker->initial;
         }
 
-        $campaign = self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues, $flow?->key);
-        $campaign->flowRun = $flow instanceof Flow ? FlowRun::start() : null;
-
-        return $campaign;
+        return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues, $flow?->key, $flow instanceof Flow ? FlowRun::start() : null);
     }
 
     /**
@@ -116,10 +114,11 @@ final class Campaign
      * @param list<Session>      $sessions      in number order
      * @param array<string, int> $trackerValues by Tracker key
      * @param ?string            $flowKey       the key of the Flow played, or null for free play
+     * @param ?FlowRun           $flowRun       the guidance along that Flow, null for free play
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null): self
     {
-        return new self(
+        $campaign = new self(
             $id->toString(),
             $ownerId,
             $name,
@@ -131,6 +130,9 @@ final class Campaign
             $trackerValues,
             $flowKey,
         );
+        $campaign->flowRun = $flowRun;
+
+        return $campaign;
     }
 
     /**
@@ -139,7 +141,7 @@ final class Campaign
      * Type starts that scene; a guided scene of an earlier session is abandoned.
      *
      * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told (until
-     *                                     play-flow-run slice 15 drives FlowRuns from the handlers)
+     *                                     play-flow-run slice 16 drives FlowRuns from the handlers)
      *
      * @throws CampaignLimitReached when the campaign already holds 500 sessions
      */
@@ -152,7 +154,7 @@ final class Campaign
         $session = Session::start(\count($this->sessions) + 1, $startedAt);
         $this->sessions[] = $session;
         if ($release instanceof GameSystemSnapshot) {
-            $this->flowRun?->sessionStarted($this->flowContext($release, $startedAt));
+            $this->changedFlowRun()?->sessionStarted($this->flowContext($release, $startedAt));
         }
 
         return $session;
@@ -234,7 +236,7 @@ final class Campaign
         $switched = $scene->withSceneType($sceneType->key);
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($switched)];
         if ($release instanceof GameSystemSnapshot && $at instanceof \DateTimeImmutable) {
-            $this->flowRun?->followSceneTypeSwitch($scene->sceneType(), $sceneType, $this->flowContext($release, $at));
+            $this->changedFlowRun()?->followSceneTypeSwitch($scene->sceneType(), $sceneType, $this->flowContext($release, $at));
         }
 
         return $switched;
@@ -252,7 +254,7 @@ final class Campaign
         $from = $this->trackerValue($tracker);
         $kept = $this->applyTrackerChange($tracker, TrackerOperation::Set, $value);
         if ($at instanceof \DateTimeImmutable) {
-            $this->flowRun?->recordTrackerEdit($tracker->key, $from, $kept, $at);
+            $this->changedFlowRun()?->recordTrackerEdit($tracker->key, $from, $kept, $at);
         }
 
         return $kept;
@@ -413,7 +415,9 @@ final class Campaign
      */
     public function pauseGuidance(\DateTimeImmutable $at): void
     {
-        $this->guided()->pause($at);
+        $draft = clone $this;
+        $draft->guided()->pause($at);
+        $this->adopt($draft);
     }
 
     /**
@@ -464,16 +468,25 @@ final class Campaign
     }
 
     /**
-     * Takes the state of a copy that ran a FlowRun command to its end. A command runs on a copy so
-     * that it changes the campaign all or nothing: when it fails, e.g. on a full session while
-     * starting the next scene, the copy is dropped.
+     * Takes the state of a copy that ran a FlowRun command to its end, the copy's FlowRun included. A
+     * command runs on a copy so that it changes the campaign all or nothing: when it fails, e.g. on a
+     * full session while starting the next scene, the copy is dropped.
      */
     private function adopt(self $draft): void
     {
-        [$this->sessions, $this->trackerValues] = [$draft->sessions, $draft->trackerValues];
-        if ($draft->flowRun instanceof FlowRun) {
-            $this->flowRun?->replaceWith($draft->flowRun);
+        [$this->sessions, $this->trackerValues, $this->flowRun] = [$draft->sessions, $draft->trackerValues, $draft->flowRun];
+    }
+
+    /**
+     * The FlowRun about to change, replaced by a copy first (see the class comment); null when played freely.
+     */
+    private function changedFlowRun(): ?FlowRun
+    {
+        if ($this->flowRun instanceof FlowRun) {
+            $this->flowRun = clone $this->flowRun;
         }
+
+        return $this->flowRun;
     }
 
     private function flowContext(GameSystemSnapshot $release, \DateTimeImmutable $at): FlowRunContext

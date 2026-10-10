@@ -8,7 +8,8 @@
          of the App\Play\Domain prefix with dots.
          Identity, ownership, the pinned release, the Flow and the creation time are columns; the
          sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType), and so are
-         the tracker values, an object of integers by Tracker key (empty: {} or []). -->
+         the tracker values, an object of integers by Tracker key (empty: {} or []), and so is the
+         FlowRun (CampaignFlowRunType; null when played freely). -->
     <entity name="App\Play\Domain\Campaign\Campaign" table="play_campaign">
         <indexes>
             <!-- A player's campaigns, newest first (DoctrineCampaignRepository::ownedBy). -->
@@ -31,6 +32,11 @@
             </options>
         </field>
         <field name="trackerValues" type="json" column="tracker_values">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="flowRun" type="play_campaign_flow_run" column="flow_run" nullable="true">
             <options>
                 <option name="jsonb">true</option>
             </options>

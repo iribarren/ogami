@@ -9,10 +9,16 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
+use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -124,15 +130,92 @@ trait CampaignRepositoryContract
         self::assertSame('+02:00', $loaded->sessions()[0]->endedAt()?->format('P'));
         self::assertNull($loaded->sessions()[1]->endedAt());
         self::assertSame(2, $loaded->currentSession()?->number());
-        // The FlowRun is stored from play-flow-run slice 15 on.
-        self::assertNotNull($campaign->flowRun());
-        self::assertEquals(CampaignCopies::withoutFlowRun($campaign), CampaignCopies::withoutFlowRun($loaded));
+        self::assertNotNull($loaded->flowRun());
+        self::assertEquals($campaign, $loaded);
 
         $loaded->endSession(new \DateTimeImmutable('2026-10-11T12:00:00+00:00'));
         $this->campaigns()->save($loaded);
         $this->forgetLoaded();
 
         self::assertNull($this->campaigns()->ofId($id)?->currentSession());
+    }
+
+    /**
+     * Flow example 2 (Cyberpunk RED heist), saved and reloaded mid-scene, paused and at a pick with a
+     * forced Scene Type: the reloaded campaign equals the saved one, FlowRun included, and goes on.
+     */
+    #[Test]
+    public function itKeepsTheFlowRunInEveryState(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $release = new GameSystemReleaseTranslator()->translate(ReleaseViews::of(ReleaseViews::fixtureContent('examples/cpr-heist')));
+        $at = static fn (string $minute): \DateTimeImmutable => new \DateTimeImmutable('2026-10-10T09:'.$minute.':00.250000+02:00');
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of($release->gameSystemKey(), $release->releaseVersion(), $release->name()), $at('00'), $release->trackers(), $release->flow('heist'));
+        $campaign->startSession($at('01'), $release);
+        $campaign->pickSceneType('crew', $release, $at('02'));
+        $campaign->completeFlowStep('first', StepResult::prompt('Ada, a netrunner'), $release, $at('03'));
+        // An endPhase effect (play-flow-run slice 18) ends the phase after this scene.
+        $campaign->flowRun()?->endPhaseAfterScene();
+
+        // Mid-scene: at a step, with an answer and a phase ending.
+        $this->campaigns()->add($campaign);
+        $loaded = $this->reloaded($campaign);
+        self::assertSame([FlowRunStage::Scene, 'setup', 'second', ['first' => 'Ada, a netrunner'], true], [$loaded->flowRun()?->stage(), $loaded->flowRun()?->part()?->value, $loaded->flowRun()?->stepKey(), $loaded->flowRun()?->answers(), $loaded->flowRun()?->phaseEnding()]);
+
+        // Paused, after a skip, a hand Tracker edit and a hand Scene Type switch.
+        $loaded->skipFlowStep('second', $release, $at('04'));
+        $loaded->pauseGuidance($at('05'));
+        $loaded->setTrackerValue($release->tracker('alarm') ?? throw new \LogicException('No alarm.'), 2, $at('06'));
+        $loaded->switchSceneType($release->sceneType('briefing') ?? throw new \LogicException('No briefing.'), $release, $at('07'));
+        $this->campaigns()->save($loaded);
+        $paused = $this->reloaded($loaded);
+        self::assertSame(FlowRunStatus::Paused, $paused->flowRun()?->status());
+        self::assertSame(['skip', 'paused', 'trackerEdit', 'sceneTypeSwitch'], array_map(static fn (FlowRunHistoryEntry $entry): string => $entry->event->value, $paused->flowRun()->history()));
+
+        // At the next phase's pick, with a forced Scene Type (a nextScene effect, slice 18).
+        $paused->resumeGuidance($release, $at('08'));
+        $paused->endFlowScene(1, $release, $at('09'));
+        $paused->flowRun()?->forceNextSceneType('getaway');
+        $this->campaigns()->save($paused);
+        $forced = $this->reloaded($paused);
+        self::assertSame([1, FlowRunStage::ScenePick, 'getaway', null], [$forced->flowRun()?->phaseIndex(), $forced->flowRun()?->stage(), $forced->flowRun()?->forcedNextSceneType(), $forced->flowRun()?->scene()]);
+        self::assertSame(['phase' => 'the-job', 'reason' => 'endPhase'], array_last($forced->flowRun()?->history() ?? [])?->details);
+
+        $forced->pickSceneType('getaway', $release, $at('10'));
+        self::assertSame('Getaway 1', $forced->currentScene()?->title());
+    }
+
+    #[Test]
+    public function itKeepsACompletedFlowRunWithItsHistory(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $release = Snapshots::withFlows('heist', 'Heist', 1);
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), [], $release->flow('one-shot'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), $release);
+        $campaign->pickSceneType('legwork', $release, new \DateTimeImmutable('2026-10-10T09:01:00+00:00'));
+        $this->campaigns()->add($campaign);
+        $loaded = $this->reloaded($campaign);
+
+        $loaded->endFlowScene(1, $release, new \DateTimeImmutable('2026-10-10T09:30:00.123456-05:00'));
+        $this->campaigns()->save($loaded);
+        $completed = $this->reloaded($loaded);
+
+        self::assertSame(FlowRunStatus::Completed, $completed->flowRun()?->status());
+        self::assertSame([FlowRunEvent::PhaseEnded, FlowRunEvent::Completed], array_map(static fn (FlowRunHistoryEntry $entry): FlowRunEvent => $entry->event, $completed->flowRun()->history()));
+        self::assertSame('2026-10-10T09:30:00.123456-05:00', $completed->flowRun()->history()[1]->at->format('Y-m-d\\TH:i:s.uP'));
+    }
+
+    /**
+     * Reads a stored campaign back as a new request would and checks it equals the one given
+     * (FlowRun included).
+     */
+    private function reloaded(Campaign $campaign): Campaign
+    {
+        $this->forgetLoaded();
+        $loaded = $this->campaigns()->ofId($campaign->id()) ?? throw new \LogicException('The campaign was not stored.');
+        self::assertEquals($campaign, $loaded);
+
+        return $loaded;
     }
 
     #[Test]

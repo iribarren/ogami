@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Support\Play;
 
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryContent;
@@ -87,6 +88,30 @@ trait JournalEntryRepositoryContract
             'likelihoodLabel' => '50/50',
             'chaosFactor' => null,
         ]];
+        yield 'choice' => [['kind' => 'choice', 'question' => 'Did you gain an edge?', 'optionKey' => 'yes', 'label' => 'Yes']];
+    }
+
+    #[Test]
+    public function itKeepsTheFlowStepThatRecordedAnEntryAndAnEntryWithoutOneHasNone(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $stepped = JournalEntry::reconstitute(
+            JournalEntryId::fromString('01890a5d-ac96-774b-bcce-b302099a9001'),
+            CampaignId::fromString(self::CAMPAIGN),
+            1,
+            2,
+            new \DateTimeImmutable('2026-10-06T10:00:00+00:00'),
+            NoteContent::of('Through the roof'),
+            FlowStepSnapshot::of('plan', 'The plan', 'How do you get in? Heat is 3.'),
+        );
+        $this->entries()->add($stepped);
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:01:00'));
+        $this->forgetLoaded();
+
+        $loaded = $this->entries()->ofId($stepped->id());
+        self::assertEquals($stepped, $loaded);
+        self::assertSame(['key' => 'plan', 'title' => 'The plan', 'prompt' => 'How do you get in? Heat is 3.'], $loaded?->flowStep()?->toArray());
+        self::assertNull($this->entries()->ofId(JournalEntryId::fromString('01890a5d-ac96-774b-bcce-b302099a9002'))?->flowStep());
     }
 
     /**

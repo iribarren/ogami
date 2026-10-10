@@ -11,7 +11,7 @@ namespace App\Play\Domain\Journal;
 interface JournalEntryContent
 {
     /**
-     * "note", "roll", "oracle-table" or "likelihood".
+     * "note", "roll", "oracle-table", "likelihood" or "choice".
      */
     public function kind(): string;
 

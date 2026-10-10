@@ -7,9 +7,10 @@
     <!-- The file is named Journal.JournalEntry because the simplified XML driver maps sub-namespaces
          of the App\Play\Domain prefix with dots.
          Entries are immutable: rows are only ever inserted. The content varies by kind and is JSONB;
-         identity, campaign, position and time are relational columns (ADR 0007). campaign_id
-         references play_campaign through JournalEntryCampaignForeignKey (the entry holds the
-         campaign id, not an association). -->
+         identity, campaign, position and time are relational columns (ADR 0007). The snapshot of
+         the Flow step that recorded an entry is JSONB too (null when the player recorded it).
+         campaign_id references play_campaign through JournalEntryCampaignForeignKey (the entry
+         holds the campaign id, not an association). -->
     <entity name="App\Play\Domain\Journal\JournalEntry" table="play_journal_entry">
         <indexes>
             <!-- A campaign's journal in recording order (DoctrineJournalEntryRepository::ofCampaign). -->
@@ -23,6 +24,11 @@
         <field name="sceneNumber" type="integer" column="scene_number"/>
         <field name="recordedAt" type="datetimetz_immutable_microseconds" column="recorded_at"/>
         <field name="content" type="play_journal_entry_content" column="content">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="flowStep" type="play_journal_entry_flow_step" column="flow_step" nullable="true">
             <options>
                 <option name="jsonb">true</option>
             </options>

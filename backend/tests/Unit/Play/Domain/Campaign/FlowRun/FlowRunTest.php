@@ -531,6 +531,39 @@ final class FlowRunTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aStoredFlowRunIsRebuiltAsIs(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign->completeFlowStep('mood', StepResult::choice('angry'), $this->release, self::at());
+        $campaign->moveOn('roam', $this->release, self::at());
+        self::flowRunOf($campaign)->forceNextSceneType('fight');
+        $played = self::flowRunOf($campaign);
+
+        $rebuilt = FlowRun::reconstitute(
+            $played->status(),
+            $played->phaseIndex(),
+            $played->stage(),
+            $played->scene()[0] ?? null,
+            $played->scene()[1] ?? null,
+            $played->sceneType(),
+            $played->part(),
+            $played->stepKey(),
+            $played->sequencePosition(),
+            $played->scenesPlayed(),
+            $played->answers(),
+            $played->forcedNextSceneType(),
+            $played->phaseEndingReason(),
+            $played->switchCount(),
+            $played->history(),
+        );
+
+        self::assertSame([[1, 2], 'moveOn', 'fight'], [$rebuilt->scene(), $rebuilt->phaseEndingReason(), $rebuilt->forcedNextSceneType()]);
+        self::assertEquals($played, $rebuilt);
+        self::assertEquals(FlowRun::start(), FlowRun::reconstitute(FlowRunStatus::Active, 0, FlowRunStage::ScenePick, null, null, null, null, null, 0, 0, [], null, null, 0, []));
+    }
+
+    #[Test]
     public function thePartsRunInOrderAndAStepKindIsNamed(): void
     {
         self::assertSame(['sceneOpening', 'setup', 'play', 'open', 'closing', 'sceneClosing', null], array_map(static fn (?ScenePart $part): ?string => $part?->value, [ScenePart::SceneOpening, ...array_map(static fn (ScenePart $part): ?ScenePart => $part->next(), ScenePart::cases())]));

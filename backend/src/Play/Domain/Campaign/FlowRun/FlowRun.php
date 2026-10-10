@@ -90,6 +90,52 @@ final class FlowRun
     }
 
     /**
+     * Rebuilds a stored FlowRun, e.g. from persistence. No rule is checked again.
+     *
+     * @param ?int                      $sessionNumber the guided scene's session, null outside a scene
+     * @param ?int                      $sceneNumber   the guided scene's number in it, null outside a scene
+     * @param array<string, string>     $answers       the latest answer text by step key
+     * @param ?string                   $phaseEnding   why the phase ends after the current scene ("endPhase" or "moveOn"), null while it goes on
+     * @param list<FlowRunHistoryEntry> $history       in the order things happened
+     */
+    public static function reconstitute(
+        FlowRunStatus $status,
+        int $phaseIndex,
+        FlowRunStage $stage,
+        ?int $sessionNumber,
+        ?int $sceneNumber,
+        ?string $sceneType,
+        ?ScenePart $part,
+        ?string $stepKey,
+        int $sequencePosition,
+        int $scenesPlayed,
+        array $answers,
+        ?string $forcedNextSceneType,
+        ?string $phaseEnding,
+        int $switchCount,
+        array $history,
+    ): self {
+        $flowRun = new self();
+        $flowRun->status = $status;
+        $flowRun->phaseIndex = $phaseIndex;
+        $flowRun->stage = $stage;
+        $flowRun->sessionNumber = $sessionNumber;
+        $flowRun->sceneNumber = $sceneNumber;
+        $flowRun->sceneType = $sceneType;
+        $flowRun->part = $part;
+        $flowRun->stepKey = $stepKey;
+        $flowRun->sequencePosition = $sequencePosition;
+        $flowRun->scenesPlayed = $scenesPlayed;
+        $flowRun->answers = $answers;
+        $flowRun->forcedNextSceneType = $forcedNextSceneType;
+        $flowRun->phaseEnding = $phaseEnding;
+        $flowRun->switchCount = $switchCount;
+        $flowRun->history = $history;
+
+        return $flowRun;
+    }
+
+    /**
      * A session started: at the scene pick, a selection with one Scene Type picks it; a guided
      * scene of an earlier session is abandoned.
      */
@@ -366,17 +412,6 @@ final class FlowRun
         );
     }
 
-    /**
-     * Takes the state of a copy of this FlowRun (the Campaign runs commands on a copy and keeps the
-     * outcome only when they succeed).
-     */
-    public function replaceWith(self $copy): void
-    {
-        foreach (get_object_vars($copy) as $property => $value) {
-            $this->{$property} = $value;
-        }
-    }
-
     public function status(): FlowRunStatus
     {
         return $this->status;
@@ -458,6 +493,15 @@ final class FlowRun
     public function phaseEnding(): bool
     {
         return null !== $this->phaseEnding;
+    }
+
+    /**
+     * Why the phase ends once the current scene finishes: "endPhase" (an effect) or "moveOn"; null
+     * while it goes on.
+     */
+    public function phaseEndingReason(): ?string
+    {
+        return $this->phaseEnding;
     }
 
     /**

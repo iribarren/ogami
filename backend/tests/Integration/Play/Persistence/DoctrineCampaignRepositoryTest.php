@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Play\Persistence;
 
+use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
+use App\Tests\Support\Play\Snapshots;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -21,6 +25,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 #[CoversClass(DoctrineCampaignRepository::class)]
 #[CoversClass(CampaignSessionsType::class)]
+#[CoversClass(CampaignFlowRunType::class)]
 final class DoctrineCampaignRepositoryTest extends KernelTestCase
 {
     use CampaignRepositoryContract;
@@ -75,6 +80,90 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->expectException(CampaignAlreadyExists::class);
 
         $this->repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8057', self::OTHER_OWNER, '2026-10-07'));
+    }
+
+    #[Test]
+    public function theFlowRunIsStoredAsJsonbAndACampaignPlayedFreelyHasNone(): void
+    {
+        $this->repository->add($this->guidedCampaign('01890a5d-ac96-774b-bcce-b302099a8057'));
+        $this->repository->add($this->campaign('01890a5d-ac96-774b-bcce-b302099a8058', self::OWNER, '2026-10-06'));
+
+        $connection = $this->entityManager->getConnection();
+        self::assertSame('jsonb', $connection->fetchOne("SELECT data_type FROM information_schema.columns WHERE table_name = 'play_campaign' AND column_name = 'flow_run'"));
+        self::assertEquals([
+            'status' => 'paused', 'phaseIndex' => 0, 'stage' => 'scene', 'sessionNumber' => 1, 'sceneNumber' => 1, 'sceneType' => 'legwork',
+            'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
+            'phaseEnding' => null, 'switchCount' => 0, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
+        ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
+        self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function malformedFlowRuns(): iterable
+    {
+        $entry = static fn (string $event, array $details): array => ['history' => [['event' => $event, 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => $details]]];
+
+        yield 'unknown status' => [['status' => 'lost'], 'Stored campaign FlowRun: "status" must be one of "active", "paused", "completed".'];
+        yield 'no phase index' => [['phaseIndex' => null], 'Stored campaign FlowRun: "phaseIndex" must be an integer.'];
+        yield 'unknown stage' => [['stage' => 'hook'], 'Stored campaign FlowRun: "stage" must be one of "scenePick", "scene".'];
+        yield 'unknown part' => [['part' => 'epilogue'], 'Stored campaign FlowRun: "part" must be one of "sceneOpening", "setup", "play", "open", "closing", "sceneClosing".'];
+        yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
+        yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
+        yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn".'];
+        yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
+        yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
+        yield 'malformed time' => [['history' => [['event' => 'paused', 'at' => 'yesterday', 'details' => []]]], 'Stored campaign FlowRun: "at" must be a time like 2026-10-06T10:00:00.000000+00:00.'];
+        yield 'skip of an unknown part' => [$entry('skip', ['step' => 'plan', 'part' => 'later']), 'Stored campaign FlowRun: "part" must be one of'];
+        yield 'tracker edit from a string' => [$entry('trackerEdit', ['tracker' => 'heat', 'from' => '1', 'to' => 2]), 'Stored campaign FlowRun: "from" must be an integer.'];
+        yield 'switch without its target' => [$entry('sceneTypeSwitch', ['scene' => 1, 'from' => null]), 'Stored campaign FlowRun: "to" must be a string.'];
+        yield 'abandoned scene without its session' => [$entry('sceneAbandoned', ['scene' => 1]), 'Stored campaign FlowRun: "session" must be an integer.'];
+        yield 'phase ended for an unknown reason' => [$entry('phaseEnded', ['phase' => 'plan', 'reason' => 'boredom']), 'Stored campaign FlowRun: "reason" must be one of "finished", "moveOn", "endPhase".'];
+    }
+
+    /**
+     * @param array<string, mixed> $fields replace the stored FlowRun's fields
+     */
+    #[Test]
+    #[DataProvider('malformedFlowRuns')]
+    public function aMalformedStoredFlowRunFailsToLoad(array $fields, string $error): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($fields + $this->storedFlowRun($id->toString()), \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $this->expectExceptionMessageIsOrContains($error);
+
+        $this->repository->ofId($id);
+    }
+
+    /**
+     * @return array<mixed> the stored FlowRun column, decoded
+     */
+    private function storedFlowRun(string $id): array
+    {
+        $stored = $this->entityManager->getConnection()->fetchOne('SELECT flow_run FROM play_campaign WHERE id = ?', [$id]);
+        self::assertIsString($stored);
+        $decoded = json_decode($stored, true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($decoded);
+
+        return $decoded;
+    }
+
+    /**
+     * A campaign along Flow "one-shot" in open play of its first scene, guidance paused.
+     */
+    private function guidedCampaign(string $id): Campaign
+    {
+        $release = Snapshots::withFlows('heist', 'Heist', 1);
+        $campaign = Campaign::create(CampaignId::fromString($id), self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), [], $release->flow('one-shot'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), $release);
+        $campaign->pickSceneType('legwork', $release, new \DateTimeImmutable('2026-10-10T09:01:00+00:00'));
+        $campaign->pauseGuidance(new \DateTimeImmutable('2026-10-10T09:02:00+00:00'));
+
+        return $campaign;
     }
 
     #[Test]

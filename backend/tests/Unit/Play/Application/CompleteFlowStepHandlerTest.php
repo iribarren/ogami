@@ -145,16 +145,16 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
     public static function refusedResults(): iterable
     {
         yield 'a prompt with an option' => ['intro', self::command('intro', text: 'Ada', optionKey: 'left'), InvalidStepResult::class, 'Step "intro" is a prompt step: it takes no "optionKey".'];
-        yield 'a prompt without text' => ['intro', self::command('intro'), InvalidStepResult::class, 'Step "intro" is a prompt step: it needs a "text".'];
+        yield 'a prompt without text' => ['intro', self::command('intro'), InvalidStepResult::class, 'Step "intro" is a prompt step: it needs "text".'];
         yield 'a prompt with blank text' => ['intro', self::command('intro', text: '  '), InvalidStepResult::class, 'Step "intro" needs an answer.'];
         yield 'a roll with text' => ['dice', self::command('dice', text: 'a six'), InvalidStepResult::class, 'Step "dice" is a roll step: it takes no "text".'];
         yield 'a table with a likelihood' => ['omen', self::command('omen', likelihood: 'even'), InvalidStepResult::class, 'Step "omen" is a table step: it takes no "likelihood".'];
-        yield 'an oracle with text' => ['ask', self::command('ask', text: 'yes', likelihood: 'even'), InvalidStepResult::class, 'Step "ask" is a oracle step: it takes no "text".'];
-        yield 'an oracle without a likelihood' => ['ask', self::command('ask'), InvalidStepResult::class, 'Step "ask" is a oracle step: it needs a "likelihood".'];
+        yield 'an oracle with text' => ['ask', self::command('ask', text: 'yes', likelihood: 'even'), InvalidStepResult::class, 'Step "ask" is an oracle step: it takes no "text".'];
+        yield 'an oracle without a likelihood' => ['ask', self::command('ask'), InvalidStepResult::class, 'Step "ask" is an oracle step: it needs "likelihood".'];
         yield 'an oracle with an unknown likelihood' => ['ask', self::command('ask', likelihood: 'certain'), InvalidLikelihoodOracle::class, ''];
         yield 'an oracle with a chaos factor out of range' => ['ask', self::command('ask', likelihood: 'even', chaosFactor: 10), InvalidLikelihoodOracle::class, ''];
         yield 'a likelihood for an oracle that fixes one' => ['ask-even', self::command('ask-even', likelihood: 'even'), InvalidStepResult::class, 'Step "ask-even" asks at likelihood "even": it takes no other.'];
-        yield 'a choice without an option' => ['fork', self::command('fork'), InvalidStepResult::class, 'Step "fork" is a choice step: it needs a "optionKey".'];
+        yield 'a choice without an option' => ['fork', self::command('fork'), InvalidStepResult::class, 'Step "fork" is a choice step: it needs "optionKey".'];
         yield 'a choice with an unknown option' => ['fork', self::command('fork', optionKey: 'up'), InvalidStepResult::class, 'Choice step "fork" has no option "up".'];
         yield 'a choice with a chaos factor' => ['fork', self::command('fork', optionKey: 'left', chaosFactor: 5), InvalidStepResult::class, 'Step "fork" is a choice step: it takes no "chaosFactor".'];
     }

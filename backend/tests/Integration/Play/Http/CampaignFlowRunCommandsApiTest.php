@@ -128,6 +128,20 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
     }
 
     #[Test]
+    public function theTableThePickRollsOnHasOneEntrySoTheRealRandomNumberGeneratorIsSafe(): void
+    {
+        // "pick by oracle" rolls "scene-kinds" with the container's real random number generator.
+        // Its happy path is deterministic only because the table has a single entry (1-6, Scene
+        // Type "tour"): whatever the roll, the Tour scene starts.
+        $content = GuidedReleases::content();
+        self::assertIsArray($content['oracles']);
+        self::assertIsArray($content['oracles']['tables']);
+        $tables = array_column($content['oracles']['tables'], 'entries', 'key');
+
+        self::assertSame([['min' => 1, 'max' => 6, 'text' => 'A tour', 'sceneType' => 'tour']], $tables['scene-kinds']);
+    }
+
+    #[Test]
     public function anAnswerRecordsItsEntryInTheJournalUnderItsStep(): void
     {
         $this->prepare('step:intro');
@@ -379,14 +393,14 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
      */
     public static function unprocessableAnswers(): iterable
     {
-        yield 'a prompt without text' => [['stepKey' => 'intro'], 'step:intro', 'Step "intro" is a prompt step: it needs a "text".'];
+        yield 'a prompt without text' => [['stepKey' => 'intro'], 'step:intro', 'Step "intro" is a prompt step: it needs "text".'];
         yield 'a prompt with a blank text' => [['stepKey' => 'intro', 'text' => '  '], 'step:intro', 'Step "intro" needs an answer.'];
         yield 'a prompt with a field of another kind' => [['stepKey' => 'intro', 'text' => 'Ada', 'optionKey' => 'left'], 'step:intro', 'Step "intro" is a prompt step: it takes no "optionKey".'];
         yield 'a prompt with a text that is too long' => [['stepKey' => 'intro', 'text' => 'x'.str_repeat('y', NoteContent::MAX_LENGTH)], 'step:intro', 'A note must be at most 10000 characters, got 10001.'];
         yield 'a roll with a text' => [['stepKey' => 'dice', 'text' => 'Ada'], 'step:dice', 'Step "dice" is a roll step: it takes no "text".'];
-        yield 'a choice without an option' => [['stepKey' => 'fork'], 'step:fork', 'Step "fork" is a choice step: it needs a "optionKey".'];
+        yield 'a choice without an option' => [['stepKey' => 'fork'], 'step:fork', 'Step "fork" is a choice step: it needs "optionKey".'];
         yield 'a choice with an unknown option' => [['stepKey' => 'fork', 'optionKey' => 'up'], 'step:fork', 'Choice step "fork" has no option "up".'];
-        yield 'an oracle without a likelihood' => [['stepKey' => 'ask'], 'step:ask', 'Step "ask" is a oracle step: it needs a "likelihood".'];
+        yield 'an oracle without a likelihood' => [['stepKey' => 'ask'], 'step:ask', 'Step "ask" is an oracle step: it needs "likelihood".'];
         yield 'an oracle with an unknown likelihood' => [['stepKey' => 'ask', 'likelihood' => 'bogus'], 'step:ask', 'There is no likelihood level "bogus"; the levels are "unlikely", "even".'];
         yield 'an oracle with a chaos factor out of range' => [['stepKey' => 'ask', 'likelihood' => 'even', 'chaosFactor' => 99], 'step:ask', 'The chaos factor is between 1 and 9, 99 given.'];
         yield 'an oracle that fixes the likelihood, given another' => [['stepKey' => 'ask-even', 'likelihood' => 'unlikely'], 'step:ask-even', 'Step "ask-even" asks at likelihood "even": it takes no other.'];

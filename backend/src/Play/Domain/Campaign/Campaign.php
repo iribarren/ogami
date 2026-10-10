@@ -132,13 +132,20 @@ final class Campaign
     /**
      * Ends the current session: its scenes stay, and no scene starts until the next session.
      *
+     * @param ?int $number the number of the session the caller means to end, or null for whichever is under way
+     *
      * @return Session the ended session
      *
-     * @throws NoCurrentSession when no session is under way (none has started, or it has ended)
+     * @throws NoCurrentSession when no session is under way (none has started, or it has ended), or
+     *                          another session than the named one is
      */
-    public function endSession(\DateTimeImmutable $endedAt): Session
+    public function endSession(\DateTimeImmutable $endedAt, ?int $number = null): Session
     {
         $session = $this->currentSession() ?? throw NoCurrentSession::toEndSession();
+        if (null !== $number && $session->number() !== $number) {
+            throw NoCurrentSession::numbered($number);
+        }
+
         $ended = $session->end($endedAt);
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $ended];
 

@@ -13,6 +13,9 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\ReleaseViews;
+use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -104,6 +107,38 @@ final class CampaignSessionsApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(['error' => 'No session is under way: start a session before ending one.'], $this->json());
+    }
+
+    #[Test]
+    public function endingASessionOfACampaignSavedByAnotherRequestMeanwhileIsAConflict(): void
+    {
+        $id = $this->campaignInASession();
+
+        // Another request saves the campaign after this one loaded it, right before it flushes.
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $concurrentSave = new readonly class($entityManager->getConnection(), $id) {
+            public function __construct(private Connection $connection, private string $campaignId)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement('UPDATE play_campaign SET version = version + 1 WHERE id = ?', [$this->campaignId]);
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentSave);
+
+        try {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentSave);
+        }
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => \sprintf('Campaign "%s" was changed by another request. Reload it and try again.', $id)], $this->json());
+        $sessions = $this->campaign($id)['sessions'] ?? null;
+        self::assertIsArray($sessions);
+        self::assertSame([null], array_map(static fn (mixed $session): mixed => \is_array($session) ? $session['endedAt'] : 'missing', $sessions));
     }
 
     #[Test]

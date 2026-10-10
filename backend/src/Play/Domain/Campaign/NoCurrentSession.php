@@ -19,4 +19,9 @@ final class NoCurrentSession extends \DomainException
     {
         return new self('No session is under way: start a session before ending one.');
     }
+
+    public static function numbered(int $number): self
+    {
+        return new self(\sprintf('Session %d is not the session under way.', $number));
+    }
 }

@@ -49,11 +49,22 @@ final readonly class Scene
     }
 
     /**
-     * Rebuilds a stored scene, e.g. from persistence. No rule is checked again. A scene stored
+     * Rebuilds a stored scene, e.g. from persistence. Only the kind is checked again: a hook Scene
+     * names its hook and a scene of play has none, as the sessions reader requires. A scene stored
      * before scenes had a kind is a scene of play without a Scene Type.
+     *
+     * @throws InvalidSceneKind when the kind and the hook disagree
      */
     public static function reconstitute(int $number, string $title, \DateTimeImmutable $startedAt, SceneKind $kind = SceneKind::Scene, ?string $sceneType = null, ?Hook $hook = null): self
     {
+        if (SceneKind::Hook === $kind && !$hook instanceof Hook) {
+            throw InvalidSceneKind::hookSceneWithoutHook();
+        }
+
+        if (SceneKind::Scene === $kind && $hook instanceof Hook) {
+            throw InvalidSceneKind::sceneOfPlayWithHook($hook);
+        }
+
         return new self($number, $title, $startedAt, $kind, $sceneType, $hook);
     }
 
@@ -64,7 +75,7 @@ final readonly class Scene
      */
     public function withSceneType(string $sceneType): self
     {
-        if (SceneKind::Hook === $this->kind) {
+        if ($this->hook instanceof Hook) {
             throw HookSceneHasNoSceneType::toSwitch($this->hook);
         }
 

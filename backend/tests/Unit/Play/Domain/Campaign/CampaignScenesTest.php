@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
+use App\Play\Domain\Campaign\InvalidSceneKind;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
@@ -191,15 +192,27 @@ final class CampaignScenesTest extends TestCase
         self::assertNull($campaign->currentScene()?->sceneType());
     }
 
-    #[Test]
-    public function aSceneOfKindHookCannotSwitchItsSceneTypeEvenWithoutAHookName(): void
+    /**
+     * @return iterable<string, array{SceneKind, ?Hook, string}>
+     */
+    public static function kindsWithoutTheirHook(): iterable
     {
-        $scene = Scene::reconstitute(1, 'Session 1 begins', new \DateTimeImmutable(), SceneKind::Hook);
+        yield 'a hook Scene without its hook' => [SceneKind::Hook, null, 'A hook scene needs its hook.'];
+        yield 'a scene of play with a hook' => [SceneKind::Scene, Hook::WorldTurn, 'A scene of play has no hook, "worldTurn" given.'];
+    }
 
-        $this->expectException(HookSceneHasNoSceneType::class);
-        $this->expectExceptionMessageIsOrContains('The current scene is a hook scene: only a scene of play has a Scene Type to switch.');
+    /**
+     * The sessions reader accepts the same combinations, so a Scene that can be built can be saved
+     * and loaded.
+     */
+    #[Test]
+    #[DataProvider('kindsWithoutTheirHook')]
+    public function aStoredSceneHasItsHookExactlyWhenItIsAHookScene(SceneKind $kind, ?Hook $hook, string $message): void
+    {
+        $this->expectException(InvalidSceneKind::class);
+        $this->expectExceptionMessageIsOrContains($message);
 
-        $scene->withSceneType('legwork');
+        Scene::reconstitute(1, 'Session 1 begins', new \DateTimeImmutable(), $kind, null, $hook);
     }
 
     #[Test]

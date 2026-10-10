@@ -226,15 +226,27 @@ final class FlowRun
      * Ends a loop phase by the player's choice: at once at the scene pick, else once the current
      * scene finishes (its closing parts still run).
      *
-     * @throws FlowRunNotActive when guidance is paused or the Flow is complete
-     * @throws MoveOnNotAllowed when the phase plays once
+     * @param string $phaseKey the phase to end, the current one
+     *
+     * @throws FlowRunNotActive        when guidance is paused or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current phase is another, or the guided scene is no
+     *                                 longer the current scene
+     * @throws MoveOnNotAllowed        when the phase plays once
      */
-    public function moveOn(FlowRunContext $context): void
+    public function moveOn(string $phaseKey, FlowRunContext $context): void
     {
         $this->assertActive();
         $phase = $this->phase($context->flow);
+        if ($phaseKey !== $phase->key) {
+            throw FlowRunPositionMismatch::at(\sprintf('phase "%s"', $phaseKey), \sprintf('phase "%s"', $phase->key));
+        }
+
         if (PhaseMode::Once === $phase->mode) {
             throw MoveOnNotAllowed::oncePhase($phase->key);
+        }
+
+        if (FlowRunStage::Scene === $this->stage) {
+            $this->assertInCurrentScene($context);
         }
 
         if (FlowRunStage::ScenePick === $this->stage) {
@@ -289,15 +301,16 @@ final class FlowRun
     }
 
     /**
-     * Records the current scene's Scene Type switched by hand. When it is the guided scene, the
-     * FlowRun follows: it goes on at the new type's setup (the scene opening does not run again).
+     * Records the current scene's Scene Type switched by hand. While guidance is active and it is
+     * the guided scene, the FlowRun follows: it goes on at the new type's setup (the scene opening
+     * does not run again). Paused, it stays where resume() goes on.
      *
      * @param ?string $from the scene's Scene Type key before the switch
      */
     public function followSceneTypeSwitch(?string $from, SceneType $to, FlowRunContext $context): void
     {
         $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, (int) $context->sceneNumber(), $from, $to->key);
-        if (FlowRunStage::Scene === $this->stage && $this->inCurrentScene($context)) {
+        if (FlowRunStatus::Active === $this->status && FlowRunStage::Scene === $this->stage && $this->inCurrentScene($context)) {
             $this->sceneType = $to->key;
             $this->enterPart(ScenePart::Setup, $context);
         }

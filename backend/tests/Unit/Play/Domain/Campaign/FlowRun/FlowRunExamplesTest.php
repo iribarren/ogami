@@ -65,7 +65,7 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         self::assertSame(['sceneClosing', 'gain-edge'], self::position($campaign));
         $campaign->completeFlowStep('gain-edge', StepResult::choice('yes'), $release, self::at());
         self::assertSame([1, FlowRunStage::ScenePick], [$flowRun->phaseIndex(), $flowRun->stage()]);
-        $campaign->moveOn($release, self::at());
+        $campaign->moveOn('legwork', $release, self::at());
 
         // The heist: the scene opening's condition advances on its own.
         $campaign->pickSceneType('infiltration', $release, self::at());
@@ -78,7 +78,7 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         $campaign->skipFlowStep('spend-edge', $release, self::at());
         self::assertSame(['sceneClosing', 'complication'], self::position($campaign));
         $campaign->completeFlowStep('complication', self::table('complications', 'Patrol'), $release, self::at());
-        $campaign->moveOn($release, self::at());
+        $campaign->moveOn('the-heist', $release, self::at());
 
         // Escape and epilogue: one Scene Type each, picked automatically.
         self::assertSame(['Getaway 1', 'setup', 'slip-out'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
@@ -100,7 +100,7 @@ final class FlowRunExamplesTest extends FlowRunTestCase
 
         $this->expectException(FlowRunNotActive::class);
         $this->expectExceptionMessageIsOrContains('The Flow is complete: play goes on freely.');
-        $campaign->moveOn($release, self::at());
+        $campaign->moveOn('epilogue', $release, self::at());
     }
 
     #[Test]

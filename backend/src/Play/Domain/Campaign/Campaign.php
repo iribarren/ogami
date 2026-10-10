@@ -218,7 +218,7 @@ final class Campaign
     /**
      * Switches the current scene to another Scene Type by hand (free play). Its number, title and
      * journal entries stay, a default numbered title included. With a FlowRun the switch is in its
-     * history, and a guided scene goes on at the new type's setup.
+     * history, and while guidance is active a guided scene goes on at the new type's setup.
      *
      * @param SceneType           $sceneType a Scene Type of the pinned release
      * @param ?GameSystemSnapshot $release   the pinned release, with the time of the switch; without
@@ -392,14 +392,17 @@ final class Campaign
     /**
      * Ends the FlowRun's loop phase ("Move on"): at once at the scene pick, else after the current scene.
      *
-     * @throws FlowRunNotActive     when the campaign plays freely, guidance is paused or the Flow is complete
-     * @throws MoveOnNotAllowed     when the phase plays once
-     * @throws CampaignLimitReached when the next scene does not fit the session
+     * @param string $phaseKey the phase to end, by its key
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current phase is another, or the guided scene is no longer the current scene
+     * @throws MoveOnNotAllowed        when the phase plays once
+     * @throws CampaignLimitReached    when the next scene does not fit the session
      */
-    public function moveOn(GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function moveOn(string $phaseKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
     {
         $draft = clone $this;
-        $draft->guided()->moveOn($draft->flowContext($release, $at));
+        $draft->guided()->moveOn($phaseKey, $draft->flowContext($release, $at));
         $this->adopt($draft);
     }
 

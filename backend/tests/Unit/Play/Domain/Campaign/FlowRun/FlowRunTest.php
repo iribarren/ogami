@@ -60,7 +60,7 @@ final class FlowRunTest extends FlowRunTestCase
         self::assertNull($free->flowRun());
         $this->expectException(FlowRunNotActive::class);
         $this->expectExceptionMessageIsOrContains('The campaign plays freely: it follows no Flow.');
-        $free->moveOn($this->release, self::at());
+        $free->moveOn('draw', $this->release, self::at());
     }
 
     #[Test]
@@ -112,7 +112,7 @@ final class FlowRunTest extends FlowRunTestCase
         }
 
         try {
-            $campaign->moveOn($this->release, self::at());
+            $campaign->moveOn('duel', $this->release, self::at());
             self::fail('A once phase moved on.');
         } catch (MoveOnNotAllowed $exception) {
             self::assertSame('Phase "duel" plays once: it ends after its scenes, not by moving on.', $exception->getMessage());
@@ -120,7 +120,7 @@ final class FlowRunTest extends FlowRunTestCase
 
         $campaign->pickSceneType('fight', $this->release, self::at());
         try {
-            $campaign->moveOn($this->release, self::at());
+            $campaign->moveOn('duel', $this->release, self::at());
             self::fail('A once phase moved on during a scene.');
         } catch (MoveOnNotAllowed) {
         }
@@ -143,7 +143,7 @@ final class FlowRunTest extends FlowRunTestCase
         self::assertSame([1, 2, FlowRunStage::Scene], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->scenesPlayed(), self::flowRunOf($campaign)->stage()]);
 
         // Move on during a scene: the scene goes on to its closing parts, then the phase ends.
-        $campaign->moveOn($this->release, self::at());
+        $campaign->moveOn('roam', $this->release, self::at());
         self::assertSame([true, 'play', 'mood'], [self::flowRunOf($campaign)->phaseEnding(), ...self::position($campaign)]);
         $this->playTalk($campaign);
         self::assertSame(['sceneClosing', 'after'], self::position($campaign));
@@ -346,7 +346,7 @@ final class FlowRunTest extends FlowRunTestCase
             'skip' => fn () => $campaign->skipFlowStep('mood', $this->release, self::at()),
             'end the scene' => fn () => $campaign->endFlowScene(1, $this->release, self::at()),
             'pick' => fn () => $campaign->pickSceneType('talk', $this->release, self::at()),
-            'move on' => fn () => $campaign->moveOn($this->release, self::at()),
+            'move on' => fn () => $campaign->moveOn('draw', $this->release, self::at()),
             'pause again' => static fn () => $campaign->pauseGuidance(self::at()),
         ] as $command => $run) {
             try {
@@ -423,6 +423,55 @@ final class FlowRunTest extends FlowRunTestCase
         self::assertSame(['play', 'response'], self::position($campaign));
     }
 
+    #[Test]
+    public function aHandSwitchWhilePausedIsRecordedButLeavesThePositionWhereResumeGoesOn(): void
+    {
+        $campaign = $this->inASession();
+        $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
+        $campaign->pauseGuidance(self::at());
+        $campaign->switchSceneType($this->release->sceneType('fight') ?? self::fail('No fight.'), $this->release, self::at());
+
+        self::assertSame(['talk', 'play', 'mood'], [self::flowRunOf($campaign)->sceneType(), ...self::position($campaign)]);
+        self::assertSame(['paused', 'sceneTypeSwitch:1'], self::history($campaign));
+
+        $campaign->resumeGuidance($this->release, self::at());
+        self::assertSame([FlowRunStatus::Active, 'talk', 'play', 'mood'], [self::flowRunOf($campaign)->status(), self::flowRunOf($campaign)->sceneType(), ...self::position($campaign)]);
+    }
+
+    #[Test]
+    public function aHandSwitchOfASceneStartedByHandOrAfterTheFlowIsRecordedOnly(): void
+    {
+        $fight = $this->release->sceneType('fight') ?? self::fail('No fight.');
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign->startScene('By hand', self::at());
+        $campaign->switchSceneType($fight, $this->release, self::at());
+
+        self::assertSame([[1, 2], 'talk', 'play', 'mood'], [self::flowRunOf($campaign)->scene(), self::flowRunOf($campaign)->sceneType(), ...self::position($campaign)]);
+        self::assertSame(['scene' => 3, 'from' => null, 'to' => 'fight'], array_last(self::flowRunOf($campaign)->history())?->details);
+
+        $completed = $this->inPhase('duel');
+        $completed->pickSceneType('talk', $this->release, self::at());
+        $this->playTalk($completed);
+        self::assertSame(FlowRunStatus::Completed, self::flowRunOf($completed)->status());
+        $completed->switchSceneType($fight, $this->release, self::at());
+
+        self::assertSame([FlowRunStatus::Completed, FlowRunStage::ScenePick, null, null, null], [self::flowRunOf($completed)->status(), self::flowRunOf($completed)->stage(), self::flowRunOf($completed)->sceneType(), ...self::position($completed)]);
+        self::assertSame('sceneTypeSwitch:2', array_last(self::history($completed)));
+    }
+
+    #[Test]
+    public function moveOnNamesThePhaseItEndsAndRefusesAReplacedScene(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $this->assertStale('The FlowRun is at phase "roam", not at phase "draw".', fn () => $campaign->moveOn('draw', $this->release, self::at()));
+
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign->startScene('By hand', self::at());
+        $this->assertStale('The guided scene is no longer the current scene: pause and resume guidance to go on at the scene pick.', fn () => $campaign->moveOn('roam', $this->release, self::at()));
+        self::assertFalse(self::flowRunOf($campaign)->phaseEnding());
+    }
+
     /**
      * @return iterable<string, array{string, \Closure(Campaign, GameSystemSnapshot): (\Closure(): void)}>
      */
@@ -448,7 +497,7 @@ final class FlowRunTest extends FlowRunTestCase
         yield 'moving on' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
             $campaign->startScene('By hand', self::at());
 
-            return static fn () => $campaign->moveOn($release, self::at());
+            return static fn () => $campaign->moveOn('alone', $release, self::at());
         }];
     }
 
@@ -520,7 +569,7 @@ final class FlowRunTest extends FlowRunTestCase
                 return $campaign;
             }
 
-            $campaign->moveOn($this->release, self::at());
+            $campaign->moveOn($next, $this->release, self::at());
         }
 
         return self::fail('Unknown phase '.$phase);

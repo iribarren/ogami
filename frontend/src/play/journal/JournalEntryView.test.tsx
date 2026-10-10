@@ -1,6 +1,13 @@
 import { render, screen, within } from '@testing-library/react'
 
-import { gateNote, keepThreeRoll, lockedDoorAnswer, plainAnswer, stormyWeather } from './fixtures'
+import {
+  chosenWay,
+  gateNote,
+  keepThreeRoll,
+  lockedDoorAnswer,
+  plainAnswer,
+  stormyWeather,
+} from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
 
 describe('JournalEntryView', () => {
@@ -62,5 +69,12 @@ describe('JournalEntryView', () => {
     expect(oracle).toHaveTextContent('Roll81 vs 50 on d100')
     expect(oracle).not.toHaveTextContent('Chaos factor')
     expect(oracle).not.toHaveTextContent('“')
+  })
+
+  it('renders a choice as its question and the option chosen', () => {
+    render(<JournalEntryView entry={chosenWay} />)
+
+    const choice = screen.getByRole('article', { name: 'Choice Which way?' })
+    expect(choice).toHaveTextContent('Which way? → Go right')
   })
 })

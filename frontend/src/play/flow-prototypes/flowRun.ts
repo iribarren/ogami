@@ -266,6 +266,7 @@ function record(state: FlowRunState, content: JournalEntry['content']): FlowRunS
     recordedAt: new Date(RUN_STARTED_AT + (number - 1) * 60_000).toISOString(),
     kind: content.kind,
     content,
+    flowStep: null,
   }
   return { ...state, entries: [...state.entries, entry] }
 }

@@ -22,7 +22,8 @@ final class PlayRequestSchemasTest extends WebTestCase
     public static function playRequestSchemas(): iterable
     {
         yield 'create campaign' => ['CreateCampaignRequest', ['name', 'gameSystemKey'], []];
-        yield 'start scene' => ['StartSceneRequest', ['title'], []];
+        yield 'start scene' => ['StartSceneRequest', [], ['title', 'sceneType']];
+        yield 'switch Scene Type' => ['SwitchSceneTypeRequest', ['sceneType'], []];
         yield 'set tracker value' => ['SetTrackerValueRequest', ['value'], []];
         yield 'record note' => ['RecordNoteRequest', ['text'], []];
         yield 'record roll' => ['RecordRollRequest', ['expression'], []];

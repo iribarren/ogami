@@ -33,6 +33,8 @@ use App\Play\Application\StartScene;
 use App\Play\Application\StartSceneHandler;
 use App\Play\Application\StartSession;
 use App\Play\Application\StartSessionHandler;
+use App\Play\Application\SwitchSceneType;
+use App\Play\Application\SwitchSceneTypeHandler;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
@@ -68,6 +70,7 @@ final class PlayContext implements Context
     private readonly CreateCampaignHandler $createCampaign;
     private readonly StartSessionHandler $startSession;
     private readonly StartSceneHandler $startScene;
+    private readonly SwitchSceneTypeHandler $switchSceneType;
     private readonly SetTrackerValueHandler $setTrackerValue;
     private readonly ListMyCampaignsHandler $listMyCampaigns;
     private readonly GetCampaignHandler $getCampaign;
@@ -88,7 +91,8 @@ final class PlayContext implements Context
         $this->ids = new SequentialCampaignIdGenerator();
         $this->createCampaign = new CreateCampaignHandler($campaigns, $this->releases, $clock);
         $this->startSession = new StartSessionHandler($owned, $campaigns, $clock);
-        $this->startScene = new StartSceneHandler($owned, $campaigns, $clock);
+        $this->startScene = new StartSceneHandler($owned, $campaigns, $this->releases, $clock);
+        $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases);
         $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases);
         $this->listMyCampaigns = new ListMyCampaignsHandler($campaigns);
         $this->getCampaign = new GetCampaignHandler($owned, $this->releases);
@@ -122,6 +126,13 @@ final class PlayContext implements Context
         $this->releases->add(Snapshots::withTrackers($key, $name, $version));
     }
 
+    #[Given('release version :version of the GameSystem :key named :name is published with Scene Types')]
+    public function aReleaseWithSceneTypesIsPublished(int $version, string $key, string $name): void
+    {
+        // Scene Types "legwork" (Legwork) and "firefight" (Firefight).
+        $this->releases->add(Snapshots::withSceneTypes($key, $name, $version));
+    }
+
     #[Given('I created the campaign :name with the GameSystem :key')]
     #[When('I create the campaign :name with the GameSystem :key')]
     public function iCreateTheCampaign(string $name, string $key): void
@@ -148,6 +159,24 @@ final class PlayContext implements Context
     public function iStartTheScene(string $title): void
     {
         ($this->startScene)(new StartScene($this->campaignId(), self::ME, $title));
+    }
+
+    #[When('I start a scene of the Scene Type :sceneType')]
+    public function iStartASceneOfTheSceneType(string $sceneType): void
+    {
+        ($this->startScene)(new StartScene($this->campaignId(), self::ME, null, $sceneType));
+    }
+
+    #[When('I start the scene :title of the Scene Type :sceneType')]
+    public function iStartTheSceneOfTheSceneType(string $title, string $sceneType): void
+    {
+        ($this->startScene)(new StartScene($this->campaignId(), self::ME, $title, $sceneType));
+    }
+
+    #[When('I switch the current scene to the Scene Type :sceneType')]
+    public function iSwitchTheCurrentScene(string $sceneType): void
+    {
+        ($this->switchSceneType)(new SwitchSceneType($this->campaignId(), self::ME, $sceneType));
     }
 
     #[When('I try to start the scene :title')]
@@ -293,6 +322,15 @@ final class PlayContext implements Context
             array_map(static fn (SceneView $scene): string => $scene->title, $session->scenes),
         );
         Assert::assertSame(range(1, \count($session->scenes)), array_map(static fn (SceneView $scene): int => $scene->number, $session->scenes));
+    }
+
+    #[Then('the current scene is :title of the Scene Type :sceneTypeName')]
+    public function theCurrentSceneIsOfTheSceneType(string $title, string $sceneTypeName): void
+    {
+        $session = array_last($this->myCampaign()->sessions);
+        $scene = null === $session ? null : array_last($session->scenes);
+        Assert::assertNotNull($scene);
+        Assert::assertSame([$title, 'scene', $sceneTypeName], [$scene->title, $scene->kind, $scene->sceneTypeName]);
     }
 
     #[Then('the current session is :session and the current scene is :scene')]

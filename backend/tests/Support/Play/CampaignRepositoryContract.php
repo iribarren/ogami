@@ -9,7 +9,10 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\Campaign\SceneKind;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -70,6 +73,34 @@ trait CampaignRepositoryContract
         self::assertSame([], $sessions[1]->scenes());
         self::assertSame(2, $loaded->currentSession()?->number());
         self::assertNull($loaded->currentScene());
+        self::assertEquals($campaign, $loaded);
+    }
+
+    #[Test]
+    public function itKeepsTheKindSceneTypeAndHookOfEveryScene(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $sceneTypes = Snapshots::withSceneTypes('heist', 'Heist', 1);
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->startHookScene(Hook::SessionOpening, 'Session 1 begins', new \DateTimeImmutable('2026-10-10T09:01:00+00:00'));
+        $campaign->startScene(null, new \DateTimeImmutable('2026-10-10T09:02:00+00:00'), $sceneTypes->sceneType('legwork'));
+        $campaign->startScene('A quiet drink', new \DateTimeImmutable('2026-10-10T09:03:00+00:00'));
+        $campaign->switchSceneType($sceneTypes->sceneType('firefight') ?? throw new \LogicException('No firefight.'));
+
+        $this->campaigns()->add($campaign);
+        $this->forgetLoaded();
+        $loaded = $this->campaigns()->ofId($id);
+
+        self::assertNotNull($loaded);
+        self::assertSame([
+            [1, 'Session 1 begins', SceneKind::Hook, null, Hook::SessionOpening],
+            [2, 'Legwork 1', SceneKind::Scene, 'legwork', null],
+            [3, 'A quiet drink', SceneKind::Scene, 'firefight', null],
+        ], array_map(
+            static fn (Scene $scene): array => [$scene->number(), $scene->title(), $scene->kind(), $scene->sceneType(), $scene->hook()],
+            $loaded->sessions()[0]->scenes(),
+        ));
         self::assertEquals($campaign, $loaded);
     }
 

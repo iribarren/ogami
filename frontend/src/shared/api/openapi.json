@@ -437,7 +437,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed or has no string \"title\".",
+                        "description": "The JSON body is malformed: neither a string \"title\" nor a string \"sceneType\", or one of them is not a string.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -467,7 +467,7 @@
                         }
                     },
                     "404": {
-                        "description": "No campaign of the player has this id.",
+                        "description": "No campaign of the player has this id, or its pinned release has no Scene Type with this key.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -498,6 +498,107 @@
                     },
                     "422": {
                         "description": "The title is blank or too long.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/scenes/current/scene-type": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Switch the Scene Type of the current scene of one of my campaigns by hand",
+                "operationId": "switchSceneType",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SwitchSceneTypeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The current scene with its new Scene Type; its number, title and journal entries stay.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SceneResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"sceneType\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or its pinned release has no Scene Type with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1104,7 +1205,7 @@
                         }
                     },
                     "404": {
-                        "description": "No campaign of the player has this id, or its pinned release has no likelihood oracle with this key.",
+                        "description": "No campaign of the player has this id, or its pinned release has no likelihood oracle with this key (or not the Tracker its chaos is bound to).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1530,7 +1631,11 @@
                 "required": [
                     "number",
                     "title",
-                    "startedAt"
+                    "startedAt",
+                    "kind",
+                    "sceneType",
+                    "sceneTypeName",
+                    "hook"
                 ],
                 "properties": {
                     "number": {
@@ -1545,6 +1650,41 @@
                     "startedAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "kind": {
+                        "description": "A scene of play, or a hook Scene.",
+                        "type": "string",
+                        "example": "scene",
+                        "enum": [
+                            "scene",
+                            "hook"
+                        ]
+                    },
+                    "sceneType": {
+                        "description": "The key of the scene's Scene Type; null for a hook Scene or a scene without one.",
+                        "type": "string",
+                        "example": "legwork",
+                        "nullable": true
+                    },
+                    "sceneTypeName": {
+                        "description": "The name of the scene's Scene Type in the pinned release.",
+                        "type": "string",
+                        "example": "Legwork",
+                        "nullable": true
+                    },
+                    "hook": {
+                        "description": "The hook a hook Scene records; null for a scene of play.",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true,
+                        "enum": [
+                            "sessionOpening",
+                            "sessionClosing",
+                            "phaseOpening",
+                            "phaseClosing",
+                            "worldTurn",
+                            null
+                        ]
                     }
                 },
                 "type": "object"
@@ -1838,15 +1978,34 @@
                 "type": "object"
             },
             "StartSceneRequest": {
-                "required": [
-                    "title"
-                ],
+                "description": "A title, a Scene Type, or both.",
+                "required": [],
                 "properties": {
                     "title": {
-                        "description": "Trimmed; not blank.",
+                        "description": "Trimmed; not blank. Optional with a Scene Type: the scene is then named after it, numbered per Scene Type in the campaign (\"Legwork 2\").",
                         "type": "string",
                         "example": "At the gate",
+                        "nullable": true,
                         "maxLength": 100
+                    },
+                    "sceneType": {
+                        "description": "The key of a Scene Type of the campaign's pinned release.",
+                        "type": "string",
+                        "example": "legwork",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SwitchSceneTypeRequest": {
+                "required": [
+                    "sceneType"
+                ],
+                "properties": {
+                    "sceneType": {
+                        "description": "The key of a Scene Type of the campaign's pinned release.",
+                        "type": "string",
+                        "example": "firefight"
                     }
                 },
                 "type": "object"

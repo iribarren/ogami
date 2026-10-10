@@ -7,14 +7,17 @@ namespace App\Play\Application;
 use App\Shared\Application\Bus\Command;
 
 /**
- * Starts the next scene in the current session of one of the player's campaigns.
+ * Starts the next scene in the current session of one of the player's campaigns, a scene of play
+ * with an optional Scene Type of the pinned release. Without a title, the scene is named after
+ * its Scene Type.
  */
 final readonly class StartScene implements Command
 {
     public function __construct(
         public string $campaignId,
         public string $userId,
-        public string $title,
+        public ?string $title,
+        public ?string $sceneType = null,
     ) {
     }
 }

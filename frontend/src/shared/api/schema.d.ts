@@ -124,6 +124,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/scenes/current/scene-type": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Switch the Scene Type of the current scene of one of my campaigns by hand */
+        post: operations["switchSceneType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/trackers/{trackerKey}": {
         parameters: {
             query?: never;
@@ -385,6 +402,28 @@ export interface components {
             title: string;
             /** Format: date-time */
             startedAt: string;
+            /**
+             * @description A scene of play, or a hook Scene.
+             * @example scene
+             * @enum {string}
+             */
+            kind: "scene" | "hook";
+            /**
+             * @description The key of the scene's Scene Type; null for a hook Scene or a scene without one.
+             * @example legwork
+             */
+            sceneType: string | null;
+            /**
+             * @description The name of the scene's Scene Type in the pinned release.
+             * @example Legwork
+             */
+            sceneTypeName: string | null;
+            /**
+             * @description The hook a hook Scene records; null for a scene of play.
+             * @example null
+             * @enum {string|null}
+             */
+            hook: "sessionOpening" | "sessionClosing" | "phaseOpening" | "phaseClosing" | "worldTurn" | null;
         };
         SessionResponse: {
             /**
@@ -511,12 +550,25 @@ export interface components {
             /** @description The Trackers of the pinned release with the campaign's values, in definition order; empty for schema version 1. */
             trackers: components["schemas"]["TrackerResponse"][];
         };
+        /** @description A title, a Scene Type, or both. */
         StartSceneRequest: {
             /**
-             * @description Trimmed; not blank.
+             * @description Trimmed; not blank. Optional with a Scene Type: the scene is then named after it, numbered per Scene Type in the campaign ("Legwork 2").
              * @example At the gate
              */
-            title: string;
+            title?: string | null;
+            /**
+             * @description The key of a Scene Type of the campaign's pinned release.
+             * @example legwork
+             */
+            sceneType?: string | null;
+        };
+        SwitchSceneTypeRequest: {
+            /**
+             * @description The key of a Scene Type of the campaign's pinned release.
+             * @example firefight
+             */
+            sceneType: string;
         };
         SetTrackerValueRequest: {
             /**
@@ -1334,7 +1386,7 @@ export interface operations {
                     "application/json": components["schemas"]["CampaignResponse"];
                 };
             };
-            /** @description The JSON body is malformed or has no string "title". */
+            /** @description The JSON body is malformed: neither a string "title" nor a string "sceneType", or one of them is not a string. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1361,7 +1413,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id. */
+            /** @description No campaign of the player has this id, or its pinned release has no Scene Type with this key. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1390,6 +1442,86 @@ export interface operations {
             };
             /** @description The title is blank or too long. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    switchSceneType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwitchSceneTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description The current scene with its new Scene Type; its number, title and journal entries stay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "sceneType". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or its pinned release has no Scene Type with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1856,7 +1988,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id, or its pinned release has no likelihood oracle with this key. */
+            /** @description No campaign of the player has this id, or its pinned release has no likelihood oracle with this key (or not the Tracker its chaos is bound to). */
             404: {
                 headers: {
                     [name: string]: unknown;

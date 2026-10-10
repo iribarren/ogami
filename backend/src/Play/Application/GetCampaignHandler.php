@@ -40,7 +40,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $campaign->name(),
             $campaign->createdAt(),
             new PinnedReleaseView($pinned->gameSystemKey(), $pinned->gameSystemName(), $pinned->releaseVersion()),
-            array_map($this->session(...), $campaign->sessions()),
+            array_map(static fn (Session $session): SessionView => self::session($session, $snapshot), $campaign->sessions()),
             $campaign->currentSession()?->number(),
             $campaign->currentScene()?->number(),
             $this->oracleTables($snapshot),
@@ -67,15 +67,27 @@ final readonly class GetCampaignHandler implements QueryHandler
         );
     }
 
-    private function session(Session $session): SessionView
+    private static function session(Session $session, GameSystemSnapshot $snapshot): SessionView
     {
         return new SessionView(
             $session->number(),
             $session->startedAt(),
-            array_map(
-                static fn (Scene $scene): SceneView => new SceneView($scene->number(), $scene->title(), $scene->startedAt()),
-                $session->scenes(),
-            ),
+            array_map(static fn (Scene $scene): SceneView => self::scene($scene, $snapshot), $session->scenes()),
+        );
+    }
+
+    private static function scene(Scene $scene, GameSystemSnapshot $snapshot): SceneView
+    {
+        $sceneType = $scene->sceneType();
+
+        return new SceneView(
+            $scene->number(),
+            $scene->title(),
+            $scene->startedAt(),
+            $scene->kind()->value,
+            $sceneType,
+            null === $sceneType ? null : $snapshot->sceneType($sceneType)?->name,
+            $scene->hook()?->value,
         );
     }
 

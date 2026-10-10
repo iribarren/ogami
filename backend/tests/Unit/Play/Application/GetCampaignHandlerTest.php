@@ -21,6 +21,7 @@ use App\Play\Application\TrackerLevelView;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
@@ -126,6 +127,27 @@ final class GetCampaignHandlerTest extends TestCase
         ], $view->sessions);
         self::assertSame(2, $view->currentSessionNumber);
         self::assertNull($view->currentSceneNumber);
+    }
+
+    #[Test]
+    public function aSceneShowsItsKindItsSceneTypeWithItsNameAndItsHook(): void
+    {
+        $snapshot = Snapshots::withSceneTypes('heist', 'Heist', 1);
+        $this->releases->add($snapshot);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->startHookScene(Hook::SessionOpening, 'Session 1 begins', new \DateTimeImmutable('2026-10-10T09:01:00+00:00'));
+        $campaign->startScene(null, new \DateTimeImmutable('2026-10-10T09:02:00+00:00'), $snapshot->sceneType('legwork'));
+        $campaign->startScene('A quiet drink', new \DateTimeImmutable('2026-10-10T09:03:00+00:00'));
+        $this->campaigns->add($campaign);
+
+        $scenes = ($this->handler)(new GetCampaign('campaign-2', 'user-1'))->sessions[0]->scenes;
+
+        self::assertEquals([
+            new SceneView(1, 'Session 1 begins', new \DateTimeImmutable('2026-10-10T09:01:00+00:00'), 'hook', null, null, 'sessionOpening'),
+            new SceneView(2, 'Legwork 1', new \DateTimeImmutable('2026-10-10T09:02:00+00:00'), 'scene', 'legwork', 'Legwork'),
+            new SceneView(3, 'A quiet drink', new \DateTimeImmutable('2026-10-10T09:03:00+00:00'), 'scene'),
+        ], $scenes);
     }
 
     #[Test]

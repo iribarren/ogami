@@ -193,7 +193,7 @@ final class CampaignApiTest extends WebTestCase
                     [
                         'number' => 1,
                         'startedAt' => '2026-10-06T09:05:00+00:00',
-                        'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T09:10:00+00:00']],
+                        'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T09:10:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null]],
                     ],
                     ['number' => 2, 'startedAt' => '2026-10-06T09:20:00+00:00', 'scenes' => []],
                 ],
@@ -432,8 +432,10 @@ final class CampaignApiTest extends WebTestCase
     public static function malformedSceneBodies(): iterable
     {
         yield 'invalid JSON' => ['{"title": '];
-        yield 'missing title' => ['{}'];
+        yield 'neither a title nor a Scene Type' => ['{}'];
+        yield 'null title and Scene Type' => ['{"title": null, "sceneType": null}'];
         yield 'non-string title' => ['{"title": 3}'];
+        yield 'non-string Scene Type' => ['{"title": "At the gate", "sceneType": ["legwork"]}'];
     }
 
     #[Test]
@@ -447,7 +449,7 @@ final class CampaignApiTest extends WebTestCase
         $this->client->request('POST', \sprintf('/api/campaigns/%s/scenes', $id), server: ['CONTENT_TYPE' => 'application/json'], content: $body);
 
         self::assertResponseStatusCodeSame(400);
-        self::assertSame(['error' => 'Send a JSON object with a string "title", such as {"title": "At the gate"}.'], $this->json());
+        self::assertSame(['error' => 'Send a JSON object with a string "title", a string "sceneType" or both, such as {"title": "At the gate"} or {"sceneType": "legwork"}.'], $this->json());
     }
 
     #[Test]
@@ -469,6 +471,7 @@ final class CampaignApiTest extends WebTestCase
         yield 'get' => ['GET', '/api/campaigns/%s', null];
         yield 'start session' => ['POST', '/api/campaigns/%s/sessions', null];
         yield 'start scene' => ['POST', '/api/campaigns/%s/scenes', ['title' => 'At the gate']];
+        yield 'switch Scene Type' => ['POST', '/api/campaigns/%s/scenes/current/scene-type', ['sceneType' => 'legwork']];
     }
 
     /**
@@ -518,6 +521,7 @@ final class CampaignApiTest extends WebTestCase
         yield 'get campaign' => ['GET', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999', null];
         yield 'start session' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/sessions', null];
         yield 'start scene' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/scenes', ['title' => 'At the gate']];
+        yield 'switch Scene Type' => ['POST', '/api/campaigns/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999/scenes/current/scene-type', ['sceneType' => 'legwork']];
     }
 
     /**

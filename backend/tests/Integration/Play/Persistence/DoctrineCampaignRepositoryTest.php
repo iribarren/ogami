@@ -96,7 +96,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         );
         self::assertIsString($sessions);
         self::assertEquals(
-            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null]]]],
+            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null]], 'endedAt' => null]],
             json_decode($sessions, true, flags: \JSON_THROW_ON_ERROR),
         );
     }
@@ -112,6 +112,34 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         self::assertNotNull($scene);
         self::assertSame(['At the gate', SceneKind::Scene, null, null], [$scene->title(), $scene->kind(), $scene->sceneType(), $scene->hook()]);
+    }
+
+    #[Test]
+    public function aSessionStoredBeforeSessionsEndedIsUnderWayAndACampaignStoredBeforeFlowsPlaysFreely(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->storeSessions($id, '[{"number": 1, "startedAt": "2026-10-06T10:05:00.000000+02:00", "scenes": []}]');
+
+        $campaign = $this->repository->ofId($id);
+
+        self::assertNotNull($campaign);
+        self::assertSame(1, $campaign->currentSession()?->number());
+        self::assertNull($campaign->sessions()[0]->endedAt());
+        self::assertNull($campaign->flowKey());
+        self::assertNull($this->entityManager->getConnection()->fetchOne('SELECT flow_key FROM play_campaign WHERE id = ?', [$id->toString()]));
+    }
+
+    #[Test]
+    public function aMalformedSessionEndFailsToLoad(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->storeSessions($id, '[{"number": 1, "startedAt": "2026-10-06T10:05:00.000000+02:00", "scenes": [], "endedAt": "yesterday"}]');
+
+        $this->expectExceptionMessageIsOrContains('Stored campaign sessions: "endedAt" must be a time like 2026-10-06T10:00:00.000000+00:00.');
+
+        $this->repository->ofId($id);
     }
 
     /**

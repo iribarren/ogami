@@ -6,8 +6,9 @@ namespace App\Play\Domain\Campaign;
 
 /**
  * One sitting of play within a campaign. Numbered from 1 within its campaign; its identity is the
- * campaign and its number. Immutable: adding or changing a scene returns a new Session, and the
- * Campaign aggregate replaces its current session.
+ * campaign and its number. It is under way until it ends (endedAt). Immutable: adding or changing a
+ * scene, or ending it, returns a new Session, and the Campaign aggregate replaces its current
+ * session.
  */
 final readonly class Session
 {
@@ -20,22 +21,35 @@ final readonly class Session
         private int $number,
         private \DateTimeImmutable $startedAt,
         private array $scenes,
+        private ?\DateTimeImmutable $endedAt,
     ) {
     }
 
     public static function start(int $number, \DateTimeImmutable $startedAt): self
     {
-        return new self($number, $startedAt, []);
+        return new self($number, $startedAt, [], null);
     }
 
     /**
-     * Rebuilds a stored session, e.g. from persistence.
+     * Rebuilds a stored session, e.g. from persistence. A session stored without an end is under way.
      *
      * @param list<Scene> $scenes in number order
      */
-    public static function reconstitute(int $number, \DateTimeImmutable $startedAt, array $scenes): self
+    public static function reconstitute(int $number, \DateTimeImmutable $startedAt, array $scenes, ?\DateTimeImmutable $endedAt = null): self
     {
-        return new self($number, $startedAt, $scenes);
+        return new self($number, $startedAt, $scenes, $endedAt);
+    }
+
+    /**
+     * The same session, ended; its scenes stay.
+     */
+    public function end(\DateTimeImmutable $endedAt): self
+    {
+        if ($this->hasEnded()) {
+            throw new \LogicException('The session has already ended.');
+        }
+
+        return new self($this->number, $this->startedAt, $this->scenes, $endedAt);
     }
 
     /**
@@ -72,7 +86,7 @@ final readonly class Session
             throw new \LogicException('Only the current scene can be replaced.');
         }
 
-        return new self($this->number, $this->startedAt, [...\array_slice($this->scenes, 0, -1), $scene]);
+        return new self($this->number, $this->startedAt, [...\array_slice($this->scenes, 0, -1), $scene], $this->endedAt);
     }
 
     public function number(): int
@@ -83,6 +97,19 @@ final readonly class Session
     public function startedAt(): \DateTimeImmutable
     {
         return $this->startedAt;
+    }
+
+    /**
+     * When the session ended; null while it is under way.
+     */
+    public function endedAt(): ?\DateTimeImmutable
+    {
+        return $this->endedAt;
+    }
+
+    public function hasEnded(): bool
+    {
+        return $this->endedAt instanceof \DateTimeImmutable;
     }
 
     /**
@@ -113,6 +140,6 @@ final readonly class Session
             throw CampaignLimitReached::scenes(self::MAX_SCENES);
         }
 
-        return new self($this->number, $this->startedAt, [...$this->scenes, $start(\count($this->scenes) + 1)]);
+        return new self($this->number, $this->startedAt, [...$this->scenes, $start(\count($this->scenes) + 1)], $this->endedAt);
     }
 }

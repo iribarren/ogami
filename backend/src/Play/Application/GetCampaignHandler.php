@@ -46,6 +46,9 @@ final readonly class GetCampaignHandler implements QueryHandler
             $this->oracleTables($snapshot),
             array_map($this->likelihoodOracle(...), $snapshot->likelihoodOracles()),
             array_map(static fn (Tracker $tracker): TrackerView => self::tracker($tracker, $campaign), $snapshot->trackers()),
+            $campaign->flowKey(),
+            array_map(FlowSummaryView::of(...), $snapshot->flows()),
+            array_map(SceneTypeSummaryView::of(...), $snapshot->sceneTypes()),
         );
     }
 
@@ -73,6 +76,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $session->number(),
             $session->startedAt(),
             array_map(static fn (Scene $scene): SceneView => self::scene($scene, $snapshot), $session->scenes()),
+            $session->endedAt(),
         );
     }
 

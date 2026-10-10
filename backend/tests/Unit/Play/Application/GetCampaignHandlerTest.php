@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Application;
 
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignView;
+use App\Play\Application\FlowSummaryView;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
 use App\Play\Application\LikelihoodChaosView;
@@ -15,6 +16,7 @@ use App\Play\Application\OracleTableView;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\PinnedReleaseView;
 use App\Play\Application\PublishedGameSystemReleases;
+use App\Play\Application\SceneTypeSummaryView;
 use App\Play\Application\SceneView;
 use App\Play\Application\SessionView;
 use App\Play\Application\TrackerLevelView;
@@ -45,6 +47,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(LikelihoodChaosView::class)]
 #[CoversClass(TrackerView::class)]
 #[CoversClass(TrackerLevelView::class)]
+#[CoversClass(FlowSummaryView::class)]
+#[CoversClass(SceneTypeSummaryView::class)]
 final class GetCampaignHandlerTest extends TestCase
 {
     private InMemoryCampaignRepository $campaigns;
@@ -81,7 +85,47 @@ final class GetCampaignHandlerTest extends TestCase
                 new LikelihoodOracleView('plain', 'Plain question', [new LikelihoodLevelView('even', 'Even')], null),
             ],
             [],
+            null,
+            [],
+            [],
         ), $view);
+    }
+
+    #[Test]
+    public function itShowsTheFlowPlayedAndTheFlowsAndSceneTypesOfThePinnedRelease(): void
+    {
+        $snapshot = Snapshots::withFlows('heist', 'Heist', 1);
+        $this->releases->add($snapshot);
+        $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), [], $snapshot->flow('one-shot')));
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        self::assertSame('one-shot', $view->flowKey);
+        self::assertEquals([
+            new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus'),
+            new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal'),
+        ], $view->flows);
+        self::assertEquals([
+            new SceneTypeSummaryView('legwork', 'Legwork', 'Play out a legwork scene.'),
+            new SceneTypeSummaryView('firefight', 'Firefight', 'Play out a firefight scene.'),
+        ], $view->sceneTypes);
+    }
+
+    #[Test]
+    public function anEndedSessionShowsItsEndAndLeavesNoCurrentSession(): void
+    {
+        $campaign = $this->campaigns->ofId(CampaignId::fromString('campaign-1'));
+        self::assertNotNull($campaign);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06T09:00:00+00:00'));
+        $campaign->startScene('At the gate', new \DateTimeImmutable('2026-10-06T09:10:00+00:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06T12:00:00+00:00'));
+        $this->campaigns->save($campaign);
+
+        $view = ($this->handler)(new GetCampaign('campaign-1', 'user-1'));
+
+        self::assertEquals(new \DateTimeImmutable('2026-10-06T12:00:00+00:00'), $view->sessions[0]->endedAt);
+        self::assertNull($view->currentSessionNumber);
+        self::assertNull($view->currentSceneNumber);
     }
 
     #[Test]

@@ -18,11 +18,13 @@ use Doctrine\DBAL\Types\JsonType;
  * option). Sessions and scenes are immutable values identified by their number within the
  * campaign, always loaded and saved with it, so they need no table of their own (ADR 0007).
  *
- * Stored shape: [{number, startedAt, scenes: [{number, title, startedAt, kind, sceneType, hook}]}],
+ * Stored shape: [{number, startedAt, scenes: [{number, title, startedAt, kind, sceneType, hook}], endedAt}],
  * in number order; `kind` is "scene" or "hook", `sceneType` may be null, and `hook` is set on a hook
  * scene and null on a scene of play. A scene stored before scenes had a kind has none of the last
- * three and reads as a scene of play without a Scene Type. Times keep their microseconds and UTC offset. Reading checks the shape, not the
- * domain rules (Session and Scene are rebuilt with reconstitute()).
+ * three and reads as a scene of play without a Scene Type. `endedAt` is null while the session is
+ * under way; a session stored before sessions ended has none and is under way. Times keep their
+ * microseconds and UTC offset. Reading checks the shape, not the domain rules (Session and Scene
+ * are rebuilt with reconstitute()).
  */
 final class CampaignSessionsType extends JsonType
 {
@@ -60,6 +62,7 @@ final class CampaignSessionsType extends JsonType
                     ],
                     $session->scenes(),
                 ),
+                'endedAt' => $session->endedAt()?->format(self::TIME_FORMAT),
             ];
         }
 
@@ -84,6 +87,7 @@ final class CampaignSessionsType extends JsonType
                     self::scene(...),
                     self::list(self::field($session, 'scenes'), 'scenes'),
                 ),
+                null === self::field($session, 'endedAt') ? null : self::time($session, 'endedAt'),
             ),
             self::list($data, 'sessions'),
         );

@@ -13,6 +13,7 @@ final readonly class SessionView
         public int $number,
         public \DateTimeImmutable $startedAt,
         public array $scenes,
+        public ?\DateTimeImmutable $endedAt = null,
     ) {
     }
 }

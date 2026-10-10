@@ -10,9 +10,10 @@ use OpenApi\Attributes as OA;
 
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
- * session and scene, the oracles of the pinned release and its Trackers with the campaign's values.
+ * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
+ * the Flow played, and the release's Flows and Scene Types.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flows', 'sceneTypes'])]
 final readonly class CampaignResponse
 {
     /**
@@ -20,6 +21,8 @@ final readonly class CampaignResponse
      * @param list<OracleTableResponse>      $oracleTables
      * @param list<LikelihoodOracleResponse> $likelihoodOracles
      * @param list<TrackerResponse>          $trackers
+     * @param list<FlowSummaryResponse>      $flows
+     * @param list<SceneTypeSummaryResponse> $sceneTypes
      */
     private function __construct(
         #[OA\Property(format: 'uuid')]
@@ -36,7 +39,7 @@ final readonly class CampaignResponse
             items: new OA\Items(ref: new Model(type: SessionResponse::class)),
         )]
         public array $sessions,
-        #[OA\Property(description: 'The latest session; null before the first one.', example: 2, nullable: true)]
+        #[OA\Property(description: 'The session under way: the latest one unless it has ended; null before the first one or once it ends.', example: 2, nullable: true)]
         public ?int $currentSessionNumber,
         #[OA\Property(description: 'The latest scene of the current session; null when it has none yet.', example: 1, nullable: true)]
         public ?int $currentSceneNumber,
@@ -58,6 +61,20 @@ final readonly class CampaignResponse
             items: new OA\Items(ref: new Model(type: TrackerResponse::class)),
         )]
         public array $trackers,
+        #[OA\Property(description: 'The key of the Flow the campaign plays; null when played freely.', example: 'heist', nullable: true)]
+        public ?string $flowKey,
+        #[OA\Property(
+            description: 'The Flows of the pinned release, in definition order; empty for schema version 1.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: FlowSummaryResponse::class)),
+        )]
+        public array $flows,
+        #[OA\Property(
+            description: 'The Scene Types of the pinned release, in definition order; empty for schema version 1.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: SceneTypeSummaryResponse::class)),
+        )]
+        public array $sceneTypes,
     ) {
     }
 
@@ -74,6 +91,9 @@ final readonly class CampaignResponse
             array_map(OracleTableResponse::fromView(...), $view->oracleTables),
             array_map(LikelihoodOracleResponse::fromView(...), $view->likelihoodOracles),
             array_map(TrackerResponse::fromView(...), $view->trackers),
+            $view->flowKey,
+            array_map(FlowSummaryResponse::fromView(...), $view->flows),
+            array_map(SceneTypeSummaryResponse::fromView(...), $view->sceneTypes),
         );
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
@@ -11,17 +12,19 @@ use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
 
 /**
- * A solo player's ongoing game, pinned to one GameSystem release (ADR 0014). Play is organized in
- * sessions and scenes: the current session is the latest one, the current scene is the latest
- * scene of the current session. A scene of play may have a Scene Type of the pinned release; a
- * hook Scene records a phase boundary.
+ * A solo player's ongoing game, pinned to one GameSystem release (ADR 0014), played freely or along
+ * one Flow of that release (its key; chosen at creation). Play is organized in sessions (sittings)
+ * and scenes: the current session is the latest one while it has not ended, the current scene is
+ * the latest scene of the current session. Once the latest session ends there is no current session
+ * or scene until the next session starts. A scene of play may have a Scene Type of the pinned
+ * release; a hook Scene records a phase boundary.
  *
  * The campaign holds a value for every Tracker of its pinned release (none for schema version 1).
  * The definitions stay in the release: methods that read or change a value take the Tracker and
  * clamp to its range. A Tracker without a stored value (a schema version 2 campaign stored before
  * campaigns held tracker values) reads as its starting value until it changes.
  *
- * State is kept as scalars (id, owner, name, pinned release fields) plus the session list and the
+ * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list and the
  * tracker values, so an adapter can map it and rebuild it with reconstitute().
  */
 final class Campaign
@@ -50,16 +53,18 @@ final class Campaign
         private readonly \DateTimeImmutable $createdAt,
         private array $sessions,
         private array $trackerValues,
+        private readonly ?string $flowKey,
     ) {
     }
 
     /**
      * @param list<Tracker> $trackers the Trackers of the pinned release: counters start at their initial value, clocks at 0
+     * @param ?Flow         $flow     a Flow of the pinned release to play along, or null to play freely
      *
      * @throws InvalidCampaignOwner when the owner id is blank
      * @throws InvalidCampaignName  when the trimmed name is blank or longer than 100 characters
      */
-    public static function create(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $trackers = []): self
+    public static function create(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $trackers = [], ?Flow $flow = null): self
     {
         if ('' === trim($ownerId)) {
             throw InvalidCampaignOwner::blank();
@@ -80,7 +85,7 @@ final class Campaign
             $trackerValues[$tracker->key] = $tracker->initial;
         }
 
-        return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues);
+        return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues, $flow?->key);
     }
 
     /**
@@ -88,8 +93,9 @@ final class Campaign
      *
      * @param list<Session>      $sessions      in number order
      * @param array<string, int> $trackerValues by Tracker key
+     * @param ?string            $flowKey       the key of the Flow played, or null for free play
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = []): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null): self
     {
         return new self(
             $id->toString(),
@@ -101,11 +107,13 @@ final class Campaign
             $createdAt,
             $sessions,
             $trackerValues,
+            $flowKey,
         );
     }
 
     /**
-     * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet.
+     * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet;
+     * a session still under way stays as it is.
      *
      * @throws CampaignLimitReached when the campaign already holds 500 sessions
      */
@@ -122,6 +130,22 @@ final class Campaign
     }
 
     /**
+     * Ends the current session: its scenes stay, and no scene starts until the next session.
+     *
+     * @return Session the ended session
+     *
+     * @throws NoCurrentSession when no session is under way (none has started, or it has ended)
+     */
+    public function endSession(\DateTimeImmutable $endedAt): Session
+    {
+        $session = $this->currentSession() ?? throw NoCurrentSession::toEndSession();
+        $ended = $session->end($endedAt);
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $ended];
+
+        return $ended;
+    }
+
+    /**
      * Starts scene m + 1 of the current session (the first is 1), a scene of play. It becomes the
      * current scene.
      *
@@ -130,7 +154,7 @@ final class Campaign
      *
      * @param ?SceneType $sceneType a Scene Type of the pinned release, or null
      *
-     * @throws NoCurrentSession     when no session has started
+     * @throws NoCurrentSession     when no session is under way
      * @throws CampaignLimitReached when the current session already holds 200 scenes
      * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters, or
      *                              there is neither a title nor a Scene Type
@@ -146,7 +170,7 @@ final class Campaign
      * Starts scene m + 1 of the current session as a hook Scene (see Hook::defaultTitle() for the
      * titles a FlowRun gives). It becomes the current scene.
      *
-     * @throws NoCurrentSession     when no session has started
+     * @throws NoCurrentSession     when no session is under way
      * @throws CampaignLimitReached when the current session already holds 200 scenes
      * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters
      */
@@ -161,7 +185,7 @@ final class Campaign
      *
      * @param SceneType $sceneType a Scene Type of the pinned release
      *
-     * @throws NoCurrentScene          when the current session has no scene, or there is no session
+     * @throws NoCurrentScene          when the current session has no scene, or no session is under way
      * @throws HookSceneHasNoSceneType when the current scene is a hook Scene
      */
     public function switchSceneType(SceneType $sceneType): Scene
@@ -246,11 +270,7 @@ final class Campaign
      */
     private function addScene(\Closure $add): Scene
     {
-        if ([] === $this->sessions) {
-            throw NoCurrentSession::toStartScene();
-        }
-
-        $session = $add(array_last($this->sessions));
+        $session = $add($this->currentSession() ?? throw NoCurrentSession::toStartScene());
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $session];
 
         return $session->currentScene() ?? throw new \LogicException('A scene was just added.');
@@ -316,6 +336,14 @@ final class Campaign
     }
 
     /**
+     * The key of the Flow of the pinned release the campaign plays along; null when played freely.
+     */
+    public function flowKey(): ?string
+    {
+        return $this->flowKey;
+    }
+
+    /**
      * @return list<Session> in number order
      */
     public function sessions(): array
@@ -324,11 +352,13 @@ final class Campaign
     }
 
     /**
-     * The latest session, or null before the first one starts.
+     * The session under way: the latest one unless it has ended; null before the first one starts.
      */
     public function currentSession(): ?Session
     {
-        return array_last($this->sessions);
+        $latest = array_last($this->sessions);
+
+        return true === $latest?->hasEnded() ? null : $latest;
     }
 
     /**

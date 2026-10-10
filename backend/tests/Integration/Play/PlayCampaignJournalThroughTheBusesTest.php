@@ -60,7 +60,7 @@ final class PlayCampaignJournalThroughTheBusesTest extends KernelTestCase
     #[Test]
     public function aPlayerCreatesACampaignStartsASceneAndRecordsTheJournal(): void
     {
-        $this->dispatch(new CreateCampaign(self::CAMPAIGN, self::PLAYER, '  The lost mine ', 'example-journal'));
+        $this->dispatch(new CreateCampaign(self::CAMPAIGN, self::PLAYER, '  The lost mine ', 'example-journal', null));
         $this->dispatch(new StartSession(self::CAMPAIGN, self::PLAYER));
         $this->dispatch(new StartScene(self::CAMPAIGN, self::PLAYER, 'At the gate'));
         $this->dispatch(new RecordNote('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5301', self::CAMPAIGN, self::PLAYER, 'The gate is open.'));

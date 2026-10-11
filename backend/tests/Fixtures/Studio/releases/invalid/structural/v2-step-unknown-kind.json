@@ -7,7 +7,7 @@
   ],
   "factSlots": [],
   "sceneTypes": [
-    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "pick", "title": "Begin"}], "closing": []}
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "summon", "title": "Begin"}], "closing": []}
   ],
   "flows": [],
   "sheet": {},

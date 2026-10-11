@@ -33,7 +33,16 @@ final class ReleaseSchemaVersion2Test extends TestCase
             self::playStep($release)->key = 'end';
         }];
         yield 'unknown effect kind' => [static function (\stdClass $release): void {
-            self::playStep($release)->effects = [(object) ['kind' => 'createNpc']];
+            self::playStep($release)->effects = [(object) ['kind' => 'summon']];
+        }];
+        yield 'createNpc with an unknown property' => [static function (\stdClass $release): void {
+            self::playStep($release)->effects = [(object) ['kind' => 'createNpc', 'weight' => 2]];
+        }];
+        yield 'pick step with a count above ten' => [static function (\stdClass $release): void {
+            self::playStep($release)->kind = 'pick';
+            self::playStep($release)->of = 'npc';
+            self::playStep($release)->mode = 'random';
+            self::playStep($release)->count = (object) ['min' => 1, 'max' => 11];
         }];
         yield 'missing flows' => [static function (\stdClass $release): void {
             unset($release->flows);

@@ -17,12 +17,14 @@ final readonly class Catalog
      * @param array<string, array<string, true>>                     $tableEntryKeys   table key => its entry keys
      * @param array<string, array<string, true>>                     $likelihoodLevels likelihood oracle key => its level keys
      * @param array<string, true>                                    $sceneTypes
+     * @param array<string, true>                                    $tags             the tag keys of the release
      */
     public function __construct(
         public array $trackers,
         public array $tableEntryKeys,
         public array $likelihoodLevels,
         public array $sceneTypes,
+        public array $tags = [],
     ) {
     }
 
@@ -44,5 +46,10 @@ final readonly class Catalog
     public function hasSceneType(string $key): bool
     {
         return isset($this->sceneTypes[$key]);
+    }
+
+    public function hasTag(string $key): bool
+    {
+        return isset($this->tags[$key]);
     }
 }

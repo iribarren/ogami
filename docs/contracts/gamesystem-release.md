@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots, table entry metadata, the chaos tracker, Scene Types with their steps, and flows with their phases, Scene selections and hooks.
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads version 2 except `tags`, `pick`, `condition` counts, the NPC and Thread effects and `{picked}` (feature 8 adds them): trackers, fact slots, table entry metadata, the chaos tracker, Scene Types with their steps, and flows with their phases, Scene selections and hooks.
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 
@@ -120,13 +120,14 @@ gameSystem     { key, name, description? }                       unchanged
 oracles        { tables: [OracleTable], likelihood: [LikelihoodOracle] }
 trackers       [Tracker]
 factSlots      [FactSlot]
+tags           [Tag]   optional
 sceneTypes     [SceneType]
 flows          [Flow]
 sheet          {}   reserved
 checks         []   reserved
 ```
 
-There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are required and may be empty; a release with no flows is played freely.
+There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are required and may be empty; a release with no flows is played freely. `tags` is optional and empty by default.
 
 ### Release parts
 
@@ -137,6 +138,7 @@ There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are re
 | Tracker | `{key, name (1–100), hint? (≤500), kind: counter, min, max, initial, levels?}` or `{key, name, hint?, kind: clock, segments (1–20)}` | At most 50; keys unique in their own namespace; `min ≤ initial ≤ max`, all within ±1000; a clock starts at 0 |
 | Counter `levels` | `[{upTo?, label (1–100)}]` (≤20) | Same ordering as bands, literal `upTo` only |
 | FactSlot | `{key, label (1–100), type: text \| npc \| thread}` | At most 100; keys unique. Declared only: feature 8b fills them |
+| Tag | `{key, label (1–50), hint? (≤500)}` | At most 50; keys unique (own namespace). One list for NPCs and Threads; `pick`, `count` and the NPC and Thread effects name tags by key |
 | SceneType | `{key, name (1–100), purpose (1–500), tips? (≤2000), oracles: [key], setup: [Step], play: [Step], closing: [Step]}` | At most 100; keys unique; `oracles` (the Scene Type's shortcuts) unique and in the oracle namespace |
 | Flow | `{key, name (1–100), description? (≤2000), introduction? (≤5000), default?, defaultView: focus \| journal, oracles: [key], trackers: [key], phases: [Phase] (1–20)}` | At most 20; keys unique; at most one `default: true`; `oracles` and `trackers` unique and existing |
 | Phase | `{key, name (1–100), act? (1–100), mode: once \| loop, selection, sessionOpening?, sessionClosing?, phaseOpening?, phaseClosing?, sceneOpening?, sceneClosing?, worldTurn?}` | Keys unique in the flow. Each hook is a step list, empty by default |
@@ -154,16 +156,17 @@ A step list (`setup`, `play`, `closing` and each hook) holds at most 50 steps.
 | `table` | `table` (table key), `branches?: [{entry, next?, effects?}]` (≤1000), `otherwise?: {next?, effects?}` | The table exists; `entry` is a key of an entry of the step's own table, unique in the list |
 | `roll` | `dice`, `bands?: [Band]` (≤20) | Valid dice notation |
 | `choice` | `options: [{key, label (1–100), next?, effects?}]` (2–10), `skip?` (option key) | Option keys unique; `skip` is one of them. A suggested (not mandatory) choice must name `skip` |
-| `condition` | `tracker`, `bands: [Band]` (1–20) | The tracker exists. Never `mandatory`; never skipped; writes no journal entry |
+| `condition` | exactly one of `tracker` or `count: {of: npc \| thread, tags?: [key] (≤5)}`, plus `bands: [Band]` (1–20) | The tracker exists, or the tags exist and are unique. A `count` compares the number of open NPCs or Threads carrying all the tags to the bands. Never `mandatory`; never skipped; writes no journal entry |
+| `pick` | `of: npc \| thread`, `tags?: [key]` (≤5), `mode: random \| choose`, `count?: {min, max}`, `branches?: {found?, none?}` | Tags exist and are unique; `1 ≤ min ≤ max ≤ 10`, default `{min: 1, max: 1}`; branches are `{next?, effects?}`. `mandatory` allowed. Picks open items carrying all the tags: `random` draws, `choose` lets the player select |
 
-Every `next` (of a step, band, branch, option or `otherwise`) follows the forward-only rule of the step list it is in. Branches and `otherwise` are `{next?, effects?}`.
+Every `next` (of a step, band, branch, option, `otherwise` or `pick` branch) follows the forward-only rule of the step list it is in. Branches and `otherwise` are `{next?, effects?}`.
 
 ### Bands and effects
 
 | Part | Shape | Rules |
 |---|---|---|
 | Band | `{upTo?: int \| {tracker: key}, next?, effects?}` | Ordered upper bounds: every band but the last has `upTo`; the last omits it and catches the rest; literal `upTo` values strictly increase |
-| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` | At most 10 per list; referenced trackers and Scene Types exist |
+| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` | At most 10 per list; referenced trackers, Scene Types and tags exist; `tags` unique; `name` and `agenda` are placeholder text |
 
 ### References inside a flow
 
@@ -180,15 +183,16 @@ A Scene Type is **reachable** from a flow through:
 
 ### Placeholders
 
-A `{…}` matching `\{[a-z]+(:[a-z0-9-]+)?\}` in a step `title`, `prompt` or `tip`, or in effect text (a `sceneTitle` title), is a placeholder; other braces are text.
+A `{…}` matching `\{[a-z]+(:[a-z0-9-]+)?\}` in a step `title`, `prompt` or `tip`, or in effect text (a `sceneTitle` title, a `createNpc` `name` and `agenda`, a `createThread` `name`), is a placeholder; other braces are text.
 
 | Placeholder | Allowed where | Must name |
 |---|---|---|
 | `{tracker:key}` | Any placeholder text | A tracker of the flow (outside any flow: of the release) |
 | `{step:key}` | Any placeholder text | A step key of the flow's phases or reachable Scene Types (outside any flow: of the release) |
 | `{answer}` | Effect text only | The answer of the step the effect belongs to |
+| `{picked}` | Any placeholder text | Nothing: no argument (`{picked:x}` fails). The names of the items most recently picked or created in the current Scene |
 
-Any other placeholder fails with "not supported in schema version 2". Feature 8 adds `{picked}` and 8b `{fact:key}`.
+Any other placeholder fails with "not supported in schema version 2". Feature 8b adds `{fact:key}`.
 
 ### Authoring warning
 
@@ -204,18 +208,18 @@ The condition decides the effect when some of its bands reach a `nextScene` S an
 
 Only S's own step effects count as lowering T (in any of its parts, including bands, branches and options). Effects of table entries that S rolls do not: they lower T only by chance, so a forced Scene Type whose relief comes from a rolled entry still warns.
 
-The rule applies to the step lists of flow phases and of Scene Types (`sceneTypes[i].play[j]: …`). Warnings are returned with the validated content and printed by the console command; they are not stored.
+The rule applies to tracker conditions only: a `condition` with `count` has no tracker and never warns. It applies to the step lists of flow phases and of Scene Types (`sceneTypes[i].play[j]: …`). Warnings are returned with the validated content and printed by the console command; they are not stored.
 
 ### Canonical form
 
-As in version 1: keys in schema order, absent or `null` optionals omitted, integer-valued floats as integers, strings as given. Also, an optional list that is empty (`effects`, hooks, `levels`, `bands` of a `roll`, `branches` of a `table`), a `false` flag (`default`, `mandatory`), an empty outcome (`{}` as a branch or `otherwise`) and `branches` of an `oracle` step with no outcome mean the same as absent and are omitted. A band with no field (`{}`) stays `{}`.
+As in version 1: keys in schema order, absent or `null` optionals omitted, integer-valued floats as integers, strings as given. Also, an optional list that is empty (`effects`, hooks, `levels`, `bands` of a `roll`, `branches` of a `table`), a `false` flag (`default`, `mandatory`), an empty outcome (`{}` as a branch or `otherwise`) and `branches` of an `oracle` step with no outcome mean the same as absent and are omitted. A band with no field (`{}`) stays `{}`. An empty `tags` list (top level, `pick`, `count`, `createNpc`, `createThread`) and a `pick` `count` equal to the default `{min: 1, max: 1}` are omitted too.
 
 ### Schema file vs domain (schema version 2)
 
 | Checked by | Rules |
 |---|---|
-| JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`); list sizes and lengths above; numeric bounds; `end` not a step key; a `condition` never `mandatory`; unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
-| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; forward-only `next`; band ordering; every reference above; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation; placeholders; trimmed lengths |
+| JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`, `of`); list sizes and lengths above; numeric bounds (incl. `count` 1–10); `end` not a step key; a `condition` never `mandatory`; a `condition` with exactly one of `tracker` and `count`; unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
+| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation; placeholders; trimmed lengths |
 
 ## Publishing
 

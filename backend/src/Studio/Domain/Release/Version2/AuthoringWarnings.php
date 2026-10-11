@@ -9,7 +9,8 @@ namespace App\Studio\Domain\Release\Version2;
  * consequence must lower its tracker, or it fires on every turn. In one step list, when a
  * "condition" on tracker T decides a nextScene S effect (some of its bands reach a nextScene S,
  * not all of them), and Scene Type S has no effect lowering T ("set", or "add" with a negative
- * literal), the release publishes with a warning. Warnings are computed, never stored.
+ * literal), the release publishes with a warning. A condition counting NPCs or Threads has no
+ * tracker and never warns. Warnings are computed, never stored.
  *
  * @internal
  */
@@ -49,7 +50,7 @@ final class AuthoringWarnings
         $warnings = [];
         foreach ($lists as $path => $steps) {
             foreach ($steps as $index => $step) {
-                if ('condition' !== $step['kind'] || !\is_string($step['tracker'])) {
+                if ('condition' !== $step['kind'] || !\is_string($step['tracker'] ?? null)) {
                     continue;
                 }
 
@@ -156,7 +157,7 @@ final class AuthoringWarnings
         $exhaustive = \in_array($step['kind'], ['condition', 'choice'], true)
             || ('roll' === $step['kind'] && [] !== $outcomes)
             || isset($step['otherwise'])
-            || (\is_array($step['branches'] ?? null) && isset($step['branches']['yes'], $step['branches']['no']));
+            || (\is_array($step['branches'] ?? null) && (isset($step['branches']['yes'], $step['branches']['no']) || isset($step['branches']['found'], $step['branches']['none'])));
 
         return $exhaustive ? $nexts : [...$nexts, $default];
     }

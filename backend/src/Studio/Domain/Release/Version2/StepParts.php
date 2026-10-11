@@ -7,7 +7,8 @@ namespace App\Studio\Domain\Release\Version2;
 /**
  * Walks the parts of canonical schema version 2 steps, with their paths: the outcomes that may
  * carry "next" and "effects" (the step itself, its bands, branches, "otherwise" and options), the
- * effects, tracker references, placeholder texts and rolled tables.
+ * effects, tracker references (a condition counting NPCs or Threads has none), placeholder texts
+ * and rolled tables.
  *
  * @internal
  */
@@ -131,8 +132,8 @@ final class StepParts
      */
     public static function trackers(array $step, string $path): iterable
     {
-        if ('condition' === ($step['kind'] ?? null)) {
-            yield $path.'.tracker' => self::string($step['tracker'] ?? null);
+        if ('condition' === ($step['kind'] ?? null) && isset($step['tracker'])) {
+            yield $path.'.tracker' => self::string($step['tracker']);
         }
 
         foreach (self::objects($step['bands'] ?? []) as $index => $band) {
@@ -175,6 +176,14 @@ final class StepParts
     {
         if ('sceneTitle' === ($effect['kind'] ?? null)) {
             yield $path.'.title' => [self::string($effect['title'] ?? null), true];
+        }
+
+        if (\in_array($effect['kind'] ?? null, ['createNpc', 'createThread'], true)) {
+            foreach (['name', 'agenda'] as $name) {
+                if (isset($effect[$name]) && \is_string($effect[$name])) {
+                    yield $path.'.'.$name => [$effect[$name], true];
+                }
+            }
         }
     }
 

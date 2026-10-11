@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "tags": [{"key": "a", "label": "a"}, {"key": "b", "label": "b"}, {"key": "c", "label": "c"}, {"key": "d", "label": "d"}, {"key": "e", "label": "e"}, {"key": "f", "label": "f"}],
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "who", "kind": "pick", "title": "Who?", "of": "npc", "mode": "random", "tags": ["a", "b", "c", "d", "e", "f"]}], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "tags": [{"key": "ally", "label": "Ally"}, {"key": "hostile", "label": "Hostile"}],
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "createThread", "agenda": "Nope"}]}], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

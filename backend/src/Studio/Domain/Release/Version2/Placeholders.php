@@ -8,8 +8,8 @@ use App\Studio\Domain\Release\InvalidReleaseContent;
 
 /**
  * Namespaced placeholders (ADR 0018, decision 9). A "{…}" matching PATTERN is a placeholder, other
- * braces are text. Schema version 2 allows {tracker:key}, {step:key} and, in effect text only,
- * {answer}.
+ * braces are text. Schema version 2 allows {tracker:key}, {step:key}, {picked} and, in effect
+ * text only, {answer}.
  *
  * @internal
  */
@@ -40,6 +40,9 @@ final class Placeholders
                 if (!$effectText) {
                     throw InvalidReleaseContent::at($path, 'placeholder {answer} is only allowed in effect text');
                 }
+            } elseif ('picked' === $namespace && null === $key) {
+                // The items picked or created in the current Scene: nothing to check in the release.
+                continue;
             } else {
                 throw InvalidReleaseContent::at($path, \sprintf('placeholder %s is not supported in schema version 2', $placeholder));
             }

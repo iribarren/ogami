@@ -293,6 +293,7 @@ final class ReleaseContentVersion2Test extends TestCase
     {
         yield 'version 2 with flows, empty bands, oracle branches and an empty sheet' => [ReleaseArrays::fixture('valid/v2-every-part')];
         yield 'version 2 Scene Types' => [self::scenes()];
+        yield 'version 2 tags, pick steps, count conditions and the NPC and Thread effects' => [ReleaseArrays::fixture('valid/v2-threads-npcs')];
         yield 'version 1' => [ReleaseArrays::fixture('valid/contract-doc-example')];
     }
 
@@ -463,7 +464,7 @@ final class ReleaseContentVersion2Test extends TestCase
 
         // Placeholders.
         yield 'unsupported placeholder namespace' => [self::example('sceneTypes.0.setup.0.prompt', 'About {fact:target}'), 'sceneTypes[0].setup[0].prompt: placeholder {fact:target} is not supported in schema version 2'];
-        yield 'later-feature placeholder' => [self::example('sceneTypes.0.setup.0.title', '{picked} joins'), 'sceneTypes[0].setup[0].title: placeholder {picked} is not supported in schema version 2'];
+        yield 'later-feature placeholder' => [self::example('sceneTypes.0.setup.0.title', '{fact} joins'), 'sceneTypes[0].setup[0].title: placeholder {fact} is not supported in schema version 2'];
         yield 'tracker placeholder without key' => [self::example('sceneTypes.0.setup.0.title', 'At {tracker}'), 'sceneTypes[0].setup[0].title: placeholder {tracker} is not supported in schema version 2'];
         yield 'answer placeholder with a key' => [self::example('sceneTypes.2.setup.0.effects.1.title', '{answer:x}'), 'sceneTypes[2].setup[0].effects[1].title: placeholder {answer:x} is not supported in schema version 2'];
         yield 'answer placeholder in a step' => [self::example('sceneTypes.0.setup.0.tip', 'You said {answer}'), 'sceneTypes[0].setup[0].tip: placeholder {answer} is only allowed in effect text'];
@@ -505,7 +506,7 @@ final class ReleaseContentVersion2Test extends TestCase
         // Steps.
         yield 'too many steps' => [self::scenes('sceneTypes.0.play', array_map(static fn (int $i): array => ['key' => 's-'.$i, 'kind' => 'prompt', 'title' => 'S'], range(1, 51))), 'sceneTypes[0].play: at most 50 steps, 51 given'];
         yield 'step without kind' => [self::unset('sceneTypes.0.setup.0.kind', self::scenes()), 'sceneTypes[0].setup[0].kind: required'];
-        yield 'unknown step kind' => [self::scenes('sceneTypes.0.setup.0.kind', 'pick'), 'sceneTypes[0].setup[0].kind: must be one of "prompt", "oracle", "table", "roll", "choice", "condition", \'pick\' given'];
+        yield 'unknown step kind' => [self::scenes('sceneTypes.0.setup.0.kind', 'summon'), 'sceneTypes[0].setup[0].kind: must be one of "prompt", "oracle", "table", "roll", "choice", "condition", "pick", \'summon\' given'];
         yield 'field of another kind' => [self::scenes('sceneTypes.0.setup.0.dice', '1d6'), 'sceneTypes[0].setup[0].dice: unknown property'];
         yield 'step key end' => [self::scenes('sceneTypes.0.setup.0.key', 'end'), 'sceneTypes[0].setup[0].key: "end" is reserved'];
         yield 'duplicate step key in one list' => [self::scenes('sceneTypes.3.setup.1.key', 'how'), 'sceneTypes[3].setup[1].key: duplicate step key "how"'];
@@ -553,7 +554,7 @@ final class ReleaseContentVersion2Test extends TestCase
         // Effects.
         yield 'too many effects' => [self::scenes('sceneTypes.2.setup.0.effects', array_fill(0, 11, ['kind' => 'endPhase'])), 'sceneTypes[2].setup[0].effects: at most 10 effects, 11 given'];
         yield 'effect without kind' => [$effect(['tracker' => 'alarm']), 'sceneTypes[2].setup[0].effects[0].kind: required'];
-        yield 'unknown effect kind' => [$effect(['kind' => 'createNpc']), 'sceneTypes[2].setup[0].effects[0].kind: must be one of "tracker", "nextScene", "switchSceneType", "endPhase", "sceneTitle", \'createNpc\' given'];
+        yield 'unknown effect kind' => [$effect(['kind' => 'summonNpc']), 'sceneTypes[2].setup[0].effects[0].kind: must be one of "tracker", "nextScene", "switchSceneType", "endPhase", "sceneTitle", "createNpc", "createThread", "closeThread", \'summonNpc\' given'];
         yield 'unknown effect tracker' => [$effect(['kind' => 'tracker', 'tracker' => 'noise', 'op' => 'add', 'value' => 1]), 'sceneTypes[2].setup[0].effects[0].tracker: unknown tracker "noise"'];
         yield 'unknown effect op' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'multiply', 'value' => 2]), 'sceneTypes[2].setup[0].effects[0].op: must be one of "add", "set", \'multiply\' given'];
         yield 'effect value too high' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1001]), 'sceneTypes[2].setup[0].effects[0].value: must be at most 1000, 1001 given'];

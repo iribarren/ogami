@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "threads-npcs", "name": "Threads and NPCs", "description": "Tags, the pick step, count conditions, the NPC and Thread effects and the {picked} placeholder."},
+  "oracles": {
+    "tables": [
+      {"key": "encounters", "name": "Encounters", "entries": [{"text": "A rival appears", "key": "rival", "effects": [{"kind": "createNpc", "name": "Rival of {picked}", "agenda": "Wants {picked} gone.", "tags": ["hostile"]}, {"kind": "createThread", "name": "Settle the score", "tags": ["hostile"]}]}, {"text": "The trail goes cold", "key": "cold", "effects": [{"kind": "closeThread"}]}]}
+    ],
+    "likelihood": []
+  },
+  "tags": [
+    {"key": "leader", "label": "Leader", "hint": "Runs a faction or a crew."},
+    {"key": "ally", "label": "Ally"},
+    {"key": "hostile", "label": "Hostile", "hint": "Works against the player."}
+  ],
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "scene", "name": "Scene", "purpose": "Meet the people of the story.", "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "pick-rival", "kind": "pick", "title": "Who stirs trouble?", "of": "npc", "tags": ["leader", "hostile"], "mode": "random", "count": {"min": 1, "max": 2}, "branches": {"found": {"effects": [{"kind": "createThread", "name": "Hunt for {picked}", "tags": ["hostile"]}]}, "none": {"next": "watch"}}},
+        {"key": "pick-ally", "kind": "pick", "title": "Who helps?", "prompt": "Choose who stands with you, if {picked} allows.", "of": "npc", "tags": ["ally"], "mode": "choose", "mandatory": true, "branches": {"found": {"effects": [{"kind": "closeThread"}]}}},
+        {"key": "watch", "kind": "condition", "title": "How many open Threads?", "count": {"of": "thread"}, "bands": [{"upTo": 0, "next": "end"}, {"upTo": 3}, {}]},
+        {"key": "crowd", "kind": "condition", "title": "How many leaders?", "count": {"of": "npc", "tags": ["leader"]}, "bands": [{"upTo": 1}, {"effects": [{"kind": "createNpc", "name": "Rival of {picked}", "agenda": "Wants {picked} gone.", "tags": ["hostile", "leader"]}]}]},
+        {"key": "meet", "kind": "prompt", "title": "Who did you meet?", "prompt": "Describe {picked}.", "effects": [{"kind": "createNpc"}, {"kind": "createNpc", "name": "Stranger", "agenda": "Keeps secrets."}, {"kind": "createThread"}, {"kind": "createThread", "name": "Find {picked}"}, {"kind": "closeThread"}, {"kind": "sceneTitle", "title": "Meeting {picked}"}]}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

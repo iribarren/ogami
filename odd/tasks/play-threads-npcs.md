@@ -1,7 +1,7 @@
 # Feature: play-threads-npcs
 
 - **Locator:** `odd/tasks/play-threads-npcs.md` · Engram topic `odd/play-threads-npcs/tasks`
-- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-1-contract` (from `main` `5918ce1`)
+- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-2-acl` (from `main` `93f9150`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-flow-run` (PR #62)
@@ -91,6 +91,7 @@ Forecasts include tests, docs and generated files (OpenAPI spec, TS types). Hard
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
+| 1 | `review-718dfb084ffc7d2d` | `7e40f00` | Approved. One non-blocking finding, fixed in slice 2: the authoring-warning walk treats a `pick` with both `found` and `none` branches as exhaustive (`AuthoringWarnings.php:160`) and no test covers it | [#64](https://github.com/iribarren/ogami/pull/64) |
 | 1 | `feat/play-threads-npcs-1-contract` | `feat(studio): play-threads-npcs 1/8 contract` | T1 | ~1,500 |
 | 2 | `feat/play-threads-npcs-2-acl` | `feat(play): play-threads-npcs 2/8 acl` | T2, T3 | ~1,400 |
 | 3 | `feat/play-threads-npcs-3-lists` | `feat(play): play-threads-npcs 3/8 lists` | T4 | ~1,400 |
@@ -100,13 +101,13 @@ Forecasts include tests, docs and generated files (OpenAPI spec, TS types). Hard
 | 7 | `feat/play-threads-npcs-7-flow-http` | `feat(play): play-threads-npcs 7/8 flow-http` | T8 | ~1,600 |
 | 8 | `feat/play-threads-npcs-8-flow-ui` | `feat(play): play-threads-npcs 8/8 flow-ui` | T9, T10 | ~1,500 |
 
-Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them; no v2 release with flows is published (presets stay v1), and slice 2 adds the Play side next. Slices 3–4 add unused backend; 5 shows the lists; 6–7 add unused flow support; 8 shows it.
+Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them; releases are published only from `backend/presets/`, none uses the new parts, and slice 2 adds the Play side next. Slice 2 reads the new parts into the snapshot; FlowRun evaluates a `count` condition as 0 (Campaigns hold no NPCs or Threads yet) and does not play `pick` steps or the new effects until slice 6, so presets must not use them before then. Slices 3–4 add unused backend; 5 shows the lists; 6–7 add unused flow support; 8 shows it.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Feature doc. `v2.schema.json`: `tags`, `pick`, `condition` count, `createNpc` / `createThread` / `closeThread`. Studio `Version2`: tag catalog, step `pick`, condition count, new effects, `{picked}`; decision-7 warning ignores count conditions. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
+| T1 | 1 | Feature doc. `v2.schema.json`: `tags`, `pick`, `condition` count, `createNpc` / `createThread` / `closeThread`. Studio `Version2`: tag catalog, step `pick`, condition count, new effects, `{picked}`; decision-7 warning ignores count conditions. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7e40f00` |
 | T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | | [ ] | |
 | T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | | [ ] | |
 | T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | | [ ] | |
@@ -129,4 +130,4 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 
 ## Next step
 
-Slice 1 (T1): contract additions in schema version 2 and Studio validation.
+Slice 2 (T3, T2): slice 1 review fix (test for the exhaustive `pick` walk), the Play ACL for the new parts, then the example fixtures.

@@ -235,6 +235,45 @@ final class AuthoringWarningsTest extends TestCase
         return $typed['flows'][0]['phases'][1]['worldTurn'];
     }
 
+    /**
+     * The condition's second band falls through to a pick, then to a prompt forcing the Scene
+     * Type; the first band ends the list. The forced Scene Type is decided only when the pick
+     * can continue to the prompt.
+     *
+     * @param array<string, array{next: string}> $branches
+     *
+     * @return array<mixed>
+     */
+    private function conditionThenPickThenForcedScene(array $branches): array
+    {
+        $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
+
+        return ReleaseArrays::with($release, self::WORLD_TURN, [
+            ['key' => 'response', 'kind' => 'condition', 'title' => 'Does security respond?', 'tracker' => 'alarm', 'bands' => [['upTo' => 3, 'next' => 'end'], []]],
+            ['key' => 'look', 'kind' => 'pick', 'title' => 'Who is watching?', 'of' => 'npc', 'mode' => 'random', 'branches' => $branches],
+            ['key' => 'late', 'kind' => 'prompt', 'title' => 'Reinforcements', 'effects' => [['kind' => 'nextScene', 'sceneType' => 'firefight']]],
+        ]);
+    }
+
+    #[Test]
+    public function itTreatsAPickWithBothBranchesAsExhaustive(): void
+    {
+        $release = $this->conditionThenPickThenForcedScene(['found' => ['next' => 'end'], 'none' => ['next' => 'end']]);
+
+        self::assertSame([], ReleaseContent::fromArray($release)->warnings());
+    }
+
+    #[Test]
+    public function itKeepsThePickDefaultPathWhenOnlyOneBranchIsSet(): void
+    {
+        $release = $this->conditionThenPickThenForcedScene(['found' => ['next' => 'end']]);
+
+        self::assertSame(
+            ['flows[0].phases[1].worldTurn[2]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn'],
+            ReleaseContent::fromArray($release)->warnings(),
+        );
+    }
+
     #[Test]
     public function itDoesNotWarnAcrossStepLists(): void
     {

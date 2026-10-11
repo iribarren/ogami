@@ -69,10 +69,23 @@ final class ExampleReleasesTest extends TestCase
     #[DataProvider('exampleNames')]
     public function everyExampleDeclaresTagsAndUsesThreadsAndNpcs(string $name): void
     {
-        $json = (string) file_get_contents(self::EXAMPLES.'/'.$name.'.json');
+        $release = ReleaseArrays::fixture('examples/'.$name);
 
-        self::assertNotSame([], ReleaseArrays::fixture('examples/'.$name)['tags'] ?? []);
-        self::assertMatchesRegularExpression('/"kind": "(createNpc|createThread)"/', $json);
+        self::assertNotSame([], $release['tags'] ?? []);
+        self::assertTrue(self::declaresEffect($release, ['createNpc', 'createThread']), 'No createNpc or createThread effect found.');
+    }
+
+    /**
+     * @param array<mixed> $node
+     * @param list<string> $kinds
+     */
+    private static function declaresEffect(array $node, array $kinds): bool
+    {
+        if (\is_string($node['kind'] ?? null) && \in_array($node['kind'], $kinds, true)) {
+            return true;
+        }
+
+        return array_any($node, static fn ($child): bool => \is_array($child) && self::declaresEffect($child, $kinds));
     }
 
     #[Test]

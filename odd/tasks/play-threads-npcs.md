@@ -1,7 +1,7 @@
 # Feature: play-threads-npcs
 
 - **Locator:** `odd/tasks/play-threads-npcs.md` · Engram topic `odd/play-threads-npcs/tasks`
-- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-2-acl` (from `main` `93f9150`)
+- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-3-lists` (from `main` `efca025`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-flow-run` (PR #62)
@@ -91,7 +91,6 @@ Forecasts include tests, docs and generated files (OpenAPI spec, TS types). Hard
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `review-718dfb084ffc7d2d` | `7e40f00` | Approved. One non-blocking finding, fixed in slice 2: the authoring-warning walk treats a `pick` with both `found` and `none` branches as exhaustive (`AuthoringWarnings.php:160`) and no test covers it | [#64](https://github.com/iribarren/ogami/pull/64) |
 | 1 | `feat/play-threads-npcs-1-contract` | `feat(studio): play-threads-npcs 1/8 contract` | T1 | ~1,500 |
 | 2 | `feat/play-threads-npcs-2-acl` | `feat(play): play-threads-npcs 2/8 acl` | T2, T3 | ~1,400 |
 | 3 | `feat/play-threads-npcs-3-lists` | `feat(play): play-threads-npcs 3/8 lists` | T4 | ~1,400 |
@@ -108,8 +107,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Feature doc. `v2.schema.json`: `tags`, `pick`, `condition` count, `createNpc` / `createThread` / `closeThread`. Studio `Version2`: tag catalog, step `pick`, condition count, new effects, `{picked}`; decision-7 warning ignores count conditions. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7e40f00` |
-| T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | delegated writer (slice 2, 4+ non-trivial files) | [x] | |
-| T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | delegated writer (slice 2, 4+ non-trivial files) | [x] | |
+| T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | delegated writer (slice 2, 4+ non-trivial files) | [x] | `69fe4c5` |
+| T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | delegated writer (slice 2, 4+ non-trivial files) | [x] | `d89996a` |
 | T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | | [ ] | |
 | T5 | 4 | Commands, handlers, controllers for NPCs and Threads; campaign response gains `tags`, `npcs`, `threads`; API tests (422/404/409), Behat; `make api` | | [ ] | |
 | T6 | 5 | NPCs and Threads panels beside the journal (list, add, edit, close/reopen, weight, tags with hints, free tags); stories and tests | | [ ] | |
@@ -129,7 +128,9 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-718dfb084ffc7d2d` | `7e40f00` | Approved. One non-blocking finding, fixed in slice 2: the authoring-warning walk treats a `pick` with both `found` and `none` branches as exhaustive (`AuthoringWarnings.php:160`) and no test covers it | [#64](https://github.com/iribarren/ogami/pull/64) |
+| 2 | `review-6f606bfcc7c3e14f` | `9ce8501`, `d89996a`, `69fe4c5` | Approved. Non-blocking findings: `pick` steps load in Play while FlowRun cannot play them and no FlowRun test pins the behaviour at a `PickStep` (slice 6); `openItemCount` always returns 0, so the `cpr-campaign-in-acts` crew-size condition takes its lowest band (wired in slice 3, played in slice 6); `ExampleReleasesTest.php:74` matches raw JSON with a whitespace-sensitive regex (fixed in slice 3) | [#65](https://github.com/iribarren/ogami/pull/65) |
 
 ## Next step
 
-Slice 2 is written (T3, T2): native review, then PR. Next slice 3 (T4): Campaign NPCs and Threads.
+Slice 3 (T4): Campaign NPCs and Threads in the domain and persistence; the count condition reads them. Then native review and PR. Next slice 4 (T5): HTTP for the lists.

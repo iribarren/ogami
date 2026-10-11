@@ -790,6 +790,394 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/npcs": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Add an NPC to one of my campaigns",
+                "operationId": "addNpc",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NpcRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new, open NPC.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NpcResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of another JSON type than documented.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already holds 500 NPCs, or another request changed it meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long name, too long agenda, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is not in the pinned release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/npcs/{npcId}": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Replace the name, Agenda, Tags, free tags and weight of an NPC of one of my campaigns",
+                "operationId": "editNpc",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "npcId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NpcRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The edited NPC; its status stays.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NpcResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of another JSON type than documented.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no NPC with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long name, too long agenda, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is not in the pinned release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/npcs/{npcId}/close": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Close an NPC of one of my campaigns: flows no longer pick or count it",
+                "operationId": "closeNpc",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "npcId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The closed NPC. Closing a closed one changes nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NpcResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no NPC with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/npcs/{npcId}/reopen": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Reopen an NPC of one of my campaigns",
+                "operationId": "reopenNpc",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "npcId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The reopened NPC. Reopening an open one changes nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NpcResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no NPC with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/flow-run/answer": {
             "post": {
                 "tags": [
@@ -3096,6 +3484,148 @@
                 },
                 "type": "object"
             },
+            "TagResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "hint"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "leader"
+                    },
+                    "label": {
+                        "description": "What players see for the Tag.",
+                        "type": "string",
+                        "example": "Leader"
+                    },
+                    "hint": {
+                        "description": "Shown as a tooltip where Tags are chosen; null when the Tag has none.",
+                        "type": "string",
+                        "example": "Runs a faction or a crew.",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "NpcResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "agenda",
+                    "tags",
+                    "freeTags",
+                    "weight",
+                    "status"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Mira Vane"
+                    },
+                    "agenda": {
+                        "description": "What the NPC wants; null when none was written.",
+                        "type": "string",
+                        "example": "Wants the ledger back.",
+                        "nullable": true
+                    },
+                    "tags": {
+                        "description": "The keys of the pinned release's Tags the NPC carries; flows pick and count by them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "ally"
+                        ]
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, as typed; flows never match them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Fence"
+                        ]
+                    },
+                    "weight": {
+                        "description": "Favours the NPC in a random pick: 1 to 3.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "description": "A closed NPC is no longer picked or counted.",
+                        "type": "string",
+                        "example": "open",
+                        "enum": [
+                            "open",
+                            "closed"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "ThreadResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "tags",
+                    "freeTags",
+                    "weight",
+                    "status"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Rob the vault"
+                    },
+                    "tags": {
+                        "description": "The keys of the pinned release's Tags the Thread carries; flows pick and count by them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "heist"
+                        ]
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, as typed; flows never match them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Vault"
+                        ]
+                    },
+                    "weight": {
+                        "description": "Favours the Thread in a random pick: 1 to 3.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "description": "A closed Thread is no longer picked or counted.",
+                        "type": "string",
+                        "example": "open",
+                        "enum": [
+                            "open",
+                            "closed"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
             "CampaignResponse": {
                 "required": [
                     "id",
@@ -3111,7 +3641,10 @@
                     "flowKey",
                     "flowRun",
                     "flows",
-                    "sceneTypes"
+                    "sceneTypes",
+                    "tags",
+                    "npcs",
+                    "threads"
                 ],
                 "properties": {
                     "id": {
@@ -3197,6 +3730,27 @@
                         "items": {
                             "$ref": "#/components/schemas/SceneTypeSummaryResponse"
                         }
+                    },
+                    "tags": {
+                        "description": "The Tags of the pinned release, in definition order; empty for releases without any. NPCs and Threads carry them by key.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TagResponse"
+                        }
+                    },
+                    "npcs": {
+                        "description": "The campaign's NPCs: the open ones first, then the closed ones, each in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NpcResponse"
+                        }
+                    },
+                    "threads": {
+                        "description": "The campaign's Threads: the open ones first, then the closed ones, each in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ThreadResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -3243,6 +3797,53 @@
                         "description": "Clamped to the Tracker's range (min..max, 0..segments for a clock).",
                         "type": "integer",
                         "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "NpcRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "1 to 100 characters once trimmed.",
+                        "type": "string",
+                        "example": "Mira Vane"
+                    },
+                    "agenda": {
+                        "description": "What the NPC wants, at most 2000 characters; none when omitted, null or blank.",
+                        "type": "string",
+                        "example": "Wants the ledger back.",
+                        "nullable": true
+                    },
+                    "tags": {
+                        "description": "Keys of Tags of the campaign's pinned release, at most 10, each once; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "ally"
+                        ],
+                        "nullable": true
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Fence"
+                        ],
+                        "nullable": true
+                    },
+                    "weight": {
+                        "description": "1 to 3; 1 when omitted or null.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
                     }
                 },
                 "type": "object"

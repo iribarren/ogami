@@ -175,6 +175,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/npcs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an NPC to one of my campaigns */
+        post: operations["addNpc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/npcs/{npcId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the name, Agenda, Tags, free tags and weight of an NPC of one of my campaigns */
+        put: operations["editNpc"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/npcs/{npcId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close an NPC of one of my campaigns: flows no longer pick or count it */
+        post: operations["closeNpc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/npcs/{npcId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen an NPC of one of my campaigns */
+        post: operations["reopenNpc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/flow-run/answer": {
         parameters: {
             query?: never;
@@ -868,6 +936,87 @@ export interface components {
              */
             trackers: string[];
         };
+        TagResponse: {
+            /** @example leader */
+            key: string;
+            /**
+             * @description What players see for the Tag.
+             * @example Leader
+             */
+            label: string;
+            /**
+             * @description Shown as a tooltip where Tags are chosen; null when the Tag has none.
+             * @example Runs a faction or a crew.
+             */
+            hint: string | null;
+        };
+        NpcResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example Mira Vane */
+            name: string;
+            /**
+             * @description What the NPC wants; null when none was written.
+             * @example Wants the ledger back.
+             */
+            agenda: string | null;
+            /**
+             * @description The keys of the pinned release's Tags the NPC carries; flows pick and count by them.
+             * @example [
+             *       "ally"
+             *     ]
+             */
+            tags: string[];
+            /**
+             * @description The player's own labels, as typed; flows never match them.
+             * @example [
+             *       "Fence"
+             *     ]
+             */
+            freeTags: string[];
+            /**
+             * @description Favours the NPC in a random pick: 1 to 3.
+             * @example 1
+             */
+            weight: number;
+            /**
+             * @description A closed NPC is no longer picked or counted.
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "closed";
+        };
+        ThreadResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example Rob the vault */
+            name: string;
+            /**
+             * @description The keys of the pinned release's Tags the Thread carries; flows pick and count by them.
+             * @example [
+             *       "heist"
+             *     ]
+             */
+            tags: string[];
+            /**
+             * @description The player's own labels, as typed; flows never match them.
+             * @example [
+             *       "Vault"
+             *     ]
+             */
+            freeTags: string[];
+            /**
+             * @description Favours the Thread in a random pick: 1 to 3.
+             * @example 1
+             */
+            weight: number;
+            /**
+             * @description A closed Thread is no longer picked or counted.
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "closed";
+        };
         CampaignResponse: {
             /** Format: uuid */
             id: string;
@@ -905,6 +1054,12 @@ export interface components {
             flows: components["schemas"]["FlowSummaryResponse"][];
             /** @description The Scene Types of the pinned release, in definition order; empty for schema version 1. */
             sceneTypes: components["schemas"]["SceneTypeSummaryResponse"][];
+            /** @description The Tags of the pinned release, in definition order; empty for releases without any. NPCs and Threads carry them by key. */
+            tags: components["schemas"]["TagResponse"][];
+            /** @description The campaign's NPCs: the open ones first, then the closed ones, each in creation order. */
+            npcs: components["schemas"]["NpcResponse"][];
+            /** @description The campaign's Threads: the open ones first, then the closed ones, each in creation order. */
+            threads: components["schemas"]["ThreadResponse"][];
         };
         /** @description A title, a Scene Type, or both. */
         StartSceneRequest: {
@@ -932,6 +1087,37 @@ export interface components {
              * @example 3
              */
             value: number;
+        };
+        NpcRequest: {
+            /**
+             * @description 1 to 100 characters once trimmed.
+             * @example Mira Vane
+             */
+            name: string;
+            /**
+             * @description What the NPC wants, at most 2000 characters; none when omitted, null or blank.
+             * @example Wants the ledger back.
+             */
+            agenda?: string | null;
+            /**
+             * @description Keys of Tags of the campaign's pinned release, at most 10, each once; none when omitted or null.
+             * @example [
+             *       "ally"
+             *     ]
+             */
+            tags?: string[] | null;
+            /**
+             * @description The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.
+             * @example [
+             *       "Fence"
+             *     ]
+             */
+            freeTags?: string[] | null;
+            /**
+             * @description 1 to 3; 1 when omitted or null.
+             * @example 2
+             */
+            weight?: number | null;
         };
         CompleteFlowStepRequest: {
             /**
@@ -2124,6 +2310,303 @@ export interface operations {
             };
             /** @description The body is not JSON. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addNpc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NpcRequest"];
+            };
+        };
+        responses: {
+            /** @description The new, open NPC. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NpcResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of another JSON type than documented. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already holds 500 NPCs, or another request changed it meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long name, too long agenda, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is not in the pinned release. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    editNpc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                npcId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NpcRequest"];
+            };
+        };
+        responses: {
+            /** @description The edited NPC; its status stays. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NpcResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of another JSON type than documented. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no NPC with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long name, too long agenda, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is not in the pinned release. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeNpc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                npcId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The closed NPC. Closing a closed one changes nothing. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NpcResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no NPC with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenNpc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                npcId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reopened NPC. Reopening an open one changes nothing. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NpcResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no NPC with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

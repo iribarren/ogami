@@ -89,7 +89,7 @@ export function GuidedPanel({ campaign, flowRun }: { campaign: Campaign; flowRun
       )}
       {active && flowRun.step !== null && (
         <StepCard
-          key={flowRun.step.key}
+          key={`${String(campaign.currentSceneNumber)}/${part ?? ''}/${flowRun.step.key}`}
           campaign={campaign}
           step={flowRun.step}
           pending={command.isPending}

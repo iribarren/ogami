@@ -178,6 +178,41 @@ describe('the guided panel', () => {
     expect(guide.getByRole('region', { name: 'Current step: Push your luck' })).toBeInTheDocument()
   })
 
+  it('refetches the campaign when a command is refused, so the panel shows the server step', async () => {
+    const user = userEvent.setup()
+    const { server } = renderGuided(guided(atStep(rollStep)), {
+      'flow-run/answer': () =>
+        Response.json({ error: 'The FlowRun is at another step.' }, { status: 409 }),
+    })
+
+    const guide = await panel()
+    // Another tab moved the FlowRun on: the next read answers with the new step.
+    server.campaign = guided(atStep(promptStep))
+    await user.click(await guide.findByRole('button', { name: /^Roll/ }))
+
+    expect(
+      await guide.findByRole('region', { name: 'Current step: Who walks in?' }),
+    ).toBeInTheDocument()
+    expect(guide.queryByRole('region', { name: 'Current step: Push your luck' })).toBeNull()
+  })
+
+  it('starts the same step in the next scene of a loop with an empty answer', async () => {
+    const user = userEvent.setup()
+    const first = guided(atStep(promptStep))
+    const { server } = renderGuided(first, {
+      'flow-run/answer': answering({ ...first, currentSceneNumber: 2 }),
+    })
+
+    const guide = await panel()
+    await user.type(guide.getByLabelText('Your answer'), 'A tall stranger')
+    server.campaign = { ...first, currentSceneNumber: 2 }
+    await user.click(guide.getByRole('button', { name: 'Record' }))
+
+    await waitFor(() => {
+      expect(guide.getByLabelText('Your answer')).toHaveValue('')
+    })
+  })
+
   it('shows a generic message when a command fails unexpectedly', async () => {
     const user = userEvent.setup()
     renderGuided(guided(atStep(rollStep)), {

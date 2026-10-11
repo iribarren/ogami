@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Play\Domain\Campaign\Hook;
+
 /**
  * One entry of a FlowRun's history: what happened, when, and its details by name.
  */
@@ -19,7 +21,10 @@ final readonly class FlowRunHistoryEntry
     ) {
     }
 
-    public static function skip(\DateTimeImmutable $at, string $step, ScenePart $part): self
+    /**
+     * @param ScenePart|Hook $part the scene part or the hook the step is in
+     */
+    public static function skip(\DateTimeImmutable $at, string $step, ScenePart|Hook $part): self
     {
         return new self(FlowRunEvent::Skip, $at, ['step' => $step, 'part' => $part->value]);
     }

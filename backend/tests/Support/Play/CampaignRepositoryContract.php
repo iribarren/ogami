@@ -187,6 +187,36 @@ trait CampaignRepositoryContract
     }
 
     /**
+     * Flow example 2 (Cyberpunk RED heist) in its first world turn (play-flow-run slice 20): the
+     * hook, its hook Scene and a skip in it are kept, and the reloaded campaign goes on.
+     */
+    #[Test]
+    public function itKeepsAFlowRunInAHook(): void
+    {
+        $release = new GameSystemReleaseTranslator()->translate(ReleaseViews::of(ReleaseViews::fixtureContent('examples/cpr-heist')));
+        $at = new \DateTimeImmutable('2026-10-10T09:00:00.250000+02:00');
+        $campaign = Campaign::create(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'), self::OWNER, 'The job', PinnedRelease::of($release->gameSystemKey(), $release->releaseVersion(), $release->name()), $at, $release->trackers(), $release->flow('heist'));
+        $campaign->startSession($at, $release);
+        foreach (['crew' => ['first', 'second'], 'briefing' => ['client', 'target', 'payout', 'plan', 'catch'], 'social' => ['talk']] as $sceneType => $steps) {
+            $campaign->pickSceneType($sceneType, $release, $at);
+            foreach ($steps as $step) {
+                'first' === $step ? $campaign->completeFlowStep($step, StepResult::prompt('Ada'), $release, $at) : $campaign->skipFlowStep($step, $release, $at);
+            }
+
+            $campaign->endFlowScene((int) $campaign->currentScene()?->number(), $release, $at);
+        }
+
+        $campaign->skipFlowStep('gain-edge', $release, $at);
+        $this->campaigns()->add($campaign);
+
+        $loaded = $this->reloaded($campaign);
+        self::assertSame([FlowRunStage::Hook, Hook::WorldTurn, 'word', [1, 4], 'The world moves'], [$loaded->flowRun()?->stage(), $loaded->flowRun()?->hook(), $loaded->flowRun()?->stepKey(), $loaded->flowRun()?->scene(), $loaded->currentScene()?->title()]);
+        $loaded->skipFlowStep('word', $release, $at);
+        $this->campaigns()->save($loaded);
+        self::assertSame(['step' => 'word', 'part' => 'worldTurn'], array_last($this->reloaded($loaded)->flowRun()?->history() ?? [])?->details);
+    }
+
+    /**
      * A Scene Type switch through Effects and an ignored one (play-flow-run slice 19) are kept.
      */
     #[Test]

@@ -95,7 +95,8 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals([
             'status' => 'paused', 'phaseIndex' => 0, 'stage' => 'scene', 'sessionNumber' => 1, 'sceneNumber' => 1, 'sceneType' => 'legwork',
             'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
-            'phaseEnding' => null, 'switchCount' => 0, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
+            'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false,
+            'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
     }
@@ -128,15 +129,20 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         yield 'unknown status' => [['status' => 'lost'], 'Stored campaign FlowRun: "status" must be one of "active", "paused", "completed".'];
         yield 'no phase index' => [['phaseIndex' => null], 'Stored campaign FlowRun: "phaseIndex" must be an integer.'];
-        yield 'unknown stage' => [['stage' => 'hook'], 'Stored campaign FlowRun: "stage" must be one of "scenePick", "scene".'];
+        yield 'unknown stage' => [['stage' => 'interlude'], 'Stored campaign FlowRun: "stage" must be one of "scenePick", "scene", "hook".'];
+        yield 'stage hook without a hook' => [['stage' => 'hook'], 'Stored campaign FlowRun: "hook" must be set at stage "hook".'];
+        yield 'a hook outside stage hook' => [['hook' => 'worldTurn'], 'Stored campaign FlowRun: "hook" must be null outside stage "hook".'];
+        yield 'unknown hook' => [['stage' => 'hook', 'hook' => 'dawn'], 'Stored campaign FlowRun: "hook" must be one of "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
+        yield 'phase opened not a boolean' => [['phaseOpened' => 1], 'Stored campaign FlowRun: "phaseOpened" must be a boolean.'];
+        yield 'session opening due null' => [['sessionOpeningDue' => null], 'Stored campaign FlowRun: "sessionOpeningDue" must be a boolean.'];
         yield 'unknown part' => [['part' => 'epilogue'], 'Stored campaign FlowRun: "part" must be one of "sceneOpening", "setup", "play", "open", "closing", "sceneClosing".'];
         yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
         yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
-        yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn".'];
+        yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn", "finished".'];
         yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
         yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "sceneTypeSwitchIgnored", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
         yield 'malformed time' => [['history' => [['event' => 'paused', 'at' => 'yesterday', 'details' => []]]], 'Stored campaign FlowRun: "at" must be a time like 2026-10-06T10:00:00.000000+00:00.'];
-        yield 'skip of an unknown part' => [$entry('skip', ['step' => 'plan', 'part' => 'later']), 'Stored campaign FlowRun: "part" must be one of'];
+        yield 'skip of an unknown part' => [$entry('skip', ['step' => 'plan', 'part' => 'later']), 'Stored campaign FlowRun: "part" must be one of "sceneOpening", "setup", "play", "open", "closing", "sceneClosing", "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
         yield 'tracker edit from a string' => [$entry('trackerEdit', ['tracker' => 'heat', 'from' => '1', 'to' => 2]), 'Stored campaign FlowRun: "from" must be an integer.'];
         yield 'switch without its target' => [$entry('sceneTypeSwitch', ['scene' => 1, 'from' => null]), 'Stored campaign FlowRun: "to" must be a string.'];
         yield 'ignored switch without its Scene Type' => [$entry('sceneTypeSwitchIgnored', ['scene' => 1]), 'Stored campaign FlowRun: "sceneType" must be a string.'];
@@ -159,6 +165,25 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->expectExceptionMessageIsOrContains($error);
 
         $this->repository->ofId($id);
+    }
+
+    /**
+     * A FlowRun stored before hooks ran (play-flow-run slice 20) has no hook, phase opening or
+     * session opening fields: the current phase's opening has run and no session opening is due.
+     */
+    #[Test]
+    public function aFlowRunStoredBeforeHooksReadsAsPastThePhaseOpening(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['hook', 'phaseOpened', 'sessionOpeningDue']));
+        $legacy['history'] = [['event' => 'skip', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => ['step' => 'plan', 'part' => 'setup']]];
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $flowRun = $this->repository->ofId($id)?->flowRun();
+
+        self::assertSame([FlowRunStage::Scene, null, true, false, 'setup'], [$flowRun?->stage(), $flowRun?->hook(), $flowRun?->phaseOpened(), $flowRun?->sessionOpeningDue(), array_last($flowRun?->history() ?? [])?->details['part']]);
     }
 
     /**

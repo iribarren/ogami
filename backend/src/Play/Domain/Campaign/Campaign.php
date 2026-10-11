@@ -153,8 +153,10 @@ final class Campaign
 
     /**
      * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet;
-     * a session still under way stays as it is. A FlowRun waiting at a scene pick with one Scene
-     * Type starts that scene; a guided scene of an earlier session is abandoned.
+     * a session still under way stays as it is. A guided FlowRun goes on in it: its session opening
+     * runs (in a hook Scene), then a scene pick with one Scene Type starts that scene; a guided
+     * scene or hook Scene of an earlier session is abandoned. All or nothing, like the FlowRun
+     * commands.
      *
      * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told
      *
@@ -167,10 +169,13 @@ final class Campaign
         }
 
         $session = Session::start(\count($this->sessions) + 1, $startedAt);
-        $this->sessions[] = $session;
+        $draft = clone $this;
+        $draft->sessions[] = $session;
         if ($release instanceof GameSystemSnapshot) {
-            $this->changedFlowRun()?->sessionStarted($this->flowContext($release, $startedAt));
+            $draft->changedFlowRun()?->sessionStarted($draft->flowContext($release, $startedAt));
         }
+
+        $this->adopt($draft);
 
         return $session;
     }

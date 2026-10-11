@@ -97,7 +97,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         $campaign->endFlowScene(3, $this->heist, self::at());
         $view = $this->view($campaign);
         self::assertInstanceOf(ChoiceStep::class, $view->step?->step);
-        self::assertSame([StepKind::Choice, ['Yes', 'No'], 'Next scene: choose a scene type'], [$view->step->kind, array_map(static fn (\App\Play\Domain\GameSystem\Flow\ChoiceOption $option): string => $option->label, $view->step->step->options), $view->next]);
+        self::assertSame([StepKind::Choice, ['Yes', 'No'], 'World turn: Does word get around?'], [$view->step->kind, array_map(static fn (\App\Play\Domain\GameSystem\Flow\ChoiceOption $option): string => $option->label, $view->step->step->options), $view->next]);
 
         // Once Move on is chosen in a scene, the phase ends after it and is not offered again.
         $campaign->moveOn('legwork', $this->heist, self::at());

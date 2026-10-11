@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-22-trackers-oracles` (from `main` `cc7815f`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-23-focus-mode` (from `main` `64f00a6`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -193,10 +193,10 @@ Re-forecasts split slices whenever the parent's forecast passed the limit: slice
 | T11 | 19 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | delegated writer (slice 19, 2+ non-trivial files) | [x] | `3340e66` |
 | T12 | 20 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | delegated writer (slice 20, 2+ non-trivial files) | [x] | `48bd152`, `3d6df4a` |
 | T13 | 21 | Flow choice in campaign creation | delegated writer (slice 21, 2+ non-trivial files) | [x] | `28ed8eb` |
-| T13b | 23 | Delete `flow-prototypes/` (after T14 and T16 ported what they need); ADR 0016 note | | [ ] | |
+| T13b | 23 | Delete `flow-prototypes/` (after T14 and T16 ported what they need); ADR 0016 note | delegated writer (slice 23, deletion of a directory) | [x] | |
 | T14 | 21 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | delegated writer (slice 21, 2+ non-trivial files) | [x] | `a24b711`, `fca927c`, `24b869d` |
-| T15 | 22 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry. API adds: flow `oracles`/`trackers` on the flows summary, Scene Type `oracles` (shortcuts), `sceneType` on journal oracle-table steps (stored at roll time, legacy rows null) | delegated writer (slice 22, 2+ non-trivial files) | [x] | |
-| T16 | 23 | Focus mode, `defaultView`, toggle per campaign, progress `Act › Phase › Scene type › part · step n/m`, summary with skips | | [ ] | |
+| T15 | 22 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry. API adds: flow `oracles`/`trackers` on the flows summary, Scene Type `oracles` (shortcuts), `sceneType` on journal oracle-table steps (stored at roll time, legacy rows null) | delegated writer (slice 22, 2+ non-trivial files) | [x] | `302bf37`, `61374e6` |
+| T16 | 23 | Focus mode (frontend only; `defaultView` already on the flows summary): per-campaign toggle (initialised from the active Flow's `defaultView`, kept in `localStorage`), progress `Act › Phase › Scene type › part · step n/m`, only the current step card and next step on screen, and a compact summary of the current scene's journal entries. **User decision 2026-10-11:** the summary lists the scene's results (journal entries) only; skipped steps leave no entry and are not shown, so no API change (ADR 0016: focus mode is a view of existing state) | delegated writer (slice 23, 2+ non-trivial files) | [ ] | |
 | T17 | 23 | Roadmap and glossary updates; review outcomes and PR links (doc-only commit after the last review) | | [ ] | |
 
 ## Acceptance criteria
@@ -247,6 +247,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 - Slice 21 review fixes: a refused command (409) refetches the campaign so the panel shows the server's FlowRun; `StepCard` is keyed by scene, part and step so a loop's next scene starts with an empty answer (RED 2 → GREEN).
 - T15 API: flow `oracles`/`trackers` and Scene Type `oracles` on the campaign view; `sceneType` stored on each `oracle-table` step at roll time (free-play roll and FlowRun table steps; the oracle scene pick records no entry) and exposed in the journal; legacy rows read null, a non-string value fails closed; `make api`. Tests written with the code (characterization, no separate RED run).
 - T15 UI: `trackers/` panel (value, level, hint, − / + / typed value clamped, `PUT` answer replaces the Tracker, 409 refetches; the Flow's Trackers only while the FlowRun is active), `OraclePanel` order Scene shortcuts › Flow oracles › collapsed "More oracles" (flat when neither picks one), Scene Type select on the current scene and optional Scene Type when starting a scene (`useSwitchSceneType`, 409 refetches), "Switch to <Scene Type>" under a rolled entry in the current scene; 31 Vitest cases and Trackers stories (written with the code, no separate RED run). A hook Scene shows no switch.
+- T13b: `frontend/src/play/flow-prototypes/` deleted (nothing outside it imported it); ADR 0016 consequence updated. Deletion only, no test (the prototypes' own tests went with them).
 
 ## Reviews
 
@@ -273,7 +274,8 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 | 19 | Medium risk; reliability lens; approved and acknowledged (lineage `review-bbf418b19b4a48d9`); commits `05889f3` (review fixes, doc condensed), `3340e66` (T11). Non-blocking, fixed in slice 20: the all-or-nothing test covers only a command refused before any Effect runs; no test shows that a failure after Effects changed the Campaign (Tracker values, scene title, Scene Type switch) leaves the live campaign unchanged | #58 (merged) |
 | 20 | Medium risk; reliability lens; approved and acknowledged (lineage `review-e38b236a19a71b6e`); commits `4f21d2a` (review fix), `48bd152`, `3d6df4a` (T12). Non-blocking, fixed in slice 21: `EndSessionHandler` reads the pinned release for every campaign with a Flow, so an unreadable release makes End session 500 even with a paused or completed FlowRun; a `switchSceneType` Effect on a condition step in a hook starts a hook Scene although every condition step passes; no test for pausing during the session closing, ending the session while paused, then resuming | #59 (merged) |
 | 21 | Medium risk; reliability lens; approved and acknowledged (lineage `review-d8c5dfb69a6c31d7`); commits `5303b3e` (review fixes), `28ed8eb` (T13), `a24b711`, `fca927c`, `24b869d` (T14). Non-blocking, fixed in slice 22: after a refused command (409, e.g. from another tab) the cached campaign is not refetched, so the panel shows a stale step and every retry is refused until a reload; `StepCard` is keyed only by `step.key`, so in a loop phase the same step in the next scene keeps the old typed answer | #60 (merged) |
+| 22 | Medium risk; reliability lens; approved and acknowledged (lineage `review-cec90abcbd44a720`); commits `9cf986c` (slice 21 review fixes), `302bf37` (T15 API), `61374e6` (T15 UI). Non-blocking, fixed in slice 23: no test shows a FlowRun table step storing a non-null `sceneType` (only the free-play roll is covered); the oracle panel applies the Flow's order whatever the FlowRun's status, while the Trackers panel applies the Flow's selection only while guidance is active (make them consistent and pin it) | #61 (merged) |
 
 ## Next step
 
-Slice 22 (slice 21 review fixes, T15), its review and PR; then slice 23 (T13b, T16, T17).
+Slice 23 (final): T13b (delete `flow-prototypes/`, its own commit before the reviewed range), slice 22 review fixes, T16 (focus mode); review (`--base-ref` the T13b commit so the deletion is excluded), PR (`Closes #39`); then T17 (roadmap, glossary, review outcomes and PR links) as the parent's final doc-only commit after review and PR.

@@ -63,6 +63,12 @@
       {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "exceptionalPercent": 20}
     ]
   },
+  "tags": [
+    {"key": "crew", "label": "Crew", "hint": "Part of your crew"},
+    {"key": "rival", "label": "Rival"},
+    {"key": "fixer", "label": "Fixer"},
+    {"key": "client", "label": "Client"}
+  ],
   "trackers": [
     {"key": "rep", "name": "Rep", "kind": "counter", "min": 0, "max": 10, "initial": 0},
     {"key": "heat", "name": "Heat", "hint": "At 8+ someone sends a hit squad", "kind": "counter", "min": 0, "max": 10, "initial": 0},
@@ -101,14 +107,14 @@
     {
       "key": "fixer", "name": "Fixer", "purpose": "Meet the fixer who gets you work.", "oracles": [],
       "setup": [
-        {"key": "fixer", "kind": "prompt", "title": "Who is your fixer, and what do they want from you?"}
+        {"key": "fixer", "kind": "prompt", "title": "Who is your fixer, and what do they want from you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["fixer"]}]}
       ],
       "play": [], "closing": []
     },
     {
       "key": "gig-offer", "name": "Gig offer", "purpose": "A fixer offers a gig.", "oracles": [],
       "setup": [
-        {"key": "gig", "kind": "prompt", "title": "Who offers the gig, and what is it?", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}]}
+        {"key": "gig", "kind": "prompt", "title": "Who offers the gig, and what is it?", "effects": [{"kind": "createNpc", "tags": ["client"]}, {"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}]}
       ],
       "play": [],
       "closing": [
@@ -138,7 +144,7 @@
       "key": "payday", "name": "Payday", "purpose": "Collect, and count the cost.", "oracles": [],
       "setup": [
         {"key": "clean", "kind": "condition", "title": "How clean was it?", "tracker": "alarm", "bands": [{"upTo": 3, "effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 2}]}, {"effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 1}]}]},
-        {"key": "loose-ends", "kind": "prompt", "title": "Any loose ends?"}
+        {"key": "loose-ends", "kind": "prompt", "title": "Any loose ends?", "effects": [{"kind": "createThread", "name": "{answer}"}]}
       ],
       "play": [], "closing": []
     },
@@ -155,7 +161,7 @@
     {
       "key": "recruit", "name": "Recruit", "purpose": "Bring someone into the crew.", "oracles": [],
       "setup": [
-        {"key": "joins", "kind": "prompt", "title": "Who joins, and what do they do?"}
+        {"key": "joins", "kind": "prompt", "title": "Who joins, and what do they do?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]}
       ],
       "play": [], "closing": []
     },
@@ -221,8 +227,10 @@
     {
       "key": "betrayal", "name": "Betrayal", "purpose": "Someone you trusted turns on you.", "oracles": ["twists"],
       "setup": [
-        {"key": "traitor", "kind": "prompt", "title": "Who sold you out?"},
-        {"key": "twist", "kind": "table", "title": "What is the twist?", "table": "twists"}
+        {"key": "traitor", "kind": "pick", "title": "Did your fixer sell you out?", "of": "npc", "tags": ["fixer"], "mode": "random", "branches": {"found": {"next": "twist"}, "none": {"next": "traitor-client"}}},
+        {"key": "traitor-client", "kind": "pick", "title": "Did a client sell you out?", "of": "npc", "tags": ["client"], "mode": "random", "branches": {"found": {"next": "twist"}}},
+        {"key": "traitor-other", "kind": "prompt", "title": "Who sold you out?"},
+        {"key": "twist", "kind": "table", "title": "What is the twist?", "table": "twists", "tip": "If someone was picked, {picked} sold you out."}
       ],
       "play": [], "closing": []
     },
@@ -255,9 +263,10 @@
       "key": "months-end", "name": "Month's end", "purpose": "The rent is due.", "oracles": [],
       "setup": [
         {"key": "home", "kind": "condition", "title": "Where do you live?", "tracker": "housing", "bands": [{"upTo": 0, "next": "rent-squat"}, {"upTo": 1, "next": "rent-cube"}, {"next": "rent-apartment"}]},
-        {"key": "rent-squat", "kind": "choice", "title": "Pay the rent (50 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -50}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
-        {"key": "rent-cube", "kind": "choice", "title": "Pay the rent (150 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -150}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
-        {"key": "rent-apartment", "kind": "choice", "title": "Pay the rent (400 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -400}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "rent-squat", "kind": "choice", "title": "Pay the rent (50 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -50}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "rent-cube", "kind": "choice", "title": "Pay the rent (150 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -150}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "rent-apartment", "kind": "choice", "title": "Pay the rent (400 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -400}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "debt", "kind": "pick", "title": "Which fixer do you borrow from?", "of": "npc", "tags": ["fixer"], "mode": "random", "branches": {"found": {"effects": [{"kind": "createThread", "name": "Debt to {picked}"}]}}},
         {"key": "move-up", "kind": "choice", "title": "Move up?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "housing", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
       ],
       "play": [], "closing": []
@@ -272,14 +281,16 @@
           "key": "making-a-name", "name": "Making a name", "act": "Act 1: Making a name", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["gig-offer", "downtime", "recruit", "social"]},
           "sceneClosing": [
             {"key": "rep", "kind": "condition", "title": "Is your rep high enough?", "tracker": "rep", "bands": [{"upTo": 4, "next": "end"}, {}]},
+            {"key": "crew-size", "kind": "condition", "title": "Is the crew big enough?", "count": {"of": "npc", "tags": ["crew"]}, "bands": [{"upTo": 1, "next": "end"}, {}]},
             {"key": "go-big", "kind": "choice", "title": "Go big?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "endPhase"}]}, {"key": "no", "label": "No"}], "skip": "no"}
           ],
           "worldTurn": [
             {"key": "street", "kind": "roll", "title": "Does the street stir?", "dice": "1d6", "bands": [{"upTo": 4, "next": "heat"}, {}]},
             {"key": "event", "kind": "table", "title": "What happens on the street?", "table": "street-events", "branches": [{"entry": "rival-crew", "next": "rival"}, {"entry": "gang-war", "next": "gang-war"}, {"entry": "corp-sweep", "next": "heat", "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": 1}]}, {"entry": "special-gig", "next": "heat", "effects": [{"kind": "nextScene", "sceneType": "gig-offer"}]}, {"entry": "grudge", "next": "grudge"}]},
-            {"key": "rival", "kind": "prompt", "title": "What is the rival crew after?", "next": "heat"},
+            {"key": "rival", "kind": "pick", "title": "Which rival crew moves?", "of": "npc", "tags": ["rival"], "mode": "random", "branches": {"none": {"next": "heat"}}},
+            {"key": "rival-after", "kind": "prompt", "title": "What is the rival crew after?", "prompt": "What is {picked} after?", "next": "heat"},
             {"key": "gang-war", "kind": "prompt", "title": "Whose streets burn?", "next": "heat"},
-            {"key": "grudge", "kind": "prompt", "title": "Who holds a grudge against you?"},
+            {"key": "grudge", "kind": "prompt", "title": "Who holds a grudge against you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["rival"]}]},
             {"key": "heat", "kind": "condition", "title": "Is the heat too high?", "tracker": "heat", "bands": [{"upTo": 7}, {"effects": [{"kind": "nextScene", "sceneType": "hit-squad"}]}]}
           ]
         },

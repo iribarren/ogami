@@ -19,6 +19,8 @@ use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Randomness\Domain\Oracle\YesNoAnswer;
+use App\Tests\Support\Play\ReleaseViews;
+use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -31,10 +33,27 @@ use PHPUnit\Framework\Attributes\Test;
 #[CoversClass(Campaign::class)]
 final class FlowRunExamplesTest extends FlowRunTestCase
 {
+    /**
+     * FlowRun plays no pick step until the Threads and NPCs flow support (slice 6): Chase's
+     * "wheel" is the prompt it was before the pick.
+     */
+    private function heistWithoutPick(): GameSystemSnapshot
+    {
+        $content = ReleaseViews::fixtureContent('examples/cpr-heist');
+        /** @var list<array{key: string}> $sceneTypes */
+        $sceneTypes = $content['sceneTypes'];
+        $chase = array_search('chase', array_column($sceneTypes, 'key'), true);
+        $wheel = ['key' => 'wheel', 'kind' => 'prompt', 'title' => 'Who takes the wheel?', 'tip' => 'A nomad in the crew is a good choice.'];
+        /** @var array<string, mixed> $typed */
+        $typed = ReleaseArrays::with($content, \sprintf('sceneTypes.%d.setup', $chase), [$wheel]);
+
+        return self::translate($typed);
+    }
+
     #[Test]
     public function theHeistPlaysEveryPhaseToCompleted(): void
     {
-        $release = self::release('examples/cpr-heist');
+        $release = $this->heistWithoutPick();
         $campaign = self::guided($release, 'heist');
 
         // The job: a sequence of two Scene Types, picked one after the other.

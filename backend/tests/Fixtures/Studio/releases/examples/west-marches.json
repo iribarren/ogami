@@ -76,6 +76,10 @@
       {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "exceptionalPercent": 20}
     ]
   },
+  "tags": [
+    {"key": "roster", "label": "Roster", "hint": "An adventurer who might go out"},
+    {"key": "hireling", "label": "Hireling"}
+  ],
   "trackers": [
     {"key": "away", "name": "Days away", "hint": "End the session in town, or the wilds keep you", "kind": "counter", "min": 0, "max": 10, "initial": 0},
     {"key": "rations", "name": "Rations", "kind": "counter", "min": 0, "max": 20, "initial": 6},
@@ -90,18 +94,18 @@
       "key": "town", "name": "Town", "purpose": "Buy supplies and hire help.", "oracles": ["rumors"], "setup": [],
       "play": [
         {"key": "supplies", "kind": "prompt", "title": "What do you buy?"},
-        {"key": "hirelings", "kind": "prompt", "title": "Do you hire anyone?"}
+        {"key": "hirelings", "kind": "prompt", "title": "Do you hire anyone?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["hireling"]}]}
       ],
       "closing": []
     },
     {
       "key": "roster", "name": "Roster", "purpose": "Name the adventurers who might go out.", "oracles": [],
       "setup": [
-        {"key": "first", "kind": "prompt", "title": "Who is in the roster?", "mandatory": true},
-        {"key": "second", "kind": "prompt", "title": "Who else is in the roster?", "mandatory": true},
-        {"key": "third", "kind": "prompt", "title": "And one more?", "mandatory": true},
-        {"key": "more", "kind": "prompt", "title": "Anyone else?"},
-        {"key": "last", "kind": "prompt", "title": "Anyone else at all?"}
+        {"key": "first", "kind": "prompt", "title": "Who is in the roster?", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["roster"]}]},
+        {"key": "second", "kind": "prompt", "title": "Who else is in the roster?", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["roster"]}]},
+        {"key": "third", "kind": "prompt", "title": "And one more?", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["roster"]}]},
+        {"key": "more", "kind": "prompt", "title": "Anyone else?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["roster"]}]},
+        {"key": "last", "kind": "prompt", "title": "Anyone else at all?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["roster"]}]}
       ],
       "play": [], "closing": []
     },
@@ -166,22 +170,22 @@
           "key": "founding", "name": "Founding", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["town", "roster"]},
           "phaseOpening": [
             {"key": "town", "kind": "prompt", "title": "What is the town like?", "mandatory": true},
-            {"key": "rumor-1", "kind": "table", "title": "What rumor is going around?", "table": "rumors"},
-            {"key": "rumor-2", "kind": "table", "title": "What other rumor?", "table": "rumors"}
+            {"key": "rumor-1", "kind": "table", "title": "What rumor is going around?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]},
+            {"key": "rumor-2", "kind": "table", "title": "What other rumor?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
           ]
         },
         {
           "key": "expeditions", "name": "Expeditions", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["town", "travel", "explore-site", "delve", "return"]},
           "sessionOpening": [
-            {"key": "expedition", "kind": "prompt", "title": "Which rumor do you chase this session?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]},
+            {"key": "expedition", "kind": "pick", "title": "Which rumor do you chase this session?", "of": "thread", "mode": "choose", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]},
             {"key": "party", "kind": "prompt", "title": "Who goes on this expedition?"}
           ],
           "sessionClosing": [
             {"key": "where", "kind": "condition", "title": "Where are you?", "tracker": "away", "bands": [{"upTo": 0, "next": "safe"}, {"next": "stranded"}]},
             {"key": "safe", "kind": "prompt", "title": "Safe in town.", "next": "resolved"},
             {"key": "stranded", "kind": "table", "title": "What happens out in the wilds?", "table": "stranded"},
-            {"key": "resolved", "kind": "choice", "title": "Is the expedition resolved?", "options": [{"key": "yes", "label": "Yes"}, {"key": "no", "label": "No"}], "skip": "no"},
-            {"key": "new-rumor", "kind": "table", "title": "What new rumor reaches town?", "table": "rumors"}
+            {"key": "resolved", "kind": "choice", "title": "Is the expedition resolved?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No"}], "skip": "no"},
+            {"key": "new-rumor", "kind": "table", "title": "What new rumor reaches town?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
           ],
           "worldTurn": [
             {"key": "in-town", "kind": "condition", "title": "Are you in town?", "tracker": "away", "bands": [{"upTo": 0, "next": "end"}, {}]},

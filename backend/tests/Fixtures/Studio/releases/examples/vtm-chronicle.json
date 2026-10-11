@@ -38,6 +38,13 @@
 
     ]
   },
+  "tags": [
+    {"key": "leader", "label": "Leader", "hint": "Leads a faction and has an agenda"},
+    {"key": "ally", "label": "Ally"},
+    {"key": "touchstone", "label": "Touchstone", "hint": "Keeps your Kindred human"},
+    {"key": "hunter", "label": "Hunter"},
+    {"key": "newcomer", "label": "Newcomer"}
+  ],
   "trackers": [
     {"key": "masquerade", "name": "Masquerade breaches", "hint": "At 8+ the Second Inquisition moves", "kind": "counter", "min": 0, "max": 10, "initial": 0},
     {"key": "hunters", "name": "Hunters", "hint": "When it fills, the hunters strike", "kind": "clock", "segments": 4},
@@ -64,7 +71,7 @@
       "key": "court", "name": "Court", "purpose": "Find out who rules the night.", "tips": "Write the Prince's clan as a free fact.", "oracles": [],
       "setup": [
         {"key": "sect", "kind": "prompt", "title": "Which sect rules the city?"},
-        {"key": "prince", "kind": "prompt", "title": "Who is the Prince?"}
+        {"key": "prince", "kind": "prompt", "title": "Who is the Prince?", "effects": [{"kind": "createNpc", "name": "{answer}", "agenda": "Keeps the city under control.", "tags": ["leader"]}]}
       ],
       "play": [], "closing": []
     },
@@ -72,9 +79,9 @@
     {
       "key": "character", "name": "Character", "purpose": "Create your Kindred.", "oracles": [],
       "setup": [
-        {"key": "ambition", "kind": "prompt", "title": "What is your ambition?", "mandatory": true},
-        {"key": "touchstone", "kind": "prompt", "title": "Who keeps you human?"},
-        {"key": "ally", "kind": "prompt", "title": "Who stands by you?"}
+        {"key": "ambition", "kind": "prompt", "title": "What is your ambition?", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}]},
+        {"key": "touchstone", "kind": "prompt", "title": "Who keeps you human?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["touchstone"]}]},
+        {"key": "ally", "kind": "prompt", "title": "Who stands by you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["ally"]}]}
       ],
       "play": [], "closing": []
     },
@@ -153,19 +160,22 @@
         {
           "key": "chronicle", "name": "The chronicle", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["elysium", "hunt", "investigation", "intrigue", "haven", "dawn"]},
           "sessionOpening": [
-            {"key": "desire", "kind": "prompt", "title": "What do you want this session?", "prompt": "Keep your ambition in mind.", "mandatory": true}
+            {"key": "desire", "kind": "prompt", "title": "What do you want this session?", "prompt": "Keep your ambition in mind.", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}]}
           ],
           "sessionClosing": [
-            {"key": "got-it", "kind": "choice", "title": "Did you get what you wanted this session?", "options": [{"key": "yes", "label": "Yes"}, {"key": "no", "label": "No"}], "skip": "no"}
+            {"key": "got-it", "kind": "choice", "title": "Did you get what you wanted this session?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No"}], "skip": "no"}
           ],
           "worldTurn": [
             {"key": "inquisition", "kind": "condition", "title": "Does the Second Inquisition move?", "tracker": "masquerade", "bands": [{"upTo": 7}, {"effects": [{"kind": "nextScene", "sceneType": "inquisition-raid"}]}]},
             {"key": "stir", "kind": "roll", "title": "Does the night stir?", "tip": "On 1 to 3 the night stays quiet.", "dice": "1d6", "bands": [{"upTo": 3, "next": "end"}, {}]},
-            {"key": "event", "kind": "table", "title": "What happens tonight?", "table": "night-events", "branches": [{"entry": "faction-move", "next": "faction"}, {"entry": "ally-in-trouble", "next": "ally"}, {"entry": "new-arrival", "next": "arrival"}, {"entry": "touchstone", "next": "touchstone"}, {"entry": "hunter-activity", "next": "hunters", "effects": [{"kind": "tracker", "tracker": "hunters", "op": "add", "value": 1}]}]},
-            {"key": "faction", "kind": "prompt", "title": "Which faction moves?", "prompt": "What does its leader do toward their agenda?", "next": "end"},
-            {"key": "ally", "kind": "table", "title": "What trouble is your ally in?", "table": "ally-problems", "next": "end"},
-            {"key": "arrival", "kind": "table", "title": "Who arrives?", "table": "arrivals", "next": "end"},
-            {"key": "touchstone", "kind": "prompt", "title": "What happens to your touchstone?", "next": "end"},
+            {"key": "event", "kind": "table", "title": "What happens tonight?", "table": "night-events", "branches": [{"entry": "faction-move", "next": "faction"}, {"entry": "ally-in-trouble", "next": "ally"}, {"entry": "new-arrival", "next": "arrival"}, {"entry": "touchstone", "next": "touchstone"}, {"entry": "hunter-activity", "next": "hunters", "effects": [{"kind": "tracker", "tracker": "hunters", "op": "add", "value": 1}, {"kind": "createNpc", "name": "Someone asking questions", "tags": ["hunter"]}]}]},
+            {"key": "faction", "kind": "pick", "title": "Which faction moves?", "of": "npc", "tags": ["leader"], "mode": "random", "branches": {"none": {"next": "end"}}},
+            {"key": "faction-move", "kind": "prompt", "title": "What does the leader do?", "prompt": "What does {picked} do toward their agenda?", "next": "end"},
+            {"key": "ally", "kind": "pick", "title": "Which ally is in trouble?", "of": "npc", "tags": ["ally"], "mode": "random", "branches": {"none": {"next": "end"}}},
+            {"key": "ally-trouble", "kind": "table", "title": "What trouble is your ally in?", "table": "ally-problems", "next": "end"},
+            {"key": "arrival", "kind": "table", "title": "Who arrives?", "table": "arrivals", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["newcomer"]}], "next": "end"},
+            {"key": "touchstone", "kind": "pick", "title": "Whose life shifts?", "of": "npc", "tags": ["touchstone"], "mode": "random", "branches": {"none": {"next": "end"}}},
+            {"key": "touchstone-turn", "kind": "prompt", "title": "What happens to your touchstone?", "prompt": "What happens to {picked}?", "next": "end"},
             {"key": "hunters", "kind": "condition", "title": "Are the hunters ready?", "tracker": "hunters", "bands": [{"upTo": 3}, {"effects": [{"kind": "nextScene", "sceneType": "hunters-strike"}]}]}
           ]
         }

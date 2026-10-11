@@ -85,6 +85,11 @@
       {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "exceptionalPercent": 20}
     ]
   },
+  "tags": [
+    {"key": "crew", "label": "Crew", "hint": "Part of your crew"},
+    {"key": "client", "label": "Client"},
+    {"key": "nomad", "label": "Nomad", "hint": "Good behind the wheel"}
+  ],
   "trackers": [
     {"key": "alarm", "name": "Alarm", "hint": "At 6/6 security locks down: you run", "kind": "clock", "segments": 6},
     {"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3, "initial": 0},
@@ -114,15 +119,15 @@
     {
       "key": "crew", "name": "Crew", "purpose": "Put the crew together.", "oracles": [],
       "setup": [
-        {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "mandatory": true},
-        {"key": "second", "kind": "prompt", "title": "Who else is in?"}
+        {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "second", "kind": "prompt", "title": "Who else is in?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]}
       ],
       "play": [], "closing": []
     },
     {
       "key": "briefing", "name": "Briefing", "purpose": "Meet the client and hear the job.", "oracles": ["job-clients", "job-targets", "payouts"],
       "setup": [
-        {"key": "client", "kind": "table", "title": "Who is the client?", "table": "job-clients"},
+        {"key": "client", "kind": "table", "title": "Who is the client?", "table": "job-clients", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}]},
         {"key": "target", "kind": "table", "title": "What is the target?", "table": "job-targets"},
         {"key": "payout", "kind": "table", "title": "What does it pay?", "table": "payouts"},
         {"key": "plan", "kind": "prompt", "title": "What's the plan?"},
@@ -174,7 +179,9 @@
     {
       "key": "chase", "name": "Chase", "purpose": "Lose the pursuit on the streets.", "oracles": ["fate"],
       "setup": [
-        {"key": "wheel", "kind": "prompt", "title": "Who takes the wheel?", "tip": "A nomad in the crew is a good choice."}
+        {"key": "wheel", "kind": "pick", "title": "Who takes the wheel?", "tip": "A nomad in the crew is a good choice.", "of": "npc", "tags": ["crew", "nomad"], "mode": "random", "branches": {"found": {"next": "driver"}, "none": {"next": "you-drive"}}},
+        {"key": "driver", "kind": "prompt", "title": "A driver steps up", "prompt": "{picked} takes the wheel.", "next": "end"},
+        {"key": "you-drive", "kind": "prompt", "title": "Nobody else can drive", "prompt": "You take the wheel."}
       ],
       "play": [
         {"key": "lose-them", "kind": "oracle", "title": "Do you lose them?", "oracle": "fate", "likelihood": "unlikely"}

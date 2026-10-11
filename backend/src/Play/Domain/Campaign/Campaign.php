@@ -16,7 +16,20 @@ use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
+use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidThread;
+use App\Play\Domain\Campaign\Lists\ItemRules;
+use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Thread;
+use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
+use App\Play\Domain\Campaign\Lists\ThreadId;
+use App\Play\Domain\Campaign\Lists\UnknownNpc;
+use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
+use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
@@ -42,16 +55,25 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * take the pinned release and change the campaign all or nothing. Hand Tracker edits and Scene Type
  * switches are recorded in its history.
  *
+ * It also keeps the player's NPCs and Threads (at most 500 of each), added, edited, closed and
+ * reopened at any time. Their release Tags are keys of the pinned release. Lists keep creation
+ * order; the readers put open items first.
+ *
  * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list, the
- * tracker values and the FlowRun, so an adapter can map it and rebuild it with reconstitute(). Every
- * change to the FlowRun replaces it with a changed copy, as changes to sessions replace the list, so
- * that an adapter comparing stored values by identity sees it.
+ * tracker values, the NPC and Thread lists and the FlowRun, so an adapter can map it and rebuild it
+ * with reconstitute(). Every change to the FlowRun replaces it with a changed copy, as changes to
+ * sessions, NPCs and Threads replace the list (and the changed item), so that an adapter comparing
+ * stored values by identity sees it.
  */
 final class Campaign
 {
     public const int MAX_NAME_LENGTH = 100;
 
     public const int MAX_SESSIONS = 500;
+
+    public const int MAX_NPCS = 500;
+
+    public const int MAX_THREADS = 500;
 
     /**
      * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
@@ -64,6 +86,8 @@ final class Campaign
     /**
      * @param list<Session>      $sessions      in number order
      * @param array<string, int> $trackerValues by Tracker key
+     * @param list<Npc>          $npcs          in creation order
+     * @param list<Thread>       $threads       in creation order
      */
     private function __construct(
         private readonly string $id,
@@ -76,6 +100,8 @@ final class Campaign
         private array $sessions,
         private array $trackerValues,
         private readonly ?string $flowKey,
+        private array $npcs = [],
+        private array $threads = [],
     ) {
     }
 
@@ -118,8 +144,10 @@ final class Campaign
      * @param ?string            $flowKey       the key of the Flow played, or null for free play
      * @param ?FlowRun           $flowRun       the guidance along that Flow, null for free play; a campaign
      *                                          with a Flow and no FlowRun gets a fresh one (see startMissingFlowRun())
+     * @param list<Npc>          $npcs          in creation order
+     * @param list<Thread>       $threads       in creation order
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = []): self
     {
         $campaign = new self(
             $id->toString(),
@@ -132,6 +160,8 @@ final class Campaign
             $sessions,
             $trackerValues,
             $flowKey,
+            $npcs,
+            $threads,
         );
         $campaign->flowRun = $flowRun;
         $campaign->startMissingFlowRun();
@@ -364,6 +394,197 @@ final class Campaign
     }
 
     /**
+     * Adds an open Npc at the end of the list.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     *
+     * @throws InvalidNpc           when a value breaks a rule
+     * @throws UnknownReleaseTag    when a Tag key is not in the pinned release
+     * @throws NpcAlreadyExists     when the campaign holds an Npc with this id
+     * @throws CampaignLimitReached when the campaign already holds 500 Npcs
+     */
+    public function addNpc(NpcId $id, string $name, ?string $agenda, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Npc
+    {
+        $this->assertPinned($release);
+        if (\count($this->npcs) >= self::MAX_NPCS) {
+            throw CampaignLimitReached::npcs(self::MAX_NPCS);
+        }
+
+        if ($this->npc($id) instanceof Npc) {
+            throw NpcAlreadyExists::withId($id);
+        }
+
+        $npc = Npc::of($id, $name, $agenda, $tags, $freeTags, $weight);
+        ItemRules::assertInRelease($npc->tags(), $release);
+        $this->npcs = [...$this->npcs, $npc];
+
+        return $npc;
+    }
+
+    /**
+     * Replaces the Npc's name, agenda, Tags, free tags and weight; its status stays. All or nothing.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     *
+     * @throws UnknownNpc        when the campaign holds no Npc with this id
+     * @throws InvalidNpc        when a value breaks a rule
+     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     */
+    public function editNpc(NpcId $id, string $name, ?string $agenda, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Npc
+    {
+        $this->assertPinned($release);
+        $index = $this->npcIndex($id);
+        $edited = $this->npcs[$index]->edited($name, $agenda, $tags, $freeTags, $weight);
+        ItemRules::assertInRelease($edited->tags(), $release);
+        $this->npcs = $this->replaced($this->npcs, $index, $edited);
+
+        return $edited;
+    }
+
+    /**
+     * Closes the Npc: it is no longer picked or counted. Closing a closed one changes nothing.
+     *
+     * @throws UnknownNpc when the campaign holds no Npc with this id
+     */
+    public function closeNpc(NpcId $id): void
+    {
+        $index = $this->npcIndex($id);
+        if ($this->npcs[$index]->isOpen()) {
+            $this->npcs = $this->replaced($this->npcs, $index, $this->npcs[$index]->closed());
+        }
+    }
+
+    /**
+     * Reopens the Npc. Reopening an open one changes nothing.
+     *
+     * @throws UnknownNpc when the campaign holds no Npc with this id
+     */
+    public function reopenNpc(NpcId $id): void
+    {
+        $index = $this->npcIndex($id);
+        if (!$this->npcs[$index]->isOpen()) {
+            $this->npcs = $this->replaced($this->npcs, $index, $this->npcs[$index]->reopened());
+        }
+    }
+
+    public function npc(NpcId $id): ?Npc
+    {
+        return $this->npcs[$this->npcIndexOrNull($id) ?? -1] ?? null;
+    }
+
+    /**
+     * @return list<Npc> the open ones first, then the closed ones, each in creation order
+     */
+    public function npcs(): array
+    {
+        return $this->openFirst($this->npcs);
+    }
+
+    /**
+     * Adds an open Thread at the end of the list.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     *
+     * @throws InvalidThread        when a value breaks a rule
+     * @throws UnknownReleaseTag    when a Tag key is not in the pinned release
+     * @throws ThreadAlreadyExists  when the campaign holds an Thread with this id
+     * @throws CampaignLimitReached when the campaign already holds 500 Threads
+     */
+    public function addThread(ThreadId $id, string $name, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Thread
+    {
+        $this->assertPinned($release);
+        if (\count($this->threads) >= self::MAX_THREADS) {
+            throw CampaignLimitReached::threads(self::MAX_THREADS);
+        }
+
+        if ($this->thread($id) instanceof Thread) {
+            throw ThreadAlreadyExists::withId($id);
+        }
+
+        $thread = Thread::of($id, $name, $tags, $freeTags, $weight);
+        ItemRules::assertInRelease($thread->tags(), $release);
+        $this->threads = [...$this->threads, $thread];
+
+        return $thread;
+    }
+
+    /**
+     * Replaces the Thread's name, Tags, free tags and weight; its status stays. All or nothing.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     *
+     * @throws UnknownThread     when the campaign holds no Thread with this id
+     * @throws InvalidThread     when a value breaks a rule
+     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     */
+    public function editThread(ThreadId $id, string $name, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Thread
+    {
+        $this->assertPinned($release);
+        $index = $this->threadIndex($id);
+        $edited = $this->threads[$index]->edited($name, $tags, $freeTags, $weight);
+        ItemRules::assertInRelease($edited->tags(), $release);
+        $this->threads = $this->replaced($this->threads, $index, $edited);
+
+        return $edited;
+    }
+
+    /**
+     * Closes the Thread: it is no longer picked or counted. Closing a closed one changes nothing.
+     *
+     * @throws UnknownThread when the campaign holds no Thread with this id
+     */
+    public function closeThread(ThreadId $id): void
+    {
+        $index = $this->threadIndex($id);
+        if ($this->threads[$index]->isOpen()) {
+            $this->threads = $this->replaced($this->threads, $index, $this->threads[$index]->closed());
+        }
+    }
+
+    /**
+     * Reopens the Thread. Reopening an open one changes nothing.
+     *
+     * @throws UnknownThread when the campaign holds no Thread with this id
+     */
+    public function reopenThread(ThreadId $id): void
+    {
+        $index = $this->threadIndex($id);
+        if (!$this->threads[$index]->isOpen()) {
+            $this->threads = $this->replaced($this->threads, $index, $this->threads[$index]->reopened());
+        }
+    }
+
+    public function thread(ThreadId $id): ?Thread
+    {
+        return $this->threads[$this->threadIndexOrNull($id) ?? -1] ?? null;
+    }
+
+    /**
+     * @return list<Thread> the open ones first, then the closed ones, each in creation order
+     */
+    public function threads(): array
+    {
+        return $this->openFirst($this->threads);
+    }
+
+    /**
+     * The number of open NPCs or Threads carrying all the given release Tag keys (any, when none);
+     * free tags never match. What a count condition counts.
+     *
+     * @param list<string> $tags
+     */
+    public function openItemCount(ItemKind $of, array $tags): int
+    {
+        $items = ItemKind::Npc === $of ? $this->npcs : $this->threads;
+
+        return \count(array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen() && $item->carries($tags)));
+    }
+
+    /**
      * Completes the FlowRun's current step with a result of its kind.
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
@@ -553,7 +774,7 @@ final class Campaign
      */
     private function adopt(self $draft): void
     {
-        [$this->sessions, $this->trackerValues, $this->flowRun] = [$draft->sessions, $draft->trackerValues, $draft->flowRun];
+        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads];
     }
 
     /**
@@ -578,11 +799,87 @@ final class Campaign
      */
     private function playedFlow(GameSystemSnapshot $release): Flow
     {
-        if ($release->gameSystemKey() !== $this->gameSystemKey || $release->releaseVersion() !== $this->releaseVersion) {
-            throw new \LogicException('A FlowRun plays the campaign\'s pinned release.');
-        }
+        $this->assertPinned($release);
 
         return $release->flow((string) $this->flowKey) ?? throw UnknownFlow::withKey((string) $this->flowKey);
+    }
+
+    /**
+     * @throws \LogicException when the snapshot is another release than the pinned one
+     */
+    private function assertPinned(GameSystemSnapshot $release): void
+    {
+        if ($release->gameSystemKey() !== $this->gameSystemKey || $release->releaseVersion() !== $this->releaseVersion) {
+            throw new \LogicException('The campaign works with its pinned release.');
+        }
+    }
+
+    /**
+     * @throws UnknownNpc
+     */
+    private function npcIndex(NpcId $id): int
+    {
+        return $this->npcIndexOrNull($id) ?? throw UnknownNpc::withId($id);
+    }
+
+    private function npcIndexOrNull(NpcId $id): ?int
+    {
+        foreach ($this->npcs as $index => $npc) {
+            if ($npc->id()->equals($id)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @throws UnknownThread
+     */
+    private function threadIndex(ThreadId $id): int
+    {
+        return $this->threadIndexOrNull($id) ?? throw UnknownThread::withId($id);
+    }
+
+    private function threadIndexOrNull(ThreadId $id): ?int
+    {
+        foreach ($this->threads as $index => $thread) {
+            if ($thread->id()->equals($id)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @template T of Npc|Thread
+     *
+     * @param list<T> $items
+     * @param T       $item
+     *
+     * @return list<T> a copy with the item at the index replaced, so that the stored list is seen to change
+     */
+    private function replaced(array $items, int $index, Npc|Thread $item): array
+    {
+        $items[$index] = $item;
+
+        return array_values($items);
+    }
+
+    /**
+     * @template T of Npc|Thread
+     *
+     * @param list<T> $items
+     *
+     * @return list<T>
+     */
+    private function openFirst(array $items): array
+    {
+        return [
+            ...array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen()),
+            ...array_filter($items, static fn (Npc|Thread $item): bool => !$item->isOpen()),
+        ];
     }
 
     /**

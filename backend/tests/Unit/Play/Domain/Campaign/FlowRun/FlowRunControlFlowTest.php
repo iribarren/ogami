@@ -12,6 +12,8 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
 use App\Play\Domain\Campaign\FlowRun\Placeholders;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -191,6 +193,39 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
     #[Test]
     public function aCountConditionTakesTheBandOfZeroItemsWhileCampaignsHoldNone(): void
     {
+        [$release, $campaign] = $this->countingCampaign();
+
+        $campaign->pickSceneType('watch', $release, self::at());
+
+        // The heat of 5 would take the last band: the count of 0 takes the first, which skips to "calm".
+        $flowRun = self::flowRunOf($campaign);
+        self::assertSame([['setup', 'calm'], null, null], [self::position($campaign), $flowRun->forcedNextSceneType(), $flowRun->phaseEndingReason()]);
+    }
+
+    #[Test]
+    public function aCountConditionTakesTheBandOfTheRealCountOfOpenItems(): void
+    {
+        [$release, $campaign] = $this->countingCampaign();
+        foreach (['a', 'b', 'c'] as $key) {
+            $campaign->addNpc(NpcId::fromString($key), strtoupper($key), null, [], [], 1, $release);
+        }
+
+        // A closed NPC and a Thread are not counted: three open NPCs are above the first band (calm).
+        $campaign->closeNpc(NpcId::fromString('c'));
+        $campaign->addNpc(NpcId::fromString('d'), 'D', null, [], [], 1, $release);
+        $campaign->addThread(ThreadId::fromString('t'), 'T', [], [], 1, $release);
+        $campaign->pickSceneType('watch', $release, self::at());
+
+        $flowRun = self::flowRunOf($campaign);
+        self::assertSame([['setup', 'warm'], null], [self::position($campaign), $flowRun->phaseEndingReason()]);
+    }
+
+    /**
+     * @return array{GameSystemSnapshot, Campaign} a session under way, on a release whose "watch"
+     *                                             Scene Type counts NPCs where it read the heat Tracker; heat is 5
+     */
+    private function countingCampaign(): array
+    {
         $content = $this->content();
         /** @var list<array{key: string}> $sceneTypes */
         $sceneTypes = $content['sceneTypes'];
@@ -203,11 +238,7 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
         $campaign->startSession(self::at(), $release);
         $campaign->setTrackerValue($this->trackerOf($release, 'heat'), 5);
 
-        $campaign->pickSceneType('watch', $release, self::at());
-
-        // The heat of 5 would take the last band: the count of 0 takes the first, which skips to "calm".
-        $flowRun = self::flowRunOf($campaign);
-        self::assertSame([['setup', 'calm'], null, null], [self::position($campaign), $flowRun->forcedNextSceneType(), $flowRun->phaseEndingReason()]);
+        return [$release, $campaign];
     }
 
     #[Test]

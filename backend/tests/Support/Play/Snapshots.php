@@ -13,6 +13,7 @@ use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
@@ -83,6 +84,14 @@ final class Snapshots
             Tracker::counter('heat', 'Heat', null, -5, 5, -5, [new TrackerLevel(-1, 'Cold'), new TrackerLevel(2, 'Warm'), new TrackerLevel(null, 'Hot')]),
             Tracker::counter('chaos', 'Chaos factor', null, 1, 9, 5),
         ]);
+    }
+
+    /**
+     * A schema version 2 snapshot with the Tags "ally" (Ally) and "rival" (Rival, with a hint).
+     */
+    public static function withTags(string $key, string $name, int $version): GameSystemSnapshot
+    {
+        return new GameSystemSnapshot($key, $name, $version, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', 'Someone in the way')]);
     }
 
     /**

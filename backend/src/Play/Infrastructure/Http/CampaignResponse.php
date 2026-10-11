@@ -12,9 +12,9 @@ use OpenApi\Attributes as OA;
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
- * the Flow played, and the release's Flows and Scene Types.
+ * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs and Threads.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'npcs', 'threads'])]
 final readonly class CampaignResponse
 {
     /**
@@ -24,6 +24,9 @@ final readonly class CampaignResponse
      * @param list<TrackerResponse>          $trackers
      * @param list<FlowSummaryResponse>      $flows
      * @param list<SceneTypeSummaryResponse> $sceneTypes
+     * @param list<TagResponse>              $tags
+     * @param list<NpcResponse>              $npcs
+     * @param list<ThreadResponse>           $threads
      */
     private function __construct(
         #[OA\Property(format: 'uuid')]
@@ -78,6 +81,24 @@ final readonly class CampaignResponse
             items: new OA\Items(ref: new Model(type: SceneTypeSummaryResponse::class)),
         )]
         public array $sceneTypes,
+        #[OA\Property(
+            description: 'The Tags of the pinned release, in definition order; empty for releases without any. NPCs and Threads carry them by key.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: TagResponse::class)),
+        )]
+        public array $tags,
+        #[OA\Property(
+            description: 'The campaign\'s NPCs: the open ones first, then the closed ones, each in creation order.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: NpcResponse::class)),
+        )]
+        public array $npcs,
+        #[OA\Property(
+            description: 'The campaign\'s Threads: the open ones first, then the closed ones, each in creation order.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: ThreadResponse::class)),
+        )]
+        public array $threads,
     ) {
     }
 
@@ -98,6 +119,9 @@ final readonly class CampaignResponse
             $view->flowRun instanceof FlowRunView ? FlowRunResponse::fromView($view->flowRun) : null,
             array_map(FlowSummaryResponse::fromView(...), $view->flows),
             array_map(SceneTypeSummaryResponse::fromView(...), $view->sceneTypes),
+            array_map(TagResponse::fromView(...), $view->tags),
+            array_map(NpcResponse::fromView(...), $view->npcs),
+            array_map(ThreadResponse::fromView(...), $view->threads),
         );
     }
 }

@@ -113,7 +113,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | delegated writer (slice 2, 4+ non-trivial files) | [x] | `69fe4c5` |
 | T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | delegated writer (slice 2, 4+ non-trivial files) | [x] | `d89996a` |
 | T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | delegated writer (slice 3, 4+ non-trivial files) | [x] | `b3451f0`, `2a9b710` |
-| T5 | 4 | Campaign response gains `tags`, `npcs`, `threads`; commands, handlers and endpoints for NPCs (add, edit, close, reopen); API tests (400/404/409/422), Behat; `make api` | | [ ] | |
+| T5 | 4 | Campaign response gains `tags`, `npcs`, `threads`; commands, handlers and endpoints for NPCs (add, edit, close, reopen); API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 4, 4+ non-trivial files) | [x] | |
 | T5b | 5 | Commands, handlers and endpoints for Threads (add, edit, close, reopen); API tests, Behat; `make api` | | [ ] | |
 | T6 | 6 | NPCs and Threads panels beside the journal (list, add, edit, close/reopen, weight, tags with hints, free tags); stories and tests | | [ ] | |
 | T7 | 7 | FlowRun: `pick` (random weighted, choose), effects, condition counts, `{picked}`, the Scene cast (domain and `sessions` JSONB, legacy scenes), journal entry kind `pick`; unit tests | | [ ] | |
@@ -129,6 +129,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 - 2026-10-11: slice 2 — T2 done: the five example releases gain their feature-8 parts (tags, `pick` steps, the three effects, `{picked}`, the crew count condition); examples README updated, warnings unchanged and re-pinned; Play reads all five.
 - 2026-10-12: slice 3 — T4 done: Campaign keeps NPCs and Threads (`Play\Domain\Campaign\Lists`: add, edit, close, reopen, weight, release and free tags, 500 limit, all-or-nothing, open items first); JSONB columns `npcs` / `threads` (default `[]`, strict Doctrine types, migration `Version20261012120000`, legacy rows read empty); `FlowRunContext::openItemCount()` counts real open items, so a count condition takes the band of the real count (tested); slice 2 review fix: `ExampleReleasesTest` walks the decoded release.
 - 2026-10-12: slice 4 — slice 3 review fixes: both Doctrine readers fail closed on duplicate ids and on more than 500 items, `Campaign::reconstitute()` rejects duplicate ids, Thread reader malformed-data tests at parity with NPC ones, write-side `InvalidType` checks and the unpinned-release refusal (`editNpc`, `addThread`, `editThread`) tested.
+- 2026-10-12: slice 4 — T5 done: the campaign response gains `tags`, `npcs`, `threads`; `AddNpc`, `EditNpc`, `CloseNpc`, `ReopenNpc` with handlers, `NpcIdGenerator` and the NPC endpoints in `CampaignNpcsController`; API, handler and Behat tests; spec and client types regenerated. Size exception accepted by the user: ~2,960 lines, reviewed as separate candidates.
 
 ## Reviews
 

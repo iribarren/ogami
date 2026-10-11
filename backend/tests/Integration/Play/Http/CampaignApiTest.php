@@ -208,6 +208,9 @@ final class CampaignApiTest extends WebTestCase
                 'flowRun' => null,
                 'flows' => [],
                 'sceneTypes' => [],
+                'tags' => [],
+                'npcs' => [],
+                'threads' => [],
             ], \JSON_THROW_ON_ERROR),
             $this->content(),
         );
@@ -609,6 +612,9 @@ final class CampaignApiTest extends WebTestCase
             'flowRun' => null,
             'flows' => [],
             'sceneTypes' => [],
+            'tags' => [],
+            'npcs' => [],
+            'threads' => [],
         ], \JSON_THROW_ON_ERROR);
     }
 

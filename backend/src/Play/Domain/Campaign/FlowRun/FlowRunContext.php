@@ -10,6 +10,7 @@ use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\ItemCount;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerReference;
@@ -94,10 +95,9 @@ final readonly class FlowRunContext
     /**
      * The number of open NPCs or Threads a count condition counts.
      */
-    public function openItemCount(): int
+    public function openItemCount(ItemCount $count): int
     {
-        // Campaigns hold no NPCs or Threads yet, so there is nothing to count.
-        return 0;
+        return $this->campaign->openItemCount($count->of, $count->tags);
     }
 
     /**

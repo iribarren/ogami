@@ -12,6 +12,7 @@ use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\ItemCount;
 use App\Play\Domain\GameSystem\Flow\NextSceneEffect;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
@@ -930,7 +931,7 @@ final class FlowRun
     {
         $step = $this->currentStep($context->release, $context->flow);
         if ($step instanceof ConditionStep) {
-            $value = $step->count instanceof \App\Play\Domain\GameSystem\Flow\ItemCount ? $context->openItemCount() : $context->trackerValue((string) $step->tracker);
+            $value = $step->count instanceof ItemCount ? $context->openItemCount($step->count) : $context->trackerValue((string) $step->tracker);
             $outcome = $this->band($step->bands, $value, $context);
             $this->finish($step, $outcome, [...$step->effects, ...$outcome->effects ?? []], null, $context);
         } else {

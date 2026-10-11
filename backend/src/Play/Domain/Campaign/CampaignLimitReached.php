@@ -18,4 +18,14 @@ final class CampaignLimitReached extends \DomainException
     {
         return new self(\sprintf('A session holds at most %d scenes.', $max));
     }
+
+    public static function npcs(int $max): self
+    {
+        return new self(\sprintf('A campaign holds at most %d NPCs.', $max));
+    }
+
+    public static function threads(int $max): self
+    {
+        return new self(\sprintf('A campaign holds at most %d Threads.', $max));
+    }
 }

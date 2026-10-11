@@ -100,7 +100,7 @@ Forecasts include tests, docs and generated files (OpenAPI spec, TS types). Hard
 | 7 | `feat/play-threads-npcs-7-flow-http` | `feat(play): play-threads-npcs 7/8 flow-http` | T8 | ~1,600 |
 | 8 | `feat/play-threads-npcs-8-flow-ui` | `feat(play): play-threads-npcs 8/8 flow-ui` | T9, T10 | ~1,500 |
 
-Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them; releases are published only from `backend/presets/`, none uses the new parts, and slice 2 adds the Play side next. Slice 2 reads the new parts into the snapshot; FlowRun evaluates a `count` condition as 0 (Campaigns hold no NPCs or Threads yet) and does not play `pick` steps or the new effects until slice 6, so presets must not use them before then. Slices 3–4 add unused backend; 5 shows the lists; 6–7 add unused flow support; 8 shows it.
+Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them; releases are published only from `backend/presets/`, none uses the new parts, and slice 2 adds the Play side next. Slice 2 reads the new parts into the snapshot; FlowRun evaluates a `count` condition as 0 until slice 3 (Campaigns hold no NPCs or Threads yet) and does not play `pick` steps or the new effects until slice 6, so presets must not use them before then. Slices 3–4 add unused backend; 5 shows the lists; 6–7 add unused flow support; 8 shows it.
 
 ## Tasks
 
@@ -109,7 +109,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | T1 | 1 | Feature doc. `v2.schema.json`: `tags`, `pick`, `condition` count, `createNpc` / `createThread` / `closeThread`. Studio `Version2`: tag catalog, step `pick`, condition count, new effects, `{picked}`; decision-7 warning ignores count conditions. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7e40f00` |
 | T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | delegated writer (slice 2, 4+ non-trivial files) | [x] | `69fe4c5` |
 | T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | delegated writer (slice 2, 4+ non-trivial files) | [x] | `d89996a` |
-| T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | | [ ] | |
+| T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | delegated writer (slice 3, 4+ non-trivial files) | [x] | |
 | T5 | 4 | Commands, handlers, controllers for NPCs and Threads; campaign response gains `tags`, `npcs`, `threads`; API tests (422/404/409), Behat; `make api` | | [ ] | |
 | T6 | 5 | NPCs and Threads panels beside the journal (list, add, edit, close/reopen, weight, tags with hints, free tags); stories and tests | | [ ] | |
 | T7 | 6 | FlowRun: `pick` (random weighted, choose), effects, condition counts, `{picked}`, the Scene cast (domain and `sessions` JSONB, legacy scenes), journal entry kind `pick`; unit tests | | [ ] | |
@@ -123,6 +123,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 - 2026-10-11: slice 1 — T1 done: schema version 2 gains `tags`, `pick`, condition `count`, `createNpc` / `createThread` / `closeThread` and `{picked}` (schema, Studio validation, contract doc, fixtures, tests); `make qa` and `make test` green.
 - 2026-10-11: slice 2 — T3 done: the Play ACL reads `tags`, `pick` steps (`PickStep`, `ItemKind`, `PickMode`), condition `count` (`ItemCount`) and the `createNpc` / `createThread` / `closeThread` effects, failing closed with a path; FlowRun evaluates a count condition as 0 and ignores the new effects until slice 6; slice 1 review fix covered by two `pick` tests in `AuthoringWarningsTest`.
 - 2026-10-11: slice 2 — T2 done: the five example releases gain their feature-8 parts (tags, `pick` steps, the three effects, `{picked}`, the crew count condition); examples README updated, warnings unchanged and re-pinned; Play reads all five.
+- 2026-10-12: slice 3 — T4 done: Campaign keeps NPCs and Threads (`Play\Domain\Campaign\Lists`: add, edit, close, reopen, weight, release and free tags, 500 limit, all-or-nothing, open items first); JSONB columns `npcs` / `threads` (default `[]`, strict Doctrine types, migration `Version20261012120000`, legacy rows read empty); `FlowRunContext::openItemCount()` counts real open items, so a count condition takes the band of the real count (tested); slice 2 review fix: `ExampleReleasesTest` walks the decoded release.
 
 ## Reviews
 
@@ -133,4 +134,4 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 
 ## Next step
 
-Slice 3 (T4): Campaign NPCs and Threads in the domain and persistence; the count condition reads them. Then native review and PR. Next slice 4 (T5): HTTP for the lists.
+Slice 3 (T4) is written: native review and PR next. Next slice 4 (T5): HTTP for the lists.

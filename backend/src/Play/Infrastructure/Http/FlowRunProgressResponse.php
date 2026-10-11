@@ -8,8 +8,8 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunProgress;
 use OpenApi\Attributes as OA;
 
 /**
- * Where a FlowRun stands: Act › Phase › Scene Type › part · step n/m. The Scene Type and part are
- * set only in a scene, the step numbers only on a step.
+ * Where a FlowRun stands: Act › Phase › Scene Type › part · step n/m. The Scene Type is set only in
+ * a scene, the part in a scene or a hook (the hook's name), the step numbers only on a step.
  */
 #[OA\Schema(required: ['act', 'phase', 'sceneType', 'part', 'stepNumber', 'stepCount'])]
 final readonly class FlowRunProgressResponse
@@ -21,7 +21,7 @@ final readonly class FlowRunProgressResponse
         public string $phase,
         #[OA\Property(description: 'The name of the Scene Type being played; null at the scene pick.', example: 'Crew', nullable: true)]
         public ?string $sceneType,
-        #[OA\Property(description: 'The part of the scene; null outside a scene.', example: 'setup', nullable: true, enum: ['sceneOpening', 'setup', 'play', 'open', 'closing', 'sceneClosing', null])]
+        #[OA\Property(description: 'The part of the scene, or the hook running; null at the scene pick.', example: 'setup', nullable: true, enum: ['sceneOpening', 'setup', 'play', 'open', 'closing', 'sceneClosing', 'sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'worldTurn', null])]
         public ?string $part,
         #[OA\Property(description: 'The number of the step, from 1; null when no step waits. Condition steps are not counted.', example: 1, nullable: true)]
         public ?int $stepNumber,

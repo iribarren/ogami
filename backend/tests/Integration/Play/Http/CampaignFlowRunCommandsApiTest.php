@@ -15,6 +15,7 @@ use App\Play\Application\SkipFlowStep;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
 use App\Play\Domain\Journal\NoteContent;
+use App\Play\Infrastructure\Http\CampaignController;
 use App\Play\Infrastructure\Http\FlowRunController;
 use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
@@ -37,9 +38,11 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * prepare(): "free" (no Flow), "waiting" (Flow "tour", no session yet), "pick" (Flow "tour" at the
  * scene pick), "step:<key>" (a Tour scene waiting at that step), "open" (the Tour scene in open
  * play), "paused", "draw" (Flow "draw", whose pick rolls a table) and "closing" (Flow "chain", the
- * first Solo scene ended: waiting at the mandatory step "wrap").
+ * first Solo scene ended: waiting at the mandatory step "wrap"). Ending a session while guided is
+ * here too.
  */
 #[CoversClass(FlowRunController::class)]
+#[CoversClass(CampaignController::class)]
 final class CampaignFlowRunCommandsApiTest extends WebTestCase
 {
     private const string PASSWORD = 'secret123';
@@ -438,6 +441,67 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
         self::assertStringContainsString('chaos', $this->error());
         self::assertSame($before, $this->campaign());
         self::assertSame([], $this->journal());
+    }
+
+    #[Test]
+    public function endingAGuidedSessionInASceneIsAConflict(): void
+    {
+        $this->prepare('step:intro');
+        $before = $this->campaign();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('The FlowRun is at step "intro": a guided session ends between scenes, at the scene pick.', $this->error());
+        self::assertSame($before, $this->campaign());
+    }
+
+    #[Test]
+    public function aGuidedSessionWithoutASessionClosingEndsAtOnceAtTheScenePick(): void
+    {
+        $this->prepare('pick');
+        self::assertTrue(self::at($this->campaign(), 'flowRun', 'canEndSession'));
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([1, '2026-10-10T09:00:00+00:00'], [$this->json()['number'] ?? null, $this->json()['endedAt'] ?? null]);
+        self::assertSame([true, false], [self::at($this->campaign(), 'flowRun', 'waitsForSession'), self::at($this->campaign(), 'flowRun', 'canEndSession')]);
+    }
+
+    #[Test]
+    public function aGuidedSessionWithASessionClosingEndsOnceItsHookSceneFinishes(): void
+    {
+        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9303', GuidedReleases::content(sessionClosing: true) + ['sheet' => []], false));
+        $this->prepare('pick');
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([1, null], [$this->json()['number'] ?? null, $this->json()['endedAt']]);
+        $campaign = $this->campaign();
+        self::assertSame(['sessionClosing', 'notes', 'Session ends', false], [self::at($campaign, 'flowRun', 'progress', 'part'), self::at($campaign, 'flowRun', 'step', 'key'), self::at($campaign, 'flowRun', 'next'), self::at($campaign, 'flowRun', 'canEndSession')]);
+        $this->post('skip', ['stepKey' => 'notes']);
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([null, true], [$this->json()['currentSessionNumber'], self::at($this->json(), 'flowRun', 'waitsForSession')]);
+    }
+
+    #[Test]
+    public function aSessionClosingThatDoesNotFitTheSessionIsAConflict(): void
+    {
+        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9303', GuidedReleases::content(sessionClosing: true) + ['sheet' => []], false));
+        $this->prepare('pick');
+        for ($scene = 1; $scene <= 200; ++$scene) {
+            $this->dispatch(new StartScene(self::CAMPAIGN, $this->userId, 'By hand '.$scene));
+        }
+
+        $before = $this->campaign();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertStringContainsString('200', $this->error());
+        self::assertSame($before, $this->campaign());
     }
 
     /**

@@ -191,7 +191,7 @@ Re-forecasts split slices whenever the parent's forecast passed the limit: slice
 | T10c1 | 17 | Campaign view `flowRun` in the API, `JournalEntryResponse` maps `choice` and `flowStep`, the slice 12 end-session HTTP test; OpenAPI and typed client | delegated writer (slice 17, 2+ non-trivial files) | [x] | `f0fc90e`, `048a257` |
 | T10c2 | 18 | HTTP endpoints for the FlowRun commands, API tests (404/409/422 per domain error, 409 on a concurrent save), Behat | delegated writer (slice 18, 2+ non-trivial files) | [x] | `74fb0e6`, `76d0a92` |
 | T11 | 19 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | delegated writer (slice 19, 2+ non-trivial files) | [x] | `3340e66` |
-| T12 | 20 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
+| T12 | 20 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | delegated writer (slice 20, 2+ non-trivial files) | [x] | |
 | T13 | 21 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
 | T14 | 21 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
 | T15 | 22 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
@@ -239,6 +239,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 - Slice 18 review fixes: `InvalidStepResult` says "an oracle step"; the `pick/roll` API test pins that the rolled table has one entry, so the real random number generator is safe; doc condensed for the Engram mirror (RED: 1 message failure → GREEN).
 - T11: Outcomes, bands, Effects (order, switch limit, `sceneTypeSwitchIgnored` persisted), `Placeholders`, rendered `FlowStepView` and journal snapshot; `GuidedReleases` fork option `left` renames the scene; examples 2 and 3 replayed with effects. RED: 25 control-flow tests (20 failures, 1 error), persistence and handler rendering tests → GREEN; `Placeholders` tests are characterization.
 - Slice 19 review fix: a command failing after its Effects changed a Tracker and the scene title (scene 200's closing step, then the auto-picked next scene does not fit the session) leaves the live campaign unchanged; characterization (commands already run on a copy), checked by a mutation that runs the command on the live campaign (1 failure).
+- T12: hooks in hook Scenes (stage `hook`, `phaseOpened`, `sessionOpeningDue`, persisted with legacy defaults), `FlowRunHooksTest` (12), examples 2 and 3 to completed; guided `EndSession` at the pick only (`SessionCannotEndWhileGuided`, 409) after `sessionClosing`, `canEndSession` in the view and API; `EndSessionHandler` reads the pinned release. RED: examples, view and repository round trip (6 failures) after the domain change → GREEN; `FlowRunHooksTest`, the end-session handler and API tests were written after the code (characterization).
 
 ## Reviews
 

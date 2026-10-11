@@ -364,6 +364,24 @@ final class FlowRun
     }
 
     /**
+     * Ends the session under way between scenes, at the scene pick: the session closing runs first
+     * (in its hook Scene), and the session ends once it finishes, at once when it has no step that
+     * waits. The FlowRun then waits for the next session.
+     *
+     * @throws FlowRunNotActive            when guidance is paused or the Flow is complete
+     * @throws SessionCannotEndWhileGuided when the FlowRun is in a scene or a hook
+     */
+    public function endSession(FlowRunContext $context): void
+    {
+        $this->assertActive();
+        if (FlowRunStage::ScenePick !== $this->stage) {
+            throw SessionCannotEndWhileGuided::at($this->where());
+        }
+
+        $this->runHook(Hook::SessionClosing, $context);
+    }
+
+    /**
      * Turns guidance off: the player plays freely, and resume() goes on where it stopped.
      *
      * @throws FlowRunNotActive when guidance is already paused or the Flow is complete
@@ -448,7 +466,7 @@ final class FlowRun
     {
         $placeholders = new Placeholders($trackerValues, $this->answers);
         if (FlowRunStatus::Completed === $this->status) {
-            return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete');
+            return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete', false);
         }
 
         $phase = $this->phase($flow);
@@ -470,6 +488,7 @@ final class FlowRun
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
+            FlowRunStatus::Active === $this->status && FlowRunStage::ScenePick === $this->stage && null !== $sessionNumber,
         );
     }
 
@@ -944,9 +963,10 @@ final class FlowRun
     }
 
     /**
-     * After a hook: the next phase after the phase closing, else on the way to the scene pick.
+     * After a hook: the next phase after the phase closing; else, the session ended after its
+     * closing (not when abandoned), on the way to the scene pick.
      */
-    private function afterHook(FlowRunContext $context): void
+    private function afterHook(FlowRunContext $context, bool $abandoned = false): void
     {
         $hook = $this->hook;
         $this->stage = FlowRunStage::ScenePick;
@@ -954,9 +974,15 @@ final class FlowRun
         $this->sessionNumber = $this->sceneNumber = $this->stepKey = null;
         if (Hook::PhaseClosing === $hook) {
             $this->finishPhase($context);
-        } else {
-            $this->reachScenePick($context);
+
+            return;
         }
+
+        if (Hook::SessionClosing === $hook && !$abandoned) {
+            $context->endSession();
+        }
+
+        $this->reachScenePick($context);
     }
 
     /**
@@ -965,7 +991,7 @@ final class FlowRun
     private function abandon(FlowRunContext $context): void
     {
         $this->history[] = FlowRunHistoryEntry::sceneAbandoned($context->at, (int) $this->sessionNumber, (int) $this->sceneNumber);
-        $this->hook instanceof Hook ? $this->afterHook($context) : $this->afterScene($context);
+        $this->hook instanceof Hook ? $this->afterHook($context, true) : $this->afterScene($context);
     }
 
     /**
@@ -1081,6 +1107,7 @@ final class FlowRun
     {
         return match ($hook) {
             Hook::PhaseClosing => $this->labelPhaseComplete($flow),
+            Hook::SessionClosing => 'Session ends',
             default => $this->labelTowardsPick(false, $release, $flow, $placeholders),
         };
     }

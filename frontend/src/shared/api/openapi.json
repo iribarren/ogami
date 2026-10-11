@@ -417,7 +417,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The ended session. No scene starts until the next session.",
+                        "description": "The ended session. No scene starts until the next session. While guided, a session with a session closing stays under way (no end time) until its \"Session N ends\" hook Scene finishes.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -457,7 +457,7 @@
                         }
                     },
                     "409": {
-                        "description": "No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile.",
+                        "description": "No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2745,7 +2745,7 @@
                         "nullable": true
                     },
                     "part": {
-                        "description": "The part of the scene; null outside a scene.",
+                        "description": "The part of the scene, or the hook running; null at the scene pick.",
                         "type": "string",
                         "example": "setup",
                         "nullable": true,
@@ -2756,6 +2756,11 @@
                             "open",
                             "closing",
                             "sceneClosing",
+                            "sessionOpening",
+                            "sessionClosing",
+                            "phaseOpening",
+                            "phaseClosing",
+                            "worldTurn",
                             null
                         ]
                     },
@@ -2944,7 +2949,8 @@
                     "step",
                     "pick",
                     "canMoveOn",
-                    "next"
+                    "next",
+                    "canEndSession"
                 ],
                 "properties": {
                     "status": {
@@ -2986,7 +2992,7 @@
                             }
                         ],
                         "nullable": true,
-                        "description": "The scene pick the FlowRun waits on; null in a scene."
+                        "description": "The scene pick the FlowRun waits on; null in a scene or a hook."
                     },
                     "canMoveOn": {
                         "description": "Whether \"Move on\" ends the phase now (a loop phase that is not ending yet, while guided).",
@@ -2996,6 +3002,10 @@
                         "description": "The next step named, such as \"Closing: What changed?\" or \"Flow complete\".",
                         "type": "string",
                         "example": "Next scene: choose a scene type"
+                    },
+                    "canEndSession": {
+                        "description": "Whether \"End session\" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first.",
+                        "type": "boolean"
                     }
                 },
                 "type": "object"

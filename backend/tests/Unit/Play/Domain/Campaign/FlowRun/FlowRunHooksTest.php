@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
+use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Hook;
@@ -27,7 +28,7 @@ use PHPUnit\Framework\Attributes\Test;
  * Session, phase and world turn hooks in hook Scenes, on a test release with the Tracker "doom"
  * (counter 0-5, starting at 0), the Scene Types "job" (setup step "act") and "trouble" (setup step
  * "face"), and two phases: "start" (Act 1, a loop where the player picks either type) with every
- * hook, and "finale" (once, "job" alone) with none. The world turn passes on doom 0; from doom 1 it
+ * hook (the session closing asks "notes"), and "finale" (once, "job" alone) with none. The world turn passes on doom 0; from doom 1 it
  * forces "trouble" and asks "news", a choice whose Effects try to switch the Scene Type and either
  * raise doom ("calm", what skipping takes) or end the phase ("end").
  */
@@ -209,6 +210,63 @@ final class FlowRunHooksTest extends FlowRunTestCase
 
         $this->assertHookScene($campaign, Hook::SessionOpening, 'Session 1 begins');
         self::assertFalse(self::flowRunOf($campaign)->sessionOpeningDue());
+    }
+
+    #[Test]
+    public function aGuidedSessionEndsAtThePickAfterItsSessionClosingAndTheNextOneOpens(): void
+    {
+        $campaign = $this->atTheFirstPick();
+        self::assertTrue($this->view($campaign)->canEndSession);
+
+        $session = $campaign->endSession(self::at(), 1, $this->release);
+
+        self::assertSame([1, null], [$session->number(), $session->endedAt()]);
+        $this->assertHookScene($campaign, Hook::SessionClosing, 'Session 1 ends');
+        self::assertSame([false, 'Session ends'], [$this->view($campaign)->canEndSession, $this->view($campaign)->next]);
+        $campaign->skipFlowStep('notes', $this->release, self::at());
+
+        $view = $this->view($campaign);
+        self::assertSame([null, FlowRunStage::ScenePick, true, false, 'Session opening: Recap at doom 0'], [$campaign->currentSession(), self::flowRunOf($campaign)->stage(), $view->waitsForSession, $view->canEndSession, $view->next]);
+        self::assertEquals(self::at(), $campaign->sessions()[0]->endedAt());
+        $campaign->startSession(self::at(), $this->release);
+        $this->assertHookScene($campaign, Hook::SessionOpening, 'Session 2 begins');
+    }
+
+    #[Test]
+    public function aGuidedSessionDoesNotEndInASceneOrAHookButEndsAtOnceWhilePaused(): void
+    {
+        $campaign = $this->inTheWorldTurn();
+        foreach (['the world turn' => null, 'a scene' => 'trouble'] as $where => $sceneType) {
+            if (null !== $sceneType) {
+                $campaign->skipFlowStep('news', $this->release, self::at());
+                $campaign->pickSceneType($sceneType, $this->release, self::at());
+            }
+
+            $before = clone $campaign;
+            try {
+                $campaign->endSession(self::at(), 1, $this->release);
+                self::fail('A guided session ended in '.$where);
+            } catch (SessionCannotEndWhileGuided $exception) {
+                self::assertSame(null === $sceneType ? 'The FlowRun is at step "news": a guided session ends between scenes, at the scene pick.' : 'The FlowRun is at step "face": a guided session ends between scenes, at the scene pick.', $exception->getMessage());
+                self::assertEquals($before, $campaign);
+            }
+        }
+
+        $campaign->pauseGuidance(self::at());
+        self::assertEquals(self::at(), $campaign->endSession(self::at(), 1, $this->release)->endedAt());
+    }
+
+    #[Test]
+    public function anAbandonedSessionClosingGoesBackToThePickWithoutEndingTheSession(): void
+    {
+        $campaign = $this->atTheFirstPick();
+        $campaign->endSession(self::at(), 1, $this->release);
+        $campaign->pauseGuidance(self::at());
+        $campaign->startScene('By hand', self::at());
+
+        $campaign->resumeGuidance($this->release, self::at());
+
+        self::assertSame([FlowRunStage::ScenePick, 1, 'sceneAbandoned:1'], [self::flowRunOf($campaign)->stage(), $campaign->currentSession()?->number(), array_last(self::history($campaign))]);
     }
 
     private function atTheFirstPick(): Campaign

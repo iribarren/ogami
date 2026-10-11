@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
+use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\GameSystem\Flow\Flow;
@@ -181,20 +182,34 @@ final class Campaign
     }
 
     /**
-     * Ends the current session: its scenes stay, and no scene starts until the next session.
+     * Ends the current session: its scenes stay, and no scene starts until the next session. While
+     * guidance is active it ends only at the scene pick, after the session closing (in its hook
+     * Scene): until that finishes the session stays under way. All or nothing, like the FlowRun
+     * commands.
      *
-     * @param ?int $number the number of the session the caller means to end, or null for whichever is under way
+     * @param ?int                $number  the number of the session the caller means to end, or null for whichever is under way
+     * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told and the session ends at once
      *
-     * @return Session the ended session
+     * @return Session the session, ended unless its session closing runs first
      *
-     * @throws NoCurrentSession when no session is under way (none has started, or it has ended), or
-     *                          another session than the named one is
+     * @throws NoCurrentSession            when no session is under way (none has started, or it has
+     *                                     ended), or another session than the named one is
+     * @throws SessionCannotEndWhileGuided when guidance is active and the FlowRun is in a scene or a hook
+     * @throws CampaignLimitReached        when the session closing's hook Scene does not fit the session
      */
-    public function endSession(\DateTimeImmutable $endedAt, ?int $number = null): Session
+    public function endSession(\DateTimeImmutable $endedAt, ?int $number = null, ?GameSystemSnapshot $release = null): Session
     {
         $session = $this->currentSession() ?? throw NoCurrentSession::toEndSession();
         if (null !== $number && $session->number() !== $number) {
             throw NoCurrentSession::numbered($number);
+        }
+
+        if ($release instanceof GameSystemSnapshot && FlowRunStatus::Active === $this->flowRun?->status()) {
+            $draft = clone $this;
+            $draft->guided()->endSession($draft->flowContext($release, $endedAt));
+            $this->adopt($draft);
+
+            return $this->sessions[$session->number() - 1];
         }
 
         $ended = $session->end($endedAt);

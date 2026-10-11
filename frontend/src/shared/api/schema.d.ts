@@ -703,11 +703,11 @@ export interface components {
              */
             sceneType: string | null;
             /**
-             * @description The part of the scene; null outside a scene.
+             * @description The part of the scene, or the hook running; null at the scene pick.
              * @example setup
              * @enum {string|null}
              */
-            part: "sceneOpening" | "setup" | "play" | "open" | "closing" | "sceneClosing" | null;
+            part: "sceneOpening" | "setup" | "play" | "open" | "closing" | "sceneClosing" | "sessionOpening" | "sessionClosing" | "phaseOpening" | "phaseClosing" | "worldTurn" | null;
             /**
              * @description The number of the step, from 1; null when no step waits. Condition steps are not counted.
              * @example 1
@@ -809,7 +809,7 @@ export interface components {
             progress: components["schemas"]["FlowRunProgressResponse"] | null;
             /** @description The step the FlowRun waits on; null at the scene pick and in open play. */
             step: components["schemas"]["FlowStepResponse"] | null;
-            /** @description The scene pick the FlowRun waits on; null in a scene. */
+            /** @description The scene pick the FlowRun waits on; null in a scene or a hook. */
             pick: components["schemas"]["ScenePickResponse"] | null;
             /** @description Whether "Move on" ends the phase now (a loop phase that is not ending yet, while guided). */
             canMoveOn: boolean;
@@ -818,6 +818,8 @@ export interface components {
              * @example Next scene: choose a scene type
              */
             next: string;
+            /** @description Whether "End session" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first. */
+            canEndSession: boolean;
         };
         FlowSummaryResponse: {
             /** @example heist */
@@ -1800,7 +1802,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The ended session. No scene starts until the next session. */
+            /** @description The ended session. No scene starts until the next session. While guided, a session with a session closing stays under way (no end time) until its "Session N ends" hook Scene finishes. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1836,7 +1838,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile. */
+            /** @description No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

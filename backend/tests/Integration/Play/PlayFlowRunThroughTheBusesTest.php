@@ -21,6 +21,7 @@ use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\PublishGameSystemRelease;
+use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\ReleaseViews;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -107,6 +108,30 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
         $this->dispatch(new ResumeGuidance(self::CAMPAIGN, self::PLAYER));
 
         self::assertSame('first', $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun?->step?->step->key);
+    }
+
+    #[Test]
+    public function aTableStepStoresTheSceneTypeItsRolledEntryOffers(): void
+    {
+        // The omens table's entries name a Scene Type, which a release may do on any table.
+        $content = array_replace_recursive(GuidedReleases::content(), ['oracles' => ['tables' => [1 => ['entries' => [['sceneType' => 'quiet'], ['sceneType' => 'quiet']]]]]]);
+        $this->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9401', $content + ['sheet' => []], false));
+        $this->dispatch(new CreateCampaign('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, 'The tour', 'guided', 'tour'));
+        $this->dispatch(new StartSession('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER));
+        $this->dispatch(new PickSceneType('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, 'tour'));
+        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, self::ENTRY_1, 'intro', 'Ada', null, null, null));
+        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, self::ENTRY_2, 'dice', null, null, null, null));
+
+        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5313', 'omen', null, null, null, null));
+
+        $journal = $this->queries->ask(new GetJournal('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER));
+        $entry = $journal[2];
+        self::assertSame('oracle-table', $entry->kind);
+        self::assertSame('omen', $entry->flowStep['key'] ?? null);
+        $steps = $entry->content['steps'] ?? null;
+        self::assertIsArray($steps);
+        self::assertIsArray($steps[0] ?? null);
+        self::assertSame('quiet', $steps[0]['sceneType'] ?? null);
     }
 
     /**

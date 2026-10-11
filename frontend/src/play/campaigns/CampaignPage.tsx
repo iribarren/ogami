@@ -116,7 +116,11 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
               sceneOracleKeys={
                 campaign.sceneTypes.find(({ key }) => key === scene?.sceneType)?.oracles
               }
-              flow={flow === undefined ? null : { name: flow.name, oracleKeys: flow.oracles }}
+              flow={
+                flow === undefined || campaign.flowRun?.status !== 'active'
+                  ? null
+                  : { name: flow.name, oracleKeys: flow.oracles }
+              }
               disabled={!hasScene}
             />
           </Section>

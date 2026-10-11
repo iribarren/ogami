@@ -187,6 +187,24 @@ trait CampaignRepositoryContract
     }
 
     /**
+     * A Scene Type switch through Effects and an ignored one (play-flow-run slice 19) are kept.
+     */
+    #[Test]
+    public function itKeepsAnIgnoredSceneTypeSwitch(): void
+    {
+        $release = new GameSystemReleaseTranslator()->translate(ReleaseViews::of(ReleaseViews::fixtureContent('examples/cpr-heist')));
+        $at = new \DateTimeImmutable('2026-10-10T09:00:00.250000+02:00');
+        $campaign = Campaign::create(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'), self::OWNER, 'The job', PinnedRelease::of($release->gameSystemKey(), $release->releaseVersion(), $release->name()), $at, $release->trackers(), $release->flow('heist'));
+        $campaign->startSession($at, $release);
+        $campaign->pickSceneType('crew', $release, $at);
+        $campaign = Campaigns::withHistory($campaign, FlowRunHistoryEntry::sceneTypeSwitch($at, 1, 'crew', 'briefing'), FlowRunHistoryEntry::sceneTypeSwitchIgnored($at, 1, 'crew'));
+
+        $this->campaigns()->add($campaign);
+
+        self::assertSame(['sceneTypeSwitch', 'sceneTypeSwitchIgnored'], array_map(static fn (FlowRunHistoryEntry $entry): string => $entry->event->value, $this->reloaded($campaign)->flowRun()?->history() ?? []));
+    }
+
+    /**
      * Pause, save, reload, resume, save, reload: the whole campaign is the same at each step.
      */
     #[Test]

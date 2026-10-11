@@ -17,7 +17,7 @@ use OpenApi\Attributes as OA;
 /**
  * The step a guided campaign waits on, flat: the fields of the other kinds are null (the options
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
- * they are not exposed. Placeholders in the title, prompt and tip are not rendered yet.
+ * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
 #[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options'])]
 final readonly class FlowStepResponse
@@ -80,6 +80,6 @@ final readonly class FlowStepResponse
     {
         $step = $view->step;
 
-        return new self($step->key, $view->kind->value, $step->title, $step->prompt, $step->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options);
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options);
     }
 }

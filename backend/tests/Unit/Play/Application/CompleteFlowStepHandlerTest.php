@@ -18,6 +18,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
@@ -71,6 +72,19 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
         self::assertSame(['oracle-table', 'omens', 'Omens'], [$content['kind'], $content['oracleKey'], $content['oracleName']]);
         self::assertSame([['tableKey' => 'omens', 'tableName' => 'Omens', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => null]], $content['steps']);
         self::assertSame(['omen' => 'Storm'], $this->stored('campaign-1')->flowRun()?->answers());
+    }
+
+    #[Test]
+    public function theEntryNamesItsStepWithThePlaceholdersRendered(): void
+    {
+        $campaign = $this->stored('campaign-1');
+        $campaign->completeFlowStep('intro', StepResult::prompt('Ada'), $this->release, self::at('09:10'));
+        $this->campaigns->save($campaign);
+        $this->atStep('omen');
+
+        $this->complete(self::command('omen'), 2);
+
+        self::assertSame(['key' => 'omen', 'title' => 'Read the omen', 'prompt' => 'After Ada, what do the signs say?'], $this->onlyEntryOf('campaign-1')->flowStep()?->toArray());
     }
 
     #[Test]

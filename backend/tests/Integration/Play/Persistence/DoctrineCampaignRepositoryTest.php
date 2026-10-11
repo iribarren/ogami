@@ -134,11 +134,12 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
         yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn".'];
         yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
-        yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
+        yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "sceneTypeSwitchIgnored", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
         yield 'malformed time' => [['history' => [['event' => 'paused', 'at' => 'yesterday', 'details' => []]]], 'Stored campaign FlowRun: "at" must be a time like 2026-10-06T10:00:00.000000+00:00.'];
         yield 'skip of an unknown part' => [$entry('skip', ['step' => 'plan', 'part' => 'later']), 'Stored campaign FlowRun: "part" must be one of'];
         yield 'tracker edit from a string' => [$entry('trackerEdit', ['tracker' => 'heat', 'from' => '1', 'to' => 2]), 'Stored campaign FlowRun: "from" must be an integer.'];
         yield 'switch without its target' => [$entry('sceneTypeSwitch', ['scene' => 1, 'from' => null]), 'Stored campaign FlowRun: "to" must be a string.'];
+        yield 'ignored switch without its Scene Type' => [$entry('sceneTypeSwitchIgnored', ['scene' => 1]), 'Stored campaign FlowRun: "sceneType" must be a string.'];
         yield 'abandoned scene without its session' => [$entry('sceneAbandoned', ['scene' => 1]), 'Stored campaign FlowRun: "session" must be an integer.'];
         yield 'phase ended for an unknown reason' => [$entry('phaseEnded', ['phase' => 'plan', 'reason' => 'boredom']), 'Stored campaign FlowRun: "reason" must be one of "finished", "moveOn", "endPhase".'];
     }

@@ -67,10 +67,11 @@ final class SkipFlowStepHandlerTest extends FlowRunHandlerTestCase
 
         $this->skip(new SkipFlowStep('campaign-1', 'user-1', 'fork'));
 
-        // "left" is the fork's skip option; it has no outcome of its own yet (effects come with T11),
-        // so the skip ends setup like any step, records the skip and no answer, and writes no entry.
-        $flowRun = $this->stored('campaign-1')->flowRun();
-        self::assertSame([ScenePart::Open, null, [], 'skip'], [$flowRun?->part(), $flowRun?->stepKey(), $flowRun?->answers(), array_last($flowRun?->history() ?? [])?->event->value]);
+        // "left" is the fork's skip option: its Effect renames the scene with its label. The skip ends
+        // setup like any step, records the skip and no answer, and writes no entry.
+        $stored = $this->stored('campaign-1');
+        $flowRun = $stored->flowRun();
+        self::assertSame([ScenePart::Open, null, [], 'skip', 'Went Go left'], [$flowRun?->part(), $flowRun?->stepKey(), $flowRun?->answers(), array_last($flowRun?->history() ?? [])?->event->value, $stored->currentScene()?->title()]);
         self::assertSame([], $this->journalOf('campaign-1'));
     }
 

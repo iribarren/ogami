@@ -9,8 +9,9 @@ namespace App\Play\Domain\Campaign;
  * campaign, the session number and its own number.
  *
  * Its kind is `scene` (play, with an optional Scene Type key of the pinned release) or `hook`
- * (a phase boundary, with its hook name and no Scene Type). Only the Scene Type of a scene of play
- * changes after it starts, through withSceneType(), which returns a new Scene.
+ * (a phase boundary, with its hook name and no Scene Type). Only the title and the Scene Type of a
+ * scene of play change after it starts, through withTitle() and withSceneType(), which return a new
+ * Scene.
  */
 final readonly class Scene
 {
@@ -80,6 +81,16 @@ final readonly class Scene
         }
 
         return new self($this->number, $this->title, $this->startedAt, $this->kind, $sceneType, null);
+    }
+
+    /**
+     * The same scene with another title; its number, kind, Scene Type and start stay.
+     *
+     * @throws InvalidSceneTitle when the trimmed title is blank or longer than 100 characters
+     */
+    public function withTitle(string $title): self
+    {
+        return new self($this->number, self::checkedTitle($title), $this->startedAt, $this->kind, $this->sceneType, $this->hook);
     }
 
     public function number(): int

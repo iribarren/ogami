@@ -59,6 +59,7 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Scene cast | The NPCs present and the Characters the player controls in a Scene. Picks add to it; the player edits it | Play |
 | Guidance | Whether a campaign follows a NarrativeFlow. "Play freely" means no FlowRun; turning guidance off pauses the FlowRun | Play |
 | FlowRun | A campaign's progress through its NarrativeFlow: current phase, scene, part and step, and a history that includes skips, tracker edits and Scene Type switches. It can be paused, and is `completed` after its last phase | Play |
+| Focus mode | A Play view of a FlowRun that shows only the current step (or scene pick), the progress breadcrumb, the next step and a compact summary of the current scene, as opposed to the journal view. Each Flow sets its `defaultView` ([ADR 0016](../adr/0016-flow-presentation-journal-with-focus-mode.md), [ADR 0017](../adr/0017-narrativeflow-model.md)) | Play |
 | JournalEntry | An immutable record in a campaign's journal, recorded in the current scene. Kinds: `note` (written text), `roll` (a dice roll result), `oracle-table` (an oracle table result), `likelihood` (a likelihood oracle answer) | Play |
 | Thread | An open story line or goal the player tracks. It may carry tags and fill a `thread` fact slot (e.g. a sandbox ambition) | Play |
 | NPC | A non-player character the player tracks in a campaign. It may have an agenda and tags (e.g. a faction `leader`) | Play |

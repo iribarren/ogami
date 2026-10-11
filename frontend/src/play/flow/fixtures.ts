@@ -95,8 +95,8 @@ export const inOpenPlay: FlowRun = atStep(promptStep, {
   next: 'Closing: What changed?',
 })
 
-/** `lostMineCampaign` along the Flow "tour", with the given FlowRun. */
-export function guided(flowRun: FlowRun): Campaign {
+/** `lostMineCampaign` along the Flow "tour", with the given FlowRun, opening in `defaultView`. */
+export function guided(flowRun: FlowRun, defaultView: 'journal' | 'focus' = 'journal'): Campaign {
   return {
     ...lostMineCampaign,
     flowKey: 'tour',
@@ -108,7 +108,7 @@ export function guided(flowRun: FlowRun): Campaign {
         description: null,
         introduction: null,
         default: true,
-        defaultView: 'journal',
+        defaultView,
         oracles: [],
         trackers: [],
       },

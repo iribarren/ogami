@@ -32,4 +32,4 @@ Play presents a FlowRun as a **mix**:
 - `play-flow-run` builds on the M1 journal (`Journal`, `JournalEntryView`) and does not need a second display model for flow results.
 - Focus mode is an extra view of the same state, so it can ship in a later slice of `play-flow-run` without changing the domain.
 - Guided flows for novice players, authored by a game manager in Studio (scene types, Session Zero, world changes between scenes), are **not** settled here. They are explored in feature 6b `flow-model-brainstorm`, which may amend this ADR, for example to make focus mode the default for guided flows.
-- The prototypes stay in Storybook as a reference until `play-flow-run` replaces them. That feature deletes them.
+- The prototypes stayed in Storybook as a reference until `play-flow-run`. That feature replaces them (focus mode lives in `frontend/src/play/flow/`), so they are deleted.

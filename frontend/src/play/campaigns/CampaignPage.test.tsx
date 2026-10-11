@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
+import { atStep, guided, promptStep } from '../flow/fixtures'
 import { lostMineJournal, recordedEntry } from '../journal/fixtures'
 import {
   freeJournal,
@@ -393,5 +394,32 @@ describe('the Play screen', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument()
     expect(router.state.location.search).toEqual({ redirect: `/play/campaigns/${created.id}` })
+  })
+
+  describe('the Flow oracles section', () => {
+    /** The Flow "tour" lists the oracle "action", the release also has "weather". */
+    function tourCampaign(status: 'active' | 'paused' | 'completed'): Campaign {
+      const campaign = guided({ ...atStep(promptStep), status })
+      const [flow] = campaign.flows
+      return { ...campaign, flows: flow === undefined ? [] : [{ ...flow, oracles: ['action'] }] }
+    }
+
+    it('orders the oracles by the Flow while its FlowRun is active', async () => {
+      renderPlayScreen(tourCampaign('active'))
+
+      expect(await screen.findByRole('heading', { name: 'Flow: Tour' })).toBeInTheDocument()
+      expect(screen.getByText('More oracles')).toBeInTheDocument()
+    })
+
+    it.each(['paused', 'completed'] as const)(
+      'shows every oracle flat when the FlowRun is %s, as the Trackers do',
+      async (status) => {
+        renderPlayScreen(tourCampaign(status))
+
+        expect(await screen.findByRole('button', { name: 'Roll on Weather' })).toBeInTheDocument()
+        expect(screen.queryByRole('heading', { name: 'Flow: Tour' })).not.toBeInTheDocument()
+        expect(screen.queryByText('More oracles')).not.toBeInTheDocument()
+      },
+    )
   })
 })

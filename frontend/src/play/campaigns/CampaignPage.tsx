@@ -1,8 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { useId, type ReactNode } from 'react'
 
+import { Button } from '@/shared/ui/button'
+
 import { DiceRoller } from '../dice/DiceRoller'
+import { FocusPanel } from '../flow/FocusPanel'
 import { GuidedPanel } from '../flow/GuidedPanel'
+import { useFlowView, type FlowView } from '../flow/useFlowView'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
 import { useJournal, useRecordRoll } from '../journal/useJournal'
@@ -50,7 +54,7 @@ function CampaignState({ campaign }: { campaign: ReturnType<typeof useCampaign> 
         </p>
       )
     case 'success':
-      return <CampaignPlay campaign={campaign.data} />
+      return <CampaignPlay key={campaign.data.id} campaign={campaign.data} />
   }
 }
 
@@ -75,6 +79,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
     .find(({ number }) => number === campaign.currentSessionNumber)
     ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
   const flow = campaign.flows.find(({ key }) => key === campaign.flowKey)
+  const [view, setView] = useFlowView(campaign)
 
   return (
     <>
@@ -87,12 +92,17 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
       <SessionControls campaign={campaign} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
-          <Section title="Journal">
-            <CampaignJournal campaign={campaign} />
-            {campaign.flowRun !== null && (
-              <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} />
-            )}
-          </Section>
+          {campaign.flowRun !== null && <ViewToggle view={view} onChange={setView} />}
+          {campaign.flowRun !== null && view === 'focus' ? (
+            <FocusPanel campaign={campaign} flowRun={campaign.flowRun} />
+          ) : (
+            <Section title="Journal">
+              <CampaignJournal campaign={campaign} />
+              {campaign.flowRun !== null && (
+                <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} />
+              )}
+            </Section>
+          )}
           <div className="space-y-2">
             {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
             <NoteComposer campaignId={campaign.id} disabled={!hasScene} />
@@ -127,6 +137,28 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         </div>
       </div>
     </>
+  )
+}
+
+/** Journal view or focus mode, for a campaign a Flow guides. */
+function ViewToggle({ view, onChange }: { view: FlowView; onChange: (view: FlowView) => void }) {
+  return (
+    <div role="group" aria-label="Guided view" className="flex gap-2">
+      {(['journal', 'focus'] as const).map((option) => (
+        <Button
+          key={option}
+          type="button"
+          size="sm"
+          variant={view === option ? 'default' : 'outline'}
+          aria-pressed={view === option}
+          onClick={() => {
+            onChange(option)
+          }}
+        >
+          {option === 'journal' ? 'Journal view' : 'Focus view'}
+        </Button>
+      ))}
+    </div>
   )
 }
 

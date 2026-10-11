@@ -24,10 +24,10 @@ const json =
     Response.json(body, { status })
 
 /** The Play screen of the lost mine along the Flow "tour", the FlowRun being `flowRun`. */
-function guidedApi(flowRun: FlowRun) {
+function guidedApi(flowRun: FlowRun, defaultView: 'journal' | 'focus' = 'journal') {
   const path = `/api/campaigns/${lostMineCampaign.id}`
   return {
-    [`GET ${path}`]: json(guided(flowRun)),
+    [`GET ${path}`]: json(guided(flowRun, defaultView)),
     [`GET ${path}/journal`]: json([chosenWay]),
   }
 }
@@ -50,6 +50,13 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const PromptStep: Story = {}
+
+/** Focus mode: the current step, the next one and the scene so far, in place of the journal. */
+export const FocusMode: Story = { parameters: { api: guidedApi(atStep(choiceStep), 'focus') } }
+
+export const FocusModeScenePick: Story = {
+  parameters: { api: guidedApi(atTheScenePick(), 'focus') },
+}
 
 export const OracleStep: Story = { parameters: { api: guidedApi(atStep(oracleStep)) } }
 

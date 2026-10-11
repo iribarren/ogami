@@ -6,6 +6,8 @@ namespace App\Tests\Integration\Play\Http;
 
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
+use App\Play\Application\NpcIdGenerator;
+use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Infrastructure\Http\CampaignController;
 use App\Play\Infrastructure\Http\CampaignNpcsController;
 use App\Play\Infrastructure\Http\NpcResponse;
@@ -288,11 +290,11 @@ final class CampaignNpcsApiTest extends WebTestCase
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
         $id = $this->createCampaign();
 
-        foreach ([self::UNKNOWN_ID, 'not-a-uuid'] as $npcId) {
+        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' '] as $npcId) {
             foreach ([
-                ['PUT', \sprintf('/api/campaigns/%s/npcs/%s', $id, $npcId), ['name' => 'Brann']],
-                ['POST', \sprintf('/api/campaigns/%s/npcs/%s/close', $id, $npcId), []],
-                ['POST', \sprintf('/api/campaigns/%s/npcs/%s/reopen', $id, $npcId), []],
+                ['PUT', \sprintf('/api/campaigns/%s/npcs/%s', $id, rawurlencode($npcId)), ['name' => 'Brann']],
+                ['POST', \sprintf('/api/campaigns/%s/npcs/%s/close', $id, rawurlencode($npcId)), []],
+                ['POST', \sprintf('/api/campaigns/%s/npcs/%s/reopen', $id, rawurlencode($npcId)), []],
             ] as [$method, $uri, $body]) {
                 $this->client->jsonRequest($method, $uri, $body);
 
@@ -300,6 +302,85 @@ final class CampaignNpcsApiTest extends WebTestCase
                 self::assertSame(['error' => \sprintf('NPC "%s" not found.', $npcId)], $this->json());
             }
         }
+    }
+
+    #[Test]
+    public function theCampaignIsCheckedBeforeTheNpcId(): void
+    {
+        $this->signIn('bob@example.com', ['SOLO_PLAYER']);
+        $bobs = $this->createCampaign();
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $mine = $this->createCampaign();
+
+        foreach ([$bobs, self::UNKNOWN_ID] as $campaignId) {
+            foreach (['not-a-uuid', ' '] as $npcId) {
+                foreach ([
+                    ['PUT', \sprintf('/api/campaigns/%s/npcs/%s', $campaignId, rawurlencode($npcId)), ['name' => 'Brann']],
+                    ['POST', \sprintf('/api/campaigns/%s/npcs/%s/close', $campaignId, rawurlencode($npcId)), []],
+                    ['POST', \sprintf('/api/campaigns/%s/npcs/%s/reopen', $campaignId, rawurlencode($npcId)), []],
+                ] as [$method, $uri, $body]) {
+                    $this->client->jsonRequest($method, $uri, $body);
+
+                    self::assertResponseStatusCodeSame(404);
+                    self::assertSame(['error' => \sprintf('Campaign "%s" not found.', $campaignId)], $this->json());
+                }
+            }
+        }
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/not-a-uuid/close', $mine));
+        self::assertResponseStatusCodeSame(404);
+        self::assertSame(['error' => 'NPC "not-a-uuid" not found.'], $this->json());
+    }
+
+    #[Test]
+    public function aGeneratedIdThatIsAlreadyTakenIsAConflict(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        self::getContainer()->set(NpcIdGenerator::class, new readonly class implements NpcIdGenerator {
+            public function generate(): NpcId
+            {
+                return NpcId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001');
+            }
+        });
+        $this->addNpc($id, ['name' => 'Mira']);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs', $id), ['name' => 'Brann']);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'NPC "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001" already exists.'], $this->json());
+        self::assertSame(['Mira'], array_column($this->campaignNpcs($id), 'name'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unreadableReleases(): iterable
+    {
+        yield 'release gone' => ['DELETE FROM studio_gamesystem_release'];
+        yield 'unsupported schema version' => ['UPDATE studio_gamesystem_release SET schema_version = 99'];
+    }
+
+    #[Test]
+    #[DataProvider('unreadableReleases')]
+    public function aPinnedReleaseThatCannotBeReadIsAServerErrorWithoutInternals(string $breakTheRelease): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $this->connection()->executeStatement($breakTheRelease);
+
+        foreach ([
+            ['POST', \sprintf('/api/campaigns/%s/npcs', $id)],
+            ['PUT', \sprintf('/api/campaigns/%s/npcs/%s', $id, $npcId)],
+        ] as [$method, $uri]) {
+            $this->client->jsonRequest($method, $uri, ['name' => 'Brann']);
+
+            self::assertResponseStatusCodeSame(500);
+            self::assertSame(['error' => 'The GameSystem release this campaign plays can no longer be read.'], $this->json());
+        }
+
+        self::assertSame(1, $this->connection()->fetchOne('SELECT jsonb_array_length(npcs) FROM play_campaign WHERE id = ?', [$id]));
     }
 
     #[Test]

@@ -16,9 +16,12 @@ use App\Play\Application\ReopenNpc;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
-use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
+use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -30,12 +33,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The NPCs of a solo player's campaigns: add, edit, close and reopen (security.yaml restricts these
  * routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly like an unknown
- * one, and so is an NPC id that is not a UUID. The Tags come from the campaign's pinned release.
+ * one (the campaign is checked first), and so is an NPC id the campaign does not hold, such as one
+ * that is not a UUID. The Tags come from the campaign's pinned release.
  */
 #[AsController]
 #[OA\Tag(name: 'Play')]
@@ -75,10 +78,12 @@ final readonly class CampaignNpcsController
             $this->commandBus->dispatch(new AddNpc($campaignId, $user->id(), $npcId, ...$fields));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (CampaignLimitReached|CampaignModifiedConcurrently $exception) {
+        } catch (CampaignLimitReached|CampaignModifiedConcurrently|NpcAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InvalidNpc|UnknownReleaseTag $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
         }
 
         return $this->npc($campaignId, $npcId, $user, Response::HTTP_CREATED);
@@ -103,14 +108,18 @@ final readonly class CampaignNpcsController
         }
 
         try {
-            $this->assertNpcId($npcId);
             $this->commandBus->dispatch(new EditNpc($campaignId, $user->id(), $npcId, ...$fields));
         } catch (CampaignNotFound|UnknownNpc $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidNpc|UnknownReleaseTag $exception) {
+        } catch (InvalidNpc $exception) {
+            // A blank id is not a value to fix: no NPC has it.
+            return '' === trim($npcId) ? $this->blankNpcNotFound($npcId) : $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (UnknownReleaseTag $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
         }
 
         return $this->npc($campaignId, $npcId, $user, Response::HTTP_OK);
@@ -126,12 +135,13 @@ final readonly class CampaignNpcsController
     public function close(string $campaignId, string $npcId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         try {
-            $this->assertNpcId($npcId);
             $this->commandBus->dispatch(new CloseNpc($campaignId, $user->id(), $npcId));
         } catch (CampaignNotFound|UnknownNpc $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (InvalidNpc) {
+            return $this->blankNpcNotFound($npcId);
         }
 
         return $this->npc($campaignId, $npcId, $user, Response::HTTP_OK);
@@ -147,12 +157,13 @@ final readonly class CampaignNpcsController
     public function reopen(string $campaignId, string $npcId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         try {
-            $this->assertNpcId($npcId);
             $this->commandBus->dispatch(new ReopenNpc($campaignId, $user->id(), $npcId));
         } catch (CampaignNotFound|UnknownNpc $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (InvalidNpc) {
+            return $this->blankNpcNotFound($npcId);
         }
 
         return $this->npc($campaignId, $npcId, $user, Response::HTTP_OK);
@@ -185,21 +196,11 @@ final readonly class CampaignNpcsController
     }
 
     /**
-     * @phpstan-assert-if-true list<string> $value
+     * A blank id (all spaces in the path) cannot be an NPC id, so no campaign holds that NPC.
      */
-    private function isListOfStrings(mixed $value): bool
+    private function blankNpcNotFound(string $npcId): JsonResponse
     {
-        return \is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $item): bool => \is_string($item));
-    }
-
-    /**
-     * @throws UnknownNpc when the id is not a UUID, which no NPC has
-     */
-    private function assertNpcId(string $npcId): void
-    {
-        if (!Uuid::isValid($npcId)) {
-            throw UnknownNpc::withId(NpcId::fromString($npcId));
-        }
+        return $this->error(\sprintf('NPC "%s" not found.', $npcId), Response::HTTP_NOT_FOUND);
     }
 
     /**

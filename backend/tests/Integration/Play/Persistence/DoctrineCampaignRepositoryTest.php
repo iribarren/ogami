@@ -7,13 +7,20 @@ namespace App\Tests\Integration\Play\Persistence;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
+use App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
+use App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
 use App\Tests\Support\Play\Snapshots;
@@ -28,6 +35,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 #[CoversClass(DoctrineCampaignRepository::class)]
 #[CoversClass(CampaignSessionsType::class)]
 #[CoversClass(CampaignFlowRunType::class)]
+#[CoversClass(CampaignNpcsType::class)]
+#[CoversClass(CampaignThreadsType::class)]
 final class DoctrineCampaignRepositoryTest extends KernelTestCase
 {
     use CampaignRepositoryContract;
@@ -302,6 +311,156 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->expectExceptionMessageIsOrContains($error);
 
         $this->repository->ofId($id);
+    }
+
+    #[Test]
+    public function npcsAndThreadsRoundTripWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithLists($id);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(['Mira', 'Brann', 'Old Tam'], array_map(static fn ($npc): string => $npc->name(), $loaded?->npcs() ?? []));
+        $connection = $this->entityManager->getConnection();
+        self::assertSame(['npcs' => 'jsonb', 'threads' => 'jsonb'], $connection->fetchAllKeyValue(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'play_campaign' AND column_name IN ('npcs', 'threads') ORDER BY column_name",
+        ));
+        self::assertEquals(
+            [['id' => 'npc-1', 'name' => 'Mira', 'agenda' => 'Wants the ledger', 'tags' => ['ally', 'rival'], 'freeTags' => ['Fence'], 'weight' => 3, 'status' => 'open']],
+            \array_slice($this->storedList($id->toString(), 'npcs'), 0, 1),
+        );
+    }
+
+    #[Test]
+    public function aChangeToAListedItemIsSaved(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaignWithLists($id));
+        $this->forgetLoaded();
+        $campaign = $this->repository->ofId($id);
+        self::assertNotNull($campaign);
+
+        $campaign->closeNpc(NpcId::fromString('npc-1'));
+        $campaign->editThread(ThreadId::fromString('thread-1'), 'The vault job', ['ally'], [], 2, $this->release());
+        $this->repository->save($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(['Brann', 'Mira', 'Old Tam'], array_map(static fn ($npc): string => $npc->name(), $loaded?->npcs() ?? []));
+        self::assertSame('The vault job', $loaded?->thread(ThreadId::fromString('thread-1'))?->name());
+    }
+
+    #[Test]
+    public function aRowStoredBeforeListsExistedReadsWithNoNpcsOrThreads(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement(
+            "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions, tracker_values) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', ?, 'Old', 'heist', 1, 'Heist', '2026-10-06 10:00:00+00', '[]', '{}')",
+            [self::OWNER],
+        );
+
+        $campaign = $this->repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'));
+
+        self::assertSame([[], []], [$campaign?->npcs(), $campaign?->threads()]);
+        self::assertSame(['[]', '[]'], [$connection->fetchOne('SELECT npcs FROM play_campaign'), $connection->fetchOne('SELECT threads FROM play_campaign')]);
+    }
+
+    #[Test]
+    public function aSaveAfterAListChangeRefusesAStaleCopy(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add(Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00')));
+        $this->forgetLoaded();
+        $mine = $this->repository->ofId($id);
+        $theirs = $this->campaignsElsewhere()->ofId($id);
+        self::assertNotNull($mine);
+        self::assertNotNull($theirs);
+
+        $theirs->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $this->release());
+        $this->campaignsElsewhere()->save($theirs);
+        $mine->addThread(ThreadId::fromString('thread-1'), 'The vault job', [], [], 1, $this->release());
+
+        $this->expectException(CampaignModifiedConcurrently::class);
+
+        $this->repository->save($mine);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function malformedLists(): iterable
+    {
+        $npc = static fn (array $fields): string => json_encode([$fields + ['id' => 'npc-1', 'name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open']], \JSON_THROW_ON_ERROR);
+        $thread = static fn (array $fields): string => json_encode([$fields + ['id' => 'thread-1', 'name' => 'Vault', 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open']], \JSON_THROW_ON_ERROR);
+
+        yield 'npcs not a list' => ['npcs', '{"a": 1}', 'Stored campaign npcs: "npcs" must be a list.'];
+        yield 'npc unknown status' => ['npcs', $npc(['status' => 'lost']), 'Stored campaign npcs: "status" must be one of "open", "closed".'];
+        yield 'npc missing name' => ['npcs', $npc(['name' => null]), 'Stored campaign npcs: "name" must be a string.'];
+        yield 'npc weight not an integer' => ['npcs', $npc(['weight' => '2']), 'Stored campaign npcs: "weight" must be an integer.'];
+        yield 'npc tags not strings' => ['npcs', $npc(['tags' => [3]]), 'Stored campaign npcs: "tags" must be a list of strings.'];
+        yield 'npc agenda not a string' => ['npcs', $npc(['agenda' => 4]), 'Stored campaign npcs: "agenda" must be a string.'];
+        yield 'npc weight out of range' => ['npcs', $npc(['weight' => 4]), 'The weight must be 1 to 3, got 4.'];
+        yield 'npc duplicate tag' => ['npcs', $npc(['tags' => ['ally', 'ally']]), 'Tag "ally" is listed twice.'];
+        yield 'npc blank name' => ['npcs', $npc(['name' => ' ']), 'The name must not be blank.'];
+        yield 'npc blank id' => ['npcs', $npc(['id' => '']), 'An NPC id must not be blank.'];
+        yield 'thread unknown status' => ['threads', $thread(['status' => 'done']), 'Stored campaign threads: "status" must be one of "open", "closed".'];
+        yield 'thread free tag duplicate' => ['threads', $thread(['freeTags' => ['Fence', 'fence']]), 'Free tag "fence" is listed twice.'];
+        yield 'thread missing id' => ['threads', $thread(['id' => null]), 'Stored campaign threads: "id" must be a string.'];
+    }
+
+    #[Test]
+    #[DataProvider('malformedLists')]
+    public function aMalformedStoredListFailsToLoad(string $column, string $stored, string $error): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->entityManager->getConnection()->executeStatement(\sprintf('UPDATE play_campaign SET %s = ? WHERE id = ?', $column), [$stored, $id->toString()]);
+        $this->forgetLoaded();
+
+        $this->expectExceptionMessageIsOrContains($error);
+
+        $this->repository->ofId($id);
+    }
+
+    private function release(): GameSystemSnapshot
+    {
+        return new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', 'Someone in the way')]);
+    }
+
+    /**
+     * A campaign with three NPCs (the second closed) and two Threads (the last closed): agendas null and set, tags, free tags and weights vary.
+     */
+    private function campaignWithLists(CampaignId $id): Campaign
+    {
+        $release = $this->release();
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', 'Wants the ledger', ['ally', 'rival'], ['Fence'], 3, $release);
+        $campaign->addNpc(NpcId::fromString('npc-2'), 'Old Tam', null, [], [], 1, $release);
+        $campaign->addNpc(NpcId::fromString('npc-3'), 'Brann', 'Keeps the keys', ['rival'], ['Smith', 'Night shift'], 2, $release);
+        $campaign->closeNpc(NpcId::fromString('npc-2'));
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Rob the vault', ['ally'], ['Heist'], 2, $release);
+        $campaign->addThread(ThreadId::fromString('thread-2'), 'Old debts', [], [], 1, $release);
+        $campaign->closeThread(ThreadId::fromString('thread-2'));
+
+        return $campaign;
+    }
+
+    /**
+     * @return list<mixed> a stored list column, decoded, in stored (creation) order
+     */
+    private function storedList(string $id, string $column): array
+    {
+        $stored = $this->entityManager->getConnection()->fetchOne(\sprintf('SELECT %s FROM play_campaign WHERE id = ?', $column), [$id]);
+        self::assertIsString($stored);
+        $decoded = json_decode($stored, true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($decoded);
+
+        return array_values($decoded);
     }
 
     private function storeSessions(CampaignId $id, string $sessions): void

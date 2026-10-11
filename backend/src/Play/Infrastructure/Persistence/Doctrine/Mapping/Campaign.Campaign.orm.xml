@@ -8,7 +8,8 @@
          of the App\Play\Domain prefix with dots.
          Identity, ownership, the pinned release, the Flow and the creation time are columns; the
          sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType), and so are
-         the tracker values, an object of integers by Tracker key (empty: {} or []), and so is the
+         the tracker values, an object of integers by Tracker key (empty: {} or []), and so are the
+         NPCs and Threads (CampaignNpcsType, CampaignThreadsType; lists, empty by default) and the
          FlowRun (CampaignFlowRunType; null when played freely). -->
     <entity name="App\Play\Domain\Campaign\Campaign" table="play_campaign">
         <indexes>
@@ -34,6 +35,19 @@
         <field name="trackerValues" type="json" column="tracker_values">
             <options>
                 <option name="jsonb">true</option>
+            </options>
+        </field>
+        <!-- Rows stored before NPCs and Threads existed hold the default, an empty list. -->
+        <field name="npcs" type="play_campaign_npcs" column="npcs">
+            <options>
+                <option name="jsonb">true</option>
+                <option name="default">[]</option>
+            </options>
+        </field>
+        <field name="threads" type="play_campaign_threads" column="threads">
+            <options>
+                <option name="jsonb">true</option>
+                <option name="default">[]</option>
             </options>
         </field>
         <field name="flowRun" type="play_campaign_flow_run" column="flow_run" nullable="true">

@@ -10,6 +10,8 @@ doctrine:
         # Value types that map domain objects to JSONB columns (ADR 0007).
         types:
             play_campaign_sessions: App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType
+            play_campaign_npcs: App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType
+            play_campaign_threads: App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType
             play_journal_entry_content: App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType
             # TIMESTAMP(6) WITH TIME ZONE: keeps the microseconds the domain records.
             datetimetz_immutable_microseconds: App\Play\Infrastructure\Persistence\Doctrine\MicrosecondDateTimeTzImmutableType

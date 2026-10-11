@@ -72,7 +72,7 @@ export const OraclePicksTheSceneType: Story = {
 export const ForcedSceneType: Story = {
   parameters: {
     api: guidedApi(
-      atTheScenePick({ cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.' }], forced: true }),
+      atTheScenePick({ cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', oracles: [] }], forced: true }),
     ),
   },
 }

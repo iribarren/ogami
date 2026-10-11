@@ -11,7 +11,7 @@ use App\Randomness\Domain\Oracle\OracleTableStep;
  * A roll on an oracle table of the pinned release: the oracle asked and every resolution step,
  * root first.
  *
- * @phpstan-type StepData array{tableKey: string, tableName: string, dice: string, total: int, text: string, nestedTableKey: ?string}
+ * @phpstan-type StepData array{tableKey: string, tableName: string, dice: string, total: int, text: string, nestedTableKey: ?string, sceneType: ?string}
  */
 final readonly class OracleTableContent implements JournalEntryContent
 {
@@ -28,28 +28,34 @@ final readonly class OracleTableContent implements JournalEntryContent
     }
 
     /**
+     * @param list<?string> $sceneTypes the Scene Type key each step's entry offers, in step order; a missing item is null
+     *
      * @throws InvalidJournalEntryContent when the oracle key is blank
      */
-    public static function fromResult(string $oracleKey, string $oracleName, OracleTableResult $result): self
+    public static function fromResult(string $oracleKey, string $oracleName, OracleTableResult $result, array $sceneTypes): self
     {
         return self::of(
             $oracleKey,
             $oracleName,
             array_map(
-                static fn (OracleTableStep $step): array => [
+                static fn (OracleTableStep $step, int $index): array => [
                     'tableKey' => $step->tableKey(),
                     'tableName' => $step->tableName(),
                     'dice' => $step->dice(),
                     'total' => $step->total(),
                     'text' => $step->text(),
                     'nestedTableKey' => $step->nestedTableKey(),
+                    'sceneType' => $sceneTypes[$index] ?? null,
                 ],
                 $result->steps(),
+                array_keys($result->steps()),
             ),
         );
     }
 
     /**
+     * Rows stored before the Scene Type was kept have no `sceneType` and read as null.
+     *
      * @param array<mixed> $data
      *
      * @throws InvalidJournalEntryContent
@@ -64,6 +70,7 @@ final readonly class OracleTableContent implements JournalEntryContent
                 'total' => ContentData::int($step, 'total'),
                 'text' => ContentData::string($step, 'text'),
                 'nestedTableKey' => ContentData::nullableString($step, 'nestedTableKey'),
+                'sceneType' => \array_key_exists('sceneType', $step) ? ContentData::nullableString($step, 'sceneType') : null,
             ],
             ContentData::listOfArrays($data, 'steps'),
         );
@@ -102,7 +109,7 @@ final readonly class OracleTableContent implements JournalEntryContent
     }
 
     /**
-     * @return non-empty-list<StepData> root first; nestedTableKey is null on the last step
+     * @return non-empty-list<StepData> root first; nestedTableKey is null on the last step, sceneType when the entry offers none
      */
     public function steps(): array
     {

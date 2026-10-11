@@ -149,7 +149,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $this->refuseFieldsOtherThan($command, $step);
         $result = $release->resolveOracleTable($step->table, $this->random);
 
-        return [StepResult::table($result), OracleTableContent::fromResult($step->table, $release->oracleTableNames()[$step->table], $result)];
+        return [StepResult::table($result), OracleTableContent::fromResult($step->table, $release->oracleTableNames()[$step->table], $result, $release->rolledSceneTypes($result))];
     }
 
     /**

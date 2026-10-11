@@ -51,7 +51,7 @@ final class JournalEntryContentsTest extends TestCase
         yield 'note' => [NoteContent::of('The gate is shut.')];
         yield 'roll' => [RollContent::fromRoll(DiceExpression::fromString('4d6kh3+1d4+1')->roll(new ScriptedRandomNumberGenerator(6, 2, 5, 3, 4)))];
         yield 'roll without dice' => [RollContent::fromRoll(DiceExpression::fromString('3')->roll(new ScriptedRandomNumberGenerator()))];
-        yield 'oracle table' => [OracleTableContent::fromResult('weather', 'Weather', OracleTableContentTest::stormResult())];
+        yield 'oracle table' => [OracleTableContent::fromResult('weather', 'Weather', OracleTableContentTest::stormResult(), [])];
         yield 'likelihood' => [LikelihoodContent::fromAnswer('fate', 'Fate', 'Is the gate open?', LikelihoodContentTest::likelyAnswer())];
         yield 'likelihood without question' => [LikelihoodContent::fromAnswer('fate', 'Fate', null, LikelihoodContentTest::likelyAnswer())];
         yield 'choice' => [ChoiceContent::of('Did you gain an edge?', 'yes', 'Yes')];
@@ -75,7 +75,7 @@ final class JournalEntryContentsTest extends TestCase
     public static function malformedData(): iterable
     {
         $roll = RollContent::fromRoll(DiceExpression::fromString('2d6')->roll(new ScriptedRandomNumberGenerator(3, 4)))->toArray();
-        $oracleTable = OracleTableContent::fromResult('weather', 'Weather', OracleTableContentTest::stormResult())->toArray();
+        $oracleTable = OracleTableContent::fromResult('weather', 'Weather', OracleTableContentTest::stormResult(), [])->toArray();
         $likelihood = LikelihoodContent::fromAnswer('fate', 'Fate', null, LikelihoodContentTest::likelyAnswer())->toArray();
 
         yield 'no kind' => [['text' => 'Hello']];
@@ -91,6 +91,7 @@ final class JournalEntryContentsTest extends TestCase
         yield 'roll die kept not a bool' => [['groups' => [['notation' => '2d6', 'sides' => 6, 'dice' => [['value' => 3, 'kept' => 1]], 'subtotal' => 3]]] + $roll];
         yield 'oracle table without steps' => [['steps' => []] + $oracleTable];
         yield 'oracle table step without text' => [['steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'nestedTableKey' => null]]] + $oracleTable];
+        yield 'oracle table step scene type not a string' => [['steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => 7]]] + $oracleTable];
         yield 'oracle table blank key' => [['oracleKey' => ''] + $oracleTable];
         yield 'likelihood unknown answer' => [['answer' => 'maybe'] + $likelihood];
         yield 'likelihood chaos factor not an int' => [['chaosFactor' => 'high'] + $likelihood];

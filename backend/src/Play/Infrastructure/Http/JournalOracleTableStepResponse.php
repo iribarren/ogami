@@ -9,7 +9,7 @@ use OpenApi\Attributes as OA;
 /**
  * One roll on one oracle table of a recorded oracle table result.
  */
-#[OA\Schema(required: ['tableKey', 'tableName', 'dice', 'total', 'text', 'nestedTableKey'])]
+#[OA\Schema(required: ['tableKey', 'tableName', 'dice', 'total', 'text', 'nestedTableKey', 'sceneType'])]
 final readonly class JournalOracleTableStepResponse
 {
     private function __construct(
@@ -25,14 +25,16 @@ final readonly class JournalOracleTableStepResponse
         public string $text,
         #[OA\Property(description: 'The table the next step rolls on; null on the last step.', example: 'storm-kind')]
         public ?string $nestedTableKey,
+        #[OA\Property(description: 'The key of the Scene Type the entry offers, which the player may switch the scene to; null when it offers none, and on rows recorded before the key was kept.', example: 'getaway', nullable: true)]
+        public ?string $sceneType,
     ) {
     }
 
     /**
-     * @param array{tableKey: string, tableName: string, dice: string, total: int, text: string, nestedTableKey: ?string} $step
+     * @param array{tableKey: string, tableName: string, dice: string, total: int, text: string, nestedTableKey: ?string, sceneType: ?string} $step
      */
     public static function of(array $step): self
     {
-        return new self($step['tableKey'], $step['tableName'], $step['dice'], $step['total'], $step['text'], $step['nestedTableKey']);
+        return new self($step['tableKey'], $step['tableName'], $step['dice'], $step['total'], $step['text'], $step['nestedTableKey'], $step['sceneType']);
     }
 }

@@ -251,7 +251,7 @@ describe('the guided panel', () => {
       renderGuided(
         guided(
           atTheScenePick({
-            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.' }],
+            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', oracles: [] }],
             ...overrides,
           }),
         ),

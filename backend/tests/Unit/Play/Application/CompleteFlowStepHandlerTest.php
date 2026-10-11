@@ -70,7 +70,7 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
 
         $content = $this->onlyEntryOf('campaign-1')->content()->toArray();
         self::assertSame(['oracle-table', 'omens', 'Omens'], [$content['kind'], $content['oracleKey'], $content['oracleName']]);
-        self::assertSame([['tableKey' => 'omens', 'tableName' => 'Omens', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => null]], $content['steps']);
+        self::assertSame([['tableKey' => 'omens', 'tableName' => 'Omens', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => null, 'sceneType' => null]], $content['steps']);
         self::assertSame(['omen' => 'Storm'], $this->stored('campaign-1')->flowRun()?->answers());
     }
 

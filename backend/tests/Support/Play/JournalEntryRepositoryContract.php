@@ -58,8 +58,8 @@ trait JournalEntryRepositoryContract
             'oracleKey' => 'weather',
             'oracleName' => 'Weather',
             'steps' => [
-                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind'],
-                ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d3', 'total' => 3, 'text' => 'Hail', 'nestedTableKey' => null],
+                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
+                ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d3', 'total' => 3, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => 'getaway'],
             ],
         ]];
         yield 'likelihood with question and chaos' => [[

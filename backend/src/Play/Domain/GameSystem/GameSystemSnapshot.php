@@ -218,6 +218,16 @@ final readonly class GameSystemSnapshot
     }
 
     /**
+     * The Scene Type key each step of a table roll offers (null when its entry names none), in step order.
+     *
+     * @return list<?string>
+     */
+    public function rolledSceneTypes(OracleTableResult $result): array
+    {
+        return array_map(fn (OracleTableStep $step): ?string => $this->rolledEntry($step)?->sceneType, $result->steps());
+    }
+
+    /**
      * The key, Scene Type and Effects of the entry a table roll selected; null without metadata.
      */
     public function rolledEntry(OracleTableStep $step): ?TableEntryMetadata

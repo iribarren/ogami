@@ -105,12 +105,12 @@ final class GetCampaignHandlerTest extends TestCase
         self::assertSame('one-shot', $view->flowKey);
         self::assertSame([FlowRunStatus::Active, true, ['legwork', 'firefight']], [$view->flowRun?->status, $view->flowRun?->waitsForSession, array_map(static fn ($sceneType): string => $sceneType->key, $view->flowRun?->pick->cards ?? [])]);
         self::assertEquals([
-            new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus'),
-            new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal'),
+            new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus', [], []),
+            new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal', [], []),
         ], $view->flows);
         self::assertEquals([
-            new SceneTypeSummaryView('legwork', 'Legwork', 'Play out a legwork scene.'),
-            new SceneTypeSummaryView('firefight', 'Firefight', 'Play out a firefight scene.'),
+            new SceneTypeSummaryView('legwork', 'Legwork', 'Play out a legwork scene.', []),
+            new SceneTypeSummaryView('firefight', 'Firefight', 'Play out a firefight scene.', []),
         ], $view->sceneTypes);
     }
 

@@ -10,9 +10,12 @@ use OpenApi\Attributes as OA;
 /**
  * A Scene Type of the campaign's pinned release.
  */
-#[OA\Schema(required: ['key', 'name', 'purpose'])]
+#[OA\Schema(required: ['key', 'name', 'purpose', 'oracles'])]
 final readonly class SceneTypeSummaryResponse
 {
+    /**
+     * @param list<string> $oracles
+     */
     private function __construct(
         #[OA\Property(example: 'legwork')]
         public string $key,
@@ -20,11 +23,13 @@ final readonly class SceneTypeSummaryResponse
         public string $name,
         #[OA\Property(example: 'Learn about the target.')]
         public string $purpose,
+        #[OA\Property(description: 'The keys of the oracles the Scene Type shortcuts, in shortcut order.', type: 'array', items: new OA\Items(type: 'string'), example: ['fate', 'complications'])]
+        public array $oracles,
     ) {
     }
 
     public static function fromView(SceneTypeSummaryView $view): self
     {
-        return new self($view->key, $view->name, $view->purpose);
+        return new self($view->key, $view->name, $view->purpose, $view->oracles);
     }
 }

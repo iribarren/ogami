@@ -783,6 +783,14 @@ export interface components {
             name: string;
             /** @example Learn about the target. */
             purpose: string;
+            /**
+             * @description The keys of the oracles the Scene Type shortcuts, in shortcut order.
+             * @example [
+             *       "fate",
+             *       "complications"
+             *     ]
+             */
+            oracles: string[];
         };
         ScenePickResponse: {
             /**
@@ -843,6 +851,22 @@ export interface components {
              * @enum {string}
              */
             defaultView: "focus" | "journal";
+            /**
+             * @description The keys of the oracles the Flow shows, in panel order.
+             * @example [
+             *       "fate",
+             *       "complications"
+             *     ]
+             */
+            oracles: string[];
+            /**
+             * @description The keys of the Trackers the Flow shows while it guides the campaign, in panel order.
+             * @example [
+             *       "alarm",
+             *       "heat"
+             *     ]
+             */
+            trackers: string[];
         };
         CampaignResponse: {
             /** Format: uuid */
@@ -1070,6 +1094,11 @@ export interface components {
              * @example storm-kind
              */
             nestedTableKey: string | null;
+            /**
+             * @description The key of the Scene Type the entry offers, which the player may switch the scene to; null when it offers none, and on rows recorded before the key was kept.
+             * @example getaway
+             */
+            sceneType: string | null;
         };
         OracleTableContentResponse: {
             /**

@@ -2891,7 +2891,8 @@
                 "required": [
                     "key",
                     "name",
-                    "purpose"
+                    "purpose",
+                    "oracles"
                 ],
                 "properties": {
                     "key": {
@@ -2905,6 +2906,17 @@
                     "purpose": {
                         "type": "string",
                         "example": "Learn about the target."
+                    },
+                    "oracles": {
+                        "description": "The keys of the oracles the Scene Type shortcuts, in shortcut order.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "fate",
+                            "complications"
+                        ]
                     }
                 },
                 "type": "object"
@@ -3023,7 +3035,9 @@
                     "description",
                     "introduction",
                     "default",
-                    "defaultView"
+                    "defaultView",
+                    "oracles",
+                    "trackers"
                 ],
                 "properties": {
                     "key": {
@@ -3055,6 +3069,28 @@
                         "enum": [
                             "focus",
                             "journal"
+                        ]
+                    },
+                    "oracles": {
+                        "description": "The keys of the oracles the Flow shows, in panel order.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "fate",
+                            "complications"
+                        ]
+                    },
+                    "trackers": {
+                        "description": "The keys of the Trackers the Flow shows while it guides the campaign, in panel order.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "alarm",
+                            "heat"
                         ]
                     }
                 },
@@ -3477,7 +3513,8 @@
                     "dice",
                     "total",
                     "text",
-                    "nestedTableKey"
+                    "nestedTableKey",
+                    "sceneType"
                 ],
                 "properties": {
                     "tableKey": {
@@ -3507,6 +3544,12 @@
                         "description": "The table the next step rolls on; null on the last step.",
                         "type": "string",
                         "example": "storm-kind",
+                        "nullable": true
+                    },
+                    "sceneType": {
+                        "description": "The key of the Scene Type the entry offers, which the player may switch the scene to; null when it offers none, and on rows recorded before the key was kept.",
+                        "type": "string",
+                        "example": "getaway",
                         "nullable": true
                     }
                 },

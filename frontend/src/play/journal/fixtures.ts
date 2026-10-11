@@ -58,6 +58,7 @@ export const stormyWeather: JournalEntry = {
         total: 6,
         text: 'A storm',
         nestedTableKey: 'storm-kind',
+        sceneType: null,
       },
       {
         tableKey: 'storm-kind',
@@ -66,6 +67,7 @@ export const stormyWeather: JournalEntry = {
         total: 2,
         text: 'Hail',
         nestedTableKey: null,
+        sceneType: null,
       },
     ],
   },

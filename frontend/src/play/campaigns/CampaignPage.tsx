@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useId, type ReactNode } from 'react'
 
 import { DiceRoller } from '../dice/DiceRoller'
+import { GuidedPanel } from '../flow/GuidedPanel'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
 import { useJournal, useRecordRoll } from '../journal/useJournal'
@@ -82,6 +83,9 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         <div className="min-w-0 space-y-6">
           <Section title="Journal">
             <CampaignJournal campaign={campaign} />
+            {campaign.flowRun !== null && (
+              <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} />
+            )}
           </Section>
           <div className="space-y-2">
             {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}

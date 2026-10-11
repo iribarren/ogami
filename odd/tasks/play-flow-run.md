@@ -192,7 +192,7 @@ Re-forecasts split slices whenever the parent's forecast passed the limit: slice
 | T10c2 | 18 | HTTP endpoints for the FlowRun commands, API tests (404/409/422 per domain error, 409 on a concurrent save), Behat | delegated writer (slice 18, 2+ non-trivial files) | [x] | `74fb0e6`, `76d0a92` |
 | T11 | 19 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | delegated writer (slice 19, 2+ non-trivial files) | [x] | `3340e66` |
 | T12 | 20 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | delegated writer (slice 20, 2+ non-trivial files) | [x] | `48bd152`, `3d6df4a` |
-| T13 | 21 | Flow choice in campaign creation | | [ ] | |
+| T13 | 21 | Flow choice in campaign creation | delegated writer (slice 21, 2+ non-trivial files) | [x] | |
 | T13b | 23 | Delete `flow-prototypes/` (after T14 and T16 ported what they need); ADR 0016 note | | [ ] | |
 | T14 | 21 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
 | T15 | 22 | Trackers panel (hint, levels, edit); oracle panel order (shortcuts › flow › More oracles); manual switch and offer from rolled entry | | [ ] | |
@@ -242,6 +242,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 - Slice 19 review fix: a command failing after its Effects changed a Tracker and the scene title (scene 200's closing step, then the auto-picked next scene does not fit the session) leaves the live campaign unchanged; characterization (commands already run on a copy), checked by a mutation that runs the command on the live campaign (1 failure).
 - T12: hooks in hook Scenes (stage `hook`, `phaseOpened`, `sessionOpeningDue`, persisted with legacy defaults), `FlowRunHooksTest` (12), examples 2 and 3 to completed; guided `EndSession` at the pick only (`SessionCannotEndWhileGuided`, 409) after `sessionClosing`, `canEndSession` in the view and API; `EndSessionHandler` reads the pinned release. RED: examples, view and repository round trip (6 failures) after the domain change → GREEN; `FlowRunHooksTest`, the end-session handler and API tests were written after the code (characterization).
 - Slice 20 review fixes: `EndSessionHandler` reads the pinned release only while the FlowRun is active (free play, paused and completed end the session without it; an unreadable release while active stays a 500; RED 1 → GREEN); a `switchSceneType` Effect on a condition step in a hook no longer starts a hook Scene, and the ignored switch is recorded with `scene` null when the hook has no Scene yet (`sceneTypeSwitchIgnored` details already allow null; reader uses `optionalInt`; RED → GREEN); characterization (written after the code) of pause during the session closing, End session while paused, resume and the next session.
+- T13: `NewCampaignForm` "Flow" select (one option per Flow plus "Play freely", the release's `default` Flow preselected, description shown, reset on GameSystem change, no select without Flows; a GameSystem without Flows sends no `flowKey`, Play freely sends null); 5 Vitest cases (written with the code, no separate RED run).
 
 ## Reviews
 

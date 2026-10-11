@@ -54,8 +54,8 @@ final class ListGameSystemsHandlerTest extends TestCase
 
         self::assertEquals([
             new GameSystemSummary('heist', 'Heist', null, 2, [
-                new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus'),
-                new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal'),
+                new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus', [], []),
+                new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal', [], []),
             ]),
         ], $summaries);
     }

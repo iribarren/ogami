@@ -7,11 +7,19 @@ namespace App\Tests\Unit\Play\Application;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordOracleTableResultHandler;
+use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\NoCurrentScene;
+use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
+use App\Play\Domain\GameSystem\TableEntryMetadata;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Play\Domain\Journal\JournalEntry;
+use App\Play\Domain\Journal\OracleTableContent;
+use App\Randomness\Domain\Oracle\OracleTableSet;
 use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -41,10 +49,33 @@ final class RecordOracleTableResultHandlerTest extends JournalTestCase
             'oracleKey' => 'weather',
             'oracleName' => 'Weather',
             'steps' => [
-                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind'],
-                ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d2', 'total' => 2, 'text' => 'Hail', 'nestedTableKey' => null],
+                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
+                ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d2', 'total' => 2, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => null],
             ],
         ], $entry->content()->toArray());
+    }
+
+    #[Test]
+    public function itStoresTheSceneTypeTheRolledEntryOffers(): void
+    {
+        $tables = OracleTableSet::fromArray([['key' => 'scenes', 'name' => 'Scenes', 'dice' => '1d6', 'entries' => [
+            ['min' => 1, 'max' => 3, 'text' => 'Quiet'],
+            ['min' => 4, 'max' => 6, 'text' => 'Chase'],
+        ]]]);
+        $this->releases->add(new GameSystemSnapshot('heist', 'Heist', 1, $tables, [], [], tableEntries: [
+            'scenes' => [new TableEntryMetadata('quiet', null, []), new TableEntryMetadata('chase', 'getaway', [])],
+        ]));
+        $campaign = Campaign::create(CampaignId::fromString('campaign-3'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-05T10:00:00+00:00'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-06T09:00:00+00:00'));
+        $campaign->startScene('The roofs', new \DateTimeImmutable('2026-10-06T09:05:00+00:00'));
+        $this->campaigns->add($campaign);
+
+        foreach ([2, 5] as $index => $roll) {
+            (new RecordOracleTableResultHandler($this->journal, new ScriptedRandomNumberGenerator($roll)))(new RecordOracleTableResult('entry-'.$index, 'campaign-3', 'user-1', 'scenes'));
+        }
+
+        $stored = array_map(static fn (JournalEntry $entry): ?string => $entry->content() instanceof OracleTableContent ? $entry->content()->steps()[0]['sceneType'] : 'not an oracle table', $this->journalOf('campaign-3'));
+        self::assertSame([null, 'getaway'], $stored);
     }
 
     #[Test]

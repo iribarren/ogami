@@ -20,8 +20,56 @@ export interface OraclePanelProps {
   tables: OracleTable[]
   /** The likelihood oracles of the campaign's pinned release. */
   likelihoodOracles: LikelihoodOracle[]
+  /** The keys of the current Scene's Scene Type shortcuts, in shortcut order; shown first. */
+  sceneOracleKeys?: string[]
+  /** The campaign's Flow and the keys of its oracles, in panel order; shown after the shortcuts. */
+  flow?: { name: string; oracleKeys: string[] } | null
   /** Disables every oracle, e.g. while there is no current scene to record the answer in. */
   disabled?: boolean
+}
+
+interface OracleGroup {
+  title: string
+  tables: OracleTable[]
+  likelihoodOracles: LikelihoodOracle[]
+}
+
+/**
+ * The oracles in the order of ADR 0017: the Scene's shortcuts, the Flow's selection not shown yet,
+ * then every other oracle of the release, which the panel collapses. Keys name tables and
+ * likelihood oracles alike.
+ */
+function grouped(
+  tables: OracleTable[],
+  likelihoodOracles: LikelihoodOracle[],
+  sceneKeys: string[],
+  flow: OraclePanelProps['flow'],
+) {
+  const shown = new Set<string>()
+  const pick = (title: string, keys: string[]): OracleGroup => {
+    const wanted = keys.filter((key) => !shown.has(key))
+    const group = {
+      title,
+      tables: wanted.flatMap((key) => tables.find((table) => table.key === key) ?? []),
+      likelihoodOracles: wanted.flatMap(
+        (key) => likelihoodOracles.find((oracle) => oracle.key === key) ?? [],
+      ),
+    }
+    for (const { key } of [...group.tables, ...group.likelihoodOracles]) {
+      shown.add(key)
+    }
+    return group
+  }
+  const first = [
+    pick('Scene', sceneKeys),
+    ...(flow ? [pick(`Flow: ${flow.name}`, flow.oracleKeys)] : []),
+  ].filter(({ tables, likelihoodOracles }) => tables.length + likelihoodOracles.length > 0)
+  const more: OracleGroup = {
+    title: '',
+    tables: tables.filter(({ key }) => !shown.has(key)),
+    likelihoodOracles: likelihoodOracles.filter(({ key }) => !shown.has(key)),
+  }
+  return { first, more }
 }
 
 /**
@@ -32,14 +80,61 @@ export function OraclePanel({
   campaignId,
   tables,
   likelihoodOracles,
+  sceneOracleKeys = [],
+  flow = null,
   disabled = false,
 }: OraclePanelProps) {
   if (tables.length === 0 && likelihoodOracles.length === 0) {
     return <p className="text-sm text-muted-foreground">This GameSystem release has no oracles.</p>
   }
+  const { first, more } = grouped(tables, likelihoodOracles, sceneOracleKeys, flow)
+  const everything = { title: '', tables, likelihoodOracles }
+  // Neither a Scene Type nor a Flow puts an oracle first: all of them, as before.
+  if (first.length === 0) {
+    return <OracleGroupView campaignId={campaignId} group={everything} disabled={disabled} />
+  }
   return (
     <div className="space-y-6">
-      {likelihoodOracles.map((oracle) => (
+      {first.map((group) => (
+        <OracleGroupView
+          key={group.title}
+          campaignId={campaignId}
+          group={group}
+          disabled={disabled}
+        />
+      ))}
+      {more.tables.length + more.likelihoodOracles.length > 0 && (
+        <details className="space-y-6">
+          <summary className="cursor-pointer font-heading font-semibold">More oracles</summary>
+          <OracleGroupView campaignId={campaignId} group={more} disabled={disabled} />
+        </details>
+      )}
+    </div>
+  )
+}
+
+/** The likelihood oracles as forms, then the tables as buttons; titled when it is one of several. */
+function OracleGroupView({
+  campaignId,
+  group,
+  disabled,
+}: {
+  campaignId: string
+  group: OracleGroup
+  disabled: boolean
+}) {
+  const headingId = useId()
+  return (
+    <section aria-labelledby={group.title === '' ? undefined : headingId} className="space-y-6">
+      {group.title !== '' && (
+        <h3
+          id={headingId}
+          className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+        >
+          {group.title}
+        </h3>
+      )}
+      {group.likelihoodOracles.map((oracle) => (
         <LikelihoodOracleForm
           key={oracle.key}
           campaignId={campaignId}
@@ -47,10 +142,10 @@ export function OraclePanel({
           disabled={disabled}
         />
       ))}
-      {tables.length > 0 && (
-        <OracleTables campaignId={campaignId} tables={tables} disabled={disabled} />
+      {group.tables.length > 0 && (
+        <OracleTables campaignId={campaignId} tables={group.tables} disabled={disabled} />
       )}
-    </div>
+    </section>
   )
 }
 

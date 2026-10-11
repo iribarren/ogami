@@ -20,7 +20,7 @@ final class OracleTableContentTest extends TestCase
     #[Test]
     public function anOracleTableResultKeepsTheOracleAndEveryStep(): void
     {
-        $content = OracleTableContent::fromResult('weather', 'Weather', self::stormResult());
+        $content = OracleTableContent::fromResult('weather', 'Weather', self::stormResult(), []);
 
         self::assertSame('oracle-table', $content->kind());
         self::assertSame('weather', $content->oracleKey());
@@ -30,11 +30,48 @@ final class OracleTableContentTest extends TestCase
             'oracleKey' => 'weather',
             'oracleName' => 'Weather',
             'steps' => [
-                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 6, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind'],
-                ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d6', 'total' => 4, 'text' => 'Hail', 'nestedTableKey' => null],
+                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 6, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
+                ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d6', 'total' => 4, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => null],
             ],
         ], $content->toArray());
         self::assertSame($content->toArray()['steps'], $content->steps());
+    }
+
+    #[Test]
+    public function eachStepKeepsTheSceneTypeItsEntryOffers(): void
+    {
+        $content = OracleTableContent::fromResult('weather', 'Weather', self::stormResult(), [null, 'getaway']);
+
+        self::assertSame([null, 'getaway'], array_column($content->steps(), 'sceneType'));
+        self::assertEquals($content, OracleTableContent::fromArray($content->toArray()));
+    }
+
+    #[Test]
+    public function aRowStoredBeforeTheSceneTypeWasKeptReadsAsOfferingNone(): void
+    {
+        $legacy = [
+            'kind' => 'oracle-table',
+            'oracleKey' => 'weather',
+            'oracleName' => 'Weather',
+            'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null]],
+        ];
+
+        $content = OracleTableContent::fromArray($legacy);
+
+        self::assertNull($content->steps()[0]['sceneType']);
+        self::assertEquals($content, OracleTableContent::fromArray($content->toArray()));
+    }
+
+    #[Test]
+    public function aSceneTypeThatIsNeitherAStringNorNullFailsClosed(): void
+    {
+        $this->expectException(InvalidJournalEntryContent::class);
+
+        OracleTableContent::fromArray([
+            'oracleKey' => 'weather',
+            'oracleName' => 'Weather',
+            'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => 7]],
+        ]);
     }
 
     #[Test]
@@ -42,7 +79,7 @@ final class OracleTableContentTest extends TestCase
     {
         $this->expectException(InvalidJournalEntryContent::class);
 
-        OracleTableContent::fromResult(' ', 'Weather', self::stormResult());
+        OracleTableContent::fromResult(' ', 'Weather', self::stormResult(), []);
     }
 
     /**

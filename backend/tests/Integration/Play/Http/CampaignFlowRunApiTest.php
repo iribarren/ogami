@@ -62,8 +62,8 @@ final class CampaignFlowRunApiTest extends WebTestCase
     private const array SCENE_PICK = [
         'rule' => 'player',
         'cards' => [
-            ['key' => 'tour', 'name' => 'Tour', 'purpose' => 'A tour scene.'],
-            ['key' => 'quiet', 'name' => 'Quiet', 'purpose' => 'A quiet scene.'],
+            ['key' => 'tour', 'name' => 'Tour', 'purpose' => 'A tour scene.', 'oracles' => []],
+            ['key' => 'quiet', 'name' => 'Quiet', 'purpose' => 'A quiet scene.', 'oracles' => []],
         ],
         'table' => null,
         'forced' => false,

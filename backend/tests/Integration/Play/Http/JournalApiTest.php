@@ -127,8 +127,8 @@ final class JournalApiTest extends WebTestCase
                 'oracleKey' => 'weather',
                 'oracleName' => 'Weather',
                 'steps' => [
-                    ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 6, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind'],
-                    ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d3', 'total' => 3, 'text' => 'Hail', 'nestedTableKey' => null],
+                    ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 6, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
+                    ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d3', 'total' => 3, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => null],
                 ],
             ],
         ]), $this->content());
@@ -247,7 +247,7 @@ final class JournalApiTest extends WebTestCase
                     'kind' => 'oracle-table',
                     'oracleKey' => 'weather',
                     'oracleName' => 'Weather',
-                    'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null]],
+                    'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => null]],
                 ],
             ],
             [

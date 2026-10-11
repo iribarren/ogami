@@ -7,6 +7,8 @@ import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
 import { useJournal, useRecordRoll } from '../journal/useJournal'
 import { OraclePanel } from '../oracles/OraclePanel'
+import { TrackersPanel } from '../trackers/TrackersPanel'
+import { visibleTrackers } from '../trackers/useTrackers'
 import { releaseLabel } from './releaseLabel'
 import { SessionControls } from './SessionControls'
 import { CampaignError, useCampaign, type Campaign } from './useCampaigns'
@@ -69,6 +71,10 @@ const noSceneHint = 'Start a scene to write in the journal.'
 /** The Play screen: where play stands, the journal, and the tools that write in it. */
 function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const hasScene = campaign.currentSceneNumber !== null
+  const scene = campaign.sessions
+    .find(({ number }) => number === campaign.currentSessionNumber)
+    ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
+  const flow = campaign.flows.find(({ key }) => key === campaign.flowKey)
 
   return (
     <>
@@ -97,11 +103,20 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           <Section title="Dice">
             <CampaignDice campaignId={campaign.id} disabled={!hasScene} />
           </Section>
+          {visibleTrackers(campaign).length > 0 && (
+            <Section title="Trackers">
+              <TrackersPanel campaign={campaign} />
+            </Section>
+          )}
           <Section title="Oracles">
             <OraclePanel
               campaignId={campaign.id}
               tables={campaign.oracleTables}
               likelihoodOracles={campaign.likelihoodOracles}
+              sceneOracleKeys={
+                campaign.sceneTypes.find(({ key }) => key === scene?.sceneType)?.oracles
+              }
+              flow={flow === undefined ? null : { name: flow.name, oracleKeys: flow.oracles }}
               disabled={!hasScene}
             />
           </Section>
@@ -136,7 +151,17 @@ function CampaignJournal({ campaign }: { campaign: Campaign }) {
       )
     case 'success':
       return (
-        <Journal campaignId={campaign.id} sessions={campaign.sessions} entries={journal.data} />
+        <Journal
+          campaignId={campaign.id}
+          sessions={campaign.sessions}
+          sceneTypes={campaign.sceneTypes}
+          current={
+            campaign.currentSessionNumber === null || campaign.currentSceneNumber === null
+              ? null
+              : { session: campaign.currentSessionNumber, scene: campaign.currentSceneNumber }
+          }
+          entries={journal.data}
+        />
       )
   }
 }

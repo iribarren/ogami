@@ -153,4 +153,89 @@ describe('OraclePanel', () => {
 
     expect(screen.getByText('This GameSystem release has no oracles.')).toBeInTheDocument()
   })
+
+  describe('ordered by Scene Type and Flow', () => {
+    function renderOrdered(overrides: Partial<Parameters<typeof OraclePanel>[0]> = {}) {
+      return renderWithApi(
+        <OraclePanel
+          campaignId={campaignId}
+          tables={lostMineCampaign.oracleTables}
+          likelihoodOracles={lostMineCampaign.likelihoodOracles}
+          sceneOracleKeys={['fate', 'action']}
+          flow={{ name: 'Heist', oracleKeys: ['yes-no', 'fate'] }}
+          {...overrides}
+        />,
+      )
+    }
+
+    it('shows the Scene shortcuts, then the Flow oracles not shown yet, then the rest', () => {
+      renderOrdered()
+
+      const scene = within(screen.getByRole('region', { name: 'Scene' }))
+      expect(scene.getByRole('form', { name: 'Fate question' })).toBeInTheDocument()
+      expect(scene.getByRole('button', { name: 'Roll on Action' })).toBeInTheDocument()
+      // "fate" is listed by the Flow too, but shows once.
+      const flow = within(screen.getByRole('region', { name: 'Flow: Heist' }))
+      expect(flow.getByRole('form', { name: 'Yes/no question' })).toBeInTheDocument()
+      expect(flow.queryByRole('form', { name: 'Fate question' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('form', { name: 'Fate question' })).toHaveLength(1)
+      const headings = screen
+        .getAllByRole('heading', { level: 3 })
+        .map(({ textContent }) => textContent)
+      expect(headings.indexOf('Scene')).toBeLessThan(headings.indexOf('Flow: Heist'))
+    })
+
+    it('collapses every other oracle under "More oracles" until it is opened', async () => {
+      renderOrdered()
+      const user = userEvent.setup()
+
+      const weather = screen.getByRole('button', { name: 'Roll on Weather' })
+      expect(weather).not.toBeVisible()
+      expect(screen.getByText('More oracles').closest('details')).not.toHaveAttribute('open')
+      await user.click(screen.getByText('More oracles'))
+      expect(weather).toBeVisible()
+    })
+
+    it('rolls and asks the oracles of every section by their keys', async () => {
+      const sent: unknown[] = []
+      const { fakeApi } = renderWithApi(
+        <OraclePanel
+          campaignId={campaignId}
+          tables={lostMineCampaign.oracleTables}
+          likelihoodOracles={lostMineCampaign.likelihoodOracles}
+          sceneOracleKeys={['action']}
+        />,
+        { [`POST ${journalPath}/oracle-tables/action`]: recording(stormyWeather, sent) },
+      )
+      const user = userEvent.setup()
+
+      await user.click(
+        within(screen.getByRole('region', { name: 'Scene' })).getByRole('button', {
+          name: 'Roll on Action',
+        }),
+      )
+
+      expect(fakeApi.requests).toEqual([`POST ${journalPath}/oracle-tables/action`])
+    })
+
+    it('drops the sections that hold nothing, and "More oracles" when nothing is left', () => {
+      renderOrdered({
+        sceneOracleKeys: ['fate', 'yes-no', 'weather', 'action'],
+        flow: { name: 'Heist', oracleKeys: ['fate', 'unknown'] },
+      })
+
+      expect(screen.queryByRole('region', { name: 'Flow: Heist' })).not.toBeInTheDocument()
+      expect(screen.queryByText('More oracles')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Scene' })).toBeInTheDocument()
+    })
+
+    it('shows every oracle with no section when neither the Scene nor the Flow picks one', () => {
+      renderOrdered({ sceneOracleKeys: [], flow: { name: 'Heist', oracleKeys: [] } })
+
+      expect(screen.queryByText('More oracles')).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Scene' })).not.toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'Yes/no question' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Roll on Weather' })).toBeVisible()
+    })
+  })
 })

@@ -1,7 +1,9 @@
 import { useMutationState } from '@tanstack/react-query'
 import { useId, type ReactNode } from 'react'
 
-import type { Campaign } from '../campaigns/useCampaigns'
+import { Button } from '@/shared/ui/button'
+
+import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
 import { recordEntryKey, type JournalEntry } from './useJournal'
@@ -17,10 +19,15 @@ function reveal(element: HTMLElement | null) {
 export function Journal({
   campaignId,
   sessions,
+  sceneTypes,
+  current,
   entries,
 }: {
   campaignId: string
   sessions: Campaign['sessions']
+  sceneTypes: Campaign['sceneTypes']
+  /** The scene play is in, which is the only one a rolled Scene Type can be switched in. */
+  current: { session: number; scene: number } | null
   entries: JournalEntry[]
 }) {
   const recorded = useMutationState({
@@ -70,6 +77,14 @@ export function Journal({
                           </p>
                         )}
                         <JournalEntryView entry={entry} />
+                        {current?.session === session.number && current.scene === scene.number && (
+                          <SceneTypeOffer
+                            campaignId={campaignId}
+                            entry={entry}
+                            scene={listed(sessions, session.number, scene.number)}
+                            sceneTypes={sceneTypes}
+                          />
+                        )}
                       </li>
                     ))}
                   </ol>
@@ -79,6 +94,53 @@ export function Journal({
           )}
         </Group>
       ))}
+    </div>
+  )
+}
+
+/**
+ * "Switch to <Scene Type>" for the Scene Type the latest step of a rolled oracle table offers,
+ * unless the scene already has it. Only offered in the current scene (a hook Scene has no type).
+ */
+function SceneTypeOffer({
+  campaignId,
+  entry,
+  scene,
+  sceneTypes,
+}: {
+  campaignId: string
+  entry: JournalEntry
+  scene: ListedScene | undefined
+  sceneTypes: Campaign['sceneTypes']
+}) {
+  const switchSceneType = useSwitchSceneType(campaignId)
+  if (entry.content.kind !== 'oracle-table' || scene?.kind !== 'scene') {
+    return null
+  }
+  const offered = entry.content.steps.findLast((step) => step.sceneType !== null)?.sceneType
+  const target = sceneTypes.find(({ key }) => key === offered)
+  if (target === undefined || target.key === scene.sceneType) {
+    return null
+  }
+
+  return (
+    <div className="space-y-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={switchSceneType.isPending}
+        onClick={() => {
+          switchSceneType.mutate(target.key)
+        }}
+      >
+        Switch to {target.name}
+      </Button>
+      {switchSceneType.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {switchSceneType.error.message}
+        </p>
+      )}
     </div>
   )
 }

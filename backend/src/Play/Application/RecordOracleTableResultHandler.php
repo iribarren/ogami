@@ -38,7 +38,7 @@ final readonly class RecordOracleTableResultHandler implements CommandHandler
         $campaign = $this->journal->campaign($command->campaignId, $command->userId);
         $snapshot = $this->journal->pinnedSnapshot($campaign);
         $result = $snapshot->resolveOracleTable($command->oracleKey, $this->random);
-        $content = OracleTableContent::fromResult($command->oracleKey, $snapshot->oracleTableNames()[$command->oracleKey], $result);
+        $content = OracleTableContent::fromResult($command->oracleKey, $snapshot->oracleTableNames()[$command->oracleKey], $result, $snapshot->rolledSceneTypes($result));
 
         $this->journal->record($command->entryId, $campaign, $content);
     }

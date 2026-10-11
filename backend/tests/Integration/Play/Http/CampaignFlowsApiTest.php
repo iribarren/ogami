@@ -36,16 +36,16 @@ final class CampaignFlowsApiTest extends WebTestCase
     private const string PASSWORD = 'secret123';
 
     private const array FLOWS = [
-        ['key' => 'heist', 'name' => 'Heist', 'description' => 'Plan the job, break in, get out.', 'introduction' => 'Learn what you can, then go in. Watch the alarm.', 'default' => true, 'defaultView' => 'focus'],
-        ['key' => 'quick', 'name' => 'Quick job', 'description' => null, 'introduction' => null, 'default' => false, 'defaultView' => 'journal'],
+        ['key' => 'heist', 'name' => 'Heist', 'description' => 'Plan the job, break in, get out.', 'introduction' => 'Learn what you can, then go in. Watch the alarm.', 'default' => true, 'defaultView' => 'focus', 'oracles' => ['fate', 'complications', 'escape-routes'], 'trackers' => ['alarm', 'edge', 'chaos', 'heat']],
+        ['key' => 'quick', 'name' => 'Quick job', 'description' => null, 'introduction' => null, 'default' => false, 'defaultView' => 'journal', 'oracles' => ['fate'], 'trackers' => ['alarm', 'edge']],
     ];
 
     private const array SCENE_TYPES = [
-        ['key' => 'legwork', 'name' => 'Legwork', 'purpose' => 'Learn about the target.'],
-        ['key' => 'infiltration', 'name' => 'Infiltration', 'purpose' => 'Get inside unseen.'],
-        ['key' => 'firefight', 'name' => 'Firefight', 'purpose' => 'Shoot your way out.'],
-        ['key' => 'getaway', 'name' => 'Getaway', 'purpose' => 'Get away clean.'],
-        ['key' => 'downtime', 'name' => 'Downtime', 'purpose' => 'Rest between jobs; no flow reaches it.'],
+        ['key' => 'legwork', 'name' => 'Legwork', 'purpose' => 'Learn about the target.', 'oracles' => ['fate']],
+        ['key' => 'infiltration', 'name' => 'Infiltration', 'purpose' => 'Get inside unseen.', 'oracles' => ['fate', 'complications']],
+        ['key' => 'firefight', 'name' => 'Firefight', 'purpose' => 'Shoot your way out.', 'oracles' => ['fate']],
+        ['key' => 'getaway', 'name' => 'Getaway', 'purpose' => 'Get away clean.', 'oracles' => ['escape-routes']],
+        ['key' => 'downtime', 'name' => 'Downtime', 'purpose' => 'Rest between jobs; no flow reaches it.', 'oracles' => ['heist-scenes']],
     ];
 
     private KernelBrowser $client;

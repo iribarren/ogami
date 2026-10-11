@@ -6,6 +6,7 @@ import { useApiClient } from '@/shared/api/useApiClient'
 import {
   campaignError,
   campaignKey,
+  CampaignError,
   explainedRefusals,
   type Campaign,
 } from '../campaigns/useCampaigns'
@@ -32,7 +33,7 @@ export type FlowRunCommand =
  * Runs one FlowRun command: the campaign answer replaces the cached campaign and the journal
  * is refetched, since a step records an entry. Ending the session answers the session, so the
  * campaign is refetched instead. A refusal (409, 422…) is the mutation's error, with the API's
- * message.
+ * message; a 409 also refetches the campaign, so the panel shows the FlowRun the server holds.
  */
 export function useFlowRunCommand(campaignId: string) {
   const api = useApiClient()
@@ -54,6 +55,11 @@ export function useFlowRunCommand(campaignId: string) {
         queryClient.setQueryData(campaignKey(campaignId), campaign)
       }
       void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+    },
+    onError: (error) => {
+      if (error instanceof CampaignError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
+      }
     },
   })
 

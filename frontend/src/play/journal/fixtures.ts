@@ -58,6 +58,7 @@ export const stormyWeather: JournalEntry = {
         total: 6,
         text: 'A storm',
         nestedTableKey: 'storm-kind',
+        sceneType: null,
       },
       {
         tableKey: 'storm-kind',
@@ -66,6 +67,7 @@ export const stormyWeather: JournalEntry = {
         total: 2,
         text: 'Hail',
         nestedTableKey: null,
+        sceneType: null,
       },
     ],
   },
@@ -149,4 +151,33 @@ export const chosenWay: JournalEntry = {
   kind: 'choice',
   content: { kind: 'choice', question: 'Which way?', optionKey: 'right', label: 'Go right' },
   flowStep: { key: 'fork', title: 'Which way?', prompt: null },
+}
+
+/**
+ * A roll on the table "Scene shift" whose entry offers the Scene Type `sceneType` (none when
+ * null), in session 2, scene 1 unless `where` says otherwise.
+ */
+export function sceneShiftRoll(
+  sceneType: string | null,
+  where: Pick<JournalEntry, 'sessionNumber' | 'sceneNumber'> = { sessionNumber: 2, sceneNumber: 1 },
+): JournalEntry {
+  return {
+    ...recordedEntry({
+      kind: 'oracle-table',
+      oracleKey: 'scene-shift',
+      oracleName: 'Scene shift',
+      steps: [
+        {
+          tableKey: 'scene-shift',
+          tableName: 'Scene shift',
+          dice: '1d6',
+          total: 6,
+          text: 'Guards arrive',
+          nestedTableKey: null,
+          sceneType,
+        },
+      ],
+    }),
+    ...where,
+  }
 }

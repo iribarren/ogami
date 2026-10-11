@@ -171,3 +171,33 @@ export function useStartScene(campaignId: string) {
     },
   })
 }
+
+/**
+ * `POST /api/campaigns/{campaignId}/scenes/current/scene-type`: switches the current scene to
+ * another Scene Type; its entries stay. The answer is the scene alone, so the campaign is
+ * refetched, which also happens when the switch is refused (409): the screen must not keep a
+ * scene the server no longer has.
+ */
+export function useSwitchSceneType(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+  const refetch = () => queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
+
+  return useMutation({
+    mutationFn: async (sceneType: string): Promise<void> => {
+      const { data, error, response } = await api.POST(
+        '/api/campaigns/{campaignId}/scenes/current/scene-type',
+        { params: { path: { campaignId } }, body: { sceneType } },
+      )
+      if (data === undefined) {
+        throw campaignError(response, error, explainedRefusals, 'Switching the Scene Type')
+      }
+    },
+    onSuccess: refetch,
+    onError: (error) => {
+      if (error instanceof CampaignError && error.status === 409) {
+        void refetch()
+      }
+    },
+  })
+}

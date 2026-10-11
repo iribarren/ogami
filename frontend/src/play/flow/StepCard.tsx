@@ -26,7 +26,8 @@ interface StepProps {
 
 /**
  * The step the FlowRun waits on, with the control that completes it by kind (the rolls happen on
- * the server) and "Skip" unless the step is mandatory. Key it by step to reset its form.
+ * the server) and "Skip" unless the step is mandatory. Key it by the step and its place (scene,
+ * part), so the same step in the next scene of a loop starts with an empty form.
  */
 export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
   return (

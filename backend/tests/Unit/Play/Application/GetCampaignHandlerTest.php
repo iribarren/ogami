@@ -12,6 +12,7 @@ use App\Play\Application\GetCampaignHandler;
 use App\Play\Application\LikelihoodChaosView;
 use App\Play\Application\LikelihoodLevelView;
 use App\Play\Application\LikelihoodOracleView;
+use App\Play\Application\NpcView;
 use App\Play\Application\OracleTableView;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\PinnedReleaseView;
@@ -19,16 +20,21 @@ use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Application\SceneTypeSummaryView;
 use App\Play\Application\SceneView;
 use App\Play\Application\SessionView;
+use App\Play\Application\TagView;
+use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerLevelView;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
+use App\Play\Domain\GameSystem\Tag;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\Snapshots;
@@ -50,6 +56,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TrackerLevelView::class)]
 #[CoversClass(FlowSummaryView::class)]
 #[CoversClass(SceneTypeSummaryView::class)]
+#[CoversClass(TagView::class)]
+#[CoversClass(NpcView::class)]
+#[CoversClass(ThreadView::class)]
 final class GetCampaignHandlerTest extends TestCase
 {
     private InMemoryCampaignRepository $campaigns;
@@ -90,7 +99,34 @@ final class GetCampaignHandlerTest extends TestCase
             null,
             [],
             [],
+            [],
+            [],
+            [],
         ), $view);
+    }
+
+    #[Test]
+    public function itShowsTheTagsOfThePinnedReleaseAndTheNpcsAndThreadsOpenFirst(): void
+    {
+        $release = Snapshots::withTags('heist', 'Heist', 1);
+        $this->releases->add($release);
+        // A newer release with other Tags: the campaign keeps reading its pinned v1.
+        $this->releases->add(new GameSystemSnapshot('heist', 'Heist, revised', 2, null, [], [], tags: [new Tag('boss', 'Boss')]));
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, $release);
+        $campaign->addNpc(NpcId::fromString('npc-2'), 'Brann', null, [], [], 1, $release);
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Rob the vault', ['ally'], ['Heist'], 2, $release);
+        $campaign->closeNpc(NpcId::fromString('npc-1'));
+        $this->campaigns->add($campaign);
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        self::assertEquals([new TagView('ally', 'Ally', null), new TagView('rival', 'Rival', 'Someone in the way')], $view->tags);
+        self::assertEquals([
+            new NpcView('npc-2', 'Brann', null, [], [], 1, 'open'),
+            new NpcView('npc-1', 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, 'closed'),
+        ], $view->npcs);
+        self::assertEquals([new ThreadView('thread-1', 'Rob the vault', ['ally'], ['Heist'], 2, 'open')], $view->threads);
     }
 
     #[Test]

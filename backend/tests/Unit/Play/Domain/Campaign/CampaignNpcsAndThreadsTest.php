@@ -354,17 +354,31 @@ final class CampaignNpcsAndThreadsTest extends TestCase
     }
 
     #[Test]
-    public function anotherReleaseThanThePinnedOneIsRefused(): void
+    public function anotherReleaseThanThePinnedOneIsRefusedByEveryCommandThatTakesOne(): void
     {
         $other = new GameSystemSnapshot('heist', 'Heist', 2, null, [], [], tags: [new Tag('ally', 'Ally')]);
+        $campaign = $this->campaign();
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $this->release);
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Vault', [], [], 1, $this->release);
 
-        $this->expectException(\LogicException::class);
+        foreach ([
+            static fn (): Npc => $campaign->addNpc(NpcId::fromString('npc-2'), 'Brann', null, [], [], 1, $other),
+            static fn (): Npc => $campaign->editNpc(NpcId::fromString('npc-1'), 'Renamed', null, [], [], 1, $other),
+            static fn (): Thread => $campaign->addThread(ThreadId::fromString('thread-2'), 'Debts', [], [], 1, $other),
+            static fn (): Thread => $campaign->editThread(ThreadId::fromString('thread-1'), 'Renamed', [], [], 1, $other),
+        ] as $command) {
+            try {
+                $command();
+                self::fail('The release that is not the pinned one was accepted.');
+            } catch (\LogicException) {
+            }
+        }
 
-        $this->campaign()->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $other);
+        self::assertSame([['Mira'], ['Vault']], [array_map(static fn (Npc $npc): string => $npc->name(), $campaign->npcs()), array_map(static fn (Thread $thread): string => $thread->name(), $campaign->threads())]);
     }
 
     #[Test]
-    public function theListsAreRebuiltByReconstituteWithoutRecheckingRules(): void
+    public function theListsAreRebuiltByReconstituteAsStoredWithoutRecheckingTheirRules(): void
     {
         $npc = Npc::of(NpcId::fromString('npc-1'), 'Mira', null, ['ally'], [], 1, ItemStatus::Closed);
         $thread = Thread::of(ThreadId::fromString('thread-1'), 'Vault', [], [], 3);
@@ -372,6 +386,25 @@ final class CampaignNpcsAndThreadsTest extends TestCase
         $campaign = Campaign::reconstitute(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable(), [], npcs: [$npc], threads: [$thread]);
 
         self::assertSame([[$npc], [$thread]], [$campaign->npcs(), $campaign->threads()]);
+    }
+
+    #[Test]
+    public function reconstituteRefusesAListWithTwoItemsOfTheSameId(): void
+    {
+        $npc = static fn (string $name): Npc => Npc::of(NpcId::fromString('same'), $name, null, [], [], 1);
+        $thread = static fn (string $name): Thread => Thread::of(ThreadId::fromString('same'), $name, [], [], 1);
+
+        foreach ([
+            [[$npc('Mira'), $npc('Brann')], [], NpcAlreadyExists::class, 'NPC "same" already exists.'],
+            [[], [$thread('Vault'), $thread('Debts')], ThreadAlreadyExists::class, 'Thread "same" already exists.'],
+        ] as [$npcs, $threads, $exception, $message]) {
+            try {
+                $this->rebuild($npcs, $threads);
+                self::fail('The duplicate id was accepted.');
+            } catch (\DomainException $thrown) {
+                self::assertSame([$exception, $message], [$thrown::class, $thrown->getMessage()]);
+            }
+        }
     }
 
     #[Test]
@@ -397,6 +430,15 @@ final class CampaignNpcsAndThreadsTest extends TestCase
                 $campaign->openItemCount(ItemKind::Thread, ['guard']),
             ],
         );
+    }
+
+    /**
+     * @param list<Npc>    $npcs
+     * @param list<Thread> $threads
+     */
+    private function rebuild(array $npcs, array $threads): Campaign
+    {
+        return Campaign::reconstitute(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable(), [], npcs: $npcs, threads: $threads);
     }
 
     private function campaign(): Campaign

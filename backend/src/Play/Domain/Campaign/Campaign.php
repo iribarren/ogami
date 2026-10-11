@@ -137,7 +137,8 @@ final class Campaign
     }
 
     /**
-     * Rebuilds a stored campaign, e.g. from persistence. No rule is checked again.
+     * Rebuilds a stored campaign, e.g. from persistence. No rule is checked again, except that the
+     * NPCs and the Threads each have distinct ids (the invariant an id lookup relies on).
      *
      * @param list<Session>      $sessions      in number order
      * @param array<string, int> $trackerValues by Tracker key
@@ -146,9 +147,32 @@ final class Campaign
      *                                          with a Flow and no FlowRun gets a fresh one (see startMissingFlowRun())
      * @param list<Npc>          $npcs          in creation order
      * @param list<Thread>       $threads       in creation order
+     *
+     * @throws NpcAlreadyExists    when two NPCs share an id
+     * @throws ThreadAlreadyExists when two Threads share an id
      */
     public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = []): self
     {
+        $npcIds = [];
+        foreach ($npcs as $npc) {
+            $key = $npc->id()->toString();
+            if (isset($npcIds[$key])) {
+                throw NpcAlreadyExists::withId($npc->id());
+            }
+
+            $npcIds[$key] = true;
+        }
+
+        $threadIds = [];
+        foreach ($threads as $thread) {
+            $key = $thread->id()->toString();
+            if (isset($threadIds[$key])) {
+                throw ThreadAlreadyExists::withId($thread->id());
+            }
+
+            $threadIds[$key] = true;
+        }
+
         $campaign = new self(
             $id->toString(),
             $ownerId,

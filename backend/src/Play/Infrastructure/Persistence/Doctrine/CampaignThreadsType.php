@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\Persistence\Doctrine;
 
+use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
 use App\Play\Domain\Campaign\Lists\ItemStatus;
 use App\Play\Domain\Campaign\Lists\Thread;
@@ -19,7 +20,7 @@ use Doctrine\DBAL\Types\JsonType;
  *
  * Stored shape: [{id, name, tags, freeTags, weight, status}], in creation order; `status` is
  * "open" or "closed". The column defaults to an empty list, which is what a campaign stored before
- * Threads reads as. Reading checks the shape and the rules Thread::of() holds (not whether the Tags
+ * Threads reads as. Reading checks the shape, the 500 limit, distinct ids and the rules Thread::of() holds (not whether the Tags
  * are in the release, which only the pinned release can tell); stored data that breaks either
  * fails closed with a clear error instead of loading a campaign in a state the domain refuses.
  */
@@ -70,7 +71,22 @@ final class CampaignThreadsType extends JsonType
             throw $this->malformed('threads', 'a list');
         }
 
-        return array_map($this->thread(...), $data);
+        if (\count($data) > Campaign::MAX_THREADS) {
+            throw ValueNotConvertible::new('threads', self::NAME, \sprintf('Stored campaign threads: at most %d Threads are allowed, got %d.', Campaign::MAX_THREADS, \count($data)));
+        }
+
+        $items = array_map($this->thread(...), $data);
+        $ids = [];
+        foreach ($items as $item) {
+            $id = $item->id()->toString();
+            if (isset($ids[$id])) {
+                throw ValueNotConvertible::new('threads', self::NAME, \sprintf('Stored campaign threads: id "%s" is listed twice.', $id));
+            }
+
+            $ids[$id] = true;
+        }
+
+        return $items;
     }
 
     private function thread(mixed $data): Thread

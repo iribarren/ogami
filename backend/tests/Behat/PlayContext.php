@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Tests\Behat;
 
+use App\Play\Application\AddNpc;
+use App\Play\Application\AddNpcHandler;
 use App\Play\Application\CampaignJournal;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignSummaryView;
 use App\Play\Application\CampaignView;
+use App\Play\Application\CloseNpc;
+use App\Play\Application\CloseNpcHandler;
 use App\Play\Application\CompleteFlowStep;
 use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
+use App\Play\Application\EditNpc;
+use App\Play\Application\EditNpcHandler;
 use App\Play\Application\EndFlowScene;
 use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Application\EndSession;
@@ -23,6 +29,7 @@ use App\Play\Application\GetJournalHandler;
 use App\Play\Application\JournalEntryView;
 use App\Play\Application\ListMyCampaigns;
 use App\Play\Application\ListMyCampaignsHandler;
+use App\Play\Application\NpcView;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\PauseGuidance;
 use App\Play\Application\PauseGuidanceHandler;
@@ -36,6 +43,8 @@ use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordOracleTableResultHandler;
 use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
+use App\Play\Application\ReopenNpc;
+use App\Play\Application\ReopenNpcHandler;
 use App\Play\Application\ResumeGuidance;
 use App\Play\Application\ResumeGuidanceHandler;
 use App\Play\Application\SceneView;
@@ -54,6 +63,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
+use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -92,6 +102,10 @@ final class PlayContext implements Context
     private readonly StartSceneHandler $startScene;
     private readonly SwitchSceneTypeHandler $switchSceneType;
     private readonly SetTrackerValueHandler $setTrackerValue;
+    private readonly AddNpcHandler $addNpc;
+    private readonly EditNpcHandler $editNpc;
+    private readonly CloseNpcHandler $closeNpc;
+    private readonly ReopenNpcHandler $reopenNpc;
     private readonly ListMyCampaignsHandler $listMyCampaigns;
     private readonly GetCampaignHandler $getCampaign;
     private readonly SequentialJournalEntryIdGenerator $entryIds;
@@ -106,6 +120,7 @@ final class PlayContext implements Context
     private readonly ResumeGuidanceHandler $resumeGuidance;
 
     private ?string $campaignId = null;
+    private int $npcCount = 0;
     private ?\Throwable $failure = null;
 
     public function __construct()
@@ -121,6 +136,10 @@ final class PlayContext implements Context
         $this->startScene = new StartSceneHandler($owned, $campaigns, $this->releases, $clock);
         $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases, $clock);
         $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases, $clock);
+        $this->addNpc = new AddNpcHandler($owned, $campaigns, $this->releases);
+        $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
+        $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
+        $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
         $this->listMyCampaigns = new ListMyCampaignsHandler($campaigns);
         $this->getCampaign = new GetCampaignHandler($owned, $this->releases);
         $entries = new InMemoryJournalEntryRepository();
@@ -158,6 +177,13 @@ final class PlayContext implements Context
         // Trackers "alarm" (clock of 6), "heat" (-5..5 from -5: Cold up to -1, Warm up to 2, Hot)
         // and "chaos" (1..9 from 5).
         $this->releases->add(Snapshots::withTrackers($key, $name, $version));
+    }
+
+    #[Given('release version :version of the GameSystem :key named :name is published with Tags')]
+    public function aReleaseWithTagsIsPublished(int $version, string $key, string $name): void
+    {
+        // Tags "ally" (Ally) and "rival" (Rival, with a hint).
+        $this->releases->add(Snapshots::withTags($key, $name, $version));
     }
 
     #[Given('release version :version of the GameSystem :key named :name is published with Scene Types')]
@@ -256,6 +282,39 @@ final class PlayContext implements Context
     public function iSetTheTracker(string $key, int $value): void
     {
         ($this->setTrackerValue)(new SetTrackerValue($this->campaignId(), self::ME, $key, $value));
+    }
+
+    #[Given('I added the NPC :name with the Tag :tag and the free tag :freeTag')]
+    #[When('I add the NPC :name with the Tag :tag and the free tag :freeTag')]
+    public function iAddTheNpc(string $name, string $tag, string $freeTag): void
+    {
+        $this->attempt(fn () => ($this->addNpc)(new AddNpc($this->campaignId(), self::ME, 'npc-'.++$this->npcCount, $name, null, [$tag], [$freeTag], 1)));
+    }
+
+    #[When('I try to add the NPC :name with the Tag :tag')]
+    public function iTryToAddTheNpcWithTheTag(string $name, string $tag): void
+    {
+        $this->attempt(fn () => ($this->addNpc)(new AddNpc($this->campaignId(), self::ME, 'npc-'.++$this->npcCount, $name, null, [$tag], [], 1)));
+    }
+
+    #[When('I rename the NPC :name to :newName with the agenda :agenda and the weight :weight')]
+    public function iEditTheNpc(string $name, string $newName, string $agenda, int $weight): void
+    {
+        $npc = $this->npc($name);
+        $this->attempt(fn () => ($this->editNpc)(new EditNpc($this->campaignId(), self::ME, $npc->id, $newName, $agenda, $npc->tags, $npc->freeTags, $weight)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I close the NPC :name')]
+    public function iCloseTheNpc(string $name): void
+    {
+        ($this->closeNpc)(new CloseNpc($this->campaignId(), self::ME, $this->npc($name)->id));
+    }
+
+    #[When('I reopen the NPC :name')]
+    public function iReopenTheNpc(string $name): void
+    {
+        ($this->reopenNpc)(new ReopenNpc($this->campaignId(), self::ME, $this->npc($name)->id));
     }
 
     #[When('I write the note :text')]
@@ -460,6 +519,27 @@ final class PlayContext implements Context
         );
     }
 
+    #[Then('my NPCs are:')]
+    public function myNpcsAre(TableNode $table): void
+    {
+        Assert::assertSame(
+            array_map(static fn (array $row): array => [$row['name'], '' === $row['agenda'] ? null : $row['agenda'], $row['tags'], $row['free tags'], (int) $row['weight'], $row['status']], $table->getColumnsHash()),
+            array_map(static fn (NpcView $npc): array => [$npc->name, $npc->agenda, implode(', ', $npc->tags), implode(', ', $npc->freeTags), $npc->weight, $npc->status], $this->myCampaign()->npcs),
+        );
+    }
+
+    #[Then('my campaign offers the Tags :keys')]
+    public function myCampaignOffersTheTags(string $keys): void
+    {
+        Assert::assertSame(explode(', ', $keys), array_map(static fn (\App\Play\Application\TagView $tag): string => $tag->key, $this->myCampaign()->tags));
+    }
+
+    #[Then('I am told that the release has no such Tag')]
+    public function iAmToldTheReleaseHasNoSuchTag(): void
+    {
+        Assert::assertInstanceOf(UnknownReleaseTag::class, $this->failure);
+    }
+
     #[Then('my campaign has no session')]
     public function myCampaignHasNoSession(): void
     {
@@ -625,6 +705,11 @@ final class PlayContext implements Context
         return ($this->getCampaign)(new GetCampaign($this->campaignId(), self::ME));
     }
 
+    private function npc(string $name): NpcView
+    {
+        return array_find($this->myCampaign()->npcs, static fn (NpcView $npc): bool => $npc->name === $name) ?? throw new \LogicException(\sprintf('No NPC "%s".', $name));
+    }
+
     private function campaignId(): string
     {
         return $this->campaignId ?? throw new \LogicException('No campaign was created.');
@@ -636,7 +721,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag $failure) {
             $this->failure = $failure;
         }
     }

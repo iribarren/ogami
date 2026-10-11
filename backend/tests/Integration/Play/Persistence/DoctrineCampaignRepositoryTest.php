@@ -11,7 +11,9 @@ use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\SceneKind;
@@ -24,6 +26,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
 use App\Tests\Support\Play\Snapshots;
+use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -395,8 +398,10 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
      */
     public static function malformedLists(): iterable
     {
-        $npc = static fn (array $fields): string => json_encode([$fields + ['id' => 'npc-1', 'name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open']], \JSON_THROW_ON_ERROR);
-        $thread = static fn (array $fields): string => json_encode([$fields + ['id' => 'thread-1', 'name' => 'Vault', 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open']], \JSON_THROW_ON_ERROR);
+        $npcRow = static fn (array $fields): array => $fields + ['id' => 'npc-1', 'name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'];
+        $threadRow = static fn (array $fields): array => $fields + ['id' => 'thread-1', 'name' => 'Vault', 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'];
+        $npc = static fn (array $fields): string => json_encode([$npcRow($fields)], \JSON_THROW_ON_ERROR);
+        $thread = static fn (array $fields): string => json_encode([$threadRow($fields)], \JSON_THROW_ON_ERROR);
 
         yield 'npcs not a list' => ['npcs', '{"a": 1}', 'Stored campaign npcs: "npcs" must be a list.'];
         yield 'npc unknown status' => ['npcs', $npc(['status' => 'lost']), 'Stored campaign npcs: "status" must be one of "open", "closed".'];
@@ -408,8 +413,22 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'npc duplicate tag' => ['npcs', $npc(['tags' => ['ally', 'ally']]), 'Tag "ally" is listed twice.'];
         yield 'npc blank name' => ['npcs', $npc(['name' => ' ']), 'The name must not be blank.'];
         yield 'npc blank id' => ['npcs', $npc(['id' => '']), 'An NPC id must not be blank.'];
+        yield 'npc free tags not strings' => ['npcs', $npc(['freeTags' => 'Fence']), 'Stored campaign npcs: "freeTags" must be a list of strings.'];
+        yield 'npc duplicate id' => ['npcs', json_encode([$npcRow([]), $npcRow(['name' => 'Brann'])], \JSON_THROW_ON_ERROR), 'Stored campaign npcs: id "npc-1" is listed twice.'];
+        yield 'npcs over the limit' => ['npcs', json_encode(array_map(static fn (int $i): array => ['id' => 'npc-'.$i, 'name' => 'NPC '.$i, 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign npcs: at most 500 NPCs are allowed, got 501.'];
+        yield 'threads not a list' => ['threads', '{"a": 1}', 'Stored campaign threads: "threads" must be a list.'];
         yield 'thread unknown status' => ['threads', $thread(['status' => 'done']), 'Stored campaign threads: "status" must be one of "open", "closed".'];
         yield 'thread free tag duplicate' => ['threads', $thread(['freeTags' => ['Fence', 'fence']]), 'Free tag "fence" is listed twice.'];
+        yield 'thread missing name' => ['threads', $thread(['name' => null]), 'Stored campaign threads: "name" must be a string.'];
+        yield 'thread weight not an integer' => ['threads', $thread(['weight' => '2']), 'Stored campaign threads: "weight" must be an integer.'];
+        yield 'thread tags not strings' => ['threads', $thread(['tags' => [3]]), 'Stored campaign threads: "tags" must be a list of strings.'];
+        yield 'thread free tags not strings' => ['threads', $thread(['freeTags' => 'Heist']), 'Stored campaign threads: "freeTags" must be a list of strings.'];
+        yield 'thread weight out of range' => ['threads', $thread(['weight' => 0]), 'The weight must be 1 to 3, got 0.'];
+        yield 'thread duplicate tag' => ['threads', $thread(['tags' => ['ally', 'ally']]), 'Tag "ally" is listed twice.'];
+        yield 'thread blank name' => ['threads', $thread(['name' => ' ']), 'The name must not be blank.'];
+        yield 'thread blank id' => ['threads', $thread(['id' => '']), 'A Thread id must not be blank.'];
+        yield 'thread duplicate id' => ['threads', json_encode([$threadRow([]), $threadRow(['name' => 'Debts'])], \JSON_THROW_ON_ERROR), 'Stored campaign threads: id "thread-1" is listed twice.'];
+        yield 'threads over the limit' => ['threads', json_encode(array_map(static fn (int $i): array => ['id' => 'thread-'.$i, 'name' => 'Thread '.$i, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign threads: at most 500 Threads are allowed, got 501.'];
         yield 'thread missing id' => ['threads', $thread(['id' => null]), 'Stored campaign threads: "id" must be a string.'];
     }
 
@@ -425,6 +444,28 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->expectExceptionMessageIsOrContains($error);
 
         $this->repository->ofId($id);
+    }
+
+    /**
+     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType, mixed}>
+     */
+    public static function valuesThatAreNotLists(): iterable
+    {
+        yield 'npcs: a string' => [new CampaignNpcsType(), 'npc-1'];
+        yield 'npcs: a stored-shape array item' => [new CampaignNpcsType(), [['id' => 'npc-1']]];
+        yield 'npcs: a thread among them' => [new CampaignNpcsType(), [Thread::of(ThreadId::fromString('thread-1'), 'Vault', [], [], 1)]];
+        yield 'threads: a string' => [new CampaignThreadsType(), 'thread-1'];
+        yield 'threads: a stored-shape array item' => [new CampaignThreadsType(), [['id' => 'thread-1']]];
+        yield 'threads: an npc among them' => [new CampaignThreadsType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
+    }
+
+    #[Test]
+    #[DataProvider('valuesThatAreNotLists')]
+    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType $type, mixed $value): void
+    {
+        $this->expectException(InvalidType::class);
+
+        $type->convertToDatabaseValue($value, $this->entityManager->getConnection()->getDatabasePlatform());
     }
 
     private function release(): GameSystemSnapshot

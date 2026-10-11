@@ -123,6 +123,9 @@ export const lostMineCampaign: Campaign = {
   flowRun: null,
   flows: [],
   sceneTypes: [],
+  tags: [],
+  npcs: [],
+  threads: [],
 }
 
 /** `lostMineCampaign` right after starting session 3: no scene yet. */
@@ -157,6 +160,9 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     flowRun: null,
     flows: [],
     sceneTypes: [],
+    tags: [],
+    npcs: [],
+    threads: [],
   }
 }
 

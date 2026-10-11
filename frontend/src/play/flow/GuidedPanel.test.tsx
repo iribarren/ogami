@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -248,7 +248,7 @@ describe('the guided panel', () => {
     const visible = async (flowRun: FlowRun) => {
       renderGuided(guided(flowRun))
       const guide = await panel()
-      return ['End scene', 'End session', 'Pause guidance', 'Resume guidance'].filter(
+      return ['End scene', 'Move on', 'End session', 'Pause guidance', 'Resume guidance'].filter(
         (name) => guide.queryByRole('button', { name }) !== null,
       )
     }
@@ -263,6 +263,22 @@ describe('the guided panel', () => {
 
     it('only pause while a step waits', async () => {
       expect(await visible(atStep(promptStep))).toEqual(['Pause guidance'])
+    })
+
+    it('move on from the phase only when the server allows it, naming the phase by its key', async () => {
+      const user = userEvent.setup()
+      expect(await visible(atTheScenePick({}))).not.toContain('Move on')
+      cleanup()
+      const { sent } = renderGuided(guided({ ...atTheScenePick(), canMoveOn: true }), {
+        'flow-run/move-on': () =>
+          Response.json({ error: 'Phase "start" plays once.' }, { status: 409 }),
+      })
+
+      const guide = await panel()
+      await user.click(await guide.findByRole('button', { name: 'Move on' }))
+
+      expect(await guide.findByRole('alert')).toHaveTextContent('Phase "start" plays once.')
+      expect(sent['flow-run/move-on']).toEqual({ phase: 'start' })
     })
 
     it('end the scene by its number, then show the campaign it answers with', async () => {

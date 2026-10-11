@@ -121,6 +121,18 @@ export function GuidedPanel({ campaign, flowRun }: { campaign: Campaign; flowRun
             End scene
           </Button>
         )}
+        {active && flowRun.canMoveOn && flowRun.progress !== null && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={command.isPending}
+            onClick={() => {
+              run({ type: 'moveOn', phase: flowRun.progress?.phaseKey ?? '' })
+            }}
+          >
+            Move on
+          </Button>
+        )}
         {active && flowRun.canEndSession && (
           <Button
             type="button"

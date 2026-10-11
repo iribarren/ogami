@@ -55,6 +55,7 @@ export const choiceStep = step({
 
 const progress: FlowRun['progress'] = {
   act: 'Act 1',
+  phaseKey: 'start',
   phase: 'The start',
   sceneType: 'Tour',
   part: 'setup',

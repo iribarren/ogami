@@ -23,6 +23,7 @@ export type FlowRunCommand =
   | { type: 'pick'; sceneType: string }
   | { type: 'pickByRoll' }
   | { type: 'endScene'; sceneNumber: number }
+  | { type: 'moveOn'; phase: string }
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'endSession' }
@@ -85,6 +86,11 @@ export function useFlowRunCommand(campaignId: string) {
           ...params,
           body: { sceneNumber: command.sceneNumber },
         })
+      case 'moveOn':
+        return api.POST('/api/campaigns/{campaignId}/flow-run/move-on', {
+          ...params,
+          body: { phase: command.phase },
+        })
       case 'pause':
         return api.POST('/api/campaigns/{campaignId}/flow-run/pause', params)
       case 'resume':
@@ -107,6 +113,7 @@ const failures: Record<FlowRunCommand['type'], string> = {
   pick: 'Picking the Scene Type',
   pickByRoll: 'Rolling the Scene Type',
   endScene: 'Ending the scene',
+  moveOn: 'Moving on',
   pause: 'Pausing the guidance',
   resume: 'Resuming the guidance',
   endSession: 'Ending the session',

@@ -53,7 +53,7 @@ final class FlowRunHooksTest extends FlowRunTestCase
 
         $view = $this->view($campaign);
         self::assertSame([FlowRunStage::Hook, Hook::SessionOpening, 'recap', [1, 1]], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->hook(), self::flowRunOf($campaign)->stepKey(), self::flowRunOf($campaign)->scene()]);
-        self::assertEquals(new FlowRunProgress('Act 1', 'The start', null, Hook::SessionOpening, 1, 1), $view->progress);
+        self::assertEquals(new FlowRunProgress('Act 1', 'start', 'The start', null, Hook::SessionOpening, 1, 1), $view->progress);
         self::assertSame(['Recap at doom 0', null, true, 'Phase opening: What draws you in?'], [$view->step?->title, $view->pick, $view->canMoveOn, $view->next]);
         $this->assertHookScene($campaign, Hook::SessionOpening, 'Session 1 begins');
         try {

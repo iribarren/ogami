@@ -693,6 +693,11 @@ export interface components {
              */
             act: string | null;
             /**
+             * @description The key of the phase, which "Move on" names.
+             * @example job
+             */
+            phaseKey: string;
+            /**
              * @description The name of the phase.
              * @example The job
              */

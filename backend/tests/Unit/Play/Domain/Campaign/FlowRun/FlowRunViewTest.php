@@ -50,7 +50,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         $view = $this->view(self::guided($this->heist, 'heist'));
 
         self::assertSame([FlowRunStatus::Active, true, null, false, 'Next: Crew'], [$view->status, $view->waitsForSession, $view->step, $view->canMoveOn, $view->next]);
-        self::assertEquals(new FlowRunProgress(null, 'The job', null, null, null, null), $view->progress);
+        self::assertEquals(new FlowRunProgress(null, 'the-job', 'The job', null, null, null, null), $view->progress);
         self::assertSame([SelectionRule::Sequence, ['crew'], null, false], [$view->pick?->rule, $this->keys($view->pick->cards ?? []), $view->pick?->table, $view->pick?->forced]);
     }
 
@@ -63,7 +63,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         $view = $this->view($campaign);
 
         self::assertSame([false, null, StepKind::Prompt, 'first', 'Who is your first crew member?', true], [$view->waitsForSession, $view->pick, $view->step?->kind, $view->step?->step->key, $view->step?->step->title, $view->step?->step->mandatory]);
-        self::assertEquals(new FlowRunProgress(null, 'The job', 'Crew', ScenePart::Setup, 1, 2), $view->progress);
+        self::assertEquals(new FlowRunProgress(null, 'the-job', 'The job', 'Crew', ScenePart::Setup, 1, 2), $view->progress);
         self::assertSame('Setup: Who else is in?', $view->next);
 
         $campaign->completeFlowStep('first', self::prompt('Ada'), $this->heist, self::at());
@@ -166,7 +166,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         }
 
         $campaign->pickSceneType('gig-offer', $release, self::at());
-        self::assertEquals(new FlowRunProgress('Act 1: Making a name', 'Making a name', 'Gig offer', ScenePart::Setup, 1, 1), $this->view($campaign, $release)->progress);
+        self::assertEquals(new FlowRunProgress('Act 1: Making a name', 'making-a-name', 'Making a name', 'Gig offer', ScenePart::Setup, 1, 1), $this->view($campaign, $release)->progress);
     }
 
     private function view(Campaign $campaign, ?GameSystemSnapshot $release = null): FlowRunView

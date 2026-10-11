@@ -10,6 +10,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Play\Domain\Campaign\Hook;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDbalType;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
@@ -22,10 +23,14 @@ use Doctrine\DBAL\Types\JsonType;
  *
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
- * switchCount, history: [{event, at, details: {…}}]}, every field present (null where the FlowRun
- * has none). The details are those of the event's FlowRunHistoryEntry factory. Times keep their
+ * switchCount, hook, phaseOpened, sessionOpeningDue, history: [{event, at, details: {…}}]}, every
+ * field present (null where the FlowRun has none). The details are those of the event's
+ * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
  * microseconds and UTC offset. Reading checks the shape and every enumerated value and fails on
- * anything else; FlowRun rules are not checked again (FlowRun::reconstitute()).
+ * anything else, a hook without stage "hook" or the other way round included; other FlowRun rules
+ * are not checked again (FlowRun::reconstitute()). Rows stored before hooks ran (play-flow-run
+ * slice 20) lack hook, phaseOpened and sessionOpeningDue: they read as no hook, the current phase's
+ * opening already run and no session opening due.
  *
  * Registered by its attribute (DoctrineBundle autoconfiguration), not in doctrine.yaml.
  */
@@ -36,7 +41,7 @@ final class CampaignFlowRunType extends JsonType
 
     private const string TIME_FORMAT = 'Y-m-d\TH:i:s.uP';
 
-    private const array PHASE_ENDINGS = ['endPhase', 'moveOn'];
+    private const array PHASE_ENDINGS = ['endPhase', 'moveOn', 'finished'];
 
     private const array PHASE_END_REASONS = ['finished', 'moveOn', 'endPhase'];
 
@@ -65,6 +70,9 @@ final class CampaignFlowRunType extends JsonType
             'forcedNextSceneType' => $value->forcedNextSceneType(),
             'phaseEnding' => $value->phaseEndingReason(),
             'switchCount' => $value->switchCount(),
+            'hook' => $value->hook()?->value,
+            'phaseOpened' => $value->phaseOpened(),
+            'sessionOpeningDue' => $value->sessionOpeningDue(),
             'history' => array_map(
                 static fn (FlowRunHistoryEntry $entry): array => [
                     'event' => $entry->event->value,
@@ -83,10 +91,16 @@ final class CampaignFlowRunType extends JsonType
             return null;
         }
 
+        $stage = $this->enum(FlowRunStage::class, $data, 'stage') ?? throw $this->malformed('stage', $this->oneOf(FlowRunStage::cases()));
+        $hook = $this->enum(Hook::class, $data, 'hook');
+        if ((FlowRunStage::Hook === $stage) !== $hook instanceof Hook) {
+            throw $this->malformed('hook', FlowRunStage::Hook === $stage ? 'set at stage "hook"' : 'null outside stage "hook"');
+        }
+
         return FlowRun::reconstitute(
             $this->enum(FlowRunStatus::class, $data, 'status') ?? throw $this->malformed('status', $this->oneOf(FlowRunStatus::cases())),
             $this->int($data, 'phaseIndex'),
-            $this->enum(FlowRunStage::class, $data, 'stage') ?? throw $this->malformed('stage', $this->oneOf(FlowRunStage::cases())),
+            $stage,
             $this->optionalInt($data, 'sessionNumber'),
             $this->optionalInt($data, 'sceneNumber'),
             $this->optionalString($data, 'sceneType'),
@@ -99,6 +113,9 @@ final class CampaignFlowRunType extends JsonType
             $this->choice($data, 'phaseEnding', self::PHASE_ENDINGS, true),
             $this->int($data, 'switchCount'),
             array_map($this->historyEntry(...), $this->list($this->field($data, 'history'), 'history')),
+            $hook,
+            $this->bool($data, 'phaseOpened', true),
+            $this->bool($data, 'sessionOpeningDue', false),
         );
     }
 
@@ -109,7 +126,7 @@ final class CampaignFlowRunType extends JsonType
         $details = $this->field($entry, 'details');
 
         return match ($event) {
-            FlowRunEvent::Skip => FlowRunHistoryEntry::skip($at, $this->string($details, 'step'), $this->enum(ScenePart::class, $details, 'part') ?? throw $this->malformed('part', $this->oneOf(ScenePart::cases()))),
+            FlowRunEvent::Skip => FlowRunHistoryEntry::skip($at, $this->string($details, 'step'), $this->skippedIn($details)),
             FlowRunEvent::TrackerEdit => FlowRunHistoryEntry::trackerEdit($at, $this->string($details, 'tracker'), $this->int($details, 'from'), $this->int($details, 'to')),
             FlowRunEvent::SceneTypeSwitch => FlowRunHistoryEntry::sceneTypeSwitch($at, $this->int($details, 'scene'), $this->optionalString($details, 'from'), $this->string($details, 'to')),
             FlowRunEvent::SceneTypeSwitchIgnored => FlowRunHistoryEntry::sceneTypeSwitchIgnored($at, $this->int($details, 'scene'), $this->string($details, 'sceneType')),
@@ -119,6 +136,16 @@ final class CampaignFlowRunType extends JsonType
             FlowRunEvent::PhaseEnded => FlowRunHistoryEntry::phaseEnded($at, $this->string($details, 'phase'), (string) $this->choice($details, 'reason', self::PHASE_END_REASONS, false)),
             FlowRunEvent::Completed => FlowRunHistoryEntry::completed($at),
         };
+    }
+
+    /**
+     * A skip's part: a scene part, or the hook the step was in.
+     */
+    private function skippedIn(mixed $details): ScenePart|Hook
+    {
+        $part = $this->string($details, 'part');
+
+        return ScenePart::tryFrom($part) ?? Hook::tryFrom($part) ?? throw $this->malformed('part', $this->oneOf([...ScenePart::cases(), ...Hook::cases()]));
     }
 
     /**
@@ -167,6 +194,22 @@ final class CampaignFlowRunType extends JsonType
         }
 
         return $value;
+    }
+
+    /**
+     * @param bool $legacy the value of a row stored before the field existed (the field is absent)
+     */
+    private function bool(mixed $data, string $field, bool $legacy): bool
+    {
+        if (!\is_array($data) || !\array_key_exists($field, $data)) {
+            return $legacy;
+        }
+
+        if (!\is_bool($data[$field])) {
+            throw $this->malformed($field, 'a boolean');
+        }
+
+        return $data[$field];
     }
 
     private function optionalInt(mixed $data, string $field): ?int

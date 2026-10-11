@@ -13,9 +13,9 @@ use OpenApi\Attributes as OA;
 
 /**
  * What the player sees of the FlowRun guiding a campaign: its status, where it stands, the step or
- * scene pick it waits on, whether "Move on" is offered and the next step named.
+ * scene pick it waits on, whether "Move on" and "End session" are offered and the next step named.
  */
-#[OA\Schema(required: ['status', 'waitsForSession', 'progress', 'step', 'pick', 'canMoveOn', 'next'])]
+#[OA\Schema(required: ['status', 'waitsForSession', 'progress', 'step', 'pick', 'canMoveOn', 'next', 'canEndSession'])]
 final readonly class FlowRunResponse
 {
     private function __construct(
@@ -27,12 +27,14 @@ final readonly class FlowRunResponse
         public ?FlowRunProgressResponse $progress,
         #[OA\Property(ref: new Model(type: FlowStepResponse::class), description: 'The step the FlowRun waits on; null at the scene pick and in open play.', nullable: true)]
         public ?FlowStepResponse $step,
-        #[OA\Property(ref: new Model(type: ScenePickResponse::class), description: 'The scene pick the FlowRun waits on; null in a scene.', nullable: true)]
+        #[OA\Property(ref: new Model(type: ScenePickResponse::class), description: 'The scene pick the FlowRun waits on; null in a scene or a hook.', nullable: true)]
         public ?ScenePickResponse $pick,
         #[OA\Property(description: 'Whether "Move on" ends the phase now (a loop phase that is not ending yet, while guided).')]
         public bool $canMoveOn,
         #[OA\Property(description: 'The next step named, such as "Closing: What changed?" or "Flow complete".', example: 'Next scene: choose a scene type')]
         public string $next,
+        #[OA\Property(description: 'Whether "End session" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first.')]
+        public bool $canEndSession,
     ) {
     }
 
@@ -46,6 +48,7 @@ final readonly class FlowRunResponse
             $view->pick instanceof ScenePickView ? ScenePickResponse::fromView($view->pick) : null,
             $view->canMoveOn,
             $view->next,
+            $view->canEndSession,
         );
     }
 }

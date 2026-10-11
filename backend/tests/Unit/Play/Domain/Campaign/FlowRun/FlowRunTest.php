@@ -589,11 +589,14 @@ final class FlowRunTest extends FlowRunTestCase
             $played->phaseEndingReason(),
             $played->switchCount(),
             $played->history(),
+            $played->hook(),
+            $played->phaseOpened(),
+            $played->sessionOpeningDue(),
         );
 
         self::assertSame([[1, 2], 'moveOn', 'fight'], [$rebuilt->scene(), $rebuilt->phaseEndingReason(), $rebuilt->forcedNextSceneType()]);
         self::assertEquals($played, $rebuilt);
-        self::assertEquals(FlowRun::start(), FlowRun::reconstitute(FlowRunStatus::Active, 0, FlowRunStage::ScenePick, null, null, null, null, null, 0, 0, [], null, null, 0, []));
+        self::assertEquals(FlowRun::start(), FlowRun::reconstitute(FlowRunStatus::Active, 0, FlowRunStage::ScenePick, null, null, null, null, null, 0, 0, [], null, null, 0, [], null, false, false));
     }
 
     #[Test]

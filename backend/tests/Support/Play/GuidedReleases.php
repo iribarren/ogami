@@ -23,11 +23,12 @@ final class GuidedReleases
      * mandatory prompt "wrap"; "quiet" has no steps. Flows: "draw" (the scene
      * pick rolls on "scene-kinds"), "tour" (the player picks "tour" or "quiet", any number of
      * times) and "chain" (the sequence "solo" over and over). With $chaosFromTracker, "fate" takes
-     * its chaos factor from the counter Tracker "chaos" (1-9, starting at 5) instead.
+     * its chaos factor from the counter Tracker "chaos" (1-9, starting at 5) instead. With
+     * $sessionClosing, every phase closes a session with the prompt "notes" (Anything to note?).
      */
-    public static function tour(bool $chaosFromTracker = false): GameSystemSnapshot
+    public static function tour(bool $chaosFromTracker = false, bool $sessionClosing = false): GameSystemSnapshot
     {
-        return new GameSystemReleaseTranslator()->translate(ReleaseViews::of(self::content($chaosFromTracker)));
+        return new GameSystemReleaseTranslator()->translate(ReleaseViews::of(self::content($chaosFromTracker, $sessionClosing)));
     }
 
     /**
@@ -35,12 +36,12 @@ final class GuidedReleases
      *
      * @return array<string, mixed>
      */
-    public static function content(bool $chaosFromTracker = false): array
+    public static function content(bool $chaosFromTracker = false, bool $sessionClosing = false): array
     {
         $step = static fn (string $key, string $kind, string $title, array $fields = []): array => ['key' => $key, 'kind' => $kind, 'title' => $title] + $fields;
         $sceneType = static fn (string $key, string $name, array $setup = [], array $closing = []): array => ['key' => $key, 'name' => $name, 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => [], 'closing' => $closing];
         $flow = static fn (string $key, string $mode, array $selection): array => ['key' => $key, 'name' => ucfirst($key), 'defaultView' => 'journal', 'oracles' => ['scene-kinds', 'omens', 'fate'], 'trackers' => $chaosFromTracker ? ['chaos'] : [], 'phases' => [
-            ['key' => $key, 'name' => ucfirst($key), 'mode' => $mode, 'selection' => $selection],
+            ['key' => $key, 'name' => ucfirst($key), 'mode' => $mode, 'selection' => $selection] + ($sessionClosing ? ['sessionClosing' => [$step('notes', 'prompt', 'Anything to note?')]] : []),
         ]];
 
         return [

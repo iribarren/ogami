@@ -148,6 +148,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
             'pick' => null,
             'canMoveOn' => true,
             'next' => $next,
+            'canEndSession' => false,
         ], $this->campaign()['flowRun']);
     }
 
@@ -157,7 +158,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
         $this->startGuidedSession();
         $this->dispatch(new PauseGuidance(self::CAMPAIGN, $this->userId));
 
-        self::assertSame(array_replace($this->atTheScenePick(waitsForSession: false), ['status' => 'paused', 'canMoveOn' => false]), $this->campaign()['flowRun']);
+        self::assertSame(array_replace($this->atTheScenePick(waitsForSession: false), ['status' => 'paused', 'canMoveOn' => false, 'canEndSession' => false]), $this->campaign()['flowRun']);
     }
 
     #[Test]
@@ -200,6 +201,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
             'pick' => self::SCENE_PICK,
             'canMoveOn' => true,
             'next' => 'Next scene: choose a scene type',
+            'canEndSession' => !$waitsForSession,
         ];
     }
 

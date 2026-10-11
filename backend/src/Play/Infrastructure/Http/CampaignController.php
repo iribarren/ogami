@@ -20,6 +20,7 @@ use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
+use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
 use App\Play\Domain\Campaign\InvalidCampaignName;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
@@ -166,11 +167,11 @@ final readonly class CampaignController
 
     #[Route('/api/campaigns/{campaignId}/sessions/current/end', name: 'api_campaigns_sessions_current_end', methods: ['POST'])]
     #[OA\Post(operationId: 'endSession', summary: 'End the current session of one of my campaigns')]
-    #[OA\Response(response: 200, description: 'The ended session. No scene starts until the next session.', content: new OA\JsonContent(ref: new Model(type: SessionResponse::class)))]
+    #[OA\Response(response: 200, description: 'The ended session. No scene starts until the next session. While guided, a session with a session closing stays under way (no end time) until its "Session N ends" hook Scene finishes.', content: new OA\JsonContent(ref: new Model(type: SessionResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function endSession(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         try {
@@ -180,12 +181,12 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new EndSession($campaignId, $user->id(), $number));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (NoCurrentSession|CampaignModifiedConcurrently $exception) {
+        } catch (NoCurrentSession|SessionCannotEndWhileGuided|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
         $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
-        $session = array_find($sessions, static fn (SessionView $session): bool => $session->number === $number) ?? throw new \LogicException('The session was just ended.');
+        $session = array_find($sessions, static fn (SessionView $session): bool => $session->number === $number) ?? throw new \LogicException('The session was just ended or its closing started.');
 
         return new JsonResponse(SessionResponse::fromView($session));
     }

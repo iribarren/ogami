@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\NoCurrentScene;
+use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
@@ -53,6 +56,26 @@ final readonly class FlowRunContext
     public function startScene(SceneType $sceneType): int
     {
         return $this->campaign->startScene(null, $this->at, $sceneType)->number();
+    }
+
+    /**
+     * Starts a hook Scene of this hook of the phase with its default title.
+     *
+     * @return int its number in the session under way
+     */
+    public function startHookScene(Hook $hook, Phase $phase): int
+    {
+        return $this->campaign->startHookScene($hook, $hook->defaultTitle((int) $this->sessionNumber(), $phase), $this->at)->number();
+    }
+
+    /**
+     * Ends the session under way (its session closing finished).
+     *
+     * @throws NoCurrentSession
+     */
+    public function endSession(): void
+    {
+        $this->campaign->endSession($this->at);
     }
 
     public function sceneType(string $key): SceneType

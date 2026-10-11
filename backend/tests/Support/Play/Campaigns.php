@@ -38,7 +38,7 @@ final class Campaigns
     {
         $flowRun = $campaign->flowRun() ?? throw new \LogicException('The campaign has no FlowRun.');
         [$session, $scene] = $flowRun->scene() ?? [null, null];
-        $rebuilt = FlowRun::reconstitute($flowRun->status(), $flowRun->phaseIndex(), $flowRun->stage(), $session, $scene, $flowRun->sceneType(), $flowRun->part(), $flowRun->stepKey(), $flowRun->sequencePosition(), $flowRun->scenesPlayed(), $flowRun->answers(), $flowRun->forcedNextSceneType(), $flowRun->phaseEndingReason(), $flowRun->switchCount(), [...$flowRun->history(), ...array_values($entries)]);
+        $rebuilt = FlowRun::reconstitute($flowRun->status(), $flowRun->phaseIndex(), $flowRun->stage(), $session, $scene, $flowRun->sceneType(), $flowRun->part(), $flowRun->stepKey(), $flowRun->sequencePosition(), $flowRun->scenesPlayed(), $flowRun->answers(), $flowRun->forcedNextSceneType(), $flowRun->phaseEndingReason(), $flowRun->switchCount(), [...$flowRun->history(), ...array_values($entries)], $flowRun->hook(), $flowRun->phaseOpened(), $flowRun->sessionOpeningDue());
 
         return Campaign::reconstitute($campaign->id(), $campaign->ownerId(), $campaign->name(), $campaign->pinnedRelease(), $campaign->createdAt(), $campaign->sessions(), $campaign->trackerValues(), $campaign->flowKey(), $rebuilt);
     }

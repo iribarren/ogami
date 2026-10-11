@@ -922,15 +922,16 @@ final class FlowRun
     }
 
     /**
-     * A condition step never waits: it takes the band of its Tracker's current value, applies its
-     * Effects and advances on its own, with no answer. A step that waits in a hook starts its hook
-     * Scene.
+     * A condition step never waits: it takes the band of its Tracker's current value (or of its
+     * item count), applies its Effects and advances on its own, with no answer. A step that waits
+     * in a hook starts its hook Scene.
      */
     private function settle(FlowRunContext $context): void
     {
         $step = $this->currentStep($context->release, $context->flow);
         if ($step instanceof ConditionStep) {
-            $outcome = $this->band($step->bands, $context->trackerValue($step->tracker), $context);
+            $value = $step->count instanceof \App\Play\Domain\GameSystem\Flow\ItemCount ? $context->openItemCount() : $context->trackerValue((string) $step->tracker);
+            $outcome = $this->band($step->bands, $value, $context);
             $this->finish($step, $outcome, [...$step->effects, ...$outcome->effects ?? []], null, $context);
         } else {
             $this->enterHookScene($context);

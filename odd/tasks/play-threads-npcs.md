@@ -108,8 +108,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Feature doc. `v2.schema.json`: `tags`, `pick`, `condition` count, `createNpc` / `createThread` / `closeThread`. Studio `Version2`: tag catalog, step `pick`, condition count, new effects, `{picked}`; decision-7 warning ignores count conditions. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7e40f00` |
-| T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | | [ ] | |
-| T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | | [ ] | |
+| T2 | 2 | The five example fixtures gain their feature-8 parts (examples README); warnings re-pinned | delegated writer (slice 2, 4+ non-trivial files) | [ ] | |
+| T3 | 2 | Play ACL: tags in the snapshot, `PickStep`, condition count, the three effects, typed and framework-free; translator tests | delegated writer (slice 2, 4+ non-trivial files) | [x] | |
 | T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | | [ ] | |
 | T5 | 4 | Commands, handlers, controllers for NPCs and Threads; campaign response gains `tags`, `npcs`, `threads`; API tests (422/404/409), Behat; `make api` | | [ ] | |
 | T6 | 5 | NPCs and Threads panels beside the journal (list, add, edit, close/reopen, weight, tags with hints, free tags); stories and tests | | [ ] | |
@@ -122,6 +122,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 
 - 2026-10-11: feature started; doc and slice plan written; issue #63.
 - 2026-10-11: slice 1 — T1 done: schema version 2 gains `tags`, `pick`, condition `count`, `createNpc` / `createThread` / `closeThread` and `{picked}` (schema, Studio validation, contract doc, fixtures, tests); `make qa` and `make test` green.
+- 2026-10-11: slice 2 — T3 done: the Play ACL reads `tags`, `pick` steps (`PickStep`, `ItemKind`, `PickMode`), condition `count` (`ItemCount`) and the `createNpc` / `createThread` / `closeThread` effects, failing closed with a path; FlowRun evaluates a count condition as 0 and ignores the new effects until slice 6; slice 1 review fix covered by two `pick` tests in `AuthoringWarningsTest`.
 
 ## Reviews
 

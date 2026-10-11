@@ -8,6 +8,7 @@ use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
+use App\Play\Domain\GameSystem\Tag;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -40,6 +41,18 @@ final class GameSystemSnapshotTest extends TestCase
         new GameSystemSnapshot('free-journal', 'Free journal', 2, null, [], [
             new FlowStep('act', 'Act', null),
             new FlowStep('act', 'Act again', null),
+        ]);
+    }
+
+    #[Test]
+    public function tagKeysAreUnique(): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "free-journal" v2 cannot be read by Play: tags[1].key: duplicate key "ally".');
+
+        new GameSystemSnapshot('free-journal', 'Free journal', 2, null, [], [], tags: [
+            new Tag('ally', 'Ally'),
+            new Tag('ally', 'Ally again'),
         ]);
     }
 }

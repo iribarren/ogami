@@ -6,7 +6,8 @@ namespace App\Play\Domain\GameSystem\Flow;
 
 /**
  * An Effect of a step, outcome or table entry: TrackerEffect, NextSceneEffect,
- * SwitchSceneTypeEffect, EndPhaseEffect or SceneTitleEffect.
+ * SwitchSceneTypeEffect, EndPhaseEffect, SceneTitleEffect, CreateNpcEffect, CreateThreadEffect or
+ * CloseThreadEffect.
  */
 interface Effect
 {

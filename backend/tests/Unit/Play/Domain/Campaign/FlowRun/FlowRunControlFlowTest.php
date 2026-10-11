@@ -16,6 +16,7 @@ use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableStep;
 use App\Randomness\Domain\Oracle\YesNoAnswer;
+use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -185,6 +186,28 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
         $flowRun = self::flowRunOf($campaign);
         self::assertSame([$position, $forced, $phaseEnding, 1], [self::position($campaign), $flowRun->forcedNextSceneType(), $flowRun->phaseEndingReason(), $this->tracker($campaign, 'alarm')]);
         self::assertArrayNotHasKey('check', $flowRun->answers());
+    }
+
+    #[Test]
+    public function aCountConditionTakesTheBandOfZeroItemsWhileCampaignsHoldNone(): void
+    {
+        $content = $this->content();
+        /** @var list<array{key: string}> $sceneTypes */
+        $sceneTypes = $content['sceneTypes'];
+        $index = array_search('watch', array_column($sceneTypes, 'key'), true);
+        $content = ReleaseArrays::without($content, \sprintf('sceneTypes.%d.setup.0.tracker', $index));
+        $content = ReleaseArrays::with($content, \sprintf('sceneTypes.%d.setup.0.count', $index), ['of' => 'npc']);
+        /** @var array<string, mixed> $content */
+        $release = self::translate($content);
+        $campaign = self::guided($release, 'control');
+        $campaign->startSession(self::at(), $release);
+        $campaign->setTrackerValue($this->trackerOf($release, 'heat'), 5);
+
+        $campaign->pickSceneType('watch', $release, self::at());
+
+        // The heat of 5 would take the last band: the count of 0 takes the first, which skips to "calm".
+        $flowRun = self::flowRunOf($campaign);
+        self::assertSame([['setup', 'calm'], null, null], [self::position($campaign), $flowRun->forcedNextSceneType(), $flowRun->phaseEndingReason()]);
     }
 
     #[Test]

@@ -9,17 +9,24 @@ use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
 use App\Play\Domain\GameSystem\Flow\ChoiceOption;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
+use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
+use App\Play\Domain\GameSystem\Flow\CreateNpcEffect;
+use App\Play\Domain\GameSystem\Flow\CreateThreadEffect;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\FlowView;
+use App\Play\Domain\GameSystem\Flow\ItemCount;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\NextSceneEffect;
 use App\Play\Domain\GameSystem\Flow\OracleBranches;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PhaseMode;
+use App\Play\Domain\GameSystem\Flow\PickMode;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SceneSelection;
@@ -37,6 +44,7 @@ use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\TableEntryMetadata;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
@@ -95,6 +103,7 @@ final readonly class GameSystemReleaseTranslator
         $gameSystem = $this->object($view, $content['gameSystem'] ?? null, 'gameSystem');
         $oracles = $this->object($view, $content['oracles'] ?? null, 'oracles');
         $tables = $this->list($view, $oracles['tables'] ?? null, 'oracles.tables');
+        $tags = $this->tags($view, $this->list($view, $content['tags'] ?? [], 'tags'));
         $entries = [];
         foreach ($tables as $index => $table) {
             $path = \sprintf('oracles.tables[%d]', $index);
@@ -117,7 +126,7 @@ final readonly class GameSystemReleaseTranslator
             $tables[$index] = ['entries' => $tableEntries] + $table;
         }
 
-        return new GameSystemSnapshot(
+        $snapshot = new GameSystemSnapshot(
             $view->gameSystemKey,
             $this->string($view, $gameSystem['name'] ?? null, 'gameSystem.name'),
             $view->version,
@@ -129,7 +138,65 @@ final readonly class GameSystemReleaseTranslator
             $this->sceneTypes($view, $this->list($view, $content['sceneTypes'] ?? null, 'sceneTypes')),
             $entries,
             $this->flows($view, $this->list($view, $content['flows'] ?? null, 'flows')),
+            $tags,
         );
+        $this->assertTagsExist($view, $content, '', $snapshot);
+
+        return $snapshot;
+    }
+
+    /**
+     * Every Tag key a pick step, count condition or NPC / Thread Effect lists must be one of the
+     * release's Tags. Studio checks this on publish; the stored content is not trusted.
+     */
+    private function assertTagsExist(PublishedReleaseView $view, mixed $node, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $node = $node instanceof \stdClass ? (array) $node : $node;
+        if (!\is_array($node)) {
+            return;
+        }
+
+        $kind = $node['kind'] ?? null;
+        $count = $node['count'] ?? null;
+        $tagsPath = $tags = null;
+        if (\in_array($kind, ['pick', 'createNpc', 'createThread'], true)) {
+            $tagsPath = $path.'.tags';
+            $tags = $node['tags'] ?? null;
+        } elseif ('condition' === $kind && \is_array($count)) {
+            $tagsPath = $path.'.count.tags';
+            $tags = $count['tags'] ?? null;
+        }
+
+        foreach (\is_array($tags) ? $tags : [] as $index => $key) {
+            if (\is_string($key) && !$snapshot->tag($key) instanceof Tag) {
+                throw $this->invalid($view, \sprintf('%s[%d]', $tagsPath, $index), \sprintf('unknown tag "%s".', $key));
+            }
+        }
+
+        foreach ($node as $name => $child) {
+            $this->assertTagsExist($view, $child, \is_int($name) ? \sprintf('%s[%d]', $path, $name) : ('' === $path ? $name : $path.'.'.$name), $snapshot);
+        }
+    }
+
+    /**
+     * @param list<mixed> $tags
+     *
+     * @return list<Tag>
+     */
+    private function tags(PublishedReleaseView $view, array $tags): array
+    {
+        $snapshots = [];
+        foreach ($tags as $index => $tag) {
+            $path = \sprintf('tags[%d]', $index);
+            $tag = $this->object($view, $tag, $path);
+            $snapshots[] = new Tag(
+                $this->string($view, $tag['key'] ?? null, $path.'.key'),
+                $this->string($view, $tag['label'] ?? null, $path.'.label'),
+                $this->optionalString($view, $tag['hint'] ?? null, $path.'.hint'),
+            );
+        }
+
+        return $snapshots;
     }
 
     /**
@@ -348,16 +415,73 @@ final readonly class GameSystemReleaseTranslator
                     options: $this->options($view, $step['options'] ?? null, $stepPath.'.options'),
                     skip: $this->optionalString($view, $step['skip'] ?? null, $stepPath.'.skip'),
                 ),
-                'condition' => new ConditionStep(
-                    ...$common,
-                    tracker: $this->string($view, $step['tracker'] ?? null, $stepPath.'.tracker'),
-                    bands: $this->bands($view, $step['bands'] ?? null, $stepPath.'.bands'),
-                ),
+                'condition' => $this->conditionStep($view, $common, $step, $stepPath),
+                'pick' => $this->pickStep($view, $common, $step, $stepPath),
                 default => throw $this->invalid($view, $stepPath.'.kind', \sprintf('unknown step kind "%s".', $kind)),
             };
         }
 
         return new StepList($snapshots);
+    }
+
+    /**
+     * @param array{key: string, title: string, prompt: ?string, tip: ?string, mandatory: bool, next: ?string, effects: list<Effect>} $common
+     * @param array<mixed>                                                                                                            $step
+     */
+    private function conditionStep(PublishedReleaseView $view, array $common, array $step, string $path): ConditionStep
+    {
+        $tracker = $this->optionalString($view, $step['tracker'] ?? null, $path.'.tracker');
+        $count = null === ($step['count'] ?? null) ? null : $this->itemCount($view, $step['count'], $path.'.count');
+        if ((null === $tracker) === (!$count instanceof ItemCount)) {
+            throw $this->invalid($view, $path, 'must set exactly one of tracker and count.');
+        }
+
+        return new ConditionStep(...$common, tracker: $tracker, bands: $this->bands($view, $step['bands'] ?? null, $path.'.bands'), count: $count);
+    }
+
+    private function itemCount(PublishedReleaseView $view, mixed $count, string $path): ItemCount
+    {
+        $count = $this->object($view, $count, $path);
+
+        return new ItemCount($this->itemKind($view, $count['of'] ?? null, $path.'.of'), $this->keys($view, $count['tags'] ?? [], $path.'.tags'));
+    }
+
+    private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind
+    {
+        return ItemKind::tryFrom($name = $this->string($view, $kind, $path))
+            ?? throw $this->invalid($view, $path, \sprintf('unknown item kind "%s".', $name));
+    }
+
+    /**
+     * @param array{key: string, title: string, prompt: ?string, tip: ?string, mandatory: bool, next: ?string, effects: list<Effect>} $common
+     * @param array<mixed>                                                                                                            $step
+     */
+    private function pickStep(PublishedReleaseView $view, array $common, array $step, string $path): PickStep
+    {
+        $min = 1;
+        $max = 1;
+        if (null !== ($step['count'] ?? null)) {
+            $count = $this->object($view, $step['count'], $path.'.count');
+            $min = $this->int($view, $count['min'] ?? null, $path.'.count.min');
+            $max = $this->int($view, $count['max'] ?? null, $path.'.count.max');
+            if ($min < 1 || $max < $min || $max > PickStep::MAX_COUNT) {
+                throw $this->invalid($view, $path.'.count', \sprintf('must satisfy 1 <= min <= max <= %d.', PickStep::MAX_COUNT));
+            }
+        }
+
+        $branches = $this->object($view, $step['branches'] ?? [], $path.'.branches');
+
+        return new PickStep(
+            ...$common,
+            of: $this->itemKind($view, $step['of'] ?? null, $path.'.of'),
+            tags: $this->keys($view, $step['tags'] ?? [], $path.'.tags'),
+            mode: PickMode::tryFrom($mode = $this->string($view, $step['mode'] ?? null, $path.'.mode'))
+                ?? throw $this->invalid($view, $path.'.mode', \sprintf('unknown pick mode "%s".', $mode)),
+            min: $min,
+            max: $max,
+            found: null === ($branches['found'] ?? null) ? null : $this->outcome($view, $branches['found'], $path.'.branches.found'),
+            none: null === ($branches['none'] ?? null) ? null : $this->outcome($view, $branches['none'], $path.'.branches.none'),
+        );
     }
 
     private function outcome(PublishedReleaseView $view, mixed $outcome, string $path): Outcome
@@ -451,6 +575,16 @@ final readonly class GameSystemReleaseTranslator
                 'switchSceneType' => new SwitchSceneTypeEffect($sceneType()),
                 'endPhase' => new EndPhaseEffect(),
                 'sceneTitle' => new SceneTitleEffect($this->string($view, $effect['title'] ?? null, $effectPath.'.title')),
+                'createNpc' => new CreateNpcEffect(
+                    $this->optionalString($view, $effect['name'] ?? null, $effectPath.'.name'),
+                    $this->optionalString($view, $effect['agenda'] ?? null, $effectPath.'.agenda'),
+                    $this->keys($view, $effect['tags'] ?? [], $effectPath.'.tags'),
+                ),
+                'createThread' => new CreateThreadEffect(
+                    $this->optionalString($view, $effect['name'] ?? null, $effectPath.'.name'),
+                    $this->keys($view, $effect['tags'] ?? [], $effectPath.'.tags'),
+                ),
+                'closeThread' => new CloseThreadEffect(),
                 default => throw $this->invalid($view, $effectPath.'.kind', \sprintf('unknown effect kind "%s".', $kind)),
             };
         }

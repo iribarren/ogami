@@ -92,6 +92,15 @@ final readonly class FlowRunContext
     }
 
     /**
+     * The number of open NPCs or Threads a count condition counts.
+     */
+    public function openItemCount(): int
+    {
+        // Campaigns hold no NPCs or Threads yet, so there is nothing to count.
+        return 0;
+    }
+
+    /**
      * @return array<string, int> the campaign's current value of every Tracker of the pinned release, by key
      */
     public function trackerValues(): array

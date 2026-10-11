@@ -15,7 +15,9 @@ use PHPUnit\Framework\TestCase;
  * The five flow examples of docs/domain/flow-examples.md as schema version 2 releases (ADR 0018,
  * decision 26). ReleaseSchemaAgreementTest checks them against the schema and the domain; this
  * test pins the authoring warnings each one yields (decision 7). Only the heist accepts a forced
- * scene that does not lower its tracker: the forced Firefight leaves the alarm as it is.
+ * scene that does not lower its tracker: the forced Firefight leaves the alarm as it is. The
+ * Threads and NPCs parts (tags, pick steps, createNpc / createThread / closeThread) change no
+ * warning: only the tracker conditions are checked.
  */
 #[CoversNothing]
 final class ExampleReleasesTest extends TestCase
@@ -51,6 +53,26 @@ final class ExampleReleasesTest extends TestCase
     public function itYieldsTheWarningsTheExampleIntends(string $name, array $warnings): void
     {
         self::assertSame($warnings, ReleaseContent::fromArray(ReleaseArrays::fixture('examples/'.$name))->warnings());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function exampleNames(): iterable
+    {
+        foreach (array_keys(self::WARNINGS) as $name) {
+            yield $name => [$name];
+        }
+    }
+
+    #[Test]
+    #[DataProvider('exampleNames')]
+    public function everyExampleDeclaresTagsAndUsesThreadsAndNpcs(string $name): void
+    {
+        $json = (string) file_get_contents(self::EXAMPLES.'/'.$name.'.json');
+
+        self::assertNotSame([], ReleaseArrays::fixture('examples/'.$name)['tags'] ?? []);
+        self::assertMatchesRegularExpression('/"kind": "(createNpc|createThread)"/', $json);
     }
 
     #[Test]

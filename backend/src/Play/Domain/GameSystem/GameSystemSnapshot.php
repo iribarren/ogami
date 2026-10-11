@@ -29,6 +29,9 @@ final readonly class GameSystemSnapshot
     /** @var array<string, Flow> */
     private array $flows;
 
+    /** @var array<string, Tag> */
+    private array $tags;
+
     /**
      * @param ?OracleTableSet                         $oracleTables      null when the release has no oracle tables
      * @param list<SnapshotLikelihoodOracle>          $likelihoodOracles in definition order, unique keys
@@ -38,8 +41,9 @@ final readonly class GameSystemSnapshot
      * @param list<SceneType>                         $sceneTypes        in definition order, unique keys
      * @param array<string, list<TableEntryMetadata>> $tableEntries      per table key, one per entry in entry order
      * @param list<Flow>                              $flows             in definition order, unique keys, at most one default
+     * @param list<Tag>                               $tags              in definition order, unique keys
      *
-     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types or flows share a key,
+     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows or tags share a key,
      *                                  or two flows are the default
      */
     public function __construct(
@@ -54,6 +58,7 @@ final readonly class GameSystemSnapshot
         array $sceneTypes = [],
         private array $tableEntries = [],
         array $flows = [],
+        array $tags = [],
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -71,6 +76,7 @@ final readonly class GameSystemSnapshot
         $this->trackers = $this->byKey($trackers, 'trackers');
         $this->sceneTypes = $this->byKey($sceneTypes, 'sceneTypes');
         $this->flows = $this->byKey($flows, 'flows');
+        $this->tags = $this->byKey($tags, 'tags');
         $defaults = array_keys(array_filter($flows, static fn (Flow $flow): bool => $flow->default));
         if (\count($defaults) > 1) {
             throw InvalidGameSystemRelease::of($gameSystemKey, $releaseVersion, \sprintf('flows[%d].default', $defaults[1]), 'only one flow may be the default.');
@@ -176,6 +182,19 @@ final readonly class GameSystemSnapshot
     }
 
     /**
+     * @return list<Tag> in definition order
+     */
+    public function tags(): array
+    {
+        return array_values($this->tags);
+    }
+
+    public function tag(string $key): ?Tag
+    {
+        return $this->tags[$key] ?? null;
+    }
+
+    /**
      * @return list<FactSlot> in definition order
      */
     public function factSlots(): array
@@ -249,7 +268,7 @@ final readonly class GameSystemSnapshot
     }
 
     /**
-     * @template T of Tracker|SceneType|Flow
+     * @template T of Tracker|SceneType|Flow|Tag
      *
      * @param list<T> $parts
      *

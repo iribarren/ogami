@@ -222,7 +222,7 @@ final class GameSystemReleaseTranslatorFlowsTest extends TestCase
         yield 'selection rule' => ['flows.0.phases.0.selection.rule', 'dice', 'flows[0].phases[0].selection.rule: unknown selection rule "dice".'];
         yield 'no selected Scene Type' => ['flows.0.phases.0.selection.sceneTypes', [], 'flows[0].phases[0].selection.sceneTypes: must list at least one Scene Type.'];
         yield 'oracle selection table' => ['flows.0.phases.1.selection.table', 7, 'flows[0].phases[1].selection.table: must be a string.'];
-        yield 'hook step' => ['flows.0.phases.2.worldTurn.0.kind', 'pick', 'flows[0].phases[2].worldTurn[0].kind: unknown step kind "pick".'];
+        yield 'hook step' => ['flows.0.phases.2.worldTurn.0.kind', 'dance', 'flows[0].phases[2].worldTurn[0].kind: unknown step kind "dance".'];
         yield 'duplicate phase key' => ['flows.0.phases.1.key', 'legwork', 'flows[0].phases[1].key: duplicate key "legwork".'];
         yield 'duplicate flow key' => ['flows.1.key', 'heist', 'flows[1].key: duplicate key "heist".'];
         yield 'second default' => ['flows.1.default', true, 'flows[1].default: only one flow may be the default.'];

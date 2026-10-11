@@ -11,6 +11,7 @@ use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Infrastructure\GameSystem\StudioPublishedGameSystemReleases;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -163,6 +164,9 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
         $snapshot = $this->queries->ask(new GetGameSystemSnapshot($content['gameSystem']['key']));
 
         self::assertCount(\count($content['trackers']), $snapshot->trackers());
+        self::assertIsArray($content['tags']);
+        self::assertNotSame([], $content['tags']);
+        self::assertSame(array_column($content['tags'], 'key'), array_map(static fn (Tag $tag): string => $tag->key, $snapshot->tags()));
         self::assertSame(array_column($content['sceneTypes'], 'key'), array_map(static fn (SceneType $type): string => $type->key, $snapshot->sceneTypes()));
 
         $example = basename($fixture);

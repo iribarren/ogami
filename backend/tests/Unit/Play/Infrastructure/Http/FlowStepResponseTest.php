@@ -23,6 +23,6 @@ final class FlowStepResponseTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageIsOrContains('Condition step "cool" never waits: it cannot be the current step.');
 
-        FlowStepResponse::fromView(new FlowStepView(StepKind::Condition, $step));
+        FlowStepResponse::fromView(new FlowStepView(StepKind::Condition, $step, $step->title, $step->prompt, $step->tip));
     }
 }

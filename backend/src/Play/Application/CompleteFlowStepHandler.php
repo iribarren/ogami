@@ -11,6 +11,7 @@ use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
+use App\Play\Domain\Campaign\FlowRun\FlowStepView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
@@ -54,7 +55,8 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     }
 
     /**
-     * The entry is built before the step completes, so it belongs to the scene the step was in even
+     * The entry names the step with its title and prompt as the player saw them (placeholders
+     * rendered). It is built before the step completes, so it belongs to the scene the step was in even
      * when completing the step starts the next scene, and it is only added once the FlowRun accepts
      * the result: a refused step records nothing and leaves the campaign as it was.
      *
@@ -81,14 +83,16 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     {
         $campaign = $this->journal->campaign($command->campaignId, $command->userId);
         $release = $this->journal->pinnedSnapshot($campaign);
-        $step = $campaign->activeFlowRunView($release)->step?->step;
-        if (!$step instanceof Step || $step->key !== $command->stepKey) {
-            throw FlowRunPositionMismatch::at(\sprintf('step "%s"', $command->stepKey), $step instanceof Step ? \sprintf('step "%s"', $step->key) : 'no step');
+        $view = $campaign->activeFlowRunView($release)->step;
+        if (!$view instanceof FlowStepView || $view->step->key !== $command->stepKey) {
+            throw FlowRunPositionMismatch::at(\sprintf('step "%s"', $command->stepKey), $view instanceof FlowStepView ? \sprintf('step "%s"', $view->step->key) : 'no step');
         }
+
+        $step = $view->step;
 
         [$result, $content] = $this->resultOf($command, $step, $campaign, $release);
         $at = $this->clock->now();
-        $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $step->title, $step->prompt));
+        $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
         $campaign->completeFlowStep($step->key, $result, $release, $at);
         // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent
         // save would surface there as a raw lock error instead of CampaignModifiedConcurrently. Both

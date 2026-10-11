@@ -258,6 +258,21 @@ final class Campaign
     }
 
     /**
+     * Renames the current scene (a sceneTitle Effect of the FlowRun).
+     *
+     * @throws NoCurrentScene    when the current session has no scene, or no session is under way
+     * @throws InvalidSceneTitle when the trimmed title is blank or longer than 100 characters
+     */
+    public function renameCurrentScene(string $title): Scene
+    {
+        $session = $this->currentSession();
+        $renamed = ($session?->currentScene() ?? throw NoCurrentScene::toRename())->withTitle($title);
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($renamed)];
+
+        return $renamed;
+    }
+
+    /**
      * Sets a Tracker's value by hand, clamped to its range. With a FlowRun the edit is in its history.
      *
      * @param ?\DateTimeImmutable $at when; without it a FlowRun is not told (see startSession())
@@ -465,7 +480,22 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number());
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release));
+    }
+
+    /**
+     * The campaign's value of every Tracker of the pinned release, by key (see trackerValue()).
+     *
+     * @return array<string, int>
+     */
+    public function trackerValuesOf(GameSystemSnapshot $release): array
+    {
+        $values = [];
+        foreach ($release->trackers() as $tracker) {
+            $values[$tracker->key] = $this->trackerValue($tracker);
+        }
+
+        return $values;
     }
 
     /**

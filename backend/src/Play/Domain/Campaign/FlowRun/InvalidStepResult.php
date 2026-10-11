@@ -12,7 +12,7 @@ final class InvalidStepResult extends \DomainException
 {
     public static function kind(string $step, StepKind $expected, StepKind $given): self
     {
-        return new self(\sprintf('Step "%s" is a %s step: a %s result does not complete it.', $step, $expected->value, $given->value));
+        return new self(\sprintf('Step "%s" is %s step: %s result does not complete it.', $step, self::aOrAn($expected), self::aOrAn($given)));
     }
 
     public static function unknownOption(string $step, string $option): self
@@ -37,12 +37,12 @@ final class InvalidStepResult extends \DomainException
 
     public static function unexpectedField(string $step, StepKind $kind, string $field): self
     {
-        return new self(\sprintf('Step "%s" is a %s step: it takes no "%s".', $step, $kind->value, $field));
+        return new self(\sprintf('Step "%s" is %s step: it takes no "%s".', $step, self::aOrAn($kind), $field));
     }
 
     public static function missingField(string $step, StepKind $kind, string $field): self
     {
-        return new self(\sprintf('Step "%s" is a %s step: it needs a "%s".', $step, $kind->value, $field));
+        return new self(\sprintf('Step "%s" is %s step: it needs "%s".', $step, self::aOrAn($kind), $field));
     }
 
     public static function fixedLikelihood(string $step, string $likelihood): self
@@ -53,5 +53,13 @@ final class InvalidStepResult extends \DomainException
     public static function conditionStep(string $step): self
     {
         return new self(\sprintf('Step "%s" is a condition step: it advances by itself and cannot be completed.', $step));
+    }
+
+    /**
+     * The kind with its indefinite article: "an oracle", "a table".
+     */
+    private static function aOrAn(StepKind $kind): string
+    {
+        return (StepKind::Oracle === $kind ? 'an ' : 'a ').$kind->value;
     }
 }

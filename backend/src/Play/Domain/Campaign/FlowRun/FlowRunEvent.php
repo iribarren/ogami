@@ -13,6 +13,7 @@ enum FlowRunEvent: string
     case Skip = 'skip';
     case TrackerEdit = 'trackerEdit';
     case SceneTypeSwitch = 'sceneTypeSwitch';
+    case SceneTypeSwitchIgnored = 'sceneTypeSwitchIgnored';
     case Paused = 'paused';
     case Resumed = 'resumed';
     case SceneAbandoned = 'sceneAbandoned';

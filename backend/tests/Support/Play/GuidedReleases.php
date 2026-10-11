@@ -16,9 +16,10 @@ final class GuidedReleases
      * Release v1 of "guided": oracle tables "scene-kinds" (1d6, every entry names Scene Type "tour")
      * and "omens" (1d6: 1-3 Calm, 4-6 Storm), and the likelihood oracle "fate" (d100; "even" 50,
      * "unlikely" 35; chaos 1-9, neutral 5, 5 per point). Scene Type "tour" sets up with the steps
-     * "intro" (prompt), "dice" (roll 1d6), "omen" (table), "ask" (oracle, the player picks the
-     * likelihood), "ask-even" (oracle at "even") and "fork" (choice: "left" Go left, which
-     * is what skipping it takes, "right" Go right); "solo" closes with the
+     * "intro" (prompt), "dice" (roll 1d6), "omen" (table; its prompt names the answer to
+     * "intro"), "ask" (oracle, the player picks the likelihood), "ask-even" (oracle at "even") and
+     * "fork" (choice: "left" Go left, which is what skipping it takes and renames the scene "Went
+     * Go left", "right" Go right); "solo" closes with the
      * mandatory prompt "wrap"; "quiet" has no steps. Flows: "draw" (the scene
      * pick rolls on "scene-kinds"), "tour" (the player picks "tour" or "quiet", any number of
      * times) and "chain" (the sequence "solo" over and over). With $chaosFromTracker, "fate" takes
@@ -58,10 +59,10 @@ final class GuidedReleases
                 $sceneType('tour', 'Tour', [
                     $step('intro', 'prompt', 'Who walks in?', ['prompt' => 'Describe the first person.']),
                     $step('dice', 'roll', 'Push your luck', ['dice' => '1d6']),
-                    $step('omen', 'table', 'Read the omen', ['table' => 'omens']),
+                    $step('omen', 'table', 'Read the omen', ['table' => 'omens', 'prompt' => 'After {step:intro}, what do the signs say?']),
                     $step('ask', 'oracle', 'Is the gate open?', ['oracle' => 'fate']),
                     $step('ask-even', 'oracle', 'Is it guarded?', ['oracle' => 'fate', 'likelihood' => 'even']),
-                    $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left'], ['key' => 'right', 'label' => 'Go right']], 'skip' => 'left']),
+                    $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left', 'effects' => [['kind' => 'sceneTitle', 'title' => 'Went {answer}']]], ['key' => 'right', 'label' => 'Go right']], 'skip' => 'left']),
                 ]),
                 $sceneType('solo', 'Solo', [], [$step('wrap', 'prompt', 'What changed?', ['mandatory' => true])]),
                 $sceneType('quiet', 'Quiet'),

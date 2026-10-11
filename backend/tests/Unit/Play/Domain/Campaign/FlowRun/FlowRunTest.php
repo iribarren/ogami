@@ -305,6 +305,7 @@ final class FlowRunTest extends FlowRunTestCase
     public static function wrongResults(): iterable
     {
         yield 'another kind' => ['mood', StepResult::prompt('Calm'), 'Step "mood" is a choice step: a prompt result does not complete it.'];
+        yield 'another kind, with "an"' => ['mood', self::oracle(YesNoAnswer::Yes), 'Step "mood" is a choice step: an oracle result does not complete it.'];
         yield 'an unknown option' => ['mood', StepResult::choice('bored'), 'Choice step "mood" has no option "bored".'];
         yield 'other dice' => ['luck', self::roll('1d8', 3), 'Step "luck" rolls 1d6.'];
         yield 'a blank answer' => ['wrap', StepResult::prompt('  '), 'Step "wrap" needs an answer.'];

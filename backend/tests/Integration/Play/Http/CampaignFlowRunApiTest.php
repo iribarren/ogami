@@ -123,7 +123,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
 
         yield 'a prompt' => ['intro', 1, 'Setup: Push your luck', $step('intro', 'prompt', 'Who walks in?', ['prompt' => 'Describe the first person.'])];
         yield 'a roll' => ['dice', 2, 'Setup: Read the omen', $step('dice', 'roll', 'Push your luck', ['dice' => '1d6'])];
-        yield 'a table' => ['omen', 3, 'Setup: Is the gate open?', $step('omen', 'table', 'Read the omen', ['table' => 'omens'])];
+        yield 'a table' => ['omen', 3, 'Setup: Is the gate open?', $step('omen', 'table', 'Read the omen', ['table' => 'omens', 'prompt' => 'After —, what do the signs say?'])];
         yield 'an oracle the player picks the likelihood of' => ['ask', 4, 'Setup: Is it guarded?', $step('ask', 'oracle', 'Is the gate open?', ['oracle' => 'fate'])];
         yield 'an oracle at a fixed likelihood' => ['ask-even', 5, 'Setup: Which way?', $step('ask-even', 'oracle', 'Is it guarded?', ['oracle' => 'fate', 'likelihood' => 'even'])];
         yield 'a choice' => ['fork', 6, 'Open play', $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left'], ['key' => 'right', 'label' => 'Go right']]])];

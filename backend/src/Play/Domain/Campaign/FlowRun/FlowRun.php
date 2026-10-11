@@ -4,18 +4,28 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\GameSystem\Flow\Band;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
+use App\Play\Domain\GameSystem\Flow\Effect;
+use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Flow\NextSceneEffect;
+use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
+use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
 use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\Flow\Step;
 use App\Play\Domain\GameSystem\Flow\StepList;
+use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
 use App\Play\Domain\GameSystem\Flow\TableStep;
+use App\Play\Domain\GameSystem\Flow\TrackerEffect;
+use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Randomness\Domain\DiceExpression;
@@ -29,18 +39,25 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * it as soon as a session is under way); picking starts a scene of play. In a scene the parts run
  * in order (ScenePart): scene opening, setup, play, open play until "End scene", closing, scene
  * closing. After the scene the phase goes on at the scene pick, or ends: a once phase after its
- * scenes, a loop phase on "Move on" (at once at the pick, else after the scene) or when an effect
- * ends it. After the last phase the FlowRun is completed. Steps advance to the chosen option's
- * "next", else the step's "next", else the following step; "end" ends the part; a condition step
- * advances on its own.
+ * scenes, a loop phase on "Move on" (at once at the pick, else after the scene) or when an Effect
+ * ends it. After the last phase the FlowRun is completed.
+ *
+ * A finished step takes the Outcome of its result: an oracle answer's branch (an exceptional answer
+ * without one uses yes / no), the branch of the entry rolled on a table step's own table (else
+ * "otherwise"), the band of a roll total or of a condition step's Tracker, the chosen option. Its
+ * Effects apply in order: the step's, those of the table entries it rolled (nested tables
+ * included), then the Outcome's. Then it advances to the Outcome's "next", else the step's "next",
+ * else the following step; "end" ends the part; a condition step advances on its own. The first
+ * switchSceneType Effect of a scene changes its Scene Type in place and goes on at the new type's
+ * setup instead; later ones are ignored (recorded). Hand switches do not count.
  *
  * Paused, the FlowRun takes no command and the player plays freely; resuming goes on where it
  * stopped. A guided scene that is no longer the current scene when guidance resumes or a session
  * starts (the player started another by hand, or the session ended) is abandoned: the FlowRun goes
  * on after it, at the scene pick.
  *
- * Not run yet (play-flow-run slice 16): session, phase and world turn hooks, effects, bands and
- * oracle/table branches, placeholders. The seams are marked "Hooks:" below.
+ * Not run yet (play-flow-run slice 20): session, phase and world turn hooks. The seams are marked
+ * "Hooks:" below.
  */
 final class FlowRun
 {
@@ -170,24 +187,40 @@ final class FlowRun
 
         $outcome = null;
         $answer = $result->answer;
+        $rolledEffects = [];
         if ($step instanceof ChoiceStep) {
             $option = $step->option($answer) ?? throw InvalidStepResult::unknownOption($step->key, $answer);
             [$outcome, $answer] = [$option->outcome, $option->label];
-        } elseif ($step instanceof TableStep && $result->table?->steps()[0]->tableKey() !== $step->table) {
-            throw InvalidStepResult::otherTable($step->key, $step->table);
-        } elseif ($step instanceof RollStep && $result->roll?->expression()->notation() !== DiceExpression::fromString($step->dice)->notation()) {
-            throw InvalidStepResult::otherDice($step->key, $step->dice);
+        } elseif ($step instanceof TableStep) {
+            $rolled = $result->table?->steps() ?? [];
+            if (!isset($rolled[0]) || $rolled[0]->tableKey() !== $step->table) {
+                throw InvalidStepResult::otherTable($step->key, $step->table);
+            }
+
+            $outcome = $step->outcomeFor($context->release->rolledEntry($rolled[0])?->key);
+            foreach ($rolled as $tableStep) {
+                $rolledEffects = [...$rolledEffects, ...$context->release->rolledEntry($tableStep)->effects ?? []];
+            }
+        } elseif ($step instanceof RollStep) {
+            if ($result->roll?->expression()->notation() !== DiceExpression::fromString($step->dice)->notation()) {
+                throw InvalidStepResult::otherDice($step->key, $step->dice);
+            }
+
+            $outcome = $this->band($step->bands, $result->roll->total(), $context);
+        } elseif ($step instanceof OracleStep) {
+            $outcome = $result->likelihood instanceof \App\Randomness\Domain\Oracle\LikelihoodAnswer ? $step->branches->for($result->likelihood->answer()) : null;
         } elseif ($step instanceof PromptStep && '' === $answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
 
         $this->answers[$step->key] = $answer;
-        $this->advance($step, $outcome, $context);
+        $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context);
     }
 
     /**
      * Skips the current suggested step (recorded in the history): a choice follows its "skip"
-     * option, any other step its "next".
+     * option with that option's Effects only, any other step its "next" without Effects. No answer
+     * is recorded; the skip option's label is the "{answer}" of its Effects.
      *
      * @throws FlowRunNotActive        when the Flow is complete
      * @throws FlowRunPositionMismatch when the current step is not this one
@@ -202,7 +235,7 @@ final class FlowRun
 
         $this->history[] = FlowRunHistoryEntry::skip($context->at, $step->key, $this->part ?? ScenePart::Open);
         $skip = $step instanceof ChoiceStep && null !== $step->skip ? $step->option($step->skip) : null;
-        $this->advance($step, $skip?->outcome, $context);
+        $this->finish($step, $skip?->outcome, $skip->outcome->effects ?? [], $skip?->label, $context);
     }
 
     /**
@@ -364,7 +397,7 @@ final class FlowRun
 
     /**
      * Forces the Scene Type of the next scene pick: the pick offers only it, and it does not
-     * advance a sequence (set by a nextScene effect).
+     * advance a sequence (set by a nextScene Effect; the last one wins).
      */
     public function forceNextSceneType(string $sceneTypeKey): void
     {
@@ -372,7 +405,8 @@ final class FlowRun
     }
 
     /**
-     * Ends the phase once the current scene finishes (set by an endPhase effect).
+     * Ends the phase once the current scene finishes (set by an endPhase Effect; the first reason,
+     * an Effect or "Move on", is kept).
      */
     public function endPhaseAfterScene(): void
     {
@@ -382,10 +416,12 @@ final class FlowRun
     /**
      * What the player sees of the FlowRun.
      *
-     * @param ?int $sessionNumber the number of the session under way, null when none is
+     * @param ?int               $sessionNumber the number of the session under way, null when none is
+     * @param array<string, int> $trackerValues the campaign's value of every Tracker of the release, by key, for placeholders
      */
-    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber): FlowRunView
+    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues): FlowRunView
     {
+        $placeholders = new Placeholders($trackerValues, $this->answers);
         if (FlowRunStatus::Completed === $this->status) {
             return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete');
         }
@@ -405,10 +441,10 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders)) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
-            $this->nextLabel($step, $release, $flow),
+            $this->nextLabel($step, $release, $flow, $placeholders),
         );
     }
 
@@ -639,6 +675,90 @@ final class FlowRun
     }
 
     /**
+     * Applies a finished step's Effects in order, then moves on: to the new Scene Type's setup when
+     * one switched the scene (the step's target is not followed), else as advance() does.
+     *
+     * @param list<Effect> $effects
+     * @param ?string      $answer  the step's answer text, which "{answer}" stands for
+     */
+    private function finish(Step $step, ?Outcome $outcome, array $effects, ?string $answer, FlowRunContext $context): void
+    {
+        $switched = false;
+        foreach ($effects as $effect) {
+            $switched = $this->apply($effect, $answer, $context) || $switched;
+        }
+
+        if ($switched) {
+            $this->enterPart(ScenePart::Setup, $context);
+        } else {
+            $this->advance($step, $outcome, $context);
+        }
+    }
+
+    /**
+     * @return bool whether the Effect switched the scene's Scene Type
+     */
+    private function apply(Effect $effect, ?string $answer, FlowRunContext $context): bool
+    {
+        if ($effect instanceof TrackerEffect) {
+            $context->applyTrackerEffect($effect);
+        } elseif ($effect instanceof NextSceneEffect) {
+            $this->forceNextSceneType($effect->sceneType);
+        } elseif ($effect instanceof EndPhaseEffect) {
+            $this->endPhaseAfterScene();
+        } elseif ($effect instanceof SceneTitleEffect) {
+            // Rendered when it applies, cut to the longest title; an empty title is ignored.
+            $title = trim(mb_substr(trim(new Placeholders($context->trackerValues(), $this->answers, $answer)->render($effect->title)), 0, Scene::MAX_TITLE_LENGTH));
+            if ('' !== $title) {
+                $context->renameScene($title);
+            }
+        } elseif ($effect instanceof SwitchSceneTypeEffect) {
+            return $this->switchSceneTypeByEffect($effect->sceneType, $context);
+        }
+
+        return false;
+    }
+
+    /**
+     * The first switch through Effects in a scene changes its Scene Type in place (recorded as a
+     * hand switch is); later ones are ignored and recorded.
+     */
+    private function switchSceneTypeByEffect(string $sceneTypeKey, FlowRunContext $context): bool
+    {
+        $scene = (int) $context->sceneNumber();
+        if ($this->switchCount > 0) {
+            $this->history[] = FlowRunHistoryEntry::sceneTypeSwitchIgnored($context->at, $scene, $sceneTypeKey);
+
+            return false;
+        }
+
+        $from = $context->switchSceneType($context->sceneType($sceneTypeKey));
+        $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, $scene, $from, $sceneTypeKey);
+        $this->sceneType = $sceneTypeKey;
+        ++$this->switchCount;
+
+        return true;
+    }
+
+    /**
+     * The Outcome of the first band whose "upTo" (a literal, or a Tracker's current value) the value
+     * does not pass; the band without "upTo" catches the rest.
+     *
+     * @param list<Band> $bands
+     */
+    private function band(array $bands, int $value, FlowRunContext $context): ?Outcome
+    {
+        foreach ($bands as $band) {
+            $upTo = $band->upTo instanceof TrackerReference ? $context->trackerValue($band->upTo->tracker) : $band->upTo;
+            if (null === $upTo || $value <= $upTo) {
+                return $band->outcome;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Moves on from a finished step: to the outcome's "next", else the step's, else the following
      * step; "end" or no following step ends the part.
      */
@@ -657,13 +777,15 @@ final class FlowRun
     }
 
     /**
-     * A condition step never waits: it advances on its own (its bands are evaluated with effects).
+     * A condition step never waits: it takes the band of its Tracker's current value, applies its
+     * Effects and advances on its own, with no answer.
      */
     private function settle(FlowRunContext $context): void
     {
         $step = $this->currentStep($context->release, $context->flow);
         if ($step instanceof ConditionStep) {
-            $this->advance($step, null, $context);
+            $outcome = $this->band($step->bands, $context->trackerValue($step->tracker), $context);
+            $this->finish($step, $outcome, [...$step->effects, ...$outcome->effects ?? []], null, $context);
         }
     }
 
@@ -750,7 +872,7 @@ final class FlowRun
      * The next step named: the step after the current one on its default path (condition steps
      * are passed), across parts, past the scene to the next pick or phase.
      */
-    private function nextLabel(?Step $step, GameSystemSnapshot $release, Flow $flow): string
+    private function nextLabel(?Step $step, GameSystemSnapshot $release, Flow $flow, Placeholders $placeholders): string
     {
         if (!$this->part instanceof ScenePart) {
             return $this->pickLabel($release, $flow);
@@ -773,7 +895,12 @@ final class FlowRun
             $next = $this->effective($steps, $steps->steps[0] ?? null);
         }
 
-        return $part->label().': '.$next->title;
+        return $part->label().': '.$placeholders->render($next->title);
+    }
+
+    private function rendered(?string $text, Placeholders $placeholders): ?string
+    {
+        return null === $text ? null : $placeholders->render($text);
     }
 
     private function labelAfterScene(GameSystemSnapshot $release, Flow $flow): string

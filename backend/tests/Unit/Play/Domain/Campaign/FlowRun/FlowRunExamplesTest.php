@@ -6,20 +6,23 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
+use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Tracker;
 use App\Randomness\Domain\Oracle\YesNoAnswer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
  * Flow examples 2 (Cyberpunk RED heist) and 3 (Mythic-style session) played through the Campaign,
- * without hooks, branches, bands and effects (play-flow-run slice 15): conditions advance on
- * their own and options follow their "next".
+ * with Outcomes, Effects and placeholders but without hooks (play-flow-run slice 20).
  */
 #[CoversClass(FlowRun::class)]
 #[CoversClass(Campaign::class)]
@@ -56,45 +59,65 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         $campaign->skipFlowStep('catch', $release, self::at());
         $campaign->endFlowScene(2, $release, self::at());
 
-        // Legwork: the player's pick in a loop, until "Move on".
+        // Legwork: the player's pick in a loop, until "Move on"; gaining an edge adds to it.
         self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
         $campaign->pickSceneType('social', $release, self::at());
         $campaign->completeFlowStep('talk', self::prompt('The bartender, for gossip'), $release, self::at());
         $campaign->endFlowScene(3, $release, self::at());
         self::assertSame(['sceneClosing', 'gain-edge'], self::position($campaign));
         $campaign->completeFlowStep('gain-edge', StepResult::choice('yes'), $release, self::at());
-        self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
+        self::assertSame([[1, FlowRunStage::ScenePick], 1], [[self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()], $this->value($campaign, $release, 'edge')]);
         $campaign->moveOn('legwork', $release, self::at());
 
-        // The heist: the scene opening's condition advances on its own.
+        // The heist: on a low alarm the scene opening's condition ends it. An exceptional no
+        // switches the infiltration into a firefight, which starts at its setup.
         $campaign->pickSceneType('infiltration', $release, self::at());
-        self::assertSame(['sceneOpening', 'notice'], self::position($campaign));
-        $campaign->skipFlowStep('notice', $release, self::at());
+        self::assertSame(['play', 'slip-past'], self::position($campaign));
         $campaign->completeFlowStep('slip-past', self::oracle(YesNoAnswer::ExceptionalNo), $release, self::at());
+        self::assertSame(['setup', 'who-shoots', 'firefight'], [...self::position($campaign), $campaign->currentScene()?->sceneType()]);
+        $campaign->completeFlowStep('who-shoots', self::prompt('Ada'), $release, self::at());
+        self::assertSame('Firefight: Ada', $campaign->currentScene()?->title());
+        $campaign->skipFlowStep('response', $release, self::at());
         $campaign->endFlowScene(4, $release, self::at());
-        // A skipped choice follows its skip option: "no" goes to the complication.
+        // With an edge left, spending it skips the complication and the lockdown passes.
         self::assertSame(['sceneClosing', 'spend-edge'], self::position($campaign));
-        $campaign->skipFlowStep('spend-edge', $release, self::at());
-        self::assertSame(['sceneClosing', 'complication'], self::position($campaign));
-        $campaign->completeFlowStep('complication', self::table('complications', 'Patrol'), $release, self::at());
-        $campaign->moveOn('the-heist', $release, self::at());
+        $campaign->completeFlowStep('spend-edge', StepResult::choice('yes'), $release, self::at());
+        self::assertSame([FlowRunStage::ScenePick, 0], [self::flowRunOf($campaign)->stage(), $this->value($campaign, $release, 'edge')]);
 
-        // Escape and epilogue: one Scene Type each, picked automatically.
-        self::assertSame(['Getaway 1', 'setup', 'slip-out'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
-        $campaign->completeFlowStep('slip-out', self::prompt('Through the sewers'), $release, self::at());
+        // On a raised alarm security is on edge; getting the objective ends the phase, and without
+        // an edge the complication's entry raises the alarm.
+        $campaign->setTrackerValue($this->trackerOf($release, 'alarm'), 4, self::at());
+        $campaign->pickSceneType('grab', $release, self::at());
+        self::assertSame(['sceneOpening', 'notice', 'The alarm is at 4. What do you notice?'], [...self::position($campaign), $campaign->flowRunView($release)?->step?->prompt]);
+        $campaign->skipFlowStep('notice', $release, self::at());
+        $campaign->skipFlowStep('reach', $release, self::at());
         $campaign->endFlowScene(5, $release, self::at());
-        // "no-pay" ends the setup.
-        $campaign->completeFlowStep('no-pay', self::prompt('Nothing to show'), $release, self::at());
-        self::assertSame(['open', null], self::position($campaign));
+        $campaign->completeFlowStep('got-it', StepResult::choice('yes'), $release, self::at());
+        self::assertSame(['sceneClosing', 'complication', 'endPhase'], [...self::position($campaign), self::flowRunOf($campaign)->phaseEndingReason()]);
+        $campaign->completeFlowStep('complication', self::table('complications', 'A patrol walks by'), $release, self::at());
+
+        // Escape: on a high alarm the getaway turns into a chase.
+        self::assertSame(['Getaway 1', 'chase', 'setup', 'wheel', 5, 1], [$campaign->currentScene()?->title(), $campaign->currentScene()?->sceneType(), ...self::position($campaign), $this->value($campaign, $release, 'alarm'), $this->value($campaign, $release, 'objective')]);
+        $campaign->completeFlowStep('wheel', self::prompt('Ada'), $release, self::at());
+        $campaign->skipFlowStep('lose-them', $release, self::at());
         $campaign->endFlowScene(6, $release, self::at());
 
+        // Epilogue: with the objective in hand the fixer pays; a roll of 1 is a double-cross.
+        self::assertSame(['setup', 'paid', 'Was In through the roof worth it?'], [...self::position($campaign), $campaign->flowRunView($release)?->step?->prompt]);
+        $campaign->completeFlowStep('paid', self::prompt('Barely'), $release, self::at());
+        $campaign->completeFlowStep('double-cross', self::roll('1d6', 1), $release, self::at());
+        self::assertSame(['setup', 'betrayed'], self::position($campaign));
+        $campaign->completeFlowStep('betrayed', self::prompt('The fixer'), $release, self::at());
+        $campaign->endFlowScene(7, $release, self::at());
+
         self::assertSame(FlowRunStatus::Completed, self::flowRunOf($campaign)->status());
-        self::assertSame(['Crew 1', 'Briefing 1', 'Social 1', 'Infiltration 1', 'Getaway 1', 'Payday 1'], array_map(static fn (Scene $scene): string => $scene->title(), $campaign->sessions()[0]->scenes()));
+        self::assertSame(['Crew 1', 'Briefing 1', 'Social 1', 'Firefight: Ada', 'Grab 1', 'Getaway 1', 'Payday 1'], array_map(static fn (Scene $scene): string => $scene->title(), $campaign->sessions()[0]->scenes()));
         self::assertSame([
-            'skip:second', 'skip:catch', 'phaseEnded:the-job', 'phaseEnded:legwork', 'skip:notice', 'skip:spend-edge',
-            'phaseEnded:the-heist', 'phaseEnded:escape', 'phaseEnded:epilogue', 'completed',
+            'skip:second', 'skip:catch', 'phaseEnded:the-job', 'phaseEnded:legwork', 'sceneTypeSwitch:4', 'skip:response', 'trackerEdit:alarm',
+            'skip:notice', 'skip:reach', 'phaseEnded:the-heist', 'sceneTypeSwitch:6', 'skip:lose-them', 'phaseEnded:escape', 'phaseEnded:epilogue', 'completed',
         ], self::history($campaign));
-        self::assertSame(['finished', 'moveOn'], [self::flowRunOf($campaign)->history()[2]->details['reason'], self::flowRunOf($campaign)->history()[3]->details['reason']]);
+        $phaseEnds = array_filter(self::flowRunOf($campaign)->history(), static fn (FlowRunHistoryEntry $entry): bool => FlowRunEvent::PhaseEnded === $entry->event);
+        self::assertSame(['finished', 'moveOn', 'endPhase', 'finished', 'finished'], array_values(array_map(static fn (FlowRunHistoryEntry $entry): int|string|null => $entry->details['reason'], $phaseEnds)));
         self::assertSame(['first' => 'Ada, a netrunner', 'client' => 'A desperate fixer', 'gain-edge' => 'Yes', 'slip-past' => 'Exceptional no'], array_intersect_key(self::flowRunOf($campaign)->answers(), array_flip(['first', 'client', 'gain-edge', 'slip-past'])));
 
         $this->expectException(FlowRunNotActive::class);
@@ -115,22 +138,42 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         $campaign->skipFlowStep('involved', $release, self::at());
         $campaign->endFlowScene(1, $release, self::at());
 
+        // The expected scene names it; a check under the chaos factor alters or interrupts it.
         self::assertSame(['Scene 2', 'sceneOpening', 'expected'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
         $campaign->completeFlowStep('expected', self::prompt('A quiet market'), $release, self::at());
-        $campaign->completeFlowStep('check', self::roll('1d10', 7), $release, self::at());
-        $campaign->completeFlowStep('twist', self::roll('1d6', 2), $release, self::at());
-        $campaign->completeFlowStep('adjust', self::table('scene-adjustments', 'Someone unexpected is there'), $release, self::at());
-        // "altered" ends the scene opening.
-        $campaign->completeFlowStep('altered', self::prompt('The market is closed'), $release, self::at());
-        self::assertSame(['open', null], self::position($campaign));
+        self::assertSame(['A quiet market', 'Roll under the chaos factor (5) and the scene changes.'], [$campaign->currentScene()?->title(), $campaign->flowRunView($release)?->step?->tip]);
+        $campaign->completeFlowStep('check', self::roll('1d10', 5), $release, self::at());
+        $campaign->completeFlowStep('twist', self::roll('1d6', 4), $release, self::at());
+        self::assertSame(['sceneOpening', 'interrupt'], self::position($campaign));
+        $campaign->completeFlowStep('interrupt', self::table('random-event-focus', 'Something happens far away', 7), $release, self::at());
+        self::assertSame(['sceneOpening', 'action'], self::position($campaign));
+        $campaign->skipFlowStep('action', $release, self::at());
+        $campaign->skipFlowStep('subject', $release, self::at());
+        $campaign->completeFlowStep('instead', self::prompt('A rival bursts in'), $release, self::at());
+        self::assertSame(['open', null, 'A rival bursts in'], [...self::position($campaign), $campaign->currentScene()?->title()]);
         $campaign->endFlowScene(2, $release, self::at());
         self::assertSame(['sceneClosing', 'control'], self::position($campaign));
         $campaign->completeFlowStep('control', StepResult::choice('no'), $release, self::at());
         $campaign->skipFlowStep('lists', $release, self::at());
 
+        // Losing control raised the chaos factor: a check over it plays the scene as expected.
         self::assertSame(['Scene 3', 'sceneOpening', 'expected'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);
-        self::assertSame([1, 2], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->scenesPlayed()]);
-        self::assertSame(['skip:goal', 'skip:involved', 'phaseEnded:premise', 'skip:lists'], self::history($campaign));
+        $campaign->completeFlowStep('expected', self::prompt('Rooftops'), $release, self::at());
+        self::assertSame('Roll under the chaos factor (6) and the scene changes.', $campaign->flowRunView($release)?->step?->tip);
+        $campaign->completeFlowStep('check', self::roll('1d10', 7), $release, self::at());
+        self::assertSame(['open', null, 'Rooftops'], [...self::position($campaign), $campaign->currentScene()?->title()]);
+        self::assertSame([1, 2, 6], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->scenesPlayed(), $this->value($campaign, $release, 'chaos')]);
+        self::assertSame(['skip:goal', 'skip:involved', 'phaseEnded:premise', 'skip:action', 'skip:subject', 'skip:lists'], self::history($campaign));
         self::assertSame(['7', 'No'], [self::flowRunOf($campaign)->answers()['check'], self::flowRunOf($campaign)->answers()['control']]);
+    }
+
+    private function value(Campaign $campaign, GameSystemSnapshot $release, string $tracker): int
+    {
+        return $campaign->trackerValue($this->trackerOf($release, $tracker));
+    }
+
+    private function trackerOf(GameSystemSnapshot $release, string $key): Tracker
+    {
+        return $release->tracker($key) ?? self::fail('No Tracker '.$key);
     }
 }

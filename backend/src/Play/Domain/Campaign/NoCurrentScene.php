@@ -15,6 +15,11 @@ final class NoCurrentScene extends \DomainException
         return new self('Start a scene before recording a journal entry.');
     }
 
+    public static function toRename(): self
+    {
+        return new self('Start a scene before renaming it.');
+    }
+
     public static function toSwitchSceneType(): self
     {
         return new self('Start a scene before switching its Scene Type.');

@@ -33,7 +33,7 @@ final readonly class FlowRunHistoryEntry
     }
 
     /**
-     * A scene's Scene Type switched by hand.
+     * A scene's Scene Type switched by hand or by an Effect.
      *
      * @param int     $scene the scene's number in the session under way
      * @param ?string $from  the Scene Type key before, null for none
@@ -41,6 +41,16 @@ final readonly class FlowRunHistoryEntry
     public static function sceneTypeSwitch(\DateTimeImmutable $at, int $scene, ?string $from, string $to): self
     {
         return new self(FlowRunEvent::SceneTypeSwitch, $at, ['scene' => $scene, 'from' => $from, 'to' => $to]);
+    }
+
+    /**
+     * A switchSceneType Effect ignored: an Effect already switched the scene's Scene Type.
+     *
+     * @param int $scene the scene's number in the session under way
+     */
+    public static function sceneTypeSwitchIgnored(\DateTimeImmutable $at, int $scene, string $sceneType): self
+    {
+        return new self(FlowRunEvent::SceneTypeSwitchIgnored, $at, ['scene' => $scene, 'sceneType' => $sceneType]);
     }
 
     public static function paused(\DateTimeImmutable $at): self

@@ -483,7 +483,7 @@ final class FlowRun
         return new FlowRunView(
             $this->status,
             null === $sessionNumber,
-            new FlowRunProgress($phase->act, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
+            new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
             $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders)) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
@@ -864,18 +864,19 @@ final class FlowRun
     /**
      * The first switch through Effects in a scene changes its Scene Type in place (recorded as a
      * hand switch is); later ones, and any in a hook (a hook Scene has no Scene Type), are ignored
-     * and recorded.
+     * and recorded. An ignored switch does not start the hook Scene: it is recorded against the
+     * Scene the hook has started, none when no step of the hook has waited yet.
      */
     private function switchSceneTypeByEffect(string $sceneTypeKey, FlowRunContext $context): bool
     {
-        $this->enterHookScene($context);
-        $scene = (int) $context->sceneNumber();
         if ($this->switchCount > 0 || $this->hook instanceof Hook) {
+            $scene = $this->hook instanceof Hook ? $this->sceneNumber : $context->sceneNumber();
             $this->history[] = FlowRunHistoryEntry::sceneTypeSwitchIgnored($context->at, $scene, $sceneTypeKey);
 
             return false;
         }
 
+        $scene = (int) $context->sceneNumber();
         $from = $context->switchSceneType($context->sceneType($sceneTypeKey));
         $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, $scene, $from, $sceneTypeKey);
         $this->sceneType = $sceneTypeKey;

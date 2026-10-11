@@ -49,7 +49,8 @@ export function Journal({
               <Group
                 key={scene.number}
                 level={4}
-                title={`Scene ${String(scene.number)}${scene.title === null ? '' : ` — ${scene.title}`}`}
+                title={sceneHeading(scene, listed(sessions, session.number, scene.number))}
+                hook={listed(sessions, session.number, scene.number)?.kind === 'hook'}
               >
                 {scene.entries.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -58,7 +59,16 @@ export function Journal({
                 ) : (
                   <ol className="space-y-3">
                     {scene.entries.map((entry) => (
-                      <li key={entry.id} ref={entry.id === latestRecordedId ? reveal : undefined}>
+                      <li
+                        key={entry.id}
+                        ref={entry.id === latestRecordedId ? reveal : undefined}
+                        className="space-y-1"
+                      >
+                        {entry.flowStep !== null && (
+                          <p className="text-xs text-muted-foreground">
+                            Flow step · {entry.flowStep.title}
+                          </p>
+                        )}
                         <JournalEntryView entry={entry} />
                       </li>
                     ))}
@@ -73,7 +83,45 @@ export function Journal({
   )
 }
 
-function Group({ level, title, children }: { level: 3 | 4; title: string; children: ReactNode }) {
+type ListedScene = Campaign['sessions'][number]['scenes'][number]
+
+/** The scene as the campaign lists it, which tells a hook Scene and a Scene Type. */
+function listed(sessions: Campaign['sessions'], sessionNumber: number, sceneNumber: number) {
+  return sessions
+    .find(({ number }) => number === sessionNumber)
+    ?.scenes.find(({ number }) => number === sceneNumber)
+}
+
+const hookLabels: Record<NonNullable<ListedScene['hook']>, string> = {
+  sessionOpening: 'Session opening',
+  sessionClosing: 'Session closing',
+  phaseOpening: 'Phase opening',
+  phaseClosing: 'Phase closing',
+  worldTurn: 'World turn',
+}
+
+/** "Scene 2 · Tour — Who walks in", or "Session opening — Session 1 begins" for a hook Scene. */
+function sceneHeading(scene: { number: number; title: string | null }, listedScene?: ListedScene) {
+  const title = scene.title === null ? '' : ` — ${scene.title}`
+  if (listedScene?.hook) {
+    return `${hookLabels[listedScene.hook]}${title}`
+  }
+  const type = listedScene?.sceneTypeName ? ` · ${listedScene.sceneTypeName}` : ''
+  return `Scene ${String(scene.number)}${type}${title}`
+}
+
+function Group({
+  level,
+  title,
+  hook = false,
+  children,
+}: {
+  level: 3 | 4
+  title: string
+  /** A hook Scene's heading is set apart from a scene's. */
+  hook?: boolean
+  children: ReactNode
+}) {
   const headingId = useId()
   const Heading = level === 3 ? 'h3' : 'h4'
   return (
@@ -83,7 +131,9 @@ function Group({ level, title, children }: { level: 3 | 4; title: string; childr
         className={
           level === 3
             ? 'font-heading text-lg font-semibold'
-            : 'text-sm font-semibold tracking-wide text-muted-foreground uppercase'
+            : hook
+              ? 'text-sm font-semibold tracking-wide text-primary uppercase'
+              : 'text-sm font-semibold tracking-wide text-muted-foreground uppercase'
         }
       >
         {title}

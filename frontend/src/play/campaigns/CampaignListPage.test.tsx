@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { freeJournal, lostMine, mythicStyle, newCampaign, sunkenTemple } from './fixtures'
+import { freeJournal, heist, lostMine, mythicStyle, newCampaign, sunkenTemple } from './fixtures'
 
 const soloPlayer = signedInAs('SOLO_PLAYER')
 
@@ -205,5 +205,83 @@ describe('the Play campaign list', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'New campaign' })).not.toBeInTheDocument()
+  })
+
+  describe('choosing a Flow', () => {
+    async function openForm(posted: unknown[] = []) {
+      const created = newCampaign('The vault', heist)
+      renderAppAt('/play', {
+        'GET /api/auth/me': soloPlayer,
+        'GET /api/campaigns': json([]),
+        'GET /api/play/game-systems': json([heist, freeJournal]),
+        'POST /api/campaigns': async (request) => {
+          posted.push(await request.json())
+          return Response.json(created, { status: 201 })
+        },
+        [`GET /api/campaigns/${created.id}`]: json(created),
+      })
+      const form = await screen.findByRole('form', { name: 'New campaign' })
+      await within(form).findByRole('option', { name: 'Heist v1' })
+      return form
+    }
+
+    it('offers each Flow of the GameSystem and playing freely, preselecting the default Flow', async () => {
+      const form = await openForm()
+
+      const flow = within(form).getByLabelText('Flow')
+      expect(
+        within(flow)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['Play freely', 'Quick job', 'Full heist'])
+      expect(flow).toHaveDisplayValue('Full heist')
+    })
+
+    it('shows the description of the chosen Flow when it has one', async () => {
+      const user = userEvent.setup()
+      const form = await openForm()
+
+      expect(within(form).queryByText('One phase, no hooks.')).not.toBeInTheDocument()
+      await user.selectOptions(within(form).getByLabelText('Flow'), 'Quick job')
+
+      expect(within(form).getByText('One phase, no hooks.')).toBeInTheDocument()
+    })
+
+    it('creates the campaign along the chosen Flow', async () => {
+      const posted: unknown[] = []
+      const user = userEvent.setup()
+      const form = await openForm(posted)
+
+      await user.type(within(form).getByLabelText('Campaign name'), 'The vault')
+      await user.click(within(form).getByRole('button', { name: 'Create campaign' }))
+
+      await screen.findByRole('heading', { level: 1, name: 'The vault' })
+      expect(posted).toEqual([{ name: 'The vault', gameSystemKey: 'heist', flowKey: 'full' }])
+    })
+
+    it('plays freely with a null Flow key when asked to', async () => {
+      const posted: unknown[] = []
+      const user = userEvent.setup()
+      const form = await openForm(posted)
+
+      await user.selectOptions(within(form).getByLabelText('Flow'), 'Play freely')
+      await user.type(within(form).getByLabelText('Campaign name'), 'The vault')
+      await user.click(within(form).getByRole('button', { name: 'Create campaign' }))
+
+      await screen.findByRole('heading', { level: 1, name: 'The vault' })
+      expect(posted).toEqual([{ name: 'The vault', gameSystemKey: 'heist', flowKey: null }])
+    })
+
+    it('resets the choice when the GameSystem changes, and has no Flow select without Flows', async () => {
+      const user = userEvent.setup()
+      const form = await openForm()
+
+      await user.selectOptions(within(form).getByLabelText('Flow'), 'Quick job')
+      await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Free journal v2')
+      expect(within(form).queryByLabelText('Flow')).not.toBeInTheDocument()
+      await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Heist v1')
+
+      expect(within(form).getByLabelText('Flow')).toHaveDisplayValue('Full heist')
+    })
   })
 })

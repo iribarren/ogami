@@ -10,15 +10,18 @@ use App\Play\Application\EndSessionHandler;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
+use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -93,6 +96,36 @@ final class EndSessionHandlerTest extends TestCase
         } catch (SessionCannotEndWhileGuided) {
             self::assertEquals($before, $this->stored('campaign-2'));
         }
+    }
+
+    #[Test]
+    public function aPausedOrCompletedFlowRunEndsTheSessionWithoutReadingTheUnreadableRelease(): void
+    {
+        $paused = $this->stored('campaign-2');
+        $paused->pauseGuidance(new \DateTimeImmutable('2026-10-06T09:30:00+00:00'));
+        $completed = Campaign::create(CampaignId::fromString('campaign-3'), 'user-1', 'The end', PinnedRelease::of('guided', 1, 'Guided'), new \DateTimeImmutable('2026-10-05T10:00:00+00:00'), [], $this->release->flow('tour'));
+        $completed->startSession(new \DateTimeImmutable('2026-10-06T09:00:00+00:00'), $this->release);
+        $completed->moveOn('tour', $this->release, new \DateTimeImmutable('2026-10-06T09:30:00+00:00'));
+        $this->campaigns->save($paused);
+        $this->campaigns->add($completed);
+        $handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('guided', 1)), new FixedClock('2026-10-06T12:00:00+00:00'));
+
+        foreach (['campaign-2' => FlowRunStatus::Paused, 'campaign-3' => FlowRunStatus::Completed] as $id => $status) {
+            $handler(new EndSession($id, 'user-1', 1));
+
+            self::assertSame([$status, null], [$this->stored($id)->flowRun()?->status(), $this->stored($id)->currentSession()]);
+            self::assertEquals(new \DateTimeImmutable('2026-10-06T12:00:00+00:00'), $this->stored($id)->sessions()[0]->endedAt());
+        }
+    }
+
+    #[Test]
+    public function anActiveFlowRunWithAnUnreadableReleaseStillFailsToEndTheSession(): void
+    {
+        $handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('guided', 1)), new FixedClock('2026-10-06T12:00:00+00:00'));
+
+        $this->expectException(GameSystemReleaseNotFound::class);
+
+        $handler(new EndSession('campaign-2', 'user-1', 1));
     }
 
     #[Test]

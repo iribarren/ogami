@@ -129,7 +129,7 @@ final class CampaignFlowRunType extends JsonType
             FlowRunEvent::Skip => FlowRunHistoryEntry::skip($at, $this->string($details, 'step'), $this->skippedIn($details)),
             FlowRunEvent::TrackerEdit => FlowRunHistoryEntry::trackerEdit($at, $this->string($details, 'tracker'), $this->int($details, 'from'), $this->int($details, 'to')),
             FlowRunEvent::SceneTypeSwitch => FlowRunHistoryEntry::sceneTypeSwitch($at, $this->int($details, 'scene'), $this->optionalString($details, 'from'), $this->string($details, 'to')),
-            FlowRunEvent::SceneTypeSwitchIgnored => FlowRunHistoryEntry::sceneTypeSwitchIgnored($at, $this->int($details, 'scene'), $this->string($details, 'sceneType')),
+            FlowRunEvent::SceneTypeSwitchIgnored => FlowRunHistoryEntry::sceneTypeSwitchIgnored($at, $this->optionalInt($details, 'scene'), $this->string($details, 'sceneType')),
             FlowRunEvent::Paused => FlowRunHistoryEntry::paused($at),
             FlowRunEvent::Resumed => FlowRunHistoryEntry::resumed($at),
             FlowRunEvent::SceneAbandoned => FlowRunHistoryEntry::sceneAbandoned($at, $this->int($details, 'session'), $this->int($details, 'scene')),

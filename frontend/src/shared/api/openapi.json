@@ -2720,6 +2720,7 @@
             "FlowRunProgressResponse": {
                 "required": [
                     "act",
+                    "phaseKey",
                     "phase",
                     "sceneType",
                     "part",
@@ -2732,6 +2733,11 @@
                         "type": "string",
                         "example": "Preparation",
                         "nullable": true
+                    },
+                    "phaseKey": {
+                        "description": "The key of the phase, which \"Move on\" names.",
+                        "type": "string",
+                        "example": "job"
                     },
                     "phase": {
                         "description": "The name of the phase.",

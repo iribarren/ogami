@@ -18,6 +18,18 @@ export const mythicStyle: GameSystemSummary = {
   flows: [],
 }
 
+/** A GameSystem with two Flows, the second one the default. */
+export const heist: GameSystemSummary = {
+  gameSystemKey: 'heist',
+  name: 'Heist',
+  description: 'Plan and pull a job.',
+  version: 1,
+  flows: [
+    { key: 'quick', name: 'Quick job', description: 'One phase, no hooks.', default: false },
+    { key: 'full', name: 'Full heist', description: null, default: true },
+  ],
+}
+
 export const lostMine: CampaignSummary = {
   id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6101',
   name: 'The lost mine',

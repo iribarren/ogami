@@ -77,9 +77,10 @@ final class PresetsTest extends KernelTestCase
         $snapshot = $this->snapshot('mythic-style');
         self::assertSame('Mythic-style', $snapshot->name());
         self::assertSame(1, $snapshot->releaseVersion());
-        self::assertSame([], $snapshot->flowSteps());
+        // Schema version 2: the Flow "mythic" is the release's default, with the chaos Tracker its fate oracle takes the chaos factor from.
+        self::assertSame(['mythic', 'mythic', ['chaos'], ['scene']], [$snapshot->defaultFlow()?->key, $snapshot->flows()[0]->key, array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()), array_map(static fn (\App\Play\Domain\GameSystem\SceneType $type): string => $type->key, $snapshot->sceneTypes())]);
 
-        self::assertSame(['meaning-action', 'meaning-subject', 'random-event-focus'], $snapshot->oracleTableKeys());
+        self::assertSame(['scene-adjustments', 'meaning-action', 'meaning-subject', 'random-event-focus'], $snapshot->oracleTableKeys());
         $this->assertWeightedTableResolves($snapshot, 'meaning-action', 30, 'Mend', 'Awaken');
         $this->assertWeightedTableResolves($snapshot, 'meaning-subject', 30, 'A debt', 'A key');
         $this->assertRangedTableResolves($snapshot, 'random-event-focus', 'Something changes far away', 'A quiet moment hides a clue');

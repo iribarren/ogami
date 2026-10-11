@@ -51,9 +51,9 @@ final readonly class FlowRunHistoryEntry
     /**
      * A switchSceneType Effect ignored: an Effect already switched the scene's Scene Type.
      *
-     * @param int $scene the scene's number in the session under way
+     * @param ?int $scene the scene's number in the session under way, null in a hook that has not started its Scene
      */
-    public static function sceneTypeSwitchIgnored(\DateTimeImmutable $at, int $scene, string $sceneType): self
+    public static function sceneTypeSwitchIgnored(\DateTimeImmutable $at, ?int $scene, string $sceneType): self
     {
         return new self(FlowRunEvent::SceneTypeSwitchIgnored, $at, ['scene' => $scene, 'sceneType' => $sceneType]);
     }

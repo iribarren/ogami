@@ -1,7 +1,7 @@
 # Feature: play-flow-run
 
 - **Locator:** `odd/tasks/play-flow-run.md` · Engram topic `odd/play-flow-run/tasks`
-- **Issue:** #39 · **Current branch:** `feat/play-flow-run-19-control-flow` (from `main` `95801c5`)
+- **Issue:** #39 · **Current branch:** `feat/play-flow-run-20-hooks` (from `main` `658d35e`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `flow-model-examples` (ADR 0018), PR #38
@@ -189,7 +189,7 @@ Re-forecasts split slices whenever the parent's forecast passed the limit: slice
 | T10b2 | 17 | Application, part 2: skip, oracle pick, end scene, Move on (from `wip/play-flow-run-t10b-remainder`) | delegated writer (slice 17, 2+ non-trivial files) | [x] | `83ed81b` |
 | T10c1 | 17 | Campaign view `flowRun` in the API, `JournalEntryResponse` maps `choice` and `flowStep`, the slice 12 end-session HTTP test; OpenAPI and typed client | delegated writer (slice 17, 2+ non-trivial files) | [x] | `f0fc90e`, `048a257` |
 | T10c2 | 18 | HTTP endpoints for the FlowRun commands, API tests (404/409/422 per domain error, 409 on a concurrent save), Behat | delegated writer (slice 18, 2+ non-trivial files) | [x] | `74fb0e6`, `76d0a92` |
-| T11 | 19 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | delegated writer (slice 19, 2+ non-trivial files) | [x] | |
+| T11 | 19 | Branches, `condition`, effects (incl. table entry effects), placeholders, switch limit | delegated writer (slice 19, 2+ non-trivial files) | [x] | `3340e66` |
 | T12 | 20 | Hooks as hook Scenes, End session while guided, Move on; domain tests playing examples 2 and 3 | | [ ] | |
 | T13 | 21 | Flow choice in campaign creation; delete `flow-prototypes/`; ADR 0016 note | | [ ] | |
 | T14 | 21 | Guided journal: step cards per kind, scene-type cards, next step named, scene and hook headers, End scene / End session, pause/resume; e2e | | [ ] | |
@@ -237,6 +237,7 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 - T10c2: `FlowRunController` (8 `POST /api/campaigns/{id}/flow-run/…` endpoints, 200 with the refreshed campaign; 400 malformed body, 415, 404 unknown campaign, 409 state conflicts, 422 invalid answers; an unreadable pinned release stays 500), `CampaignFlowRunCommandsApiTest` (106 cases), Behat `flow-run.feature` (RED 98 of 106 → GREEN) · `74fb0e6`, `76d0a92` · slice 18: ~2,050, accepted by the user.
 - Slice 18 review fixes: `InvalidStepResult` says "an oracle step"; the `pick/roll` API test pins that the rolled table has one entry, so the real random number generator is safe; doc condensed for the Engram mirror (RED: 1 message failure → GREEN).
 - T11: Outcomes, bands, Effects (order, switch limit, `sceneTypeSwitchIgnored` persisted), `Placeholders`, rendered `FlowStepView` and journal snapshot; `GuidedReleases` fork option `left` renames the scene; examples 2 and 3 replayed with effects. RED: 25 control-flow tests (20 failures, 1 error), persistence and handler rendering tests → GREEN; `Placeholders` tests are characterization.
+- Slice 19 review fix: a command failing after its Effects changed a Tracker and the scene title (scene 200's closing step, then the auto-picked next scene does not fit the session) leaves the live campaign unchanged; characterization (commands already run on a copy), checked by a mutation that runs the command on the live campaign (1 failure).
 
 ## Reviews
 
@@ -260,7 +261,8 @@ Per-task evidence (RED → GREEN counts, files, tests) is in each work-unit comm
 | 16 | Medium risk; reliability lens; approved and acknowledged (lineage `review-7a72bec78aa91f8c`); commits `6529cf2` (review fixes), `9666d16` (T10b). Non-blocking, fixed in slice 17: no through-the-buses test that a `CampaignModifiedConcurrently` on `CompleteFlowStep` leaves no orphan journal entry; no handler test for an oracle step bound to a Tracker (chaos from the Tracker, a sent `chaosFactor` refused) | #55 (merged) |
 | 17 | Over the reviewer's context budget as one candidate; reviewed as two, both medium risk, reliability lens, approved and acknowledged: commits `2b1e7ff` (review fixes), `83ed81b` (T10b2), `f0fc90e` (T10c1) (lineage `review-e8d713e228ad2ce9`), and `048a257` (generated API; lineage `review-a23dfe267046c8b7`, no findings). Non-blocking, fixed in slice 18: no handler test that skipping a mandatory step is refused (`StepCannotBeSkipped`, campaign unchanged); no tests for `PickSceneTypeByOracle` failure paths (entry without `sceneType` → `SceneTypeNotOffered`, waiting for a session → `NoCurrentSession`, paused FlowRun) leaving the campaign unchanged; the `GuidedReleases` tests do not assert the fork skip target `left`'s effect. The writer touched `frontend/src/play/flow-prototypes/flowRun.ts` outside its surface (deleted in T13) | #56 (merged) |
 | 18 | Reviewed as two candidates, both medium risk, reliability lens, approved and acknowledged: commits `5614aa3` (review fixes), `74fb0e6` (T10c2) (lineage `review-35a831c99f34060d`), and `76d0a92` (generated API; lineage `review-8574ffc3d0f3f546`, no findings). Non-blocking, fixed in slice 19: the `pick/roll` API happy path relies on the real random number generator (deterministic only because the release's table has one entry; pin or say so); the `InvalidStepResult` message reads "a oracle step"; assert the skipped fork option `left`'s effect once T11 runs effects; the Engram mirror was truncated at 50,000 bytes (doc condensed) | #57 (merged) |
+| 19 | Medium risk; reliability lens; approved and acknowledged (lineage `review-bbf418b19b4a48d9`); commits `05889f3` (review fixes, doc condensed), `3340e66` (T11). Non-blocking, fixed in slice 20: the all-or-nothing test covers only a command refused before any Effect runs; no test shows that a failure after Effects changed the Campaign (Tracker values, scene title, Scene Type switch) leaves the live campaign unchanged | #58 (merged) |
 
 ## Next step
 
-Slice 19 (slice 18 review fixes, doc condensed, T11), its review and PR; then slice 20 (T12).
+Slice 20 (slice 19 review fix, T12), its review and PR; then slice 21 (T13–T14).

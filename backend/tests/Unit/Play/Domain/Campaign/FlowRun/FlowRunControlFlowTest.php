@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
 use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
@@ -25,7 +26,8 @@ use PHPUnit\Framework\Attributes\Test;
  * segments), and one loop phase where the player picks any Scene Type: "ask" (oracle branches),
  * "search" (table branches, entry Effects of nested tables), "gamble" (roll bands), "crossroads"
  * (choice options, skip), "watch" (condition bands), "heist" / "escape" / "again" (Scene Type
- * switches) and "titles" (scene titles).
+ * switches) and "titles" (scene titles); a second flow "full" loops over "wrap" alone (Effects in
+ * its closing step).
  */
 #[CoversClass(FlowRun::class)]
 #[CoversClass(Campaign::class)]
@@ -252,6 +254,30 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
         }
     }
 
+    #[Test]
+    public function aCommandFailingAfterItsEffectsLeavesTheLiveCampaignUnchanged(): void
+    {
+        // Scene 200 of the session, then its closing step changes a Tracker and the scene title,
+        // and the next scene, picked on its own, does not fit the session.
+        $campaign = self::guided($this->release, 'full');
+        $campaign->startSession(self::at());
+        for ($scene = 1; $scene < 200; ++$scene) {
+            $campaign->startScene('Filler '.$scene, self::at());
+        }
+
+        $campaign->pickSceneType('wrap', $this->release, self::at());
+        $campaign->endFlowScene(200, $this->release, self::at());
+        $before = clone $campaign;
+
+        try {
+            $campaign->completeFlowStep('wrap', self::prompt('Done'), $this->release, self::at());
+            self::fail('A scene past the session limit started.');
+        } catch (CampaignLimitReached) {
+            self::assertEquals($before, $campaign);
+            self::assertSame([['closing', 'wrap'], 0, 'Wrap 1', 200, []], [self::position($campaign), $this->tracker($campaign, 'heat'), $campaign->currentScene()?->title(), \count($campaign->currentSession()?->scenes() ?? []), self::flowRunOf($campaign)->answers()]);
+        }
+    }
+
     private function inASession(): Campaign
     {
         $campaign = self::guided($this->release, 'control');
@@ -370,9 +396,14 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
                     $prompt('name', 'Name it', ['effects' => [$title('{answer}{answer}')]]),
                     ['key' => 'blank', 'kind' => 'table', 'title' => 'Roll', 'table' => 'loot', 'effects' => [$title('  {answer} ')]],
                 ]),
+                ['key' => 'wrap', 'name' => 'Wrap', 'purpose' => 'A wrap scene.', 'oracles' => [], 'setup' => [], 'play' => [], 'closing' => [
+                    $prompt('wrap', 'Wrap up', ['effects' => [$tracker('heat', 'add', 2), $title('Wrapped at {tracker:heat}')]]),
+                ]],
             ],
             'flows' => [['key' => 'control', 'name' => 'Control', 'defaultView' => 'journal', 'oracles' => ['loot', 'traps', 'fate'], 'trackers' => ['heat', 'limit', 'alarm'], 'phases' => [
                 ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => $sceneTypes]],
+            ]], ['key' => 'full', 'name' => 'Full', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['heat'], 'phases' => [
+                ['key' => 'wrapping', 'name' => 'Wrapping', 'mode' => 'loop', 'selection' => ['rule' => 'sequence', 'sceneTypes' => ['wrap']]],
             ]]],
             'checks' => [],
         ];

@@ -95,6 +95,21 @@ final class FlowRunHooksTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aSwitchOnAConditionStepOfAHookDoesNotStartAHookSceneByItself(): void
+    {
+        $this->release = self::translate($this->content([
+            ['key' => 'doomed', 'kind' => 'condition', 'title' => 'Is doom coming?', 'tracker' => 'doom', 'bands' => [['effects' => [['kind' => 'switchSceneType', 'sceneType' => 'job']]]]],
+        ]));
+        $campaign = $this->atTheFirstPick();
+
+        $this->playJob($campaign);
+
+        // The hook has no step that waits, so it leaves no Scene; the ignored switch is recorded without one.
+        self::assertSame([FlowRunStage::ScenePick, 3, null], [self::flowRunOf($campaign)->stage(), \count($campaign->sessions()[0]->scenes()), self::flowRunOf($campaign)->hook()]);
+        self::assertEquals(FlowRunHistoryEntry::sceneTypeSwitchIgnored(self::at(), null, 'job'), array_last(self::flowRunOf($campaign)->history()));
+    }
+
+    #[Test]
     public function anEndPhaseEffectInAHookClosesThePhaseWhereThePickWouldComeAndTheFlowCompletes(): void
     {
         $campaign = $this->inTheWorldTurn();
@@ -269,6 +284,32 @@ final class FlowRunHooksTest extends FlowRunTestCase
         self::assertSame([FlowRunStage::ScenePick, 1, 'sceneAbandoned:1'], [self::flowRunOf($campaign)->stage(), $campaign->currentSession()?->number(), array_last(self::history($campaign))]);
     }
 
+    /**
+     * Characterization (written after the code): pausing during the session closing, ending the
+     * session by hand while paused and resuming abandons the closing and waits for the next session.
+     */
+    #[Test]
+    public function pausingDuringTheSessionClosingThenEndingTheSessionAndResumingAbandonsTheClosing(): void
+    {
+        $campaign = $this->atTheFirstPick();
+        $campaign->endSession(self::at(), 1, $this->release);
+        $this->assertHookScene($campaign, Hook::SessionClosing, 'Session 1 ends');
+        $campaign->pauseGuidance(self::at());
+        $campaign->endSession(self::at(), 1, $this->release);
+        self::assertNull($campaign->currentSession());
+
+        $campaign->resumeGuidance($this->release, self::at());
+
+        self::assertSame([FlowRunStatus::Active, FlowRunStage::ScenePick, null, null, 'sceneAbandoned:1'], [self::flowRunOf($campaign)->status(), self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->hook(), self::flowRunOf($campaign)->scene(), array_last(self::history($campaign))]);
+
+        $campaign->startSession(self::at(), $this->release);
+        self::assertSame([Hook::SessionOpening, 'recap'], [self::flowRunOf($campaign)->hook(), self::flowRunOf($campaign)->stepKey()]);
+        $campaign->completeFlowStep('recap', self::prompt('Again'), $this->release, self::at());
+        self::assertSame([FlowRunStage::ScenePick, 2], [self::flowRunOf($campaign)->stage(), $campaign->currentSession()?->number()]);
+        $campaign->pickSceneType('job', $this->release, self::at());
+        self::assertSame('act', self::flowRunOf($campaign)->stepKey());
+    }
+
     private function atTheFirstPick(): Campaign
     {
         $campaign = self::guided($this->release, 'hooked');
@@ -331,9 +372,11 @@ final class FlowRunHooksTest extends FlowRunTestCase
     }
 
     /**
+     * @param ?list<array<string, mixed>> $worldTurn the steps of the first phase's world turn, the default ones when null
+     *
      * @return array<string, mixed>
      */
-    private function content(): array
+    private function content(?array $worldTurn = null): array
     {
         $prompt = static fn (string $key, string $title, array $fields = []): array => ['key' => $key, 'kind' => 'prompt', 'title' => $title] + $fields;
         $sceneType = static fn (string $key, array $setup): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => [], 'closing' => []];
@@ -351,7 +394,7 @@ final class FlowRunHooksTest extends FlowRunTestCase
                     'sessionClosing' => [$prompt('notes', 'Any notes?')],
                     'phaseOpening' => [$prompt('lure', 'What draws you in?', ['effects' => [['kind' => 'sceneTitle', 'title' => 'Lured by {answer}']]])],
                     'phaseClosing' => [$prompt('wrap', 'How did {step:act} end?')],
-                    'worldTurn' => [
+                    'worldTurn' => $worldTurn ?? [
                         ['key' => 'doomed', 'kind' => 'condition', 'title' => 'Is doom coming?', 'tracker' => 'doom', 'bands' => [['upTo' => 0, 'next' => 'end'], ['effects' => [['kind' => 'nextScene', 'sceneType' => 'trouble']]]]],
                         ['key' => 'news', 'kind' => 'choice', 'title' => 'Any news?', 'effects' => [['kind' => 'switchSceneType', 'sceneType' => 'job']], 'skip' => 'calm', 'options' => [
                             ['key' => 'calm', 'label' => 'Calm', 'effects' => [['kind' => 'tracker', 'tracker' => 'doom', 'op' => 'add', 'value' => 1]]],

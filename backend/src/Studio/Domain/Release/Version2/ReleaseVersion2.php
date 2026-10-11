@@ -10,7 +10,7 @@ use App\Studio\Domain\Release\ReleaseOracles;
 
 /**
  * Validates the parts schema version 2 adds or changes (docs/contracts/gamesystem-release.md):
- * oracle table entry and chaos extensions, trackers, fact slots, Scene Types and flows, then the
+ * oracle table entry and chaos extensions, trackers, fact slots, tags, Scene Types and flows, then the
  * references inside each flow. Returns them in canonical form; ReleaseContent handles the parts
  * every version shares.
  *
@@ -20,6 +20,8 @@ final class ReleaseVersion2
 {
     public const int MAX_TRACKERS = 50;
     public const int MAX_FACT_SLOTS = 100;
+    public const int MAX_TAGS = 50;
+    public const int MAX_TAG_LABEL_LENGTH = 50;
     public const int MAX_SCENE_TYPES = 100;
     public const int MAX_FLOWS = 20;
     public const int MAX_PHASES = 20;
@@ -39,7 +41,7 @@ final class ReleaseVersion2
 
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
-        'schemaVersion' => true, 'gameSystem' => true, 'oracles' => true, 'trackers' => true, 'factSlots' => true,
+        'schemaVersion' => true, 'gameSystem' => true, 'oracles' => true, 'trackers' => true, 'factSlots' => true, 'tags' => false,
         'sceneTypes' => true, 'flows' => true, 'sheet' => true, 'checks' => true,
     ];
 
@@ -50,6 +52,7 @@ final class ReleaseVersion2
         'clock' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'segments' => true],
     ];
     private const array FACT_SLOT = ['key' => true, 'label' => true, 'type' => true];
+    private const array TAG = ['key' => true, 'label' => true, 'hint' => false];
     private const array SCENE_TYPE = ['key' => true, 'name' => true, 'purpose' => true, 'tips' => false, 'oracles' => true, 'setup' => true, 'play' => true, 'closing' => true];
     private const array FLOW = [
         'key' => true, 'name' => true, 'description' => false, 'introduction' => false, 'default' => false, 'defaultView' => true,
@@ -69,7 +72,7 @@ final class ReleaseVersion2
     /**
      * @param array<string, mixed> $release the checked top-level object (RELEASE fields)
      *
-     * @return array{oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>}
+     * @return array{oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>} "tags" is left out when empty
      */
     public static function validate(array $release): array
     {
@@ -77,9 +80,10 @@ final class ReleaseVersion2
         $oracles = ReleaseOracles::validate($release['oracles'], self::ENTRY, self::CHAOS);
         self::chaosTrackers($oracles['likelihood'], $trackerRanges);
         $factSlots = self::factSlots($release['factSlots']);
+        [$tags, $tagKeys] = self::tags($release['tags'] ?? null);
 
         [$sceneTypes, $sceneTypeKeys] = self::sceneTypes($release['sceneTypes'], $oracles);
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys);
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys);
 
         $oracles['tables'] = self::tableEntries($oracles['tables'], $catalog);
         foreach ($sceneTypes as $index => $sceneType) {
@@ -91,7 +95,12 @@ final class ReleaseVersion2
         $flows = self::flows($release['flows'], $oracles, $catalog);
         FlowReferences::check($oracles['tables'], $trackers, $sceneTypes, $flows);
 
-        return ['oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots, 'sceneTypes' => $sceneTypes, 'flows' => $flows];
+        $parts = ['oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots];
+        if ([] !== $tags) {
+            $parts['tags'] = $tags;
+        }
+
+        return [...$parts, 'sceneTypes' => $sceneTypes, 'flows' => $flows];
     }
 
     /**
@@ -190,6 +199,33 @@ final class ReleaseVersion2
         }
 
         return $slots;
+    }
+
+    /**
+     * @return array{list<array<string, mixed>>, array<string, true>} the tags and their keys
+     */
+    private static function tags(mixed $value): array
+    {
+        $tags = [];
+        $keys = [];
+        foreach (ReleaseFields::sizedList($value ?? [], 'tags', 0, self::MAX_TAGS, 'tags') as $index => $tag) {
+            $path = \sprintf('tags[%d]', $index);
+            $tag = ReleaseFields::object($tag, $path, self::TAG);
+            $key = ReleaseFields::key($tag['key'], $path.'.key');
+            if (isset($keys[$key])) {
+                throw InvalidReleaseContent::at($path.'.key', \sprintf('duplicate tag key "%s"', $key));
+            }
+
+            $keys[$key] = true;
+            ReleaseFields::text($tag['label'], $path.'.label', 1, self::MAX_TAG_LABEL_LENGTH);
+            if (isset($tag['hint'])) {
+                ReleaseFields::text($tag['hint'], $path.'.hint', 0, self::MAX_HINT_LENGTH);
+            }
+
+            $tags[] = $tag;
+        }
+
+        return [$tags, $keys];
     }
 
     /**

@@ -7,7 +7,7 @@
   ],
   "factSlots": [],
   "sceneTypes": [
-    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "createNpc"}]}], "closing": []}
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "summonNpc"}]}], "closing": []}
   ],
   "flows": [],
   "sheet": {},

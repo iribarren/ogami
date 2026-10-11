@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ogami.app/contracts/gamesystem-release/v2.schema.json",
   "title": "GameSystem release, schema version 2",
-  "description": "The Published Language between Studio and Play: the content of one immutable GameSystem release with trackers, fact slots, Scene Types and NarrativeFlows (ADR 0017, ADR 0018). This schema encodes the structural rules only. Semantic rules are enforced by the Studio domain and are not expressible here: every rule of schema version 1, unique keys (trackers, fact slots, Scene Types, flows, phases, steps, choice options, table entries, table branches), forward-only \"next\", band ordering, references to trackers, Scene Types, oracles, levels and entries, the trackers and oracles each flow may use, at most one default flow, counter and chaos tracker ranges, suggested choices naming \"skip\", oracle-selection tables, dice notation, placeholders and trimmed lengths. Optional fields may be omitted or null. See docs/contracts/gamesystem-release.md.",
+  "description": "The Published Language between Studio and Play: the content of one immutable GameSystem release with trackers, fact slots, Scene Types and NarrativeFlows (ADR 0017, ADR 0018). This schema encodes the structural rules only. Semantic rules are enforced by the Studio domain and are not expressible here: every rule of schema version 1, unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, choice options, table entries, table branches), unique and existing tags in picks, counts and effects, pick counts with min at most max, forward-only \"next\", band ordering, references to trackers, Scene Types, oracles, levels and entries, the trackers and oracles each flow may use, at most one default flow, counter and chaos tracker ranges, suggested choices naming \"skip\", oracle-selection tables, dice notation, placeholders and trimmed lengths. Optional fields may be omitted or null. See docs/contracts/gamesystem-release.md.",
   "type": "object",
   "required": ["schemaVersion", "gameSystem", "oracles", "trackers", "factSlots", "sceneTypes", "flows", "sheet", "checks"],
   "additionalProperties": false,
@@ -24,6 +24,12 @@
       "type": "array",
       "maxItems": 100,
       "items": { "$ref": "#/$defs/factSlot" }
+    },
+    "tags": {
+      "description": "Tags NPCs and Threads carry, picked and counted by key. Optional; may be empty.",
+      "type": ["array", "null"],
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/tag" }
     },
     "sceneTypes": {
       "description": "Release-level Scene Types the flows select. May be empty.",
@@ -63,6 +69,22 @@
       "items": { "$ref": "#/$defs/key" }
     },
     "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "tag": {
+      "type": "object",
+      "required": ["key", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "hint": { "type": ["string", "null"], "maxLength": 500 }
+      }
+    },
+    "tagKeys": {
+      "description": "Tag keys of the release, unique; at most 5.",
+      "type": ["array", "null"],
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/key" }
+    },
     "optionalText2000": { "type": ["string", "null"], "maxLength": 2000 },
     "optionalFlag": { "type": ["boolean", "null"] },
     "trackerRef": {
@@ -371,7 +393,8 @@
         { "$ref": "#/$defs/tableStep" },
         { "$ref": "#/$defs/rollStep" },
         { "$ref": "#/$defs/choiceStep" },
-        { "$ref": "#/$defs/conditionStep" }
+        { "$ref": "#/$defs/conditionStep" },
+        { "$ref": "#/$defs/pickStep" }
       ]
     },
     "promptStep": {
@@ -512,9 +535,9 @@
       }
     },
     "conditionStep": {
-      "description": "Compares a tracker to bands; never mandatory, never skipped, writes no entry.",
+      "description": "Compares a tracker, or the number of open NPCs or Threads, to bands; never mandatory, never skipped, writes no entry. Exactly one of tracker or count.",
       "type": "object",
-      "required": ["key", "kind", "title", "tracker", "bands"],
+      "required": ["key", "kind", "title", "bands"],
       "additionalProperties": false,
       "properties": {
         "key": { "$ref": "#/$defs/stepKey" },
@@ -525,12 +548,88 @@
         "mandatory": { "enum": [false, null] },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" },
-        "tracker": { "$ref": "#/$defs/key" },
+        "tracker": { "$ref": "#/$defs/optionalKey" },
+        "count": {
+          "anyOf": [{ "$ref": "#/$defs/conditionCount" }, { "type": "null" }]
+        },
         "bands": {
           "type": "array",
           "minItems": 1,
           "maxItems": 20,
           "items": { "$ref": "#/$defs/band" }
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["tracker"],
+          "properties": {
+            "tracker": { "$ref": "#/$defs/key" },
+            "count": { "type": "null" }
+          }
+        },
+        {
+          "required": ["count"],
+          "properties": {
+            "count": { "$ref": "#/$defs/conditionCount" },
+            "tracker": { "type": "null" }
+          }
+        }
+      ]
+    },
+    "conditionCount": {
+      "description": "The number of open items of a kind carrying all the tags.",
+      "type": "object",
+      "required": ["of"],
+      "additionalProperties": false,
+      "properties": {
+        "of": { "enum": ["npc", "thread"] },
+        "tags": { "$ref": "#/$defs/tagKeys" }
+      }
+    },
+    "pickStep": {
+      "description": "Picks open NPCs or Threads carrying all the tags: at random, or chosen by the player. Outcome found or none.",
+      "type": "object",
+      "required": ["key", "kind", "title", "of", "mode"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "pick" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "of": { "enum": ["npc", "thread"] },
+        "tags": { "$ref": "#/$defs/tagKeys" },
+        "mode": { "enum": ["random", "choose"] },
+        "count": {
+          "description": "How many to pick; {1, 1} by default. min must not exceed max.",
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["min", "max"],
+              "additionalProperties": false,
+              "properties": {
+                "min": { "type": "integer", "minimum": 1, "maximum": 10 },
+                "max": { "type": "integer", "minimum": 1, "maximum": 10 }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "branches": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "found": { "$ref": "#/$defs/optionalOutcome" },
+                "none": { "$ref": "#/$defs/optionalOutcome" }
+              }
+            },
+            { "type": "null" }
+          ]
         }
       }
     },
@@ -612,6 +711,35 @@
           "properties": {
             "kind": { "const": "sceneTitle" },
             "title": { "$ref": "#/$defs/label" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "createNpc" },
+            "name": { "type": ["string", "null"], "minLength": 1, "maxLength": 100 },
+            "agenda": { "type": ["string", "null"], "maxLength": 2000 },
+            "tags": { "$ref": "#/$defs/tagKeys" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "createThread" },
+            "name": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+            "tags": { "$ref": "#/$defs/tagKeys" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "closeThread" }
           }
         }
       ]

@@ -24,6 +24,7 @@ final class Steps
     public const int MIN_OPTIONS = 2;
     public const int MAX_OPTIONS = 10;
     public const int MAX_TABLE_BRANCHES = 1000;
+    public const int MAX_PICK_COUNT = 10;
     public const string END = 'end';
 
     private const array COMMON = ['key' => true, 'kind' => true, 'title' => true, 'prompt' => false, 'tip' => false, 'mandatory' => false, 'next' => false, 'effects' => false];
@@ -35,9 +36,13 @@ final class Steps
         'table' => ['table' => true, 'branches' => false, 'otherwise' => false],
         'roll' => ['dice' => true, 'bands' => false],
         'choice' => ['options' => true, 'skip' => false],
-        'condition' => ['tracker' => true, 'bands' => true],
+        'condition' => ['tracker' => false, 'count' => false, 'bands' => true],
+        'pick' => ['of' => true, 'tags' => false, 'mode' => true, 'count' => false, 'branches' => false],
     ];
 
+    private const array PICK_BRANCHES = ['found' => false, 'none' => false];
+    private const array PICK_COUNT = ['min' => true, 'max' => true];
+    private const array CONDITION_COUNT = ['of' => true, 'tags' => false];
     private const array ORACLE_BRANCHES = ['yes' => false, 'no' => false, 'exceptionalYes' => false, 'exceptionalNo' => false];
     private const array OUTCOME = ['next' => false, 'effects' => false];
     private const array TABLE_BRANCH = ['entry' => true, 'next' => false, 'effects' => false];
@@ -106,6 +111,7 @@ final class Steps
             'roll' => self::roll($step, $path, $catalog),
             'choice' => self::choice($step, $path, $catalog),
             'condition' => self::condition($step, $path, $catalog),
+            'pick' => self::pick($step, $path, $catalog),
         };
 
         return array_filter($step, static fn (mixed $field): bool => [] !== $field && false !== $field);
@@ -279,8 +285,57 @@ final class Steps
      */
     private static function condition(array $step, string $path, Catalog $catalog): array
     {
-        $step['tracker'] = Effects::tracker($step['tracker'], $path.'.tracker', $catalog);
+        if (isset($step['tracker']) && isset($step['count'])) {
+            throw InvalidReleaseContent::at($path, 'give either tracker or count, not both');
+        }
+
+        if (isset($step['tracker'])) {
+            $step['tracker'] = Effects::tracker($step['tracker'], $path.'.tracker', $catalog);
+        } elseif (isset($step['count'])) {
+            $count = ReleaseFields::object($step['count'], $path.'.count', self::CONDITION_COUNT);
+            ReleaseFields::oneOf($count['of'], $path.'.count.of', ['npc', 'thread']);
+            $count['tags'] = Effects::tags($count['tags'] ?? null, $path.'.count.tags', $catalog);
+            $step['count'] = array_filter($count, static fn (mixed $field): bool => [] !== $field);
+        } else {
+            throw InvalidReleaseContent::at($path, 'requires tracker or count');
+        }
+
         $step['bands'] = Bands::outcomes($step['bands'], $path.'.bands', 1, $catalog);
+
+        return $step;
+    }
+
+    /**
+     * @param array<string, mixed> $step
+     *
+     * @return array<string, mixed>
+     */
+    private static function pick(array $step, string $path, Catalog $catalog): array
+    {
+        ReleaseFields::oneOf($step['of'], $path.'.of', ['npc', 'thread']);
+        ReleaseFields::oneOf($step['mode'], $path.'.mode', ['random', 'choose']);
+        $step['tags'] = Effects::tags($step['tags'] ?? null, $path.'.tags', $catalog);
+
+        if (isset($step['count'])) {
+            $count = ReleaseFields::object($step['count'], $path.'.count', self::PICK_COUNT);
+            $min = ReleaseFields::integer($count['min'], $path.'.count.min', 1, self::MAX_PICK_COUNT);
+            $max = ReleaseFields::integer($count['max'], $path.'.count.max', 1, self::MAX_PICK_COUNT);
+            if ($max < $min) {
+                throw InvalidReleaseContent::at($path.'.count.max', \sprintf('must be at least min (%d), %d given', $min, $max));
+            }
+
+            // {1, 1} is the default.
+            $step['count'] = 1 === $min && 1 === $max ? [] : ['min' => $min, 'max' => $max];
+        }
+
+        if (isset($step['branches'])) {
+            $branches = [];
+            foreach (ReleaseFields::object($step['branches'], $path.'.branches', self::PICK_BRANCHES) as $outcome => $branch) {
+                $branches[$outcome] = self::outcomeObject($branch, $path.'.branches.'.$outcome, $catalog);
+            }
+
+            $step['branches'] = array_filter($branches, static fn (array $branch): bool => [] !== $branch);
+        }
 
         return $step;
     }

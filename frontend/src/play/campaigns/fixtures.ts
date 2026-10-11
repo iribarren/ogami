@@ -159,3 +159,83 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     sceneTypes: [],
   }
 }
+
+/** A clock, a counter with levels and a counter with neither, as the API lists them. */
+type Tracker = Campaign['trackers'][number]
+
+export const alarmTracker: Tracker = {
+  key: 'alarm',
+  name: 'Alarm',
+  kind: 'clock',
+  hint: 'At 6/6 security locks down',
+  min: 0,
+  max: 6,
+  segments: 6,
+  levels: [],
+  value: 2,
+  levelLabel: null,
+}
+
+export const heatTracker: Tracker = {
+  key: 'heat',
+  name: 'Heat',
+  kind: 'counter',
+  hint: null,
+  min: -5,
+  max: 5,
+  segments: null,
+  levels: [
+    { upTo: -1, label: 'Cold' },
+    { upTo: 2, label: 'Warm' },
+    { upTo: null, label: 'Hot' },
+  ],
+  value: 0,
+  levelLabel: 'Warm',
+}
+
+export const edgeTracker: Tracker = {
+  key: 'edge',
+  name: 'Edge',
+  kind: 'counter',
+  hint: null,
+  min: 0,
+  max: 3,
+  segments: null,
+  levels: [],
+  value: 1,
+  levelLabel: null,
+}
+
+export const heistTrackers: Tracker[] = [alarmTracker, heatTracker, edgeTracker]
+
+/**
+ * `lostMineCampaign` on a release with Scene Types and Trackers, in a scene of the Scene Type
+ * Legwork (shortcut: the oracle "fate"); the Flow "heist" selects the oracle "yes-no" and the
+ * Trackers "alarm" and "heat". Played freely: set `flowKey` and `flowRun` to guide it.
+ */
+export const lostMineWithTypes: Campaign = {
+  ...lostMineCampaign,
+  sessions: lostMineCampaign.sessions.map((session) => ({
+    ...session,
+    scenes: session.scenes.map((scene) =>
+      session.number === 2 ? { ...scene, sceneType: 'legwork', sceneTypeName: 'Legwork' } : scene,
+    ),
+  })),
+  trackers: heistTrackers,
+  flows: [
+    {
+      key: 'heist',
+      name: 'Heist',
+      description: null,
+      introduction: null,
+      default: true,
+      defaultView: 'journal',
+      oracles: ['yes-no'],
+      trackers: ['alarm', 'heat'],
+    },
+  ],
+  sceneTypes: [
+    { key: 'legwork', name: 'Legwork', purpose: 'Learn about the target.', oracles: ['fate'] },
+    { key: 'firefight', name: 'Firefight', purpose: 'Shoot your way out.', oracles: [] },
+  ],
+}

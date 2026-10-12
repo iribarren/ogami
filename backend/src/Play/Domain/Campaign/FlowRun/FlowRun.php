@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\GameSystem\Flow\Band;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
+use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
+use App\Play\Domain\GameSystem\Flow\CreateNpcEffect;
+use App\Play\Domain\GameSystem\Flow\CreateThreadEffect;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
@@ -66,7 +71,9 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  *
  * A pick step's picked items are "{picked}" in the Scene they were picked in: the most recent pick
  * replaces the previous one (none picked leaves nothing picked), and a Scene ending or starting
- * clears them.
+ * clears them. A createNpc or createThread Effect creates an open item that becomes "{picked}"
+ * instead, and a closeThread Effect closes the Threads picked. NPCs picked or created join the
+ * Scene's cast.
  *
  * Paused, the FlowRun takes no command and the player plays freely; resuming goes on where it
  * stopped. A guided scene or hook Scene that is no longer the current scene when guidance resumes
@@ -263,7 +270,13 @@ final class FlowRun
 
         $this->answers[$step->key] = $answer;
         if ($step instanceof PickStep) {
+            // A pick in a hook belongs to the hook Scene (it is under way once the step waits; this
+            // makes sure of it), so entering it later cannot clear the pick.
+            $this->enterHookScene($context);
             $this->picked = $newlyPicked;
+            if ($newlyPicked instanceof PickedItems) {
+                $context->joinSceneCast($newlyPicked);
+            }
         }
 
         $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context);
@@ -889,15 +902,55 @@ final class FlowRun
         } elseif ($effect instanceof SceneTitleEffect) {
             // Rendered when it applies, cut to the longest title; an empty title is ignored.
             $this->enterHookScene($context);
-            $title = trim(mb_substr(trim(new Placeholders($context->trackerValues(), $this->answers, $answer, $context->pickedNames($this->picked))->render($effect->title)), 0, Scene::MAX_TITLE_LENGTH));
+            $title = $this->renderedEffectText($effect->title, Scene::MAX_TITLE_LENGTH, $answer, $context);
             if ('' !== $title) {
                 $context->renameScene($title);
             }
+        } elseif ($effect instanceof CreateNpcEffect || $effect instanceof CreateThreadEffect) {
+            $this->createItem($effect, $answer, $context);
+        } elseif ($effect instanceof CloseThreadEffect) {
+            $context->closePickedThreads($this->picked);
         } elseif ($effect instanceof SwitchSceneTypeEffect) {
             return $this->switchSceneTypeByEffect($effect->sceneType, $context);
         }
 
         return false;
+    }
+
+    /**
+     * Creates an open NPC or Thread in the hook Scene or scene under way: name and agenda rendered
+     * and cut like a scene title; a name that comes out empty is "New <label of the first Tag>", or
+     * "New NPC" / "New Thread". What is created is "{picked}" (and a created NPC joins the scene's
+     * cast); when the campaign holds the most items of the kind, nothing is created and "{picked}"
+     * stays.
+     */
+    private function createItem(CreateNpcEffect|CreateThreadEffect $effect, ?string $answer, FlowRunContext $context): void
+    {
+        $this->enterHookScene($context);
+        $isNpc = $effect instanceof CreateNpcEffect;
+        $name = $this->renderedEffectText($effect->name ?? '', $isNpc ? Npc::MAX_NAME_LENGTH : Thread::MAX_NAME_LENGTH, $answer, $context);
+        if ('' === $name) {
+            $name = 'New '.(isset($effect->tags[0]) ? ($context->release->tag($effect->tags[0])->label ?? $effect->tags[0]) : ($isNpc ? 'NPC' : 'Thread'));
+        }
+
+        $created = $effect instanceof CreateNpcEffect
+            ? $context->createNpc($name, null === $effect->agenda ? null : $this->renderedEffectText($effect->agenda, Npc::MAX_AGENDA_LENGTH, $answer, $context), $effect->tags)
+            : $context->createThread($name, $effect->tags);
+        if ($created instanceof PickedItems) {
+            $this->picked = $created;
+            $context->joinSceneCast($created);
+        }
+    }
+
+    /**
+     * An Effect's text with its placeholders rendered, trimmed and cut to the longest the field
+     * takes.
+     */
+    private function renderedEffectText(string $text, int $max, ?string $answer, FlowRunContext $context): string
+    {
+        $rendered = new Placeholders($context->trackerValues(), $this->answers, $answer, $context->pickedNames($this->picked))->render($text);
+
+        return trim(mb_substr(trim($rendered), 0, $max));
     }
 
     /**

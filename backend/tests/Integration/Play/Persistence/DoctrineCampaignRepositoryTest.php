@@ -12,22 +12,27 @@ use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
+use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
+use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
+use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\Snapshots;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\ORM\EntityManager;
@@ -227,6 +232,40 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals(['kind' => 'thread', 'ids' => ['t2', 't1']], $this->storedFlowRun($id->toString())['picked']);
     }
 
+    #[Test]
+    public function aPickInAHookRoundTripsWithItsHookSceneAndTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $at = new \DateTimeImmutable('2026-10-10T09:00:00+00:00');
+        $step = static fn (string $key, string $kind, array $fields = []): array => ['key' => $key, 'kind' => $kind, 'title' => $key] + $fields;
+        $release = new GameSystemReleaseTranslator()->translate(ReleaseViews::of([
+            'schemaVersion' => 2,
+            'gameSystem' => ['key' => 'hook-pick', 'name' => 'Hook pick'],
+            'oracles' => ['tables' => [], 'likelihood' => []],
+            'trackers' => [],
+            'factSlots' => [],
+            'tags' => [['key' => 'rival', 'label' => 'Rival']],
+            'sceneTypes' => [['key' => 'quiet', 'name' => 'Quiet', 'purpose' => 'Quiet.', 'oracles' => [], 'setup' => [$step('quiet', 'prompt')], 'play' => [], 'closing' => []]],
+            'flows' => [['key' => 'turns', 'name' => 'Turns', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => [], 'phases' => [
+                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['quiet']], 'worldTurn' => [$step('who', 'pick', ['of' => 'npc', 'mode' => 'choose']), $step('after', 'prompt')]],
+            ]]],
+            'checks' => [],
+        ]));
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('hook-pick', 1, 'Hook pick'), $at, [], $release->flow('turns'));
+        $campaign->startSession($at, $release);
+        $campaign->addNpc(NpcId::fromString('ana'), 'Ana', null, [], [], 1, $release);
+        $campaign->completeFlowStep('quiet', StepResult::prompt('ok'), $release, $at);
+        $campaign->endFlowScene(1, $release, $at);
+        $campaign->completeFlowStep('who', StepResult::pick(ItemKind::Npc, [new PickedItem('ana', 'Ana')]), $release, $at);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals([FlowRunStage::Hook, SceneKind::Hook, new PickedItems(ItemKind::Npc, ['ana'])], [$loaded?->flowRun()?->stage(), $loaded?->currentScene()?->kind(), $loaded?->flowRun()?->picked()]);
+    }
+
     /**
      * @return array<mixed> the stored FlowRun column, decoded
      */
@@ -273,7 +312,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         );
         self::assertIsString($sessions);
         self::assertEquals(
-            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null]], 'endedAt' => null]],
+            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null, 'cast' => []]], 'endedAt' => null]],
             json_decode($sessions, true, flags: \JSON_THROW_ON_ERROR),
         );
     }
@@ -288,7 +327,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $scene = $this->repository->ofId($id)?->currentScene();
 
         self::assertNotNull($scene);
-        self::assertSame(['At the gate', SceneKind::Scene, null, null], [$scene->title(), $scene->kind(), $scene->sceneType(), $scene->hook()]);
+        self::assertSame(['At the gate', SceneKind::Scene, null, null, []], [$scene->title(), $scene->kind(), $scene->sceneType(), $scene->hook(), $scene->cast()]);
     }
 
     #[Test]
@@ -328,6 +367,11 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'non-string Scene Type' => ['"sceneType": 7', 'Stored campaign sessions: "sceneType" must be a string.'];
         yield 'hook kind without a hook' => ['"kind": "hook", "hook": null', 'Stored campaign sessions: "hook" must be set on a hook scene.'];
         yield 'hook name on a scene of play' => ['"kind": "scene", "hook": "worldTurn"', 'Stored campaign sessions: "hook" must be null on a scene of play.'];
+        yield 'cast that is not a list' => ['"cast": "npc-1"', 'Stored campaign sessions: "cast" must be a list.'];
+        yield 'cast of an object' => ['"cast": {"first": "npc-1"}', 'Stored campaign sessions: "cast" must be a list.'];
+        yield 'cast with a non-string id' => ['"cast": ["npc-1", 7]', 'Stored campaign sessions: "cast" must be a list of NPC id strings.'];
+        yield 'cast with a blank id' => ['"cast": ["npc-1", " "]', 'Stored campaign sessions: "cast" must be a list of non-blank NPC ids.'];
+        yield 'cast with an NPC twice' => ['"cast": ["npc-1", "npc-3", "npc-1"]', 'Stored campaign sessions: "cast" must be a list of distinct NPC ids (NPC "npc-1" is in the cast twice.).'];
         yield 'hook name without a kind' => ['"hook": "worldTurn"', 'Stored campaign sessions: "hook" must be null on a scene of play.'];
         yield 'unknown hook' => ['"kind": "hook", "hook": "dawn"', 'Stored campaign sessions: "hook" must be one of "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
     }
@@ -343,6 +387,28 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->expectExceptionMessageIsOrContains($error);
 
         $this->repository->ofId($id);
+    }
+
+    #[Test]
+    public function aScenesCastRoundTripsInOrderWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithLists($id);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:05:00+00:00'));
+        $campaign->startScene('At the gate', new \DateTimeImmutable('2026-10-10T09:06:00+00:00'));
+        $campaign->editCurrentSceneCast([NpcId::fromString('npc-3'), NpcId::fromString('npc-2'), NpcId::fromString('npc-1')]);
+        $campaign->startScene('Alone', new \DateTimeImmutable('2026-10-10T09:30:00+00:00'));
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame([['npc-3', 'npc-2', 'npc-1'], []], array_map(static fn (Scene $scene): array => array_map(static fn (NpcId $npc): string => $npc->toString(), $scene->cast()), $loaded?->sessions()[0]->scenes() ?? []));
+        $stored = $this->storedList($id->toString(), 'sessions')[0];
+        self::assertIsArray($stored);
+        self::assertIsArray($stored['scenes']);
+        self::assertSame([['npc-3', 'npc-2', 'npc-1'], []], array_column($stored['scenes'], 'cast'));
     }
 
     #[Test]

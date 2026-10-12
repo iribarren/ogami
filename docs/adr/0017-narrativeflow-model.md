@@ -149,8 +149,9 @@ The model gives the port structured input: Scene Type and purpose, the current s
 ### 13. Visual design
 
 - A `design-foundation` feature comes after the features that add NPCs, Threads and Campaign facts, and before the M2 playtest presets. By then every Play region exists.
-- A release may name one **curated theme** (e.g. `parchment`, `neon`, `noir`). Themes are app-defined and contrast-checked.
+- A release may name one **curated theme**. Themes are app-defined and contrast-checked.
 - The optional `theme` field is added by `design-foundation`, not by the schema change below.
+- The theme set is settled: `parchment`, `neon`, `noir`, `eldritch` and `starship`, named by an optional top-level `theme` added additively to schema version 2. See [design-foundation](../../odd/tasks/design-foundation.md) and the [contract](../contracts/gamesystem-release.md#theme).
 
 ### Release schema version 2
 

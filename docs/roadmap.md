@@ -200,6 +200,8 @@ Start feature `play-campaign-facts` (ODD). Play: Campaign facts (ADR 0017). A fa
 
 **8c. design-foundation**
 
+Done: the design tokens, the Play layout and Storybook catalogue, and the curated theme set (`parchment`, `neon`, `noir`, `eldritch`, `starship`, via the optional release `theme` in schema version 2); see [odd/tasks/design-foundation.md](../odd/tasks/design-foundation.md). The prompt is kept for reference.
+
 ```text
 Start feature `design-foundation` (ODD). Visual design foundation before the M2 playtest presets, now that every Play region exists (journal, step card, focus mode, oracle, tracker, facts, NPC and Thread panels). Design tokens (color, type, spacing, light and dark), the Play layout, shadcn component styling, Storybook as the catalogue. Curated per-GameSystem themes (ADR 0017): a few app-defined, contrast-checked themes (e.g. `parchment`, `neon`, `noir`), an optional release `theme` field naming one (release schema bump), applied inside that campaign. Settle the theme set. Out of scope: Studio screens beyond the shared tokens.
 ```

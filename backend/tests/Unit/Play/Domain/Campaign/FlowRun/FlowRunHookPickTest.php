@@ -53,6 +53,7 @@ final class FlowRunHookPickTest extends FlowRunTestCase
         $campaign = $this->atTheWorldTurnPick();
         $campaign->completeFlowStep('who', StepResult::pick(ItemKind::Npc, [new PickedItem('ana', 'Ana')]), $this->release, self::at());
         $campaign->completeFlowStep('after', self::prompt('ok'), $this->release, self::at());
+        $campaign->pickSceneType('quiet', $this->release, self::at());
 
         self::assertSame([FlowRunStage::Scene, null], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->picked()]);
     }

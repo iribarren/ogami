@@ -124,7 +124,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             'status' => 'paused', 'phaseIndex' => 0, 'stage' => 'scene', 'sessionNumber' => 1, 'sceneNumber' => 1, 'sceneType' => 'legwork',
             'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
             'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false, 'picked' => null,
-            'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
+            'autoPickDue' => false, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
     }
@@ -163,6 +163,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'unknown hook' => [['stage' => 'hook', 'hook' => 'dawn'], 'Stored campaign FlowRun: "hook" must be one of "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
         yield 'phase opened not a boolean' => [['phaseOpened' => 1], 'Stored campaign FlowRun: "phaseOpened" must be a boolean.'];
         yield 'session opening due null' => [['sessionOpeningDue' => null], 'Stored campaign FlowRun: "sessionOpeningDue" must be a boolean.'];
+        yield 'auto pick due not a boolean' => [['autoPickDue' => 'yes'], 'Stored campaign FlowRun: "autoPickDue" must be a boolean.'];
         yield 'unknown part' => [['part' => 'epilogue'], 'Stored campaign FlowRun: "part" must be one of "sceneOpening", "setup", "play", "open", "closing", "sceneClosing".'];
         yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
         yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
@@ -220,6 +221,40 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $flowRun = $this->repository->ofId($id)?->flowRun();
 
         self::assertSame([FlowRunStage::Scene, null, true, false, null, 'setup'], [$flowRun?->stage(), $flowRun?->hook(), $flowRun?->phaseOpened(), $flowRun?->sessionOpeningDue(), $flowRun?->picked(), array_last($flowRun?->history() ?? [])?->details['part']]);
+    }
+
+    /**
+     * A FlowRun stored before the scene pick waited after a scene (preset-mythic-flow slice 3, ADR
+     * 0020) has no autoPickDue: it reads as waiting, so no scene starts by surprise.
+     */
+    #[Test]
+    public function aFlowRunStoredBeforeThePickWaitedReadsAsWaiting(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['autoPickDue']));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        self::assertFalse($this->repository->ofId($id)?->flowRun()?->autoPickDue());
+    }
+
+    #[Test]
+    public function aDueAutoPickRoundTripsWithTheWholeFlowRun(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $base = $this->guidedCampaign($id->toString());
+        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
+        $flowRun = FlowRun::reconstitute($run->status(), $run->phaseIndex(), FlowRunStage::ScenePick, null, null, null, null, null, $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), 'legwork', $run->phaseEndingReason(), $run->switchCount(), $run->history(), null, $run->phaseOpened(), $run->sessionOpeningDue(), null, true);
+        $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertTrue($loaded?->flowRun()?->autoPickDue());
+        self::assertTrue($this->storedFlowRun($id->toString())['autoPickDue']);
     }
 
     #[Test]

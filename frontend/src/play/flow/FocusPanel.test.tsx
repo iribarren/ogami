@@ -215,14 +215,14 @@ describe('focus mode', () => {
     expect(Object.keys(sent)).toEqual(['flow-run/pause', 'flow-run/resume'])
   })
 
-  it('offers Move on only when the phase can move on', async () => {
+  it('offers to end the phase only when the phase can move on', async () => {
     const user = userEvent.setup()
     const { sent } = renderPlay(guided(atStep(promptStep, { canMoveOn: true }), 'focus'), {
       'flow-run/move-on': () =>
         Response.json({ error: 'Phase "start" plays once.' }, { status: 409 }),
     })
 
-    await user.click(await screen.findByRole('button', { name: 'Move on' }))
+    await user.click(await screen.findByRole('button', { name: 'End the start phase' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Phase "start" plays once.')
     expect(sent['flow-run/move-on']).toEqual({ phase: 'start' })

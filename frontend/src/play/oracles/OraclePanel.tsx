@@ -5,7 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
-import type { Campaign } from '../campaigns/useCampaigns'
+import { useCampaign, type Campaign } from '../campaigns/useCampaigns'
 import { useRecordLikelihoodAnswer, useRecordOracleTableResult } from '../journal/useJournal'
 
 type OracleTable = Campaign['oracleTables'][number]
@@ -161,8 +161,10 @@ function LikelihoodOracleForm({
   const middleLevel = oracle.levels[Math.floor((oracle.levels.length - 1) / 2)]
   const [likelihood, setLikelihood] = useState(middleLevel?.key ?? '')
   const [question, setQuestion] = useState('')
+  // An oracle that reads its chaos factor from a Tracker takes none from the player.
+  const askChaos = oracle.chaos !== null && oracle.chaosTracker === null
   const [chaosFactor, setChaosFactor] = useState(
-    oracle.chaos === null ? '' : String(oracle.chaos.neutral),
+    askChaos && oracle.chaos !== null ? String(oracle.chaos.neutral) : '',
   )
   const ask = useRecordLikelihoodAnswer(campaignId)
   const headingId = useId()
@@ -174,7 +176,7 @@ function LikelihoodOracleForm({
     event.preventDefault()
     // Both are optional: an empty field is left out of the request.
     const asked = question.trim()
-    const chaos = oracle.chaos !== null && chaosFactor.trim() !== '' ? Number(chaosFactor) : null
+    const chaos = askChaos && chaosFactor.trim() !== '' ? Number(chaosFactor) : null
     ask.mutate(
       {
         oracleKey: oracle.key,
@@ -227,7 +229,10 @@ function LikelihoodOracleForm({
             ))}
           </NativeSelect>
         </div>
-        {oracle.chaos !== null && (
+        {oracle.chaosTracker !== null && (
+          <TrackerChaosFactor campaignId={campaignId} trackerKey={oracle.chaosTracker} />
+        )}
+        {askChaos && oracle.chaos !== null && (
           <div className="w-28 space-y-2">
             <Label htmlFor={chaosId}>Chaos factor</Label>
             <Input
@@ -255,6 +260,32 @@ function LikelihoodOracleForm({
         </p>
       )}
     </form>
+  )
+}
+
+/**
+ * The chaos factor of an oracle that reads it from a campaign Tracker: the Tracker's current value,
+ * read only, from the campaign the page shows (the server reads the same value when asked).
+ */
+function TrackerChaosFactor({
+  campaignId,
+  trackerKey,
+}: {
+  campaignId: string
+  trackerKey: string
+}) {
+  const campaign = useCampaign(campaignId)
+  const tracker = campaign.data?.trackers.find(({ key }) => key === trackerKey)
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Chaos factor</p>
+      <p className="text-sm">
+        {tracker === undefined
+          ? `From the ${trackerKey} tracker`
+          : `${String(tracker.value)} (from the ${tracker.name} tracker)`}
+      </p>
+    </div>
   )
 }
 

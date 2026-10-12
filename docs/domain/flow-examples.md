@@ -242,7 +242,9 @@ A Mythic-style adventure: a chaos factor, a scene check, altered and interrupted
 | Phase | Mode | Selection | Scene Types |
 |---|---|---|---|
 | `premise` | once | single type, picked automatically | Scene |
-| `adventure` | loop | single type, picked automatically | Scene |
+| `adventure` | loop | single type, picked automatically when a session starts or the phase opens | Scene |
+
+After a scene the player plays the next one or ends the session ([ADR 0020](../adr/0020-scene-pick-waits-after-a-scene.md)).
 
 The `adventure` phase has no world turn.
 
@@ -290,11 +292,12 @@ sceneClosing
 | The scene check as bands bound to the `chaos` tracker | 2 |
 | Table branching per entry; `pick` with a `none` branch | 4, 16 |
 | Scene titles from the player's answer | 1, 9, 11 |
-| A single Scene Type picked automatically | 11 |
+| A single Scene Type picked automatically when a session starts; after a scene the player plays the next one or ends the session | 11, ADR 0020 |
 | A journal-first flow with no world turn | ADR 0017 §8 |
 
 **Notes**
 - Fate-question doubles ([ADR 0019](../adr/0019-random-events-from-fate-question-doubles.md)): the preset's `fate` likelihood oracle declares `randomEvent: {table: "random-event-focus"}`. A double within the chaos factor flags the answer and offers a one-click roll of that table; no flow step runs. The `mythic-style` preset (`backend/presets/mythic-style.json`) ships this example with richer tables.
+- The preset asks "What happens instead?" in three steps worded for what came before: after an NPC was picked or created ("Involve {picked}."), after a Thread was picked ("Tie it to {picked}."), and after the meaning tables or an empty pick, with no `{picked}`.
 - The random event steps are written once, in the scene opening. Reusable procedures that could also run from the oracle panel are deferred (vision open question).
 
 ## 4. Cyberpunk RED campaign in acts

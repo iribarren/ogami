@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderWithApi } from '@/test/renderWithApi'
 
-import { lostMineCampaign } from '../campaigns/fixtures'
+import { heatTracker, lostMineCampaign } from '../campaigns/fixtures'
 import { recordedEntry, stormyWeather, lockedDoorAnswer } from '../journal/fixtures'
 import { OraclePanel } from './OraclePanel'
 
@@ -104,6 +104,43 @@ describe('OraclePanel', () => {
     const form = within(oracleForm('Yes/no question'))
 
     expect(form.queryByLabelText('Chaos factor')).not.toBeInTheDocument()
+    await user.click(form.getByRole('button', { name: 'Ask' }))
+
+    await vi.waitFor(() => {
+      expect(sent).toEqual([{ likelihood: 'even' }])
+    })
+  })
+
+  it('shows the chaos factor a Tracker holds instead of asking for it, and sends none', async () => {
+    const sent: unknown[] = []
+    const fate = {
+      key: 'fate',
+      name: 'Fate question',
+      levels: [{ key: 'even', label: 'Even odds' }],
+      chaos: { min: 1, max: 9, neutral: 5 },
+      chaosTracker: 'chaos',
+    }
+    const chaos = {
+      ...heatTracker,
+      key: 'chaos',
+      name: 'Chaos factor',
+      min: 1,
+      max: 9,
+      levels: [],
+      value: 6,
+      levelLabel: null,
+    }
+    renderWithApi(<OraclePanel campaignId={campaignId} tables={[]} likelihoodOracles={[fate]} />, {
+      [`GET /api/campaigns/${campaignId}`]: () =>
+        Response.json({ ...lostMineCampaign, trackers: [chaos] }),
+      [`POST ${journalPath}/likelihood-oracles/fate`]: recording(lockedDoorAnswer, sent),
+    })
+    const user = userEvent.setup()
+    const form = within(oracleForm('Fate question'))
+
+    expect(await form.findByText('6 (from the Chaos factor tracker)')).toBeInTheDocument()
+    expect(form.getByText('Chaos factor')).toBeInTheDocument()
+    expect(form.queryByRole('spinbutton')).not.toBeInTheDocument()
     await user.click(form.getByRole('button', { name: 'Ask' }))
 
     await vi.waitFor(() => {

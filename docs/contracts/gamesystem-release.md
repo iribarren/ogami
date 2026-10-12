@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads version 2 except `tags`, `pick`, `condition` counts, the NPC and Thread effects and `{picked}` (feature 8 adds them): trackers, fact slots, table entry metadata, the chaos tracker, Scene Types with their steps, and flows with their phases, Scene selections and hooks.
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots (declared only), tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`.
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 
@@ -193,6 +193,22 @@ A `{…}` matching `\{[a-z]+(:[a-z0-9-]+)?\}` in a step `title`, `prompt` or `ti
 | `{picked}` | Any placeholder text | Nothing: no argument (`{picked:x}` fails). The names of the items most recently picked or created in the current Scene |
 
 Any other placeholder fails with "not supported in schema version 2". Feature 8b adds `{fact:key}`.
+
+### Play behaviour of the NPC and Thread parts
+
+Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) plays them against the campaign's NPCs and Threads, which the player also edits at any time. The candidates of a `pick` and the items a `count` counts are the **open** items of the kind carrying **all** the listed tags; the player's free tags never match.
+
+| Part | In Play |
+|---|---|
+| `pick` `random` | The player presses Pick; the server draws `min(max, candidates)` items, weighted by their `weight`, without replacement |
+| `pick` `choose` | The step lists the candidates; the player selects between `min` and `max` of them |
+| `pick` outcome | `found` or `none`. Fewer candidates than `min` is `none` (the step shows "No match"). The outcome's `branches` apply after the step's own `effects`. The step writes a journal entry of kind `pick` with the names picked; a skipped `pick` changes nothing |
+| `{picked}` | The names of the items most recently picked or created in the current Scene, joined with ", ", read when rendered; empty before any pick in that Scene. `{answer}` after a `pick` is the same list |
+| `condition` `count` | The number of such open items, compared to the bands like a tracker value |
+| `createNpc` / `createThread` | Creates an open item of weight 1 with the effect's tags and the rendered `name` (`agenda` for an NPC); an omitted or empty name becomes `New <label of the first tag>`, `New NPC` or `New Thread`. The item becomes `{picked}`; a created NPC joins the current Scene's cast. With 500 items of the kind already held nothing is created |
+| `closeThread` | Closes the open Threads in `{picked}`; nothing happens when it holds none |
+
+Picked and created NPCs join the current Scene's cast, which the player can edit. Scenes stored before schema version 2 gained these parts read with an empty cast.
 
 ### Authoring warning
 

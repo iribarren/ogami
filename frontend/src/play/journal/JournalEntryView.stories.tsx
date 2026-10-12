@@ -1,6 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
-import { gateNote, keepThreeRoll, lockedDoorAnswer, plainAnswer, stormyWeather } from './fixtures'
+import {
+  gateNote,
+  keepThreeRoll,
+  lockedDoorAnswer,
+  pickedNothing,
+  pickedTwo,
+  plainAnswer,
+  stormyWeather,
+} from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
 
 const meta = {
@@ -28,3 +36,9 @@ export const OracleTable: Story = { args: { entry: stormyWeather } }
 export const LikelihoodAnswer: Story = { args: { entry: lockedDoorAnswer } }
 
 export const LikelihoodAnswerWithoutQuestionOrChaos: Story = { args: { entry: plainAnswer } }
+
+export const PickFound: Story = {
+  args: { entry: pickedTwo, tags: [{ key: 'leader', label: 'Leader' }] },
+}
+
+export const PickNoMatch: Story = { args: { entry: pickedNothing } }

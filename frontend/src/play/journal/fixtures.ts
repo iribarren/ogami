@@ -181,3 +181,33 @@ export function sceneShiftRoll(
     ...where,
   }
 }
+
+/** A pick step that found two NPCs, tagged "leader". */
+export const pickedTwo: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7007',
+  sessionNumber: 1,
+  sceneNumber: 1,
+  recordedAt: '2026-10-05T12:17:00+00:00',
+  kind: 'pick',
+  content: {
+    kind: 'pick',
+    of: 'npc',
+    tags: ['leader'],
+    picked: [
+      { id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001', name: 'Mira Vane' },
+      { id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7002', name: 'Brann' },
+    ],
+  },
+  flowStep: { key: 'who', title: 'Who shows up?', prompt: null },
+}
+
+/** A pick step of Threads that matched nothing. */
+export const pickedNothing: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7008',
+  sessionNumber: 1,
+  sceneNumber: 1,
+  recordedAt: '2026-10-05T12:18:00+00:00',
+  kind: 'pick',
+  content: { kind: 'pick', of: 'thread', tags: [], picked: [] },
+  flowStep: { key: 'draw-thread', title: 'What comes up?', prompt: null },
+}

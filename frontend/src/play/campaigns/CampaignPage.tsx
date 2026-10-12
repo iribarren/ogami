@@ -198,6 +198,8 @@ function CampaignJournal({ campaign }: { campaign: Campaign }) {
           campaignId={campaign.id}
           sessions={campaign.sessions}
           sceneTypes={campaign.sceneTypes}
+          tags={campaign.tags}
+          npcs={campaign.npcs}
           current={
             campaign.currentSessionNumber === null || campaign.currentSceneNumber === null
               ? null

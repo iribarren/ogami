@@ -6,6 +6,7 @@ import { NativeSelect } from '@/shared/ui/native-select'
 import { Textarea } from '@/shared/ui/textarea'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { PickForm } from './PickForm'
 import type { FlowRunCommand, FlowStep } from './useFlowRun'
 
 const kindLabels: Record<FlowStep['kind'], string> = {
@@ -133,6 +134,16 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
             </Button>
           ))}
         </div>
+      )
+    case 'pick':
+      return (
+        <PickForm
+          pick={step.pick}
+          pending={pending}
+          onPick={(pickedIds) => {
+            answer(pickedIds === undefined ? {} : { pickedIds })
+          }}
+        />
       )
   }
 }

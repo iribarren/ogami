@@ -5,6 +5,8 @@ import {
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
+  pickedNothing,
+  pickedTwo,
   plainAnswer,
   stormyWeather,
 } from './fixtures'
@@ -76,5 +78,27 @@ describe('JournalEntryView', () => {
 
     const choice = screen.getByRole('article', { name: 'Choice Which way?' })
     expect(choice).toHaveTextContent('Which way? → Go right')
+  })
+
+  it('renders a pick as the names picked, with the tags shown by their label', () => {
+    render(<JournalEntryView entry={pickedTwo} tags={[{ key: 'leader', label: 'Leader' }]} />)
+
+    const pick = screen.getByRole('article', { name: 'Pick NPC' })
+    expect(pick).toHaveTextContent('Picked NPCs: Mira Vane, Brann')
+    expect(pick).toHaveTextContent('Tagged: Leader')
+  })
+
+  it('shows a tag key as it is when the release no longer names it', () => {
+    render(<JournalEntryView entry={pickedTwo} />)
+
+    expect(screen.getByRole('article', { name: 'Pick NPC' })).toHaveTextContent('Tagged: leader')
+  })
+
+  it('renders a pick that found nothing as No match, without tags', () => {
+    render(<JournalEntryView entry={pickedNothing} />)
+
+    const pick = screen.getByRole('article', { name: 'Pick Thread' })
+    expect(pick).toHaveTextContent('Picked Thread: No match')
+    expect(pick).not.toHaveTextContent('Tagged')
   })
 })

@@ -1,5 +1,6 @@
 import { useId } from 'react'
 
+import { SceneCast } from '../cast/SceneCast'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { JournalEntryView } from '../journal/JournalEntryView'
 import { useJournal } from '../journal/useJournal'
@@ -48,10 +49,31 @@ export function FocusPanel({ campaign, flowRun }: { campaign: Campaign; flowRun:
           )}
         </div>
       )}
+      <CurrentCast campaign={campaign} />
       <GuidedBody {...parts} />
       <GuidedControls {...parts} />
       <SceneSoFar campaign={campaign} />
     </section>
+  )
+}
+
+/** The cast of the current scene, which the player can edit; nothing before a scene starts. */
+function CurrentCast({ campaign }: { campaign: Campaign }) {
+  const sessionNumber = campaign.currentSessionNumber
+  const scene = campaign.sessions
+    .find(({ number }) => number === sessionNumber)
+    ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
+  if (sessionNumber === null || scene === undefined) {
+    return null
+  }
+  return (
+    <SceneCast
+      campaignId={campaign.id}
+      npcs={campaign.npcs}
+      sessionNumber={sessionNumber}
+      scene={scene}
+      editable
+    />
   )
 }
 
@@ -85,7 +107,7 @@ function SceneSoFar({ campaign }: { campaign: Campaign }) {
       <ol className="space-y-3">
         {entries.map((entry) => (
           <li key={entry.id}>
-            <JournalEntryView entry={entry} />
+            <JournalEntryView entry={entry} tags={campaign.tags} />
           </li>
         ))}
       </ol>

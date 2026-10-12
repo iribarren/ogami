@@ -10,8 +10,12 @@ use App\Play\Application\AddNpc;
 use App\Play\Application\Clock;
 use App\Play\Application\CloseNpc;
 use App\Play\Application\CreateCampaign;
+use App\Play\Application\PickSceneType;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
+use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\Hook;
 use App\Play\Infrastructure\Http\CampaignController;
 use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
@@ -29,7 +33,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * `PUT /api/campaigns/{campaignId}/scenes/current/cast` on a campaign played freely, in a scene,
- * with the NPCs Ana, Bea and Cid (closed): the edit replaces the whole cast, in the order sent, and
+ * with the NPCs Ana, Bea and Cid (closed), and in a guided FlowRun and a hook Scene: the edit replaces the whole cast, in the order sent, and
  * every refusal leaves the cast as it was.
  */
 #[CoversClass(CampaignController::class)]
@@ -75,6 +79,45 @@ final class CampaignSceneCastApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertSame([], $this->json()['cast']);
         self::assertSame([], $this->currentScene()['cast']);
+    }
+
+    #[Test]
+    public function theCastOfTheSceneOfAGuidedFlowRunIsEditedWhileItsStepIsPending(): void
+    {
+        $this->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The people', 'people', 'tour'));
+        $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
+        $this->addPeople();
+        $this->dispatch(new PickSceneType(self::CAMPAIGN, $this->userId, 'choose'));
+        $stepBefore = $this->flowRunStep();
+        self::assertSame('pick', $stepBefore['kind'] ?? null);
+
+        $this->put(['npcIds' => ['npc-bea', 'npc-cid']]);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([['id' => 'npc-bea', 'name' => 'Bea'], ['id' => 'npc-cid', 'name' => 'Cid']], $this->json()['cast']);
+        self::assertSame($this->json(), $this->currentScene());
+        self::assertSame($stepBefore, $this->flowRunStep());
+    }
+
+    #[Test]
+    public function theCastOfAHookSceneUnderWayIsEdited(): void
+    {
+        $this->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The people', 'people', null));
+        $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
+        $this->addPeople();
+        $campaigns = self::getContainer()->get(CampaignRepository::class);
+        $campaign = $campaigns->ofId(CampaignId::fromString(self::CAMPAIGN)) ?? throw new \LogicException('No campaign.');
+        $campaign->startHookScene(Hook::WorldTurn, 'The world moves', new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaigns->save($campaign);
+        self::getContainer()->get(EntityManagerInterface::class)->clear();
+
+        $this->put(['npcIds' => ['npc-ana', 'npc-cid']]);
+
+        self::assertResponseStatusCodeSame(200);
+        $scene = $this->json();
+        self::assertSame(['hook', 'worldTurn'], [$scene['kind'], $scene['hook']]);
+        self::assertSame([['id' => 'npc-ana', 'name' => 'Ana'], ['id' => 'npc-cid', 'name' => 'Cid']], $scene['cast']);
+        self::assertSame($scene, $this->currentScene());
     }
 
     #[Test]
@@ -235,6 +278,11 @@ final class CampaignSceneCastApiTest extends WebTestCase
         $this->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The people', 'people', null));
         $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
         $this->dispatch(new StartScene(self::CAMPAIGN, $this->userId, 'At the gate'));
+        $this->addPeople();
+    }
+
+    private function addPeople(): void
+    {
         foreach ([['ana', 'Ana'], ['bea', 'Bea'], ['cid', 'Cid']] as [$id, $name]) {
             $this->dispatch(new AddNpc(self::CAMPAIGN, $this->userId, 'npc-'.$id, $name, null, [], [], 1));
         }
@@ -282,6 +330,19 @@ final class CampaignSceneCastApiTest extends WebTestCase
         self::assertIsArray($scene);
 
         return $scene;
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function flowRunStep(): array
+    {
+        $flowRun = $this->campaign()['flowRun'] ?? null;
+        self::assertIsArray($flowRun);
+        $step = $flowRun['step'] ?? null;
+        self::assertIsArray($step);
+
+        return $step;
     }
 
     private function error(): string

@@ -46,6 +46,7 @@ use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\TableEntryMetadata;
 use App\Play\Domain\GameSystem\Tag;
+use App\Play\Domain\GameSystem\Theme;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
@@ -140,6 +141,7 @@ final readonly class GameSystemReleaseTranslator
             $entries,
             $this->flows($view, $this->list($view, $content['flows'] ?? null, 'flows')),
             $tags,
+            $this->theme($view, $content['theme'] ?? null),
         );
         $this->assertTagsExist($view, $content, '', $snapshot);
 
@@ -469,6 +471,13 @@ final readonly class GameSystemReleaseTranslator
         $count = $this->object($view, $count, $path);
 
         return new ItemCount($this->itemKind($view, $count['of'] ?? null, $path.'.of'), $this->keys($view, $count['tags'] ?? [], $path.'.tags'));
+    }
+
+    private function theme(PublishedReleaseView $view, mixed $theme): ?string
+    {
+        $name = $this->optionalString($view, $theme, 'theme');
+
+        return null === $name ? null : (Theme::tryFrom($name) ?? throw $this->invalid($view, 'theme', \sprintf('unknown theme "%s".', $name)))->value;
     }
 
     private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind

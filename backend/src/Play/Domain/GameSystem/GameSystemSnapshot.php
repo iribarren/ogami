@@ -43,6 +43,7 @@ final readonly class GameSystemSnapshot
      * @param array<string, list<TableEntryMetadata>> $tableEntries      per table key, one per entry in entry order
      * @param list<Flow>                              $flows             in definition order, unique keys, at most one default
      * @param list<Tag>                               $tags              in definition order, unique keys
+     * @param ?string                                 $theme             the name of a Theme (one of the Theme cases), null for the default app theme
      *
      * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows or tags share a key,
      *                                  or two flows are the default
@@ -60,6 +61,7 @@ final readonly class GameSystemSnapshot
         private array $tableEntries = [],
         array $flows = [],
         array $tags = [],
+        private ?string $theme = null,
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -97,6 +99,14 @@ final readonly class GameSystemSnapshot
     public function releaseVersion(): int
     {
         return $this->releaseVersion;
+    }
+
+    /**
+     * The curated Theme the release names, or null for the default app theme.
+     */
+    public function theme(): ?string
+    {
+        return $this->theme;
     }
 
     /**

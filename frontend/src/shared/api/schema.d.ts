@@ -753,6 +753,12 @@ export interface components {
             gameSystemName: string;
             /** @example 3 */
             version: number;
+            /**
+             * @description The curated Theme the release asks for; null means the default app theme.
+             * @example noir
+             * @enum {string|null}
+             */
+            theme: "parchment" | "neon" | "noir" | "eldritch" | "starship" | null;
         };
         ItemRefResponse: {
             /**

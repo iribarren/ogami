@@ -3,6 +3,8 @@ import { resolve as resolvePath } from 'node:path'
 
 import { formatHex, parse, wcagContrast } from 'culori'
 
+import { CAMPAIGN_THEME_NAMES, CAMPAIGN_THEMES } from './themes'
+
 // `?raw` imports come back empty while `css: false`, so read the source from disk. Vite rewrites
 // `new URL(path, import.meta.url)` into an asset URL, hence `import.meta.dirname`.
 const css = readFileSync(resolvePath(import.meta.dirname, '../../index.css'), 'utf8')
@@ -10,6 +12,8 @@ const css = readFileSync(resolvePath(import.meta.dirname, '../../index.css'), 'u
 interface Palette {
   name: string
   tokens: Record<string, string>
+  /** The `color-scheme` the block declares, if any. */
+  colorScheme?: string
 }
 
 /**
@@ -25,7 +29,8 @@ function parsePalettes(source: string): Palette[] {
     for (const [, token = '', value = ''] of body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) {
       tokens[token] = value.trim()
     }
-    palettes.push({ name, tokens })
+    const colorScheme = /(?:^|[\s;])color-scheme\s*:\s*([^;]+);/.exec(body)?.[1]?.trim()
+    palettes.push({ name, tokens, ...(colorScheme === undefined ? {} : { colorScheme }) })
   }
   return palettes
 }
@@ -43,7 +48,7 @@ function countPaletteSelectors(source: string): number {
 function resolve(palettes: Palette[]): Palette[] {
   const base = palettes.find((palette) => palette.name === ':root')
   return palettes.map((palette) => ({
-    name: palette.name,
+    ...palette,
     tokens: palette.name === ':root' ? palette.tokens : { ...base?.tokens, ...palette.tokens },
   }))
 }
@@ -91,8 +96,16 @@ const CONTROL_PAIRS: [string, string][] = [
 
 const palettes = resolve(parsePalettes(css))
 
-// Slice 3 adds one `:root[data-theme="<name>"]` entry per curated theme.
-const EXPECTED_PALETTES = [':root', '.dark']
+// Prettier writes the attribute selector with single quotes.
+const themeSelector = (name: string) => `:root[data-theme='${name}']`
+const EXPECTED_PALETTES = [
+  ':root',
+  '.dark',
+  ...CAMPAIGN_THEME_NAMES.map((name) => themeSelector(name)),
+]
+
+// Layout tokens and the radius belong to the app, not to a palette.
+const NOT_PALETTE_TOKENS = ['radius', 'header-height', 'play-sidebar-width']
 
 describe('palette contrast (WCAG AA)', () => {
   it('finds exactly the expected palettes in index.css', () => {
@@ -110,6 +123,26 @@ describe('palette contrast (WCAG AA)', () => {
       ":root[data-theme='a']",
       ':root[data-theme="b"]',
     ])
+  })
+
+  describe.each(CAMPAIGN_THEME_NAMES)('theme %s', (name) => {
+    const own = parsePalettes(css).find((palette) => palette.name === themeSelector(name))
+    const base = parsePalettes(css).find((palette) => palette.name === ':root')
+
+    it('declares a full palette, not a partial override of the default one', () => {
+      const missing = Object.keys(base?.tokens ?? {}).filter(
+        (token) => !NOT_PALETTE_TOKENS.includes(token) && own?.tokens[token] === undefined,
+      )
+      expect(missing).toEqual([])
+    })
+
+    it('sets its heading font', () => {
+      expect(own?.tokens['font-heading']).toBeDefined()
+    })
+
+    it(`declares color-scheme ${CAMPAIGN_THEMES[name]}, the mode the theme forces`, () => {
+      expect(own?.colorScheme).toBe(CAMPAIGN_THEMES[name])
+    })
   })
 
   describe.each(palettes)('$name', (palette) => {

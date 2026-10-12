@@ -1,24 +1,19 @@
 import type { Decorator, Preview } from '@storybook/react-vite'
+import { createElement } from 'react'
 
 import '../src/index.css'
+import { StoryTheme } from '../src/shared/theme/StoryTheme'
+import { CAMPAIGN_THEME_NAMES } from '../src/shared/theme/themes'
 
-/** Slice 3 adds the curated campaign themes to this list. */
-const THEMES = ['default']
+const THEMES = ['default', ...CAMPAIGN_THEME_NAMES]
 
-const withColorModeAndTheme: Decorator = (Story, context) => {
-  const root = document.documentElement
-  const dark = context.globals.colorMode === 'dark'
-  root.classList.toggle('dark', dark)
-  root.style.colorScheme = dark ? 'dark' : 'light'
-
-  const theme = String(context.globals.theme)
-  if (theme === 'default') {
-    root.removeAttribute('data-theme')
-  } else {
-    root.setAttribute('data-theme', theme)
-  }
-  return Story()
-}
+// A curated theme fixes its own mode, so picking one overrides the Color mode toolbar, as in a campaign.
+const withColorModeAndTheme: Decorator = (Story, context) =>
+  createElement(StoryTheme, {
+    colorMode: context.globals.colorMode === 'dark' ? 'dark' : 'light',
+    theme: String(context.globals.theme),
+    children: createElement(Story),
+  })
 
 const preview: Preview = {
   decorators: [withColorModeAndTheme],

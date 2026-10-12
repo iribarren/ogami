@@ -83,6 +83,32 @@ describe('the Play screen', () => {
     )
   })
 
+  it('applies the theme of the pinned release while the campaign is open', async () => {
+    const root = document.documentElement
+    const themed: Campaign = {
+      ...lostMineCampaign,
+      pinnedRelease: { ...lostMineCampaign.pinnedRelease, theme: 'noir' },
+    }
+    const { router } = renderPlayScreen(themed, [], { 'GET /api/campaigns': json([]) })
+
+    await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
+    expect(root).toHaveAttribute('data-theme', 'noir')
+    expect(root).toHaveClass('dark')
+
+    router.history.push('/play')
+
+    await waitFor(() => {
+      expect(root).not.toHaveAttribute('data-theme')
+    })
+  })
+
+  it('leaves the default theme when the pinned release names none', async () => {
+    renderPlayScreen(lostMineCampaign)
+
+    await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
+    expect(document.documentElement).not.toHaveAttribute('data-theme')
+  })
+
   it('keeps the tools in a Play tools sidebar of collapsible panels, with counts where known', async () => {
     const user = userEvent.setup()
     renderPlayScreen(lostMineCampaign)

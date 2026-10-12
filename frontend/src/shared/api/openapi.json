@@ -3650,7 +3650,8 @@
                 "required": [
                     "gameSystemKey",
                     "gameSystemName",
-                    "version"
+                    "version",
+                    "theme"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -3664,6 +3665,19 @@
                     "version": {
                         "type": "integer",
                         "example": 3
+                    },
+                    "theme": {
+                        "description": "The curated Theme the release asks for; null means the default app theme.",
+                        "type": "string",
+                        "example": "noir",
+                        "nullable": true,
+                        "enum": [
+                            "parchment",
+                            "neon",
+                            "noir",
+                            "eldritch",
+                            "starship"
+                        ]
                     }
                 },
                 "type": "object"

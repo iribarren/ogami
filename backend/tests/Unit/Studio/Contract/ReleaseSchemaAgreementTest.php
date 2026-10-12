@@ -122,6 +122,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'v2-tag-bad-key' => ['tags[0].key: must be 1 to 64 characters', '/tags/0/key'],
         'v2-tag-empty-label' => ['tags[0].label: must not be empty', '/tags/0/label'],
         'v2-tags-not-a-list' => ['tags: must be a list', '/tags'],
+        'v2-theme-not-a-string' => ['theme: must be one of "parchment", "neon", "noir", "eldritch", "starship", 3 given', '/theme'],
+        'v2-theme-unknown' => ['theme: must be one of "parchment", "neon", "noir", "eldritch", "starship", \'steampunk\' given', '/theme'],
         'v2-effect-bad-op' => ['sceneTypes[0].play[0].effects[0].op: must be one of', '/sceneTypes/0/play/0/effects/0/op'],
         'v2-effect-unknown-kind' => ['sceneTypes[0].play[0].effects[0].kind: must be one of', '/sceneTypes/0/play/0/effects/0/kind'],
         'v2-effect-fill-fact-bad-slot-key' => ['sceneTypes[0].play[0].effects[0].slot: must be 1 to 64 characters', '/sceneTypes/0/play/0/effects/0/slot'],

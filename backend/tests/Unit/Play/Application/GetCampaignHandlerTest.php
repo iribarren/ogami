@@ -101,7 +101,7 @@ final class GetCampaignHandlerTest extends TestCase
             'campaign-1',
             'The lost mine',
             new \DateTimeImmutable('2026-10-05T10:00:00+00:00'),
-            new PinnedReleaseView('free-journal', 'Free journal', 1),
+            new PinnedReleaseView('free-journal', 'Free journal', 1, null),
             [],
             null,
             null,

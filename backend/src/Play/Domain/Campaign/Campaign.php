@@ -568,6 +568,7 @@ final class Campaign
      *
      * @throws InvalidNpc        when a value breaks a rule
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws NpcAlreadyExists  when an NPC already holds the generated id
      */
     public function createNpcByEffect(string $name, ?string $agenda, array $tags, GameSystemSnapshot $release): ?Npc
     {
@@ -586,8 +587,9 @@ final class Campaign
      *
      * @return ?Thread the new Thread; null (nothing added) when the campaign already holds 500 Threads
      *
-     * @throws InvalidThread     when a value breaks a rule
-     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws InvalidThread       when a value breaks a rule
+     * @throws UnknownReleaseTag   when a Tag key is not in the pinned release
+     * @throws ThreadAlreadyExists when a Thread already holds the generated id
      */
     public function createThreadByEffect(string $name, array $tags, GameSystemSnapshot $release): ?Thread
     {

@@ -25,6 +25,8 @@ use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
+use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
@@ -85,7 +87,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 401, description: self::NO_SESSION, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no oracle (or not the Tracker its chaos is bound to) with the key of the step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile (or took the generated entry id).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC or Thread the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the step is a condition step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function answer(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -254,7 +256,7 @@ final readonly class FlowRunController
             return new JsonResponse(CampaignResponse::fromView($this->queryBus->ask(new GetCampaign($campaignId, $user->id()))));
         } catch (CampaignNotFound|UnknownGameSystemOracle|UnknownCampaignTracker $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (FlowRunNotActive|FlowRunPositionMismatch|StepCannotBeSkipped|MoveOnNotAllowed|SceneTypeNotOffered|NoCurrentSession|CampaignLimitReached|CampaignModifiedConcurrently|JournalEntryAlreadyExists $exception) {
+        } catch (FlowRunNotActive|FlowRunPositionMismatch|StepCannotBeSkipped|MoveOnNotAllowed|SceneTypeNotOffered|NoCurrentSession|CampaignLimitReached|CampaignModifiedConcurrently|JournalEntryAlreadyExists|NpcAlreadyExists|ThreadAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InvalidStepResult|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);

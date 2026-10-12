@@ -12,9 +12,12 @@ use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\Lists\GeneratedItemId;
 use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
+use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -126,6 +129,38 @@ final class FlowRunEffectsTest extends FlowRunTestCase
         self::assertSame([Campaign::MAX_NPCS, Campaign::MAX_THREADS], [\count($campaign->npcs()), \count($campaign->threads())]);
         self::assertSame('Picked: NPC 7', $this->view($campaign)->step?->title);
         self::assertSame(['npc-7'], $this->cast($campaign));
+    }
+
+    #[Test]
+    public function aCreateNpcWhoseGeneratedIdIsTakenFailsAndChangesNothing(): void
+    {
+        $campaign = $this->inScene('spawn', lists: false);
+        $taken = GeneratedItemId::npc($campaign->id()->toString(), 1);
+        $campaign->addNpc($taken, 'Squatter', null, [], [], 1, $this->snapshot());
+
+        try {
+            $campaign->completeFlowStep('ask', self::prompt('Vega'), $this->snapshot(), self::at());
+            self::fail('The Effect must not overwrite or duplicate the NPC holding its id.');
+        } catch (NpcAlreadyExists) {
+        }
+
+        self::assertSame(['Squatter'], array_map(static fn (Npc $npc): string => $npc->name(), $campaign->npcs()));
+        self::assertSame(['ask', null, []], [self::flowRunOf($campaign)->stepKey(), self::flowRunOf($campaign)->picked(), $this->cast($campaign)]);
+    }
+
+    #[Test]
+    public function aCreateThreadWhoseGeneratedIdIsTakenFailsAndTheNpcCreatedBeforeItIsNotKept(): void
+    {
+        $campaign = $this->inScene('anon', lists: false);
+        $campaign->addThread(GeneratedItemId::thread($campaign->id()->toString(), 1), 'Squatter', [], [], 1, $this->snapshot());
+
+        try {
+            $campaign->completeFlowStep('make', self::prompt('ok'), $this->snapshot(), self::at());
+            self::fail('The Effect must not overwrite or duplicate the Thread holding its id.');
+        } catch (ThreadAlreadyExists) {
+        }
+
+        self::assertSame([[], ['Squatter'], 'make', null, []], [$campaign->npcs(), array_map(static fn (Thread $thread): string => $thread->name(), $campaign->threads()), self::flowRunOf($campaign)->stepKey(), self::flowRunOf($campaign)->picked(), $this->cast($campaign)]);
     }
 
     #[Test]

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
+use App\Play\Domain\Campaign\FlowRun\PickView;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\TableStep;
@@ -19,7 +21,7 @@ use OpenApi\Attributes as OA;
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
  * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
-#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options'])]
+#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick'])]
 final readonly class FlowStepResponse
 {
     /**
@@ -28,7 +30,7 @@ final readonly class FlowStepResponse
     private function __construct(
         #[OA\Property(example: 'slip-past')]
         public string $key,
-        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice'])]
+        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick'])]
         public string $kind,
         #[OA\Property(example: 'Who is on the crew?')]
         public string $title,
@@ -52,6 +54,8 @@ final readonly class FlowStepResponse
             items: new OA\Items(ref: new Model(type: FlowStepOptionResponse::class)),
         )]
         public array $options,
+        #[OA\Property(ref: new Model(type: FlowPickStepResponse::class), description: 'What the step picks from (pick step); null for the other kinds.', nullable: true)]
+        public ?FlowPickStepResponse $pick,
     ) {
     }
 
@@ -68,6 +72,7 @@ final readonly class FlowStepResponse
             $step instanceof TableStep => self::of($view, table: $step->table),
             $step instanceof RollStep => self::of($view, dice: $step->dice),
             $step instanceof ChoiceStep => self::of($view, options: array_map(FlowStepOptionResponse::of(...), $step->options)),
+            $step instanceof PickStep => self::of($view, pick: $view->pick instanceof PickView ? FlowPickStepResponse::fromView($view->pick) : throw new \LogicException(\sprintf('Pick step "%s" has no pick view.', $step->key))),
             $step instanceof ConditionStep => throw new \LogicException(\sprintf('Condition step "%s" never waits: it cannot be the current step.', $step->key)),
             default => throw new \LogicException(\sprintf('No response for step %s.', $step::class)),
         };
@@ -76,10 +81,10 @@ final readonly class FlowStepResponse
     /**
      * @param list<FlowStepOptionResponse> $options
      */
-    private static function of(FlowStepView $view, ?string $oracle = null, ?string $likelihood = null, ?string $table = null, ?string $dice = null, array $options = []): self
+    private static function of(FlowStepView $view, ?string $oracle = null, ?string $likelihood = null, ?string $table = null, ?string $dice = null, array $options = [], ?FlowPickStepResponse $pick = null): self
     {
         $step = $view->step;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options);
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick);
     }
 }

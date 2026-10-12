@@ -49,6 +49,7 @@ describe('groupJournal', () => {
               sceneType: null,
               sceneTypeName: null,
               hook: null,
+              cast: [],
             },
             {
               number: 1,
@@ -58,6 +59,7 @@ describe('groupJournal', () => {
               sceneType: null,
               sceneTypeName: null,
               hook: null,
+              cast: [],
             },
           ],
           endedAt: null,

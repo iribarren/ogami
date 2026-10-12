@@ -61,7 +61,7 @@ final readonly class FlowRunController
 {
     use ReadsJsonBodies;
 
-    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood" and an integer "chaosFactor", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
+    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor" and a list of strings "pickedIds", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
     private const string MALFORMED_SKIP = 'Send a JSON object with a string "stepKey", such as {"stepKey": "dice"}.';
     private const string MALFORMED_PICK = 'Send a JSON object with a string "sceneType", such as {"sceneType": "tour"}.';
     private const string MALFORMED_END_SCENE = 'Send a JSON object with an integer "sceneNumber", such as {"sceneNumber": 1}.';
@@ -83,13 +83,13 @@ final readonly class FlowRunController
     #[OA\Post(operationId: 'completeFlowStep', summary: 'Complete the current step of the FlowRun of one of my campaigns and record its result in the journal')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: CompleteFlowStepRequest::class)))]
     #[OA\Response(response: 200, description: 'The campaign, with its FlowRun moved on.', content: new OA\JsonContent(ref: new Model(type: CampaignResponse::class)))]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", or a non-integer "chaosFactor".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", or "pickedIds" that is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: self::NO_SESSION, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no oracle (or not the Tracker its chaos is bound to) with the key of the step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC or Thread the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the step is a condition step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function answer(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the answer as JSON.', self::MALFORMED_ANSWER);
@@ -102,11 +102,12 @@ final readonly class FlowRunController
         $optionKey = $body['optionKey'] ?? null;
         $likelihood = $body['likelihood'] ?? null;
         $chaosFactor = $body['chaosFactor'] ?? null;
-        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor))) {
+        $pickedIds = $body['pickedIds'] ?? null;
+        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds))) {
             return $this->error(self::MALFORMED_ANSWER, Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, null), $campaignId, $user);
+        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds), $campaignId, $user);
     }
 
     #[Route('/api/campaigns/{campaignId}/flow-run/skip', name: 'api_campaigns_flow_run_skip', methods: ['POST'])]

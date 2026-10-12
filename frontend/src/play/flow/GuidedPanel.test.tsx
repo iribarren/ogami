@@ -400,6 +400,7 @@ describe('the guided panel', () => {
       sceneType: null,
       sceneTypeName: null,
       hook: null,
+      cast: [],
     }
     renderGuided(
       {

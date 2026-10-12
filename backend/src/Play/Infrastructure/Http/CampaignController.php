@@ -8,6 +8,7 @@ use App\Identity\Application\AuthenticatedUser;
 use App\Play\Application\CampaignIdGenerator;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CreateCampaign;
+use App\Play\Application\EditCurrentSceneCast;
 use App\Play\Application\EndSession;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\ListMyCampaigns;
@@ -23,7 +24,10 @@ use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
 use App\Play\Domain\Campaign\InvalidCampaignName;
+use App\Play\Domain\Campaign\InvalidSceneCast;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
+use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
@@ -57,6 +61,7 @@ final readonly class CampaignController
     private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name", a string "gameSystemKey" and, to play a Flow, a string "flowKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
     private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", a string "sceneType" or both, such as {"title": "At the gate"} or {"sceneType": "legwork"}.';
     private const string MALFORMED_SCENE_TYPE = 'Send a JSON object with a string "sceneType", such as {"sceneType": "firefight"}.';
+    private const string MALFORMED_CAST = 'Send a JSON object with a list of strings "npcIds", such as {"npcIds": ["0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"]}.';
     private const string MALFORMED_TRACKER = 'Send a JSON object with an integer "value", such as {"value": 3}.';
 
     public function __construct(
@@ -260,6 +265,45 @@ final readonly class CampaignController
 
         $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
         $scene = array_last(array_last($sessions)->scenes ?? []) ?? throw new \LogicException('The current scene was just switched.');
+
+        return new JsonResponse(SceneResponse::fromView($scene));
+    }
+
+    #[Route('/api/campaigns/{campaignId}/scenes/current/cast', name: 'api_campaigns_scenes_current_cast', methods: ['PUT'])]
+    #[OA\Put(operationId: 'editSceneCast', summary: 'Replace the cast of the current scene of one of my campaigns')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: EditSceneCastRequest::class)))]
+    #[OA\Response(response: 200, description: 'The current scene with its new cast; its number, title and journal entries stay.', content: new OA\JsonContent(ref: new Model(type: SceneResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or "npcIds" is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or an id is not an NPC of the campaign (a blank or malformed one included).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign has no current scene, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'An NPC is listed twice.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function editSceneCast(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the cast as JSON.', self::MALFORMED_CAST);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $npcIds = $body['npcIds'] ?? null;
+        if (!$this->isListOfStrings($npcIds)) {
+            return $this->error(self::MALFORMED_CAST, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $this->commandBus->dispatch(new EditCurrentSceneCast($campaignId, $user->id(), $npcIds));
+        } catch (CampaignNotFound|InvalidNpc|UnknownNpc $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (NoCurrentScene|CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (InvalidSceneCast $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
+        $scene = array_last(array_last($sessions)->scenes ?? []) ?? throw new \LogicException('The cast of the current scene was just edited.');
 
         return new JsonResponse(SceneResponse::fromView($scene));
     }

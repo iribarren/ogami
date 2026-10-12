@@ -145,6 +145,7 @@ describe('the Play screen', () => {
               sceneType: null,
               sceneTypeName: null,
               hook: null,
+              cast: [],
             },
           ],
           endedAt: null,

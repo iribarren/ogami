@@ -12,6 +12,7 @@ use App\Play\Application\CampaignJournal;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignSummaryView;
 use App\Play\Application\CampaignView;
+use App\Play\Application\CastMemberView;
 use App\Play\Application\CloseNpc;
 use App\Play\Application\CloseNpcHandler;
 use App\Play\Application\CloseThread;
@@ -20,6 +21,8 @@ use App\Play\Application\CompleteFlowStep;
 use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
+use App\Play\Application\EditCurrentSceneCast;
+use App\Play\Application\EditCurrentSceneCastHandler;
 use App\Play\Application\EditNpc;
 use App\Play\Application\EditNpcHandler;
 use App\Play\Application\EditThread;
@@ -72,6 +75,8 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
+use App\Play\Domain\Campaign\InvalidSceneCast;
+use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
@@ -115,6 +120,7 @@ final class PlayContext implements Context
     private readonly EditNpcHandler $editNpc;
     private readonly CloseNpcHandler $closeNpc;
     private readonly ReopenNpcHandler $reopenNpc;
+    private readonly EditCurrentSceneCastHandler $editCurrentSceneCast;
     private readonly AddThreadHandler $addThread;
     private readonly EditThreadHandler $editThread;
     private readonly CloseThreadHandler $closeThread;
@@ -154,6 +160,7 @@ final class PlayContext implements Context
         $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
         $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
         $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
+        $this->editCurrentSceneCast = new EditCurrentSceneCastHandler($owned, $campaigns);
         $this->addThread = new AddThreadHandler($owned, $campaigns, $this->releases);
         $this->editThread = new EditThreadHandler($owned, $campaigns, $this->releases);
         $this->closeThread = new CloseThreadHandler($owned, $campaigns);
@@ -319,6 +326,41 @@ final class PlayContext implements Context
     public function iTryToAddTheNpcWithTheTag(string $name, string $tag): void
     {
         $this->attempt(fn () => ($this->addNpc)(new AddNpc($this->campaignId(), self::ME, 'npc-'.++$this->npcCount, $name, null, [$tag], [], 1)));
+    }
+
+    #[When('I set the cast of the current scene to :names')]
+    public function iSetTheCastOfTheCurrentScene(string $names): void
+    {
+        $ids = array_map(fn (string $name): string => $this->npc($name)->id, explode(', ', $names));
+        $this->attempt(fn () => ($this->editCurrentSceneCast)(new EditCurrentSceneCast($this->campaignId(), self::ME, $ids)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I try to set the cast of the current scene to the ids :ids')]
+    public function iTryToSetTheCastToTheIds(string $ids): void
+    {
+        $this->attempt(fn () => ($this->editCurrentSceneCast)(new EditCurrentSceneCast($this->campaignId(), self::ME, explode(', ', $ids))));
+    }
+
+    #[Then('the cast of the current scene is :names')]
+    public function theCastOfTheCurrentSceneIs(string $names): void
+    {
+        $session = array_last($this->myCampaign()->sessions);
+        $scene = null === $session ? null : array_last($session->scenes);
+        Assert::assertNotNull($scene);
+        Assert::assertSame(explode(', ', $names), array_map(static fn (CastMemberView $member): string => $member->name, $scene->cast));
+    }
+
+    #[Then('I am told that no NPC of the campaign has that id')]
+    public function iAmToldNoNpcHasThatId(): void
+    {
+        Assert::assertInstanceOf(UnknownNpc::class, $this->failure);
+    }
+
+    #[Then('I am told that an NPC is in the cast twice')]
+    public function iAmToldAnNpcIsInTheCastTwice(): void
+    {
+        Assert::assertInstanceOf(InvalidSceneCast::class, $this->failure);
     }
 
     #[When('I rename the NPC :name to :newName with the agenda :agenda and the weight :weight')]
@@ -798,7 +840,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast $failure) {
             $this->failure = $failure;
         }
     }

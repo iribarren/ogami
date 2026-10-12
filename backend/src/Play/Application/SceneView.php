@@ -7,10 +7,11 @@ namespace App\Play\Application;
 final readonly class SceneView
 {
     /**
-     * @param string  $kind          "scene" or "hook"
-     * @param ?string $sceneType     the Scene Type key; null for a hook Scene or a scene without one
-     * @param ?string $sceneTypeName the Scene Type name in the pinned release
-     * @param ?string $hook          a hook Scene's hook: "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing" or "worldTurn"
+     * @param string               $kind          "scene" or "hook"
+     * @param ?string              $sceneType     the Scene Type key; null for a hook Scene or a scene without one
+     * @param ?string              $sceneTypeName the Scene Type name in the pinned release
+     * @param ?string              $hook          a hook Scene's hook: "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing" or "worldTurn"
+     * @param list<CastMemberView> $cast          the NPCs in the Scene, in cast order; empty for a Scene stored before casts existed
      */
     public function __construct(
         public int $number,
@@ -20,6 +21,7 @@ final readonly class SceneView
         public ?string $sceneType = null,
         public ?string $sceneTypeName = null,
         public ?string $hook = null,
+        public array $cast = [],
     ) {
     }
 }

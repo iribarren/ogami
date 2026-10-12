@@ -126,7 +126,7 @@ final class CampaignScenesApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(['error' => 'The current scene is a "worldTurn" hook scene: only a scene of play has a Scene Type to switch.'], $this->json());
-        self::assertSame([['number' => 1, 'title' => 'The world moves', 'startedAt' => self::STARTED_AT, 'kind' => 'hook', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => 'worldTurn']], $this->scenes($id));
+        self::assertSame([['number' => 1, 'title' => 'The world moves', 'startedAt' => self::STARTED_AT, 'kind' => 'hook', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => 'worldTurn', 'cast' => []]], $this->scenes($id));
     }
 
     /**
@@ -168,7 +168,7 @@ final class CampaignScenesApiTest extends WebTestCase
      */
     private function scene(int $number, string $title, ?string $sceneType, ?string $sceneTypeName): array
     {
-        return ['number' => $number, 'title' => $title, 'startedAt' => self::STARTED_AT, 'kind' => 'scene', 'sceneType' => $sceneType, 'sceneTypeName' => $sceneTypeName, 'hook' => null];
+        return ['number' => $number, 'title' => $title, 'startedAt' => self::STARTED_AT, 'kind' => 'scene', 'sceneType' => $sceneType, 'sceneTypeName' => $sceneTypeName, 'hook' => null, 'cast' => []];
     }
 
     /**

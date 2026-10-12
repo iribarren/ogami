@@ -34,6 +34,7 @@ use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
@@ -893,7 +894,7 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->pickedNames());
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags));
     }
 
     /**

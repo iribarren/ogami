@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -43,7 +44,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $campaign->name(),
             $campaign->createdAt(),
             new PinnedReleaseView($pinned->gameSystemKey(), $pinned->gameSystemName(), $pinned->releaseVersion()),
-            array_map(static fn (Session $session): SessionView => self::session($session, $snapshot), $campaign->sessions()),
+            array_map(static fn (Session $session): SessionView => self::session($session, $snapshot, $campaign), $campaign->sessions()),
             $campaign->currentSession()?->number(),
             $campaign->currentScene()?->number(),
             $this->oracleTables($snapshot),
@@ -77,17 +78,20 @@ final readonly class GetCampaignHandler implements QueryHandler
         );
     }
 
-    private static function session(Session $session, GameSystemSnapshot $snapshot): SessionView
+    private static function session(Session $session, GameSystemSnapshot $snapshot, Campaign $campaign): SessionView
     {
         return new SessionView(
             $session->number(),
             $session->startedAt(),
-            array_map(static fn (Scene $scene): SceneView => self::scene($scene, $snapshot), $session->scenes()),
+            array_map(static fn (Scene $scene): SceneView => self::scene($scene, $snapshot, $campaign), $session->scenes()),
             $session->endedAt(),
         );
     }
 
-    private static function scene(Scene $scene, GameSystemSnapshot $snapshot): SceneView
+    /**
+     * @throws \LogicException when the cast names an NPC the campaign does not hold (NPCs are never deleted, so the stored data is corrupt)
+     */
+    private static function scene(Scene $scene, GameSystemSnapshot $snapshot, Campaign $campaign): SceneView
     {
         $sceneType = $scene->sceneType();
 
@@ -99,6 +103,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $sceneType,
             null === $sceneType ? null : $snapshot->sceneType($sceneType)?->name,
             $scene->hook()?->value,
+            array_map(static fn (NpcId $id): CastMemberView => new CastMemberView($id->toString(), $campaign->npc($id)?->name() ?? throw new \LogicException(\sprintf('Scene %d casts NPC "%s", which the campaign does not hold.', $scene->number(), $id->toString()))), $scene->cast()),
         );
     }
 

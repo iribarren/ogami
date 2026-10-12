@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Play;
 
 use App\Play\Application\GetGameSystemSnapshot;
+use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\LikelihoodAnswer;
@@ -85,10 +86,18 @@ final class PresetsTest extends KernelTestCase
         $this->assertWeightedTableResolves($snapshot, 'meaning-subject', 30, 'A debt', 'A key');
         $this->assertRangedTableResolves($snapshot, 'random-event-focus', 'Something changes far away', 'A quiet moment hides a clue');
 
+        // Tags the picks filter by, the parchment Theme, the journal as the Flow's opening view.
+        self::assertSame(['rival', 'ally'], array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, $snapshot->tags()));
+        self::assertSame(['parchment', FlowView::Journal], [$snapshot->theme(), $snapshot->defaultFlow()?->defaultView]);
+
         self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
         $fate = $snapshot->likelihoodOracle('fate');
         self::assertSame('Fate question', $fate->name());
         $oracle = $fate->oracle();
+        // Doubles within the chaos factor offer the random event table (ADR 0019).
+        self::assertSame('random-event-focus', $oracle->randomEventTable());
+        self::assertSame('random-event-focus', $oracle->ask('even', 5, new ScriptedRandomNumberGenerator(44))->randomEvent());
+        self::assertNull($oracle->ask('even', 5, new ScriptedRandomNumberGenerator(66))->randomEvent());
         self::assertSame([1, 9, 5, 5], [$oracle->chaos()?->min(), $oracle->chaos()?->max(), $oracle->chaos()?->neutral(), $oracle->chaos()?->shiftPerPoint()]);
         self::assertSame([
             'impossible' => 5,

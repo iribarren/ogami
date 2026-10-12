@@ -294,7 +294,7 @@ sceneClosing
 | A journal-first flow with no world turn | ADR 0017 §8 |
 
 **Notes**
-- Whether fate-question doubles trigger random events is an open question, settled in feature 9.
+- Fate-question doubles ([ADR 0019](../adr/0019-random-events-from-fate-question-doubles.md)): the preset's `fate` likelihood oracle declares `randomEvent: {table: "random-event-focus"}`. A double within the chaos factor flags the answer and offers a one-click roll of that table; no flow step runs. The `mythic-style` preset (`backend/presets/mythic-style.json`) ships this example with richer tables.
 - The random event steps are written once, in the scene opening. Reusable procedures that could also run from the oracle panel are deferred (vision open question).
 
 ## 4. Cyberpunk RED campaign in acts

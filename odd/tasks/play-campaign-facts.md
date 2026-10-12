@@ -119,6 +119,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: slice 4 — `make api`: OpenAPI spec and TS types gain `fillFactSlot` and `FillFactSlotRequest`.
 - 2026-10-12: slice 5 — slice 4 review fixes: API tests for `links: {}` on a fact edit (400, links kept) and for the guarded read after a save (release gone → 500, fact saved); `FillFactSlotHandlerTest` keeps a deep snapshot and covers a refused refill. All passed at once (the code was right).
 - 2026-10-12: slice 5 — T5 FlowRun facts: `fillFact` applies in effect order (text slot: rendered `text`, default `{answer}`, cut to 2000; `npc` / `thread` slot: first picked item of its kind; refill keeps id and links; 500 limit adds none; a held generated fact id is `FactAlreadyExists`, 409, all or nothing), `{fact:key}` reads the slot value when rendered and an unknown key fails closed, step view `fills` (`StepEffects` walks step, option, band, branch, `otherwise`, pick outcome and table entry effects); unit, handler and API tests. RED observed first (placeholder and FlowRun unit tests); the handler and API tests were written with the code.
+- 2026-10-12: slice 5 — `make api`: OpenAPI spec and TS types gain the step `fills` (`FactSlotResponse` list); the flow step fixture gains `fills: []`.
 
 ## Reviews
 

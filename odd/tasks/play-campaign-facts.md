@@ -1,7 +1,7 @@
 # Feature: play-campaign-facts
 
 - **Locator:** `odd/tasks/play-campaign-facts.md` · Engram topic `odd/play-campaign-facts/tasks`
-- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-6-ui` (from `main` `1680718`) · **Status:** slice 6 written, review pending
+- **Issue:** #75 (closed) · **Branches:** slices 1–6 merged to `main` (last merge `0a85785`, PR #81) · **Status:** delivered
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-threads-npcs` (PRs #64–#74)
@@ -101,8 +101,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 | T4a | 3 | Campaign response gains `factSlots` and `facts` (values and link names resolved); commands, handlers and endpoints to add a free fact and edit a fact (free: label, text, links; slot: links); API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 3, 4+ non-trivial files) | [x] | `3fed407`, `0692c2c`, `b1b277c`, `421836a` |
 | T4b | 4 | Fill / refill a slot over HTTP (text, existing NPC / Thread, new one by name): command, handler, endpoint; editing a slot fact's links end to end; API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 4, 4+ non-trivial files) | [x] | `c2a9b6e`, `ac547df`, `073b648` |
 | T5 | 5 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text (an unknown key fails closed: slice 1 review), step view `fills` and its HTTP field; unit, integration and API tests; `make api` | delegated writer (slice 5, 4+ non-trivial files) | [x] | `70af06e`, `58e3140`, `bb98bec` |
-| T6 | 6 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | delegated writer (slice 6, 4+ non-trivial files) | [x] | |
-| T7 | 6 | Glossary and contract doc wrap-up; e2e smoke for facts | delegated writer (slice 6, 4+ non-trivial files) | [x] | |
+| T6 | 6 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | delegated writer (slice 6, 4+ non-trivial files) | [x] | `fe4d96b`, `18e1916` |
+| T7 | 6 | Glossary and contract doc wrap-up; e2e smoke for facts | delegated writer (slice 6, 4+ non-trivial files) | [x] | `eebe1bd` |
 
 ## Progress
 
@@ -123,6 +123,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: slice 6 — slice 5 review fixes: a text-slot `fillFact` without `text` and without an answer changes nothing (guard added; the test passed at once, because a blank pick answer already rendered empty and a null answer is unreachable); `Placeholders` takes `facts` as a required constructor argument, callers updated.
 - 2026-10-12: slice 6 — T6 UI: `play/facts` (`useFacts`, `FactsPanel`, fixtures, stories) with the Facts section beside the journal (slots with hints, fill by text / existing NPC or Thread / new by name, free facts add and edit, links edit with no self, duplicate or more than 20), `Facts: …` line on NPC and Thread rows, `Fills:` list on the step card; Vitest tests. RED observed first (panel tests, row and step card tests); a free fact edit first sent link names, which the test caught.
 - 2026-10-12: slice 6 — T7 wrap-up: glossary (`fillFact`, `{fact:key}`, Free fact, Fact link), contract doc says Play applies the fact parts (stale "not applied yet" text replaced), flow examples legend; e2e smoke `play-facts.spec.ts` (free fact add, edit, link to an NPC, reload; no preset declares Fact slots, so no slot fill) passes with `make e2e`.
+- 2026-10-12: feature delivered — PR #81 merged (`0a85785`), issue #75 closed; slice 6 review recorded.
 
 ## Reviews
 
@@ -133,7 +134,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 | 3 | `review-764b38d1ef4e9686` (`3fed407`..`0692c2c`), `review-ed3087f7f6c5f028` (`b1b277c`..`421836a`) | `3fed407`, `0692c2c`, `b1b277c`, `421836a` | Approved (two candidates). Non-blocking findings, fixed in slice 4: a JSON object `{}` as `links` decodes to an empty list and clears the links instead of a 400 (`CampaignFactsController.php:150`); no API test for an unreadable pinned release on the fact endpoints; `AddFactHandler::links` uses `FactLinkKind::from` (undeclared `ValueError` outside HTTP); the post-save `GetCampaign` read is unguarded (a failure there is a 500 after a save); `GetCampaignHandler` fail-closed branches lack unit tests; `UuidFactIdGenerator` lacks a test | [#78](https://github.com/iribarren/ogami/pull/78) |
 | 4 | `review-f9fc9e02267551c2` | `c2a9b6e`, `ac547df`, `073b648` | Approved. Non-blocking suggestions, to fix in slice 5: no `PUT /facts/{factId}` test proves that `links: {}` is a 400 and keeps the links (`CampaignFactsController.php:129`); `FillFactSlotHandlerTest` keeps the starting state with a shallow `clone` in the refused-fill test and never covers a refused refill of an already-filled slot (`FillFactSlotHandlerTest.php:118-119`); no test reaches the guarded read after a successful save (`CampaignFactsController.php:224-230`) | [#79](https://github.com/iribarren/ogami/pull/79) |
 | 5 | `review-5e97df0b3b5fc33e` | `70af06e`, `58e3140`, `bb98bec` | Approved. Non-blocking warnings, to fix in slice 6: a `text` slot `fillFact` without `text` on a step with no answer fills the slot with the empty-answer placeholder instead of changing nothing (`FlowRun.php:969-971`); Play `Placeholders` defaults `facts` to `[]`, so a caller that omits it throws on every `{fact:key}` (make it required) | [#80](https://github.com/iribarren/ogami/pull/80) |
+| 6 | `review-384e9773829321da` | `fe4d96b`, `18e1916`, `eebe1bd` | Approved. Non-blocking suggestions, left as follow-ups: `LinksForm` matches draft links by id alone when filtering options and removing links, instead of kind and id like `linkedFacts` in `ListPanel` (`FactsPanel.tsx:443-449`); no test covers the campaign refetch after a 409 on a fact request (`useFacts.ts:33-37`) | [#81](https://github.com/iribarren/ogami/pull/81) |
 
 ## Next step
 
-Slice 6 (T6, T7) is being written on `feat/play-campaign-facts-6-ui`: slice 5 review fixes first, then the Facts panel, linked facts on NPC and Thread rows, the step card's slots, then the glossary and contract wrap-up and the e2e smoke. Then review and the last PR (`Closes #75`).
+None: the feature is delivered. Optional follow-ups from the slice 6 review: `LinksForm` should match links on kind and id (`FactsPanel.tsx:443-449`); a test for the campaign refetch after a 409 on a fact request (`useFacts.ts:33-37`).

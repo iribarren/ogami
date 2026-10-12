@@ -57,6 +57,14 @@ export function GuidedBody({ campaign, flowRun, command, onCommand }: PartProps)
   )
 }
 
+/**
+ * "Move on" in words that say what it does: it ends the current phase, which for the last phase ends
+ * the guidance. A leading "The" of the phase name is dropped ("End the start phase").
+ */
+function endPhaseLabel(phase: string): string {
+  return `End the ${phase.replace(/^the\s+/i, '')} phase`
+}
+
 /** The controls to end the scene, move on, end the session, and to pause or resume guidance. */
 export function GuidedControls({ campaign, flowRun, command, onCommand }: PartProps) {
   const active = flowRun.status === 'active'
@@ -84,7 +92,7 @@ export function GuidedControls({ campaign, flowRun, command, onCommand }: PartPr
               onCommand({ type: 'moveOn', phase: flowRun.progress?.phaseKey ?? '' })
             }}
           >
-            Move on
+            {endPhaseLabel(flowRun.progress.phase)}
           </Button>
         )}
         {active && flowRun.canEndSession && (

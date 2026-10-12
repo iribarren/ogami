@@ -7,8 +7,10 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
@@ -28,6 +30,9 @@ use PHPUnit\Framework\Attributes\Test;
 #[CoversClass(Campaign::class)]
 final class MythicStylePresetFlowTest extends FlowRunTestCase
 {
+    /** What the "What happens instead?" step asks when nobody and nothing was picked. */
+    private const string NO_PICK_PROMPT = 'Describe what interrupts the expected scene.';
+
     private GameSystemSnapshot $release;
 
     protected function setUp(): void
@@ -57,7 +62,7 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
     public static function focusBranches(): iterable
     {
         yield 'a rival acts' => [10, 'rival'];
-        yield 'a stranger appears' => [25, 'instead'];
+        yield 'a stranger appears' => [25, 'instead-npc'];
         yield 'a lead gets clearer' => [30, 'lead'];
         yield 'a lead goes cold' => [40, 'lead'];
         yield 'a loose end settles' => [50, 'loose'];
@@ -88,6 +93,8 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('action', StepResult::table($this->release->resolveOracleTable('meaning-action', new ScriptedRandomNumberGenerator(1))), $this->release, self::at());
         $campaign->completeFlowStep('subject', StepResult::table($this->release->resolveOracleTable('meaning-subject', new ScriptedRandomNumberGenerator(1))), $this->release, self::at());
         self::assertSame(['sceneOpening', 'instead'], self::position($campaign));
+        // Nobody was picked: the prompt names no one and has no empty placeholder.
+        self::assertSame(self::NO_PICK_PROMPT, $campaign->flowRunView($this->release)?->step?->prompt);
 
         $campaign->completeFlowStep('instead', self::prompt('The bridge is out'), $this->release, self::at());
         self::assertSame(['open', null, 'The bridge is out'], [...self::position($campaign), $campaign->currentScene()?->title()]);
@@ -103,7 +110,8 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
 
         self::assertSame(['Mara', 'A new rival'], array_map(static fn (Npc $npc): string => $npc->name(), $campaign->npcs()));
         self::assertSame(['rival'], $campaign->npcs()[1]->tags());
-        self::assertSame(['sceneOpening', 'instead'], self::position($campaign));
+        self::assertSame(['sceneOpening', 'instead-npc'], self::position($campaign));
+        self::assertSame('Involve A new rival.', $campaign->flowRunView($this->release)?->step?->prompt);
     }
 
     #[Test]
@@ -113,12 +121,49 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('interrupt', StepResult::table($this->focusRoll(50)), $this->release, self::at());
 
         $thread = $campaign->threads()[0];
-        $campaign->completeFlowStep('loose', StepResult::pick(ItemKind::Thread, [new \App\Play\Domain\Campaign\FlowRun\PickedItem($thread->id()->toString(), $thread->name())]), $this->release, self::at());
+        $campaign->completeFlowStep('loose', StepResult::pick(ItemKind::Thread, [new PickedItem($thread->id()->toString(), $thread->name())]), $this->release, self::at());
         self::assertSame(['sceneOpening', 'close'], self::position($campaign));
         $campaign->completeFlowStep('close', StepResult::choice('yes'), $this->release, self::at());
 
-        self::assertSame(['sceneOpening', 'instead'], self::position($campaign));
+        self::assertSame(['sceneOpening', 'instead-thread'], self::position($campaign));
+        self::assertSame('Tie it to Find the caravan.', $campaign->flowRunView($this->release)?->step?->prompt);
         self::assertFalse($campaign->threads()[0]->isOpen());
+    }
+
+    /**
+     * @return iterable<string, array{int, string, ?string, string, string}> the focus roll, its pick
+     *                                                                       step, the NPC or Thread
+     *                                                                       picked (null for nobody),
+     *                                                                       then the step it leads to
+     *                                                                       and that step's prompt
+     */
+    public static function pickPaths(): iterable
+    {
+        yield 'a rival picked' => [10, 'rival', 'Vex', 'instead-npc', 'Involve Vex.'];
+        yield 'an ally picked' => [75, 'ally', 'Ana', 'instead-npc', 'Involve Ana.'];
+        yield 'no ally to pick' => [75, 'ally', null, 'instead', self::NO_PICK_PROMPT];
+        yield 'a lead picked' => [30, 'lead', 'Find the caravan', 'instead-thread', 'Tie it to Find the caravan.'];
+        yield 'a cold lead picked' => [40, 'lead', 'Find the caravan', 'instead-thread', 'Tie it to Find the caravan.'];
+    }
+
+    #[Test]
+    #[DataProvider('pickPaths')]
+    public function aPickLeadsToWhatHappensInsteadWordedForWhatWasPicked(int $total, string $step, ?string $picked, string $next, string $prompt): void
+    {
+        $campaign = $this->interruptedScene();
+        if (\in_array($picked, ['Vex', 'Ana'], true)) {
+            $campaign->addNpc(NpcId::fromString(mb_strtolower($picked)), $picked, null, ['Vex' === $picked ? 'rival' : 'ally'], [], 1, $this->release);
+        }
+
+        $campaign->completeFlowStep('interrupt', StepResult::table($this->focusRoll($total)), $this->release, self::at());
+        $kind = \in_array($step, ['rival', 'ally'], true) ? ItemKind::Npc : ItemKind::Thread;
+        $items = ItemKind::Npc === $kind
+            ? array_map(static fn (Npc $npc): PickedItem => new PickedItem($npc->id()->toString(), $npc->name()), $campaign->npcs())
+            : array_map(static fn (Thread $thread): PickedItem => new PickedItem($thread->id()->toString(), $thread->name()), $campaign->threads());
+        $campaign->completeFlowStep($step, StepResult::pick($kind, array_values(array_filter($items, static fn (PickedItem $item): bool => $item->name === $picked))), $this->release, self::at());
+
+        self::assertSame(['sceneOpening', $next], self::position($campaign));
+        self::assertSame($prompt, $campaign->flowRunView($this->release)?->step?->prompt);
     }
 
     #[Test]
@@ -127,6 +172,16 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
         $campaign = $this->firstAdventureScene();
 
         self::assertSame([FlowRunStage::Scene, 'sceneOpening', 'expected', 2], [self::flowRunOf($campaign)->stage(), ...self::position($campaign), $campaign->currentScene()?->number()]);
+    }
+
+    #[Test]
+    public function theSceneCheckRollsAtOrUnderTheChaosFactorAndTheSceneTypeFitsThePremiseToo(): void
+    {
+        $campaign = $this->firstAdventureScene();
+        $campaign->completeFlowStep('expected', self::prompt('A quiet market'), $this->release, self::at());
+
+        self::assertSame('Roll at or under the chaos factor (5) and the scene changes.', $campaign->flowRunView($this->release)?->step?->tip);
+        self::assertSame('Play out one scene.', $this->release->sceneType('scene')?->purpose);
     }
 
     #[Test]

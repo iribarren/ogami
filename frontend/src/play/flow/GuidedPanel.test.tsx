@@ -333,7 +333,8 @@ describe('the guided panel', () => {
     const visible = async (flowRun: FlowRun) => {
       renderGuided(guided(flowRun))
       const guide = await panel()
-      return ['End scene', 'Move on', 'End session', 'Pause guidance', 'Resume guidance'].filter(
+      const names = ['End scene', 'End the start phase', 'End session', 'Pause guidance']
+      return [...names, 'Resume guidance'].filter(
         (name) => guide.queryByRole('button', { name }) !== null,
       )
     }
@@ -352,7 +353,7 @@ describe('the guided panel', () => {
 
     it('move on from the phase only when the server allows it, naming the phase by its key', async () => {
       const user = userEvent.setup()
-      expect(await visible(atTheScenePick({}))).not.toContain('Move on')
+      expect(await visible(atTheScenePick({}))).not.toContain('End the start phase')
       cleanup()
       const { sent } = renderGuided(guided({ ...atTheScenePick(), canMoveOn: true }), {
         'flow-run/move-on': () =>
@@ -360,10 +361,21 @@ describe('the guided panel', () => {
       })
 
       const guide = await panel()
-      await user.click(await guide.findByRole('button', { name: 'Move on' }))
+      await user.click(await guide.findByRole('button', { name: 'End the start phase' }))
 
       expect(await guide.findByRole('alert')).toHaveTextContent('Phase "start" plays once.')
       expect(sent['flow-run/move-on']).toEqual({ phase: 'start' })
+    })
+
+    it.each([
+      ['Adventure', 'End the Adventure phase'],
+      ['The start', 'End the start phase'],
+    ])('name the phase that moving on ends: %s', async (phase, label) => {
+      const flowRun = atTheScenePick()
+      const progress = flowRun.progress === null ? null : { ...flowRun.progress, phase }
+      renderGuided(guided({ ...flowRun, progress, canMoveOn: true }))
+
+      expect(await (await panel()).findByRole('button', { name: label })).toBeInTheDocument()
     })
 
     it('end the scene by its number, then show the campaign it answers with', async () => {

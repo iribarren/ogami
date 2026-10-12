@@ -158,6 +158,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/scenes/current/cast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the cast of the current scene of one of my campaigns */
+        put: operations["editSceneCast"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/trackers/{trackerKey}": {
         parameters: {
             query?: never;
@@ -686,6 +703,15 @@ export interface components {
             /** @example 3 */
             version: number;
         };
+        ItemRefResponse: {
+            /**
+             * @description The id of the NPC or Thread.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b
+             */
+            id: string;
+            /** @example Vega */
+            name: string;
+        };
         SceneResponse: {
             /**
              * @description Numbered from 1 within its session.
@@ -718,6 +744,8 @@ export interface components {
              * @enum {string|null}
              */
             hook: "sessionOpening" | "sessionClosing" | "phaseOpening" | "phaseClosing" | "worldTurn" | null;
+            /** @description The NPCs in the scene, in cast order, named as the campaign names them now; closed NPCs stay. Empty for a scene without a cast. */
+            cast: components["schemas"]["ItemRefResponse"][];
         };
         SessionResponse: {
             /**
@@ -866,6 +894,37 @@ export interface components {
             /** @example Yes */
             label: string;
         };
+        PickTagResponse: {
+            /** @example leader */
+            key: string;
+            /** @example Leader */
+            label: string;
+        };
+        FlowPickStepResponse: {
+            /**
+             * @description The kind of item picked.
+             * @example npc
+             * @enum {string}
+             */
+            of: "npc" | "thread";
+            /**
+             * @description Drawn by the server, or chosen by the player.
+             * @example choose
+             * @enum {string}
+             */
+            mode: "random" | "choose";
+            /**
+             * @description The fewest items to pick; with fewer candidates the step completes with nothing picked.
+             * @example 1
+             */
+            min: number;
+            /** @example 2 */
+            max: number;
+            /** @description The release Tags the items must carry, all of them; empty matches any open item. */
+            tags: components["schemas"]["PickTagResponse"][];
+            /** @description The open items of the kind that carry all the Tags, in list order; empty when none match. */
+            candidates: components["schemas"]["ItemRefResponse"][];
+        };
         FlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -874,7 +933,7 @@ export interface components {
              * @example prompt
              * @enum {string}
              */
-            kind: "prompt" | "oracle" | "table" | "roll" | "choice";
+            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick";
             /** @example Who is on the crew? */
             title: string;
             /**
@@ -911,6 +970,8 @@ export interface components {
             dice: string | null;
             /** @description The options to pick from (choice step); empty for the other kinds. */
             options: components["schemas"]["FlowStepOptionResponse"][];
+            /** @description What the step picks from (pick step); null for the other kinds. */
+            pick: components["schemas"]["FlowPickStepResponse"] | null;
         };
         SceneTypeSummaryResponse: {
             /** @example legwork */
@@ -1149,6 +1210,10 @@ export interface components {
              */
             sceneType: string;
         };
+        EditSceneCastRequest: {
+            /** @description The whole new cast of the current scene, in cast order: NPCs of the campaign, closed ones allowed, none twice. An empty list empties the cast. */
+            npcIds: string[];
+        };
         SetTrackerValueRequest: {
             /**
              * @description Clamped to the Tracker's range (min..max, 0..segments for a clock).
@@ -1239,6 +1304,8 @@ export interface components {
              * @example 5
              */
             chaosFactor?: number | null;
+            /** @description Pick step in mode choose: the ids of the candidates chosen, between the step's minimum and maximum, none twice; an empty list when nothing matches. Must be omitted or null in mode random. */
+            pickedIds?: string[] | null;
         };
         SkipFlowStepRequest: {
             /**
@@ -1467,6 +1534,23 @@ export interface components {
              */
             label: string;
         };
+        PickContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "pick";
+            /**
+             * @description The kind of item picked.
+             * @example npc
+             * @enum {string}
+             */
+            of: "npc" | "thread";
+            /** @description The keys of the release Tags the step asked for, as they were stored; empty when it asked for none. */
+            tags: string[];
+            /** @description The items picked, in the order picked, named as they were at pick time; empty when nothing matched. */
+            picked: components["schemas"]["ItemRefResponse"][];
+        };
         JournalFlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -1491,8 +1575,8 @@ export interface components {
              * @description The same as `content.kind`.
              * @enum {string}
              */
-            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice";
-            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"];
+            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"];
             /** @description The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand. */
             flowStep: components["schemas"]["JournalFlowStepResponse"] | null;
         };
@@ -2332,6 +2416,95 @@ export interface operations {
             };
         };
     };
+    editSceneCast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditSceneCastRequest"];
+            };
+        };
+        responses: {
+            /** @description The current scene with its new cast; its number, title and journal entries stay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or "npcIds" is not a list of strings. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or an id is not an NPC of the campaign (a blank or malformed one included). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An NPC is listed twice. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     setTrackerValue: {
         parameters: {
             query?: never;
@@ -3031,7 +3204,7 @@ export interface operations {
                     "application/json": components["schemas"]["CampaignResponse"];
                 };
             };
-            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", or a non-integer "chaosFactor". */
+            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", or "pickedIds" that is not a list of strings. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3067,7 +3240,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile (or took the generated entry id). */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC or Thread the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3085,7 +3258,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the step is a condition step. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -9,6 +9,10 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactFill;
+use App\Play\Domain\Campaign\Facts\FactId;
+use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
@@ -22,10 +26,13 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
+use App\Play\Infrastructure\Persistence\Doctrine\CampaignFactsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
@@ -48,6 +55,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 #[CoversClass(CampaignFlowRunType::class)]
 #[CoversClass(CampaignNpcsType::class)]
 #[CoversClass(CampaignThreadsType::class)]
+#[CoversClass(CampaignFactsType::class)]
 final class DoctrineCampaignRepositoryTest extends KernelTestCase
 {
     use CampaignRepositoryContract;
@@ -454,6 +462,85 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function factsRoundTripWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithFacts($id);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(['city', 'prince', 'goal', null, null], array_map(static fn (Fact $fact): ?string => $fact->slot(), $loaded?->facts($this->release()) ?? []));
+        self::assertSame(['facts' => 'jsonb'], $this->entityManager->getConnection()->fetchAllKeyValue(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'play_campaign' AND column_name = 'facts'",
+        ));
+        self::assertEquals(
+            ['id' => 'fact-free', 'slot' => null, 'label' => 'Guild', 'text' => 'Owes a debt', 'subject' => null, 'links' => [['kind' => 'npc', 'id' => 'npc-1'], ['kind' => 'thread', 'id' => 'thread-1'], ['kind' => 'fact', 'id' => 'fact-city']]],
+            $this->storedList($id->toString(), 'facts')[3],
+        );
+        self::assertEquals(
+            ['id' => 'fact-prince', 'slot' => 'prince', 'label' => null, 'text' => null, 'subject' => ['kind' => 'npc', 'id' => 'npc-1'], 'links' => []],
+            $this->storedList($id->toString(), 'facts')[1],
+        );
+    }
+
+    #[Test]
+    public function aChangeToAFactIsSaved(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaignWithFacts($id));
+        $this->forgetLoaded();
+        $campaign = $this->repository->ofId($id);
+        self::assertNotNull($campaign);
+
+        $campaign->fillFactSlot(FactId::fromString('ignored'), 'city', FactFill::text('Brightwater'), $this->release());
+        $campaign->editFact(FactId::fromString('fact-free'), 'The Guild', null, [FactLink::npc(NpcId::fromString('npc-2'))], $this->release());
+        $this->repository->save($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(['Brightwater', 'The Guild'], [$loaded?->fact(FactId::fromString('fact-city'))?->text(), $loaded?->fact(FactId::fromString('fact-free'))?->label()]);
+    }
+
+    #[Test]
+    public function aSaveAfterAFactChangeRefusesAStaleCopy(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add(Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00')));
+        $this->forgetLoaded();
+        $mine = $this->repository->ofId($id);
+        $theirs = $this->campaignsElsewhere()->ofId($id);
+        self::assertNotNull($mine);
+        self::assertNotNull($theirs);
+
+        $theirs->addFreeFact(FactId::fromString('fact-1'), 'Guild', 'Text', [], $this->release());
+        $this->campaignsElsewhere()->save($theirs);
+        $mine->addFreeFact(FactId::fromString('fact-2'), 'Other', 'Text', [], $this->release());
+
+        $this->expectException(CampaignModifiedConcurrently::class);
+
+        $this->repository->save($mine);
+    }
+
+    #[Test]
+    public function aRowStoredBeforeFactsExistedReadsWithNoFacts(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement(
+            "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions, tracker_values) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', ?, 'Old', 'heist', 1, 'Heist', '2026-10-06 10:00:00+00', '[]', '{}')",
+            [self::OWNER],
+        );
+
+        $campaign = $this->repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'));
+
+        self::assertSame([], $campaign?->facts($this->release()));
+        self::assertSame('[]', $connection->fetchOne('SELECT facts FROM play_campaign'));
+    }
+
+    #[Test]
     public function aRowStoredBeforeListsExistedReadsWithNoNpcsOrThreads(): void
     {
         $connection = $this->entityManager->getConnection();
@@ -524,6 +611,36 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'thread blank id' => ['threads', $thread(['id' => '']), 'A Thread id must not be blank.'];
         yield 'thread duplicate id' => ['threads', json_encode([$threadRow([]), $threadRow(['name' => 'Debts'])], \JSON_THROW_ON_ERROR), 'Stored campaign threads: id "thread-1" is listed twice.'];
         yield 'threads over the limit' => ['threads', json_encode(array_map(static fn (int $i): array => ['id' => 'thread-'.$i, 'name' => 'Thread '.$i, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign threads: at most 500 Threads are allowed, got 501.'];
+        $factRow = static fn (array $fields): array => $fields + ['id' => 'fact-1', 'slot' => null, 'label' => 'Guild', 'text' => 'Owes a debt', 'subject' => null, 'links' => []];
+        $fact = static fn (array $fields): string => json_encode([$factRow($fields)], \JSON_THROW_ON_ERROR);
+
+        yield 'facts not a list' => ['facts', '{"a": 1}', 'Stored campaign facts: "facts" must be a list.'];
+        yield 'fact missing id' => ['facts', $fact(['id' => null]), 'Stored campaign facts: "id" must be a string.'];
+        yield 'fact blank id' => ['facts', $fact(['id' => ' ']), 'A fact id must not be blank.'];
+        yield 'fact label not a string' => ['facts', $fact(['label' => 4]), 'Stored campaign facts: "label" must be a string.'];
+        yield 'fact text not a string' => ['facts', $fact(['text' => ['a']]), 'Stored campaign facts: "text" must be a string.'];
+        yield 'fact slot not a string' => ['facts', $fact(['slot' => 3]), 'Stored campaign facts: "slot" must be a string.'];
+        yield 'free fact without a label' => ['facts', $fact(['label' => null]), 'The label must not be blank.'];
+        yield 'free fact with a long text' => ['facts', $fact(['text' => str_repeat('a', 2001)]), 'The text must be at most 2000 characters, got 2001.'];
+        yield 'free fact with a subject' => ['facts', $fact(['subject' => ['kind' => 'npc', 'id' => 'npc-1']]), 'A free fact has no subject.'];
+        yield 'slot fact with a label' => ['facts', $fact(['slot' => 'city']), 'A slot fact has no label; the slot has one.'];
+        yield 'slot fact with a text and a subject' => ['facts', $fact(['slot' => 'city', 'label' => null, 'subject' => ['kind' => 'npc', 'id' => 'npc-1']]), 'A slot fact holds a text or a subject, not both and not neither.'];
+        yield 'slot fact with a fact as subject' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'fact', 'id' => 'fact-2']]), 'A subject is an NPC or a Thread.'];
+        yield 'subject with an unknown kind' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'place', 'id' => 'p']]), 'Stored campaign facts: "subject" must be a link with kind "npc", "thread" or "fact".'];
+        yield 'subject without an id' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'npc']]), 'Stored campaign facts: "id" must be a string.'];
+        yield 'links not a list' => ['facts', $fact(['links' => 'npc-1']), 'Stored campaign facts: "links" must be a list of links.'];
+        yield 'link with an unknown kind' => ['facts', $fact(['links' => [['kind' => 'place', 'id' => 'p']]]), 'Stored campaign facts: "links" must be a link with kind "npc", "thread" or "fact".'];
+        yield 'link without an id' => ['facts', $fact(['links' => [['kind' => 'npc', 'id' => 4]]]), 'Stored campaign facts: "id" must be a string.'];
+        yield 'link listed twice' => ['facts', $fact(['links' => [['kind' => 'npc', 'id' => 'npc-1'], ['kind' => 'npc', 'id' => 'npc-1']]]), 'The npc "npc-1" is linked twice.'];
+        yield 'link to itself' => ['facts', $fact(['links' => [['kind' => 'fact', 'id' => 'fact-1']]]), 'A fact cannot link to itself.'];
+        yield 'too many links' => ['facts', $fact(['links' => array_map(static fn (int $i): array => ['kind' => 'fact', 'id' => 'other-'.$i], range(1, 21))]), 'At most 20 links are allowed, got 21.'];
+        yield 'fact duplicate id' => ['facts', json_encode([$factRow([]), $factRow(['label' => 'Other'])], \JSON_THROW_ON_ERROR), 'Stored campaign facts: id "fact-1" is listed twice.'];
+        yield 'two facts for one slot' => ['facts', json_encode([$factRow(['slot' => 'city', 'label' => null]), $factRow(['id' => 'fact-2', 'slot' => 'city', 'label' => null])], \JSON_THROW_ON_ERROR), 'Stored campaign facts: slot "city" holds two facts.'];
+        yield 'facts over the limit' => ['facts', json_encode(array_map(static fn (int $i): array => ['id' => 'fact-'.$i] + $factRow([]), range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign facts: at most 500 facts are allowed, got 501.'];
+        yield 'fact linking to an NPC the campaign lacks' => ['facts', $fact(['links' => [['kind' => 'npc', 'id' => 'ghost']]]), 'NPC "ghost" not found.'];
+        yield 'fact linking to a Thread the campaign lacks' => ['facts', $fact(['links' => [['kind' => 'thread', 'id' => 'ghost']]]), 'Thread "ghost" not found.'];
+        yield 'fact linking to a fact the campaign lacks' => ['facts', $fact(['links' => [['kind' => 'fact', 'id' => 'ghost']]]), 'Fact "ghost" not found.'];
+        yield 'slot fact whose subject the campaign lacks' => ['facts', $fact(['slot' => 'prince', 'label' => null, 'text' => null, 'subject' => ['kind' => 'npc', 'id' => 'ghost']]), 'NPC "ghost" not found.'];
         yield 'thread missing id' => ['threads', $thread(['id' => null]), 'Stored campaign threads: "id" must be a string.'];
     }
 
@@ -542,13 +659,16 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     /**
-     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType, mixed}>
+     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType|CampaignFactsType, mixed}>
      */
     public static function valuesThatAreNotLists(): iterable
     {
         yield 'npcs: a string' => [new CampaignNpcsType(), 'npc-1'];
         yield 'npcs: a stored-shape array item' => [new CampaignNpcsType(), [['id' => 'npc-1']]];
         yield 'npcs: a thread among them' => [new CampaignNpcsType(), [Thread::of(ThreadId::fromString('thread-1'), 'Vault', [], [], 1)]];
+        yield 'facts: a string' => [new CampaignFactsType(), 'fact-1'];
+        yield 'facts: a stored-shape array item' => [new CampaignFactsType(), [['id' => 'fact-1']]];
+        yield 'facts: an npc among them' => [new CampaignFactsType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
         yield 'threads: a string' => [new CampaignThreadsType(), 'thread-1'];
         yield 'threads: a stored-shape array item' => [new CampaignThreadsType(), [['id' => 'thread-1']]];
         yield 'threads: an npc among them' => [new CampaignThreadsType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
@@ -556,7 +676,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
     #[Test]
     #[DataProvider('valuesThatAreNotLists')]
-    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType $type, mixed $value): void
+    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType|CampaignFactsType $type, mixed $value): void
     {
         $this->expectException(InvalidType::class);
 
@@ -565,7 +685,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
     private function release(): GameSystemSnapshot
     {
-        return new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', 'Someone in the way')]);
+        return new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], factSlots: [new FactSlot('city', 'City', FactSlotType::Text), new FactSlot('prince', 'The Prince', FactSlotType::Npc), new FactSlot('goal', 'Goal', FactSlotType::Thread)], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', 'Someone in the way')]);
     }
 
     /**
@@ -582,6 +702,29 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $campaign->addThread(ThreadId::fromString('thread-1'), 'Rob the vault', ['ally'], ['Heist'], 2, $release);
         $campaign->addThread(ThreadId::fromString('thread-2'), 'Old debts', [], [], 1, $release);
         $campaign->closeThread(ThreadId::fromString('thread-2'));
+
+        return $campaign;
+    }
+
+    /**
+     * A campaign with two NPCs and a Thread and five facts: a slot fact of each type (the NPC
+     * closed, the Thread created by name) and two free facts, one linking to an NPC, a Thread and a
+     * slot fact; facts are stored in creation order, not in release slot order.
+     */
+    private function campaignWithFacts(CampaignId $id): Campaign
+    {
+        $release = $this->release();
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $release);
+        $campaign->addNpc(NpcId::fromString('npc-2'), 'Old Tam', null, [], [], 1, $release);
+        $campaign->closeNpc(NpcId::fromString('npc-1'));
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Rob the vault', [], [], 1, $release);
+        $campaign->fillFactSlot(FactId::fromString('fact-goal'), 'goal', FactFill::newThread(ThreadId::fromString('thread-2'), 'Find the heir'), $release);
+        $campaign->fillFactSlot(FactId::fromString('fact-prince'), 'prince', FactFill::existingNpc(NpcId::fromString('npc-1')), $release);
+        $campaign->fillFactSlot(FactId::fromString('fact-city'), 'city', FactFill::text('Ashford'), $release);
+        $campaign->addFreeFact(FactId::fromString('fact-free'), 'Guild', 'Owes a debt', [FactLink::npc(NpcId::fromString('npc-1')), FactLink::thread(ThreadId::fromString('thread-1')), FactLink::fact(FactId::fromString('fact-city'))], $release);
+        $campaign->addFreeFact(FactId::fromString('fact-plain'), 'Weather', 'Rain', [], $release);
+        $campaign->editFact(FactId::fromString('fact-goal'), null, null, [FactLink::fact(FactId::fromString('fact-free'))], $release);
 
         return $campaign;
     }

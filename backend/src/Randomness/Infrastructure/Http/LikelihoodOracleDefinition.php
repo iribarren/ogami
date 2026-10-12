@@ -38,6 +38,8 @@ final readonly class LikelihoodOracleDefinition
         public ?LikelihoodChaosDefinition $chaos,
         #[OA\Property(description: 'Size of the exceptional bands, in percent; 0 by default.', example: 20, maximum: LikelihoodOracle::MAX_EXCEPTIONAL_PERCENT, minimum: 0)]
         public ?int $exceptionalPercent,
+        #[OA\Property(ref: new Model(type: LikelihoodRandomEventDefinition::class), description: 'Absent when a double is no random event. Needs chaos and 100 sides.', nullable: true)]
+        public ?LikelihoodRandomEventDefinition $randomEvent,
     ) {
     }
 }

@@ -92,6 +92,7 @@ export const lockedDoorAnswer: JournalEntry = {
     likelihood: 'likely',
     likelihoodLabel: 'Likely',
     chaosFactor: 7,
+    randomEvent: null,
   },
 }
 
@@ -115,6 +116,7 @@ export const plainAnswer: JournalEntry = {
     likelihood: 'even',
     likelihoodLabel: 'Even odds',
     chaosFactor: null,
+    randomEvent: null,
   },
 }
 

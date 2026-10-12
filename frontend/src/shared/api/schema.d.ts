@@ -1694,6 +1694,11 @@ export interface components {
              * @example 5
              */
             chaosFactor: number | null;
+            /**
+             * @description The key of the oracle table to roll when the roll was a double whose digit is at most the chaos factor used and the oracle has a random event rule (one of the campaign's oracle tables); null otherwise.
+             * @example random-event-focus
+             */
+            randomEvent: string | null;
         };
         ChoiceContentResponse: {
             /**
@@ -1825,6 +1830,14 @@ export interface components {
              */
             shiftPerPoint: number;
         };
+        /** @description A d100 roll that is a double (11, 22 … 99) whose digit is at most the chaos factor used triggers a random event on the table. */
+        LikelihoodRandomEventDefinition: {
+            /**
+             * @description The key of the oracle table to roll for the event.
+             * @example random-event-focus
+             */
+            table: string;
+        };
         /** @description Rolls 1d<sides> = R against the effective target T: yes when R ≤ T. With p = exceptionalPercent, the yes is exceptional when R ≤ floor(T × p / 100), the no when R > sides − floor((sides − T) × p / 100). */
         LikelihoodOracleDefinition: {
             /** @example 100 */
@@ -1838,6 +1851,8 @@ export interface components {
              * @example 20
              */
             exceptionalPercent?: number | null;
+            /** @description Absent when a double is no random event. Needs chaos and 100 sides. */
+            randomEvent?: components["schemas"]["LikelihoodRandomEventDefinition"] | null;
         };
         LikelihoodAnswerRequest: {
             oracle: components["schemas"]["LikelihoodOracleDefinition"];
@@ -1883,6 +1898,11 @@ export interface components {
              * @example 5
              */
             chaosFactor: number | null;
+            /**
+             * @description The key of the oracle table to roll when the roll is a double whose digit is at most the chaos factor used and the oracle has a random event rule; null otherwise.
+             * @example random-event-focus
+             */
+            randomEvent: string | null;
         };
         /** @description Ranged entries have "min" and "max"; weighted entries may have a "weight" (1 by default). An entry needs a "text" unless it nests a "table". */
         OracleTableEntryDefinition: {

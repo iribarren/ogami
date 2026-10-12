@@ -72,6 +72,7 @@ final class LikelihoodOracleApiTest extends WebTestCase
                 'likelihood' => 'likely',
                 'likelihoodLabel' => 'Likely',
                 'chaosFactor' => 5,
+                'randomEvent' => null,
             ],
             $this->json(),
         );
@@ -88,10 +89,39 @@ final class LikelihoodOracleApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertJsonStringEqualsJsonString(
             <<<'JSON'
-                {"answer": "yes", "roll": 80, "sides": 100, "effectiveTarget": 85, "likelihood": "likely", "likelihoodLabel": "Likely", "chaosFactor": 9}
+                {"answer": "yes", "roll": 80, "sides": 100, "effectiveTarget": 85, "likelihood": "likely", "likelihoodLabel": "Likely", "chaosFactor": 9, "randomEvent": null}
                 JSON,
             $this->content(),
         );
+    }
+
+    #[Test]
+    public function aDoubleWithinTheChaosFactorNamesTheRandomEventTable(): void
+    {
+        $this->signIn(['SOLO_PLAYER']);
+        $this->script(33);
+
+        $this->ask(['oracle' => [...self::oracle(), 'randomEvent' => ['table' => 'random-event-focus']], 'likelihood' => 'likely', 'chaosFactor' => 3]);
+
+        self::assertResponseIsSuccessful();
+        self::assertJsonStringEqualsJsonString(
+            <<<'JSON'
+                {"answer": "yes", "roll": 33, "sides": 100, "effectiveTarget": 55, "likelihood": "likely", "likelihoodLabel": "Likely", "chaosFactor": 3, "randomEvent": "random-event-focus"}
+                JSON,
+            $this->content(),
+        );
+    }
+
+    #[Test]
+    public function aDoubleAboveTheChaosFactorIsNoRandomEvent(): void
+    {
+        $this->signIn(['SOLO_PLAYER']);
+        $this->script(44);
+
+        $this->ask(['oracle' => [...self::oracle(), 'randomEvent' => ['table' => 'random-event-focus']], 'likelihood' => 'likely', 'chaosFactor' => 3]);
+
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['randomEvent']);
     }
 
     #[Test]
@@ -105,7 +135,7 @@ final class LikelihoodOracleApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertJsonStringEqualsJsonString(
             <<<'JSON'
-                {"answer": "yes", "roll": 100, "sides": 100, "effectiveTarget": 100, "likelihood": "nearly-certain", "likelihoodLabel": "Nearly certain", "chaosFactor": 9}
+                {"answer": "yes", "roll": 100, "sides": 100, "effectiveTarget": 100, "likelihood": "nearly-certain", "likelihoodLabel": "Nearly certain", "chaosFactor": 9, "randomEvent": null}
                 JSON,
             $this->content(),
         );
@@ -126,7 +156,7 @@ final class LikelihoodOracleApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertJsonStringEqualsJsonString(
             <<<'JSON'
-                {"answer": "no", "roll": 4, "sides": 6, "effectiveTarget": 3, "likelihood": "even", "likelihoodLabel": "Even odds", "chaosFactor": null}
+                {"answer": "no", "roll": 4, "sides": 6, "effectiveTarget": 3, "likelihood": "even", "likelihoodLabel": "Even odds", "chaosFactor": null, "randomEvent": null}
                 JSON,
             $this->content(),
         );
@@ -153,7 +183,7 @@ final class LikelihoodOracleApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertJsonStringEqualsJsonString(
             <<<'JSON'
-                {"answer": "yes", "roll": 1, "sides": 6, "effectiveTarget": 3, "likelihood": "even", "likelihoodLabel": "Even odds", "chaosFactor": null}
+                {"answer": "yes", "roll": 1, "sides": 6, "effectiveTarget": 3, "likelihood": "even", "likelihoodLabel": "Even odds", "chaosFactor": null, "randomEvent": null}
                 JSON,
             $this->content(),
         );
@@ -180,6 +210,14 @@ final class LikelihoodOracleApiTest extends WebTestCase
         yield 'chaos factor out of range' => [
             ['oracle' => self::oracle(), 'likelihood' => 'likely', 'chaosFactor' => 10],
             'The chaos factor is between 1 and 9, 10 given.',
+        ];
+        yield 'random event without chaos' => [
+            ['oracle' => ['sides' => 100, 'levels' => [['key' => 'a', 'label' => 'A', 'target' => 3]], 'randomEvent' => ['table' => 'focus']], 'likelihood' => 'a'],
+            'A random event needs the chaos factor of a likelihood oracle.',
+        ];
+        yield 'random event with an extra field' => [
+            ['oracle' => [...self::oracle(), 'randomEvent' => ['table' => 'focus', 'when' => 'always']], 'likelihood' => 'likely'],
+            'The "randomEvent" of a likelihood oracle has no "when" field.',
         ];
         yield 'chaos factor without chaos' => [
             ['oracle' => ['sides' => 6, 'levels' => [['key' => 'a', 'label' => 'A', 'target' => 3]]], 'likelihood' => 'a', 'chaosFactor' => 5],

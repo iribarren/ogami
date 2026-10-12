@@ -5481,7 +5481,8 @@
                     "effectiveTarget",
                     "likelihood",
                     "likelihoodLabel",
-                    "chaosFactor"
+                    "chaosFactor",
+                    "randomEvent"
                 ],
                 "properties": {
                     "kind": {
@@ -5544,6 +5545,12 @@
                         "description": "The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.",
                         "type": "integer",
                         "example": 5,
+                        "nullable": true
+                    },
+                    "randomEvent": {
+                        "description": "The key of the oracle table to roll when the roll was a double whose digit is at most the chaos factor used and the oracle has a random event rule (one of the campaign's oracle tables); null otherwise.",
+                        "type": "string",
+                        "example": "random-event-focus",
                         "nullable": true
                     }
                 },
@@ -5844,6 +5851,20 @@
                 },
                 "type": "object"
             },
+            "LikelihoodRandomEventDefinition": {
+                "description": "A d100 roll that is a double (11, 22 \u2026 99) whose digit is at most the chaos factor used triggers a random event on the table.",
+                "required": [
+                    "table"
+                ],
+                "properties": {
+                    "table": {
+                        "description": "The key of the oracle table to roll for the event.",
+                        "type": "string",
+                        "example": "random-event-focus"
+                    }
+                },
+                "type": "object"
+            },
             "LikelihoodOracleDefinition": {
                 "description": "Rolls 1d<sides> = R against the effective target T: yes when R \u2264 T. With p = exceptionalPercent, the yes is exceptional when R \u2264 floor(T \u00d7 p / 100), the no when R > sides \u2212 floor((sides \u2212 T) \u00d7 p / 100).",
                 "required": [
@@ -5882,6 +5903,15 @@
                         "nullable": true,
                         "maximum": 50,
                         "minimum": 0
+                    },
+                    "randomEvent": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LikelihoodRandomEventDefinition"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Absent when a double is no random event. Needs chaos and 100 sides."
                     }
                 },
                 "type": "object"
@@ -5917,7 +5947,8 @@
                     "effectiveTarget",
                     "likelihood",
                     "likelihoodLabel",
-                    "chaosFactor"
+                    "chaosFactor",
+                    "randomEvent"
                 ],
                 "properties": {
                     "answer": {
@@ -5958,6 +5989,12 @@
                         "description": "The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.",
                         "type": "integer",
                         "example": 5,
+                        "nullable": true
+                    },
+                    "randomEvent": {
+                        "description": "The key of the oracle table to roll when the roll is a double whose digit is at most the chaos factor used and the oracle has a random event rule; null otherwise.",
+                        "type": "string",
+                        "example": "random-event-focus",
                         "nullable": true
                     }
                 },

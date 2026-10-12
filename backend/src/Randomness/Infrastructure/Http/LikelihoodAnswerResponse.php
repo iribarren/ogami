@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * JSON body of a successful `POST /api/likelihood-answers`.
  */
-#[OA\Schema(required: ['answer', 'roll', 'sides', 'effectiveTarget', 'likelihood', 'likelihoodLabel', 'chaosFactor'])]
+#[OA\Schema(required: ['answer', 'roll', 'sides', 'effectiveTarget', 'likelihood', 'likelihoodLabel', 'chaosFactor', 'randomEvent'])]
 final readonly class LikelihoodAnswerResponse
 {
     private function __construct(
@@ -28,6 +28,8 @@ final readonly class LikelihoodAnswerResponse
         public string $likelihoodLabel,
         #[OA\Property(description: 'The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.', example: 5)]
         public ?int $chaosFactor,
+        #[OA\Property(description: 'The key of the oracle table to roll when the roll is a double whose digit is at most the chaos factor used and the oracle has a random event rule; null otherwise.', example: 'random-event-focus')]
+        public ?string $randomEvent,
     ) {
     }
 
@@ -41,6 +43,7 @@ final readonly class LikelihoodAnswerResponse
             $view->likelihood,
             $view->likelihoodLabel,
             $view->chaosFactor,
+            $view->randomEvent,
         );
     }
 }

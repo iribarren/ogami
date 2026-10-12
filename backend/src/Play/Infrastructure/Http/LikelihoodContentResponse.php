@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
  * A likelihood oracle of the campaign's pinned release asked a yes/no question, in the same shape
  * as the answer of `POST /api/likelihood-answers` plus the oracle and the question.
  */
-#[OA\Schema(required: ['kind', 'oracleKey', 'oracleName', 'question', 'answer', 'roll', 'sides', 'effectiveTarget', 'likelihood', 'likelihoodLabel', 'chaosFactor'])]
+#[OA\Schema(required: ['kind', 'oracleKey', 'oracleName', 'question', 'answer', 'roll', 'sides', 'effectiveTarget', 'likelihood', 'likelihoodLabel', 'chaosFactor', 'randomEvent'])]
 final readonly class LikelihoodContentResponse
 {
     private function __construct(
@@ -37,6 +37,8 @@ final readonly class LikelihoodContentResponse
         public string $likelihoodLabel,
         #[OA\Property(description: 'The chaos factor used (the neutral one when none was given); null when the oracle has no chaos.', example: 5)]
         public ?int $chaosFactor,
+        #[OA\Property(description: 'The key of the oracle table to roll when the roll was a double whose digit is at most the chaos factor used and the oracle has a random event rule (one of the campaign\'s oracle tables); null otherwise.', example: 'random-event-focus')]
+        public ?string $randomEvent,
     ) {
     }
 
@@ -56,6 +58,7 @@ final readonly class LikelihoodContentResponse
             $data['likelihood'],
             $data['likelihoodLabel'],
             $data['chaosFactor'],
+            $data['randomEvent'],
         );
     }
 }

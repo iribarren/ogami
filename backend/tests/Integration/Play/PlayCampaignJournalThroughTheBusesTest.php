@@ -112,6 +112,7 @@ final class PlayCampaignJournalThroughTheBusesTest extends KernelTestCase
                 'likelihood' => 'even',
                 'likelihoodLabel' => '50/50',
                 'chaosFactor' => 5,
+                'randomEvent' => null,
             ],
             $journal[3]->content,
         );

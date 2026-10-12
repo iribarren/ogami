@@ -24,7 +24,9 @@ final class ReleaseOracles
 
     private const array ORACLES = ['tables' => true, 'likelihood' => true];
     private const array TABLE = ['key' => true, 'name' => true, 'dice' => false, 'entries' => true];
-    private const array LIKELIHOOD = ['key' => true, 'name' => true, 'sides' => true, 'levels' => true, 'chaos' => false, 'exceptionalPercent' => false];
+    /** Fields every schema version allows on a likelihood oracle. */
+    public const array LIKELIHOOD = ['key' => true, 'name' => true, 'sides' => true, 'levels' => true, 'chaos' => false, 'exceptionalPercent' => false];
+    private const array RANDOM_EVENT = ['table' => true];
     private const array LEVEL = ['key' => true, 'label' => true, 'target' => true];
 
     /** Fields Randomness defines, so every schema version allows them. */
@@ -32,12 +34,13 @@ final class ReleaseOracles
     public const array CHAOS = ['min' => true, 'max' => true, 'neutral' => true, 'shiftPerPoint' => true];
 
     /**
-     * @param array<string, bool> $entryFields ENTRY plus the fields the schema version adds
-     * @param array<string, bool> $chaosFields CHAOS plus the fields the schema version adds
+     * @param array<string, bool> $entryFields      ENTRY plus the fields the schema version adds
+     * @param array<string, bool> $chaosFields      CHAOS plus the fields the schema version adds
+     * @param array<string, bool> $likelihoodFields LIKELIHOOD plus the fields the schema version adds
      *
      * @return array{tables: list<array<string, mixed>>, likelihood: list<array<string, mixed>>}
      */
-    public static function validate(mixed $value, array $entryFields = self::ENTRY, array $chaosFields = self::CHAOS): array
+    public static function validate(mixed $value, array $entryFields = self::ENTRY, array $chaosFields = self::CHAOS, array $likelihoodFields = self::LIKELIHOOD): array
     {
         $oracles = ReleaseFields::object($value, 'oracles', self::ORACLES);
 
@@ -66,7 +69,7 @@ final class ReleaseOracles
 
         foreach ($likelihood as $index => $oracle) {
             $path = \sprintf('oracles.likelihood[%d]', $index);
-            $oracle = ReleaseFields::object($oracle, $path, self::LIKELIHOOD);
+            $oracle = ReleaseFields::object($oracle, $path, $likelihoodFields);
             $key = ReleaseFields::key($oracle['key'], $path.'.key');
             if (isset($oracleKeys[$key])) {
                 throw InvalidReleaseContent::at($path.'.key', \sprintf('duplicate oracle key "%s"', $key));
@@ -80,6 +83,17 @@ final class ReleaseOracles
                 $chaos = ReleaseFields::object($oracle['chaos'], $path.'.chaos', $chaosFields);
                 $oracle['chaos'] = $chaos;
                 $definition['chaos'] = array_intersect_key($chaos, self::CHAOS);
+            }
+
+            if (isset($oracle['randomEvent'])) {
+                $rule = ReleaseFields::object($oracle['randomEvent'], $path.'.randomEvent', self::RANDOM_EVENT);
+                $table = ReleaseFields::key($rule['table'], $path.'.randomEvent.table');
+                if (!\in_array($table, $tableKeys, true)) {
+                    throw InvalidReleaseContent::at($path.'.randomEvent.table', \sprintf('unknown oracle table "%s"', $table));
+                }
+
+                $oracle['randomEvent'] = $rule;
+                $definition['randomEvent'] = $rule;
             }
 
             try {

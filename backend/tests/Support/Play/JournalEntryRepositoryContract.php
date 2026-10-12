@@ -74,6 +74,7 @@ trait JournalEntryRepositoryContract
             'likelihood' => 'even',
             'likelihoodLabel' => '50/50',
             'chaosFactor' => 6,
+            'randomEvent' => 'random-event-focus',
         ]];
         yield 'likelihood without question or chaos' => [[
             'kind' => 'likelihood',
@@ -87,6 +88,7 @@ trait JournalEntryRepositoryContract
             'likelihood' => 'even',
             'likelihoodLabel' => '50/50',
             'chaosFactor' => null,
+            'randomEvent' => null,
         ]];
         yield 'choice' => [['kind' => 'choice', 'question' => 'Did you gain an edge?', 'optionKey' => 'yes', 'label' => 'Yes']];
         yield 'pick' => [['kind' => 'pick', 'of' => 'npc', 'tags' => ['rival', 'ally'], 'picked' => [['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001', 'name' => 'Mira Vane'], ['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7002', 'name' => 'Brann']]]];

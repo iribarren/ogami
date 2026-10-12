@@ -55,6 +55,7 @@ final class RecordLikelihoodAnswerHandlerTest extends JournalTestCase
             'likelihood' => 'unlikely',
             'likelihoodLabel' => 'Unlikely',
             'chaosFactor' => 7,
+            'randomEvent' => null,
         ], $entry->content()->toArray());
     }
 

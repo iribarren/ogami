@@ -39,6 +39,7 @@ final class LikelihoodContentTest extends TestCase
             'likelihood' => 'likely',
             'likelihoodLabel' => 'Likely',
             'chaosFactor' => 7,
+            'randomEvent' => null,
         ], $content->toArray());
     }
 
@@ -52,6 +53,30 @@ final class LikelihoodContentTest extends TestCase
         self::assertNull($content->toArray()['chaosFactor']);
         self::assertSame('no', $content->toArray()['answer']);
         self::assertSame(65, $content->toArray()['effectiveTarget']);
+    }
+
+    #[Test]
+    public function aRandomEventKeepsTheTableToRollAndSurvivesARoundTrip(): void
+    {
+        $oracle = LikelihoodOracle::fromArray([...self::definition(), 'randomEvent' => ['table' => 'random-event-focus']]);
+        $answer = $oracle->ask('likely', 7, new ScriptedRandomNumberGenerator(33));
+
+        $content = LikelihoodContent::fromAnswer('fate', 'Fate', null, $answer);
+
+        self::assertSame('random-event-focus', $content->toArray()['randomEvent']);
+        self::assertEquals($content, LikelihoodContent::fromArray($content->toArray()));
+    }
+
+    #[Test]
+    public function storedContentWithoutTheRandomEventFieldIsMalformed(): void
+    {
+        $data = LikelihoodContent::fromAnswer('fate', 'Fate', null, self::likelyAnswer())->toArray();
+        unset($data['randomEvent']);
+
+        $this->expectException(InvalidJournalEntryContent::class);
+        $this->expectExceptionMessageIsOrContains('randomEvent');
+
+        LikelihoodContent::fromArray($data);
     }
 
     #[Test]

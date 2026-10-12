@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
+import { runInThisContext } from 'node:vm'
 
 import { COLOR_MODE_STORAGE_KEY, type ColorMode } from './colorModeStorage'
 
@@ -7,7 +8,9 @@ const html = readFileSync(resolvePath(import.meta.dirname, '../../../index.html'
 
 /** The inline (no `src`) script that applies the color mode before first paint. */
 function inlineScript(): string {
-  for (const [, attributes = '', code = ''] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+  for (const [, attributes = '', code = ''] of html.matchAll(
+    /<script([^>]*)>([\s\S]*?)<\/script>/g,
+  )) {
     if (!/\bsrc=/.test(attributes)) {
       return code
     }
@@ -22,7 +25,8 @@ function stubSystem(dark: boolean) {
 }
 
 function runScript() {
-  new Function(inlineScript())()
+  // Runs against the jsdom globals, like the browser runs it against the real ones.
+  runInThisContext(inlineScript())
 }
 
 /** What the provider writes for a stored `mode` when the system prefers dark or not. */

@@ -105,7 +105,7 @@ describe('palette contrast (WCAG AA)', () => {
   })
 
   it('accepts single and double quoted data-theme selectors', () => {
-    const source = ":root[data-theme='a'] { --x: 1; }\n:root[data-theme=\"b\"] { --y: 2; }"
+    const source = ':root[data-theme=\'a\'] { --x: 1; }\n:root[data-theme="b"] { --y: 2; }'
     expect(parsePalettes(source).map((palette) => palette.name)).toEqual([
       ":root[data-theme='a']",
       ':root[data-theme="b"]',

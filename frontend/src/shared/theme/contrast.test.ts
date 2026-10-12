@@ -19,9 +19,9 @@ const PALETTE_SELECTOR = /^(:root(?:\[data-theme="[a-z-]+"\])?|\.dark)\s*\{([^}]
 
 function parsePalettes(source: string): Palette[] {
   const palettes: Palette[] = []
-  for (const [, name, body] of source.matchAll(PALETTE_SELECTOR)) {
+  for (const [, name = '', body = ''] of source.matchAll(PALETTE_SELECTOR)) {
     const tokens: Record<string, string> = {}
-    for (const [, token, value] of body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) {
+    for (const [, token = '', value = ''] of body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) {
       tokens[token] = value.trim()
     }
     palettes.push({ name, tokens })
@@ -49,7 +49,7 @@ function ratio(palette: Palette, foreground: string, background: string): number
     }
     return formatHex(color)
   })
-  return wcagContrast(colors[0], colors[1])
+  return wcagContrast(colors[0] ?? '', colors[1] ?? '')
 }
 
 // Destructive is used as text on the page, so it has no -foreground token.
@@ -73,7 +73,10 @@ const TEXT_PAIRS: [string, string][] = [
   ['muted-foreground', 'muted'],
   ['destructive', 'background'],
 ]
-const CONTROL_PAIRS: [string, string][] = [['ring', 'background']]
+const CONTROL_PAIRS: [string, string][] = [
+  ['ring', 'background'],
+  ['input', 'background'],
+]
 
 const palettes = resolve(parsePalettes(css))
 

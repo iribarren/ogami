@@ -976,6 +976,26 @@ export interface components {
             /** @description The open items of the kind that carry all the Tags, in list order; empty when none match. */
             candidates: components["schemas"]["ItemRefResponse"][];
         };
+        FactSlotResponse: {
+            /** @example prince */
+            key: string;
+            /**
+             * @description What players see for the slot.
+             * @example The Prince
+             */
+            label: string;
+            /**
+             * @description What the slot takes: a text, an NPC or a Thread.
+             * @example npc
+             * @enum {string}
+             */
+            type: "text" | "npc" | "thread";
+            /**
+             * @description Shown where the slot is filled; null when the slot has none.
+             * @example Who rules the city?
+             */
+            hint: string | null;
+        };
         FlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -1023,6 +1043,8 @@ export interface components {
             options: components["schemas"]["FlowStepOptionResponse"][];
             /** @description What the step picks from (pick step); null for the other kinds. */
             pick: components["schemas"]["FlowPickStepResponse"] | null;
+            /** @description The Fact slots any Effect of the step may fill, in the release's slot order (a fillFact Effect fills a slot once the step is completed); empty for a step that fills none. */
+            fills: components["schemas"]["FactSlotResponse"][];
         };
         SceneTypeSummaryResponse: {
             /** @example legwork */
@@ -1196,26 +1218,6 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "closed";
-        };
-        FactSlotResponse: {
-            /** @example prince */
-            key: string;
-            /**
-             * @description What players see for the slot.
-             * @example The Prince
-             */
-            label: string;
-            /**
-             * @description What the slot takes: a text, an NPC or a Thread.
-             * @example npc
-             * @enum {string}
-             */
-            type: "text" | "npc" | "thread";
-            /**
-             * @description Shown where the slot is filled; null when the slot has none.
-             * @example Who rules the city?
-             */
-            hint: string | null;
         };
         FactLinkResponse: {
             /**
@@ -3684,7 +3686,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC or Thread the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id). */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id). */
             409: {
                 headers: {
                     [name: string]: unknown;

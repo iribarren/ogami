@@ -631,6 +631,70 @@ final class Campaign
     }
 
     /**
+     * Fills a Fact slot of the pinned release as a fillFact Effect of the FlowRun does: a filled
+     * slot takes the new value (its fact id and links stay); an unfilled one gets a new slot fact
+     * under a generated id (see GeneratedItemId).
+     *
+     * @param ?string   $text    the value of a text slot
+     * @param ?FactLink $subject the value of an NPC or Thread slot
+     *
+     * @return ?Fact the slot fact; null (nothing added) when a new one would pass 500 facts
+     *
+     * @throws \LogicException   when the pinned release declares no slot with this key
+     * @throws InvalidFact       when the value breaks a rule
+     * @throws UnknownNpc        when the subject is an NPC the campaign does not hold
+     * @throws UnknownThread     when the subject is a Thread the campaign does not hold
+     * @throws FactAlreadyExists when a new fact's generated id is already held
+     */
+    public function fillFactByEffect(string $slot, ?string $text, ?FactLink $subject, GameSystemSnapshot $release): ?Fact
+    {
+        $this->assertPinned($release);
+        $release->factSlot($slot) ?? throw new \LogicException(\sprintf('The pinned release has no Fact slot "%s".', $slot));
+        if ($subject instanceof FactLink) {
+            $this->assertLinkResolves($subject);
+        }
+
+        $index = $this->factIndexOfSlot($slot);
+        if (null !== $index) {
+            $fact = $this->facts[$index]->refilled($text, $subject);
+            $this->facts = $this->replaced($this->facts, $index, $fact);
+
+            return $fact;
+        }
+
+        if (\count($this->facts) >= self::MAX_FACTS) {
+            return null;
+        }
+
+        $id = GeneratedItemId::fact($this->id, \count($this->facts));
+        $fact = $this->newFact($id, Fact::of($id, $slot, null, $text, $subject, []));
+        $this->facts = [...$this->facts, $fact];
+
+        return $fact;
+    }
+
+    /**
+     * The value of every Fact slot of the pinned release, by slot key, read now: the slot fact's
+     * text, or the current name of its subject; '' while the slot is unfilled (or its subject is
+     * gone). What "{fact:key}" renders.
+     *
+     * @return array<string, string>
+     */
+    public function factValues(GameSystemSnapshot $release): array
+    {
+        $values = [];
+        foreach ($release->factSlots() as $slot) {
+            $fact = $this->facts[$this->factIndexOfSlot($slot->key) ?? -1] ?? null;
+            $subject = $fact?->subject();
+            $values[$slot->key] = $subject instanceof FactLink
+                ? ($this->itemNames(FactLinkKind::Npc === $subject->kind ? ItemKind::Npc : ItemKind::Thread, [$subject->id])[0] ?? '')
+                : ($fact?->text() ?? '');
+        }
+
+        return $values;
+    }
+
+    /**
      * Closes the open Threads among these ids (a closeThread Effect of the FlowRun); closed ones
      * stay as they are, and an id the campaign does not hold is skipped.
      *
@@ -1038,7 +1102,7 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags));
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags));
     }
 
     /**

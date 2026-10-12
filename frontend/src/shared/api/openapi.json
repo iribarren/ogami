@@ -2105,7 +2105,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC or Thread the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4135,6 +4135,42 @@
                 },
                 "type": "object"
             },
+            "FactSlotResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "type",
+                    "hint"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "prince"
+                    },
+                    "label": {
+                        "description": "What players see for the slot.",
+                        "type": "string",
+                        "example": "The Prince"
+                    },
+                    "type": {
+                        "description": "What the slot takes: a text, an NPC or a Thread.",
+                        "type": "string",
+                        "example": "npc",
+                        "enum": [
+                            "text",
+                            "npc",
+                            "thread"
+                        ]
+                    },
+                    "hint": {
+                        "description": "Shown where the slot is filled; null when the slot has none.",
+                        "type": "string",
+                        "example": "Who rules the city?",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "FlowStepResponse": {
                 "required": [
                     "key",
@@ -4148,7 +4184,8 @@
                     "table",
                     "dice",
                     "options",
-                    "pick"
+                    "pick",
+                    "fills"
                 ],
                 "properties": {
                     "key": {
@@ -4227,6 +4264,13 @@
                         ],
                         "nullable": true,
                         "description": "What the step picks from (pick step); null for the other kinds."
+                    },
+                    "fills": {
+                        "description": "The Fact slots any Effect of the step may fill, in the release's slot order (a fillFact Effect fills a slot once the step is completed); empty for a step that fills none.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FactSlotResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -4578,42 +4622,6 @@
                             "open",
                             "closed"
                         ]
-                    }
-                },
-                "type": "object"
-            },
-            "FactSlotResponse": {
-                "required": [
-                    "key",
-                    "label",
-                    "type",
-                    "hint"
-                ],
-                "properties": {
-                    "key": {
-                        "type": "string",
-                        "example": "prince"
-                    },
-                    "label": {
-                        "description": "What players see for the slot.",
-                        "type": "string",
-                        "example": "The Prince"
-                    },
-                    "type": {
-                        "description": "What the slot takes: a text, an NPC or a Thread.",
-                        "type": "string",
-                        "example": "npc",
-                        "enum": [
-                            "text",
-                            "npc",
-                            "thread"
-                        ]
-                    },
-                    "hint": {
-                        "description": "Shown where the slot is filled; null when the slot has none.",
-                        "type": "string",
-                        "example": "Who rules the city?",
-                        "nullable": true
                     }
                 },
                 "type": "object"

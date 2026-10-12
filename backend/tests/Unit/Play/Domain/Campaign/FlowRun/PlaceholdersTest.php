@@ -49,9 +49,11 @@ final class PlaceholdersTest extends TestCase
     }
 
     #[Test]
-    public function aFactRendersEmptyUntilFactsArePlayed(): void
+    public function aFactIsTheValueOfItsSlotAndEmptyWhileTheSlotIsUnfilled(): void
     {
-        self::assertSame('The city of .', new Placeholders([], [])->render('The city of {fact:city}.'));
+        $placeholders = new Placeholders([], [], facts: ['city' => 'Prague', 'prince' => '']);
+
+        self::assertSame('The city of Prague, ruled by .', $placeholders->render('The city of {fact:city}, ruled by {fact:prince}.'));
     }
 
     /**
@@ -61,6 +63,7 @@ final class PlaceholdersTest extends TestCase
     {
         yield 'an unknown Tracker' => ['{tracker:heat}', 'The pinned release has no Tracker "heat".'];
         yield 'another namespace' => ['{npc:villain}', 'Placeholder {npc:villain} is not supported.'];
+        yield 'a fact of a slot the release lacks' => ['{fact:nowhere}', 'The pinned release has no Fact slot "nowhere".'];
         yield 'a fact without a key' => ['{fact}', 'Placeholder {fact} is not supported.'];
         yield 'a Tracker without a key' => ['{tracker}', 'Placeholder {tracker} is not supported.'];
         yield 'picked with a key' => ['{picked:x}', 'Placeholder {picked:x} is not supported.'];
@@ -74,6 +77,6 @@ final class PlaceholdersTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageIsOrContains($message);
 
-        new Placeholders(['alarm' => 3], [])->render($text);
+        new Placeholders(['alarm' => 3], [], facts: ['city' => 'Prague'])->render($text);
     }
 }

@@ -115,8 +115,7 @@ final class FillFactSlotHandlerTest extends TestCase
     #[Test]
     public function aRefusedFillChangesNothingNotEvenANewNpc(): void
     {
-        $before = $this->campaign();
-        $before = clone $before;
+        $before = $this->snapshot();
 
         foreach ([
             [new FillFactSlot('campaign-1', 'user-1', 'nowhere', 'Text', null, null), UnknownFactSlot::class],
@@ -144,6 +143,34 @@ final class FillFactSlotHandlerTest extends TestCase
     }
 
     #[Test]
+    public function aRefusedRefillOfAFilledSlotKeepsItsValueAndLinks(): void
+    {
+        ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'city', 'Ashford', null, null));
+        ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'prince', null, 'npc-1', null));
+        ($this->edit)(new EditFact('campaign-1', 'user-1', 'fact-1', null, null, [['kind' => 'npc', 'id' => 'npc-1']]));
+        $before = $this->snapshot();
+
+        foreach ([
+            [new FillFactSlot('campaign-1', 'user-1', 'city', ' ', null, null), InvalidFact::class],
+            [new FillFactSlot('campaign-1', 'user-1', 'city', null, 'npc-1', null), InvalidFact::class],
+            [new FillFactSlot('campaign-1', 'user-1', 'prince', null, 'missing', null), UnknownNpc::class],
+            [new FillFactSlot('campaign-1', 'user-1', 'prince', null, null, ' '), InvalidNpc::class],
+        ] as [$command, $error]) {
+            try {
+                ($this->fill)($command);
+                self::fail('The refused refill was accepted.');
+            } catch (\Throwable $exception) {
+                self::assertInstanceOf($error, $exception);
+            }
+        }
+
+        self::assertEquals($before, $this->campaign());
+        $fact = $this->slotFact('city');
+        self::assertSame(['fact-1', 'Ashford', ['npc:npc-1']], [$fact->id()->toString(), $fact->text(), array_map(static fn (FactLink $link): string => $link->kind->value.':'.$link->id, $fact->links())]);
+        self::assertSame('npc:npc-1', $this->subjectOf($this->slotFact('prince')));
+    }
+
+    #[Test]
     public function anotherPlayersCampaignIsNotFound(): void
     {
         $this->expectException(CampaignNotFound::class);
@@ -161,6 +188,17 @@ final class FillFactSlotHandlerTest extends TestCase
     private function campaign(): Campaign
     {
         return $this->campaigns->ofId(CampaignId::fromString('campaign-1')) ?? throw new \LogicException('The campaign is stored.');
+    }
+
+    /**
+     * An independent copy of the stored campaign, so that a later change cannot reach it.
+     */
+    private function snapshot(): Campaign
+    {
+        $copy = unserialize(serialize($this->campaign()));
+        self::assertInstanceOf(Campaign::class, $copy);
+
+        return $copy;
     }
 
     private function slotFact(string $slot): Fact

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Application\FactSlotView;
+use App\Play\Domain\GameSystem\FactSlot;
 use OpenApi\Attributes as OA;
 
 /**
@@ -23,6 +24,11 @@ final readonly class FactSlotResponse
         #[OA\Property(description: 'Shown where the slot is filled; null when the slot has none.', example: 'Who rules the city?', nullable: true)]
         public ?string $hint,
     ) {
+    }
+
+    public static function fromSlot(FactSlot $slot): self
+    {
+        return new self($slot->key, $slot->label, $slot->type->value, $slot->hint);
     }
 
     public static function fromView(FactSlotView $view): self

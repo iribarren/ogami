@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\Lists\Npc;
@@ -162,6 +164,24 @@ final readonly class FlowRunContext
         $thread = $this->campaign->createThreadByEffect($name, $tags, $this->release);
 
         return $thread instanceof Thread ? new PickedItems(ItemKind::Thread, [$thread->id()->toString()]) : null;
+    }
+
+    /**
+     * Fills a Fact slot (a fillFact Effect, its text already rendered, or the item picked).
+     *
+     * @return ?Fact the slot fact; null when a new one would pass the campaign's 500 facts
+     */
+    public function fillFact(string $slot, ?string $text, ?FactLink $subject): ?Fact
+    {
+        return $this->campaign->fillFactByEffect($slot, $text, $subject, $this->release);
+    }
+
+    /**
+     * @return array<string, string> the current value of every Fact slot of the pinned release, by key ('' while unfilled)
+     */
+    public function factValues(): array
+    {
+        return $this->campaign->factValues($this->release);
     }
 
     /**

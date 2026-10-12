@@ -1,7 +1,7 @@
 # Feature: play-campaign-facts
 
 - **Locator:** `odd/tasks/play-campaign-facts.md` · Engram topic `odd/play-campaign-facts/tasks`
-- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-1-contract-acl` (from `main` `3b1d0dd`) · **Status:** slice 1 written, review pending
+- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-2-facts` (from `main` `0fca1fb`) · **Status:** slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-threads-npcs` (PRs #64–#74)
@@ -92,11 +92,11 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Feature doc. `v2.schema.json`: fact slot `hint`, effect `fillFact`. Studio `Version2`: slot hint, `fillFact` (slot exists, `text` only on `text` slots), `{fact:key}`. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
-| T2 | 1 | Play ACL: `FactSlot` hint, `FillFactEffect`, typed and framework-free; FlowRun ignores `fillFact` and Play `Placeholders` renders `{fact:key}` empty until slice 4; the four example fixtures gain their 8b parts (examples README); translator tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
-| T3 | 2 | Campaign facts (domain: free facts, fill and refill a slot by hand incl. creating an NPC / Thread, edit label, text, links, limits, all or nothing); JSONB column, Doctrine type, migration; repository round trip incl. legacy rows | | [ ] | |
+| T1 | 1 | Feature doc. `v2.schema.json`: fact slot `hint`, effect `fillFact`. Studio `Version2`: slot hint, `fillFact` (slot exists, `text` only on `text` slots), `{fact:key}`. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `da655e4` |
+| T2 | 1 | Play ACL: `FactSlot` hint, `FillFactEffect`, typed and framework-free; FlowRun ignores `fillFact` and Play `Placeholders` renders `{fact:key}` empty until slice 4; the four example fixtures gain their 8b parts (examples README); translator tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `d4ae473`, `a0f5122` |
+| T3 | 2 | Campaign facts (domain: free facts, fill and refill a slot by hand incl. creating an NPC / Thread, edit label, text, links, limits, all or nothing); JSONB column, Doctrine type, migration; repository round trip incl. legacy rows | delegated writer (slice 2, 4+ non-trivial files) | [ ] | |
 | T4 | 3 | Campaign response gains `factSlots` and `facts` (values and link names resolved); commands, handlers and endpoints (add free fact, fill slot, edit fact); API tests (400/404/409/422), Behat; `make api` | | [ ] | |
-| T5 | 4 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text, step view `fills` and its HTTP field; unit, integration and API tests; `make api` | | [ ] | |
+| T5 | 4 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text (an unknown key fails closed: slice 1 review), step view `fills` and its HTTP field; unit, integration and API tests; `make api` | | [ ] | |
 | T6 | 5 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | | [ ] | |
 | T7 | 5 | Glossary and contract doc wrap-up; e2e smoke for facts | | [ ] | |
 
@@ -105,12 +105,14 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: feature started; doc and slice plan written; issue #75.
 - 2026-10-12: slice 1 — T1 done: schema, Studio validation (slot hint, `fillFact`, `{fact:key}`), contract doc, fixtures and tests; RED observed first.
 - 2026-10-12: slice 1 — T2 done: Play ACL (`FactSlot` hint, `FillFactEffect`), FlowRun ignores `fillFact`, `{fact:key}` renders empty; the four example fixtures gain their 8b parts and Play reads all five.
+- 2026-10-12: slice 2 — T3 domain: `Facts` namespace (`Fact`, `FactLink`, `FactFill`), Campaign add / fill / edit / read facts, `reconstitute()` checks; unit tests (RED first).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-c4fd077e3ac7057e` | `da655e4`, `d4ae473`, `a0f5122` | Approved. One non-blocking suggestion, to fix in slice 4: Play `Placeholders` renders any `{fact:key}` empty without checking that the key names a fact slot of the pinned release (`Placeholders.php:53`), unlike `{tracker:key}` and `fillFact` slots; an unknown key should fail closed (translator or render time), with a test | [#76](https://github.com/iribarren/ogami/pull/76) |
 
 ## Next step
 
-Slice 1 written (T1, T2); next: native review, PR, then slice 2 (T3).
+Slice 2: T3 (Campaign facts domain and persistence). Slice 4 carries the slice 1 review suggestion (unknown `{fact:key}` fails closed).

@@ -28,4 +28,9 @@ final class CampaignLimitReached extends \DomainException
     {
         return new self(\sprintf('A campaign holds at most %d Threads.', $max));
     }
+
+    public static function facts(int $max): self
+    {
+        return new self(\sprintf('A campaign holds at most %d facts.', $max));
+    }
 }

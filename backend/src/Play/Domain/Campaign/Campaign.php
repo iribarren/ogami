@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactAlreadyExists;
+use App\Play\Domain\Campaign\Facts\FactFill;
+use App\Play\Domain\Campaign\Facts\FactId;
+use App\Play\Domain\Campaign\Facts\FactLink;
+use App\Play\Domain\Campaign\Facts\FactLinkKind;
+use App\Play\Domain\Campaign\Facts\InvalidFact;
+use App\Play\Domain\Campaign\Facts\UnknownFact;
+use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -32,6 +41,7 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
+use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\PickStep;
@@ -65,6 +75,11 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * order; the readers put open items first. A Scene's cast lists NPCs of the campaign: picks and
  * created NPCs join the current scene's, the player edits it.
  *
+ * It keeps Campaign facts too (at most 500): free facts the player writes, and slot facts that fill
+ * the Fact slots of the pinned release, each with Fact links to NPCs, Threads and other facts. A
+ * slot holds at most one fact; links and subjects name things of this campaign. Facts keep creation
+ * order; the reader puts slot facts first, in release slot order.
+ *
  * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list, the
  * tracker values, the NPC and Thread lists and the FlowRun, so an adapter can map it and rebuild it
  * with reconstitute(). Every change to the FlowRun replaces it with a changed copy, as changes to
@@ -81,6 +96,8 @@ final class Campaign
 
     public const int MAX_THREADS = 500;
 
+    public const int MAX_FACTS = 500;
+
     /**
      * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
      * stale copy is refused (CampaignModifiedConcurrently). The model never changes it.
@@ -94,6 +111,7 @@ final class Campaign
      * @param array<string, int> $trackerValues by Tracker key
      * @param list<Npc>          $npcs          in creation order
      * @param list<Thread>       $threads       in creation order
+     * @param list<Fact>         $facts         in creation order
      */
     private function __construct(
         private readonly string $id,
@@ -108,6 +126,7 @@ final class Campaign
         private readonly ?string $flowKey,
         private array $npcs = [],
         private array $threads = [],
+        private array $facts = [],
     ) {
     }
 
@@ -144,7 +163,8 @@ final class Campaign
 
     /**
      * Rebuilds a stored campaign, e.g. from persistence. No rule is checked again, except that the
-     * NPCs and the Threads each have distinct ids (the invariant an id lookup relies on).
+     * NPCs, the Threads and the facts each have distinct ids (the invariant an id lookup relies on)
+     * and that the facts hold together (see assertFactsConsistent()).
      *
      * @param list<Session>      $sessions      in number order
      * @param array<string, int> $trackerValues by Tracker key
@@ -153,11 +173,18 @@ final class Campaign
      *                                          with a Flow and no FlowRun gets a fresh one (see startMissingFlowRun())
      * @param list<Npc>          $npcs          in creation order
      * @param list<Thread>       $threads       in creation order
+     * @param list<Fact>         $facts         in creation order
      *
-     * @throws NpcAlreadyExists    when two NPCs share an id
-     * @throws ThreadAlreadyExists when two Threads share an id
+     * @throws NpcAlreadyExists     when two NPCs share an id
+     * @throws ThreadAlreadyExists  when two Threads share an id
+     * @throws FactAlreadyExists    when two facts share an id
+     * @throws CampaignLimitReached when there are more than 500 facts
+     * @throws InvalidFact          when two facts fill one slot, or a fact links to itself
+     * @throws UnknownNpc           when a link or subject names an NPC the campaign does not hold
+     * @throws UnknownThread        when a link or subject names a Thread the campaign does not hold
+     * @throws UnknownFact          when a link names a fact the campaign does not hold
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = []): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = [], array $facts = []): self
     {
         $npcIds = [];
         foreach ($npcs as $npc) {
@@ -192,9 +219,11 @@ final class Campaign
             $flowKey,
             $npcs,
             $threads,
+            $facts,
         );
         $campaign->flowRun = $flowRun;
         $campaign->startMissingFlowRun();
+        $campaign->assertFactsConsistent();
 
         return $campaign;
     }
@@ -707,6 +736,121 @@ final class Campaign
     }
 
     /**
+     * Adds a free Campaign fact at the end of the list.
+     *
+     * @param list<FactLink> $links
+     *
+     * @throws InvalidFact          when a value breaks a rule
+     * @throws UnknownNpc           when a link names an NPC the campaign does not hold
+     * @throws UnknownThread        when a link names a Thread the campaign does not hold
+     * @throws UnknownFact          when a link names a fact the campaign does not hold
+     * @throws FactAlreadyExists    when the campaign holds a fact with this id
+     * @throws CampaignLimitReached when the campaign already holds 500 facts
+     */
+    public function addFreeFact(FactId $id, string $label, string $text, array $links, GameSystemSnapshot $release): Fact
+    {
+        $this->assertPinned($release);
+        $fact = $this->newFact($id, Fact::of($id, null, $label, $text, null, $links));
+        $this->facts = [...$this->facts, $fact];
+
+        return $fact;
+    }
+
+    /**
+     * Fills a Fact slot of the pinned release by hand: a text, an existing NPC or Thread (closed
+     * ones too), or a new NPC or Thread by name, created in the same call (open, weight 1, no
+     * tags). An unfilled slot gets a new fact under the given id; a filled one keeps its id and
+     * links and takes the new value. All or nothing: a refusal creates nothing, not even the NPC.
+     *
+     * @throws UnknownFactSlot      when the pinned release declares no slot with this key
+     * @throws InvalidFact          when the value does not fit the slot's type, or breaks a rule
+     * @throws UnknownNpc           when the subject is an NPC the campaign does not hold
+     * @throws UnknownThread        when the subject is a Thread the campaign does not hold
+     * @throws FactAlreadyExists    when a new fact's id is already held
+     * @throws CampaignLimitReached when a new fact or NPC or Thread would pass its 500 limit
+     * @throws InvalidNpc           when a new NPC's name breaks a rule
+     * @throws InvalidThread        when a new Thread's name breaks a rule
+     * @throws NpcAlreadyExists     when a new NPC's id is already held
+     * @throws ThreadAlreadyExists  when a new Thread's id is already held
+     */
+    public function fillFactSlot(FactId $id, string $slot, FactFill $fill, GameSystemSnapshot $release): Fact
+    {
+        $this->assertPinned($release);
+        $definition = $release->factSlot($slot) ?? throw UnknownFactSlot::withKey($slot);
+        $fill->assertFits($definition->type);
+
+        $draft = clone $this;
+        $subject = $fill->subject;
+        if (null !== $fill->newName && $subject instanceof FactLink) {
+            if (FactLinkKind::Npc === $subject->kind) {
+                $draft->addNpc(NpcId::fromString($subject->id), $fill->newName, null, [], [], ItemRules::DEFAULT_WEIGHT, $release);
+            } else {
+                $draft->addThread(ThreadId::fromString($subject->id), $fill->newName, [], [], ItemRules::DEFAULT_WEIGHT, $release);
+            }
+        }
+
+        if ($subject instanceof FactLink) {
+            $draft->assertLinkResolves($subject);
+        }
+
+        $index = $draft->factIndexOfSlot($slot);
+        if (null === $index) {
+            $fact = $draft->newFact($id, Fact::of($id, $slot, null, $fill->text, $subject, []));
+            $draft->facts = [...$draft->facts, $fact];
+        } else {
+            $fact = $draft->facts[$index]->refilled($fill->text, $subject);
+            $draft->facts = $this->replaced($draft->facts, $index, $fact);
+        }
+
+        $this->adopt($draft);
+
+        return $fact;
+    }
+
+    /**
+     * Edits a fact. A free fact takes a new label and text (a null keeps the current one) and new
+     * links; a slot fact takes only new links (a label or text is refused: its value changes by
+     * filling the slot again). The links replace the fact's links. All or nothing.
+     *
+     * @param list<FactLink> $links
+     *
+     * @throws UnknownFact   when the campaign holds no fact with this id, or a link names none
+     * @throws InvalidFact   when a value breaks a rule
+     * @throws UnknownNpc    when a link names an NPC the campaign does not hold
+     * @throws UnknownThread when a link names a Thread the campaign does not hold
+     */
+    public function editFact(FactId $id, ?string $label, ?string $text, array $links, GameSystemSnapshot $release): Fact
+    {
+        $this->assertPinned($release);
+        $index = $this->factIndex($id);
+        $edited = $this->facts[$index]->edited($label, $text)->withLinks($links);
+        foreach ($edited->links() as $link) {
+            $this->assertLinkResolves($link);
+        }
+
+        $this->facts = $this->replaced($this->facts, $index, $edited);
+
+        return $edited;
+    }
+
+    public function fact(FactId $id): ?Fact
+    {
+        return $this->facts[$this->factIndexOrNull($id) ?? -1] ?? null;
+    }
+
+    /**
+     * @return list<Fact> the slot facts first, in the release's slot order, then the free facts in creation order
+     */
+    public function facts(GameSystemSnapshot $release): array
+    {
+        $order = array_flip(array_map(static fn (FactSlot $slot): string => $slot->key, $release->factSlots()));
+        $slotFacts = array_values(array_filter($this->facts, static fn (Fact $fact): bool => !$fact->isFree()));
+        usort($slotFacts, static fn (Fact $a, Fact $b): int => ($order[$a->slot() ?? ''] ?? \PHP_INT_MAX) <=> ($order[$b->slot() ?? ''] ?? \PHP_INT_MAX));
+
+        return [...$slotFacts, ...array_filter($this->facts, static fn (Fact $fact): bool => $fact->isFree())];
+    }
+
+    /**
      * The number of open NPCs or Threads carrying all the given release Tag keys (any, when none);
      * free tags never match. What a count condition counts.
      *
@@ -959,7 +1103,7 @@ final class Campaign
      */
     private function adopt(self $draft): void
     {
-        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads];
+        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->facts] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->facts];
     }
 
     /**
@@ -1038,14 +1182,125 @@ final class Campaign
     }
 
     /**
-     * @template T of Npc|Thread
+     * @throws FactAlreadyExists    when a fact holds the id
+     * @throws CampaignLimitReached when the campaign already holds 500 facts
+     * @throws UnknownNpc           when a link names an NPC the campaign does not hold
+     * @throws UnknownThread        when a link names a Thread the campaign does not hold
+     * @throws UnknownFact          when a link names a fact the campaign does not hold
+     */
+    private function newFact(FactId $id, Fact $fact): Fact
+    {
+        if (\count($this->facts) >= self::MAX_FACTS) {
+            throw CampaignLimitReached::facts(self::MAX_FACTS);
+        }
+
+        if ($this->fact($id) instanceof Fact) {
+            throw FactAlreadyExists::withId($id);
+        }
+
+        foreach ($fact->links() as $link) {
+            $this->assertLinkResolves($link);
+        }
+
+        return $fact;
+    }
+
+    /**
+     * The facts hold together: at most 500, distinct ids, one fact per slot, and every link and
+     * subject names an NPC, Thread or fact of this campaign. Called by reconstitute() and, for a
+     * stored row, after Doctrine loads it (the facts column cannot see the NPCs and Threads).
+     *
+     * @throws FactAlreadyExists    when two facts share an id
+     * @throws CampaignLimitReached when there are more than 500 facts
+     * @throws InvalidFact          when two facts fill one slot
+     * @throws UnknownNpc           when a link or subject names an NPC the campaign does not hold
+     * @throws UnknownThread        when a link or subject names a Thread the campaign does not hold
+     * @throws UnknownFact          when a link names a fact the campaign does not hold
+     */
+    public function assertFactsConsistent(): void
+    {
+        if (\count($this->facts) > self::MAX_FACTS) {
+            throw CampaignLimitReached::facts(self::MAX_FACTS);
+        }
+
+        $ids = [];
+        $slots = [];
+        foreach ($this->facts as $fact) {
+            $key = $fact->id()->toString();
+            if (isset($ids[$key])) {
+                throw FactAlreadyExists::withId($fact->id());
+            }
+
+            $ids[$key] = true;
+            if (null !== $fact->slot()) {
+                if (isset($slots[$fact->slot()])) {
+                    throw InvalidFact::because(\sprintf('Slot "%s" holds two facts.', $fact->slot()));
+                }
+
+                $slots[$fact->slot()] = true;
+            }
+        }
+
+        foreach ($this->facts as $fact) {
+            foreach ([...$fact->links(), ...(null === $fact->subject() ? [] : [$fact->subject()])] as $link) {
+                $this->assertLinkResolves($link);
+            }
+        }
+    }
+
+    /**
+     * @throws UnknownNpc
+     * @throws UnknownThread
+     * @throws UnknownFact
+     */
+    private function assertLinkResolves(FactLink $link): void
+    {
+        match ($link->kind) {
+            FactLinkKind::Npc => $this->npcIndex(NpcId::fromString($link->id)),
+            FactLinkKind::Thread => $this->threadIndex(ThreadId::fromString($link->id)),
+            FactLinkKind::Fact => $this->factIndex(FactId::fromString($link->id)),
+        };
+    }
+
+    /**
+     * @throws UnknownFact
+     */
+    private function factIndex(FactId $id): int
+    {
+        return $this->factIndexOrNull($id) ?? throw UnknownFact::withId($id);
+    }
+
+    private function factIndexOrNull(FactId $id): ?int
+    {
+        foreach ($this->facts as $index => $fact) {
+            if ($fact->id()->equals($id)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    private function factIndexOfSlot(string $slot): ?int
+    {
+        foreach ($this->facts as $index => $fact) {
+            if ($fact->slot() === $slot) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @template T of Npc|Thread|Fact
      *
      * @param list<T> $items
      * @param T       $item
      *
      * @return list<T> a copy with the item at the index replaced, so that the stored list is seen to change
      */
-    private function replaced(array $items, int $index, Npc|Thread $item): array
+    private function replaced(array $items, int $index, Npc|Thread|Fact $item): array
     {
         $items[$index] = $item;
 

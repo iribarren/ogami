@@ -7,6 +7,7 @@ import { SceneCast } from '../cast/SceneCast'
 import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
+import { RandomEventOffer } from './RandomEventOffer'
 import { recordEntryKey, type JournalEntry } from './useJournal'
 
 /** Brings an entry just recorded into view, without moving focus (jsdom cannot scroll). */
@@ -23,6 +24,7 @@ export function Journal({
   sceneTypes,
   tags,
   npcs,
+  oracleTables,
   current,
   entries,
 }: {
@@ -33,6 +35,8 @@ export function Journal({
   tags: Campaign['tags']
   /** The campaign's NPCs, which the cast of the current scene draws from. */
   npcs: Campaign['npcs']
+  /** The release's oracle tables, which name the table a random event rolls. */
+  oracleTables: Campaign['oracleTables']
   /** The scene play is in, which is the only one a rolled Scene Type can be switched in. */
   current: { session: number; scene: number } | null
   entries: JournalEntry[]
@@ -92,12 +96,19 @@ export function Journal({
                         )}
                         <JournalEntryView entry={entry} tags={tags} />
                         {current?.session === session.number && current.scene === scene.number && (
-                          <SceneTypeOffer
-                            campaignId={campaignId}
-                            entry={entry}
-                            scene={listed(sessions, session.number, scene.number)}
-                            sceneTypes={sceneTypes}
-                          />
+                          <>
+                            <SceneTypeOffer
+                              campaignId={campaignId}
+                              entry={entry}
+                              scene={listed(sessions, session.number, scene.number)}
+                              sceneTypes={sceneTypes}
+                            />
+                            <RandomEventOffer
+                              campaignId={campaignId}
+                              entry={entry}
+                              tables={oracleTables}
+                            />
+                          </>
                         )}
                       </li>
                     ))}

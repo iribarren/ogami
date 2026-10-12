@@ -1,5 +1,7 @@
 import { useId, type ReactNode } from 'react'
 
+import { Badge } from '@/shared/ui/badge'
+
 import { DiceGroups } from '../dice/DiceGroups'
 import type {
   JournalEntry,
@@ -176,7 +178,10 @@ function LikelihoodView({ content }: { content: LikelihoodContent }) {
     <>
       <p className="font-medium">{content.oracleName}</p>
       {content.question !== null && <p className="italic">“{content.question}”</p>}
-      <p className="text-2xl font-bold">{answerLabels[content.answer]}</p>
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="text-2xl font-bold">{answerLabels[content.answer]}</span>
+        {content.randomEvent !== null && <Badge variant="warning">Random event</Badge>}
+      </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <Detail term="Roll">
           {content.roll} vs {content.effectiveTarget} on d{content.sides}

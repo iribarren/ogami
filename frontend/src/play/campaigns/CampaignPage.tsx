@@ -216,6 +216,7 @@ function CampaignJournal({ campaign }: { campaign: Campaign }) {
           sceneTypes={campaign.sceneTypes}
           tags={campaign.tags}
           npcs={campaign.npcs}
+          oracleTables={campaign.oracleTables}
           current={
             campaign.currentSessionNumber === null || campaign.currentSceneNumber === null
               ? null

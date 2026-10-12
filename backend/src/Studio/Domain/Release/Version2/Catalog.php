@@ -18,6 +18,7 @@ final readonly class Catalog
      * @param array<string, array<string, true>>                     $likelihoodLevels likelihood oracle key => its level keys
      * @param array<string, true>                                    $sceneTypes
      * @param array<string, true>                                    $tags             the tag keys of the release
+     * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc or thread)
      */
     public function __construct(
         public array $trackers,
@@ -25,6 +26,7 @@ final readonly class Catalog
         public array $likelihoodLevels,
         public array $sceneTypes,
         public array $tags = [],
+        public array $factSlots = [],
     ) {
     }
 
@@ -51,5 +53,18 @@ final readonly class Catalog
     public function hasTag(string $key): bool
     {
         return isset($this->tags[$key]);
+    }
+
+    public function hasFactSlot(string $key): bool
+    {
+        return isset($this->factSlots[$key]);
+    }
+
+    /**
+     * The type of a fact slot of the release, or null when there is none by that key.
+     */
+    public function factSlotType(string $key): ?string
+    {
+        return $this->factSlots[$key] ?? null;
     }
 }

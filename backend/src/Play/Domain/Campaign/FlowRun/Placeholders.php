@@ -9,7 +9,7 @@ namespace App\Play\Domain\Campaign\FlowRun;
  * matching \{[a-z]+(:[a-z0-9-]+)?\}. "{tracker:key}" is the Tracker's current value,
  * "{step:key}" the latest answer text of that step ("—" while unanswered) and "{answer}" the
  * answer text of the step whose Effect it renders ("—" without one), "{picked}" the names of the
- * items picked in the current Scene joined with ", " (empty before any pick). Other braces are text. A
+ * items picked in the current Scene joined with ", " (empty before any pick) and "{fact:key}" a Campaign fact's value (empty until facts are played). Other braces are text. A
  * placeholder the release contract does not allow (schema version 2) cannot be rendered.
  */
 final readonly class Placeholders
@@ -50,6 +50,7 @@ final readonly class Placeholders
         return match (true) {
             'tracker' === $match[1] && '' !== $key => (string) ($this->trackers[$key] ?? throw new \LogicException(\sprintf('The pinned release has no Tracker "%s".', $key))),
             'step' === $match[1] && '' !== $key => $this->answers[$key] ?? self::UNANSWERED,
+            'fact' === $match[1] && '' !== $key => '',
             'picked' === $match[1] && '' === $key => implode(', ', $this->picked),
             'answer' === $match[1] && '' === $key => $this->answer ?? self::UNANSWERED,
             default => throw new \LogicException(\sprintf('Placeholder %s is not supported.', $match[0])),

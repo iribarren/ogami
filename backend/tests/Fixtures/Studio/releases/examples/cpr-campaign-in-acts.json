@@ -99,15 +99,15 @@
     {
       "key": "turf", "name": "Turf", "purpose": "Claim a block and name the crew.", "oracles": [],
       "setup": [
-        {"key": "block", "kind": "prompt", "title": "Which block is your turf?"},
-        {"key": "crew-name", "kind": "prompt", "title": "What do you call your crew?"}
+        {"key": "block", "kind": "prompt", "title": "Which block is your turf?", "effects": [{"kind": "fillFact", "slot": "turf"}]},
+        {"key": "crew-name", "kind": "prompt", "title": "What do you call your crew?", "effects": [{"kind": "fillFact", "slot": "crew-name"}]}
       ],
       "play": [], "closing": []
     },
     {
       "key": "fixer", "name": "Fixer", "purpose": "Meet the fixer who gets you work.", "oracles": [],
       "setup": [
-        {"key": "fixer", "kind": "prompt", "title": "Who is your fixer, and what do they want from you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["fixer"]}]}
+        {"key": "fixer", "kind": "prompt", "title": "Who is your fixer, and what do they want from you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["fixer"]}, {"kind": "fillFact", "slot": "fixer"}]}
       ],
       "play": [], "closing": []
     },
@@ -230,7 +230,7 @@
         {"key": "traitor", "kind": "pick", "title": "Did your fixer sell you out?", "of": "npc", "tags": ["fixer"], "mode": "random", "branches": {"found": {"next": "twist"}, "none": {"next": "traitor-client"}}},
         {"key": "traitor-client", "kind": "pick", "title": "Did a client sell you out?", "of": "npc", "tags": ["client"], "mode": "random", "branches": {"found": {"next": "twist"}}},
         {"key": "traitor-other", "kind": "prompt", "title": "Who sold you out?"},
-        {"key": "twist", "kind": "table", "title": "What is the twist?", "table": "twists", "tip": "If someone was picked, {picked} sold you out."}
+        {"key": "twist", "kind": "table", "title": "What is the twist?", "table": "twists", "tip": "If someone was picked, {picked} sold you to {fact:nemesis}.", "effects": [{"kind": "fillFact", "slot": "twist"}]}
       ],
       "play": [], "closing": []
     },
@@ -290,14 +290,14 @@
             {"key": "rival", "kind": "pick", "title": "Which rival crew moves?", "of": "npc", "tags": ["rival"], "mode": "random", "branches": {"none": {"next": "heat"}}},
             {"key": "rival-after", "kind": "prompt", "title": "What is the rival crew after?", "prompt": "What is {picked} after?", "next": "heat"},
             {"key": "gang-war", "kind": "prompt", "title": "Whose streets burn?", "next": "heat"},
-            {"key": "grudge", "kind": "prompt", "title": "Who holds a grudge against you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["rival"]}]},
+            {"key": "grudge", "kind": "prompt", "title": "Who holds a grudge against you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["rival"]}, {"kind": "fillFact", "slot": "nemesis"}]},
             {"key": "heat", "kind": "condition", "title": "Is the heat too high?", "tracker": "heat", "bands": [{"upTo": 7}, {"effects": [{"kind": "nextScene", "sceneType": "hit-squad"}]}]}
           ]
         },
         {
           "key": "planning", "name": "Planning", "act": "Act 2: The big job", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["legwork", "recruit", "gear-up"]},
           "phaseOpening": [
-            {"key": "big-job", "kind": "prompt", "title": "What is the big job?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "edge", "op": "set", "value": 0}]}
+            {"key": "big-job", "kind": "prompt", "title": "What is the big job?", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "big-job"}, {"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "edge", "op": "set", "value": 0}]}
           ]
         },
         {

@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots (declared only), tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`.
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`. It reads fact slot hints, `fillFact` and `{fact:key}` but does not apply them yet: a `fillFact` changes nothing and `{fact:key}` renders empty (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 
@@ -137,7 +137,7 @@ There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are re
 | Likelihood `chaos` | v1 fields + `tracker?` | A counter whose `min` / `max` equal the chaos `min` / `max`; its value is the chaos factor |
 | Tracker | `{key, name (1–100), hint? (≤500), kind: counter, min, max, initial, levels?}` or `{key, name, hint?, kind: clock, segments (1–20)}` | At most 50; keys unique in their own namespace; `min ≤ initial ≤ max`, all within ±1000; a clock starts at 0 |
 | Counter `levels` | `[{upTo?, label (1–100)}]` (≤20) | Same ordering as bands, literal `upTo` only |
-| FactSlot | `{key, label (1–100), type: text \| npc \| thread}` | At most 100; keys unique. Declared only: feature 8b fills them |
+| FactSlot | `{key, label (1–100), type: text \| npc \| thread, hint? (≤500)}` | At most 100; keys unique. A `null` hint is omitted, as for trackers and tags. `fillFact` fills a slot |
 | Tag | `{key, label (1–50), hint? (≤500)}` | At most 50; keys unique (own namespace). One list for NPCs and Threads; `pick`, `count` and the NPC and Thread effects name tags by key |
 | SceneType | `{key, name (1–100), purpose (1–500), tips? (≤2000), oracles: [key], setup: [Step], play: [Step], closing: [Step]}` | At most 100; keys unique; `oracles` (the Scene Type's shortcuts) unique and in the oracle namespace |
 | Flow | `{key, name (1–100), description? (≤2000), introduction? (≤5000), default?, defaultView: focus \| journal, oracles: [key], trackers: [key], phases: [Phase] (1–20)}` | At most 20; keys unique; at most one `default: true`; `oracles` and `trackers` unique and existing |
@@ -166,7 +166,7 @@ Every `next` (of a step, band, branch, option, `otherwise` or `pick` branch) fol
 | Part | Shape | Rules |
 |---|---|---|
 | Band | `{upTo?: int \| {tracker: key}, next?, effects?}` | Ordered upper bounds: every band but the last has `upTo`; the last omits it and catches the rest; literal `upTo` values strictly increase |
-| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` | At most 10 per list; referenced trackers, Scene Types and tags exist; `tags` unique; `name` and `agenda` are placeholder text |
+| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` · `{kind: fillFact, slot, text? (1–2000)}` | At most 10 per list; referenced trackers, Scene Types, tags and fact slots exist; `tags` unique; `name`, `agenda` and `text` are placeholder text; `fillFact` `text` is allowed on a `text` slot only (on an `npc` or `thread` slot the value is the picked item) |
 
 ### References inside a flow
 
@@ -183,16 +183,17 @@ A Scene Type is **reachable** from a flow through:
 
 ### Placeholders
 
-A `{…}` matching `\{[a-z]+(:[a-z0-9-]+)?\}` in a step `title`, `prompt` or `tip`, or in effect text (a `sceneTitle` title, a `createNpc` `name` and `agenda`, a `createThread` `name`), is a placeholder; other braces are text.
+A `{…}` matching `\{[a-z]+(:[a-z0-9-]+)?\}` in a step `title`, `prompt` or `tip`, or in effect text (a `sceneTitle` title, a `createNpc` `name` and `agenda`, a `createThread` `name`, a `fillFact` `text`), is a placeholder; other braces are text.
 
 | Placeholder | Allowed where | Must name |
 |---|---|---|
 | `{tracker:key}` | Any placeholder text | A tracker of the flow (outside any flow: of the release) |
 | `{step:key}` | Any placeholder text | A step key of the flow's phases or reachable Scene Types (outside any flow: of the release) |
+| `{fact:key}` | Any placeholder text, including `fillFact` `text` | A fact slot of the release (fact slots are not per flow); `{fact}` without a key fails |
 | `{answer}` | Effect text only | The answer of the step the effect belongs to |
 | `{picked}` | Any placeholder text | Nothing: no argument (`{picked:x}` fails). The names of the items most recently picked or created in the current Scene |
 
-Any other placeholder fails with "not supported in schema version 2". Feature 8b adds `{fact:key}`.
+Any other placeholder fails with "not supported in schema version 2".
 
 ### Play behaviour of the NPC and Thread parts
 
@@ -209,6 +210,20 @@ Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) plays them
 | `closeThread` | Closes the open Threads in `{picked}`; nothing happens when it holds none |
 
 Picked and created NPCs join the current Scene's cast, which the player can edit. Scenes stored before schema version 2 gained these parts read with an empty cast.
+
+### Play behaviour of the fact parts
+
+Slot `hint`s are read and kept in the GameSystem snapshot. Until the flow slice of feature 8b ships, Play ignores the rest: an effect `fillFact` changes nothing and `{fact:key}` renders as an empty string, so a release using them plays without error.
+
+The intended behaviour, once Play applies them:
+
+| Part | In Play |
+|---|---|
+| `fillFact` on a `text` slot | Fills the slot with `text` (default `{answer}`), trimmed and cut to 2000; empty changes nothing |
+| `fillFact` on an `npc` / `thread` slot | Fills it with the first item of that kind in `{picked}`; none changes nothing |
+| `{fact:key}` | The slot's value (the text, or the subject's current name), read when rendered; empty when unfilled |
+
+A filled slot is replaced (its links stay). `fillFact` writes no journal entry of its own.
 
 ### Authoring warning
 

@@ -130,8 +130,9 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         $campaign->skipFlowStep('lose-them', $release, self::at());
         $campaign->endFlowScene(7, $release, self::at());
 
-        // Epilogue: with the objective in hand the fixer pays; a roll of 1 is a double-cross.
-        self::assertSame(['setup', 'paid', 'Was In through the roof worth it?'], [...self::position($campaign), $campaign->flowRunView($release)?->step?->prompt]);
+        // Epilogue: with the objective in hand the fixer pays; a roll of 1 is a double-cross. {fact:payout} renders
+        // empty until Campaign facts are played (slice 4 of play-campaign-facts).
+        self::assertSame(['setup', 'paid', 'The fixer pays . Was In through the roof worth it?'], [...self::position($campaign), $campaign->flowRunView($release)?->step?->prompt]);
         $campaign->completeFlowStep('paid', self::prompt('Barely'), $release, self::at());
         $campaign->completeFlowStep('double-cross', self::roll('1d6', 1), $release, self::at());
         self::assertSame(['setup', 'betrayed'], self::position($campaign));

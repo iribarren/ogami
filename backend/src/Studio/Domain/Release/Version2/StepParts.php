@@ -185,6 +185,10 @@ final class StepParts
                 }
             }
         }
+
+        if ('fillFact' === ($effect['kind'] ?? null) && isset($effect['text']) && \is_string($effect['text'])) {
+            yield $path.'.text' => [$effect['text'], true];
+        }
     }
 
     /**

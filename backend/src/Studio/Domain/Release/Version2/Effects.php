@@ -22,6 +22,7 @@ final class Effects
     public const int MAX_NPC_NAME_LENGTH = 100;
     public const int MAX_NPC_AGENDA_LENGTH = 2000;
     public const int MAX_THREAD_NAME_LENGTH = 200;
+    public const int MAX_FACT_TEXT_LENGTH = 2000;
 
     /** Fields of each kind, in schema order: name => required. */
     private const array KINDS = [
@@ -33,6 +34,7 @@ final class Effects
         'createNpc' => ['kind' => true, 'name' => false, 'agenda' => false, 'tags' => false],
         'createThread' => ['kind' => true, 'name' => false, 'tags' => false],
         'closeThread' => ['kind' => true],
+        'fillFact' => ['kind' => true, 'slot' => true, 'text' => false],
     ];
 
     private const array TRACKER_REF = ['tracker' => true];
@@ -81,6 +83,16 @@ final class Effects
         $key = ReleaseFields::key($value, $path);
         if (!$catalog->hasSceneType($key)) {
             throw InvalidReleaseContent::at($path, \sprintf('unknown Scene Type "%s"', $key));
+        }
+
+        return $key;
+    }
+
+    public static function factSlot(mixed $value, string $path, Catalog $catalog): string
+    {
+        $key = ReleaseFields::key($value, $path);
+        if (!$catalog->hasFactSlot($key)) {
+            throw InvalidReleaseContent::at($path, \sprintf('unknown fact slot "%s"', $key));
         }
 
         return $key;
@@ -155,6 +167,17 @@ final class Effects
                 }
 
                 $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog);
+                break;
+            case 'fillFact':
+                $effect['slot'] = self::factSlot($effect['slot'], $path.'.slot', $catalog);
+                if (isset($effect['text'])) {
+                    ReleaseFields::text($effect['text'], $path.'.text', 1, self::MAX_FACT_TEXT_LENGTH);
+                    $type = $catalog->factSlotType($effect['slot']);
+                    if ('text' !== $type) {
+                        throw InvalidReleaseContent::at($path.'.text', \sprintf('only allowed for a text slot, fact slot "%s" is %s %s slot', $effect['slot'], 'npc' === $type ? 'an' : 'a', $type));
+                    }
+                }
+
                 break;
         }
 

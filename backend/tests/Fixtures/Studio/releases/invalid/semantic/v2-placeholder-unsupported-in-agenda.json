@@ -6,7 +6,7 @@
   "trackers": [],
   "factSlots": [],
   "sceneTypes": [
-    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "createNpc", "name": "{picked}", "agenda": "Knows {fact:city}"}]}], "closing": []}
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "createNpc", "name": "{picked}", "agenda": "Knows {npc:city}"}]}], "closing": []}
   ],
   "flows": [],
   "sheet": {},

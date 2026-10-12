@@ -15,6 +15,7 @@ use App\Play\Domain\GameSystem\Flow\CreateNpcEffect;
 use App\Play\Domain\GameSystem\Flow\CreateThreadEffect;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
+use App\Play\Domain\GameSystem\Flow\FillFactEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\Flow\ItemCount;
@@ -173,8 +174,31 @@ final readonly class GameSystemReleaseTranslator
             }
         }
 
+        if ('fillFact' === $kind) {
+            $this->assertFactSlotFilled($view, $node, $path, $snapshot);
+        }
+
         foreach ($node as $name => $child) {
             $this->assertTagsExist($view, $child, \is_int($name) ? \sprintf('%s[%d]', $path, $name) : ('' === $path ? $name : $path.'.'.$name), $snapshot);
+        }
+    }
+
+    /**
+     * A fillFact Effect names a Fact slot of the release, and sets a text only for a text slot.
+     * Studio checks this on publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $effect
+     */
+    private function assertFactSlotFilled(PublishedReleaseView $view, array $effect, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $key = $effect['slot'] ?? null;
+        $slot = \is_string($key) ? $snapshot->factSlot($key) : null;
+        if (!$slot instanceof FactSlot) {
+            throw $this->invalid($view, $path.'.slot', \sprintf('unknown fact slot "%s".', \is_string($key) ? $key : ''));
+        }
+
+        if (null !== ($effect['text'] ?? null) && FactSlotType::Text !== $slot->type) {
+            throw $this->invalid($view, $path.'.text', \sprintf('only a text slot takes a text, "%s" is %s %s slot.', $slot->key, FactSlotType::Npc === $slot->type ? 'an' : 'a', $slot->type->value));
         }
     }
 
@@ -341,6 +365,7 @@ final readonly class GameSystemReleaseTranslator
                 $this->string($view, $slot['key'] ?? null, $path.'.key'),
                 $this->string($view, $slot['label'] ?? null, $path.'.label'),
                 FactSlotType::tryFrom($type) ?? throw $this->invalid($view, $path.'.type', \sprintf('unknown fact slot type "%s".', $type)),
+                $this->optionalString($view, $slot['hint'] ?? null, $path.'.hint'),
             );
         }
 
@@ -585,6 +610,10 @@ final readonly class GameSystemReleaseTranslator
                     $this->keys($view, $effect['tags'] ?? [], $effectPath.'.tags'),
                 ),
                 'closeThread' => new CloseThreadEffect(),
+                'fillFact' => new FillFactEffect(
+                    $this->string($view, $effect['slot'] ?? null, $effectPath.'.slot'),
+                    $this->optionalString($view, $effect['text'] ?? null, $effectPath.'.text'),
+                ),
                 default => throw $this->invalid($view, $effectPath.'.kind', \sprintf('unknown effect kind "%s".', $kind)),
             };
         }

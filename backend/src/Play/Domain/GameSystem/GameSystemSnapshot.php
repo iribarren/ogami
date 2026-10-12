@@ -194,6 +194,11 @@ final readonly class GameSystemSnapshot
         return $this->tags[$key] ?? null;
     }
 
+    public function factSlot(string $key): ?FactSlot
+    {
+        return array_find($this->factSlots, static fn (FactSlot $slot): bool => $slot->key === $key);
+    }
+
     /**
      * @return list<FactSlot> in definition order
      */

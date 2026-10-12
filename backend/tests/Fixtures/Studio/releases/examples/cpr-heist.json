@@ -127,10 +127,10 @@
     {
       "key": "briefing", "name": "Briefing", "purpose": "Meet the client and hear the job.", "oracles": ["job-clients", "job-targets", "payouts"],
       "setup": [
-        {"key": "client", "kind": "table", "title": "Who is the client?", "table": "job-clients", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}]},
-        {"key": "target", "kind": "table", "title": "What is the target?", "table": "job-targets"},
-        {"key": "payout", "kind": "table", "title": "What does it pay?", "table": "payouts"},
-        {"key": "plan", "kind": "prompt", "title": "What's the plan?"},
+        {"key": "client", "kind": "table", "title": "Who is the client?", "table": "job-clients", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}, {"kind": "fillFact", "slot": "client"}]},
+        {"key": "target", "kind": "table", "title": "What is the target?", "table": "job-targets", "effects": [{"kind": "fillFact", "slot": "target"}]},
+        {"key": "payout", "kind": "table", "title": "What does it pay?", "table": "payouts", "effects": [{"kind": "fillFact", "slot": "payout"}]},
+        {"key": "plan", "kind": "prompt", "title": "What's the plan?", "effects": [{"kind": "fillFact", "slot": "plan"}]},
         {"key": "catch", "kind": "prompt", "title": "What's the catch?"}
       ],
       "play": [], "closing": []
@@ -193,7 +193,7 @@
       "setup": [
         {"key": "delivered", "kind": "condition", "title": "Did you get the objective?", "tracker": "objective", "bands": [{"upTo": 0, "next": "no-pay"}, {"next": "paid"}]},
         {"key": "no-pay", "kind": "prompt", "title": "No job, no pay.", "next": "end"},
-        {"key": "paid", "kind": "prompt", "title": "The fixer pays up.", "prompt": "Was {step:plan} worth it?"},
+        {"key": "paid", "kind": "prompt", "title": "The fixer pays up.", "prompt": "The fixer pays {fact:payout}. Was {step:plan} worth it?"},
         {"key": "double-cross", "kind": "roll", "title": "Is it a double-cross?", "dice": "1d6", "bands": [{"upTo": 1, "next": "betrayed"}, {"next": "end"}]},
         {"key": "betrayed", "kind": "prompt", "title": "Double-cross! Who sold you out?"}
       ],

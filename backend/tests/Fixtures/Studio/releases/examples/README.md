@@ -2,18 +2,17 @@
 
 The five [flow examples](../../../../../../docs/domain/flow-examples.md) as schema version 2 releases (ADR 0018, decision 26). `ReleaseSchemaAgreementTest` validates each file against the schema and the domain; `ExampleReleasesTest` pins the authoring warnings each one yields. Text is original (fan-content rule, decision 29).
 
-Feature 8 (tags, `pick`, the NPC and Thread effects, `{picked}`, NPC counts) is in every example. Parts that need a later feature are left out: the step stays as a plain `prompt` (or `table`) so the flow still reads well, and the fact slots are declared. Add each part to its fixture when its feature lands.
+Feature 8 (tags, `pick`, the NPC and Thread effects, `{picked}`, NPC counts) is in every example. Parts that need a later feature are left out: the step stays as a plain `prompt` (or `table`) so the flow still reads well. Add each part to its fixture when its feature lands.
+
+Feature 8b (fact slot hints, `fillFact`, `{fact:key}`) is in every example that declares fact slots.
 
 | Feature | Adds |
 |---|---|
-| 8b | `fillFact`, fact slot `hint`, `{fact:key}` |
 | 10 | Characters, the Session party |
 
 ## `vtm-chronicle.json`
 
-| Left out | Feature |
-|---|---|
-| `fillFact` for every slot; slot hints "Long-term" / "Short-term, renewed each session"; `{fact:ambition}` in the session opening | 8b |
+Facts: Session Zero fills `city`, `era`, `tone`, `ruling-sect`, `prince` and `ambition`; every session opening refills `desire` and quotes `{fact:ambition}`. The `ambition` and `desire` slots carry hints.
 
 Tags: `leader`, `ally`, `touchstone`, `hunter`, `newcomer` (the `rival` tag of the flow example is not used here). The faction, ally and touchstone events `pick` an NPC by tag and use `{picked}`; the Prince, touchstone, ally and new arrivals are created with `createNpc`, the ambition and the session desire with `createThread`, and `closeThread` runs when the desire is met.
 
@@ -23,9 +22,7 @@ Warnings: none (Hunters strike sets `hunters` to 0, Inquisition raid sets `masqu
 
 ## `cpr-heist.json`
 
-| Left out | Feature |
-|---|---|
-| `fillFact` for client, target, payout and plan; `{fact:payout}` in Payday | 8b |
+Facts: `client` (`createNpc` then `fillFact`), `target`, `payout` and `plan` are filled by the Briefing steps; Payday quotes `{fact:payout}`.
 
 Tags: `crew`, `client`, `nomad`. The crew and the client are created with `createNpc`; Chase picks `pick NPC [crew, nomad]` (`found` → "{picked} takes the wheel", `none` → "You take the wheel"). The Scene cast arrives with the flow support of feature 8.
 
@@ -43,9 +40,7 @@ Warnings: none (no forced scenes; the `pick` steps add none).
 
 ## `cpr-campaign-in-acts.json`
 
-| Left out | Feature |
-|---|---|
-| `fillFact` for turf, crew name, big job, twist, fixer and nemesis; `{fact:nemesis}` | 8b |
+Facts: `turf` and `crew-name` in Turf, `fixer` after its `createNpc`, `nemesis` after the grudge, `big-job` in the planning opening and `twist` in Betrayal, whose tip quotes `{fact:nemesis}`.
 
 Tags: `crew`, `rival`, `fixer`, `client`. Recruit and the grudge use `createNpc`, loose ends and the debt to the fixer `createThread`; Betrayal picks the fixer, then the client, then asks the player; the act end adds `condition count NPC [crew]` after the `rep` condition.
 
@@ -55,9 +50,10 @@ Warnings: none (Hit squad sets `heat` to 4, Month's end sets `month` to 0 when t
 
 ## `west-marches.json`
 
+Facts: the founding Town fills `town`; every session opening fills `expedition` (hint "Renewed each session") and the session closing asks "Is {fact:expedition} resolved?".
+
 | Left out | Feature |
 |---|---|
-| `fillFact` for town and expedition; slot hint "Renewed each session"; `{fact:expedition}` | 8b |
 | The roster as Characters; `pick Characters` for the Session party (now "Who goes on this expedition?") | 10 |
 
 Tags: `roster`, `hireling`. The roster and hirelings are created with `createNpc`, rumors with `createThread`; the session opening picks the expedition Thread (`pick Thread`) and `closeThread` runs when it is resolved.

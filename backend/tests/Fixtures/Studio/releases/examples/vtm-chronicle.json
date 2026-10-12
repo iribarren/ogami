@@ -56,22 +56,22 @@
     {"key": "tone", "label": "Tone", "type": "text"},
     {"key": "ruling-sect", "label": "Ruling sect", "type": "text"},
     {"key": "prince", "label": "Prince", "type": "npc"},
-    {"key": "ambition", "label": "Ambition", "type": "thread"},
-    {"key": "desire", "label": "Desire", "type": "thread"}
+    {"key": "ambition", "label": "Ambition", "type": "thread", "hint": "Long-term"},
+    {"key": "desire", "label": "Desire", "type": "thread", "hint": "Short-term, renewed each session"}
   ],
   "sceneTypes": [
     {
       "key": "city", "name": "City", "purpose": "Choose the city, its era and its tone.", "oracles": [],
       "setup": [
-        {"key": "city", "kind": "prompt", "title": "Which city, which era, what tone?", "mandatory": true}
+        {"key": "city", "kind": "prompt", "title": "Which city, which era, what tone?", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "city"}, {"kind": "fillFact", "slot": "era"}, {"kind": "fillFact", "slot": "tone"}]}
       ],
       "play": [], "closing": []
     },
     {
       "key": "court", "name": "Court", "purpose": "Find out who rules the night.", "tips": "Write the Prince's clan as a free fact.", "oracles": [],
       "setup": [
-        {"key": "sect", "kind": "prompt", "title": "Which sect rules the city?"},
-        {"key": "prince", "kind": "prompt", "title": "Who is the Prince?", "effects": [{"kind": "createNpc", "name": "{answer}", "agenda": "Keeps the city under control.", "tags": ["leader"]}]}
+        {"key": "sect", "kind": "prompt", "title": "Which sect rules the city?", "effects": [{"kind": "fillFact", "slot": "ruling-sect"}]},
+        {"key": "prince", "kind": "prompt", "title": "Who is the Prince?", "effects": [{"kind": "createNpc", "name": "{answer}", "agenda": "Keeps the city under control.", "tags": ["leader"]}, {"kind": "fillFact", "slot": "prince"}]}
       ],
       "play": [], "closing": []
     },
@@ -79,7 +79,7 @@
     {
       "key": "character", "name": "Character", "purpose": "Create your Kindred.", "oracles": [],
       "setup": [
-        {"key": "ambition", "kind": "prompt", "title": "What is your ambition?", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}]},
+        {"key": "ambition", "kind": "prompt", "title": "What is your ambition?", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}, {"kind": "fillFact", "slot": "ambition"}]},
         {"key": "touchstone", "kind": "prompt", "title": "Who keeps you human?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["touchstone"]}]},
         {"key": "ally", "kind": "prompt", "title": "Who stands by you?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["ally"]}]}
       ],
@@ -160,7 +160,7 @@
         {
           "key": "chronicle", "name": "The chronicle", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["elysium", "hunt", "investigation", "intrigue", "haven", "dawn"]},
           "sessionOpening": [
-            {"key": "desire", "kind": "prompt", "title": "What do you want this session?", "prompt": "Keep your ambition in mind.", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}]}
+            {"key": "desire", "kind": "prompt", "title": "What do you want this session?", "prompt": "Your ambition: {fact:ambition}. What do you want this session?", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}, {"kind": "fillFact", "slot": "desire"}]}
           ],
           "sessionClosing": [
             {"key": "got-it", "kind": "choice", "title": "Did you get what you wanted this session?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No"}], "skip": "no"}

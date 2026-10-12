@@ -87,7 +87,7 @@
   ],
   "factSlots": [
     {"key": "town", "label": "Town", "type": "text"},
-    {"key": "expedition", "label": "Expedition", "type": "thread"}
+    {"key": "expedition", "label": "Expedition", "type": "thread", "hint": "Renewed each session"}
   ],
   "sceneTypes": [
     {
@@ -169,7 +169,7 @@
         {
           "key": "founding", "name": "Founding", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["town", "roster"]},
           "phaseOpening": [
-            {"key": "town", "kind": "prompt", "title": "What is the town like?", "mandatory": true},
+            {"key": "town", "kind": "prompt", "title": "What is the town like?", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "town"}]},
             {"key": "rumor-1", "kind": "table", "title": "What rumor is going around?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]},
             {"key": "rumor-2", "kind": "table", "title": "What other rumor?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
           ]
@@ -177,14 +177,14 @@
         {
           "key": "expeditions", "name": "Expeditions", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["town", "travel", "explore-site", "delve", "return"]},
           "sessionOpening": [
-            {"key": "expedition", "kind": "pick", "title": "Which rumor do you chase this session?", "of": "thread", "mode": "choose", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]},
+            {"key": "expedition", "kind": "pick", "title": "Which rumor do you chase this session?", "of": "thread", "mode": "choose", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "expedition"}, {"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]},
             {"key": "party", "kind": "prompt", "title": "Who goes on this expedition?"}
           ],
           "sessionClosing": [
             {"key": "where", "kind": "condition", "title": "Where are you?", "tracker": "away", "bands": [{"upTo": 0, "next": "safe"}, {"next": "stranded"}]},
             {"key": "safe", "kind": "prompt", "title": "Safe in town.", "next": "resolved"},
             {"key": "stranded", "kind": "table", "title": "What happens out in the wilds?", "table": "stranded"},
-            {"key": "resolved", "kind": "choice", "title": "Is the expedition resolved?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No"}], "skip": "no"},
+            {"key": "resolved", "kind": "choice", "title": "Is {fact:expedition} resolved?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No"}], "skip": "no"},
             {"key": "new-rumor", "kind": "table", "title": "What new rumor reaches town?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
           ],
           "worldTurn": [

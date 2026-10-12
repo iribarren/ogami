@@ -1,7 +1,7 @@
 # Feature: design-foundation
 
 - **Locator:** `odd/tasks/design-foundation.md` · Engram topic `odd/design-foundation/tasks`
-- **Issue:** #83 · **Branch:** `feat/design-foundation-2-play-layout` (slice 2) · **Status:** slice 1 merged (#84); slice 2 in progress
+- **Issue:** #83 · **Branch:** `feat/design-foundation-3-themes` (slice 3) · **Status:** slices 1–2 merged (#84, #85); slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-campaign-facts` (PRs #76–#82)
@@ -133,7 +133,7 @@ What keeps each slice safe on `main`:
 | T1 | 1 | Feature doc. Tokens: the default app theme (light and dark), semantic `success` / `warning` / `info`, type scale, layout tokens in `index.css`. Contrast test (`culori`, reads the CSS source, AA pairs per palette) | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7a909fa` |
 | T2 | 1 | Color mode: `ColorModeProvider`, `useColorMode`, mode override hook, no-flash script in `index.html`, header toggle; Vitest tests (stored mode, system mode and its change, override wins, storage failure) | delegated writer (slice 1, 4+ non-trivial files) | [x] | `8476de0` |
 | T3 | 1 | Shared UI styling: restyle `shared/ui` components on the tokens, add the components the layout needs (e.g. `badge`, `separator`, `collapsible`, segmented control); Storybook: mode/theme toolbar decorator, `Foundations/Tokens` page (swatches, type scale), a story per shared UI component | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7b553b4` |
-| T4 | 2 | Play layout: wider campaign container, sticky self-scrolling sidebar, `PlayPanel` (collapsible, remembered), section restyle, Focus mode width, Journal reading measure, segmented Journal/Focus toggle, phone width; Vitest and story updates; e2e selectors still pass | delegated writer (slice 2) | [x] | |
+| T4 | 2 | Play layout: wider campaign container, sticky self-scrolling sidebar, `PlayPanel` (collapsible, remembered), section restyle, Focus mode width, Journal reading measure, segmented Journal/Focus toggle, phone width; Vitest and story updates; e2e selectors still pass | delegated writer (slice 2) | [x] | `d5c8dd4`, `3e57fda` |
 | T5 | 3 | Contract and ACL: `theme` in `v2.schema.json` and Version2 validator, fixtures (valid with each theme, invalid unknown / non-string), agreement test, contract doc; translator and `GameSystemSnapshot::theme()`; `PinnedReleaseView` / `PinnedReleaseResponse.theme`; unit and API tests; `make api` | delegated writer (slice 3) | [ ] | |
 | T6 | 3 | Themes: five palettes and heading fonts, contrast test covers them, `useCampaignTheme` sets `data-theme` and the mode override on the campaign route and clears them on leave; Storybook theme toolbar lists them; Vitest tests | delegated writer (slice 3) | [ ] | |
 | T7 | 3 | Wrap-up: glossary (Theme set), ADR 0017 §13 note that the set is settled, roadmap 8c; e2e smoke (mode toggle persists over reload) | delegated writer (slice 3) | [ ] | |
@@ -153,7 +153,8 @@ What keeps each slice safe on `main`:
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-9e06a5883ce259ba` | `7a909fa`..`7b553b4` | Approved. Non-blocking, fixed in slice 2: contrast parser could skip a palette silently (assert the exact set); `index.css` resolved from `process.cwd()` instead of `import.meta.url`; no-flash script duplicates the storage key/values untested | [#84](https://github.com/iribarren/ogami/pull/84) |
+| 2 | `review-51e7c653e69acc6c` | `d4f6af8`..`3e57fda` | Approved. Non-blocking, fixed in slice 3: collapsing a `PlayPanel` unmounts its body, so drafts, the dice expression and the last roll or oracle result are lost (`PlayPanel.tsx:58`); e2e role/label locators match substrings, use `exact: true` (`play-layout.spec.ts:29-35`) | [#85](https://github.com/iribarren/ogami/pull/85) |
 
 ## Next step
 
-Slice 2 (`feat/design-foundation-2-play-layout`): written; next native review, then push and the PR.
+Slice 3 (`feat/design-foundation-3-themes`): commit 1 = slice 2 review fixes (collapsed panels keep their body mounted; exact e2e locators), then T5, T6, T7. Then native review, push and the PR (`Closes #83`).

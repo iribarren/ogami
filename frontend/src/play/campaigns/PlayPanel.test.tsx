@@ -39,12 +39,31 @@ describe('PlayPanel', () => {
     await user.click(trigger())
 
     expect(trigger()).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('The harbour master owes a favour.')).not.toBeInTheDocument()
+    expect(screen.getByText('The harbour master owes a favour.')).not.toBeVisible()
+    expect(screen.queryByRole('paragraph')).not.toBeInTheDocument()
 
     await user.click(trigger())
 
     expect(trigger()).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('The harbour master owes a favour.')).toBeInTheDocument()
+  })
+
+  it('keeps the body mounted while collapsed, so local tool state survives', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayPanel id="facts" title="Facts">
+        <input aria-label="Draft fact" />
+      </PlayPanel>,
+    )
+
+    await user.type(screen.getByRole('textbox', { name: 'Draft fact' }), 'Owes a favour')
+    await user.click(trigger())
+
+    expect(screen.queryByRole('textbox', { name: 'Draft fact' })).not.toBeInTheDocument()
+
+    await user.click(trigger())
+
+    expect(screen.getByRole('textbox', { name: 'Draft fact' })).toHaveValue('Owes a favour')
   })
 
   it('remembers its state per section across a remount', async () => {

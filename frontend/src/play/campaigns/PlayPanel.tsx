@@ -1,7 +1,7 @@
 import { useId, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible'
+import { Collapsible, CollapsibleTrigger } from '@/shared/ui/collapsible'
 
 import { readPanelOpen, storePanelOpen } from './playPanelStorage'
 
@@ -55,7 +55,14 @@ export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
           </h2>
           {count !== undefined && <Badge variant="secondary">{count}</Badge>}
         </div>
-        <CollapsibleContent className="pt-3">{children}</CollapsibleContent>
+        {/*
+          Hidden, not unmounted: Radix's CollapsibleContent drops its children when closed, which
+          would lose the tools' local state (drafts, dice expression, last roll or oracle result).
+          `hidden` keeps the body out of the accessibility tree and the tab order.
+        */}
+        <div hidden={!open} data-state={open ? 'open' : 'closed'} className="pt-3">
+          {children}
+        </div>
       </section>
     </Collapsible>
   )

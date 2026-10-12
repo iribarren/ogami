@@ -1,7 +1,7 @@
 # Feature: play-threads-npcs
 
 - **Locator:** `odd/tasks/play-threads-npcs.md` · Engram topic `odd/play-threads-npcs/tasks`
-- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-6-lists-ui` (from `main` `0032d11`)
+- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-7-flow-pick` (from `main` `0ac6f57`)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-flow-run` (PR #62)
@@ -97,13 +97,14 @@ Forecasts include tests, docs and generated files (OpenAPI spec, TS types). Hard
 | 4 | `feat/play-threads-npcs-4-npcs-http` | `feat(play): play-threads-npcs 4/9 npcs-http` | T5 | ~1,600 |
 | 5 | `feat/play-threads-npcs-5-threads-http` | `feat(play): play-threads-npcs 5/9 threads-http` | T5b | ~2,400 (~900 generated; size exception accepted) |
 | 6 | `feat/play-threads-npcs-6-lists-ui` | `feat(play): play-threads-npcs 6/9 lists-ui` | T6 | ~1,400 |
-| 7 | `feat/play-threads-npcs-7-flow` | `feat(play): play-threads-npcs 7/9 flow` | T7 | ~1,700 |
-| 8 | `feat/play-threads-npcs-8-flow-http` | `feat(play): play-threads-npcs 8/9 flow-http` | T8 | ~1,600 |
-| 9 | `feat/play-threads-npcs-9-flow-ui` | `feat(play): play-threads-npcs 9/9 flow-ui` | T9, T10 | ~1,500 |
+| 7 | `feat/play-threads-npcs-7-flow-pick` | `feat(play): play-threads-npcs 7/10 flow-pick` | T7 | ~1,500 |
+| 8 | `feat/play-threads-npcs-8-flow-effects` | `feat(play): play-threads-npcs 8/10 flow-effects` | T7b | ~1,300 |
+| 9 | `feat/play-threads-npcs-9-flow-http` | `feat(play): play-threads-npcs 9/10 flow-http` | T8 | ~1,600 |
+| 10 | `feat/play-threads-npcs-10-flow-ui` | `feat(play): play-threads-npcs 10/10 flow-ui` | T9, T10 | ~1,500 |
 
-Slices 1–3 shipped with `n/8` titles; the plan grew to 9 when slice 4 (forecast ~2,100 with both lists) was split into NPCs and Threads.
+Slices 1–3 shipped with `n/8` titles; the plan grew to 9 when slice 4 (forecast ~2,100 with both lists) was split into NPCs and Threads, and slices 4–6 shipped with `n/9`. It grew to 10 when T7 (forecast ~2,000 with the slice 6 review fix) was split into the `pick` step (7) and the effects and Scene cast (8).
 
-Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them; releases are published only from `backend/presets/`, none uses the new parts, and slice 2 adds the Play side next. Slice 2 reads the new parts into the snapshot; FlowRun evaluates a `count` condition as 0 until slice 3 (Campaigns hold no NPCs or Threads yet) and does not play `pick` steps or the new effects until slice 7, so presets must not use them before then. Slices 3–5 add unused backend (the campaign response gains `tags`, `npcs`, `threads`, ignored by the SPA); 6 shows the lists; 7–8 add unused flow support; 9 shows it.
+Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them; releases are published only from `backend/presets/`, none uses the new parts, and slice 2 adds the Play side next. Slice 2 reads the new parts into the snapshot; FlowRun evaluates a `count` condition as 0 until slice 3 (Campaigns hold no NPCs or Threads yet) and does not play `pick` steps or the new effects until slice 7, so presets must not use them before then. Slices 3–5 add unused backend (the campaign response gains `tags`, `npcs`, `threads`, ignored by the SPA); 6 shows the lists; 7–9 add unused flow support (no preset uses the new parts); 10 shows it.
 
 ## Tasks
 
@@ -115,11 +116,12 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | T4 | 3 | Campaign NPCs and Threads (domain: add, edit, close, reopen, weight, tags, free tags, limits); JSONB columns, Doctrine types, migration; repository round trip incl. legacy rows | delegated writer (slice 3, 4+ non-trivial files) | [x] | `b3451f0`, `2a9b710` |
 | T5 | 4 | Campaign response gains `tags`, `npcs`, `threads`; commands, handlers and endpoints for NPCs (add, edit, close, reopen); API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 4, 4+ non-trivial files) | [x] | `57a4607`, `3d26e32`, `e874761` |
 | T5b | 5 | Commands, handlers and endpoints for Threads (add, edit, close, reopen); API tests, Behat; `make api` | delegated writer (slice 5, 4+ non-trivial files) | [x] | `293c038`, `534980b`, `4abd9fd` |
-| T6 | 6 | NPCs and Threads panels beside the journal (list, add, edit, close/reopen, weight, tags with hints, free tags); stories and tests | delegated writer (slice 6, 2+ non-trivial files) | [x] | |
-| T7 | 7 | FlowRun: `pick` (random weighted, choose), effects, condition counts, `{picked}`, the Scene cast (domain and `sessions` JSONB, legacy scenes), journal entry kind `pick`; unit tests | | [ ] | |
-| T8 | 8 | HTTP: step view for `pick` (mode, count, candidates), answer with picked ids, cast in the scene view, `PUT` current scene cast, `pick` journal entry; API tests, Behat; `make api` | | [ ] | |
-| T9 | 9 | UI: `pick` step card, cast in the journal scene header and focus mode, `pick` journal entry; tests and stories | | [ ] | |
-| T10 | 9 | Glossary and contract doc wrap-up; e2e smoke for the lists | | [ ] | |
+| T6 | 6 | NPCs and Threads panels beside the journal (list, add, edit, close/reopen, weight, tags with hints, free tags); stories and tests | delegated writer (slice 6, 2+ non-trivial files) | [x] | `269cd71`, `1423361` |
+| T7 | 7 | FlowRun: `pick` step (random weighted draw, choose with ids, too few candidates → `none`, outcomes `found` / `none`), `{picked}` (per Scene, persisted with the FlowRun, legacy rows), journal entry kind `pick` (domain and persistence), `CompleteFlowStep` handler; unit and integration tests | | [ ] | |
+| T7b | 8 | FlowRun: effects `createNpc`, `createThread`, `closeThread` (they set `{picked}`); the Scene cast (domain, `sessions` JSONB, legacy scenes; picks and created NPCs join it; domain edit of the current Scene's cast); unit and integration tests | | [ ] | |
+| T8 | 9 | HTTP: step view for `pick` (mode, count, candidates), answer with picked ids, cast in the scene view, `PUT` current scene cast, `pick` journal entry; API tests, Behat; `make api` | | [ ] | |
+| T9 | 10 | UI: `pick` step card, cast in the journal scene header and focus mode, `pick` journal entry; tests and stories | | [ ] | |
+| T10 | 10 | Glossary and contract doc wrap-up; e2e smoke for the lists | | [ ] | |
 
 ## Progress
 
@@ -134,6 +136,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 - 2026-10-12: slice 5 — T5b done: `AddThread`, `EditThread`, `CloseThread`, `ReopenThread` and their handlers, `ThreadIdGenerator` and `UuidThreadIdGenerator`, `CampaignThreadsController` (`POST/PUT /api/campaigns/{campaignId}/threads[/{threadId}]`, `…/close`, `…/reopen`) and `ThreadRequest`, mirroring the NPC slice with the slice 4 review fixes; `ReadsJsonBodies` now holds `isListOfStrings` and the unreadable-release 500 for both controllers. Tests: `CampaignThreadsApiTest` (every status, including 409 on a concurrent save, a taken generated id and the 500), `ThreadHandlersTest`, `PlayRequestSchemasTest`, Behat `threads.feature`. OpenAPI spec and TS types follow in the generated commit.
 - 2026-10-12: slice 6 — slice 5 review fixes: `EditNpcHandler` and `EditThreadHandler` resolve the item id (blank → invalid id, unknown → not found) before reading the pinned release, so an unreadable release no longer hides it (a unit test per handler); the Behat "I added the NPC/Thread …" Given steps now assert no failure.
 - 2026-10-12: slice 6 — T6 done: `frontend/src/play/lists/` holds one generic `ListPanel` (list, inline add and edit form, close and reopen, release Tags with label and hint, free tags, weight) used for the Threads and NPCs `Section`s of the Campaign page (after Trackers, before Oracles, always shown), and `useListActions` (add and edit replace or refetch the cached campaign, 409 refetches); server refusals show under the form or panel and keep what was typed; tests (17) and stories.
+- 2026-10-12: slice 7 — slice 6 review fix: the list form edits free tags as a list (removable chips, text input plus Add or Enter adds the typed text as one tag, commas are not separators; unsaved input is kept on save), `splitFreeTags` removed; tests for a comma-holding tag saved unchanged and for add and remove.
 
 ## Reviews
 
@@ -144,7 +147,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | 3 | `review-c97841621e9e0f4e` (domain), `review-f2d1b45657573dd2` (persistence) | `79fb04f`, `b3451f0`, `2a9b710` | Approved (two candidates; +1,892 lines, size exception accepted). Non-blocking findings, fixed in slice 4: the Doctrine readers and `reconstitute()` accept a stored list with duplicate ids (`CampaignNpcsType.php:74`, `CampaignThreadsType.php:73`); Thread reader malformed-data tests cover fewer branches than NPC ones; write-side `InvalidType` checks untested; unpinned-release refusal tested only through `addNpc` | [#66](https://github.com/iribarren/ogami/pull/66) |
 | 4 | `review-9050698cb81701ed` (T5), `review-55aae2e2b97c82c2` (generated) | `3d26e32`, `e874761` (`57a4607` review skipped by the user) | Approved (size exception, ~2,960 lines, per-commit candidates). Non-blocking findings, fixed in slice 5: NPC add and edit let an unreadable pinned release (`GameSystemReleaseNotFound`, `UnsupportedReleaseSchemaVersion`, `InvalidGameSystemRelease`) surface as an unhandled 500 (`CampaignNpcsController.php:74-82`); close and reopen check the NPC id before the campaign, untested order. Kept: the NPC limit and a concurrent save share 409 with distinct messages, as the session limit does in `CampaignController` | [#67](https://github.com/iribarren/ogami/pull/67) |
 | 5 | `review-b3ee9908d5133835` | `293c038`, `534980b` (`4abd9fd` generated, review skipped by the user) | Approved (size exception, ~2,400 lines; hand-written commits as one candidate). Non-blocking findings, fixed in slice 6: `EditNpcHandler` and `EditThreadHandler` load the pinned release before parsing the id, so a blank id on a campaign with an unreadable release answers 500 instead of 404, untested; the Behat step "I added the Thread …" swallows failures (`attempt()` without `assertNoFailure()`, `PlayContext.php:338-343`). Noted, not fixed: Studio `InvalidReleaseContent` can leak through Play's release port as an unhandled 500 (pre-existing) | [#68](https://github.com/iribarren/ogami/pull/68) |
+| 6 | `review-056ffd2d6e0a8178` | `269cd71`, `1423361` | Approved. One non-blocking finding, fixed in slice 7: free tags are edited as one comma-joined string (`ListPanel.tsx:22-28`), so a free tag holding a comma (added through the API) splits into several tags when the form is saved unchanged; no test covers the round trip | [#69](https://github.com/iribarren/ogami/pull/69) |
 
 ## Next step
 
-Slice 6 (T6): slice 5 review fixes and the NPCs and Threads panels. Next slice 7 (T7): FlowRun support.
+Slice 7 (T7): slice 6 review fix (free tags edited as chips) and the `pick` step, `{picked}` and the `pick` journal entry. Next slice 8 (T7b): the content effects and the Scene cast.

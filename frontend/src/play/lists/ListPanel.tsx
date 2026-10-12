@@ -19,14 +19,6 @@ const kinds = {
 
 const maxAgenda = 2000
 
-/** "A, , b " becomes ["A", "b"]. */
-function splitFreeTags(typed: string) {
-  return typed
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter((tag) => tag !== '')
-}
-
 /**
  * The NPCs or the Threads of a campaign: open items first, closed ones under a collapsed
  * "Closed", with an inline form to add and edit. The API validates; its refusals show as they
@@ -242,6 +234,10 @@ function ItemForm({
   const { noun, maxName, hasAgenda } = kinds[kind]
   const id = useId()
   const agenda = item !== null && 'agenda' in item ? item.agenda : null
+  // Free tags are a list, never one string: a tag may hold a comma. Unsaved text in the
+  // input is kept as one more tag on save, so typing and saving loses nothing.
+  const [freeTags, setFreeTags] = useState<string[]>(item?.freeTags ?? [])
+  const [draftTag, setDraftTag] = useState('')
   // The release's Tags, then the item's keys the release does not list, so saving keeps them.
   const options: ReleaseTag[] = [
     ...releaseTags,
@@ -249,6 +245,14 @@ function ItemForm({
       .filter((key) => !releaseTags.some((tag) => tag.key === key))
       .map((key) => ({ key, label: key, hint: null })),
   ]
+
+  function addFreeTag() {
+    const tag = draftTag.trim()
+    if (tag !== '') {
+      setFreeTags([...freeTags, tag])
+      setDraftTag('')
+    }
+  }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -260,7 +264,7 @@ function ItemForm({
     const fields: ListFields = {
       name: text('name'),
       tags: data.getAll('tags').filter((tag) => typeof tag === 'string'),
-      freeTags: splitFreeTags(text('freeTags')),
+      freeTags: draftTag.trim() === '' ? freeTags : [...freeTags, draftTag.trim()],
       weight: Number(text('weight')),
     }
     if (hasAgenda) {
@@ -321,14 +325,48 @@ function ItemForm({
         )}
         <div className="space-y-1">
           <Label htmlFor={`${id}-free`}>Free tags</Label>
-          <Input
-            id={`${id}-free`}
-            name="freeTags"
-            aria-describedby={`${id}-free-help`}
-            defaultValue={item?.freeTags.join(', ') ?? ''}
-          />
+          {freeTags.length > 0 && (
+            <ul className="flex flex-wrap gap-1">
+              {freeTags.map((label, index) => (
+                <li
+                  key={index}
+                  className={`${chip} flex items-center gap-1 border border-dashed border-border`}
+                >
+                  {label}
+                  <button
+                    type="button"
+                    aria-label={`Remove free tag ${label}`}
+                    onClick={() => {
+                      setFreeTags(freeTags.filter((_, held) => held !== index))
+                    }}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex gap-2">
+            <Input
+              id={`${id}-free`}
+              value={draftTag}
+              aria-describedby={`${id}-free-help`}
+              onChange={(event) => {
+                setDraftTag(event.target.value)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  addFreeTag()
+                }
+              }}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={addFreeTag}>
+              Add free tag
+            </Button>
+          </div>
           <p id={`${id}-free-help`} className="text-xs text-muted-foreground">
-            Separate with commas.
+            One tag at a time; commas are part of the tag.
           </p>
         </div>
         <div className="space-y-1">

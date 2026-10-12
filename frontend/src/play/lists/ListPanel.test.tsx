@@ -128,7 +128,10 @@ describe('the NPCs panel', () => {
     await user.type(panel.getByLabelText('Name'), 'Kess')
     await user.type(panel.getByLabelText('Agenda'), 'Wants out.')
     await user.click(panel.getByRole('checkbox', { name: /Ally/ }))
-    await user.type(panel.getByLabelText('Free tags'), ' Pilot, ,Tall ')
+    await user.type(panel.getByLabelText('Free tags'), ' Pilot ')
+    await user.click(panel.getByRole('button', { name: 'Add free tag' }))
+    await user.type(panel.getByLabelText('Free tags'), '   {Enter}')
+    await user.type(panel.getByLabelText('Free tags'), 'Tall{Enter}')
     await user.selectOptions(panel.getByLabelText('Weight'), '3')
     await user.click(panel.getByRole('button', { name: 'Save' }))
 
@@ -182,7 +185,7 @@ describe('the NPCs panel', () => {
     expect(panel.getByLabelText('Agenda')).toHaveValue('Wants the ledger back.')
     expect(panel.getByRole('checkbox', { name: /Leader/ })).toBeChecked()
     expect(panel.getByRole('checkbox', { name: /Ally/ })).not.toBeChecked()
-    expect(panel.getByLabelText('Free tags')).toHaveValue('Fence')
+    expect(panel.getByRole('button', { name: 'Remove free tag Fence' })).toBeInTheDocument()
     expect(panel.getByLabelText('Weight')).toHaveValue('2')
 
     await user.clear(panel.getByLabelText('Name'))
@@ -201,6 +204,55 @@ describe('the NPCs panel', () => {
       },
     ])
     expect(panel.queryByLabelText('Name')).not.toBeInTheDocument()
+  })
+
+  it('sends a free tag holding a comma back unchanged when saved untouched', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    const smith = { ...miraNpc, freeTags: ['Smith, John', 'Fence'] }
+    renderLists(
+      { ...lostMineWithLists, npcs: [smith] },
+      { [`PUT ${path}/npcs/${miraNpc.id}`]: () => Response.json(smith) },
+      sent,
+    )
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Edit Mira Vane' }))
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        {
+          name: 'Mira Vane',
+          agenda: 'Wants the ledger back.',
+          tags: ['leader'],
+          freeTags: ['Smith, John', 'Fence'],
+          weight: 2,
+        },
+      ])
+    })
+  })
+
+  it('adds a free tag as one tag, commas included, and removes another', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    renderLists(
+      lostMineWithLists,
+      { [`PUT ${path}/npcs/${miraNpc.id}`]: () => Response.json(miraNpc) },
+      sent,
+    )
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Edit Mira Vane' }))
+    await user.type(panel.getByLabelText('Free tags'), 'Doe, Jane{Enter}')
+    expect(panel.getByRole('button', { name: 'Remove free tag Doe, Jane' })).toBeInTheDocument()
+    expect(panel.getByLabelText('Free tags')).toHaveValue('')
+    await user.click(panel.getByRole('button', { name: 'Remove free tag Fence' }))
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([expect.objectContaining({ freeTags: ['Doe, Jane'] })])
+    })
   })
 
   it('keeps a tag the release does not know ticked while editing', async () => {

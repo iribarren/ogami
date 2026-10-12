@@ -66,6 +66,7 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
       <ItemRow
         key={item.id}
         item={item}
+        facts={linkedFacts(campaign, kind, item)}
         releaseTags={campaign.tags}
         pending={setStatus.isPending}
         onEdit={() => {
@@ -137,14 +138,28 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
 
 const chip = 'rounded-md px-1.5 py-0.5 text-xs font-medium'
 
+/** The labels of the facts linked to an item: those that link it and the slot facts it fills. */
+function linkedFacts(campaign: Campaign, kind: ListKind, item: ListItem): string[] {
+  return campaign.facts
+    .filter(
+      ({ links, subject }) =>
+        links.some((link) => link.kind === kind && link.id === item.id) ||
+        (subject?.kind === kind && subject.id === item.id),
+    )
+    .map(({ label }) => label)
+}
+
 function ItemRow({
   item,
+  facts,
   releaseTags,
   pending,
   onEdit,
   onToggle,
 }: {
   item: ListItem
+  /** The labels of the facts linked to the item. */
+  facts: string[]
   releaseTags: ReleaseTag[]
   pending: boolean
   onEdit: () => void
@@ -187,6 +202,9 @@ function ItemRow({
       </div>
       {agenda !== null && agenda !== '' && (
         <p className="text-sm text-muted-foreground">{agenda}</p>
+      )}
+      {facts.length > 0 && (
+        <p className="text-xs text-muted-foreground">Facts: {facts.join(', ')}</p>
       )}
       {(item.tags.length > 0 || item.freeTags.length > 0) && (
         <div className="flex flex-wrap gap-1">

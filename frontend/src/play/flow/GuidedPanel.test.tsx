@@ -80,6 +80,34 @@ describe('the guided panel', () => {
     expect(guide.getByText('Setup: Who walks in?')).toBeInTheDocument()
   })
 
+  it('lists the Fact slots a step fills, with their hints', async () => {
+    const filling = {
+      ...promptStep,
+      fills: [
+        { key: 'city', label: 'The city', type: 'text' as const, hint: 'Where does it begin?' },
+        { key: 'prince', label: 'The Prince', type: 'npc' as const, hint: null },
+      ],
+    }
+    renderGuided(guided(atStep(filling)))
+
+    const card = within(
+      (await panel()).getByRole('region', { name: 'Current step: Who walks in?' }),
+    )
+    expect(card.getByText('The city')).toBeInTheDocument()
+    expect(card.getByText(/Where does it begin\?/)).toBeInTheDocument()
+    expect(card.getByText('The Prince')).toBeInTheDocument()
+    expect(card.getByText(/^Fills/)).toBeInTheDocument()
+  })
+
+  it('lists no slots for a step that fills none', async () => {
+    renderGuided(guided(atStep(promptStep)))
+
+    const card = within(
+      (await panel()).getByRole('region', { name: 'Current step: Who walks in?' }),
+    )
+    expect(card.queryByText(/^Fills/)).not.toBeInTheDocument()
+  })
+
   it('answers a prompt with the text typed, and shows the campaign it answers with', async () => {
     const user = userEvent.setup()
     const next = guided(atStep(rollStep))

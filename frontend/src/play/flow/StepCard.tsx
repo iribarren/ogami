@@ -46,6 +46,21 @@ export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
         <h4 className="font-heading text-base font-semibold">{step.title}</h4>
         {step.prompt !== null && <p className="whitespace-pre-wrap">{step.prompt}</p>}
         {step.tip !== null && <p className="text-sm text-muted-foreground">Tip: {step.tip}</p>}
+        {step.fills.length > 0 && (
+          <div className="text-sm">
+            <p className="text-muted-foreground">Fills:</p>
+            <ul className="list-inside list-disc">
+              {step.fills.map((slot) => (
+                <li key={slot.key}>
+                  <span className="font-medium">{slot.label}</span>
+                  {slot.hint !== null && (
+                    <span className="text-muted-foreground"> — {slot.hint}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <StepForm campaign={campaign} step={step} pending={pending} onCommand={onCommand} />
       {!step.mandatory && (

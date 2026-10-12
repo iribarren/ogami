@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Application;
 
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignView;
+use App\Play\Application\CastMemberView;
 use App\Play\Application\FlowSummaryView;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
@@ -31,6 +32,8 @@ use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -48,6 +51,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(PinnedReleaseView::class)]
 #[CoversClass(SessionView::class)]
 #[CoversClass(SceneView::class)]
+#[CoversClass(CastMemberView::class)]
 #[CoversClass(OracleTableView::class)]
 #[CoversClass(LikelihoodOracleView::class)]
 #[CoversClass(LikelihoodLevelView::class)]
@@ -231,6 +235,49 @@ final class GetCampaignHandlerTest extends TestCase
             new SceneView(2, 'Legwork 1', new \DateTimeImmutable('2026-10-10T09:02:00+00:00'), 'scene', 'legwork', 'Legwork'),
             new SceneView(3, 'A quiet drink', new \DateTimeImmutable('2026-10-10T09:03:00+00:00'), 'scene'),
         ], $scenes);
+    }
+
+    #[Test]
+    public function aSceneShowsItsCastWithTheNamesTheCampaignHasNow(): void
+    {
+        $snapshot = Snapshots::withTags('people', 'People', 1);
+        $this->releases->add($snapshot);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-3'), 'user-1', 'The crew', PinnedRelease::of('people', 1, 'People'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->startScene('Old friends', new \DateTimeImmutable('2026-10-10T09:01:00+00:00'));
+        $campaign->addNpc(NpcId::fromString('ana'), 'Ana', null, [], [], 1, $snapshot);
+        $campaign->addNpc(NpcId::fromString('bea'), 'Bea', null, [], [], 1, $snapshot);
+        $campaign->editCurrentSceneCast([NpcId::fromString('bea'), NpcId::fromString('ana')]);
+        $campaign->editNpc(NpcId::fromString('ana'), 'Ana Vega', null, [], [], 1, $snapshot);
+        $campaign->closeNpc(NpcId::fromString('bea'));
+        $campaign->startScene('Nobody', new \DateTimeImmutable('2026-10-10T09:02:00+00:00'));
+        $this->campaigns->add($campaign);
+
+        $scenes = ($this->handler)(new GetCampaign('campaign-3', 'user-1'))->sessions[0]->scenes;
+
+        self::assertEquals([new CastMemberView('bea', 'Bea'), new CastMemberView('ana', 'Ana Vega')], $scenes[0]->cast);
+        self::assertSame([], $scenes[1]->cast);
+    }
+
+    #[Test]
+    public function aCastNamingAnNpcTheCampaignDoesNotHoldFailsClosed(): void
+    {
+        $snapshot = Snapshots::withTags('people', 'People', 1);
+        $this->releases->add($snapshot);
+        $at = new \DateTimeImmutable('2026-10-10T09:00:00+00:00');
+        $this->campaigns->add(Campaign::reconstitute(
+            CampaignId::fromString('campaign-4'),
+            'user-1',
+            'The crew',
+            PinnedRelease::of('people', 1, 'People'),
+            $at,
+            [Session::reconstitute(1, $at, [Scene::reconstitute(1, 'Ghosts', $at, cast: [NpcId::fromString('ghost')])])],
+        ));
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('Scene 1 casts NPC "ghost", which the campaign does not hold.');
+
+        ($this->handler)(new GetCampaign('campaign-4', 'user-1'));
     }
 
     #[Test]

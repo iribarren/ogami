@@ -34,3 +34,25 @@ Feature: Keep a campaign's NPCs
       | name      | agenda           | tags  | free tags | weight | status |
       | Mira Vane | Wants the ledger | rival | Fence     | 3      | open   |
       | Brann     |                  | ally  | Smith     | 1      | open   |
+
+  Scenario: I edit the cast of the current scene with NPCs, closed ones included
+    Given I started a session
+    And I started the scene "At the gate"
+    And I added the NPC "Mira" with the Tag "rival" and the free tag "Fence"
+    And I added the NPC "Brann" with the Tag "ally" and the free tag "Smith"
+    When I set the cast of the current scene to "Brann, Mira"
+    And I close the NPC "Mira"
+    Then the cast of the current scene is "Brann, Mira"
+    When I set the cast of the current scene to "Mira"
+    Then the cast of the current scene is "Mira"
+
+  Scenario: A cast that names an unknown NPC, or one twice, changes nothing
+    Given I started a session
+    And I started the scene "At the gate"
+    And I added the NPC "Mira" with the Tag "rival" and the free tag "Fence"
+    And I set the cast of the current scene to "Mira"
+    When I try to set the cast of the current scene to the ids "npc-1, ghost"
+    Then I am told that no NPC of the campaign has that id
+    When I try to set the cast of the current scene to the ids "npc-1, npc-1"
+    Then I am told that an NPC is in the cast twice
+    And the cast of the current scene is "Mira"

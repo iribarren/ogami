@@ -18,6 +18,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     table: null,
     dice: null,
     options: [],
+    pick: null,
     ...fields,
   }
 }

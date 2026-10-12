@@ -681,6 +681,117 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/scenes/current/cast": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Replace the cast of the current scene of one of my campaigns",
+                "operationId": "editSceneCast",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditSceneCastRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The current scene with its new cast; its number, title and journal entries stay.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SceneResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or \"npcIds\" is not a list of strings.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or an id is not an NPC of the campaign (a blank or malformed one included).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "An NPC is listed twice.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/trackers/{trackerKey}": {
             "put": {
                 "tags": [
@@ -1605,7 +1716,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed: no string \"stepKey\", or a non-string \"text\", \"optionKey\" or \"likelihood\", or a non-integer \"chaosFactor\".",
+                        "description": "The JSON body is malformed: no string \"stepKey\", or a non-string \"text\", \"optionKey\" or \"likelihood\", a non-integer \"chaosFactor\", or \"pickedIds\" that is not a list of strings.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1645,7 +1756,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile (or took the generated entry id).",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC or Thread the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1665,7 +1776,7 @@
                         }
                     },
                     "422": {
-                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), or the step is a condition step.",
+                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3208,6 +3319,24 @@
                 },
                 "type": "object"
             },
+            "ItemRefResponse": {
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "The id of the NPC or Thread.",
+                        "type": "string",
+                        "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Vega"
+                    }
+                },
+                "type": "object"
+            },
             "SceneResponse": {
                 "required": [
                     "number",
@@ -3216,7 +3345,8 @@
                     "kind",
                     "sceneType",
                     "sceneTypeName",
-                    "hook"
+                    "hook",
+                    "cast"
                 ],
                 "properties": {
                     "number": {
@@ -3266,6 +3396,13 @@
                             "worldTurn",
                             null
                         ]
+                    },
+                    "cast": {
+                        "description": "The NPCs in the scene, in cast order, named as the campaign names them now; closed NPCs stay. Empty for a scene without a cast.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemRefResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -3578,6 +3715,77 @@
                 },
                 "type": "object"
             },
+            "PickTagResponse": {
+                "required": [
+                    "key",
+                    "label"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "leader"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Leader"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowPickStepResponse": {
+                "required": [
+                    "of",
+                    "mode",
+                    "min",
+                    "max",
+                    "tags",
+                    "candidates"
+                ],
+                "properties": {
+                    "of": {
+                        "description": "The kind of item picked.",
+                        "type": "string",
+                        "example": "npc",
+                        "enum": [
+                            "npc",
+                            "thread"
+                        ]
+                    },
+                    "mode": {
+                        "description": "Drawn by the server, or chosen by the player.",
+                        "type": "string",
+                        "example": "choose",
+                        "enum": [
+                            "random",
+                            "choose"
+                        ]
+                    },
+                    "min": {
+                        "description": "The fewest items to pick; with fewer candidates the step completes with nothing picked.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "max": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "tags": {
+                        "description": "The release Tags the items must carry, all of them; empty matches any open item.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PickTagResponse"
+                        }
+                    },
+                    "candidates": {
+                        "description": "The open items of the kind that carry all the Tags, in list order; empty when none match.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemRefResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "FlowStepResponse": {
                 "required": [
                     "key",
@@ -3590,7 +3798,8 @@
                     "likelihood",
                     "table",
                     "dice",
-                    "options"
+                    "options",
+                    "pick"
                 ],
                 "properties": {
                     "key": {
@@ -3606,7 +3815,8 @@
                             "oracle",
                             "table",
                             "roll",
-                            "choice"
+                            "choice",
+                            "pick"
                         ]
                     },
                     "title": {
@@ -3659,6 +3869,15 @@
                         "items": {
                             "$ref": "#/components/schemas/FlowStepOptionResponse"
                         }
+                    },
+                    "pick": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowPickStepResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What the step picks from (pick step); null for the other kinds."
                     }
                 },
                 "type": "object"
@@ -4176,6 +4395,21 @@
                 },
                 "type": "object"
             },
+            "EditSceneCastRequest": {
+                "required": [
+                    "npcIds"
+                ],
+                "properties": {
+                    "npcIds": {
+                        "description": "The whole new cast of the current scene, in cast order: NPCs of the campaign, closed ones allowed, none twice. An empty list empties the cast.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "SetTrackerValueRequest": {
                 "required": [
                     "value"
@@ -4309,6 +4543,14 @@
                         "description": "Oracle step: within the oracle's chaos range; omitted or null for its neutral factor. Must be omitted or null when the oracle has no chaos or takes it from a campaign Tracker.",
                         "type": "integer",
                         "example": 5,
+                        "nullable": true
+                    },
+                    "pickedIds": {
+                        "description": "Pick step in mode choose: the ids of the candidates chosen, between the step's minimum and maximum, none twice; an empty list when nothing matches. Must be omitted or null in mode random.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
                         "nullable": true
                     }
                 },
@@ -4733,6 +4975,47 @@
                 },
                 "type": "object"
             },
+            "PickContentResponse": {
+                "required": [
+                    "kind",
+                    "of",
+                    "tags",
+                    "picked"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "pick"
+                        ]
+                    },
+                    "of": {
+                        "description": "The kind of item picked.",
+                        "type": "string",
+                        "example": "npc",
+                        "enum": [
+                            "npc",
+                            "thread"
+                        ]
+                    },
+                    "tags": {
+                        "description": "The keys of the release Tags the step asked for, as they were stored; empty when it asked for none.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "leader"
+                        }
+                    },
+                    "picked": {
+                        "description": "The items picked, in the order picked, named as they were at pick time; empty when nothing matched.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemRefResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "JournalFlowStepResponse": {
                 "required": [
                     "key",
@@ -4792,7 +5075,8 @@
                             "roll",
                             "oracle-table",
                             "likelihood",
-                            "choice"
+                            "choice",
+                            "pick"
                         ]
                     },
                     "content": {
@@ -4803,7 +5087,8 @@
                                 "roll": "#/components/schemas/RollContentResponse",
                                 "oracle-table": "#/components/schemas/OracleTableContentResponse",
                                 "likelihood": "#/components/schemas/LikelihoodContentResponse",
-                                "choice": "#/components/schemas/ChoiceContentResponse"
+                                "choice": "#/components/schemas/ChoiceContentResponse",
+                                "pick": "#/components/schemas/PickContentResponse"
                             }
                         },
                         "oneOf": [
@@ -4821,6 +5106,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/ChoiceContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/PickContentResponse"
                             }
                         ]
                     },

@@ -14,6 +14,7 @@ const kindLabels: Record<FlowStep['kind'], string> = {
   table: 'Table roll',
   roll: 'Dice roll',
   choice: 'Choice',
+  pick: 'Pick',
 }
 
 interface StepProps {

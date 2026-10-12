@@ -11,14 +11,18 @@ use OpenApi\Attributes as OA;
  * the controller reads the fields from the request.
  *
  * Which of the other fields a step takes depends on its kind: a prompt step a text, a choice step
- * an option, an oracle step a likelihood level (unless the step fixes it) and a chaos factor. Roll
- * and table steps take none: the server rolls. A field the kind does not take is refused.
+ * an option, an oracle step a likelihood level (unless the step fixes it) and a chaos factor, a pick
+ * step in mode choose the ids it picks. Roll and table steps, and a pick step in mode random, take
+ * none: the server rolls and draws. A field the kind does not take is refused.
  * Optional fields are nullable with no PHP default: a default makes Nelmio emit `default: null`,
  * which the typed client turns into a required field. `required` lists the required ones.
  */
 #[OA\Schema(required: ['stepKey'])]
 final readonly class CompleteFlowStepRequest
 {
+    /**
+     * @param list<string>|null $pickedIds
+     */
     public function __construct(
         #[OA\Property(description: 'The step the player means to complete; refused when the FlowRun waits for another.', example: 'intro')]
         public string $stepKey,
@@ -30,6 +34,13 @@ final readonly class CompleteFlowStepRequest
         public ?string $likelihood,
         #[OA\Property(description: 'Oracle step: within the oracle\'s chaos range; omitted or null for its neutral factor. Must be omitted or null when the oracle has no chaos or takes it from a campaign Tracker.', example: 5, nullable: true)]
         public ?int $chaosFactor,
+        #[OA\Property(
+            description: 'Pick step in mode choose: the ids of the candidates chosen, between the step\'s minimum and maximum, none twice; an empty list when nothing matches. Must be omitted or null in mode random.',
+            type: 'array',
+            items: new OA\Items(type: 'string'),
+            nullable: true,
+        )]
+        public ?array $pickedIds,
     ) {
     }
 }

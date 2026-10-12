@@ -34,6 +34,7 @@ use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
@@ -568,6 +569,7 @@ final class Campaign
      *
      * @throws InvalidNpc        when a value breaks a rule
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws NpcAlreadyExists  when an NPC already holds the generated id
      */
     public function createNpcByEffect(string $name, ?string $agenda, array $tags, GameSystemSnapshot $release): ?Npc
     {
@@ -586,8 +588,9 @@ final class Campaign
      *
      * @return ?Thread the new Thread; null (nothing added) when the campaign already holds 500 Threads
      *
-     * @throws InvalidThread     when a value breaks a rule
-     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws InvalidThread       when a value breaks a rule
+     * @throws UnknownReleaseTag   when a Tag key is not in the pinned release
+     * @throws ThreadAlreadyExists when a Thread already holds the generated id
      */
     public function createThreadByEffect(string $name, array $tags, GameSystemSnapshot $release): ?Thread
     {
@@ -891,7 +894,7 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->pickedNames());
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags));
     }
 
     /**

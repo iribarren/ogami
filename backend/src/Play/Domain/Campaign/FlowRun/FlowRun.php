@@ -36,6 +36,7 @@ use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Tag;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 
@@ -500,11 +501,12 @@ final class FlowRun
     /**
      * What the player sees of the FlowRun.
      *
-     * @param ?int               $sessionNumber the number of the session under way, null when none is
-     * @param array<string, int> $trackerValues the campaign's value of every Tracker of the release, by key, for placeholders
-     * @param list<string>       $pickedNames   the current names of the picked items, for "{picked}"
+     * @param ?int                               $sessionNumber the number of the session under way, null when none is
+     * @param array<string, int>                 $trackerValues the campaign's value of every Tracker of the release, by key, for placeholders
+     * @param list<string>                       $pickedNames   the current names of the picked items, for "{picked}"
+     * @param \Closure(PickStep): PickCandidates $candidatesOf  the campaign's candidates for a pick step
      */
-    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $pickedNames): FlowRunView
+    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $pickedNames, \Closure $candidatesOf): FlowRunView
     {
         $placeholders = new Placeholders($trackerValues, $this->answers, picked: $pickedNames);
         if (FlowRunStatus::Completed === $this->status) {
@@ -526,7 +528,7 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders)) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
@@ -1183,6 +1185,17 @@ final class FlowRun
         }
 
         return $part->label().': '.$placeholders->render($next->title);
+    }
+
+    /**
+     * What a pick step shows: its Tags with their release labels (a key the release no longer has
+     * cannot happen, the translator checks them) and the candidates now.
+     */
+    private function pickView(PickStep $step, GameSystemSnapshot $release, PickCandidates $candidates): PickView
+    {
+        $tags = array_map(static fn (string $key): Tag => $release->tag($key) ?? throw new \LogicException(\sprintf('Pick step "%s" names Tag "%s", which the release does not have.', $step->key, $key)), $step->tags);
+
+        return new PickView($step->of, $step->mode, $step->min, $step->max, $tags, $candidates->items);
     }
 
     private function rendered(?string $text, Placeholders $placeholders): ?string

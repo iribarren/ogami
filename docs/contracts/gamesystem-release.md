@@ -136,6 +136,7 @@ There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are re
 |---|---|---|
 | Oracle table entry | v1 fields + `key?`, `sceneType?`, `effects?: [Effect]` | `key` unique within its table; `sceneType` exists |
 | Likelihood `chaos` | v1 fields + `tracker?` | A counter whose `min` / `max` equal the chaos `min` / `max`; its value is the chaos factor |
+| Likelihood `randomEvent` | `{table}` (optional on a likelihood oracle) | `table` is the key of an oracle table of the release; the oracle has `chaos` and `sides` 100. A d100 roll that is a double (11, 22 … 99) whose digit is at most the chaos factor used is a random event: the answer names the table, and Play offers to roll it. No flow step runs ([ADR 0019](../adr/0019-random-events-from-fate-question-doubles.md)) |
 | Tracker | `{key, name (1–100), hint? (≤500), kind: counter, min, max, initial, levels?}` or `{key, name, hint?, kind: clock, segments (1–20)}` | At most 50; keys unique in their own namespace; `min ≤ initial ≤ max`, all within ±1000; a clock starts at 0 |
 | Counter `levels` | `[{upTo?, label (1–100)}]` (≤20) | Same ordering as bands, literal `upTo` only |
 | FactSlot | `{key, label (1–100), type: text \| npc \| thread, hint? (≤500)}` | At most 100; keys unique. A `null` hint is omitted, as for trackers and tags. `fillFact` fills a slot |
@@ -261,7 +262,7 @@ As in version 1: keys in schema order, absent or `null` optionals omitted, integ
 | Checked by | Rules |
 |---|---|
 | JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`, `of`); list sizes and lengths above; numeric bounds (incl. `count` 1–10); `end` not a step key; a `condition` never `mandatory`; a `condition` with exactly one of `tracker` and `count`; unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
-| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation; placeholders; trimmed lengths |
+| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; the `randomEvent` table exists and the oracle has chaos and 100 sides; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation; placeholders; trimmed lengths |
 
 ## Publishing
 

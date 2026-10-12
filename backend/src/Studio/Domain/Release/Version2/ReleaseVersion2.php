@@ -50,6 +50,7 @@ final class ReleaseVersion2
 
     private const array ENTRY = [...ReleaseOracles::ENTRY, 'key' => false, 'sceneType' => false, 'effects' => false];
     private const array CHAOS = [...ReleaseOracles::CHAOS, 'tracker' => false];
+    private const array LIKELIHOOD = [...ReleaseOracles::LIKELIHOOD, 'randomEvent' => false];
     private const array TRACKERS = [
         'counter' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'min' => true, 'max' => true, 'initial' => true, 'levels' => false],
         'clock' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'segments' => true],
@@ -80,7 +81,7 @@ final class ReleaseVersion2
     public static function validate(array $release): array
     {
         [$trackers, $trackerRanges] = self::trackers($release['trackers']);
-        $oracles = ReleaseOracles::validate($release['oracles'], self::ENTRY, self::CHAOS);
+        $oracles = ReleaseOracles::validate($release['oracles'], self::ENTRY, self::CHAOS, self::LIKELIHOOD);
         self::chaosTrackers($oracles['likelihood'], $trackerRanges);
         [$factSlots, $factSlotTypes] = self::factSlots($release['factSlots']);
         [$tags, $tagKeys] = self::tags($release['tags'] ?? null);

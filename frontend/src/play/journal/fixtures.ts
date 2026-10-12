@@ -92,6 +92,7 @@ export const lockedDoorAnswer: JournalEntry = {
     likelihood: 'likely',
     likelihoodLabel: 'Likely',
     chaosFactor: 7,
+    randomEvent: null,
   },
 }
 
@@ -115,6 +116,31 @@ export const plainAnswer: JournalEntry = {
     likelihood: 'even',
     likelihoodLabel: 'Even odds',
     chaosFactor: null,
+    randomEvent: null,
+  },
+}
+
+/** A fate question answered with a double within the chaos factor: its random event rolls "weather". */
+export const fateDouble: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7006',
+  sessionNumber: 2,
+  sceneNumber: 1,
+  recordedAt: '2026-10-06T12:09:00+00:00',
+  kind: 'likelihood',
+  flowStep: null,
+  content: {
+    kind: 'likelihood',
+    oracleKey: 'fate',
+    oracleName: 'Fate question',
+    question: 'Does the guard notice?',
+    answer: 'yes',
+    roll: 33,
+    sides: 100,
+    effectiveTarget: 75,
+    likelihood: 'likely',
+    likelihoodLabel: 'Likely',
+    chaosFactor: 7,
+    randomEvent: 'weather',
   },
 }
 

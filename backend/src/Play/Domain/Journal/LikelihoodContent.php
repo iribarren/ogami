@@ -18,9 +18,10 @@ final readonly class LikelihoodContent implements JournalEntryContent
     public const int MAX_QUESTION_LENGTH = 500;
 
     /**
-     * @param string   $answer      "exceptional_yes", "yes", "no" or "exceptional_no"
-     * @param string   $likelihood  the level key asked
-     * @param int|null $chaosFactor null when the oracle has no chaos
+     * @param string      $answer      "exceptional_yes", "yes", "no" or "exceptional_no"
+     * @param string      $likelihood  the level key asked
+     * @param int|null    $chaosFactor null when the oracle has no chaos
+     * @param string|null $randomEvent the key of the oracle table to roll when the answer was a random event
      */
     private function __construct(
         private string $oracleKey,
@@ -33,6 +34,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
         private string $likelihood,
         private string $likelihoodLabel,
         private ?int $chaosFactor,
+        private ?string $randomEvent,
     ) {
     }
 
@@ -54,6 +56,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
             $answer->levelKey(),
             $answer->levelLabel(),
             $answer->chaosFactor(),
+            $answer->randomEvent(),
         );
     }
 
@@ -78,6 +81,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
             ContentData::string($data, 'likelihood'),
             ContentData::string($data, 'likelihoodLabel'),
             ContentData::nullableInt($data, 'chaosFactor'),
+            ContentData::nullableString($data, 'randomEvent'),
         );
     }
 
@@ -92,6 +96,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
         string $likelihood,
         string $likelihoodLabel,
         ?int $chaosFactor,
+        ?string $randomEvent,
     ): self {
         if ('' === trim($oracleKey)) {
             throw InvalidJournalEntryContent::blankOracleKey();
@@ -108,6 +113,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
             $likelihood,
             $likelihoodLabel,
             $chaosFactor,
+            $randomEvent,
         );
     }
 
@@ -147,7 +153,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
     }
 
     /**
-     * @return array{kind: string, oracleKey: string, oracleName: string, question: ?string, answer: string, roll: int, sides: int, effectiveTarget: int, likelihood: string, likelihoodLabel: string, chaosFactor: ?int}
+     * @return array{kind: string, oracleKey: string, oracleName: string, question: ?string, answer: string, roll: int, sides: int, effectiveTarget: int, likelihood: string, likelihoodLabel: string, chaosFactor: ?int, randomEvent: ?string}
      */
     public function toArray(): array
     {
@@ -163,6 +169,7 @@ final readonly class LikelihoodContent implements JournalEntryContent
             'likelihood' => $this->likelihood,
             'likelihoodLabel' => $this->likelihoodLabel,
             'chaosFactor' => $this->chaosFactor,
+            'randomEvent' => $this->randomEvent,
         ];
     }
 }

@@ -12,9 +12,10 @@ use App\Randomness\Domain\Oracle\LikelihoodAnswer;
 final readonly class LikelihoodAnswerView
 {
     /**
-     * @param string   $answer          "exceptional_yes", "yes", "no" or "exceptional_no"
-     * @param int      $effectiveTarget the level's target shifted by the chaos factor and clamped to 0…sides
-     * @param int|null $chaosFactor     the chaos factor used (the neutral one when none was given); null when the oracle has no chaos
+     * @param string      $answer          "exceptional_yes", "yes", "no" or "exceptional_no"
+     * @param int         $effectiveTarget the level's target shifted by the chaos factor and clamped to 0…sides
+     * @param int|null    $chaosFactor     the chaos factor used (the neutral one when none was given); null when the oracle has no chaos
+     * @param string|null $randomEvent     the key of the table to roll when the roll triggered a random event; null otherwise
      */
     public function __construct(
         public string $answer,
@@ -24,6 +25,7 @@ final readonly class LikelihoodAnswerView
         public string $likelihood,
         public string $likelihoodLabel,
         public ?int $chaosFactor,
+        public ?string $randomEvent,
     ) {
     }
 
@@ -37,6 +39,7 @@ final readonly class LikelihoodAnswerView
             $answer->levelKey(),
             $answer->levelLabel(),
             $answer->chaosFactor(),
+            $answer->randomEvent(),
         );
     }
 }

@@ -79,6 +79,7 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Roll | The result of evaluating a dice expression: individual dice and total | Randomness |
 | OracleTable | A table that maps a roll to an answer (e.g. a d100 table of events) | Randomness |
 | Likelihood oracle | An oracle that answers a yes/no question given a likelihood (e.g. "unlikely"), possibly with qualifiers ("yes, and…") | Randomness |
+| Random event | An unexpected turn from the random event focus table, triggered by an interrupted scene or by a fate-question double whose digit is at most the chaos factor (a likelihood oracle's `randomEvent` rule, [ADR 0019](../adr/0019-random-events-from-fate-question-doubles.md)) | Randomness, Play |
 
 ## Architecture terms
 

@@ -3,6 +3,7 @@ import { useId } from 'react'
 import { SceneCast } from '../cast/SceneCast'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { JournalEntryView } from '../journal/JournalEntryView'
+import { RandomEventOffer } from '../journal/RandomEventOffer'
 import { useJournal } from '../journal/useJournal'
 import { GuidedBody, GuidedControls } from './GuidedParts'
 import { progressText, stepPercent } from './progress'
@@ -108,6 +109,11 @@ function SceneSoFar({ campaign }: { campaign: Campaign }) {
         {entries.map((entry) => (
           <li key={entry.id}>
             <JournalEntryView entry={entry} tags={campaign.tags} />
+            <RandomEventOffer
+              campaignId={campaign.id}
+              entry={entry}
+              tables={campaign.oracleTables}
+            />
           </li>
         ))}
       </ol>

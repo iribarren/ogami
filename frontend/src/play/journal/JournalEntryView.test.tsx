@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 
 import {
   chosenWay,
+  fateDouble,
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
@@ -100,5 +101,19 @@ describe('JournalEntryView', () => {
     const pick = screen.getByRole('article', { name: 'Pick Thread' })
     expect(pick).toHaveTextContent('Picked Thread: No match')
     expect(pick).not.toHaveTextContent('Tagged')
+  })
+
+  it('marks a fate question that answered with a random event', () => {
+    render(<JournalEntryView entry={fateDouble} />)
+
+    const entry = screen.getByRole('article', { name: 'Oracle Fate question' })
+    expect(within(entry).getByText('Random event')).toBeInTheDocument()
+    expect(within(entry).getByText('Yes')).toBeInTheDocument()
+  })
+
+  it('shows no random event badge on a plain answer', () => {
+    render(<JournalEntryView entry={lockedDoorAnswer} />)
+
+    expect(screen.queryByText('Random event')).not.toBeInTheDocument()
   })
 })

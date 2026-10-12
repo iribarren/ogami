@@ -6,7 +6,8 @@ namespace App\Randomness\Domain\Oracle;
 
 /**
  * The outcome of asking a likelihood oracle: the answer, the roll on 1d<sides> and the effective
- * target it was compared with, the level asked and the chaos factor used.
+ * target it was compared with, the level asked, the chaos factor used and, when the roll triggered
+ * a random event, the key of the table to roll.
  */
 final readonly class LikelihoodAnswer
 {
@@ -18,6 +19,7 @@ final readonly class LikelihoodAnswer
         private string $levelKey,
         private string $levelLabel,
         private ?int $chaosFactor,
+        private ?string $randomEvent = null,
     ) {
     }
 
@@ -60,5 +62,14 @@ final readonly class LikelihoodAnswer
     public function chaosFactor(): ?int
     {
         return $this->chaosFactor;
+    }
+
+    /**
+     * The key of the oracle table to roll when this roll is a double whose digit is at most the chaos
+     * factor used and the oracle has a random event rule; null otherwise.
+     */
+    public function randomEvent(): ?string
+    {
+        return $this->randomEvent;
     }
 }

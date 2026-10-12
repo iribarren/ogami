@@ -13,6 +13,9 @@ use App\Randomness\Domain\RandomNumberGenerator;
  * optional chaos factor and clamped to 0…sides: yes when R ≤ T, no otherwise. With
  * p = exceptionalPercent, the yes is exceptional when R ≤ floor(T × p / 100), and the no when
  * R > sides − floor((sides − T) × p / 100).
+ *
+ * With a random event table, a d100 roll that is a double (11, 22 … 99) whose digit is at most the
+ * chaos factor used also triggers a random event on that table.
  */
 final readonly class LikelihoodOracle
 {
@@ -20,6 +23,7 @@ final readonly class LikelihoodOracle
     public const int MAX_SIDES = 1000;
     public const int MAX_LEVELS = 20;
     public const int MAX_EXCEPTIONAL_PERCENT = 50;
+    public const int RANDOM_EVENT_SIDES = 100;
 
     /**
      * @param array<string, LikelihoodLevel> $levels by key, in definition order
@@ -29,6 +33,7 @@ final readonly class LikelihoodOracle
         private array $levels,
         private ?LikelihoodChaos $chaos,
         private int $exceptionalPercent,
+        private ?string $randomEventTable = null,
     ) {
     }
 
@@ -41,7 +46,9 @@ final readonly class LikelihoodOracle
      *      "chaos": {"min": 1, "max": 9, "neutral": 5, "shiftPerPoint": 5},
      *      "exceptionalPercent": 20}
      *
-     * "chaos" is optional, and "exceptionalPercent" defaults to 0.
+     * "chaos" is optional, and "exceptionalPercent" defaults to 0. "randomEvent" ({"table": "<key>"}) is
+     * optional too and needs a chaos factor and 100 sides; the table is only a key here, its existence
+     * is up to the GameSystem that owns the tables.
      *
      * @param array<mixed> $definition
      *
@@ -67,11 +74,15 @@ final readonly class LikelihoodOracle
             throw InvalidLikelihoodOracle::exceptionalPercentOutOfRange($exceptionalPercent, self::MAX_EXCEPTIONAL_PERCENT);
         }
 
+        $levels = self::levelsFromArray($definition['levels'] ?? null, $sides);
+        $chaos = self::chaosFromArray($definition['chaos'] ?? null, $sides);
+
         return new self(
             $sides,
-            self::levelsFromArray($definition['levels'] ?? null, $sides),
-            self::chaosFromArray($definition['chaos'] ?? null, $sides),
+            $levels,
+            $chaos,
             $exceptionalPercent,
+            self::randomEventTableFromArray($definition['randomEvent'] ?? null, $chaos, $sides),
         );
     }
 
@@ -107,6 +118,14 @@ final readonly class LikelihoodOracle
     }
 
     /**
+     * The key of the table to roll when a double triggers a random event; null when the oracle has no such rule.
+     */
+    public function randomEventTable(): ?string
+    {
+        return $this->randomEventTable;
+    }
+
+    /**
      * Asks a yes/no question with this likelihood level and chaos factor (the neutral one when null).
      *
      * @throws InvalidLikelihoodOracle when the level is unknown, or the chaos factor is out of range or given without chaos
@@ -137,7 +156,20 @@ final readonly class LikelihoodOracle
             $level->key(),
             $level->label(),
             $chaosFactor,
+            $this->randomEventFor($roll, $chaosFactor),
         );
+    }
+
+    /**
+     * A double below 100 whose digit is at most the chaos factor used.
+     */
+    private function randomEventFor(int $roll, ?int $chaosFactor): ?string
+    {
+        if (null === $this->randomEventTable || null === $chaosFactor || $roll >= $this->sides || 0 !== $roll % 11) {
+            return null;
+        }
+
+        return intdiv($roll, 11) <= $chaosFactor ? $this->randomEventTable : null;
     }
 
     private function answerFor(int $roll, int $target): YesNoAnswer
@@ -199,6 +231,38 @@ final readonly class LikelihoodOracle
         }
 
         return new LikelihoodLevel($key, $label, $target, $sides);
+    }
+
+    private static function randomEventTableFromArray(mixed $randomEvent, ?LikelihoodChaos $chaos, int $sides): ?string
+    {
+        if (null === $randomEvent) {
+            return null;
+        }
+
+        if (!\is_array($randomEvent) || ([] !== $randomEvent && array_is_list($randomEvent))) {
+            throw InvalidLikelihoodOracle::randomEventNotAnObject();
+        }
+
+        foreach (array_keys($randomEvent) as $field) {
+            if ('table' !== $field) {
+                throw InvalidLikelihoodOracle::unknownRandomEventField((string) $field);
+            }
+        }
+
+        $table = $randomEvent['table'] ?? null;
+        if (!\is_string($table) || '' === trim($table)) {
+            throw InvalidLikelihoodOracle::missingRandomEventTable();
+        }
+
+        if (!$chaos instanceof LikelihoodChaos) {
+            throw InvalidLikelihoodOracle::randomEventWithoutChaos();
+        }
+
+        if (self::RANDOM_EVENT_SIDES !== $sides) {
+            throw InvalidLikelihoodOracle::randomEventSides(self::RANDOM_EVENT_SIDES, $sides);
+        }
+
+        return $table;
     }
 
     private static function chaosFromArray(mixed $chaos, int $sides): ?LikelihoodChaos

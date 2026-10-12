@@ -190,7 +190,19 @@
         "chaos": {
           "anyOf": [{ "$ref": "#/$defs/likelihoodChaos" }, { "type": "null" }]
         },
-        "exceptionalPercent": { "type": ["integer", "null"], "minimum": 0, "maximum": 50 }
+        "exceptionalPercent": { "type": ["integer", "null"], "minimum": 0, "maximum": 50 },
+        "randomEvent": {
+          "description": "A d100 roll that is a double (11, 22 ... 99) whose digit is at most the chaos factor used triggers a random event on the table. Needs chaos and sides 100; the table is one of oracles.tables.",
+          "anyOf": [{ "$ref": "#/$defs/likelihoodRandomEvent" }, { "type": "null" }]
+        }
+      }
+    },
+    "likelihoodRandomEvent": {
+      "type": "object",
+      "required": ["table"],
+      "additionalProperties": false,
+      "properties": {
+        "table": { "description": "Key of an oracle table of the release.", "$ref": "#/$defs/key" }
       }
     },
     "likelihoodLevel": {

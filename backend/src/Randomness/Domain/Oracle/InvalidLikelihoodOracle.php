@@ -84,6 +84,31 @@ final class InvalidLikelihoodOracle extends \DomainException
         return new self('The "chaos" of a likelihood oracle is an object.');
     }
 
+    public static function randomEventNotAnObject(): self
+    {
+        return new self('The "randomEvent" of a likelihood oracle is an object.');
+    }
+
+    public static function missingRandomEventTable(): self
+    {
+        return new self('The "randomEvent" of a likelihood oracle has a "table" key.');
+    }
+
+    public static function unknownRandomEventField(string $field): self
+    {
+        return new self(\sprintf('The "randomEvent" of a likelihood oracle has no "%s" field.', $field));
+    }
+
+    public static function randomEventWithoutChaos(): self
+    {
+        return new self('A random event needs the chaos factor of a likelihood oracle.');
+    }
+
+    public static function randomEventSides(int $required, int $sides): self
+    {
+        return new self(\sprintf('A random event needs a likelihood oracle of %d sides, %d given.', $required, $sides));
+    }
+
     public static function missingChaosField(string $field): self
     {
         return new self(\sprintf('The chaos of a likelihood oracle has a "%s" integer.', $field));

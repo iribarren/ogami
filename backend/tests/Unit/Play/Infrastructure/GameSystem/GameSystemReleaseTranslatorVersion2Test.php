@@ -98,6 +98,53 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
     }
 
     #[Test]
+    public function itCarriesTheRandomEventRuleIntoTheSnapshot(): void
+    {
+        $oracle = $this->snapshot('valid/v2-random-event')->likelihoodOracle('fate')->oracle();
+
+        self::assertSame('focus', $oracle->randomEventTable());
+        self::assertNull($this->snapshot()->likelihoodOracle('fate')->oracle()->randomEventTable());
+    }
+
+    #[Test]
+    public function aRandomEventRuleWithoutChaosIsAPlayError(): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('oracles.likelihood[0]: A random event needs the chaos factor of a likelihood oracle.');
+
+        $this->translateFateWith(without: 'chaos');
+    }
+
+    #[Test]
+    public function aRandomEventRuleNamingNoTableIsAPlayError(): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('oracles.likelihood[0].randomEvent.table: unknown oracle table "ghost".');
+
+        $this->translateFateWith(randomEvent: ['table' => 'ghost']);
+    }
+
+    /**
+     * Translates the "random-event" fixture with its fate oracle's random event rule replaced, or one of its fields removed.
+     *
+     * @param array<string, mixed> $randomEvent
+     */
+    private function translateFateWith(array $randomEvent = ['table' => 'focus'], ?string $without = null): GameSystemSnapshot
+    {
+        $content = ReleaseViews::fixtureContent('valid/v2-random-event');
+        /** @var array{likelihood: list<array<string, mixed>>} $oracles */
+        $oracles = $content['oracles'];
+        $oracles['likelihood'][0]['randomEvent'] = $randomEvent;
+        if (null !== $without) {
+            unset($oracles['likelihood'][0][$without]);
+        }
+
+        $content['oracles'] = $oracles;
+
+        return new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
+    }
+
+    #[Test]
     public function itKnowsTheMetadataOfARolledEntry(): void
     {
         $snapshot = $this->snapshot();

@@ -94,7 +94,7 @@ final readonly class GameSystemReleaseTranslator
             $this->string($view, $gameSystem['name'] ?? null, 'gameSystem.name'),
             $view->version,
             $this->oracleTables($view, $this->list($view, $oracles['tables'] ?? null, 'oracles.tables')),
-            $this->likelihoodOracles($view, $this->list($view, $oracles['likelihood'] ?? null, 'oracles.likelihood')),
+            $this->likelihoodOracles($view, $this->list($view, $oracles['likelihood'] ?? null, 'oracles.likelihood'), $this->tableKeys($this->list($view, $oracles['tables'] ?? null, 'oracles.tables'))),
             $this->flowSteps($view, $this->list($view, $flow['steps'] ?? null, 'flow.steps')),
         );
     }
@@ -133,7 +133,7 @@ final readonly class GameSystemReleaseTranslator
             $this->string($view, $gameSystem['name'] ?? null, 'gameSystem.name'),
             $view->version,
             $this->oracleTables($view, $tables),
-            $this->likelihoodOracles($view, $this->list($view, $oracles['likelihood'] ?? null, 'oracles.likelihood')),
+            $this->likelihoodOracles($view, $this->list($view, $oracles['likelihood'] ?? null, 'oracles.likelihood'), $this->tableKeys($tables)),
             [],
             $this->trackers($view, $this->list($view, $content['trackers'] ?? null, 'trackers')),
             $this->factSlots($view, $this->list($view, $content['factSlots'] ?? null, 'factSlots')),
@@ -673,11 +673,29 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * @param list<mixed> $oracles
+     * @param list<mixed> $tables
+     *
+     * @return list<string> the keys of the tables that have one
+     */
+    private function tableKeys(array $tables): array
+    {
+        $keys = [];
+        foreach ($tables as $table) {
+            if (\is_array($table) && \is_string($table['key'] ?? null)) {
+                $keys[] = $table['key'];
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * @param list<mixed>  $oracles
+     * @param list<string> $tableKeys the keys of the oracle tables a random event rule may name
      *
      * @return list<SnapshotLikelihoodOracle>
      */
-    private function likelihoodOracles(PublishedReleaseView $view, array $oracles): array
+    private function likelihoodOracles(PublishedReleaseView $view, array $oracles, array $tableKeys): array
     {
         $snapshots = [];
         foreach ($oracles as $index => $oracle) {
@@ -694,10 +712,17 @@ final readonly class GameSystemReleaseTranslator
             }
 
             try {
-                $snapshots[] = new SnapshotLikelihoodOracle($key, $name, LikelihoodOracle::fromArray($definition), $chaosTracker);
+                $likelihood = LikelihoodOracle::fromArray($definition);
             } catch (InvalidLikelihoodOracle $exception) {
                 throw InvalidGameSystemRelease::of($view->gameSystemKey, $view->version, $path, $exception->getMessage(), $exception);
             }
+
+            $randomEventTable = $likelihood->randomEventTable();
+            if (null !== $randomEventTable && !\in_array($randomEventTable, $tableKeys, true)) {
+                throw InvalidGameSystemRelease::of($view->gameSystemKey, $view->version, $path.'.randomEvent.table', \sprintf('unknown oracle table "%s".', $randomEventTable));
+            }
+
+            $snapshots[] = new SnapshotLikelihoodOracle($key, $name, $likelihood, $chaosTracker);
         }
 
         return $snapshots;

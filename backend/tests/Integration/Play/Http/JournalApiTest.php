@@ -166,6 +166,7 @@ final class JournalApiTest extends WebTestCase
                 'likelihood' => 'even',
                 'likelihoodLabel' => '50/50',
                 'chaosFactor' => 5,
+                'randomEvent' => null,
             ],
         ]), $this->content());
     }
@@ -193,6 +194,7 @@ final class JournalApiTest extends WebTestCase
                 'likelihood' => 'likely',
                 'likelihoodLabel' => 'Likely',
                 'chaosFactor' => 5,
+                'randomEvent' => null,
             ],
             $content,
         );
@@ -283,6 +285,7 @@ final class JournalApiTest extends WebTestCase
                     'likelihood' => 'unlikely',
                     'likelihoodLabel' => 'Unlikely',
                     'chaosFactor' => 5,
+                    'randomEvent' => null,
                 ],
             ],
         ]), $this->content());

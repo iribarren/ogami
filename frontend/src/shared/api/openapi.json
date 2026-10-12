@@ -1131,6 +1131,125 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/fact-slots/{slot}": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Fill a Fact slot of one of my campaigns, or fill it again: its value is replaced, its links stay",
+                "operationId": "fillFactSlot",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "slot",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FillFactSlotRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The slot fact, newly created or refilled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FactResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, or a field is of another JSON type than documented (a subject that is not a UUID).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or the subject is an NPC or Thread it does not hold.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already holds 500 facts, NPCs or Threads and the fill would add one, or another request changed it meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The release declares no slot with this key, not exactly one of text, subject and name is sent, the value does not fit the slot's type (a text on an NPC or Thread slot, a subject or name on a text slot), or it breaks a rule (blank or too long text or name).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/npcs": {
             "post": {
                 "tags": [
@@ -4863,6 +4982,29 @@
                         "items": {
                             "$ref": "#/components/schemas/FactLinkRequest"
                         }
+                    }
+                },
+                "type": "object"
+            },
+            "FillFactSlotRequest": {
+                "properties": {
+                    "text": {
+                        "description": "For a \"text\" slot: 1 to 2000 characters once trimmed.",
+                        "type": "string",
+                        "example": "Ashford",
+                        "nullable": true
+                    },
+                    "subject": {
+                        "description": "For an \"npc\" or \"thread\" slot: the id of an NPC or Thread the campaign holds (closed ones too).",
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
+                    "name": {
+                        "description": "For an \"npc\" or \"thread\" slot: the name of a new open NPC or Thread (weight 1, no tags) to create and fill the slot with.",
+                        "type": "string",
+                        "example": "Valen Vane",
+                        "nullable": true
                     }
                 },
                 "type": "object"

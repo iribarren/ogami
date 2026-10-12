@@ -226,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/fact-slots/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Fill a Fact slot of one of my campaigns, or fill it again: its value is replaced, its links stay */
+        put: operations["fillFactSlot"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/npcs": {
         parameters: {
             query?: never;
@@ -1361,6 +1378,23 @@ export interface components {
             text?: string | null;
             /** @description Replace the fact's links with these: at most 20, each once; send an empty list to clear them. */
             links: components["schemas"]["FactLinkRequest"][];
+        };
+        FillFactSlotRequest: {
+            /**
+             * @description For a "text" slot: 1 to 2000 characters once trimmed.
+             * @example Ashford
+             */
+            text?: string | null;
+            /**
+             * Format: uuid
+             * @description For an "npc" or "thread" slot: the id of an NPC or Thread the campaign holds (closed ones too).
+             */
+            subject?: string | null;
+            /**
+             * @description For an "npc" or "thread" slot: the name of a new open NPC or Thread (weight 1, no tags) to create and fill the slot with.
+             * @example Valen Vane
+             */
+            name?: string | null;
         };
         NpcRequest: {
             /**
@@ -2896,6 +2930,96 @@ export interface operations {
                 };
             };
             /** @description A value breaks a rule (blank or too long label or text, more than 20 links, a link repeated, a link to the fact itself), a free fact lacks its label or text, or a slot fact is given a label or text. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    fillFactSlot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                slot: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FillFactSlotRequest"];
+            };
+        };
+        responses: {
+            /** @description The slot fact, newly created or refilled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, or a field is of another JSON type than documented (a subject that is not a UUID). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or the subject is an NPC or Thread it does not hold. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already holds 500 facts, NPCs or Threads and the fill would add one, or another request changed it meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The release declares no slot with this key, not exactly one of text, subject and name is sent, the value does not fit the slot's type (a text on an NPC or Thread slot, a subject or name on a text slot), or it breaks a rule (blank or too long text or name). */
             422: {
                 headers: {
                     [name: string]: unknown;

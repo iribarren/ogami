@@ -95,6 +95,24 @@ final class FactHandlersTest extends TestCase
     }
 
     #[Test]
+    public function anUnknownLinkKindIsAnInvalidFactNotAValueError(): void
+    {
+        foreach ([
+            fn () => ($this->add)(new AddFact('campaign-1', 'user-1', 'fact-1', 'Label', 'Text', [['kind' => 'scene', 'id' => 'npc-1']])),
+            fn () => ($this->edit)(new EditFact('campaign-1', 'user-1', 'city-1', null, null, [['kind' => 'scene', 'id' => 'npc-1']])),
+        ] as $command) {
+            try {
+                $command();
+                self::fail('The unknown link kind was accepted.');
+            } catch (InvalidFact $exception) {
+                self::assertSame('A link is to an "npc", "thread" or "fact", not "scene".', $exception->getMessage());
+            }
+        }
+
+        self::assertCount(1, $this->campaign()->facts($this->release));
+    }
+
+    #[Test]
     public function aFullCampaignRefusesAnotherFact(): void
     {
         $campaign = $this->campaign();

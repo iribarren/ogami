@@ -4,6 +4,7 @@ import { useId, type ReactNode } from 'react'
 import { Button } from '@/shared/ui/button'
 
 import { DiceRoller } from '../dice/DiceRoller'
+import { FactsPanel } from '../facts/FactsPanel'
 import { FocusPanel } from '../flow/FocusPanel'
 import { GuidedPanel } from '../flow/GuidedPanel'
 import { useFlowView, type FlowView } from '../flow/useFlowView'
@@ -119,6 +120,9 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
               <TrackersPanel campaign={campaign} />
             </Section>
           )}
+          <Section title="Facts">
+            <FactsPanel campaign={campaign} />
+          </Section>
           <Section title="Threads">
             <ListPanel campaign={campaign} kind="thread" />
           </Section>

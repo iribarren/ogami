@@ -32,26 +32,26 @@ final class PlaceholdersTest extends TestCase
     #[DataProvider('texts')]
     public function aPlaceholderIsRenderedAndOtherBracesStay(string $text, string $rendered): void
     {
-        self::assertSame($rendered, new Placeholders(['alarm' => 3, 'mood-swing' => -2], ['plan' => 'In through the roof'], 'Ada')->render($text));
+        self::assertSame($rendered, new Placeholders(['alarm' => 3, 'mood-swing' => -2], ['plan' => 'In through the roof'], [], 'Ada')->render($text));
     }
 
     #[Test]
     public function theAnswerWithoutOneReadsAsUnanswered(): void
     {
-        self::assertSame('Then: —', new Placeholders([], [])->render('Then: {answer}'));
+        self::assertSame('Then: —', new Placeholders([], [], [])->render('Then: {answer}'));
     }
 
     #[Test]
     public function pickedIsTheNamesJoinedAndEmptyBeforeAnyPick(): void
     {
-        self::assertSame('Meet Ana, Bea.', new Placeholders([], [], picked: ['Ana', 'Bea'])->render('Meet {picked}.'));
-        self::assertSame('Meet .', new Placeholders([], [])->render('Meet {picked}.'));
+        self::assertSame('Meet Ana, Bea.', new Placeholders([], [], [], picked: ['Ana', 'Bea'])->render('Meet {picked}.'));
+        self::assertSame('Meet .', new Placeholders([], [], [])->render('Meet {picked}.'));
     }
 
     #[Test]
     public function aFactIsTheValueOfItsSlotAndEmptyWhileTheSlotIsUnfilled(): void
     {
-        $placeholders = new Placeholders([], [], facts: ['city' => 'Prague', 'prince' => '']);
+        $placeholders = new Placeholders([], [], ['city' => 'Prague', 'prince' => '']);
 
         self::assertSame('The city of Prague, ruled by .', $placeholders->render('The city of {fact:city}, ruled by {fact:prince}.'));
     }
@@ -77,6 +77,6 @@ final class PlaceholdersTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageIsOrContains($message);
 
-        new Placeholders(['alarm' => 3], [], facts: ['city' => 'Prague'])->render($text);
+        new Placeholders(['alarm' => 3], [], ['city' => 'Prague'])->render($text);
     }
 }

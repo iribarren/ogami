@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
+import { lostMineWithFacts, oathFact } from '../facts/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import {
   brannNpc,
@@ -442,5 +443,50 @@ describe('the Threads panel', () => {
       freeTags: ['Vault'],
       weight: 3,
     })
+  })
+})
+
+describe('the facts linked to an item', () => {
+  it('shows, on an NPC row, the facts that link it and the slot facts it is the subject of', async () => {
+    renderLists(lostMineWithFacts)
+
+    const [mira, brann] = (await npcs()).getAllByRole('listitem') as [HTMLElement, HTMLElement]
+    // The city links Mira Vane; the Prince slot holds her.
+    expect(within(mira).getByText('Facts: The city, The Prince')).toBeInTheDocument()
+    expect(within(brann).queryByText(/Facts:/)).not.toBeInTheDocument()
+  })
+
+  it('shows them on a Thread row, closed ones too', async () => {
+    const closedLinked = {
+      ...lostMineWithFacts,
+      facts: [
+        ...lostMineWithFacts.facts,
+        {
+          ...oathFact,
+          links: [{ kind: 'thread' as const, id: ledgerThread.id, name: ledgerThread.name }],
+        },
+      ],
+    }
+    renderLists(closedLinked)
+
+    const panel = await threads()
+    expect(panel.getByText('Facts: The guild')).toBeInTheDocument()
+    expect(panel.getByText('Facts: The oath')).toBeInTheDocument()
+  })
+
+  it('does not mistake an NPC for a Thread of the same id', async () => {
+    renderLists({
+      ...lostMineWithFacts,
+      facts: [{ ...oathFact, links: [{ kind: 'thread', id: miraNpc.id, name: 'Mira Vane' }] }],
+    })
+
+    expect((await npcs()).queryByText(/Facts:/)).not.toBeInTheDocument()
+  })
+
+  it('shows no facts line for a campaign without facts', async () => {
+    renderLists(lostMineWithLists)
+
+    await npcs()
+    expect(screen.queryByText(/Facts:/)).not.toBeInTheDocument()
   })
 })

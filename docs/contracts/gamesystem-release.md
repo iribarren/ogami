@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`. It reads fact slot hints, `fillFact` and `{fact:key}` but does not apply them yet: a `fillFact` changes nothing and `{fact:key}` renders empty (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
 
@@ -213,9 +213,7 @@ Picked and created NPCs join the current Scene's cast, which the player can edit
 
 ### Play behaviour of the fact parts
 
-Slot `hint`s are read and kept in the GameSystem snapshot. Until the flow slice of feature 8b ships, Play ignores the rest: an effect `fillFact` changes nothing and `{fact:key}` renders as an empty string, so a release using them plays without error.
-
-The intended behaviour, once Play applies them:
+Slot `hint`s are read and kept in the GameSystem snapshot, shown in the Facts panel and on the step card ("Fills: label — hint"). Play applies `fillFact` and renders `{fact:key}` as follows:
 
 | Part | In Play |
 |---|---|
@@ -223,7 +221,9 @@ The intended behaviour, once Play applies them:
 | `fillFact` on an `npc` / `thread` slot | Fills it with the first item of that kind in `{picked}`; none changes nothing |
 | `{fact:key}` | The slot's value (the text, or the subject's current name), read when rendered; empty when unfilled |
 
-A filled slot is replaced (its links stay). `fillFact` writes no journal entry of its own.
+A filled slot is replaced (its links stay). `fillFact` writes no journal entry of its own. A text slot without `text` and without an answer changes nothing. At 500 facts no slot fact is added, though a filled slot is still replaced. A `{fact:key}` naming a slot the release does not declare fails closed.
+
+The player fills or refills a slot by hand too (a text, an existing NPC or Thread, or a new one by name); a refill keeps the fact's links.
 
 ### Authoring warning
 

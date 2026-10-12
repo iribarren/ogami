@@ -22,16 +22,16 @@ final readonly class Placeholders
     /**
      * @param array<string, int>    $trackers the current value of every Tracker of the pinned release, by key
      * @param array<string, string> $answers  the latest answer text by step key
+     * @param array<string, string> $facts    the value of every Fact slot of the pinned release, by slot key ('' while unfilled); required, so no caller can omit it
      * @param ?string               $answer   the answer text "{answer}" stands for, null for none
      * @param list<string>          $picked   the current names of the items "{picked}" stands for
-     * @param array<string, string> $facts    the value of every Fact slot of the pinned release, by slot key ('' while unfilled)
      */
     public function __construct(
         private array $trackers,
         private array $answers,
+        private array $facts,
         private ?string $answer = null,
         private array $picked = [],
-        private array $facts = [],
     ) {
     }
 

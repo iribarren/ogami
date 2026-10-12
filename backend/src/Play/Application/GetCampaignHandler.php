@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactId;
+use App\Play\Domain\Campaign\Facts\FactLink;
+use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
+use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
@@ -57,7 +63,50 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map(static fn (Tag $tag): TagView => new TagView($tag->key, $tag->label, $tag->hint), $snapshot->tags()),
             array_map(NpcView::of(...), $campaign->npcs()),
             array_map(ThreadView::of(...), $campaign->threads()),
+            array_map(FactSlotView::of(...), $snapshot->factSlots()),
+            array_map(static fn (Fact $fact): FactView => self::fact($fact, $campaign, $snapshot), $campaign->facts($snapshot)),
         );
+    }
+
+    /**
+     * @throws \LogicException when the fact names a slot, NPC, Thread or fact the campaign or its pinned release does not hold (the stored data is corrupt)
+     */
+    private static function fact(Fact $fact, Campaign $campaign, GameSystemSnapshot $snapshot): FactView
+    {
+        $subject = $fact->subject() instanceof FactLink ? self::factLink($fact->subject(), $campaign, $snapshot) : null;
+        $label = self::factLabel($fact, $snapshot);
+
+        return new FactView(
+            $fact->id()->toString(),
+            $fact->slot(),
+            $label,
+            $fact->text(),
+            $subject,
+            $fact->text() ?? ($subject instanceof FactLinkView ? $subject->name : throw new \LogicException(\sprintf('Fact "%s" holds neither a text nor a subject.', $fact->id()->toString()))),
+            array_map(static fn (FactLink $link): FactLinkView => self::factLink($link, $campaign, $snapshot), $fact->links()),
+        );
+    }
+
+    private static function factLabel(Fact $fact, GameSystemSnapshot $snapshot): string
+    {
+        if ($fact->isFree()) {
+            return $fact->label() ?? throw new \LogicException(\sprintf('Free fact "%s" has no label.', $fact->id()->toString()));
+        }
+
+        $slot = $snapshot->factSlot($fact->slot() ?? '');
+
+        return $slot instanceof FactSlot ? $slot->label : throw new \LogicException(\sprintf('Fact "%s" fills slot "%s", which the pinned release does not declare.', $fact->id()->toString(), $fact->slot()));
+    }
+
+    private static function factLink(FactLink $link, Campaign $campaign, GameSystemSnapshot $snapshot): FactLinkView
+    {
+        $name = match ($link->kind) {
+            FactLinkKind::Npc => $campaign->npc(NpcId::fromString($link->id))?->name(),
+            FactLinkKind::Thread => $campaign->thread(ThreadId::fromString($link->id))?->name(),
+            FactLinkKind::Fact => ($target = $campaign->fact(FactId::fromString($link->id))) instanceof Fact ? self::factLabel($target, $snapshot) : null,
+        };
+
+        return new FactLinkView($link->kind->value, $link->id, $name ?? throw new \LogicException(\sprintf('A fact links to %s "%s", which the campaign does not hold.', $link->kind->value, $link->id)));
     }
 
     private static function tracker(Tracker $tracker, Campaign $campaign): TrackerView

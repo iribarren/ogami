@@ -211,6 +211,8 @@ final class CampaignApiTest extends WebTestCase
                 'tags' => [],
                 'npcs' => [],
                 'threads' => [],
+                'factSlots' => [],
+                'facts' => [],
             ], \JSON_THROW_ON_ERROR),
             $this->content(),
         );
@@ -615,6 +617,8 @@ final class CampaignApiTest extends WebTestCase
             'tags' => [],
             'npcs' => [],
             'threads' => [],
+            'factSlots' => [],
+            'facts' => [],
         ], \JSON_THROW_ON_ERROR);
     }
 

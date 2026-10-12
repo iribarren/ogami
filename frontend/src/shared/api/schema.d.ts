@@ -192,6 +192,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/facts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a free fact to one of my campaigns */
+        post: operations["addFact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/facts/{factId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edit a fact of one of my campaigns: a free fact's label and text, and any fact's links */
+        put: operations["editFact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/npcs": {
         parameters: {
             query?: never;
@@ -1146,6 +1180,69 @@ export interface components {
              */
             status: "open" | "closed";
         };
+        FactSlotResponse: {
+            /** @example prince */
+            key: string;
+            /**
+             * @description What players see for the slot.
+             * @example The Prince
+             */
+            label: string;
+            /**
+             * @description What the slot takes: a text, an NPC or a Thread.
+             * @example npc
+             * @enum {string}
+             */
+            type: "text" | "npc" | "thread";
+            /**
+             * @description Shown where the slot is filled; null when the slot has none.
+             * @example Who rules the city?
+             */
+            hint: string | null;
+        };
+        FactLinkResponse: {
+            /**
+             * @description A subject is always an NPC or a Thread.
+             * @example npc
+             * @enum {string}
+             */
+            kind: "npc" | "thread" | "fact";
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description The NPC's or Thread's name, or the linked fact's label.
+             * @example Mira Vane
+             */
+            name: string;
+        };
+        FactResponse: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description The key of the Fact slot the fact fills; null for a free fact.
+             * @example prince
+             */
+            slot: string | null;
+            /**
+             * @description The label the player wrote; for a slot fact, the slot's label.
+             * @example The guild
+             */
+            label: string;
+            /**
+             * @description The text of a free fact or of a "text" slot; null when the slot holds an NPC or a Thread.
+             * @example Owes a debt to the Prince.
+             */
+            text: string | null;
+            /** @description The NPC or Thread an "npc" / "thread" slot holds; null otherwise. */
+            subject: components["schemas"]["FactLinkResponse"] | null;
+            /**
+             * @description What the fact says: its text, or its subject's name now.
+             * @example Owes a debt to the Prince.
+             */
+            value: string;
+            /** @description What the fact links to, in the order the player gave. */
+            links: components["schemas"]["FactLinkResponse"][];
+        };
         CampaignResponse: {
             /** Format: uuid */
             id: string;
@@ -1189,6 +1286,10 @@ export interface components {
             npcs: components["schemas"]["NpcResponse"][];
             /** @description The campaign's Threads: the open ones first, then the closed ones, each in creation order. */
             threads: components["schemas"]["ThreadResponse"][];
+            /** @description The Fact slots of the pinned release, in definition order; empty for releases without any. */
+            factSlots: components["schemas"]["FactSlotResponse"][];
+            /** @description The campaign's facts: the slot facts first, in slot order, then the free facts in creation order; empty for a campaign without any. */
+            facts: components["schemas"]["FactResponse"][];
         };
         /** @description A title, a Scene Type, or both. */
         StartSceneRequest: {
@@ -1220,6 +1321,46 @@ export interface components {
              * @example 3
              */
             value: number;
+        };
+        FactLinkRequest: {
+            /**
+             * @example npc
+             * @enum {string}
+             */
+            kind: "npc" | "thread" | "fact";
+            /**
+             * Format: uuid
+             * @description The id of the NPC, Thread or fact; it must be one the campaign holds.
+             */
+            id: string;
+        };
+        FactRequest: {
+            /**
+             * @description 1 to 100 characters once trimmed.
+             * @example The guild
+             */
+            label: string;
+            /**
+             * @description 1 to 2000 characters once trimmed.
+             * @example Owes a debt to the Prince.
+             */
+            text: string;
+            /** @description At most 20, each once; none when omitted or null. */
+            links?: components["schemas"]["FactLinkRequest"][] | null;
+        };
+        EditFactRequest: {
+            /**
+             * @description Required for a free fact: 1 to 100 characters once trimmed. Refused for a slot fact.
+             * @example The guild
+             */
+            label?: string | null;
+            /**
+             * @description Required for a free fact: 1 to 2000 characters once trimmed. Refused for a slot fact.
+             * @example Owes a debt to the Prince.
+             */
+            text?: string | null;
+            /** @description Replace the fact's links with these: at most 20, each once; send an empty list to clear them. */
+            links: components["schemas"]["FactLinkRequest"][];
         };
         NpcRequest: {
             /**
@@ -2577,6 +2718,185 @@ export interface operations {
             };
             /** @description The body is not JSON. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addFact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactRequest"];
+            };
+        };
+        responses: {
+            /** @description The new free fact. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "label" or "text", or a field or link of another JSON type or shape than documented (an unknown link kind, an id that is not a UUID). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or a link names an NPC, Thread or fact it does not hold. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already holds 500 facts, or another request changed it meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long label or text, more than 20 links, a link repeated). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    editFact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                factId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditFactRequest"];
+            };
+        };
+        responses: {
+            /** @description The edited fact. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no list "links", or a field or link of another JSON type or shape than documented (an unknown link kind, an id that is not a UUID). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, it holds no fact with this id, or a link names an NPC, Thread or fact it does not hold. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long label or text, more than 20 links, a link repeated, a link to the fact itself), a free fact lacks its label or text, or a slot fact is given a label or text. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

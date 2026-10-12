@@ -12,9 +12,9 @@ use OpenApi\Attributes as OA;
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
- * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs and Threads.
+ * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs, Threads, Fact slots and facts.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'npcs', 'threads'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'npcs', 'threads', 'factSlots', 'facts'])]
 final readonly class CampaignResponse
 {
     /**
@@ -27,6 +27,8 @@ final readonly class CampaignResponse
      * @param list<TagResponse>              $tags
      * @param list<NpcResponse>              $npcs
      * @param list<ThreadResponse>           $threads
+     * @param list<FactSlotResponse>         $factSlots
+     * @param list<FactResponse>             $facts
      */
     private function __construct(
         #[OA\Property(format: 'uuid')]
@@ -99,6 +101,18 @@ final readonly class CampaignResponse
             items: new OA\Items(ref: new Model(type: ThreadResponse::class)),
         )]
         public array $threads,
+        #[OA\Property(
+            description: 'The Fact slots of the pinned release, in definition order; empty for releases without any.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: FactSlotResponse::class)),
+        )]
+        public array $factSlots,
+        #[OA\Property(
+            description: 'The campaign\'s facts: the slot facts first, in slot order, then the free facts in creation order; empty for a campaign without any.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: FactResponse::class)),
+        )]
+        public array $facts,
     ) {
     }
 
@@ -122,6 +136,8 @@ final readonly class CampaignResponse
             array_map(TagResponse::fromView(...), $view->tags),
             array_map(NpcResponse::fromView(...), $view->npcs),
             array_map(ThreadResponse::fromView(...), $view->threads),
+            array_map(FactSlotResponse::fromView(...), $view->factSlots),
+            array_map(FactResponse::fromView(...), $view->facts),
         );
     }
 }

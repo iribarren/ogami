@@ -901,6 +901,236 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/facts": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Add a free fact to one of my campaigns",
+                "operationId": "addFact",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FactRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new free fact.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FactResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"label\" or \"text\", or a field or link of another JSON type or shape than documented (an unknown link kind, an id that is not a UUID).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or a link names an NPC, Thread or fact it does not hold.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already holds 500 facts, or another request changed it meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long label or text, more than 20 links, a link repeated).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/facts/{factId}": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Edit a fact of one of my campaigns: a free fact's label and text, and any fact's links",
+                "operationId": "editFact",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "factId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditFactRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The edited fact.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FactResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no list \"links\", or a field or link of another JSON type or shape than documented (an unknown link kind, an id that is not a UUID).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, it holds no fact with this id, or a link names an NPC, Thread or fact it does not hold.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long label or text, more than 20 links, a link repeated, a link to the fact itself), a free fact lacks its label or text, or a slot fact is given a label or text.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/npcs": {
             "post": {
                 "tags": [
@@ -4233,6 +4463,127 @@
                 },
                 "type": "object"
             },
+            "FactSlotResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "type",
+                    "hint"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "prince"
+                    },
+                    "label": {
+                        "description": "What players see for the slot.",
+                        "type": "string",
+                        "example": "The Prince"
+                    },
+                    "type": {
+                        "description": "What the slot takes: a text, an NPC or a Thread.",
+                        "type": "string",
+                        "example": "npc",
+                        "enum": [
+                            "text",
+                            "npc",
+                            "thread"
+                        ]
+                    },
+                    "hint": {
+                        "description": "Shown where the slot is filled; null when the slot has none.",
+                        "type": "string",
+                        "example": "Who rules the city?",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "FactLinkResponse": {
+                "required": [
+                    "kind",
+                    "id",
+                    "name"
+                ],
+                "properties": {
+                    "kind": {
+                        "description": "A subject is always an NPC or a Thread.",
+                        "type": "string",
+                        "example": "npc",
+                        "enum": [
+                            "npc",
+                            "thread",
+                            "fact"
+                        ]
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "description": "The NPC's or Thread's name, or the linked fact's label.",
+                        "type": "string",
+                        "example": "Mira Vane"
+                    }
+                },
+                "type": "object"
+            },
+            "FactResponse": {
+                "required": [
+                    "id",
+                    "slot",
+                    "label",
+                    "text",
+                    "subject",
+                    "value",
+                    "links"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "slot": {
+                        "description": "The key of the Fact slot the fact fills; null for a free fact.",
+                        "type": "string",
+                        "example": "prince",
+                        "nullable": true
+                    },
+                    "label": {
+                        "description": "The label the player wrote; for a slot fact, the slot's label.",
+                        "type": "string",
+                        "example": "The guild"
+                    },
+                    "text": {
+                        "description": "The text of a free fact or of a \"text\" slot; null when the slot holds an NPC or a Thread.",
+                        "type": "string",
+                        "example": "Owes a debt to the Prince.",
+                        "nullable": true
+                    },
+                    "subject": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FactLinkResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The NPC or Thread an \"npc\" / \"thread\" slot holds; null otherwise."
+                    },
+                    "value": {
+                        "description": "What the fact says: its text, or its subject's name now.",
+                        "type": "string",
+                        "example": "Owes a debt to the Prince."
+                    },
+                    "links": {
+                        "description": "What the fact links to, in the order the player gave.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FactLinkResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "CampaignResponse": {
                 "required": [
                     "id",
@@ -4251,7 +4602,9 @@
                     "sceneTypes",
                     "tags",
                     "npcs",
-                    "threads"
+                    "threads",
+                    "factSlots",
+                    "facts"
                 ],
                 "properties": {
                     "id": {
@@ -4358,6 +4711,20 @@
                         "items": {
                             "$ref": "#/components/schemas/ThreadResponse"
                         }
+                    },
+                    "factSlots": {
+                        "description": "The Fact slots of the pinned release, in definition order; empty for releases without any.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FactSlotResponse"
+                        }
+                    },
+                    "facts": {
+                        "description": "The campaign's facts: the slot facts first, in slot order, then the free facts in creation order; empty for a campaign without any.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FactResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -4419,6 +4786,83 @@
                         "description": "Clamped to the Tracker's range (min..max, 0..segments for a clock).",
                         "type": "integer",
                         "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "FactLinkRequest": {
+                "required": [
+                    "kind",
+                    "id"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "example": "npc",
+                        "enum": [
+                            "npc",
+                            "thread",
+                            "fact"
+                        ]
+                    },
+                    "id": {
+                        "description": "The id of the NPC, Thread or fact; it must be one the campaign holds.",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "type": "object"
+            },
+            "FactRequest": {
+                "required": [
+                    "label",
+                    "text"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "1 to 100 characters once trimmed.",
+                        "type": "string",
+                        "example": "The guild"
+                    },
+                    "text": {
+                        "description": "1 to 2000 characters once trimmed.",
+                        "type": "string",
+                        "example": "Owes a debt to the Prince."
+                    },
+                    "links": {
+                        "description": "At most 20, each once; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FactLinkRequest"
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "EditFactRequest": {
+                "required": [
+                    "links"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "Required for a free fact: 1 to 100 characters once trimmed. Refused for a slot fact.",
+                        "type": "string",
+                        "example": "The guild",
+                        "nullable": true
+                    },
+                    "text": {
+                        "description": "Required for a free fact: 1 to 2000 characters once trimmed. Refused for a slot fact.",
+                        "type": "string",
+                        "example": "Owes a debt to the Prince.",
+                        "nullable": true
+                    },
+                    "links": {
+                        "description": "Replace the fact's links with these: at most 20, each once; send an empty list to clear them.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FactLinkRequest"
+                        }
                     }
                 },
                 "type": "object"

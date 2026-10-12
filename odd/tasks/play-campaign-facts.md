@@ -1,7 +1,7 @@
 # Feature: play-campaign-facts
 
 - **Locator:** `odd/tasks/play-campaign-facts.md` · Engram topic `odd/play-campaign-facts/tasks`
-- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-2-facts` (from `main` `0fca1fb`) · **Status:** slice 2 written, review pending
+- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-3-facts-http` (from `main` `aeb105c`) · **Status:** slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-threads-npcs` (PRs #64–#74)
@@ -82,23 +82,27 @@ Forecasts include tests, docs and generated files (OpenAPI spec, TS types). Hard
 |---|---|---|---|---|
 | 1 | `feat/play-campaign-facts-1-contract-acl` | `feat(studio): play-campaign-facts 1/5 contract-acl` | T1, T2 | ~1,400 |
 | 2 | `feat/play-campaign-facts-2-facts` | `feat(play): play-campaign-facts 2/5 facts` | T3 | ~1,600 |
-| 3 | `feat/play-campaign-facts-3-facts-http` | `feat(play): play-campaign-facts 3/5 facts-http` | T4 | ~1,700 |
-| 4 | `feat/play-campaign-facts-4-flow` | `feat(play): play-campaign-facts 4/5 flow` | T5 | ~1,400 |
-| 5 | `feat/play-campaign-facts-5-ui` | `feat(play): play-campaign-facts 5/5 ui` | T6, T7 | ~1,700 |
+| 3 | `feat/play-campaign-facts-3-facts-http` | `feat(play): play-campaign-facts 3/6 facts-http` | T4a | ~1,600 |
+| 4 | `feat/play-campaign-facts-4-fact-slots-http` | `feat(play): play-campaign-facts 4/6 fact-slots-http` | T4b | ~1,100 |
+| 5 | `feat/play-campaign-facts-5-flow` | `feat(play): play-campaign-facts 5/6 flow` | T5 | ~1,400 |
+| 6 | `feat/play-campaign-facts-6-ui` | `feat(play): play-campaign-facts 6/6 ui` | T6, T7 | ~1,700 |
 
-Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; releases are published only from `backend/presets/` and none uses them; FlowRun ignores `fillFact` and renders `{fact:key}` empty until slice 4. Slices 2–4 add unused backend (the campaign response gains `factSlots` and `facts`, the step view `fills`, ignored by the SPA); slice 5 shows it.
+Slice 3 was split before its write (2026-10-12): T4 as one slice forecast ~2,200 lines (three endpoints, the read model, API tests, Behat, generated files), past the ceiling. Slices 1 and 2 shipped as `n/5`.
+
+Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; releases are published only from `backend/presets/` and none uses them; FlowRun ignores `fillFact` and renders `{fact:key}` empty until slice 5. Slices 2–5 add unused backend (the campaign response gains `factSlots` and `facts`, the step view `fills`, ignored by the SPA); slice 6 shows it.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Feature doc. `v2.schema.json`: fact slot `hint`, effect `fillFact`. Studio `Version2`: slot hint, `fillFact` (slot exists, `text` only on `text` slots), `{fact:key}`. Contract doc v2 additions. Valid and invalid fixtures; unit tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `da655e4` |
-| T2 | 1 | Play ACL: `FactSlot` hint, `FillFactEffect`, typed and framework-free; FlowRun ignores `fillFact` and Play `Placeholders` renders `{fact:key}` empty until slice 4; the four example fixtures gain their 8b parts (examples README); translator tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `d4ae473`, `a0f5122` |
-| T3 | 2 | Campaign facts (domain: free facts, fill and refill a slot by hand incl. creating an NPC / Thread, edit label, text, links, limits, all or nothing); JSONB column, Doctrine type, migration; repository round trip incl. legacy rows | delegated writer (slice 2, 4+ non-trivial files) | [x] | |
-| T4 | 3 | Campaign response gains `factSlots` and `facts` (values and link names resolved); commands, handlers and endpoints (add free fact, fill slot, edit fact); API tests (400/404/409/422), Behat; `make api` | | [ ] | |
-| T5 | 4 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text (an unknown key fails closed: slice 1 review), step view `fills` and its HTTP field; unit, integration and API tests; `make api` | | [ ] | |
-| T6 | 5 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | | [ ] | |
-| T7 | 5 | Glossary and contract doc wrap-up; e2e smoke for facts | | [ ] | |
+| T2 | 1 | Play ACL: `FactSlot` hint, `FillFactEffect`, typed and framework-free; FlowRun ignores `fillFact` and Play `Placeholders` renders `{fact:key}` empty until slice 5; the four example fixtures gain their 8b parts (examples README); translator tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `d4ae473`, `a0f5122` |
+| T3 | 2 | Campaign facts (domain: free facts, fill and refill a slot by hand incl. creating an NPC / Thread, edit label, text, links, limits, all or nothing); JSONB column, Doctrine type, migration; repository round trip incl. legacy rows | delegated writer (slice 2, 4+ non-trivial files) | [x] | `6510d64`, `346f3db` |
+| T4a | 3 | Campaign response gains `factSlots` and `facts` (values and link names resolved); commands, handlers and endpoints to add a free fact and edit a fact (free: label, text, links; slot: links); API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 3, 4+ non-trivial files) | [x] | |
+| T4b | 4 | Fill / refill a slot over HTTP (text, existing NPC / Thread, new one by name): command, handler, endpoint; editing a slot fact's links end to end; API tests (400/404/409/422), Behat; `make api` | | [ ] | |
+| T5 | 5 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text (an unknown key fails closed: slice 1 review), step view `fills` and its HTTP field; unit, integration and API tests; `make api` | | [ ] | |
+| T6 | 6 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | | [ ] | |
+| T7 | 6 | Glossary and contract doc wrap-up; e2e smoke for facts | | [ ] | |
 
 ## Progress
 
@@ -107,13 +111,17 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: slice 1 — T2 done: Play ACL (`FactSlot` hint, `FillFactEffect`), FlowRun ignores `fillFact`, `{fact:key}` renders empty; the four example fixtures gain their 8b parts and Play reads all five.
 - 2026-10-12: slice 2 — T3 domain: `Facts` namespace (`Fact`, `FactLink`, `FactFill`), Campaign add / fill / edit / read facts, `reconstitute()` checks; unit tests (RED first).
 - 2026-10-12: slice 2 — T3 persistence: `facts` JSONB column and migration, strict `CampaignFactsType` (fails closed), `assertFactsConsistent()` after load; repository round trip, legacy row and malformed-row tests.
+- 2026-10-12: slice 3 — slice 2 review test: refilling a filled `npc` / `thread` slot by name keeps the fact id and links and creates the item (passed at once: the domain was right).
+- 2026-10-12: slice 3 — T4a read model: campaign response gains `factSlots` and `facts` (values and link names resolved, slot label for slot facts); handler unit tests and API tests (new campaign, values, rename); `make api`; frontend fixtures gain empty lists.
+- 2026-10-12: slice 3 — T4a free fact endpoints: `AddFact` / `EditFact` with handlers, `FactIdGenerator` port and UUID v7 adapter, `CampaignFactsController` (`POST /api/campaigns/{id}/facts`, `PUT .../facts/{factId}`); a free fact edit needs label and text (handler), a slot fact takes only links (domain); handler unit tests, API tests (400/401/403/404/409/415/422, concurrent save), Behat `facts.feature`; `make api`.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
-| 1 | `review-c4fd077e3ac7057e` | `da655e4`, `d4ae473`, `a0f5122` | Approved. One non-blocking suggestion, to fix in slice 4: Play `Placeholders` renders any `{fact:key}` empty without checking that the key names a fact slot of the pinned release (`Placeholders.php:53`), unlike `{tracker:key}` and `fillFact` slots; an unknown key should fail closed (translator or render time), with a test | [#76](https://github.com/iribarren/ogami/pull/76) |
+| 1 | `review-c4fd077e3ac7057e` | `da655e4`, `d4ae473`, `a0f5122` | Approved. One non-blocking suggestion, to fix in slice 5: Play `Placeholders` renders any `{fact:key}` empty without checking that the key names a fact slot of the pinned release (`Placeholders.php:53`), unlike `{tracker:key}` and `fillFact` slots; an unknown key should fail closed (translator or render time), with a test | [#76](https://github.com/iribarren/ogami/pull/76) |
+| 2 | `review-20cd4a5e879f8397` | `6510d64`, `346f3db` | Approved. One non-blocking suggestion, fixed in slice 3: test that refilling a filled `npc` / `thread` slot with a new item by name keeps the fact id and links (`Campaign.php:800-803`) | [#77](https://github.com/iribarren/ogami/pull/77) |
 
 ## Next step
 
-Slice 2 written, review pending. Slice 4 carries the slice 1 review suggestion (unknown `{fact:key}` fails closed).
+Slice 3 (T4a): commit 1 the slice 2 review test, then the read model and the free fact endpoints. Slice 5 carries the slice 1 review suggestion (unknown `{fact:key}` fails closed).

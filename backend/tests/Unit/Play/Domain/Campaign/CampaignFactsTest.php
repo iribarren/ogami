@@ -248,6 +248,31 @@ final class CampaignFactsTest extends TestCase
     }
 
     #[Test]
+    public function refillingAFilledNpcOrThreadSlotByNameKeepsTheFactIdAndLinksAndCreatesTheItem(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $this->release);
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Vault', [], [], 1, $this->release);
+        $campaign->addFreeFact($this->id('other'), 'Other', 'Text', [], $this->release);
+        $campaign->fillFactSlot($this->id('fact-1'), 'prince', FactFill::existingNpc(NpcId::fromString('npc-1')), $this->release);
+        $campaign->fillFactSlot($this->id('fact-2'), 'goal', FactFill::existingThread(ThreadId::fromString('thread-1')), $this->release);
+        $links = [FactLink::fact($this->id('other'))];
+        $campaign->editFact($this->id('fact-1'), null, null, $links, $this->release);
+        $campaign->editFact($this->id('fact-2'), null, null, $links, $this->release);
+
+        $prince = $campaign->fillFactSlot($this->id('ignored-1'), 'prince', FactFill::newNpc(NpcId::fromString('npc-2'), 'Valen'), $this->release);
+        $goal = $campaign->fillFactSlot($this->id('ignored-2'), 'goal', FactFill::newThread(ThreadId::fromString('thread-2'), 'Find the heir'), $this->release);
+
+        self::assertSame(['fact-1', 'npc', 'npc-2', ['fact:other']], [$prince->id()->toString(), $prince->subject()?->kind->value, $prince->subject()?->id, array_map(static fn (FactLink $link): string => $link->kind->value.':'.$link->id, $prince->links())]);
+        self::assertSame(['fact-2', 'thread', 'thread-2', ['fact:other']], [$goal->id()->toString(), $goal->subject()?->kind->value, $goal->subject()?->id, array_map(static fn (FactLink $link): string => $link->kind->value.':'.$link->id, $goal->links())]);
+        self::assertSame('Valen', $campaign->npc(NpcId::fromString('npc-2'))?->name());
+        self::assertSame('Find the heir', $campaign->thread(ThreadId::fromString('thread-2'))?->name());
+        self::assertNull($campaign->fact($this->id('ignored-1')));
+        self::assertNull($campaign->fact($this->id('ignored-2')));
+        self::assertCount(3, $campaign->facts($this->release));
+    }
+
+    #[Test]
     public function aSlotFilledByNameCreatesAnOpenWeightOneNpcOrThreadInTheSameCall(): void
     {
         $campaign = $this->campaign();

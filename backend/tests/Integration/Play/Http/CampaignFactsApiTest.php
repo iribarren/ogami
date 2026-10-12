@@ -226,6 +226,31 @@ final class CampaignFactsApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aJsonObjectAsLinksIsABadRequestAndKeepsTheFactsLinks(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id);
+        $freeFact = $this->addFact($id, ['label' => 'Guild', 'text' => 'Owes a debt', 'links' => [['kind' => 'npc', 'id' => $npcId]]]);
+        $slotFact = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7010';
+        $this->seed($id, static function (Campaign $campaign, GameSystemSnapshot $release) use ($slotFact, $npcId): void {
+            $campaign->fillFactSlot(FactId::fromString($slotFact), 'city', FactFill::text('Ashford'), $release);
+            $campaign->editFact(FactId::fromString($slotFact), null, null, [FactLink::npc(NpcId::fromString($npcId))], $release);
+        });
+        $before = $this->campaignFacts($id);
+
+        foreach ([[$freeFact, '{"label": "L", "text": "T", "links": {}}'], [$slotFact, '{"links": {}}']] as [$factId, $body]) {
+            $this->client->request('PUT', \sprintf('/api/campaigns/%s/facts/%s', $id, $factId), server: ['CONTENT_TYPE' => 'application/json'], content: $body);
+
+            self::assertResponseStatusCodeSame(400);
+            self::assertSame(['error' => self::MALFORMED_EDIT], $this->json());
+        }
+
+        self::assertSame($before, $this->campaignFacts($id));
+        self::assertSame([[['kind' => 'npc', 'id' => $npcId, 'name' => 'Mira']], [['kind' => 'npc', 'id' => $npcId, 'name' => 'Mira']]], array_column($this->campaignFacts($id), 'links'));
+    }
+
+    #[Test]
     public function missingOrMistypedFieldsAreABadRequest(): void
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
@@ -448,6 +473,36 @@ final class CampaignFactsApiTest extends WebTestCase
             self::assertSame(['error' => 'The GameSystem release this campaign plays can no longer be read.'], $this->json());
         }
 
+        self::assertSame(1, $this->connection()->fetchOne('SELECT jsonb_array_length(facts) FROM play_campaign WHERE id = ?', [$id]));
+    }
+
+    #[Test]
+    public function aReadThatFailsAfterTheSaveAnswersLikeTheCommandDidAndTheFactStaysSaved(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $breakAfterFlush = new readonly class($this->connection()) {
+            public function __construct(private Connection $connection)
+            {
+            }
+
+            public function postFlush(): void
+            {
+                // The release becomes unreadable once the fact is saved: the guarded read cannot build the answer.
+                $this->connection->executeStatement('DELETE FROM studio_gamesystem_release');
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::postFlush], $breakAfterFlush);
+
+        try {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/facts', $id), ['label' => 'Guild', 'text' => 'Owes a debt']);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::postFlush], $breakAfterFlush);
+        }
+
+        self::assertResponseStatusCodeSame(500);
+        self::assertSame(['error' => 'The GameSystem release this campaign plays can no longer be read.'], $this->json());
         self::assertSame(1, $this->connection()->fetchOne('SELECT jsonb_array_length(facts) FROM play_campaign WHERE id = ?', [$id]));
     }
 

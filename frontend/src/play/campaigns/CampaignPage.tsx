@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useId, type ReactNode } from 'react'
 
 import { cn } from '@/shared/lib/utils'
+import { useCampaignTheme } from '@/shared/theme/useCampaignTheme'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { DiceRoller } from '../dice/DiceRoller'
@@ -78,6 +79,8 @@ const noSceneHint = 'Start a scene to write in the journal.'
 
 /** The Play screen: where play stands, the journal, and the tools that write in it. */
 function CampaignPlay({ campaign }: { campaign: Campaign }) {
+  // The whole viewport belongs to the campaign, so the release's Theme covers the header too.
+  useCampaignTheme(campaign.pinnedRelease.theme)
   const hasScene = campaign.currentSceneNumber !== null
   const scene = campaign.sessions
     .find(({ number }) => number === campaign.currentSessionNumber)

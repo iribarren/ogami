@@ -89,6 +89,8 @@ trait JournalEntryRepositoryContract
             'chaosFactor' => null,
         ]];
         yield 'choice' => [['kind' => 'choice', 'question' => 'Did you gain an edge?', 'optionKey' => 'yes', 'label' => 'Yes']];
+        yield 'pick' => [['kind' => 'pick', 'of' => 'npc', 'tags' => ['rival', 'ally'], 'picked' => [['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001', 'name' => 'Mira Vane'], ['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7002', 'name' => 'Brann']]]];
+        yield 'pick of nothing' => [['kind' => 'pick', 'of' => 'thread', 'tags' => [], 'picked' => []]];
     }
 
     #[Test]

@@ -159,6 +159,7 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
     public static function refusedResults(): iterable
     {
         yield 'a prompt with an option' => ['intro', self::command('intro', text: 'Ada', optionKey: 'left'), InvalidStepResult::class, 'Step "intro" is a prompt step: it takes no "optionKey".'];
+        yield 'a prompt with picked ids' => ['intro', new CompleteFlowStep('campaign-1', 'user-1', 'entry-1', 'intro', 'Ada', null, null, null, ['t1']), InvalidStepResult::class, 'Step "intro" is a prompt step: it takes no "pickedIds".'];
         yield 'a prompt without text' => ['intro', self::command('intro'), InvalidStepResult::class, 'Step "intro" is a prompt step: it needs "text".'];
         yield 'a prompt with blank text' => ['intro', self::command('intro', text: '  '), InvalidStepResult::class, 'Step "intro" needs an answer.'];
         yield 'a roll with text' => ['dice', self::command('dice', text: 'a six'), InvalidStepResult::class, 'Step "dice" is a roll step: it takes no "text".'];
@@ -306,6 +307,6 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
 
     private static function command(string $stepKey, ?string $text = null, ?string $optionKey = null, ?string $likelihood = null, ?int $chaosFactor = null, string $campaignId = 'campaign-1', string $userId = 'user-1'): CompleteFlowStep
     {
-        return new CompleteFlowStep($campaignId, $userId, 'entry-1', $stepKey, $text, $optionKey, $likelihood, $chaosFactor);
+        return new CompleteFlowStep($campaignId, $userId, 'entry-1', $stepKey, $text, $optionKey, $likelihood, $chaosFactor, null);
     }
 }

@@ -104,7 +104,7 @@ final readonly class FlowRunController
             return $this->error(self::MALFORMED_ANSWER, Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor), $campaignId, $user);
+        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, null), $campaignId, $user);
     }
 
     #[Route('/api/campaigns/{campaignId}/flow-run/skip', name: 'api_campaigns_flow_run_skip', methods: ['POST'])]

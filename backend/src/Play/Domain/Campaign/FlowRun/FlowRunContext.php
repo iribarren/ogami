@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemCount;
 use App\Play\Domain\GameSystem\Flow\Phase;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
@@ -98,6 +99,25 @@ final readonly class FlowRunContext
     public function openItemCount(ItemCount $count): int
     {
         return $this->campaign->openItemCount($count->of, $count->tags);
+    }
+
+    /**
+     * The candidates of a pick step: the campaign's open items of its kind carrying all its Tags.
+     */
+    public function pickCandidates(PickStep $step): PickCandidates
+    {
+        return $this->campaign->pickCandidates($step->of, $step->tags);
+    }
+
+    /**
+     * The current names of the picked items, in pick order; an item no longer in the campaign
+     * has none.
+     *
+     * @return list<string>
+     */
+    public function pickedNames(?PickedItems $picked): array
+    {
+        return $picked instanceof PickedItems ? $this->campaign->itemNames($picked->kind, $picked->ids) : [];
     }
 
     /**

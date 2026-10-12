@@ -41,6 +41,13 @@ final class PlaceholdersTest extends TestCase
         self::assertSame('Then: —', new Placeholders([], [])->render('Then: {answer}'));
     }
 
+    #[Test]
+    public function pickedIsTheNamesJoinedAndEmptyBeforeAnyPick(): void
+    {
+        self::assertSame('Meet Ana, Bea.', new Placeholders([], [], picked: ['Ana', 'Bea'])->render('Meet {picked}.'));
+        self::assertSame('Meet .', new Placeholders([], [])->render('Meet {picked}.'));
+    }
+
     /**
      * @return iterable<string, array{string, string}>
      */
@@ -49,6 +56,7 @@ final class PlaceholdersTest extends TestCase
         yield 'an unknown Tracker' => ['{tracker:heat}', 'The pinned release has no Tracker "heat".'];
         yield 'another namespace' => ['{fact:villain}', 'Placeholder {fact:villain} is not supported.'];
         yield 'a Tracker without a key' => ['{tracker}', 'Placeholder {tracker} is not supported.'];
+        yield 'picked with a key' => ['{picked:x}', 'Placeholder {picked:x} is not supported.'];
         yield 'the answer with a key' => ['{answer:plan}', 'Placeholder {answer:plan} is not supported.'];
     }
 

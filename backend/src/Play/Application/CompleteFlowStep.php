@@ -15,11 +15,12 @@ use App\Shared\Application\Bus\Command;
 final readonly class CompleteFlowStep implements Command
 {
     /**
-     * @param string      $stepKey     the step the player means to complete, refused when the FlowRun is elsewhere
-     * @param string|null $text        prompt step: the answer
-     * @param string|null $optionKey   choice step: the option chosen
-     * @param string|null $likelihood  oracle step: the likelihood level key, only when the step does not fix one
-     * @param int|null    $chaosFactor oracle step: null for the oracle's neutral factor (or when it has no chaos)
+     * @param string            $stepKey     the step the player means to complete, refused when the FlowRun is elsewhere
+     * @param string|null       $text        prompt step: the answer
+     * @param string|null       $optionKey   choice step: the option chosen
+     * @param string|null       $likelihood  oracle step: the likelihood level key, only when the step does not fix one
+     * @param int|null          $chaosFactor oracle step: null for the oracle's neutral factor (or when it has no chaos)
+     * @param list<string>|null $pickedIds   pick step in mode choose: the ids of the candidates chosen, none when nothing matched
      */
     public function __construct(
         public string $campaignId,
@@ -30,6 +31,7 @@ final readonly class CompleteFlowStep implements Command
         public ?string $optionKey,
         public ?string $likelihood,
         public ?int $chaosFactor,
+        public ?array $pickedIds,
     ) {
     }
 }

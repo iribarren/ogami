@@ -6,7 +6,8 @@ namespace App\Play\Domain\Campaign\FlowRun;
 
 /**
  * The result given does not complete the current step: another kind, an unknown option, another
- * table or other dice, a blank answer, or fields that do not belong to the step's kind.
+ * table or other dice, a blank answer, fields that do not belong to the step's kind, or items a pick
+ * step cannot take.
  */
 final class InvalidStepResult extends \DomainException
 {
@@ -53,6 +54,33 @@ final class InvalidStepResult extends \DomainException
     public static function conditionStep(string $step): self
     {
         return new self(\sprintf('Step "%s" is a condition step: it advances by itself and cannot be completed.', $step));
+    }
+
+    public static function otherItems(string $step, string $expected): self
+    {
+        return new self(\sprintf('Step "%s" picks %ss.', $step, $expected));
+    }
+
+    public static function notACandidate(string $step, string $id): self
+    {
+        return new self(\sprintf('Pick step "%s" has no candidate "%s".', $step, $id));
+    }
+
+    public static function repeatedPick(string $step, string $id): self
+    {
+        return new self(\sprintf('Pick step "%s" was given "%s" twice.', $step, $id));
+    }
+
+    public static function pickCount(string $step, int $min, int $max, int $given): self
+    {
+        $takes = $min === $max ? \sprintf('%d', $min) : \sprintf('%d to %d', $min, $max);
+
+        return new self(\sprintf('Pick step "%s" takes %s %s, got %d.', $step, $takes, 1 === $max ? 'item' : 'items', $given));
+    }
+
+    public static function tooFewCandidates(string $step, int $min, int $candidates): self
+    {
+        return new self(\sprintf('Pick step "%s" needs %d candidates, has %d: nothing can be picked.', $step, $min, $candidates));
     }
 
     /**

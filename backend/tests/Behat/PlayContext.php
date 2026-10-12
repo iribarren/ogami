@@ -448,7 +448,7 @@ final class PlayContext implements Context
     #[When('I answer the step :stepKey with :text')]
     public function iAnswerTheStep(string $stepKey, string $text): void
     {
-        $this->attempt(fn () => ($this->completeFlowStep)(new CompleteFlowStep($this->campaignId(), self::ME, $this->entryId(), $stepKey, $text, null, null, null)));
+        $this->attempt(fn () => ($this->completeFlowStep)(new CompleteFlowStep($this->campaignId(), self::ME, $this->entryId(), $stepKey, $text, null, null, null, null)));
         $this->assertNoFailure();
     }
 

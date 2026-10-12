@@ -9,14 +9,17 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
@@ -107,7 +110,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals([
             'status' => 'paused', 'phaseIndex' => 0, 'stage' => 'scene', 'sessionNumber' => 1, 'sceneNumber' => 1, 'sceneType' => 'legwork',
             'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
-            'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false,
+            'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false, 'picked' => null,
             'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
@@ -151,6 +154,14 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
         yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
         yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn", "finished".'];
+        yield 'picked not an object' => [['picked' => 'Ana'], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread".'];
+        yield 'picked of an unknown kind' => [['picked' => ['kind' => 'faction', 'ids' => ['a']]], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread".'];
+        yield 'picked ids not a list' => [['picked' => ['kind' => 'npc', 'ids' => 'a']], 'Stored campaign FlowRun: "picked" must be a list.'];
+        yield 'a picked id not a string' => [['picked' => ['kind' => 'npc', 'ids' => [1]]], 'Stored campaign FlowRun: "picked" must be a list of id strings.'];
+        yield 'picked without ids' => [['picked' => ['kind' => 'npc', 'ids' => []]], 'Stored campaign FlowRun: "picked" is invalid: Picked items hold 1 to 10 ids, got 0.'];
+        yield 'picked with a repeated id' => [['picked' => ['kind' => 'npc', 'ids' => ['a', 'a']]], 'Stored campaign FlowRun: "picked" is invalid: Picked item ids must be distinct and not blank.'];
+        yield 'picked with more than ten ids' => [['picked' => ['kind' => 'npc', 'ids' => array_map(strval(...), range(1, 11))]], 'Stored campaign FlowRun: "picked" is invalid: Picked items hold 1 to 10 ids, got 11.'];
+        yield 'picked outside a Scene' => [['picked' => ['kind' => 'npc', 'ids' => ['a']], 'sceneNumber' => null], 'Stored campaign FlowRun: "picked" must be null outside a Scene.'];
         yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
         yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "sceneTypeSwitchIgnored", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
         yield 'malformed time' => [['history' => [['event' => 'paused', 'at' => 'yesterday', 'details' => []]]], 'Stored campaign FlowRun: "at" must be a time like 2026-10-06T10:00:00.000000+00:00.'];
@@ -188,14 +199,32 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
         $this->repository->add($this->guidedCampaign($id->toString()));
-        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['hook', 'phaseOpened', 'sessionOpeningDue']));
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['hook', 'phaseOpened', 'sessionOpeningDue', 'picked']));
         $legacy['history'] = [['event' => 'skip', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => ['step' => 'plan', 'part' => 'setup']]];
         $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
         $this->forgetLoaded();
 
         $flowRun = $this->repository->ofId($id)?->flowRun();
 
-        self::assertSame([FlowRunStage::Scene, null, true, false, 'setup'], [$flowRun?->stage(), $flowRun?->hook(), $flowRun?->phaseOpened(), $flowRun?->sessionOpeningDue(), array_last($flowRun?->history() ?? [])?->details['part']]);
+        self::assertSame([FlowRunStage::Scene, null, true, false, null, 'setup'], [$flowRun?->stage(), $flowRun?->hook(), $flowRun?->phaseOpened(), $flowRun?->sessionOpeningDue(), $flowRun?->picked(), array_last($flowRun?->history() ?? [])?->details['part']]);
+    }
+
+    #[Test]
+    public function thePickedItemsRoundTripWithTheWholeFlowRun(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $base = $this->guidedCampaign($id->toString());
+        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
+        $flowRun = FlowRun::reconstitute($run->status(), $run->phaseIndex(), $run->stage(), $run->scene()[0] ?? null, $run->scene()[1] ?? null, $run->sceneType(), $run->part(), $run->stepKey(), $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), $run->forcedNextSceneType(), $run->phaseEndingReason(), $run->switchCount(), $run->history(), $run->hook(), $run->phaseOpened(), $run->sessionOpeningDue(), new PickedItems(ItemKind::Thread, ['t2', 't1']));
+        $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals(new PickedItems(ItemKind::Thread, ['t2', 't1']), $loaded?->flowRun()?->picked());
+        self::assertEquals(['kind' => 'thread', 'ids' => ['t2', 't1']], $this->storedFlowRun($id->toString())['picked']);
     }
 
     /**

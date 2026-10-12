@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Randomness\Domain\Oracle\LikelihoodAnswer;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -12,18 +13,24 @@ use App\Randomness\Domain\Roll;
 
 /**
  * What the player brings to complete a step, typed by step kind: a prompt's answer, a roll, a
- * table result, a likelihood answer or a choice option. "answer" is the step's answer text kept for
- * placeholders: the prompt text, the roll total, the entry texts, the answer label or the option key
- * (the FlowRun keeps the option's label).
+ * table result, a likelihood answer, a choice option or the items a pick step picked. "answer" is the step's answer text kept for
+ * placeholders: the prompt text, the roll total, the entry texts, the answer label, the option key
+ * (the FlowRun keeps the option's label) or the picked names joined with ", " (empty when nothing was
+ * picked).
  */
 final readonly class StepResult
 {
+    /**
+     * @param list<PickedItem> $picked
+     */
     private function __construct(
         public StepKind $kind,
         public string $answer,
         public ?Roll $roll = null,
         public ?OracleTableResult $table = null,
         public ?LikelihoodAnswer $likelihood = null,
+        public ?ItemKind $of = null,
+        public array $picked = [],
     ) {
     }
 
@@ -54,6 +61,16 @@ final readonly class StepResult
         };
 
         return new self(StepKind::Oracle, $label, likelihood: $answer);
+    }
+
+    /**
+     * The NPCs or Threads a pick step picked, none when nothing matched or was chosen.
+     *
+     * @param list<PickedItem> $picked
+     */
+    public static function pick(ItemKind $of, array $picked): self
+    {
+        return new self(StepKind::Pick, implode(', ', array_map(static fn (PickedItem $item): string => $item->name, $picked)), of: $of, picked: $picked);
     }
 
     public static function choice(string $optionKey): self

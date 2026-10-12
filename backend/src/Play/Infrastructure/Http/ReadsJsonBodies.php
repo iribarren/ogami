@@ -11,8 +11,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * What the Play controllers share: reading a JSON request body and answering with an
- * ErrorResponse.
+ * What the Play controllers share: reading a JSON request body, checking a list of strings and
+ * answering with an ErrorResponse.
  */
 trait ReadsJsonBodies
 {
@@ -38,5 +38,22 @@ trait ReadsJsonBodies
     private function error(string $message, int $status): JsonResponse
     {
         return new JsonResponse(ErrorResponse::withMessage($message), $status);
+    }
+
+    /**
+     * @phpstan-assert-if-true list<string> $value
+     */
+    private function isListOfStrings(mixed $value): bool
+    {
+        return \is_array($value) && array_is_list($value) && array_all($value, static fn (mixed $item): bool => \is_string($item));
+    }
+
+    /**
+     * The campaign's pinned release cannot be read (gone, unsupported or broken): a server-side
+     * fault, answered without its internals.
+     */
+    private function unreadableRelease(): JsonResponse
+    {
+        return $this->error('The GameSystem release this campaign plays can no longer be read.', Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }

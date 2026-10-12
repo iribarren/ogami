@@ -6,18 +6,24 @@ namespace App\Tests\Behat;
 
 use App\Play\Application\AddNpc;
 use App\Play\Application\AddNpcHandler;
+use App\Play\Application\AddThread;
+use App\Play\Application\AddThreadHandler;
 use App\Play\Application\CampaignJournal;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignSummaryView;
 use App\Play\Application\CampaignView;
 use App\Play\Application\CloseNpc;
 use App\Play\Application\CloseNpcHandler;
+use App\Play\Application\CloseThread;
+use App\Play\Application\CloseThreadHandler;
 use App\Play\Application\CompleteFlowStep;
 use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
 use App\Play\Application\EditNpc;
 use App\Play\Application\EditNpcHandler;
+use App\Play\Application\EditThread;
+use App\Play\Application\EditThreadHandler;
 use App\Play\Application\EndFlowScene;
 use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Application\EndSession;
@@ -45,6 +51,8 @@ use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
 use App\Play\Application\ReopenNpc;
 use App\Play\Application\ReopenNpcHandler;
+use App\Play\Application\ReopenThread;
+use App\Play\Application\ReopenThreadHandler;
 use App\Play\Application\ResumeGuidance;
 use App\Play\Application\ResumeGuidanceHandler;
 use App\Play\Application\SceneView;
@@ -58,6 +66,7 @@ use App\Play\Application\StartSession;
 use App\Play\Application\StartSessionHandler;
 use App\Play\Application\SwitchSceneType;
 use App\Play\Application\SwitchSceneTypeHandler;
+use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
@@ -106,6 +115,10 @@ final class PlayContext implements Context
     private readonly EditNpcHandler $editNpc;
     private readonly CloseNpcHandler $closeNpc;
     private readonly ReopenNpcHandler $reopenNpc;
+    private readonly AddThreadHandler $addThread;
+    private readonly EditThreadHandler $editThread;
+    private readonly CloseThreadHandler $closeThread;
+    private readonly ReopenThreadHandler $reopenThread;
     private readonly ListMyCampaignsHandler $listMyCampaigns;
     private readonly GetCampaignHandler $getCampaign;
     private readonly SequentialJournalEntryIdGenerator $entryIds;
@@ -121,6 +134,7 @@ final class PlayContext implements Context
 
     private ?string $campaignId = null;
     private int $npcCount = 0;
+    private int $threadCount = 0;
     private ?\Throwable $failure = null;
 
     public function __construct()
@@ -140,6 +154,10 @@ final class PlayContext implements Context
         $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
         $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
         $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
+        $this->addThread = new AddThreadHandler($owned, $campaigns, $this->releases);
+        $this->editThread = new EditThreadHandler($owned, $campaigns, $this->releases);
+        $this->closeThread = new CloseThreadHandler($owned, $campaigns);
+        $this->reopenThread = new ReopenThreadHandler($owned, $campaigns);
         $this->listMyCampaigns = new ListMyCampaignsHandler($campaigns);
         $this->getCampaign = new GetCampaignHandler($owned, $this->releases);
         $entries = new InMemoryJournalEntryRepository();
@@ -315,6 +333,39 @@ final class PlayContext implements Context
     public function iReopenTheNpc(string $name): void
     {
         ($this->reopenNpc)(new ReopenNpc($this->campaignId(), self::ME, $this->npc($name)->id));
+    }
+
+    #[Given('I added the Thread :name with the Tag :tag and the free tag :freeTag')]
+    #[When('I add the Thread :name with the Tag :tag and the free tag :freeTag')]
+    public function iAddTheThread(string $name, string $tag, string $freeTag): void
+    {
+        $this->attempt(fn () => ($this->addThread)(new AddThread($this->campaignId(), self::ME, 'thread-'.++$this->threadCount, $name, [$tag], [$freeTag], 1)));
+    }
+
+    #[When('I try to add the Thread :name with the Tag :tag')]
+    public function iTryToAddTheThreadWithTheTag(string $name, string $tag): void
+    {
+        $this->attempt(fn () => ($this->addThread)(new AddThread($this->campaignId(), self::ME, 'thread-'.++$this->threadCount, $name, [$tag], [], 1)));
+    }
+
+    #[When('I rename the Thread :name to :newName with the weight :weight')]
+    public function iEditTheThread(string $name, string $newName, int $weight): void
+    {
+        $thread = $this->thread($name);
+        $this->attempt(fn () => ($this->editThread)(new EditThread($this->campaignId(), self::ME, $thread->id, $newName, $thread->tags, $thread->freeTags, $weight)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I close the Thread :name')]
+    public function iCloseTheThread(string $name): void
+    {
+        ($this->closeThread)(new CloseThread($this->campaignId(), self::ME, $this->thread($name)->id));
+    }
+
+    #[When('I reopen the Thread :name')]
+    public function iReopenTheThread(string $name): void
+    {
+        ($this->reopenThread)(new ReopenThread($this->campaignId(), self::ME, $this->thread($name)->id));
     }
 
     #[When('I write the note :text')]
@@ -528,6 +579,15 @@ final class PlayContext implements Context
         );
     }
 
+    #[Then('my Threads are:')]
+    public function myThreadsAre(TableNode $table): void
+    {
+        Assert::assertSame(
+            array_map(static fn (array $row): array => [$row['name'], $row['tags'], $row['free tags'], (int) $row['weight'], $row['status']], $table->getColumnsHash()),
+            array_map(static fn (ThreadView $thread): array => [$thread->name, implode(', ', $thread->tags), implode(', ', $thread->freeTags), $thread->weight, $thread->status], $this->myCampaign()->threads),
+        );
+    }
+
     #[Then('my campaign offers the Tags :keys')]
     public function myCampaignOffersTheTags(string $keys): void
     {
@@ -708,6 +768,11 @@ final class PlayContext implements Context
     private function npc(string $name): NpcView
     {
         return array_find($this->myCampaign()->npcs, static fn (NpcView $npc): bool => $npc->name === $name) ?? throw new \LogicException(\sprintf('No NPC "%s".', $name));
+    }
+
+    private function thread(string $name): ThreadView
+    {
+        return array_find($this->myCampaign()->threads, static fn (ThreadView $thread): bool => $thread->name === $name) ?? throw new \LogicException(\sprintf('No Thread "%s".', $name));
     }
 
     private function campaignId(): string

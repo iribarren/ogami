@@ -7,7 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { gateNote, lostMineJournal } from '../journal/fixtures'
+import { fateDouble, gateNote, lostMineJournal } from '../journal/fixtures'
 import { atStep, atTheScenePick, guided, inOpenPlay, promptStep, rollStep } from './fixtures'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
@@ -147,6 +147,15 @@ describe('focus mode', () => {
     expect(soFar.getByText(/Is the door locked/)).toBeInTheDocument()
     expect(soFar.getByText('A storm')).toBeInTheDocument()
     expect(soFar.queryByText(/The gate is open/)).not.toBeInTheDocument()
+  })
+
+  it('offers the random event table on a flagged fate answer in the scene so far', async () => {
+    renderPlay(guided(atStep(promptStep), 'focus'), {}, [fateDouble])
+
+    const focus = within(await focusRegion())
+    const soFar = within(await focus.findByRole('region', { name: 'So far' }))
+    expect(soFar.getByText('Random event')).toBeInTheDocument()
+    expect(soFar.getByRole('button', { name: 'Roll Weather' })).toBeEnabled()
   })
 
   it('shows no summary while the scene has no entries', async () => {

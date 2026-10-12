@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useMatches, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { ColorModeToggle } from '@/shared/theme/ColorModeToggle'
@@ -17,6 +17,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: currentUser, isPending } = useCurrentUser()
   const logout = useLogout()
   const navigate = useNavigate()
+  const wide = useMatches({
+    select: (matches) => matches.some((match) => match.staticData.layout === 'wide'),
+  })
+  const containerWidth = wide ? 'max-w-7xl' : 'max-w-5xl'
 
   function signOut() {
     logout.mutate(undefined, {
@@ -29,11 +33,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <header className="border-b">
-        <div className="mx-auto flex h-(--header-height) max-w-5xl items-center gap-8 px-4">
+        <div
+          className={`mx-auto flex min-h-(--header-height) ${containerWidth} flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2`}
+        >
           <Link to="/" className="font-heading text-lg font-semibold tracking-tight">
             Ogami
           </Link>
-          <nav aria-label="Main" className="flex flex-1 gap-6 text-sm">
+          <nav aria-label="Main" className="flex flex-1 flex-wrap gap-x-6 gap-y-1 text-sm">
             {areasFor(currentUser).map(({ to, label }) => (
               <Link
                 key={to}
@@ -52,8 +58,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
           <ColorModeToggle />
           {currentUser && (
-            <div className="flex items-center gap-3 text-sm">
-              <span className="text-muted-foreground">{currentUser.email}</span>
+            <div className="flex min-w-0 items-center gap-3 text-sm">
+              <span className="min-w-0 truncate text-muted-foreground">{currentUser.email}</span>
               {logout.error && (
                 <span role="alert" className="text-destructive">
                   {logout.error.message}
@@ -66,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">{children}</main>
+      <main className={`mx-auto w-full ${containerWidth} flex-1 px-4 py-10`}>{children}</main>
     </div>
   )
 }

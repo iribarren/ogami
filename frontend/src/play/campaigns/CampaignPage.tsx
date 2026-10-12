@@ -15,6 +15,7 @@ import { ListPanel } from '../lists/ListPanel'
 import { OraclePanel } from '../oracles/OraclePanel'
 import { TrackersPanel } from '../trackers/TrackersPanel'
 import { visibleTrackers } from '../trackers/useTrackers'
+import { PlayPanel } from './PlayPanel'
 import { releaseLabel } from './releaseLabel'
 import { SessionControls } from './SessionControls'
 import { CampaignError, useCampaign, type Campaign } from './useCampaigns'
@@ -82,6 +83,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
     ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
   const flow = campaign.flows.find(({ key }) => key === campaign.flowKey)
   const [view, setView] = useFlowView(campaign)
+  const trackers = visibleTrackers(campaign)
 
   return (
     <>
@@ -92,7 +94,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         </p>
       </header>
       <SessionControls campaign={campaign} />
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_var(--play-sidebar-width)]">
         <div className="min-w-0 space-y-6">
           {campaign.flowRun !== null && <ViewToggle view={view} onChange={setView} />}
           {campaign.flowRun !== null && view === 'focus' ? (
@@ -110,26 +112,29 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             <NoteComposer campaignId={campaign.id} disabled={!hasScene} />
           </div>
         </div>
-        <div className="min-w-0 space-y-8">
+        <aside
+          aria-label="Play tools"
+          className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:-mx-1 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:px-1 lg:pb-2"
+        >
           {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
-          <Section title="Dice">
+          <PlayPanel id="dice" title="Dice">
             <CampaignDice campaignId={campaign.id} disabled={!hasScene} />
-          </Section>
-          {visibleTrackers(campaign).length > 0 && (
-            <Section title="Trackers">
+          </PlayPanel>
+          {trackers.length > 0 && (
+            <PlayPanel id="trackers" title="Trackers" count={trackers.length}>
               <TrackersPanel campaign={campaign} />
-            </Section>
+            </PlayPanel>
           )}
-          <Section title="Facts">
+          <PlayPanel id="facts" title="Facts" count={campaign.facts.length}>
             <FactsPanel campaign={campaign} />
-          </Section>
-          <Section title="Threads">
+          </PlayPanel>
+          <PlayPanel id="threads" title="Threads" count={campaign.threads.length}>
             <ListPanel campaign={campaign} kind="thread" />
-          </Section>
-          <Section title="NPCs">
+          </PlayPanel>
+          <PlayPanel id="npcs" title="NPCs" count={campaign.npcs.length}>
             <ListPanel campaign={campaign} kind="npc" />
-          </Section>
-          <Section title="Oracles">
+          </PlayPanel>
+          <PlayPanel id="oracles" title="Oracles">
             <OraclePanel
               campaignId={campaign.id}
               tables={campaign.oracleTables}
@@ -144,8 +149,8 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
               }
               disabled={!hasScene}
             />
-          </Section>
-        </div>
+          </PlayPanel>
+        </aside>
       </div>
     </>
   )

@@ -38,4 +38,9 @@ declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof createAppRouter>
   }
+  /** Static data a route can declare (`staticData` in its options) for the shell to read. */
+  interface StaticDataRouteOption {
+    /** `wide` opts the page into the shell's wider container (the Play screen). */
+    layout?: 'wide'
+  }
 }

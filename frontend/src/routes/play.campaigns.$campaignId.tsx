@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { CampaignPage } from '@/play/campaigns/CampaignPage'
 
 export const Route = createFileRoute('/play/campaigns/$campaignId')({
+  staticData: { layout: 'wide' },
   component: CampaignRoute,
 })
 

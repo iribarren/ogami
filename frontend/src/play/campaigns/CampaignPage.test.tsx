@@ -64,6 +64,11 @@ async function findJournalScene(session: number, scene: string) {
 }
 
 describe('the Play screen', () => {
+  afterEach(() => {
+    // Panels remember being collapsed in this browser; start every test with them open.
+    localStorage.clear()
+  })
+
   it('shows the campaign name, its pinned release and where play stands', async () => {
     renderPlayScreen(lostMineCampaign)
 
@@ -76,6 +81,29 @@ describe('the Play screen', () => {
       'href',
       '/play',
     )
+  })
+
+  it('keeps the tools in a Play tools sidebar of collapsible panels, with counts where known', async () => {
+    const user = userEvent.setup()
+    renderPlayScreen(lostMineCampaign)
+
+    const tools = await screen.findByRole('complementary', { name: 'Play tools' })
+    for (const name of ['Dice', 'Facts', 'Threads', 'NPCs', 'Oracles']) {
+      expect(within(tools).getByRole('region', { name })).toBeInTheDocument()
+    }
+    expect(
+      within(within(tools).getByRole('region', { name: 'NPCs' })).getByText(
+        String(lostMineCampaign.npcs.length),
+      ),
+    ).toBeInTheDocument()
+
+    await user.click(within(tools).getByRole('button', { name: 'Dice' }))
+
+    expect(within(tools).getByRole('button', { name: 'Dice' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(within(tools).queryByRole('form', { name: 'Roll dice' })).not.toBeInTheDocument()
   })
 
   it('shows the journal grouped by session and scene, entries in recorded order', async () => {

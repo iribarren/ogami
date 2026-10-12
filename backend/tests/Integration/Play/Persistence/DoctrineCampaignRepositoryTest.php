@@ -12,7 +12,9 @@ use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
+use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
@@ -22,12 +24,14 @@ use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
+use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
+use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\Snapshots;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\ORM\EntityManager;
@@ -225,6 +229,40 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals($campaign, $loaded);
         self::assertEquals(new PickedItems(ItemKind::Thread, ['t2', 't1']), $loaded?->flowRun()?->picked());
         self::assertEquals(['kind' => 'thread', 'ids' => ['t2', 't1']], $this->storedFlowRun($id->toString())['picked']);
+    }
+
+    #[Test]
+    public function aPickInAHookRoundTripsWithItsHookSceneAndTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $at = new \DateTimeImmutable('2026-10-10T09:00:00+00:00');
+        $step = static fn (string $key, string $kind, array $fields = []): array => ['key' => $key, 'kind' => $kind, 'title' => $key] + $fields;
+        $release = new GameSystemReleaseTranslator()->translate(ReleaseViews::of([
+            'schemaVersion' => 2,
+            'gameSystem' => ['key' => 'hook-pick', 'name' => 'Hook pick'],
+            'oracles' => ['tables' => [], 'likelihood' => []],
+            'trackers' => [],
+            'factSlots' => [],
+            'tags' => [['key' => 'rival', 'label' => 'Rival']],
+            'sceneTypes' => [['key' => 'quiet', 'name' => 'Quiet', 'purpose' => 'Quiet.', 'oracles' => [], 'setup' => [$step('quiet', 'prompt')], 'play' => [], 'closing' => []]],
+            'flows' => [['key' => 'turns', 'name' => 'Turns', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => [], 'phases' => [
+                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['quiet']], 'worldTurn' => [$step('who', 'pick', ['of' => 'npc', 'mode' => 'choose']), $step('after', 'prompt')]],
+            ]]],
+            'checks' => [],
+        ]));
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('hook-pick', 1, 'Hook pick'), $at, [], $release->flow('turns'));
+        $campaign->startSession($at, $release);
+        $campaign->addNpc(NpcId::fromString('ana'), 'Ana', null, [], [], 1, $release);
+        $campaign->completeFlowStep('quiet', StepResult::prompt('ok'), $release, $at);
+        $campaign->endFlowScene(1, $release, $at);
+        $campaign->completeFlowStep('who', StepResult::pick(ItemKind::Npc, [new PickedItem('ana', 'Ana')]), $release, $at);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals([FlowRunStage::Hook, SceneKind::Hook, new PickedItems(ItemKind::Npc, ['ana'])], [$loaded?->flowRun()?->stage(), $loaded?->currentScene()?->kind(), $loaded?->flowRun()?->picked()]);
     }
 
     /**

@@ -263,6 +263,9 @@ final class FlowRun
 
         $this->answers[$step->key] = $answer;
         if ($step instanceof PickStep) {
+            // A pick in a hook belongs to the hook Scene (it is under way once the step waits; this
+            // makes sure of it), so entering it later cannot clear the pick.
+            $this->enterHookScene($context);
             $this->picked = $newlyPicked;
         }
 

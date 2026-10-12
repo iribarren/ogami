@@ -10,7 +10,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunView;
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
  * the Flow played (null when played freely) with the FlowRun guiding it, the release's Flows and
- * Scene Types and Tags, and the campaign's NPCs and Threads.
+ * Scene Types and Tags, and the campaign's NPCs, Threads, Fact slots and facts.
  */
 final readonly class CampaignView
 {
@@ -24,6 +24,8 @@ final readonly class CampaignView
      * @param list<TagView>              $tags              of the pinned release, in definition order
      * @param list<NpcView>              $npcs              open ones first, then closed ones, each in creation order
      * @param list<ThreadView>           $threads           open ones first, then closed ones, each in creation order
+     * @param list<FactSlotView>         $factSlots         of the pinned release, in definition order
+     * @param list<FactView>             $facts             the slot facts first, in slot order, then the free facts in creation order
      */
     public function __construct(
         public string $id,
@@ -43,6 +45,8 @@ final readonly class CampaignView
         public array $tags,
         public array $npcs,
         public array $threads,
+        public array $factSlots,
+        public array $facts,
     ) {
     }
 }

@@ -112,6 +112,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: slice 2 — T3 domain: `Facts` namespace (`Fact`, `FactLink`, `FactFill`), Campaign add / fill / edit / read facts, `reconstitute()` checks; unit tests (RED first).
 - 2026-10-12: slice 2 — T3 persistence: `facts` JSONB column and migration, strict `CampaignFactsType` (fails closed), `assertFactsConsistent()` after load; repository round trip, legacy row and malformed-row tests.
 - 2026-10-12: slice 3 — slice 2 review test: refilling a filled `npc` / `thread` slot by name keeps the fact id and links and creates the item (passed at once: the domain was right).
+- 2026-10-12: slice 3 — T4a read model: campaign response gains `factSlots` and `facts` (values and link names resolved, slot label for slot facts); handler unit tests and API tests (new campaign, values, rename); `make api`; frontend fixtures gain empty lists.
 
 ## Reviews
 

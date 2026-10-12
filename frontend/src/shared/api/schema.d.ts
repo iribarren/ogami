@@ -1146,6 +1146,69 @@ export interface components {
              */
             status: "open" | "closed";
         };
+        FactSlotResponse: {
+            /** @example prince */
+            key: string;
+            /**
+             * @description What players see for the slot.
+             * @example The Prince
+             */
+            label: string;
+            /**
+             * @description What the slot takes: a text, an NPC or a Thread.
+             * @example npc
+             * @enum {string}
+             */
+            type: "text" | "npc" | "thread";
+            /**
+             * @description Shown where the slot is filled; null when the slot has none.
+             * @example Who rules the city?
+             */
+            hint: string | null;
+        };
+        FactLinkResponse: {
+            /**
+             * @description A subject is always an NPC or a Thread.
+             * @example npc
+             * @enum {string}
+             */
+            kind: "npc" | "thread" | "fact";
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description The NPC's or Thread's name, or the linked fact's label.
+             * @example Mira Vane
+             */
+            name: string;
+        };
+        FactResponse: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description The key of the Fact slot the fact fills; null for a free fact.
+             * @example prince
+             */
+            slot: string | null;
+            /**
+             * @description The label the player wrote; for a slot fact, the slot's label.
+             * @example The guild
+             */
+            label: string;
+            /**
+             * @description The text of a free fact or of a "text" slot; null when the slot holds an NPC or a Thread.
+             * @example Owes a debt to the Prince.
+             */
+            text: string | null;
+            /** @description The NPC or Thread an "npc" / "thread" slot holds; null otherwise. */
+            subject: components["schemas"]["FactLinkResponse"] | null;
+            /**
+             * @description What the fact says: its text, or its subject's name now.
+             * @example Owes a debt to the Prince.
+             */
+            value: string;
+            /** @description What the fact links to, in the order the player gave. */
+            links: components["schemas"]["FactLinkResponse"][];
+        };
         CampaignResponse: {
             /** Format: uuid */
             id: string;
@@ -1189,6 +1252,10 @@ export interface components {
             npcs: components["schemas"]["NpcResponse"][];
             /** @description The campaign's Threads: the open ones first, then the closed ones, each in creation order. */
             threads: components["schemas"]["ThreadResponse"][];
+            /** @description The Fact slots of the pinned release, in definition order; empty for releases without any. */
+            factSlots: components["schemas"]["FactSlotResponse"][];
+            /** @description The campaign's facts: the slot facts first, in slot order, then the free facts in creation order; empty for a campaign without any. */
+            facts: components["schemas"]["FactResponse"][];
         };
         /** @description A title, a Scene Type, or both. */
         StartSceneRequest: {

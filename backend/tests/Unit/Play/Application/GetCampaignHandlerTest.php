@@ -7,6 +7,9 @@ namespace App\Tests\Unit\Play\Application;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignView;
 use App\Play\Application\CastMemberView;
+use App\Play\Application\FactLinkView;
+use App\Play\Application\FactSlotView;
+use App\Play\Application\FactView;
 use App\Play\Application\FlowSummaryView;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
@@ -27,6 +30,9 @@ use App\Play\Application\TrackerLevelView;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\Facts\FactFill;
+use App\Play\Domain\Campaign\Facts\FactId;
+use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\Lists\NpcId;
@@ -34,6 +40,8 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
+use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -63,6 +71,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TagView::class)]
 #[CoversClass(NpcView::class)]
 #[CoversClass(ThreadView::class)]
+#[CoversClass(FactSlotView::class)]
+#[CoversClass(FactView::class)]
+#[CoversClass(FactLinkView::class)]
 final class GetCampaignHandlerTest extends TestCase
 {
     private InMemoryCampaignRepository $campaigns;
@@ -106,6 +117,8 @@ final class GetCampaignHandlerTest extends TestCase
             [],
             [],
             [],
+            [],
+            [],
         ), $view);
     }
 
@@ -131,6 +144,53 @@ final class GetCampaignHandlerTest extends TestCase
             new NpcView('npc-1', 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, 'closed'),
         ], $view->npcs);
         self::assertEquals([new ThreadView('thread-1', 'Rob the vault', ['ally'], ['Heist'], 2, 'open')], $view->threads);
+    }
+
+    #[Test]
+    public function itShowsTheFactSlotsOfThePinnedReleaseAndTheFactsWithTheirValuesAndLinkNames(): void
+    {
+        $release = new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], factSlots: [
+            new FactSlot('city', 'City', FactSlotType::Text, 'Where it begins.'),
+            new FactSlot('prince', 'The Prince', FactSlotType::Npc),
+            new FactSlot('goal', 'Goal', FactSlotType::Thread),
+        ]);
+        $this->releases->add($release);
+        // A newer release with no slots: the campaign keeps reading its pinned v1.
+        $this->releases->add(new GameSystemSnapshot('heist', 'Heist, revised', 2, null, [], []));
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $release);
+        $campaign->addFreeFact(FactId::fromString('free-1'), 'Guild', 'Owes a debt', [FactLink::npc(NpcId::fromString('npc-1'))], $release);
+        $campaign->fillFactSlot(FactId::fromString('goal-1'), 'goal', FactFill::newThread(ThreadId::fromString('thread-1'), 'Find the heir'), $release);
+        $campaign->fillFactSlot(FactId::fromString('city-1'), 'city', FactFill::text('Ashford'), $release);
+        $campaign->fillFactSlot(FactId::fromString('prince-1'), 'prince', FactFill::existingNpc(NpcId::fromString('npc-1')), $release);
+        $campaign->editFact(FactId::fromString('prince-1'), null, null, [FactLink::fact(FactId::fromString('free-1')), FactLink::thread(ThreadId::fromString('thread-1'))], $release);
+        $campaign->editNpc(NpcId::fromString('npc-1'), 'Mira Vane', null, [], [], 1, $release);
+        $this->campaigns->add($campaign);
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        self::assertEquals([new FactSlotView('city', 'City', 'text', 'Where it begins.'), new FactSlotView('prince', 'The Prince', 'npc', null), new FactSlotView('goal', 'Goal', 'thread', null)], $view->factSlots);
+        self::assertEquals([
+            new FactView('city-1', 'city', 'City', 'Ashford', null, 'Ashford', []),
+            new FactView('prince-1', 'prince', 'The Prince', null, new FactLinkView('npc', 'npc-1', 'Mira Vane'), 'Mira Vane', [new FactLinkView('fact', 'free-1', 'Guild'), new FactLinkView('thread', 'thread-1', 'Find the heir')]),
+            new FactView('goal-1', 'goal', 'Goal', null, new FactLinkView('thread', 'thread-1', 'Find the heir'), 'Find the heir', []),
+            new FactView('free-1', null, 'Guild', 'Owes a debt', null, 'Owes a debt', [new FactLinkView('npc', 'npc-1', 'Mira Vane')]),
+        ], $view->facts);
+    }
+
+    #[Test]
+    public function aLinkToASlotFactShowsTheSlotLabel(): void
+    {
+        $release = new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], factSlots: [new FactSlot('city', 'City', FactSlotType::Text)]);
+        $this->releases->add($release);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->fillFactSlot(FactId::fromString('city-1'), 'city', FactFill::text('Ashford'), $release);
+        $campaign->addFreeFact(FactId::fromString('free-1'), 'Guild', 'Owes a debt', [FactLink::fact(FactId::fromString('city-1'))], $release);
+        $this->campaigns->add($campaign);
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        self::assertEquals([new FactLinkView('fact', 'city-1', 'City')], $view->facts[1]->links);
     }
 
     #[Test]

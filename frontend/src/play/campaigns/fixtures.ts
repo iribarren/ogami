@@ -128,6 +128,8 @@ export const lostMineCampaign: Campaign = {
   tags: [],
   npcs: [],
   threads: [],
+  factSlots: [],
+  facts: [],
 }
 
 /** `lostMineCampaign` right after starting session 3: no scene yet. */
@@ -165,6 +167,8 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     tags: [],
     npcs: [],
     threads: [],
+    factSlots: [],
+    facts: [],
   }
 }
 

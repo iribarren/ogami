@@ -37,11 +37,17 @@ final readonly class EditNpcHandler implements CommandHandler
     public function __invoke(EditNpc $command): void
     {
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
+        // The id is resolved before the release is read: an unknown NPC must not surface as a release failure.
+        $npcId = NpcId::fromString($command->npcId);
+        if (!$campaign->npc($npcId) instanceof \App\Play\Domain\Campaign\Lists\Npc) {
+            throw UnknownNpc::withId($npcId);
+        }
+
         $pinned = $campaign->pinnedRelease();
         // The Tags come from the pinned release, never the latest one (ADR 0014).
         $release = $this->releases->get($pinned->gameSystemKey(), $pinned->releaseVersion());
 
-        $campaign->editNpc(NpcId::fromString($command->npcId), $command->name, $command->agenda, $command->tags, $command->freeTags, $command->weight, $release);
+        $campaign->editNpc($npcId, $command->name, $command->agenda, $command->tags, $command->freeTags, $command->weight, $release);
         $this->campaigns->save($campaign);
     }
 }

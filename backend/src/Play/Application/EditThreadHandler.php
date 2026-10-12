@@ -37,11 +37,17 @@ final readonly class EditThreadHandler implements CommandHandler
     public function __invoke(EditThread $command): void
     {
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
+        // The id is resolved before the release is read: an unknown Thread must not surface as a release failure.
+        $threadId = ThreadId::fromString($command->threadId);
+        if (!$campaign->thread($threadId) instanceof \App\Play\Domain\Campaign\Lists\Thread) {
+            throw UnknownThread::withId($threadId);
+        }
+
         $pinned = $campaign->pinnedRelease();
         // The Tags come from the pinned release, never the latest one (ADR 0014).
         $release = $this->releases->get($pinned->gameSystemKey(), $pinned->releaseVersion());
 
-        $campaign->editThread(ThreadId::fromString($command->threadId), $command->name, $command->tags, $command->freeTags, $command->weight, $release);
+        $campaign->editThread($threadId, $command->name, $command->tags, $command->freeTags, $command->weight, $release);
         $this->campaigns->save($campaign);
     }
 }

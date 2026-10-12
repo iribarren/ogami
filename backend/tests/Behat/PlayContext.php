@@ -303,6 +303,12 @@ final class PlayContext implements Context
     }
 
     #[Given('I added the NPC :name with the Tag :tag and the free tag :freeTag')]
+    public function iAddedTheNpc(string $name, string $tag, string $freeTag): void
+    {
+        $this->iAddTheNpc($name, $tag, $freeTag);
+        $this->assertNoFailure();
+    }
+
     #[When('I add the NPC :name with the Tag :tag and the free tag :freeTag')]
     public function iAddTheNpc(string $name, string $tag, string $freeTag): void
     {
@@ -336,6 +342,12 @@ final class PlayContext implements Context
     }
 
     #[Given('I added the Thread :name with the Tag :tag and the free tag :freeTag')]
+    public function iAddedTheThread(string $name, string $tag, string $freeTag): void
+    {
+        $this->iAddTheThread($name, $tag, $freeTag);
+        $this->assertNoFailure();
+    }
+
     #[When('I add the Thread :name with the Tag :tag and the free tag :freeTag')]
     public function iAddTheThread(string $name, string $tag, string $freeTag): void
     {

@@ -25,11 +25,13 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\Snapshots;
+use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -187,6 +189,21 @@ final class NpcHandlersTest extends TestCase
                 self::assertSame('NPC "missing" not found.', $exception->getMessage());
             }
         }
+    }
+
+    #[Test]
+    public function anUnknownOrBlankNpcIdIsRefusedBeforeAnUnreadableReleaseIsRead(): void
+    {
+        $handler = new EditNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)));
+
+        try {
+            $handler(new EditNpc('campaign-1', 'user-1', 'missing', 'Mira', null, [], [], 1));
+            self::fail('The unknown NPC was accepted.');
+        } catch (UnknownNpc) {
+        }
+
+        $this->expectException(InvalidNpc::class);
+        $handler(new EditNpc('campaign-1', 'user-1', ' ', 'Mira', null, [], [], 1));
     }
 
     #[Test]

@@ -2,7 +2,7 @@
 
 Five worked examples of the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md), as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md). Feature 6c `flow-model-examples` mapped them to find the model's limits.
 
-**Fixtures:** [`backend/tests/Fixtures/Studio/releases/examples/`](../../backend/tests/Fixtures/Studio/releases/examples/README.md) holds them as schema version 2 releases, with what each leaves out until features 8, 8b and 10.
+**Fixtures:** [`backend/tests/Fixtures/Studio/releases/examples/`](../../backend/tests/Fixtures/Studio/releases/examples/README.md) holds them as schema version 2 releases, with what each leaves out until features 10 and M3 (features 8 and 8b have shipped).
 
 They serve as:
 - the reference for presets 9 `preset-mythic-flow`, 9b `preset-guided-sample` and the backlog presets ([roadmap](../roadmap.md));
@@ -24,7 +24,7 @@ Terms follow the [glossary](glossary.md).
 | `→ createNpc [tag]`, `createThread`, `closeThread`, `fillFact slot` | Content effects (features 8 and 8b) |
 | `pick NPC [a, b]` | Pick an NPC carrying all listed tags; branches `found` / `none` |
 | (suggested), (mandatory) | Step gate; steps are suggested unless marked mandatory |
-| (8), (8b), (10), (M3) | The part needs that feature; feature 7's fixtures add it when the feature lands |
+| (8), (8b), (10), (M3) | The part needs that feature; the fixtures carry it once the feature has shipped (8 and 8b have) |
 
 Every phase hook not listed is empty.
 

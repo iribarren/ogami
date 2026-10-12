@@ -38,9 +38,11 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Pick step | A flow step (`pick`) that picks open NPCs or Threads carrying all its tags: `random` (the server draws, weighted) or `choose` (the player selects between `min` and `max`). The outcome is `found` or `none`; fewer candidates than `min` is "No match". Journal entry kind `pick` | Studio (defined), Play (played) |
 | `{picked}` | Placeholder for the names of the items most recently picked or created in the current Scene; empty before any pick and when a new Scene starts | Studio (defined), Play (read) |
 | Condition step | A flow step that compares a tracker or a count (tagged NPCs or Characters, open Threads) to outcome bands. No dice, no journal entry; it advances on its own ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
-| Effect | A typed change a step outcome or an oracle table entry applies. Kinds: `tracker` (add or set), `nextScene`, `switchSceneType`, `endPhase`, `sceneTitle`, `createNpc`, `createThread`, `closeThread`; later `fillFact` and sheet-field effects ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
+| Effect | A typed change a step outcome or an oracle table entry applies. Kinds: `tracker` (add or set), `nextScene`, `switchSceneType`, `endPhase`, `sceneTitle`, `createNpc`, `createThread`, `closeThread`, `fillFact`; later sheet-field effects ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
 | Tracker | A campaign number declared by the release: a `counter` (e.g. chaos factor) or a `clock` (segments), with an optional `hint`. A counter may name its `levels` (e.g. lifestyle "Kibble / Prepak"). Its value lives on the Campaign | Studio (declared), Play (value) |
 | Fact slot | A named, typed place for a Campaign fact, declared by the release: `text`, `npc` or `thread`, with an optional `hint` | Studio |
+| `fillFact` | Effect that fills a Fact slot: a `text` slot with the effect's `text` (default `{answer}`), an `npc` or `thread` slot with the first item of that kind in `{picked}`. A filled slot is replaced and keeps its links; an empty text or nothing picked changes nothing | Studio (defined), Play (applied) |
+| `{fact:key}` | Placeholder for the value of the Fact slot `key` (its text, or its subject's current name), read when rendered; empty while the slot is unfilled. A key the release does not declare fails | Studio (defined), Play (read) |
 | Tag | A label on NPCs, Characters and Threads (e.g. `leader`, `crew`). A release declares tags (key, label, hint); the player may add free tags. `pick` steps and `condition` counts filter by tags. Never "role" ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio (declared), Play (applied) |
 | Library | Studio-only generic content (oracles, Scene Types, trackers, fact slots), copied into a release at publish. A GameSystem overrides a library item by key | Studio |
 | Theme | One of a few app-defined visual themes a release may name (e.g. `parchment`, `neon`) | Studio → Play |
@@ -66,6 +68,8 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Thread | An open story line or goal the player tracks, `open` or `closed`, with a weight (1–3, as Mythic lists it up to three times). It may carry release tags and free tags and fill a `thread` fact slot (e.g. a sandbox ambition). Flows create and close Threads; the player adds, edits, closes and reopens them | Play |
 | NPC | A non-player character the player tracks in a campaign, `open` or `closed`, with a weight (1–3). It may have an agenda, release tags and free tags (e.g. a faction `leader`). Flows create NPCs; the player adds, edits, closes and reopens them | Play |
 | Campaign fact | A statement about a campaign's world (e.g. "The Prince is Mithras"). It fills a fact slot or is free, and may link to NPCs, Threads or other facts | Play |
+| Free fact | A Campaign fact the player writes with a label and a text, outside any Fact slot. It may be edited, and linked like any fact | Play |
+| Fact link | A reference from a Campaign fact to an NPC, a Thread or another fact, by id (so a rename shows everywhere). At most 20 per fact, each once, never the fact itself | Play |
 
 ## Randomness
 

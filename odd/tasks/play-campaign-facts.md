@@ -1,7 +1,7 @@
 # Feature: play-campaign-facts
 
 - **Locator:** `odd/tasks/play-campaign-facts.md` · Engram topic `odd/play-campaign-facts/tasks`
-- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-6-ui` (from `main` `1680718`) · **Status:** slice 6 in progress
+- **Issue:** #75 · **Current branch:** `feat/play-campaign-facts-6-ui` (from `main` `1680718`) · **Status:** slice 6 written, review pending
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-threads-npcs` (PRs #64–#74)
@@ -102,7 +102,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 | T4b | 4 | Fill / refill a slot over HTTP (text, existing NPC / Thread, new one by name): command, handler, endpoint; editing a slot fact's links end to end; API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 4, 4+ non-trivial files) | [x] | `c2a9b6e`, `ac547df`, `073b648` |
 | T5 | 5 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text (an unknown key fails closed: slice 1 review), step view `fills` and its HTTP field; unit, integration and API tests; `make api` | delegated writer (slice 5, 4+ non-trivial files) | [x] | `70af06e`, `58e3140`, `bb98bec` |
 | T6 | 6 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | delegated writer (slice 6, 4+ non-trivial files) | [x] | |
-| T7 | 6 | Glossary and contract doc wrap-up; e2e smoke for facts | | [ ] | |
+| T7 | 6 | Glossary and contract doc wrap-up; e2e smoke for facts | delegated writer (slice 6, 4+ non-trivial files) | [x] | |
 
 ## Progress
 
@@ -122,6 +122,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: slice 5 — `make api`: OpenAPI spec and TS types gain the step `fills` (`FactSlotResponse` list); the flow step fixture gains `fills: []`.
 - 2026-10-12: slice 6 — slice 5 review fixes: a text-slot `fillFact` without `text` and without an answer changes nothing (guard added; the test passed at once, because a blank pick answer already rendered empty and a null answer is unreachable); `Placeholders` takes `facts` as a required constructor argument, callers updated.
 - 2026-10-12: slice 6 — T6 UI: `play/facts` (`useFacts`, `FactsPanel`, fixtures, stories) with the Facts section beside the journal (slots with hints, fill by text / existing NPC or Thread / new by name, free facts add and edit, links edit with no self, duplicate or more than 20), `Facts: …` line on NPC and Thread rows, `Fills:` list on the step card; Vitest tests. RED observed first (panel tests, row and step card tests); a free fact edit first sent link names, which the test caught.
+- 2026-10-12: slice 6 — T7 wrap-up: glossary (`fillFact`, `{fact:key}`, Free fact, Fact link), contract doc says Play applies the fact parts (stale "not applied yet" text replaced), flow examples legend; e2e smoke `play-facts.spec.ts` (free fact add, edit, link to an NPC, reload; no preset declares Fact slots, so no slot fill) passes with `make e2e`.
 
 ## Reviews
 

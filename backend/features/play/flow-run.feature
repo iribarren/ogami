@@ -23,7 +23,7 @@ Feature: Play a campaign guided by its Flow
       | session | scene | kind | summary      |
       | 1       | 1     | note | Ada, a fixer |
 
-  Scenario: A mandatory step cannot be skipped, and ending the scene leads to the next one
+  Scenario: A mandatory step cannot be skipped, and after the scene the pick waits for the next one
     Given I created the campaign "The chain" with the GameSystem "guided" playing the Flow "chain"
     And I started a session
     When I end the guided scene 1
@@ -32,7 +32,20 @@ Feature: Play a campaign guided by its Flow
     Then I am told the step is mandatory
     And the FlowRun waits at the step "wrap"
     When I answer the step "wrap" with "The crew split up"
+    Then the FlowRun waits at the scene pick
+    And the current session is 1 and the current scene is 1
+    When I pick the Scene Type "solo"
     Then the current session is 1 and the current scene is 2
+
+  Scenario: After a scene the session can end, and the next session picks the only Scene Type itself
+    Given I created the campaign "The chain" with the GameSystem "guided" playing the Flow "chain"
+    And I started a session
+    And I end the guided scene 1
+    And I answer the step "wrap" with "The crew split up"
+    When I end the session
+    Then session 1 has ended
+    When I start a session
+    Then the current session is 2 and the current scene is 1
 
   Scenario: Paused guidance refuses the commands until it is resumed
     Given I created the campaign "The tour" with the GameSystem "guided" playing the Flow "tour"

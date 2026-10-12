@@ -9,6 +9,7 @@ import { createQueryClient } from '@/app/queryClient'
 import { createAppRouter } from '@/app/router'
 import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import { createApiClient } from '@/shared/api/client'
+import { ColorModeProvider } from '@/shared/theme/ColorModeProvider'
 
 import './index.css'
 
@@ -25,12 +26,14 @@ if (!rootElement) {
 // Both devtools render nothing in production builds.
 createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ApiClientProvider client={api}>
-        <RouterProvider router={router} />
-      </ApiClientProvider>
-      <TanStackRouterDevtools router={router} position="bottom-right" />
-      <ReactQueryDevtools buttonPosition="bottom-left" />
-    </QueryClientProvider>
+    <ColorModeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ApiClientProvider client={api}>
+          <RouterProvider router={router} />
+        </ApiClientProvider>
+        <TanStackRouterDevtools router={router} position="bottom-right" />
+        <ReactQueryDevtools buttonPosition="bottom-left" />
+      </QueryClientProvider>
+    </ColorModeProvider>
   </StrictMode>,
 )

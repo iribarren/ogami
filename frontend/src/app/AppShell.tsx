@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { ColorModeToggle } from '@/shared/theme/ColorModeToggle'
 import { useCurrentUser, useLogout } from '@/shared/auth/currentUser'
 import { Button } from '@/shared/ui/button'
 
@@ -28,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <header className="border-b">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-8 px-4">
+        <div className="mx-auto flex h-(--header-height) max-w-5xl items-center gap-8 px-4">
           <Link to="/" className="font-heading text-lg font-semibold tracking-tight">
             Ogami
           </Link>
@@ -49,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             )}
           </nav>
+          <ColorModeToggle />
           {currentUser && (
             <div className="flex items-center gap-3 text-sm">
               <span className="text-muted-foreground">{currentUser.email}</span>

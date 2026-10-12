@@ -6,6 +6,7 @@ import { createQueryClient } from '@/app/queryClient'
 import { createAppRouter } from '@/app/router'
 import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import type { components } from '@/shared/api/schema'
+import { ColorModeProvider } from '@/shared/theme/ColorModeProvider'
 
 import { createFakeApiClient, type FakeHandler } from './fakeApi'
 
@@ -42,11 +43,13 @@ export function renderAppAt(path: string, handlers: Record<string, FakeHandler> 
   })
 
   render(
-    <QueryClientProvider client={queryClient}>
-      <ApiClientProvider client={api}>
-        <RouterProvider router={router} />
-      </ApiClientProvider>
-    </QueryClientProvider>,
+    <ColorModeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ApiClientProvider client={api}>
+          <RouterProvider router={router} />
+        </ApiClientProvider>
+      </QueryClientProvider>
+    </ColorModeProvider>,
   )
 
   return { router, queryClient, fakeApi }

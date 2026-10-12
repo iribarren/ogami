@@ -2,7 +2,7 @@
 export function PagePlaceholder({ title, summary }: { title: string; summary: string }) {
   return (
     <section className="space-y-3">
-      <h1 className="font-heading text-3xl font-bold tracking-tight">{title}</h1>
+      <h1 className="font-heading text-page-title">{title}</h1>
       <p className="text-muted-foreground">{summary}</p>
     </section>
   )

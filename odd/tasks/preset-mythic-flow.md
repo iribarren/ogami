@@ -104,7 +104,7 @@ What keeps each slice safe on `main`:
 | T2 | 1 | Contract and domain: `randomEvent` in `v2.schema.json` and the Version2 validator (table exists, chaos present, sides 100), agreement fixtures (valid, invalid unknown table / no chaos / sides ≠ 100 / extra field); `LikelihoodOracle` rule and `LikelihoodAnswer::randomEvent()` with unit tests (each double, digit vs chaos, 100, no rule); ACL translator and snapshot; `LikelihoodContent` and the oracle step result; API answer views, API tests; `make api`; contract doc | delegated writer (slice 1) | [x] | b46c5c5 |
 | T3 | 1 | UI: "Random event" badge and "Roll <table>" button on the likelihood journal entry and the oracle step card, rolling through the existing table-roll path; Vitest tests; fixtures updated | delegated writer (slice 1) | [x] | 8538e95 |
 | T4 | 2 | Preset `mythic-style` v1 per Design; `PresetsTest` and `FlowRunExamplesTest` style coverage of the preset (validates, passes the ACL, a scene opening runs each focus branch); flow example 3 doc notes the doubles rule | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Dev data reset (parent, not committed); e2e `play-guided.spec.ts` updated for the new flow (premise creates a Thread and an NPC; a scene check); `make e2e` | delegated writer (slice 2) | [ ] | |
+| T5 | 2 | Dev data reset (parent, not committed); e2e `play-guided.spec.ts` updated for the new flow (premise creates a Thread and an NPC; a scene check); `make e2e` | delegated writer (slice 2) | [x] | |
 | T6 | 3 | Playtest: Claude plays a full session in Chrome (premise, ≥ 5 adventure scenes, at least one altered and one interrupted scene, a fate-question double if it comes up, list updates, end session); findings logged below | parent (browser) | [ ] | |
 | T7 | 3 | Fix the blocking findings of T6 that fit the slice; the rest become backlog tasks | delegated writer (slice 3) | [ ] | |
 | T8 | 3 | Wrap-up: roadmap feature 9 done, M2 exit note, feature doc closed | delegated writer (slice 3) | [ ] | |
@@ -122,6 +122,7 @@ None yet (T6).
 
 - 2026-10-13: slice 1 review suggestions fixed. RED: the "Rolled" test failed against the old offer, GREEN after; the Focus panel "So far" offer test passes against existing code (coverage only). Route: delegated writer.
 - 2026-10-13: T4 done. RED: `MythicStylePresetFlowTest` (12 tests) and `PresetsTest` failed against the old preset (3 errors, 9 failures; 1 failure), GREEN after the new preset. Original `random-event-focus` (12 keyed entries, 6 branch, the rest roll the meaning tables), tags, `randomEvent` on `fate`, parchment theme. Route: delegated writer.
+- 2026-10-13: T5 done. e2e `play-guided.spec.ts` extended (premise goal creates a Thread, who is involved an NPC, End scene, the first adventure scene's expectation and scene check with real randomness, outcome-independent asserts). No separate RED run (written with the run); `make e2e` 13 passed, publishing `mythic-style` v1. Route: delegated writer.
 
 ## Reviews
 

@@ -915,6 +915,7 @@ final class FlowRun
         } elseif ($effect instanceof SwitchSceneTypeEffect) {
             return $this->switchSceneTypeByEffect($effect->sceneType, $context);
         }
+        // A FillFactEffect changes nothing yet: Campaign facts are applied from slice 4 of play-campaign-facts.
 
         return false;
     }

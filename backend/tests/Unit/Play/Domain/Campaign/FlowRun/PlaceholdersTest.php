@@ -48,13 +48,20 @@ final class PlaceholdersTest extends TestCase
         self::assertSame('Meet .', new Placeholders([], [])->render('Meet {picked}.'));
     }
 
+    #[Test]
+    public function aFactRendersEmptyUntilFactsArePlayed(): void
+    {
+        self::assertSame('The city of .', new Placeholders([], [])->render('The city of {fact:city}.'));
+    }
+
     /**
      * @return iterable<string, array{string, string}>
      */
     public static function unsupported(): iterable
     {
         yield 'an unknown Tracker' => ['{tracker:heat}', 'The pinned release has no Tracker "heat".'];
-        yield 'another namespace' => ['{fact:villain}', 'Placeholder {fact:villain} is not supported.'];
+        yield 'another namespace' => ['{npc:villain}', 'Placeholder {npc:villain} is not supported.'];
+        yield 'a fact without a key' => ['{fact}', 'Placeholder {fact} is not supported.'];
         yield 'a Tracker without a key' => ['{tracker}', 'Placeholder {tracker} is not supported.'];
         yield 'picked with a key' => ['{picked:x}', 'Placeholder {picked:x} is not supported.'];
         yield 'the answer with a key' => ['{answer:plan}', 'Placeholder {answer:plan} is not supported.'];

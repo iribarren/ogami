@@ -104,6 +104,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 
 - 2026-10-12: feature started; doc and slice plan written; issue #75.
 - 2026-10-12: slice 1 — T1 done: schema, Studio validation (slot hint, `fillFact`, `{fact:key}`), contract doc, fixtures and tests; RED observed first.
+- 2026-10-12: slice 1 — T2 in progress: Play ACL (`FactSlot` hint, `FillFactEffect`), FlowRun ignores `fillFact`, `{fact:key}` renders empty; example fixtures next.
 
 ## Reviews
 

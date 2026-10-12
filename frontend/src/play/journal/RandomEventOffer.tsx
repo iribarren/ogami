@@ -9,7 +9,9 @@ import { useRecordOracleTableResult, type JournalEntry } from './useJournal'
  * "Roll <table>" for the random event a fate question answered with a double: it rolls the table
  * the oracle declares through the same request as the oracle panel, which records a new entry.
  * Only offered in the current scene, where an entry can be recorded. After a successful roll the
- * button gives way to a plain "Rolled" mark, so the same event cannot be rolled twice.
+ * button gives way to a plain "Rolled" mark, which guards against a second click only while this
+ * offer stays mounted: the mark is not stored, so a remount (switching between the journal and
+ * focus views, or reloading the page) offers the roll again.
  */
 export function RandomEventOffer({
   campaignId,

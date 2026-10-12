@@ -19,6 +19,7 @@ use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
+use App\Play\Domain\Campaign\Lists\GeneratedItemId;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
 use App\Play\Domain\Campaign\Lists\ItemRules;
@@ -60,7 +61,8 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  *
  * It also keeps the player's NPCs and Threads (at most 500 of each), added, edited, closed and
  * reopened at any time. Their release Tags are keys of the pinned release. Lists keep creation
- * order; the readers put open items first.
+ * order; the readers put open items first. A Scene's cast lists NPCs of the campaign: picks and
+ * created NPCs join the current scene's, the player edits it.
  *
  * State is kept as scalars (id, owner, name, pinned release fields, Flow key) plus the session list, the
  * tracker values, the NPC and Thread lists and the FlowRun, so an adapter can map it and rebuild it
@@ -350,6 +352,53 @@ final class Campaign
     }
 
     /**
+     * Replaces the current scene's cast (the player's edit; any NPC of the campaign, closed ones
+     * included). All or nothing.
+     *
+     * @param list<NpcId> $cast
+     *
+     * @throws NoCurrentScene   when the current session has no scene, or no session is under way
+     * @throws UnknownNpc       when an id is not an NPC of the campaign
+     * @throws InvalidSceneCast when an NPC is listed twice
+     */
+    public function editCurrentSceneCast(array $cast): Scene
+    {
+        $session = $this->currentSession();
+        $scene = $session?->currentScene() ?? throw NoCurrentScene::toEditCast();
+        foreach ($cast as $id) {
+            if (!$this->npc($id) instanceof Npc) {
+                throw UnknownNpc::withId($id);
+            }
+        }
+
+        $edited = $scene->withCast($cast);
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($edited)];
+
+        return $edited;
+    }
+
+    /**
+     * Adds NPCs to the end of the current scene's cast, those already in it staying where they are
+     * (a pick step or a createNpc Effect of the FlowRun).
+     *
+     * @param list<NpcId> $ids NPCs of the campaign
+     *
+     * @throws NoCurrentScene when the current session has no scene, or no session is under way
+     */
+    public function addToCurrentSceneCast(array $ids): void
+    {
+        $scene = $this->currentScene() ?? throw NoCurrentScene::toEditCast();
+        $cast = $scene->cast();
+        foreach ($ids as $id) {
+            if (!array_any($cast, static fn (NpcId $member): bool => $member->equals($id))) {
+                $cast[] = $id;
+            }
+        }
+
+        $this->editCurrentSceneCast($cast);
+    }
+
+    /**
      * Sets a Tracker's value by hand, clamped to its range. With a FlowRun the edit is in its history.
      *
      * @param ?\DateTimeImmutable $at when; without it a FlowRun is not told (see startSession())
@@ -507,6 +556,62 @@ final class Campaign
     public function npcs(): array
     {
         return $this->openFirst($this->npcs);
+    }
+
+    /**
+     * Adds an open NPC with weight 1 and no free tags, as a createNpc Effect of the FlowRun does,
+     * under a generated id (see GeneratedItemId).
+     *
+     * @param list<string> $tags release Tag keys of the pinned release
+     *
+     * @return ?Npc the new NPC; null (nothing added) when the campaign already holds 500 NPCs
+     *
+     * @throws InvalidNpc        when a value breaks a rule
+     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     */
+    public function createNpcByEffect(string $name, ?string $agenda, array $tags, GameSystemSnapshot $release): ?Npc
+    {
+        if (\count($this->npcs) >= self::MAX_NPCS) {
+            return null;
+        }
+
+        return $this->addNpc(GeneratedItemId::npc($this->id, \count($this->npcs)), $name, $agenda, $tags, [], ItemRules::DEFAULT_WEIGHT, $release);
+    }
+
+    /**
+     * Adds an open Thread with weight 1 and no free tags, as a createThread Effect of the FlowRun
+     * does, under a generated id (see GeneratedItemId).
+     *
+     * @param list<string> $tags release Tag keys of the pinned release
+     *
+     * @return ?Thread the new Thread; null (nothing added) when the campaign already holds 500 Threads
+     *
+     * @throws InvalidThread     when a value breaks a rule
+     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     */
+    public function createThreadByEffect(string $name, array $tags, GameSystemSnapshot $release): ?Thread
+    {
+        if (\count($this->threads) >= self::MAX_THREADS) {
+            return null;
+        }
+
+        return $this->addThread(GeneratedItemId::thread($this->id, \count($this->threads)), $name, $tags, [], ItemRules::DEFAULT_WEIGHT, $release);
+    }
+
+    /**
+     * Closes the open Threads among these ids (a closeThread Effect of the FlowRun); closed ones
+     * stay as they are, and an id the campaign does not hold is skipped.
+     *
+     * @param list<string> $ids
+     */
+    public function closeThreadsById(array $ids): void
+    {
+        foreach ($ids as $id) {
+            $thread = $this->thread(ThreadId::fromString($id));
+            if ($thread instanceof Thread) {
+                $this->closeThread($thread->id());
+            }
+        }
     }
 
     /**

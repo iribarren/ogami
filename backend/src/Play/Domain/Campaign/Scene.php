@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\Campaign\Lists\NpcId;
+
 /**
  * A unit of story within a session. Numbered from 1 within its session; its identity is the
  * campaign, the session number and its own number.
  *
  * Its kind is `scene` (play, with an optional Scene Type key of the pinned release) or `hook`
  * (a phase boundary, with its hook name and no Scene Type). Only the title and the Scene Type of a
- * scene of play change after it starts, through withTitle() and withSceneType(), which return a new
- * Scene.
+ * scene of play, and the cast of either kind, change after it starts, through withTitle(),
+ * withSceneType() and withCast(), which return a new Scene. The cast is the NPCs in the scene: an
+ * ordered list without repeats.
  */
 final readonly class Scene
 {
     public const int MAX_TITLE_LENGTH = 100;
 
+    /**
+     * @param list<NpcId> $cast the NPCs in the scene, in the order they joined
+     */
     private function __construct(
         private int $number,
         private string $title,
@@ -24,6 +30,7 @@ final readonly class Scene
         private SceneKind $kind,
         private ?string $sceneType,
         private ?Hook $hook,
+        private array $cast = [],
     ) {
     }
 
@@ -52,11 +59,15 @@ final readonly class Scene
     /**
      * Rebuilds a stored scene, e.g. from persistence. Only the kind is checked again: a hook Scene
      * names its hook and a scene of play has none, as the sessions reader requires. A scene stored
-     * before scenes had a kind is a scene of play without a Scene Type.
+     * before scenes had a kind is a scene of play without a Scene Type; one stored before scenes had
+     * a cast has an empty one.
+     *
+     * @param list<NpcId> $cast the NPCs in the scene, without repeats
      *
      * @throws InvalidSceneKind when the kind and the hook disagree
+     * @throws InvalidSceneCast when the cast lists an NPC twice
      */
-    public static function reconstitute(int $number, string $title, \DateTimeImmutable $startedAt, SceneKind $kind = SceneKind::Scene, ?string $sceneType = null, ?Hook $hook = null): self
+    public static function reconstitute(int $number, string $title, \DateTimeImmutable $startedAt, SceneKind $kind = SceneKind::Scene, ?string $sceneType = null, ?Hook $hook = null, array $cast = []): self
     {
         if (SceneKind::Hook === $kind && !$hook instanceof Hook) {
             throw InvalidSceneKind::hookSceneWithoutHook();
@@ -66,7 +77,7 @@ final readonly class Scene
             throw InvalidSceneKind::sceneOfPlayWithHook($hook);
         }
 
-        return new self($number, $title, $startedAt, $kind, $sceneType, $hook);
+        return new self($number, $title, $startedAt, $kind, $sceneType, $hook, self::checkedCast($cast));
     }
 
     /**
@@ -80,7 +91,7 @@ final readonly class Scene
             throw HookSceneHasNoSceneType::toSwitch($this->hook);
         }
 
-        return new self($this->number, $this->title, $this->startedAt, $this->kind, $sceneType, null);
+        return new self($this->number, $this->title, $this->startedAt, $this->kind, $sceneType, null, $this->cast);
     }
 
     /**
@@ -90,7 +101,19 @@ final readonly class Scene
      */
     public function withTitle(string $title): self
     {
-        return new self($this->number, self::checkedTitle($title), $this->startedAt, $this->kind, $this->sceneType, $this->hook);
+        return new self($this->number, self::checkedTitle($title), $this->startedAt, $this->kind, $this->sceneType, $this->hook, $this->cast);
+    }
+
+    /**
+     * The same scene with another cast; everything else stays.
+     *
+     * @param list<NpcId> $cast
+     *
+     * @throws InvalidSceneCast when the cast lists an NPC twice
+     */
+    public function withCast(array $cast): self
+    {
+        return new self($this->number, $this->title, $this->startedAt, $this->kind, $this->sceneType, $this->hook, self::checkedCast($cast));
     }
 
     public function number(): int
@@ -128,6 +151,38 @@ final readonly class Scene
     public function hook(): ?Hook
     {
         return $this->hook;
+    }
+
+    /**
+     * The NPCs in the scene, in the order they joined, each once. The player edits it for the
+     * current scene (Campaign::editCurrentSceneCast()); picks and NPC creation by a Flow join it.
+     *
+     * @return list<NpcId>
+     */
+    public function cast(): array
+    {
+        return $this->cast;
+    }
+
+    /**
+     * @param list<NpcId> $cast
+     *
+     * @return list<NpcId>
+     *
+     * @throws InvalidSceneCast
+     */
+    private static function checkedCast(array $cast): array
+    {
+        $seen = [];
+        foreach ($cast as $id) {
+            if (isset($seen[$id->toString()])) {
+                throw InvalidSceneCast::listedTwice($id);
+            }
+
+            $seen[$id->toString()] = true;
+        }
+
+        return $cast;
     }
 
     /**

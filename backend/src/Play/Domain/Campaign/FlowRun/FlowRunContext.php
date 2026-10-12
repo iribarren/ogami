@@ -7,10 +7,14 @@ namespace App\Play\Domain\Campaign\FlowRun;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
+use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemCount;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
@@ -118,6 +122,57 @@ final readonly class FlowRunContext
     public function pickedNames(?PickedItems $picked): array
     {
         return $picked instanceof PickedItems ? $this->campaign->itemNames($picked->kind, $picked->ids) : [];
+    }
+
+    /**
+     * Adds the NPCs among the items to the current scene's cast; Threads have no cast.
+     *
+     * @throws NoCurrentScene
+     */
+    public function joinSceneCast(PickedItems $items): void
+    {
+        if (ItemKind::Npc === $items->kind) {
+            $this->campaign->addToCurrentSceneCast(array_map(NpcId::fromString(...), $items->ids));
+        }
+    }
+
+    /**
+     * Creates an open NPC (a createNpc Effect, its name and agenda already rendered).
+     *
+     * @param list<string> $tags release Tag keys
+     *
+     * @return ?PickedItems the new NPC; null when the campaign holds the most NPCs it can
+     */
+    public function createNpc(string $name, ?string $agenda, array $tags): ?PickedItems
+    {
+        $npc = $this->campaign->createNpcByEffect($name, $agenda, $tags, $this->release);
+
+        return $npc instanceof Npc ? new PickedItems(ItemKind::Npc, [$npc->id()->toString()]) : null;
+    }
+
+    /**
+     * Creates an open Thread (a createThread Effect, its name already rendered).
+     *
+     * @param list<string> $tags release Tag keys
+     *
+     * @return ?PickedItems the new Thread; null when the campaign holds the most Threads it can
+     */
+    public function createThread(string $name, array $tags): ?PickedItems
+    {
+        $thread = $this->campaign->createThreadByEffect($name, $tags, $this->release);
+
+        return $thread instanceof Thread ? new PickedItems(ItemKind::Thread, [$thread->id()->toString()]) : null;
+    }
+
+    /**
+     * Closes the open Threads among the picked items (a closeThread Effect); nothing happens for
+     * NPCs or nothing picked.
+     */
+    public function closePickedThreads(?PickedItems $picked): void
+    {
+        if ($picked instanceof PickedItems && ItemKind::Thread === $picked->kind) {
+            $this->campaign->closeThreadsById($picked->ids);
+        }
     }
 
     /**

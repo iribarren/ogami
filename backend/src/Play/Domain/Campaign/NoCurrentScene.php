@@ -24,4 +24,9 @@ final class NoCurrentScene extends \DomainException
     {
         return new self('Start a scene before switching its Scene Type.');
     }
+
+    public static function toEditCast(): self
+    {
+        return new self('Start a scene before editing its cast.');
+    }
 }

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Persistence\Doctrine;
 
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\InvalidSceneCast;
 use App\Play\Domain\Campaign\InvalidSceneKind;
+use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\Campaign\Session;
@@ -19,12 +22,14 @@ use Doctrine\DBAL\Types\JsonType;
  * option). Sessions and scenes are immutable values identified by their number within the
  * campaign, always loaded and saved with it, so they need no table of their own (ADR 0007).
  *
- * Stored shape: [{number, startedAt, scenes: [{number, title, startedAt, kind, sceneType, hook}], endedAt}],
+ * Stored shape: [{number, startedAt, scenes: [{number, title, startedAt, kind, sceneType, hook, cast}], endedAt}],
  * in number order; `kind` is "scene" or "hook", `sceneType` may be null, and `hook` is set on a hook
  * scene and null on a scene of play. A scene stored before scenes had a kind has none of the last
- * three and reads as a scene of play without a Scene Type. `endedAt` is null while the session is
- * under way; a session stored before sessions ended has none and is under way. Times keep their
- * microseconds and UTC offset. Reading checks the shape, not the domain rules (Session and Scene
+ * three and reads as a scene of play without a Scene Type. `cast` is the list of the NPC ids in the
+ * scene, in order, without repeats; a scene stored before scenes had a cast has none and reads
+ * with an empty one. `endedAt` is null while the session is under way; a session stored before
+ * sessions ended has none and is under way. Times keep their microseconds and UTC offset. Reading
+ * checks the shape, not the domain rules (Session and Scene
  * are rebuilt with reconstitute()).
  */
 final class CampaignSessionsType extends JsonType
@@ -60,6 +65,7 @@ final class CampaignSessionsType extends JsonType
                         'kind' => $scene->kind()->value,
                         'sceneType' => $scene->sceneType(),
                         'hook' => $scene->hook()?->value,
+                        'cast' => array_map(static fn (NpcId $id): string => $id->toString(), $scene->cast()),
                     ],
                     $session->scenes(),
                 ),
@@ -109,9 +115,35 @@ final class CampaignSessionsType extends JsonType
                 $kind,
                 self::optionalString($scene, 'sceneType'),
                 self::enum(Hook::class, $scene, 'hook'),
+                self::cast($scene),
             );
         } catch (InvalidSceneKind) {
             throw self::malformed('hook', SceneKind::Hook === $kind ? 'set on a hook scene' : 'null on a scene of play');
+        } catch (InvalidSceneCast $exception) {
+            throw self::malformed('cast', 'a list of distinct NPC ids ('.$exception->getMessage().')');
+        }
+    }
+
+    /**
+     * The NPC ids of a scene's cast; a scene stored before scenes had a cast has none. Whether the
+     * NPCs exist is not checked here, as for the other references the sessions hold.
+     *
+     * @return list<NpcId>
+     */
+    private static function cast(mixed $scene): array
+    {
+        $ids = self::field($scene, 'cast');
+        if (null === $ids) {
+            return [];
+        }
+
+        try {
+            return array_map(
+                static fn (mixed $id): NpcId => \is_string($id) ? NpcId::fromString($id) : throw self::malformed('cast', 'a list of NPC id strings'),
+                self::list($ids, 'cast'),
+            );
+        } catch (InvalidNpc) {
+            throw self::malformed('cast', 'a list of non-blank NPC ids');
         }
     }
 

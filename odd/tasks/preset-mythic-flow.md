@@ -1,7 +1,7 @@
 # Feature: preset-mythic-flow
 
 - **Locator:** `odd/tasks/preset-mythic-flow.md` · Engram topic `odd/preset-mythic-flow/tasks`
-- **Issue:** #88 · **Branch:** `fix/preset-mythic-flow-3-playtest` · **Status:** slice 3 in progress
+- **Issue:** #88 · **Branch:** `fix/preset-mythic-flow-3-playtest` · **Status:** slice 3 in progress → review
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `design-foundation` (PRs #84–#87)
@@ -106,8 +106,8 @@ What keeps each slice safe on `main`:
 | T4 | 2 | Preset `mythic-style` v1 per Design; `PresetsTest` and `FlowRunExamplesTest` style coverage of the preset (validates, passes the ACL, a scene opening runs each focus branch); flow example 3 doc notes the doubles rule | delegated writer (slice 2) | [x] | 5fc7e22 |
 | T5 | 2 | Dev data reset (parent, not committed); e2e `play-guided.spec.ts` updated for the new flow (premise creates a Thread and an NPC; a scene check); `make e2e` | delegated writer (slice 2) | [x] | 29ea370 |
 | T6 | 3 | Playtest: Claude plays a full session in Chrome (premise, ≥ 5 adventure scenes, at least one altered and one interrupted scene, a fate-question double if it comes up, list updates, end session); findings logged below | parent (browser) | [x] | — |
-| T7 | 3 | Fix playtest findings P1–P6 (see Playtest findings); P7–P13 stay in the backlog | delegated writer (slice 3) | [ ] | |
-| T8 | 3 | Wrap-up: roadmap feature 9 done, M2 exit note, feature doc closed | delegated writer (slice 3) | [ ] | |
+| T7 | 3 | Fix playtest findings P1–P6 (see Playtest findings); P7–P13 stay in the backlog | delegated writer (slice 3) | [x] | |
+| T8 | 3 | Wrap-up: roadmap feature 9 done, M2 exit note, feature doc closed | delegated writer (slice 3) | [x] | |
 
 ## Playtest findings
 
@@ -143,6 +143,8 @@ Played on 2026-10-13 in Chrome by Claude (campaigns "The Salt Road" and "The Sal
 - 2026-10-13: slice 2 review WARNING fixed: the `RandomEventOffer` docblock now says the "Rolled" mark is per mount (a remount offers the roll again; no persistence added). Docblock only, no test. The two SUGGESTIONs (`{picked}` on no-pick paths, pick transitions) are folded into T7's preset change (P4) and its `MythicStylePresetFlowTest` cases. Route: delegated writer (slice 3).
 - 2026-10-13: T7 P2 + P5. The FlowRun keeps `autoPickDue` (set by the session opening and the phase opening, cleared when a scene starts, persisted; legacy rows read false = waiting): after a scene the pick of the only Scene Type waits ("Play this", "End session", "Move on"), stable across resume; the next session and the next phase opening still pick by themselves. Sequence pick label is "Next scene: <name>". ADR 0020 amends ADR 0018 decision 11. RED: 4 new `MythicStylePresetFlowTest` cases (stuck at step "expected", `endSession` refused), the 2 label assertions in `FlowRunViewTest`, and 4 repository tests (shape, malformed, round trip, every state); GREEN after. The API test and the frontend pick test were written after the domain fix (no separate RED; the frontend needed no change). Existing tests that relied on the instant pick after a scene now pick by hand; a full session no longer refuses the last step of its last scene. Route: delegated writer (slice 3).
 - 2026-10-13: T7 P1 + P3 + P4 + P6. P1: an oracle with `chaosTracker` shows the Tracker's current value read only ("6 (from the Chaos factor tracker)", read from the campaign query) and sends no chaos factor. P3: "Move on" reads "End the <phase> phase" (a leading "The" dropped); the view has no next phase, so no hint. P4: the preset asks "What happens instead?" in three steps: `instead-npc` ("Involve {picked}.") after a rival, stranger or ally, `instead-thread` ("Tie it to {picked}.") after a lead or loose end, `instead` (no `{picked}`) after the meaning tables or an empty pick; lead and ally got found/none branches. P6: Scene Type purpose "Play out one scene.", scene check tip "Roll at or under the chaos factor". RED: Vitest tracker case (1) and the end-phase label cases (4), `MythicStylePresetFlowTest` against the old preset (10 failures); GREEN after. Covers the slice 2 review suggestions (no-pick prompt, pick transitions). The preset publishes as `mythic-style` v2. Route: delegated writer (slice 3).
+- 2026-10-13: T7 follow-up: the Behat chain scenario still expected the next scene to start after "wrap"; a separate `test(play)` commit makes it wait at the pick and adds a scenario that ends the session there and starts the next one (commit 2 alone leaves that scenario failing). Route: delegated writer (slice 3).
+- 2026-10-13: T8 done. Roadmap: feature 9 done, M2 exit note (a full Mythic-style session played end to end; P7–P13 as backlog). Docs only, structural readback. Slice checks: `make qa` passed; `make test` passed (PHPUnit 2769, Behat 66 scenarios, Vitest 442); `make e2e` 13 passed, publishing `mythic-style` v2. Route: delegated writer (slice 3).
 
 ## Reviews
 
@@ -153,4 +155,4 @@ Played on 2026-10-13 in Chrome by Claude (campaigns "The Salt Road" and "The Sal
 
 ## Next step
 
-Slice 3: one writer for the slice 2 review findings, P1–P6 (T7) and the wrap-up (T8). Then review, PR (`Closes #88`), and the last slice's doc-only commit.
+Review slice 3, PR (`Closes #88`), then the last slice's doc-only commit with the review outcome and PR link.

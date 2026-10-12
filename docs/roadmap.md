@@ -21,7 +21,7 @@ Terms are defined in the [glossary](domain/glossary.md). Contexts are described 
 |---|---|---|---|
 | M0 Foundation | Docs, monorepo, CI | Done | — |
 | M1 Oracle journal | Free-form solo play: dice, oracles, journal in a campaign | A free-journal session played with only oracles and dice | Yes |
-| M2 Guided flow | A narrative flow drives play step by step | A full Mythic-style session end to end, and a guided sample session played as a novice (Session Zero, scenes, world turns); the player always knows the next step | Yes |
+| M2 Guided flow | A narrative flow drives play step by step | A full Mythic-style session end to end (played 2026-10-13, feature 9), and a guided sample session played as a novice (Session Zero, scenes, world turns); the player always knows the next step | Yes |
 | M3 System rules | Characters, derived values, checks | A real game system played with sheet and checks. **MVP complete** | Yes |
 | M4 Studio | Author game systems without code | A game system built in Studio, published and played | No |
 | M5 Admin and lifecycle | Users, roles, campaign upgrades | The owner manages users; a campaign upgrades to a newer release safely | No |
@@ -207,6 +207,8 @@ Start feature `design-foundation` (ODD). Visual design foundation before the M2 
 ```
 
 **9. preset-mythic-flow**
+
+Done: the `mythic-style` preset on example 3, random events from fate-question doubles ([ADR 0019](adr/0019-random-events-from-fate-question-doubles.md)), and the scene pick that waits after a scene ([ADR 0020](adr/0020-scene-pick-waits-after-a-scene.md)). M2 exit, first half: a full Mythic-style session was played end to end on 2026-10-13. Its blocking findings were fixed; findings P7–P13 (roll outcomes not interpreted, list updates not linked to the panels, random events detached from their question, free-play scene controls during guided play, scene titles counted across sessions, an early "Next:" after the scene check, shouting scene headings) are backlog, see [odd/tasks/preset-mythic-flow.md](../odd/tasks/preset-mythic-flow.md#playtest-findings). The prompt is kept for reference.
 
 ```text
 Start feature `preset-mythic-flow` (ODD). Complete the Mythic-style preset release on the model of ADR 0017 as amended by ADR 0018, following example 3 of docs/domain/flow-examples.md: a chaos-factor tracker bound to the fate question; a premise phase; one looping adventure phase with a single Scene Type (picked automatically); the scene check in the scene opening (the expected scene, a roll against chaos, altered or interrupted scenes, a random-event focus table branching per entry); action/subject meaning tables; end-of-scene chaos adjustment and Thread/NPC list updates in the scene closing. Settle whether fate-question doubles trigger random events (vision open question). Validate by playing a real session; log UX findings as follow-up tasks.

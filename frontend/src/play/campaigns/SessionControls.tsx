@@ -31,10 +31,10 @@ export function SessionControls({ campaign }: { campaign: Campaign }) {
   return (
     <section
       aria-label="Where play stands"
-      className="flex flex-col gap-4 rounded-xl p-4 ring-1 ring-foreground/10 md:flex-row md:items-end md:justify-between"
+      className="flex min-w-0 flex-col gap-4 rounded-xl p-4 ring-1 ring-foreground/10 md:flex-row md:items-end md:justify-between"
     >
-      <div className="space-y-2">
-        <p className="font-medium">{playPosition(campaign)}</p>
+      <div className="min-w-0 space-y-2">
+        <p className="font-medium break-words">{playPosition(campaign)}</p>
         <Button
           type="button"
           variant="outline"
@@ -136,12 +136,13 @@ function NewSceneForm({
   }
 
   return (
-    <form aria-label="New scene" className="space-y-2 md:w-80" onSubmit={handleSubmit}>
+    <form aria-label="New scene" className="min-w-0 space-y-2 md:w-80" onSubmit={handleSubmit}>
       <Label htmlFor={titleId}>Scene title</Label>
       <div className="flex gap-2">
         <Input
           id={titleId}
           value={title}
+          className="min-w-0"
           maxLength={MAX_SCENE_TITLE_LENGTH}
           autoComplete="off"
           disabled={!hasSession}

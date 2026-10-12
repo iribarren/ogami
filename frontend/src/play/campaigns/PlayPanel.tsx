@@ -1,4 +1,3 @@
-import { ChevronDownIcon } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
@@ -32,15 +31,26 @@ export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
         storePanelOpen(id, next)
       }}
     >
-      <section aria-labelledby={headingId} className="rounded-xl border bg-card p-4 text-card-foreground">
+      <section
+        aria-labelledby={headingId}
+        className="rounded-xl border bg-card p-4 text-card-foreground"
+      >
         <div className="flex items-center justify-between gap-2">
           <h2 id={headingId} className="min-w-0 font-heading text-panel-title">
             <CollapsibleTrigger className="group/trigger -m-1 flex items-center gap-2 rounded-md p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               {title}
-              <ChevronDownIcon
+              <svg
                 aria-hidden="true"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="size-4 text-muted-foreground transition-transform group-data-[state=closed]/trigger:-rotate-90"
-              />
+              >
+                <path d="m4 6 4 4 4-4" />
+              </svg>
             </CollapsibleTrigger>
           </h2>
           {count !== undefined && <Badge variant="secondary">{count}</Badge>}

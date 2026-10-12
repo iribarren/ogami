@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { useId, type ReactNode } from 'react'
 
-import { Button } from '@/shared/ui/button'
+import { cn } from '@/shared/lib/utils'
+import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { DiceRoller } from '../dice/DiceRoller'
 import { FactsPanel } from '../facts/FactsPanel'
@@ -46,7 +47,7 @@ function CampaignState({ campaign }: { campaign: ReturnType<typeof useCampaign> 
     case 'error':
       return campaign.error instanceof CampaignError && campaign.error.status === 404 ? (
         <section className="space-y-3">
-          <h1 className="font-heading text-3xl font-bold tracking-tight">Campaign not found</h1>
+          <h1 className="font-heading text-page-title">Campaign not found</h1>
           <p className="text-muted-foreground">
             This campaign does not exist, or it is not one of yours.
           </p>
@@ -84,20 +85,27 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const flow = campaign.flows.find(({ key }) => key === campaign.flowKey)
   const [view, setView] = useFlowView(campaign)
   const trackers = visibleTrackers(campaign)
+  const focused = campaign.flowRun !== null && view === 'focus'
 
   return (
     <>
       <header className="space-y-1">
-        <h1 className="font-heading text-3xl font-bold tracking-tight">{campaign.name}</h1>
+        <h1 className="font-heading text-page-title break-words">{campaign.name}</h1>
         <p className="text-muted-foreground">
           {releaseLabel(campaign.pinnedRelease.gameSystemName, campaign.pinnedRelease.version)}
         </p>
       </header>
       <SessionControls campaign={campaign} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_var(--play-sidebar-width)]">
-        <div className="min-w-0 space-y-6">
+        <div
+          className={cn(
+            'min-w-0 space-y-6',
+            // Focus mode centres the Step card; the Journal keeps a reading measure.
+            focused ? 'mx-auto w-full max-w-2xl' : 'max-w-prose leading-relaxed',
+          )}
+        >
           {campaign.flowRun !== null && <ViewToggle view={view} onChange={setView} />}
-          {campaign.flowRun !== null && view === 'focus' ? (
+          {campaign.flowRun !== null && focused ? (
             <FocusPanel campaign={campaign} flowRun={campaign.flowRun} />
           ) : (
             <Section title="Journal">
@@ -159,22 +167,18 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
 /** Journal view or focus mode, for a campaign a Flow guides. */
 function ViewToggle({ view, onChange }: { view: FlowView; onChange: (view: FlowView) => void }) {
   return (
-    <div role="group" aria-label="Guided view" className="flex gap-2">
-      {(['journal', 'focus'] as const).map((option) => (
-        <Button
-          key={option}
-          type="button"
-          size="sm"
-          variant={view === option ? 'default' : 'outline'}
-          aria-pressed={view === option}
-          onClick={() => {
-            onChange(option)
-          }}
-        >
-          {option === 'journal' ? 'Journal view' : 'Focus view'}
-        </Button>
-      ))}
-    </div>
+    <SegmentedControl
+      aria-label="Guided view"
+      value={view}
+      onValueChange={(next) => {
+        if (next === 'journal' || next === 'focus') {
+          onChange(next)
+        }
+      }}
+    >
+      <SegmentedControlItem value="journal">Journal view</SegmentedControlItem>
+      <SegmentedControlItem value="focus">Focus view</SegmentedControlItem>
+    </SegmentedControl>
   )
 }
 
@@ -182,7 +186,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   const headingId = useId()
   return (
     <section aria-labelledby={headingId} className="space-y-3">
-      <h2 id={headingId} className="font-heading text-xl font-semibold">
+      <h2 id={headingId} className="font-heading text-section-title">
         {title}
       </h2>
       {children}

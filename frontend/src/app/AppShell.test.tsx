@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 describe('AppShell', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    document.documentElement.classList.remove('dark')
+  })
+
   it('offers only a sign-in link to anonymous visitors', async () => {
     renderAppAt('/')
 
@@ -98,5 +103,31 @@ describe('AppShell', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Sign-out failed')
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/play')
+  })
+
+  it('switches the color mode from the header and remembers it', async () => {
+    const user = userEvent.setup()
+    renderAppAt('/')
+
+    const toggle = await screen.findByRole('combobox', { name: 'Color mode' })
+    expect(toggle).toHaveValue('system')
+
+    await user.selectOptions(toggle, 'Dark')
+
+    expect(document.documentElement).toHaveClass('dark')
+    expect(localStorage.getItem('ogami.colorMode')).toBe('dark')
+
+    await user.selectOptions(toggle, 'Light')
+
+    expect(document.documentElement).not.toHaveClass('dark')
+    expect(localStorage.getItem('ogami.colorMode')).toBe('light')
+  })
+
+  it('starts the toggle on the stored color mode', async () => {
+    localStorage.setItem('ogami.colorMode', 'dark')
+    renderAppAt('/')
+
+    expect(await screen.findByRole('combobox', { name: 'Color mode' })).toHaveValue('dark')
+    expect(document.documentElement).toHaveClass('dark')
   })
 })

@@ -130,7 +130,7 @@ What keeps each slice safe on `main`:
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Feature doc. Tokens: the default app theme (light and dark), semantic `success` / `warning` / `info`, type scale, layout tokens in `index.css`. Contrast test (`culori`, reads the CSS source, AA pairs per palette) | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
-| T2 | 1 | Color mode: `ColorModeProvider`, `useColorMode`, mode override hook, no-flash script in `index.html`, header toggle; Vitest tests (stored mode, system mode and its change, override wins, storage failure) | delegated writer (slice 1, 4+ non-trivial files) | [ ] | |
+| T2 | 1 | Color mode: `ColorModeProvider`, `useColorMode`, mode override hook, no-flash script in `index.html`, header toggle; Vitest tests (stored mode, system mode and its change, override wins, storage failure) | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
 | T3 | 1 | Shared UI styling: restyle `shared/ui` components on the tokens, add the components the layout needs (e.g. `badge`, `separator`, `collapsible`, segmented control); Storybook: mode/theme toolbar decorator, `Foundations/Tokens` page (swatches, type scale), a story per shared UI component | delegated writer (slice 1, 4+ non-trivial files) | [ ] | |
 | T4 | 2 | Play layout: wider campaign container, sticky self-scrolling sidebar, `PlayPanel` (collapsible, remembered), section restyle, Focus mode width, Journal reading measure, segmented Journal/Focus toggle, phone width; Vitest and story updates; e2e selectors still pass | delegated writer (slice 2) | [ ] | |
 | T5 | 3 | Contract and ACL: `theme` in `v2.schema.json` and Version2 validator, fixtures (valid with each theme, invalid unknown / non-string), agreement test, contract doc; translator and `GameSystemSnapshot::theme()`; `PinnedReleaseView` / `PinnedReleaseResponse.theme`; unit and API tests; `make api` | delegated writer (slice 3) | [ ] | |
@@ -141,6 +141,7 @@ What keeps each slice safe on `main`:
 
 - 2026-10-12: feature started. Theme set, theme mode, app mode and contract shape decided with the user. Doc and slice plan written; issue #83.
 - 2026-10-12: slice 1 — T1 done: default light/dark palettes, success/warning/info, type scale, layout tokens; contrast test RED on stock grey tokens (11 failures: missing semantic tokens, muted-foreground, ring), GREEN after the palettes (31 tests). Lowest ratios: light ring 3.91, dark ring 5.48.
+- 2026-10-12: slice 1 — T2 done: `ColorModeProvider`, `useColorMode`, `useColorModeOverride`, no-flash script, header select toggle ("Color mode"); provider tests RED (modules missing), GREEN with 11 provider tests + 2 AppShell toggle tests.
 
 ## Reviews
 

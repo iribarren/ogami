@@ -48,6 +48,19 @@ describe('PlayPanel', () => {
     expect(screen.getByText('The harbour master owes a favour.')).toBeInTheDocument()
   })
 
+  it('links its title to the body it controls, open or collapsed', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+    const controlledBody = () =>
+      document.getElementById(trigger().getAttribute('aria-controls') ?? '')
+
+    expect(controlledBody()).toContainElement(screen.getByText('The harbour master owes a favour.'))
+
+    await user.click(trigger())
+
+    expect(controlledBody()).toContainElement(screen.getByText('The harbour master owes a favour.'))
+  })
+
   it('keeps the body mounted while collapsed, so local tool state survives', async () => {
     const user = userEvent.setup()
     render(

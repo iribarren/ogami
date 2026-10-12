@@ -20,6 +20,7 @@ interface PlayPanelProps {
  */
 export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
   const headingId = useId()
+  const bodyId = useId()
   const [open, setOpen] = useState(() => readPanelOpen(id))
 
   return (
@@ -37,7 +38,11 @@ export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
       >
         <div className="flex items-center justify-between gap-2">
           <h2 id={headingId} className="min-w-0 font-heading text-panel-title">
-            <CollapsibleTrigger className="group/trigger -m-1 flex items-center gap-2 rounded-md p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            {/* Radix points aria-controls at CollapsibleContent, which this panel does not render. */}
+            <CollapsibleTrigger
+              aria-controls={bodyId}
+              className="group/trigger -m-1 flex items-center gap-2 rounded-md p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
               {title}
               <svg
                 aria-hidden="true"
@@ -60,7 +65,7 @@ export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
           would lose the tools' local state (drafts, dice expression, last roll or oracle result).
           `hidden` keeps the body out of the accessibility tree and the tab order.
         */}
-        <div hidden={!open} data-state={open ? 'open' : 'closed'} className="pt-3">
+        <div id={bodyId} hidden={!open} data-state={open ? 'open' : 'closed'} className="pt-3">
           {children}
         </div>
       </section>

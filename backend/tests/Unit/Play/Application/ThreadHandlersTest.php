@@ -25,11 +25,13 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\Snapshots;
+use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -187,6 +189,21 @@ final class ThreadHandlersTest extends TestCase
                 self::assertSame('Thread "missing" not found.', $exception->getMessage());
             }
         }
+    }
+
+    #[Test]
+    public function anUnknownOrBlankThreadIdIsRefusedBeforeAnUnreadableReleaseIsRead(): void
+    {
+        $handler = new EditThreadHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)));
+
+        try {
+            $handler(new EditThread('campaign-1', 'user-1', 'missing', 'Mira', [], [], 1));
+            self::fail('The unknown Thread was accepted.');
+        } catch (UnknownThread) {
+        }
+
+        $this->expectException(InvalidThread::class);
+        $handler(new EditThread('campaign-1', 'user-1', ' ', 'Mira', [], [], 1));
     }
 
     #[Test]

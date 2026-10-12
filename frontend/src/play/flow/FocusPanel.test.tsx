@@ -55,25 +55,25 @@ describe('the view toggle', () => {
     renderPlay(lostMineCampaign)
 
     await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
-    expect(screen.queryByRole('group', { name: 'Guided view' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Guided view' })).not.toBeInTheDocument()
   })
 
   it.each([
     ['journal', 'Journal view', 'Guided play'],
     ['focus', 'Focus view', 'Focus mode'],
-  ] as const)('opens in the Flow default view, %s', async (defaultView, pressed, region) => {
+  ] as const)('opens in the Flow default view, %s', async (defaultView, selected, region) => {
     renderPlay(guided(atStep(promptStep), defaultView))
 
     expect(await screen.findByRole('region', { name: region })).toBeInTheDocument()
-    const toggle = within(screen.getByRole('group', { name: 'Guided view' }))
-    expect(toggle.getByRole('button', { name: pressed })).toHaveAttribute('aria-pressed', 'true')
+    const toggle = within(screen.getByRole('radiogroup', { name: 'Guided view' }))
+    expect(toggle.getByRole('radio', { name: selected })).toBeChecked()
   })
 
   it('switches views, hiding the full journal in focus mode, and remembers the choice per campaign', async () => {
     const user = userEvent.setup()
     renderPlay(guided(atStep(promptStep), 'journal'))
 
-    await user.click(await screen.findByRole('button', { name: 'Focus view' }))
+    await user.click(await screen.findByRole('radio', { name: 'Focus view' }))
 
     expect(await focusRegion()).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Journal' })).not.toBeInTheDocument()
@@ -84,9 +84,25 @@ describe('the view toggle', () => {
     renderPlay(guided(atStep(promptStep), 'journal'))
     expect(await focusRegion()).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Journal view' }))
+    await user.click(screen.getByRole('radio', { name: 'Journal view' }))
     expect(await screen.findByRole('region', { name: 'Journal' })).toBeInTheDocument()
     expect(window.localStorage.getItem(storageKey)).toBe('journal')
+  })
+
+  it('reads the journal at a prose measure and centres the Step card in focus mode', async () => {
+    const user = userEvent.setup()
+    renderPlay(guided(atStep(promptStep), 'journal'))
+
+    const column = (await screen.findByRole('radiogroup', { name: 'Guided view' })).parentElement
+    expect(column).toHaveClass('max-w-prose')
+
+    await user.click(screen.getByRole('radio', { name: 'Focus view' }))
+
+    await focusRegion()
+    expect(screen.getByRole('radiogroup', { name: 'Guided view' }).parentElement).toHaveClass(
+      'mx-auto',
+      'max-w-2xl',
+    )
   })
 
   it('ignores a remembered value it does not know', async () => {
@@ -107,7 +123,7 @@ describe('the view toggle', () => {
     renderPlay(guided(atStep(promptStep), 'focus'))
 
     expect(await focusRegion()).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Journal view' }))
+    await user.click(screen.getByRole('radio', { name: 'Journal view' }))
     expect(await screen.findByRole('region', { name: 'Guided play' })).toBeInTheDocument()
   })
 })

@@ -1,7 +1,7 @@
 # Feature: design-foundation
 
 - **Locator:** `odd/tasks/design-foundation.md` · Engram topic `odd/design-foundation/tasks`
-- **Issue:** #83 · **Branch:** `feat/design-foundation-1-tokens` (slice 1) · **Status:** slice 1 in progress
+- **Issue:** #83 · **Branch:** `feat/design-foundation-2-play-layout` (slice 2) · **Status:** slice 1 merged (#84); slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-campaign-facts` (PRs #76–#82)
@@ -80,7 +80,8 @@ Secondary, muted and accent are warm neutrals, and borders are low-contrast warm
 ### Play layout
 
 - The campaign route uses a wider container (`max-w-7xl`) than the shell's default `max-w-5xl`. Other pages keep theirs.
-- At `lg` and up there are two columns. The main column holds the Journal or Focus mode, at a readable measure. The sidebar (`--play-sidebar-width`, about 24rem) is sticky below the header and scrolls on its own (`max-height: calc(100dvh - header)`).
+- At `lg` and up there are two columns. The main column holds the Journal or Focus mode, at a readable measure. The sidebar (`--play-sidebar-width`, about 24rem) is sticky near the viewport top (the app header is not sticky and scrolls away) and scrolls on its own (`max-height` about `100dvh` minus its top offset).
+- The wider container comes from route `staticData` read by `AppShell` (header and main share the width), so only the campaign route opts in.
 - Sidebar sections (Dice, Trackers, Facts, Threads, NPCs, Oracles) use one shared `PlayPanel`: a title, an optional count, and a collapsible body. Open or closed state is remembered per section in `localStorage` (`try/catch`). All sections are open by default.
 - Below `lg`, the sidebar stacks after the main column, with its sections collapsible.
 - In Focus mode the step card is centred at a comfortable width. The Journal/Focus toggle uses a shared segmented control.
@@ -129,10 +130,10 @@ What keeps each slice safe on `main`:
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Feature doc. Tokens: the default app theme (light and dark), semantic `success` / `warning` / `info`, type scale, layout tokens in `index.css`. Contrast test (`culori`, reads the CSS source, AA pairs per palette) | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
-| T2 | 1 | Color mode: `ColorModeProvider`, `useColorMode`, mode override hook, no-flash script in `index.html`, header toggle; Vitest tests (stored mode, system mode and its change, override wins, storage failure) | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
-| T3 | 1 | Shared UI styling: restyle `shared/ui` components on the tokens, add the components the layout needs (e.g. `badge`, `separator`, `collapsible`, segmented control); Storybook: mode/theme toolbar decorator, `Foundations/Tokens` page (swatches, type scale), a story per shared UI component | delegated writer (slice 1, 4+ non-trivial files) | [x] | |
-| T4 | 2 | Play layout: wider campaign container, sticky self-scrolling sidebar, `PlayPanel` (collapsible, remembered), section restyle, Focus mode width, Journal reading measure, segmented Journal/Focus toggle, phone width; Vitest and story updates; e2e selectors still pass | delegated writer (slice 2) | [ ] | |
+| T1 | 1 | Feature doc. Tokens: the default app theme (light and dark), semantic `success` / `warning` / `info`, type scale, layout tokens in `index.css`. Contrast test (`culori`, reads the CSS source, AA pairs per palette) | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7a909fa` |
+| T2 | 1 | Color mode: `ColorModeProvider`, `useColorMode`, mode override hook, no-flash script in `index.html`, header toggle; Vitest tests (stored mode, system mode and its change, override wins, storage failure) | delegated writer (slice 1, 4+ non-trivial files) | [x] | `8476de0` |
+| T3 | 1 | Shared UI styling: restyle `shared/ui` components on the tokens, add the components the layout needs (e.g. `badge`, `separator`, `collapsible`, segmented control); Storybook: mode/theme toolbar decorator, `Foundations/Tokens` page (swatches, type scale), a story per shared UI component | delegated writer (slice 1, 4+ non-trivial files) | [x] | `7b553b4` |
+| T4 | 2 | Play layout: wider campaign container, sticky self-scrolling sidebar, `PlayPanel` (collapsible, remembered), section restyle, Focus mode width, Journal reading measure, segmented Journal/Focus toggle, phone width; Vitest and story updates; e2e selectors still pass | delegated writer (slice 2) | [x] | |
 | T5 | 3 | Contract and ACL: `theme` in `v2.schema.json` and Version2 validator, fixtures (valid with each theme, invalid unknown / non-string), agreement test, contract doc; translator and `GameSystemSnapshot::theme()`; `PinnedReleaseView` / `PinnedReleaseResponse.theme`; unit and API tests; `make api` | delegated writer (slice 3) | [ ] | |
 | T6 | 3 | Themes: five palettes and heading fonts, contrast test covers them, `useCampaignTheme` sets `data-theme` and the mode override on the campaign route and clears them on leave; Storybook theme toolbar lists them; Vitest tests | delegated writer (slice 3) | [ ] | |
 | T7 | 3 | Wrap-up: glossary (Theme set), ADR 0017 §13 note that the set is settled, roadmap 8c; e2e smoke (mode toggle persists over reload) | delegated writer (slice 3) | [ ] | |
@@ -143,12 +144,16 @@ What keeps each slice safe on `main`:
 - 2026-10-12: slice 1 — T1 done: default light/dark palettes, success/warning/info, type scale, layout tokens; contrast test RED on stock grey tokens (11 failures: missing semantic tokens, muted-foreground, ring), GREEN after the palettes (31 tests). Lowest ratios: light ring 3.91, dark ring 5.48.
 - 2026-10-12: slice 1 — T2 done: `ColorModeProvider`, `useColorMode`, `useColorModeOverride`, no-flash script, header select toggle ("Color mode"); provider tests RED (modules missing), GREEN with 11 provider tests + 2 AppShell toggle tests.
 - 2026-10-12: slice 1 — T3 done: restyled `shared/ui` on the tokens, added `badge`, `separator`, `collapsible` (shadcn CLI) and `SegmentedControl`, Storybook mode/theme toolbar, `Foundations/Tokens` and a story per component; styling and stories are structural checks only (no RED), `SegmentedControl` has 2 tests, `--input` darkened and added to the 3:1 contrast pairs.
+- 2026-10-12: slice 2 — slice 1 review fixes: contrast test resolves `index.css` from `import.meta.dirname` (Vite rewrites `new URL(path, import.meta.url)` into an asset URL) and asserts the exact palette set, quote-tolerant `data-theme` selectors and that no `.dark`/`data-theme` selector goes unparsed; new `noFlashScript.test.ts` runs the `index.html` script in jsdom against every stored mode and system preference. Guard tests: checked by breaking the script's storage key (2 failures), no production code changed.
+- 2026-10-12: slice 2 — T4 (1/2): route `staticData` `layout: 'wide'` read by `AppShell` through `useMatches` (header and main share `max-w-7xl`, others keep `max-w-5xl`; AppShell test RED without the route flag, GREEN with it), `PlayPanel` (shared `Collapsible`, `ogami.playPanel.<id>` open/closed, collapsed body unmounted, counts for trackers, facts, threads and NPCs; 6 unit tests, written with the module, no separate RED run), sticky self-scrolling `Play tools` sidebar on `--play-sidebar-width`. Layout classes are structural checks.
+- 2026-10-12: slice 2 — T4 (2/2) done: Journal/Focus toggle on the shared `SegmentedControl` (radio role; `FocusPanel` tests moved from `aria-pressed` buttons to radios, updated with the change, no separate RED run), Journal at `max-w-prose` with relaxed leading and the Focus mode Step card centred at `max-w-2xl` (1 test), section and page titles on the heading scale, header and `SessionControls` wrap with `min-w-0` for 360px (new `e2e/play-layout.spec.ts` checks no sideways scroll and a panel collapse). Styling is a structural check. The panel chevron is an inline SVG: the `lucide-react` barrel import made the first test of every Play test file exceed its 1s timeout.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-9e06a5883ce259ba` | `7a909fa`..`7b553b4` | Approved. Non-blocking, fixed in slice 2: contrast parser could skip a palette silently (assert the exact set); `index.css` resolved from `process.cwd()` instead of `import.meta.url`; no-flash script duplicates the storage key/values untested | [#84](https://github.com/iribarren/ogami/pull/84) |
 
 ## Next step
 
-Slice 1 (`feat/design-foundation-1-tokens`): T1–T3 by one delegated writer, then native review, then the PR.
+Slice 2 (`feat/design-foundation-2-play-layout`): written; next native review, then push and the PR.

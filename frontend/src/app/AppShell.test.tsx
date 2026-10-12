@@ -130,4 +130,33 @@ describe('AppShell', () => {
     expect(await screen.findByRole('combobox', { name: 'Color mode' })).toHaveValue('dark')
     expect(document.documentElement).toHaveClass('dark')
   })
+
+  describe('container width', () => {
+    const widths = () => ({
+      header: screen.getByRole('banner').firstElementChild,
+      main: screen.getByRole('main'),
+    })
+
+    it('uses the default width on a regular page', async () => {
+      renderAppAt('/')
+
+      await screen.findByRole('navigation', { name: 'Main' })
+      expect(widths().header).toHaveClass('max-w-5xl')
+      expect(widths().main).toHaveClass('max-w-5xl')
+    })
+
+    it('widens header and content together on a route that asks for the wide layout', async () => {
+      const campaignId = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b'
+      renderAppAt(`/play/campaigns/${campaignId}`, {
+        'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+        [`GET /api/campaigns/${campaignId}`]: () =>
+          Response.json({ error: 'Not found.' }, { status: 404 }),
+      })
+
+      await screen.findByRole('heading', { level: 1, name: 'Campaign not found' })
+      expect(widths().header).toHaveClass('max-w-7xl')
+      expect(widths().main).toHaveClass('max-w-7xl')
+      expect(widths().main).not.toHaveClass('max-w-5xl')
+    })
+  })
 })

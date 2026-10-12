@@ -77,7 +77,7 @@ final readonly class CampaignFactsController
 
         $label = $body['label'] ?? null;
         $text = $body['text'] ?? null;
-        $links = $this->links($body['links'] ?? []);
+        $links = $this->hasJsonObjectAt($request, 'links') ? null : $this->links($body['links'] ?? []);
         if (!\is_string($label) || !\is_string($text) || null === $links) {
             return $this->error(self::MALFORMED_ADD, Response::HTTP_BAD_REQUEST);
         }
@@ -118,7 +118,7 @@ final readonly class CampaignFactsController
 
         $label = $body['label'] ?? null;
         $text = $body['text'] ?? null;
-        $links = $this->links($body['links'] ?? null);
+        $links = $this->hasJsonObjectAt($request, 'links') ? null : $this->links($body['links'] ?? null);
         if ((null !== $label && !\is_string($label)) || (null !== $text && !\is_string($text)) || null === $links) {
             return $this->error(self::MALFORMED_EDIT, Response::HTTP_BAD_REQUEST);
         }
@@ -166,11 +166,19 @@ final readonly class CampaignFactsController
     }
 
     /**
-     * @throws CampaignNotFound
+     * Reads the saved fact back through the campaign, answering as the command did when the campaign
+     * or its release cannot be read any more.
      */
     private function fact(string $campaignId, string $factId, AuthenticatedUser $user, int $status): JsonResponse
     {
-        $facts = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->facts;
+        try {
+            $facts = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->facts;
+        } catch (CampaignNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
+        }
+
         $fact = array_find($facts, static fn (FactView $fact): bool => $fact->id === $factId) ?? throw new \LogicException('The fact was just saved.');
 
         return new JsonResponse(FactResponse::fromView($fact), $status);

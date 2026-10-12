@@ -35,6 +35,17 @@ trait ReadsJsonBodies
         }
     }
 
+    /**
+     * Whether the body, a JSON object, holds a JSON object at this key. Request::toArray() decodes
+     * `{}` and `[]` alike, so only the raw body tells them apart.
+     */
+    private function hasJsonObjectAt(Request $request, string $key): bool
+    {
+        $body = json_decode($request->getContent(), false);
+
+        return $body instanceof \stdClass && ($body->{$key} ?? null) instanceof \stdClass;
+    }
+
     private function error(string $message, int $status): JsonResponse
     {
         return new JsonResponse(ErrorResponse::withMessage($message), $status);

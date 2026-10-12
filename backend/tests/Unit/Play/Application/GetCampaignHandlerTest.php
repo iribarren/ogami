@@ -30,6 +30,7 @@ use App\Play\Application\TrackerLevelView;
 use App\Play\Application\TrackerView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\FactLink;
@@ -341,6 +342,35 @@ final class GetCampaignHandlerTest extends TestCase
     }
 
     #[Test]
+    public function aSlotFactWhoseSlotTheReleaseDoesNotDeclareFailsClosed(): void
+    {
+        $this->releases->add(new GameSystemSnapshot('lore', 'Lore', 1, null, [], [], factSlots: [new FactSlot('city', 'City', FactSlotType::Text)]));
+        $this->campaigns->add($this->campaignWithFacts('campaign-5', [
+            Fact::of(FactId::fromString('fact-1'), 'ghost', null, 'Boo', null, []),
+        ]));
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('Fact "fact-1" fills slot "ghost", which the pinned release does not declare.');
+
+        ($this->handler)(new GetCampaign('campaign-5', 'user-1'));
+    }
+
+    #[Test]
+    public function aLinkToASlotFactWhoseSlotTheReleaseDoesNotDeclareFailsClosed(): void
+    {
+        $this->releases->add(new GameSystemSnapshot('lore', 'Lore', 1, null, [], [], factSlots: [new FactSlot('city', 'City', FactSlotType::Text)]));
+        $this->campaigns->add($this->campaignWithFacts('campaign-5', [
+            Fact::of(FactId::fromString('fact-1'), 'city', null, 'Ashford', null, [FactLink::fact(FactId::fromString('fact-2'))]),
+            Fact::of(FactId::fromString('fact-2'), 'ghost', null, 'Boo', null, []),
+        ]));
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('Fact "fact-2" fills slot "ghost", which the pinned release does not declare.');
+
+        ($this->handler)(new GetCampaign('campaign-5', 'user-1'));
+    }
+
+    #[Test]
     public function theCurrentSceneIsTheLatestSceneOfTheCurrentSession(): void
     {
         $campaign = $this->campaigns->ofId(CampaignId::fromString('campaign-1'));
@@ -410,5 +440,15 @@ final class GetCampaignHandlerTest extends TestCase
         } catch (InvalidGameSystemRelease $exception) {
             self::assertSame($unreadable, $exception);
         }
+    }
+
+    /**
+     * A campaign pinned to "lore" v1 that holds these facts, as a stored one does.
+     *
+     * @param list<Fact> $facts
+     */
+    private function campaignWithFacts(string $id, array $facts): Campaign
+    {
+        return Campaign::reconstitute(CampaignId::fromString($id), 'user-1', 'The lore', PinnedRelease::of('lore', 1, 'Lore'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), [], facts: $facts);
     }
 }

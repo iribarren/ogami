@@ -198,6 +198,7 @@ final class CampaignFactsApiTest extends WebTestCase
         yield 'a numeric text' => ['{"label": "L", "text": 4, "links": []}'];
         yield 'links as a string' => ['{"label": "L", "text": "T", "links": "npc"}'];
         yield 'links as an object' => ['{"label": "L", "text": "T", "links": {"kind": "npc"}}'];
+        yield 'links as an empty object' => ['{"label": "L", "text": "T", "links": {}}'];
         yield 'a link that is a string' => ['{"label": "L", "text": "T", "links": ["x"]}'];
         yield 'a link without a kind' => ['{"label": "L", "text": "T", "links": [{"id": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999"}]}'];
         yield 'an unknown link kind' => ['{"label": "L", "text": "T", "links": [{"kind": "scene", "id": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999"}]}'];
@@ -416,6 +417,37 @@ final class CampaignFactsApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(409);
         self::assertSame(['error' => 'Fact "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001" already exists.'], $this->json());
         self::assertSame(['Guild'], array_column($this->campaignFacts($id), 'label'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unreadableReleases(): iterable
+    {
+        yield 'release gone' => ['DELETE FROM studio_gamesystem_release'];
+        yield 'unsupported schema version' => ['UPDATE studio_gamesystem_release SET schema_version = 99'];
+    }
+
+    #[Test]
+    #[DataProvider('unreadableReleases')]
+    public function aPinnedReleaseThatCannotBeReadIsAServerErrorWithoutInternals(string $breakTheRelease): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $factId = $this->addFact($id, ['label' => 'Guild', 'text' => 'Owes a debt']);
+        $this->connection()->executeStatement($breakTheRelease);
+
+        foreach ([
+            ['POST', \sprintf('/api/campaigns/%s/facts', $id)],
+            ['PUT', \sprintf('/api/campaigns/%s/facts/%s', $id, $factId)],
+        ] as [$method, $uri]) {
+            $this->client->jsonRequest($method, $uri, ['label' => 'L', 'text' => 'T', 'links' => []]);
+
+            self::assertResponseStatusCodeSame(500);
+            self::assertSame(['error' => 'The GameSystem release this campaign plays can no longer be read.'], $this->json());
+        }
+
+        self::assertSame(1, $this->connection()->fetchOne('SELECT jsonb_array_length(facts) FROM play_campaign WHERE id = ?', [$id]));
     }
 
     #[Test]

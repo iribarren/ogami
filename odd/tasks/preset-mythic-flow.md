@@ -1,7 +1,7 @@
 # Feature: preset-mythic-flow
 
 - **Locator:** `odd/tasks/preset-mythic-flow.md` · Engram topic `odd/preset-mythic-flow/tasks`
-- **Issue:** #88 · **Branch:** `fix/preset-mythic-flow-3-playtest` · **Status:** slice 3 in progress → review
+- **Issue:** #88 · **Branch:** `fix/preset-mythic-flow-3-playtest` · **Status:** done (slice 3 in review as PR #91)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `design-foundation` (PRs #84–#87)
@@ -106,8 +106,8 @@ What keeps each slice safe on `main`:
 | T4 | 2 | Preset `mythic-style` v1 per Design; `PresetsTest` and `FlowRunExamplesTest` style coverage of the preset (validates, passes the ACL, a scene opening runs each focus branch); flow example 3 doc notes the doubles rule | delegated writer (slice 2) | [x] | 5fc7e22 |
 | T5 | 2 | Dev data reset (parent, not committed); e2e `play-guided.spec.ts` updated for the new flow (premise creates a Thread and an NPC; a scene check); `make e2e` | delegated writer (slice 2) | [x] | 29ea370 |
 | T6 | 3 | Playtest: Claude plays a full session in Chrome (premise, ≥ 5 adventure scenes, at least one altered and one interrupted scene, a fate-question double if it comes up, list updates, end session); findings logged below | parent (browser) | [x] | — |
-| T7 | 3 | Fix playtest findings P1–P6 (see Playtest findings); P7–P13 stay in the backlog | delegated writer (slice 3) | [x] | |
-| T8 | 3 | Wrap-up: roadmap feature 9 done, M2 exit note, feature doc closed | delegated writer (slice 3) | [x] | |
+| T7 | 3 | Fix playtest findings P1–P6 (see Playtest findings); P7–P13 stay in the backlog | delegated writer (slice 3) | [x] | 9bb4700, 576d3f1, 2b0a316, 30df3fa |
+| T8 | 3 | Wrap-up: roadmap feature 9 done, M2 exit note, feature doc closed | delegated writer (slice 3) | [x] | df7dde7 |
 
 ## Playtest findings
 
@@ -152,7 +152,8 @@ Played on 2026-10-13 in Chrome by Claude (campaigns "The Salt Road" and "The Sal
 |---|---|---|---|---|
 | 1 | `review-0f44e6718386e6f2` | 794af20, b46c5c5, 8538e95 | Approved, acknowledged. WARNING: stored likelihood content without `randomEvent` is rejected (accepted: dev data wiped, no legacy rows). SUGGESTION: the Roll button can roll the same event again after a success; SUGGESTION: no test for the offer in the Focus panel "So far" list (both fixed in slice 2). Merge commit 5816e90; GitHub never marked the PR merged, closed by hand | [#89](https://github.com/iribarren/ogami/pull/89) |
 | 2 | `review-1bd18c590ad623f6` | 5f079a3, 5fc7e22, 29ea370 | Approved, acknowledged. WARNING: the "Rolled" state is per mount (the docblock overstates it). SUGGESTION: the `{picked}` placeholder on no-pick paths is untested; SUGGESTION: pick transitions only partly covered (fixed in slice 3). Merge commit bf387bf | [#90](https://github.com/iribarren/ogami/pull/90) |
+| 3 | `review-a2113222ffe35c4b` | 9bb4700, 576d3f1, 2b0a316, 30df3fa, df7dde7 | Approved, acknowledged. SUGGESTION: `OraclePanel` compares `chaosTracker` strictly with null; a payload omitting it (undefined) would hide the chaos input; use a loose null check or test a free-input chaos oracle (backlog) | [#91](https://github.com/iribarren/ogami/pull/91) |
 
 ## Next step
 
-Review slice 3, PR (`Closes #88`), then the last slice's doc-only commit with the review outcome and PR link.
+Feature done once PR #91 merges (`Closes #88`). Backlog: playtest findings P7–P13 and the slice 3 review suggestion.

@@ -1,7 +1,7 @@
 # Feature: play-threads-npcs
 
 - **Locator:** `odd/tasks/play-threads-npcs.md` · Engram topic `odd/play-threads-npcs/tasks`
-- **Issue:** #63 · **Current branch:** `feat/play-threads-npcs-10-flow-ui` (from `main` `2ce0fd3`)
+- **Issue:** #63 · **Current branch:** `docs/play-threads-npcs-wrap-up` (from `main` `a2edbf4`) · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-flow-run` (PR #62)
@@ -121,8 +121,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | T7 | 7 | FlowRun: `pick` step (random weighted draw, choose with ids, too few candidates → `none`, outcomes `found` / `none`), `{picked}` (per Scene, persisted with the FlowRun, legacy rows), journal entry kind `pick` (domain and persistence), `CompleteFlowStep` handler; unit and integration tests | delegated writer (slice 7, 4+ non-trivial files) | [x] | `ccc2e98`, `29618d4` |
 | T7b | 8 | FlowRun: effects `createNpc`, `createThread`, `closeThread` (they set `{picked}`); the Scene cast (domain, `sessions` JSONB, legacy scenes; picks and created NPCs join it; domain edit of the current Scene's cast); unit and integration tests | delegated writer (slice 8, 4+ non-trivial files) | [x] | `5918dc2`, `575d42a` |
 | T8 | 9 | HTTP: step view for `pick` (mode, count, candidates), answer with picked ids, cast in the scene view, `PUT` current scene cast, `pick` journal entry; API tests, Behat; `make api` | delegated writer (slice 9, 4+ non-trivial files) | [x] | `52af343`, `a07abe7`, `7416f8f` |
-| T9 | 10 | UI: `pick` step card, cast in the journal scene header and focus mode, `pick` journal entry; tests and stories | delegated writer (slice 10, 4+ non-trivial files) | [x] | |
-| T10 | 10 | Glossary and contract doc wrap-up; e2e smoke for the lists | delegated writer (slice 10, 4+ non-trivial files) | [x] | |
+| T9 | 10 | UI: `pick` step card, cast in the journal scene header and focus mode, `pick` journal entry; tests and stories | delegated writer (slice 10, 4+ non-trivial files) | [x] | `cc64541`, `8bcc655` |
+| T10 | 10 | Glossary and contract doc wrap-up; e2e smoke for the lists | delegated writer (slice 10, 4+ non-trivial files) | [x] | `05b1757` |
 
 ## Progress
 
@@ -160,7 +160,8 @@ Safe on `main`: slice 1 lets Studio accept the new parts before Play reads them;
 | 7 | `review-55306a8d93a62781` | `ccc2e98`, `29618d4` | Approved. One non-blocking finding, fixed in slice 8: a `pick` step in a hook stores `{picked}` without checking that a Scene is under way (`FlowRun.php:265-267`) while `CampaignFlowRunType` rejects stored picked items with no scene number; a hook pick before the hook Scene is entered would save a row that fails to load, and a later `enterHookScene` (e.g. from a `sceneTitle` Effect) clears the pick before its own Effects render `{picked}`; no test plays a pick at stage Hook | [#70](https://github.com/iribarren/ogami/pull/70) |
 | 8 | `review-682ee245b8aee239` | `5918dc2`, `575d42a` | Approved. One non-blocking finding, fixed in slice 9: a create Effect's generated id (`GeneratedItemId`, from the campaign id and the count, `Campaign.php:572-579`) has no defined or tested behaviour when an existing item already holds it | [#71](https://github.com/iribarren/ogami/pull/71) |
 | 9 | `review-58dad4353303e494` | `52af343`, `a07abe7` (`7416f8f` generated, review skipped by the user) | Approved. One non-blocking finding, fixed in slice 10: the cast endpoint is documented for guided play and hook Scenes, but tests only edit the cast of a free-play scene (`CampaignController.php:272`) | [#72](https://github.com/iribarren/ogami/pull/72) |
+| 10 | `review-33faa7e42356b77f` | `cc64541`, `8bcc655`, `05b1757` | Approved. One non-blocking suggestion, left as a follow-up: `ChooseForm` gates on `chosen.size` but submits the ids filtered to the current candidates (`PickForm.tsx:83-84`), so if the form instance survives a change of step (two consecutive choose steps without a key), stale ids can enable Choose while fewer than `min` are sent and the server answers 422; no test covers consecutive choose steps | [#73](https://github.com/iribarren/ogami/pull/73) |
 
 ## Next step
 
-Slice 10 written; review, PR and merge next. Then the doc-only commit with the review outcome and PR link.
+Feature done: all ten slices merged (PRs #64–#73), issue #63 closed. Follow-up: the slice 10 review suggestion on `PickForm` (compute the min/max range from the ids filtered to the current candidates, or key the form by step, with a test for two consecutive choose steps).

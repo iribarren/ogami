@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "theme": "noir",
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

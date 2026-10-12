@@ -54,7 +54,12 @@ export const lostMineCampaign: Campaign = {
   id: lostMine.id,
   name: lostMine.name,
   createdAt: lostMine.createdAt,
-  pinnedRelease: { gameSystemKey: 'free-journal', gameSystemName: 'Free journal', version: 2 },
+  pinnedRelease: {
+    gameSystemKey: 'free-journal',
+    gameSystemName: 'Free journal',
+    version: 2,
+    theme: null,
+  },
   sessions: [
     {
       number: 1,
@@ -153,6 +158,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
       gameSystemKey: gameSystem.gameSystemKey,
       gameSystemName: gameSystem.name,
       version: gameSystem.version,
+      theme: null,
     },
     sessions: [],
     currentSessionNumber: null,

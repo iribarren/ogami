@@ -117,6 +117,7 @@ Everything not listed here works as in version 1: the key rule, `gameSystem`, th
 ```text
 schemaVersion  2
 gameSystem     { key, name, description? }                       unchanged
+theme          parchment | neon | noir | eldritch | starship   optional
 oracles        { tables: [OracleTable], likelihood: [LikelihoodOracle] }
 trackers       [Tracker]
 factSlots      [FactSlot]
@@ -127,7 +128,7 @@ sheet          {}   reserved
 checks         []   reserved
 ```
 
-There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are required and may be empty; a release with no flows is played freely. `tags` is optional and empty by default.
+There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are required and may be empty; a release with no flows is played freely. `tags` is optional and empty by default. `theme` is optional (see [Theme](#theme)).
 
 ### Release parts
 
@@ -210,6 +211,16 @@ Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) plays them
 | `closeThread` | Closes the open Threads in `{picked}`; nothing happens when it holds none |
 
 Picked and created NPCs join the current Scene's cast, which the player can edit. Scenes stored before schema version 2 gained these parts read with an empty cast.
+
+### Theme
+
+A release may name one curated **Theme**, which Play applies to the whole screen while a Campaign pinned to that release is open. The set is closed: `parchment` and `starship` are light, `neon`, `noir` and `eldritch` are dark, and each theme fixes its own mode and heading font, so inside a themed Campaign the theme overrides the player's Light / Dark / System choice. A release without `theme` (or with `null`) uses the default app theme.
+
+| Part | Shape | Rules |
+|---|---|---|
+| Release `theme` | optional top-level string | One of `parchment`, `neon`, `noir`, `eldritch`, `starship` (JSON Schema `enum`, mirrored by the Studio validator). Any other value, or a non-string, is rejected. Omitted from the canonical form when absent, so a release without it keeps its hash |
+
+Adding it is additive: every release valid before stays valid and reads the same. Play's translator reads it into the snapshot and fails closed on an unknown name (a stored release is not trusted); the Campaign response carries it as `pinnedRelease.theme` (`null` for the default app theme). The palettes live in the client, not in the release.
 
 ### Play behaviour of the fact parts
 

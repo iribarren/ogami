@@ -39,9 +39,12 @@ final class ReleaseVersion2
     public const array SCENE_TYPE_PARTS = ['setup', 'play', 'closing'];
     public const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
+    /** The curated Themes a release may name (docs/contracts/gamesystem-release.md, "Theme"). */
+    public const array THEMES = ['parchment', 'neon', 'noir', 'eldritch', 'starship'];
+
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
-        'schemaVersion' => true, 'gameSystem' => true, 'oracles' => true, 'trackers' => true, 'factSlots' => true, 'tags' => false,
+        'schemaVersion' => true, 'gameSystem' => true, 'theme' => false, 'oracles' => true, 'trackers' => true, 'factSlots' => true, 'tags' => false,
         'sceneTypes' => true, 'flows' => true, 'sheet' => true, 'checks' => true,
     ];
 
@@ -72,7 +75,7 @@ final class ReleaseVersion2
     /**
      * @param array<string, mixed> $release the checked top-level object (RELEASE fields)
      *
-     * @return array{oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>} "tags" is left out when empty
+     * @return array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>} "theme" and "tags" are left out when absent or empty
      */
     public static function validate(array $release): array
     {
@@ -95,7 +98,12 @@ final class ReleaseVersion2
         $flows = self::flows($release['flows'], $oracles, $catalog);
         FlowReferences::check($oracles['tables'], $trackers, $sceneTypes, $flows, $factSlotTypes);
 
-        $parts = ['oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots];
+        $parts = [];
+        if (isset($release['theme'])) {
+            $parts['theme'] = ReleaseFields::oneOf($release['theme'], 'theme', self::THEMES);
+        }
+
+        $parts = [...$parts, 'oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots];
         if ([] !== $tags) {
             $parts['tags'] = $tags;
         }

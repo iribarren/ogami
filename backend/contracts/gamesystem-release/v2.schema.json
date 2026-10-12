@@ -12,6 +12,10 @@
       "const": 2
     },
     "gameSystem": { "$ref": "#/$defs/gameSystem" },
+    "theme": {
+      "description": "The curated Theme Play applies inside a Campaign pinned to this release. Optional; omitted or null means the default app theme.",
+      "enum": ["parchment", "neon", "noir", "eldritch", "starship", null]
+    },
     "oracles": { "$ref": "#/$defs/oracles" },
     "trackers": {
       "description": "Counters and clocks a Campaign holds a value for. May be empty.",

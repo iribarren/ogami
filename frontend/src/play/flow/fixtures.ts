@@ -1,5 +1,6 @@
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
+import { allyTag, brannNpc, leaderTag, lostMineWithLists, miraNpc } from '../lists/fixtures'
 import type { FlowRun, FlowStep } from './useFlowRun'
 
 // Shared by the guided panel's tests and stories; the campaign is `lostMineCampaign` along the Flow "tour".
@@ -52,6 +53,43 @@ export const choiceStep = step({
     { key: 'left', label: 'Go left' },
     { key: 'right', label: 'Go right' },
   ],
+})
+
+type PickDetails = NonNullable<FlowStep['pick']>
+
+/** A `pick` step of NPCs; the details default to choosing one of Mira and Brann, tagged Leader. */
+const pickStep = (key: string, title: string, details: Partial<PickDetails>) =>
+  step({
+    key,
+    kind: 'pick',
+    title,
+    pick: {
+      of: 'npc',
+      mode: 'choose',
+      min: 1,
+      max: 1,
+      tags: [{ key: leaderTag.key, label: leaderTag.label }],
+      candidates: [
+        { id: miraNpc.id, name: miraNpc.name },
+        { id: brannNpc.id, name: brannNpc.name },
+      ],
+      ...details,
+    },
+  })
+
+export const chooseOneStep = pickStep('who', 'Who shows up?', {})
+export const chooseUpToTwoStep = pickStep('who-two', 'Who comes along?', { min: 1, max: 2 })
+export const chooseTwoStep = pickStep('who-both', 'Who must come?', { min: 2, max: 2 })
+export const randomPickStep = pickStep('draw', 'Who is it?', { mode: 'random', tags: [] })
+export const randomThreadStep = pickStep('draw-thread', 'What comes up?', {
+  of: 'thread',
+  mode: 'random',
+  tags: [{ key: allyTag.key, label: allyTag.label }],
+})
+export const noMatchChooseStep = pickStep('nobody', 'Who is left?', { candidates: [] })
+export const noMatchRandomStep = pickStep('nobody-drawn', 'Who is drawn?', {
+  mode: 'random',
+  candidates: [],
 })
 
 const progress: FlowRun['progress'] = {
@@ -117,3 +155,14 @@ export function guided(flowRun: FlowRun, defaultView: 'journal' | 'focus' = 'jou
     sceneTypes: [tour, quiet],
   }
 }
+
+/** `guided` with the NPCs and Threads of `lostMineWithLists` (the pick steps' candidates). */
+export const guidedWithLists = (
+  flowRun: FlowRun,
+  defaultView: 'journal' | 'focus' = 'journal',
+) => ({
+  ...guided(flowRun, defaultView),
+  tags: lostMineWithLists.tags,
+  npcs: lostMineWithLists.npcs,
+  threads: lostMineWithLists.threads,
+})

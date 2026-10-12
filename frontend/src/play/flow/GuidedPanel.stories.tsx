@@ -9,11 +9,14 @@ import { CampaignPage } from '../campaigns/CampaignPage'
 import {
   atStep,
   atTheScenePick,
+  chooseUpToTwoStep,
   choiceStep,
-  guided,
+  guidedWithLists,
   inOpenPlay,
+  noMatchChooseStep,
   oracleStep,
   promptStep,
+  randomThreadStep,
   rollStep,
 } from './fixtures'
 import type { FlowRun } from './useFlowRun'
@@ -27,7 +30,7 @@ const json =
 function guidedApi(flowRun: FlowRun, defaultView: 'journal' | 'focus' = 'journal') {
   const path = `/api/campaigns/${lostMineCampaign.id}`
   return {
-    [`GET ${path}`]: json(guided(flowRun, defaultView)),
+    [`GET ${path}`]: json(guidedWithLists(flowRun, defaultView)),
     [`GET ${path}/journal`]: json([chosenWay]),
   }
 }
@@ -61,6 +64,12 @@ export const FocusModeScenePick: Story = {
 export const OracleStep: Story = { parameters: { api: guidedApi(atStep(oracleStep)) } }
 
 export const ChoiceStep: Story = { parameters: { api: guidedApi(atStep(choiceStep)) } }
+
+export const PickStepRandom: Story = { parameters: { api: guidedApi(atStep(randomThreadStep)) } }
+
+export const PickStepChoose: Story = { parameters: { api: guidedApi(atStep(chooseUpToTwoStep)) } }
+
+export const PickStepNoMatch: Story = { parameters: { api: guidedApi(atStep(noMatchChooseStep)) } }
 
 export const RollStep: Story = { parameters: { api: guidedApi(atStep(rollStep)) } }
 

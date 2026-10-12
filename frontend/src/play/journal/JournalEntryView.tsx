@@ -6,10 +6,14 @@ import type {
   LikelihoodContent,
   NoteContent,
   OracleTableContent,
+  PickContent,
   RollContent,
 } from './useJournal'
 
 type ChoiceContent = Extract<JournalEntry['content'], { kind: 'choice' }>
+
+/** The release Tags (key and label) that name the keys a pick entry stores. */
+type TagLabels = readonly { key: string; label: string }[]
 
 const recordedTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -19,6 +23,8 @@ const answerLabels: Record<LikelihoodContent['answer'], string> = {
   no: 'No',
   exceptional_no: 'Exceptional no',
 }
+
+const kindLabels: Record<PickContent['of'], string> = { npc: 'NPC', thread: 'Thread' }
 
 /** The accessible name of an entry: its kind and what it is about. */
 function entryLabel(content: JournalEntry['content']) {
@@ -32,17 +38,26 @@ function entryLabel(content: JournalEntry['content']) {
       return `Oracle ${content.oracleName}`
     case 'choice':
       return `Choice ${content.question}`
+    case 'pick':
+      return `Pick ${kindLabels[content.of]}`
   }
 }
 
 /** One journal entry, rendered by kind, with the time it was recorded. */
-export function JournalEntryView({ entry }: { entry: JournalEntry }) {
+export function JournalEntryView({
+  entry,
+  tags = [],
+}: {
+  entry: JournalEntry
+  /** The campaign's release Tags, so a pick shows labels instead of keys. */
+  tags?: TagLabels
+}) {
   return (
     <article
       aria-label={entryLabel(entry.content)}
       className="space-y-2 rounded-xl p-3 ring-1 ring-foreground/10"
     >
-      <EntryContent content={entry.content} />
+      <EntryContent content={entry.content} tags={tags} />
       <p className="text-xs text-muted-foreground">
         <time dateTime={entry.recordedAt}>{recordedTime.format(new Date(entry.recordedAt))}</time>
       </p>
@@ -50,7 +65,7 @@ export function JournalEntryView({ entry }: { entry: JournalEntry }) {
   )
 }
 
-function EntryContent({ content }: { content: JournalEntry['content'] }) {
+function EntryContent({ content, tags }: { content: JournalEntry['content']; tags: TagLabels }) {
   switch (content.kind) {
     case 'note':
       return <NoteView content={content} />
@@ -62,7 +77,33 @@ function EntryContent({ content }: { content: JournalEntry['content'] }) {
       return <LikelihoodView content={content} />
     case 'choice':
       return <ChoiceView content={content} />
+    case 'pick':
+      return <PickView content={content} tags={tags} />
   }
+}
+
+function PickView({ content, tags }: { content: PickContent; tags: TagLabels }) {
+  const kind = kindLabels[content.of]
+  const plural = content.picked.length > 1 ? 's' : ''
+  return (
+    <>
+      <p>
+        Picked {kind}
+        {plural}:{' '}
+        <strong>
+          {content.picked.length === 0
+            ? 'No match'
+            : content.picked.map(({ name }) => name).join(', ')}
+        </strong>
+      </p>
+      {content.tags.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Tagged:{' '}
+          {content.tags.map((key) => tags.find((tag) => tag.key === key)?.label ?? key).join(', ')}
+        </p>
+      )}
+    </>
+  )
 }
 
 function ChoiceView({ content }: { content: ChoiceContent }) {

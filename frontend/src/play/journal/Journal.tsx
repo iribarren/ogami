@@ -3,6 +3,7 @@ import { useId, type ReactNode } from 'react'
 
 import { Button } from '@/shared/ui/button'
 
+import { SceneCast } from '../cast/SceneCast'
 import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
@@ -20,12 +21,18 @@ export function Journal({
   campaignId,
   sessions,
   sceneTypes,
+  tags,
+  npcs,
   current,
   entries,
 }: {
   campaignId: string
   sessions: Campaign['sessions']
   sceneTypes: Campaign['sceneTypes']
+  /** The release Tags, which name the keys of a pick entry. */
+  tags: Campaign['tags']
+  /** The campaign's NPCs, which the cast of the current scene draws from. */
+  npcs: Campaign['npcs']
   /** The scene play is in, which is the only one a rolled Scene Type can be switched in. */
   current: { session: number; scene: number } | null
   entries: JournalEntry[]
@@ -59,6 +66,13 @@ export function Journal({
                 title={sceneHeading(scene, listed(sessions, session.number, scene.number))}
                 hook={listed(sessions, session.number, scene.number)?.kind === 'hook'}
               >
+                <SceneCastHeader
+                  campaignId={campaignId}
+                  npcs={npcs}
+                  sessionNumber={session.number}
+                  scene={listed(sessions, session.number, scene.number)}
+                  editable={current?.session === session.number && current.scene === scene.number}
+                />
                 {scene.entries.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Nothing recorded in this scene yet.
@@ -76,7 +90,7 @@ export function Journal({
                             Flow step · {entry.flowStep.title}
                           </p>
                         )}
-                        <JournalEntryView entry={entry} />
+                        <JournalEntryView entry={entry} tags={tags} />
                         {current?.session === session.number && current.scene === scene.number && (
                           <SceneTypeOffer
                             campaignId={campaignId}
@@ -143,6 +157,14 @@ function SceneTypeOffer({
       )}
     </div>
   )
+}
+
+/** The cast of a scene under its heading; nothing for a scene the campaign does not list. */
+function SceneCastHeader({
+  scene,
+  ...props
+}: { scene: ListedScene | undefined } & Omit<Parameters<typeof SceneCast>[0], 'scene'>) {
+  return scene === undefined ? null : <SceneCast scene={scene} {...props} />
 }
 
 type ListedScene = Campaign['sessions'][number]['scenes'][number]

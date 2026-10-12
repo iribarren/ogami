@@ -518,7 +518,7 @@ final class FlowRun
      */
     public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $factValues, array $pickedNames, \Closure $candidatesOf): FlowRunView
     {
-        $placeholders = new Placeholders($trackerValues, $this->answers, picked: $pickedNames, facts: $factValues);
+        $placeholders = new Placeholders($trackerValues, $this->answers, $factValues, picked: $pickedNames);
         if (FlowRunStatus::Completed === $this->status) {
             return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete', false);
         }
@@ -959,13 +959,18 @@ final class FlowRun
     /**
      * Fills a Fact slot, which is no scene's business: a text slot takes the rendered text (the
      * answer when omitted), trimmed and cut to the longest fact text; an NPC or Thread slot takes
-     * the first item of its kind in "{picked}". An empty text, or nothing of the kind picked,
-     * changes nothing; a campaign at its most facts adds none.
+     * the first item of its kind in "{picked}". An empty text, a missing answer when no text is given,
+     * or nothing of the kind picked, changes nothing; a campaign at its most facts adds none.
      */
     private function fillFact(FillFactEffect $effect, ?string $answer, FlowRunContext $context): void
     {
         $type = ($context->release->factSlot($effect->slot) ?? throw new \LogicException(\sprintf('The pinned release has no Fact slot "%s".', $effect->slot)))->type;
         if (FactSlotType::Text === $type) {
+            // The default text is the answer: without one there is nothing to fill with, not the "—" placeholder.
+            if (null === $effect->text && '' === trim($answer ?? '')) {
+                return;
+            }
+
             $text = $this->renderedEffectText($effect->text ?? '{answer}', Fact::MAX_TEXT_LENGTH, $answer, $context);
             if ('' !== $text) {
                 $context->fillFact($effect->slot, $text, null);
@@ -1002,7 +1007,7 @@ final class FlowRun
      */
     private function renderedEffectText(string $text, int $max, ?string $answer, FlowRunContext $context): string
     {
-        $rendered = new Placeholders($context->trackerValues(), $this->answers, $answer, $context->pickedNames($this->picked), $context->factValues())->render($text);
+        $rendered = new Placeholders($context->trackerValues(), $this->answers, $context->factValues(), $answer, $context->pickedNames($this->picked))->render($text);
 
         return trim(mb_substr(trim($rendered), 0, $max));
     }

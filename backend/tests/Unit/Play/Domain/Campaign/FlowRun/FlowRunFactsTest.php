@@ -181,6 +181,22 @@ final class FlowRunFactsTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aTextSlotWithoutTextAndWithoutAnAnswerChangesNothing(): void
+    {
+        // A pick that matched nothing has no answer text.
+        $release = $this->snapshot([
+            ['key' => 'p', 'kind' => 'pick', 'title' => 'Which lead?', 'of' => 'thread', 'mode' => 'random', 'mandatory' => false, 'effects' => [['kind' => 'fillFact', 'slot' => 'city']]],
+            $this->promptWith([], 'b'),
+        ]);
+        $campaign = $this->inScene($release);
+
+        $campaign->completeFlowStep('p', StepResult::pick(ItemKind::Thread, []), $release, self::at());
+
+        self::assertSame([], $campaign->facts($release), 'No slot is filled with the empty-answer placeholder.');
+        self::assertSame(['setup', 'b'], self::position($campaign));
+    }
+
+    #[Test]
     public function aThreadSlotTakesTheFirstThreadPickedAndAnNpcSlotTakesNothingFromThreads(): void
     {
         $release = $this->snapshot([

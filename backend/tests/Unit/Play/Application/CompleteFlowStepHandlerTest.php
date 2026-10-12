@@ -9,7 +9,6 @@ use App\Play\Application\CompleteFlowStep;
 use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
-use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -248,7 +247,7 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
     }
 
     #[Test]
-    public function theEntryOfTheLastStepOfASceneBelongsToThatSceneEvenThoughTheNextOneStarts(): void
+    public function theEntryOfTheLastStepOfASceneBelongsToThatSceneAndThePickWaits(): void
     {
         $this->campaigns->add($this->guided('campaign-3', 'chain'));
         $campaign = $this->stored('campaign-3');
@@ -259,25 +258,23 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
 
         $entry = $this->onlyEntryOf('campaign-3');
         self::assertSame([1, 1], [$entry->sessionNumber(), $entry->sceneNumber()]);
-        self::assertSame([2, 'Solo 2'], [$this->stored('campaign-3')->currentScene()?->number(), $this->stored('campaign-3')->currentScene()?->title()]);
+        // After a scene the pick waits for the player (ADR 0020): no next scene starts by itself.
+        self::assertSame([1, FlowRunStage::ScenePick], [$this->stored('campaign-3')->currentScene()?->number(), $this->stored('campaign-3')->flowRun()?->stage()]);
     }
 
     #[Test]
-    public function aStepThatStartsASceneTheSessionCannotHoldRecordsNothing(): void
+    public function theLastStepOfTheLastSceneAFullSessionHoldsIsRecordedAndThePickWaits(): void
     {
-        // The 200th scene of the session is closing; the next one does not fit.
+        // The 200th scene of the session is closing; no next one would fit, and none starts by itself.
         $scenes = array_map(static fn (int $number): Scene => Scene::reconstitute($number, 'Solo '.$number, self::at('09:05'), sceneType: 'solo'), range(1, Session::MAX_SCENES));
         $flowRun = FlowRun::reconstitute(FlowRunStatus::Active, 0, FlowRunStage::Scene, 1, 200, 'solo', ScenePart::Closing, 'wrap', 0, 200, [], null, null, 0, []);
         $full = Campaign::reconstitute(CampaignId::fromString('campaign-4'), 'user-1', 'Full', PinnedRelease::of('guided', 1, 'Guided'), self::at('09:00'), [Session::reconstitute(1, self::at('09:05'), $scenes)], [], 'chain', $flowRun);
         $this->campaigns->add($full);
 
-        try {
-            $this->complete(self::command('wrap', text: 'Done', campaignId: 'campaign-4'));
-            self::fail('A scene was started in a full session.');
-        } catch (CampaignLimitReached) {
-            self::assertSame([], $this->journalOf('campaign-4'));
-            self::assertEquals($full, $this->stored('campaign-4'));
-        }
+        $this->complete(self::command('wrap', text: 'Done', campaignId: 'campaign-4'));
+
+        self::assertSame([1, 200], [$this->onlyEntryOf('campaign-4')->sessionNumber(), $this->onlyEntryOf('campaign-4')->sceneNumber()]);
+        self::assertSame([FlowRunStage::ScenePick, 200], [$this->stored('campaign-4')->flowRun()?->stage(), \count($this->stored('campaign-4')->currentSession()?->scenes() ?? [])]);
     }
 
     /**

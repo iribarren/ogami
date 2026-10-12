@@ -6,11 +6,13 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\SceneType;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -119,11 +121,71 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
         self::assertFalse($campaign->threads()[0]->isOpen());
     }
 
+    #[Test]
+    public function theAdventurePhaseOpeningPicksTheOnlySceneTypeItself(): void
+    {
+        $campaign = $this->firstAdventureScene();
+
+        self::assertSame([FlowRunStage::Scene, 'sceneOpening', 'expected', 2], [self::flowRunOf($campaign)->stage(), ...self::position($campaign), $campaign->currentScene()?->number()]);
+    }
+
+    #[Test]
+    public function afterAnAdventureSceneTheFlowRunWaitsAtTheScenePickWhereTheSessionCanEnd(): void
+    {
+        $campaign = $this->firstAdventureScene();
+
+        $this->playAsExpected($campaign, 2);
+
+        $view = $campaign->flowRunView($this->release);
+        self::assertSame([FlowRunStage::ScenePick, null, 2], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->scene(), \count($campaign->currentSession()?->scenes() ?? [])]);
+        self::assertSame([['scene'], true, true, 'Next scene: Scene'], [array_map(static fn (SceneType $sceneType): string => $sceneType->key, $view?->pick->cards ?? []), $view?->canEndSession, $view?->canMoveOn, $view?->next]);
+
+        $campaign->endSession(self::at(), null, $this->release);
+
+        self::assertNull($campaign->currentSession());
+        self::assertSame(FlowRunStage::ScenePick, self::flowRunOf($campaign)->stage());
+    }
+
+    #[Test]
+    public function playThisStartsTheNextSceneFromTheWaitingPick(): void
+    {
+        $campaign = $this->firstAdventureScene();
+        $this->playAsExpected($campaign, 2);
+
+        $campaign->pickSceneType('scene', $this->release, self::at());
+
+        self::assertSame(['sceneOpening', 'expected', 3], [...self::position($campaign), $campaign->currentScene()?->number()]);
+    }
+
+    #[Test]
+    public function theWaitingPickStaysThroughPauseAndResume(): void
+    {
+        $campaign = $this->firstAdventureScene();
+        $this->playAsExpected($campaign, 2);
+
+        $campaign->pauseGuidance(self::at());
+        $campaign->resumeGuidance($this->release, self::at());
+
+        self::assertSame([FlowRunStage::ScenePick, false, 2], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->autoPickDue(), \count($campaign->currentSession()?->scenes() ?? [])]);
+    }
+
+    #[Test]
+    public function theNextSessionPicksTheOnlySceneTypeItself(): void
+    {
+        $campaign = $this->firstAdventureScene();
+        $this->playAsExpected($campaign, 2);
+        $campaign->endSession(self::at(), null, $this->release);
+
+        $campaign->startSession(self::at(), $this->release);
+
+        self::assertSame(['sceneOpening', 'expected', 2, 1], [...self::position($campaign), $campaign->currentSession()?->number(), $campaign->currentScene()?->number()]);
+    }
+
     /**
-     * A campaign in its first adventure scene, with a Thread and an NPC from the premise, at the
-     * "interrupt" step (the scene check was low and the twist an interruption).
+     * A campaign in its first adventure scene (scene 2 of session 1), with a Thread and an NPC from
+     * the premise, at the "expected" step.
      */
-    private function interruptedScene(): Campaign
+    private function firstAdventureScene(): Campaign
     {
         $campaign = self::guided($this->release, 'mythic');
         $campaign->startSession(self::at(), $this->release);
@@ -131,6 +193,29 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('goal', self::prompt('Find the caravan'), $this->release, self::at());
         $campaign->completeFlowStep('involved', self::prompt('Mara'), $this->release, self::at());
         $campaign->endFlowScene(1, $this->release, self::at());
+
+        return $campaign;
+    }
+
+    /**
+     * Plays the guided adventure scene as expected (the scene check passes) to its end.
+     */
+    private function playAsExpected(Campaign $campaign, int $sceneNumber): void
+    {
+        $campaign->completeFlowStep('expected', self::prompt('A quiet market'), $this->release, self::at());
+        $campaign->completeFlowStep('check', self::roll('1d10', 9), $this->release, self::at());
+        $campaign->endFlowScene($sceneNumber, $this->release, self::at());
+        $campaign->completeFlowStep('control', StepResult::choice('yes'), $this->release, self::at());
+        $campaign->completeFlowStep('lists', self::prompt('Mara is worried'), $this->release, self::at());
+    }
+
+    /**
+     * A campaign in its first adventure scene, with a Thread and an NPC from the premise, at the
+     * "interrupt" step (the scene check was low and the twist an interruption).
+     */
+    private function interruptedScene(): Campaign
+    {
+        $campaign = $this->firstAdventureScene();
 
         $campaign->completeFlowStep('expected', self::prompt('A quiet market'), $this->release, self::at());
         $campaign->completeFlowStep('check', self::roll('1d10', 5), $this->release, self::at());

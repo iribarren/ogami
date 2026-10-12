@@ -121,12 +121,13 @@ final class FlowRunHooksTest extends FlowRunTestCase
         $campaign->skipFlowStep('wrap', $this->release, self::at());
 
         // The finale has no hooks; the world turn's forced trouble carries over, then its sequence
-        // picks its only Scene Type itself, and the Flow ends after it.
+        // offers its only Scene Type, which waits after a scene (ADR 0020), and the Flow ends after it.
         self::assertSame([1, FlowRunStage::ScenePick, 'trouble', true], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->forcedNextSceneType(), self::flowRunOf($campaign)->phaseOpened()]);
         $campaign->pickSceneType('trouble', $this->release, self::at());
         $campaign->skipFlowStep('face', $this->release, self::at());
         $campaign->endFlowScene(6, $this->release, self::at());
-        $this->playJob($campaign, false);
+        self::assertSame([FlowRunStage::ScenePick, null], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->forcedNextSceneType()]);
+        $this->playJob($campaign);
         self::assertSame(FlowRunStatus::Completed, self::flowRunOf($campaign)->status());
         self::assertSame(['skip:lure', 'sceneTypeSwitchIgnored:4', 'skip:wrap', 'phaseEnded:start', 'skip:face', 'phaseEnded:finale', 'completed'], self::history($campaign));
         self::assertSame([['step' => 'wrap', 'part' => 'phaseClosing'], 'endPhase', 'finished'], [self::flowRunOf($campaign)->history()[2]->details, self::flowRunOf($campaign)->history()[3]->details['reason'], self::flowRunOf($campaign)->history()[5]->details['reason']]);

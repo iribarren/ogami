@@ -155,7 +155,7 @@ final class FlowRunExamplesTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function theMythicSessionPicksItsOnlySceneTypeItselfAndLoopsTheAdventure(): void
+    public function theMythicSessionPicksItsOnlySceneTypeWhenThePhaseOpensAndLoopsTheAdventure(): void
     {
         $release = self::release('examples/mythic-session');
         $campaign = self::guided($release, 'mythic');
@@ -184,6 +184,10 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         self::assertSame(['sceneClosing', 'control'], self::position($campaign));
         $campaign->completeFlowStep('control', StepResult::choice('no'), $release, self::at());
         $campaign->skipFlowStep('lists', $release, self::at());
+
+        // After a scene the pick waits (ADR 0020): the player plays the next scene or ends the session.
+        self::assertSame([FlowRunStage::ScenePick, true], [self::flowRunOf($campaign)->stage(), $campaign->flowRunView($release)?->canEndSession]);
+        $campaign->pickSceneType('scene', $release, self::at());
 
         // Losing control raised the chaos factor: a check over it plays the scene as expected.
         self::assertSame(['Scene 3', 'sceneOpening', 'expected'], [$campaign->currentScene()?->title(), ...self::position($campaign)]);

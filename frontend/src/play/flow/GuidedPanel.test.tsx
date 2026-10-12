@@ -290,6 +290,28 @@ describe('the guided panel', () => {
       expect(pick.queryByText('Forced for this scene') !== null).toBe(forced)
     })
 
+    it('waits after a scene on the only Scene Type the player chooses, to play it or end the session', async () => {
+      const user = userEvent.setup()
+      const { sent } = renderGuided(
+        guided(
+          atTheScenePick({
+            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', oracles: [] }],
+          }),
+        ),
+        { 'flow-run/pick': answering(guided(atStep(promptStep))) },
+      )
+
+      const guide = await panel()
+      const pick = within(await guide.findByRole('region', { name: 'Scene pick' }))
+      expect(pick.getByText('Choose the next Scene Type')).toBeInTheDocument()
+      expect(guide.getByRole('button', { name: 'End session' })).toBeInTheDocument()
+      await user.click(pick.getByRole('button', { name: 'Play Tour' }))
+
+      await waitFor(() => {
+        expect(sent['flow-run/pick']).toEqual({ sceneType: 'tour' })
+      })
+    })
+
     it('rolls the Scene Type on the oracle table', async () => {
       const user = userEvent.setup()
       const { sent } = renderGuided(

@@ -21,8 +21,9 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0015 | [Sequential slice delivery to main](0015-sequential-slice-delivery.md) | Accepted |
 | 0016 | [The flow is presented in the journal, with an optional focus mode](0016-flow-presentation-journal-with-focus-mode.md) | Accepted, amended by 0017 |
 | 0017 | [The NarrativeFlow model](0017-narrativeflow-model.md) | Accepted, amended by 0018 |
-| 0018 | [NarrativeFlow control flow and cast](0018-narrativeflow-control-flow-and-cast.md) | Accepted |
+| 0018 | [NarrativeFlow control flow and cast](0018-narrativeflow-control-flow-and-cast.md) | Accepted, amended by 0020 |
 | 0019 | [Random events from fate-question doubles](0019-random-events-from-fate-question-doubles.md) | Accepted |
+| 0020 | [The scene pick waits after a scene](0020-scene-pick-waits-after-a-scene.md) | Accepted |
 
 ## Template
 

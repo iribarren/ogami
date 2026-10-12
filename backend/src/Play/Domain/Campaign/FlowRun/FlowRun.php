@@ -54,7 +54,8 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * drives it through a FlowRunContext.
  *
  * Stages: at the scene pick, the phase's selection offers Scene Types (a selection with one picks
- * it as soon as a session is under way); picking starts a scene of play. In a scene the parts run
+ * it itself when a session starts or a phase opens, ADR 0020; after a scene the pick waits for the
+ * player, who plays the next scene or ends the session); picking starts a scene of play. In a scene the parts run
  * in order (ScenePart): scene opening, setup, play, open play until "End scene", closing, scene
  * closing. After the scene the phase goes on (world turn, then the scene pick), or ends: a once
  * phase after its scenes, a loop phase on "Move on" or when an Effect ends it (both take effect
@@ -131,6 +132,9 @@ final class FlowRun
     /** whether a session started whose opening has not run yet */
     private bool $sessionOpeningDue = false;
 
+    /** whether the scene pick picks a selection's only Scene Type itself: a session started or a phase opened since the last scene */
+    private bool $autoPickDue = false;
+
     /** the items "{picked}" stands for in the current Scene, null when nothing was picked in it */
     private ?PickedItems $picked = null;
 
@@ -161,6 +165,7 @@ final class FlowRun
      * @param bool                      $phaseOpened       whether the current phase's opening ran
      * @param bool                      $sessionOpeningDue whether a session started whose opening has not run yet
      * @param ?PickedItems              $picked            the items "{picked}" stands for, null when nothing was picked in the Scene
+     * @param bool                      $autoPickDue       whether the scene pick picks a selection's only Scene Type itself (a session started or a phase opened since the last scene)
      */
     public static function reconstitute(
         FlowRunStatus $status,
@@ -182,6 +187,7 @@ final class FlowRun
         bool $phaseOpened = true,
         bool $sessionOpeningDue = false,
         ?PickedItems $picked = null,
+        bool $autoPickDue = false,
     ): self {
         $flowRun = new self();
         $flowRun->status = $status;
@@ -203,6 +209,7 @@ final class FlowRun
         $flowRun->phaseOpened = $phaseOpened;
         $flowRun->sessionOpeningDue = $sessionOpeningDue;
         $flowRun->picked = $picked;
+        $flowRun->autoPickDue = $autoPickDue;
 
         return $flowRun;
     }
@@ -590,6 +597,15 @@ final class FlowRun
     }
 
     /**
+     * Whether the scene pick picks a selection's only Scene Type itself: a session started or a
+     * phase opened since the last scene. After a scene the pick waits for the player.
+     */
+    public function autoPickDue(): bool
+    {
+        return $this->autoPickDue;
+    }
+
+    /**
      * The guided scene's or hook Scene's session and its number in it; null outside one.
      *
      * @return ?array{int, int}
@@ -770,8 +786,10 @@ final class FlowRun
     /**
      * On the way to the scene pick, with a session under way: the session opening when it is due,
      * the phase opening the first time in the phase, the phase closing instead of the pick when the
-     * phase is ending. At the pick a selection with one Scene Type picks it (a forced Scene Type and
-     * an oracle selection wait for the player). Without a session the FlowRun waits at the pick.
+     * phase is ending. At the pick a selection with one Scene Type picks it when a session started or
+     * the phase opened since the last scene; after a scene it waits for the player, who plays the
+     * next scene or ends the session (ADR 0020). A forced Scene Type and an oracle selection wait for
+     * the player. Without a session the FlowRun waits at the pick.
      */
     private function reachScenePick(FlowRunContext $context): void
     {
@@ -782,13 +800,15 @@ final class FlowRun
 
         if ($this->sessionOpeningDue) {
             $this->sessionOpeningDue = false;
+            $this->autoPickDue = true;
             $this->runHook(Hook::SessionOpening, $context);
         } elseif (!$this->phaseOpened) {
             $this->phaseOpened = true;
+            $this->autoPickDue = true;
             $this->runHook(Hook::PhaseOpening, $context);
         } elseif (null !== $this->phaseEnding) {
             $this->closePhase($context);
-        } elseif (null === $this->forcedNextSceneType) {
+        } elseif (null === $this->forcedNextSceneType && $this->autoPickDue) {
             $this->autoPick($context);
         }
     }
@@ -809,6 +829,7 @@ final class FlowRun
         $this->sceneType = $sceneType->key;
         $this->switchCount = 0;
         $this->picked = null;
+        $this->autoPickDue = false;
         ++$this->scenesPlayed;
         if (null !== $this->forcedNextSceneType) {
             $this->forcedNextSceneType = null;
@@ -1318,17 +1339,13 @@ final class FlowRun
     }
 
     /**
-     * The scene pick named: the next of a sequence, the forced or only Scene Type, else the choice
-     * or the table to roll.
+     * The scene pick named: the one Scene Type offered (the next of a sequence, the forced or the
+     * only one), else the choice or the table to roll.
      */
     private function pickLabel(GameSystemSnapshot $release, Flow $flow): string
     {
         $selection = $this->phase($flow)->selection;
         $offered = $this->offered($release, $flow);
-        if (null === $this->forcedNextSceneType && SelectionRule::Sequence === $selection->rule) {
-            return 'Next: '.$offered[0]->name;
-        }
-
         if (1 === \count($offered)) {
             return 'Next scene: '.$offered[0]->name;
         }

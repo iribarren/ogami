@@ -25,7 +25,7 @@ use Doctrine\DBAL\Types\JsonType;
  *
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
- * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, history: [{event, at, details: {…}}]}, every
+ * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}]}, every
  * field present (null where the FlowRun has none). The details are those of the event's
  * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
  * microseconds and UTC offset. Reading checks the shape and every enumerated value and fails on
@@ -34,7 +34,9 @@ use Doctrine\DBAL\Types\JsonType;
  * slice 20) lack hook, phaseOpened and sessionOpeningDue: they read as no hook, the current phase's
  * opening already run and no session opening due. Rows stored before the pick step (play-threads-npcs
  * slice 7) lack picked: they read as nothing picked. Picked items need a Scene (they end with it), at
- * most 10 distinct ids, and a kind of NPC or Thread.
+ * most 10 distinct ids, and a kind of NPC or Thread. Rows stored before the scene pick waited after a
+ * scene (preset-mythic-flow slice 3, ADR 0020) lack autoPickDue: they read as waiting (false), so no
+ * scene starts by surprise.
  *
  * Registered by its attribute (DoctrineBundle autoconfiguration), not in doctrine.yaml.
  */
@@ -78,6 +80,7 @@ final class CampaignFlowRunType extends JsonType
             'phaseOpened' => $value->phaseOpened(),
             'sessionOpeningDue' => $value->sessionOpeningDue(),
             'picked' => $value->picked() instanceof PickedItems ? ['kind' => $value->picked()->kind->value, 'ids' => $value->picked()->ids] : null,
+            'autoPickDue' => $value->autoPickDue(),
             'history' => array_map(
                 static fn (FlowRunHistoryEntry $entry): array => [
                     'event' => $entry->event->value,
@@ -128,6 +131,7 @@ final class CampaignFlowRunType extends JsonType
             $this->bool($data, 'phaseOpened', true),
             $this->bool($data, 'sessionOpeningDue', false),
             $picked,
+            $this->bool($data, 'autoPickDue', false),
         );
     }
 

@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
@@ -16,8 +22,10 @@ use App\Play\Domain\GameSystem\Flow\CreateNpcEffect;
 use App\Play\Domain\GameSystem\Flow\CreateThreadEffect;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
+use App\Play\Domain\GameSystem\Flow\FillFactEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemCount;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\NextSceneEffect;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
@@ -29,6 +37,7 @@ use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
 use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\Flow\Step;
+use App\Play\Domain\GameSystem\Flow\StepEffects;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
 use App\Play\Domain\GameSystem\Flow\TableStep;
@@ -503,12 +512,13 @@ final class FlowRun
      *
      * @param ?int                               $sessionNumber the number of the session under way, null when none is
      * @param array<string, int>                 $trackerValues the campaign's value of every Tracker of the release, by key, for placeholders
+     * @param array<string, string>              $factValues    the value of every Fact slot of the release, by key, for "{fact:key}"
      * @param list<string>                       $pickedNames   the current names of the picked items, for "{picked}"
      * @param \Closure(PickStep): PickCandidates $candidatesOf  the campaign's candidates for a pick step
      */
-    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $pickedNames, \Closure $candidatesOf): FlowRunView
+    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $factValues, array $pickedNames, \Closure $candidatesOf): FlowRunView
     {
-        $placeholders = new Placeholders($trackerValues, $this->answers, picked: $pickedNames);
+        $placeholders = new Placeholders($trackerValues, $this->answers, picked: $pickedNames, facts: $factValues);
         if (FlowRunStatus::Completed === $this->status) {
             return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete', false);
         }
@@ -528,7 +538,7 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release)) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
@@ -910,12 +920,13 @@ final class FlowRun
             }
         } elseif ($effect instanceof CreateNpcEffect || $effect instanceof CreateThreadEffect) {
             $this->createItem($effect, $answer, $context);
+        } elseif ($effect instanceof FillFactEffect) {
+            $this->fillFact($effect, $answer, $context);
         } elseif ($effect instanceof CloseThreadEffect) {
             $context->closePickedThreads($this->picked);
         } elseif ($effect instanceof SwitchSceneTypeEffect) {
             return $this->switchSceneTypeByEffect($effect->sceneType, $context);
         }
-        // A FillFactEffect changes nothing yet: Campaign facts are applied from slice 4 of play-campaign-facts.
 
         return false;
     }
@@ -946,12 +957,52 @@ final class FlowRun
     }
 
     /**
+     * Fills a Fact slot, which is no scene's business: a text slot takes the rendered text (the
+     * answer when omitted), trimmed and cut to the longest fact text; an NPC or Thread slot takes
+     * the first item of its kind in "{picked}". An empty text, or nothing of the kind picked,
+     * changes nothing; a campaign at its most facts adds none.
+     */
+    private function fillFact(FillFactEffect $effect, ?string $answer, FlowRunContext $context): void
+    {
+        $type = ($context->release->factSlot($effect->slot) ?? throw new \LogicException(\sprintf('The pinned release has no Fact slot "%s".', $effect->slot)))->type;
+        if (FactSlotType::Text === $type) {
+            $text = $this->renderedEffectText($effect->text ?? '{answer}', Fact::MAX_TEXT_LENGTH, $answer, $context);
+            if ('' !== $text) {
+                $context->fillFact($effect->slot, $text, null);
+            }
+
+            return;
+        }
+
+        $kind = FactSlotType::Npc === $type ? ItemKind::Npc : ItemKind::Thread;
+        $id = $this->picked instanceof PickedItems && $this->picked->kind === $kind ? ($this->picked->ids[0] ?? null) : null;
+        if (null !== $id) {
+            $context->fillFact($effect->slot, null, ItemKind::Npc === $kind ? FactLink::npc(NpcId::fromString($id)) : FactLink::thread(ThreadId::fromString($id)));
+        }
+    }
+
+    /**
+     * The Fact slots any Effect of the step may fill, in the release's slot order.
+     *
+     * @return list<FactSlot>
+     */
+    private function fills(Step $step, GameSystemSnapshot $release): array
+    {
+        $keys = array_map(
+            static fn (FillFactEffect $effect): string => $effect->slot,
+            array_filter(StepEffects::of($step, $release->tableEffects(...)), static fn (Effect $effect): bool => $effect instanceof FillFactEffect),
+        );
+
+        return array_values(array_filter($release->factSlots(), static fn (FactSlot $slot): bool => \in_array($slot->key, $keys, true)));
+    }
+
+    /**
      * An Effect's text with its placeholders rendered, trimmed and cut to the longest the field
      * takes.
      */
     private function renderedEffectText(string $text, int $max, ?string $answer, FlowRunContext $context): string
     {
-        $rendered = new Placeholders($context->trackerValues(), $this->answers, $answer, $context->pickedNames($this->picked))->render($text);
+        $rendered = new Placeholders($context->trackerValues(), $this->answers, $answer, $context->pickedNames($this->picked), $context->factValues())->render($text);
 
         return trim(mb_substr(trim($rendered), 0, $max));
     }

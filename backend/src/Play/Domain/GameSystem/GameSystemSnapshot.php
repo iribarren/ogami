@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\GameSystem;
 
+use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableSet;
@@ -249,6 +250,16 @@ final readonly class GameSystemSnapshot
     public function rolledSceneTypes(OracleTableResult $result): array
     {
         return array_map(fn (OracleTableStep $step): ?string => $this->rolledEntry($step)?->sceneType, $result->steps());
+    }
+
+    /**
+     * The Effects of every entry of an oracle table, in entry order; none for a table without metadata.
+     *
+     * @return list<Effect>
+     */
+    public function tableEffects(string $tableKey): array
+    {
+        return array_merge([], ...array_map(static fn (TableEntryMetadata $entry): array => $entry->effects, $this->tableEntries[$tableKey] ?? []));
     }
 
     /**

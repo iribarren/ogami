@@ -21,11 +21,12 @@ use OpenApi\Attributes as OA;
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
  * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
-#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick'])]
+#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills'])]
 final readonly class FlowStepResponse
 {
     /**
      * @param list<FlowStepOptionResponse> $options
+     * @param list<FactSlotResponse>       $fills
      */
     private function __construct(
         #[OA\Property(example: 'slip-past')]
@@ -56,6 +57,12 @@ final readonly class FlowStepResponse
         public array $options,
         #[OA\Property(ref: new Model(type: FlowPickStepResponse::class), description: 'What the step picks from (pick step); null for the other kinds.', nullable: true)]
         public ?FlowPickStepResponse $pick,
+        #[OA\Property(
+            description: 'The Fact slots any Effect of the step may fill, in the release\'s slot order (a fillFact Effect fills a slot once the step is completed); empty for a step that fills none.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: FactSlotResponse::class)),
+        )]
+        public array $fills,
     ) {
     }
 
@@ -85,6 +92,6 @@ final readonly class FlowStepResponse
     {
         $step = $view->step;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick);
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills));
     }
 }

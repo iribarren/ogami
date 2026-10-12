@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\Lists;
 
+use App\Play\Domain\Campaign\Facts\FactId;
+
 /**
- * The ids of the NPCs and Threads a Flow Effect creates. They are name-based UUIDs (RFC 4122
- * version 5: SHA-1 over a fixed namespace and the name "<campaignId>/<npc|thread>/<count>"), so
- * the domain needs no id generator: the count is the number of items of that kind the campaign
- * already holds, and lists only grow (nothing is deleted), so the id is unique within the campaign
- * and the same for the same campaign, kind and count.
+ * The ids of the NPCs and Threads a Flow Effect creates, and of the slot facts a fillFact Effect
+ * adds. They are name-based UUIDs (RFC 4122 version 5: SHA-1 over a fixed namespace and the name
+ * "<campaignId>/<npc|thread|fact>/<count>"), so the domain needs no id generator: the count is the
+ * number of items of that kind the campaign already holds, and lists only grow (nothing is
+ * deleted), so the id is unique within the campaign and the same for the same campaign, kind and
+ * count.
  */
 final class GeneratedItemId
 {
@@ -23,6 +26,11 @@ final class GeneratedItemId
     public static function thread(string $campaignId, int $count): ThreadId
     {
         return ThreadId::fromString(self::uuid(\sprintf('%s/thread/%d', $campaignId, $count)));
+    }
+
+    public static function fact(string $campaignId, int $count): FactId
+    {
+        return FactId::fromString(self::uuid(\sprintf('%s/fact/%d', $campaignId, $count)));
     }
 
     private static function uuid(string $name): string

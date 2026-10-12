@@ -10,6 +10,7 @@ use App\Play\Application\CampaignNotFound;
 use App\Play\Application\EditFact;
 use App\Play\Application\FactIdGenerator;
 use App\Play\Application\FactView;
+use App\Play\Application\FillFactSlot;
 use App\Play\Application\GetCampaign;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
@@ -17,6 +18,11 @@ use App\Play\Domain\Campaign\Facts\FactAlreadyExists;
 use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFact;
+use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
+use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidThread;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
+use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -36,10 +42,11 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The Campaign facts of a solo player's campaigns: add a free fact and edit a fact (security.yaml
- * restricts these routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly
+ * The Campaign facts of a solo player's campaigns: add a free fact, edit a fact, and fill a Fact
+ * slot (security.yaml restricts these routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly
  * like an unknown one (the campaign is checked first), and so is a fact id the campaign does not
- * hold, such as one that is not a UUID; so is a link naming an NPC, Thread or fact it does not hold.
+ * hold, such as one that is not a UUID; so is a link or subject naming an NPC, Thread or fact it does not
+ * hold. A slot key the pinned release does not declare is a value to fix (422), not a missing resource.
  */
 #[AsController]
 #[OA\Tag(name: 'Play')]
@@ -49,6 +56,7 @@ final readonly class CampaignFactsController
 
     private const string MALFORMED_ADD = 'Send a JSON object with string "label" and "text" and, optionally, a list or null "links" of {"kind": "npc" | "thread" | "fact", "id": "<uuid>"}, such as {"label": "The guild", "text": "Owes a debt.", "links": [{"kind": "npc", "id": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}]}.';
     private const string MALFORMED_EDIT = 'Send a JSON object with a list "links" of {"kind": "npc" | "thread" | "fact", "id": "<uuid>"} and string or null "label" and "text", such as {"label": "The guild", "text": "Owes a debt.", "links": []}.';
+    private const string MALFORMED_FILL = 'Send a JSON object with exactly one of a string "text", a "subject" (the UUID of an NPC or Thread) and a string "name" (a new NPC or Thread), such as {"text": "Ashford"}.';
 
     public function __construct(
         private CommandBus $commandBus,
@@ -95,7 +103,7 @@ final readonly class CampaignFactsController
             return $this->unreadableRelease();
         }
 
-        return $this->fact($campaignId, $factId, $user, Response::HTTP_CREATED);
+        return $this->fact($campaignId, static fn (FactView $fact): bool => $fact->id === $factId, $user, Response::HTTP_CREATED);
     }
 
     #[Route('/api/campaigns/{campaignId}/facts/{factId}', name: 'api_campaigns_facts_edit', methods: ['PUT'])]
@@ -136,7 +144,47 @@ final readonly class CampaignFactsController
             return $this->unreadableRelease();
         }
 
-        return $this->fact($campaignId, $factId, $user, Response::HTTP_OK);
+        return $this->fact($campaignId, static fn (FactView $fact): bool => $fact->id === $factId, $user, Response::HTTP_OK);
+    }
+
+    #[Route('/api/campaigns/{campaignId}/fact-slots/{slot}', name: 'api_campaigns_fact_slots_fill', methods: ['PUT'])]
+    #[OA\Put(operationId: 'fillFactSlot', summary: 'Fill a Fact slot of one of my campaigns, or fill it again: its value is replaced, its links stay')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: FillFactSlotRequest::class)))]
+    #[OA\Response(response: 200, description: 'The slot fact, newly created or refilled.', content: new OA\JsonContent(ref: new Model(type: FactResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed, or a field is of another JSON type than documented (a subject that is not a UUID).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or the subject is an NPC or Thread it does not hold.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign already holds 500 facts, NPCs or Threads and the fill would add one, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The release declares no slot with this key, not exactly one of text, subject and name is sent, the value does not fit the slot\'s type (a text on an NPC or Thread slot, a subject or name on a text slot), or it breaks a rule (blank or too long text or name).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function fill(string $campaignId, string $slot, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the fact slot value as JSON.', self::MALFORMED_FILL);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $text = $body['text'] ?? null;
+        $subject = $body['subject'] ?? null;
+        $name = $body['name'] ?? null;
+        if (!$this->isJsonObject($request) || (null !== $text && !\is_string($text)) || (null !== $subject && (!\is_string($subject) || !Uuid::isValid($subject))) || (null !== $name && !\is_string($name))) {
+            return $this->error(self::MALFORMED_FILL, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $this->commandBus->dispatch(new FillFactSlot($campaignId, $user->id(), $slot, $text, $subject, $name));
+        } catch (CampaignNotFound|UnknownNpc|UnknownThread $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (CampaignLimitReached|CampaignModifiedConcurrently|FactAlreadyExists|NpcAlreadyExists|ThreadAlreadyExists $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (UnknownFactSlot|InvalidFact|InvalidNpc|InvalidThread $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
+        }
+
+        return $this->fact($campaignId, static fn (FactView $fact): bool => $fact->slot === $slot, $user, Response::HTTP_OK);
     }
 
     /**
@@ -168,8 +216,10 @@ final readonly class CampaignFactsController
     /**
      * Reads the saved fact back through the campaign, answering as the command did when the campaign
      * or its release cannot be read any more.
+     *
+     * @param \Closure(FactView): bool $isTheFact
      */
-    private function fact(string $campaignId, string $factId, AuthenticatedUser $user, int $status): JsonResponse
+    private function fact(string $campaignId, \Closure $isTheFact, AuthenticatedUser $user, int $status): JsonResponse
     {
         try {
             $facts = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->facts;
@@ -179,7 +229,7 @@ final readonly class CampaignFactsController
             return $this->unreadableRelease();
         }
 
-        $fact = array_find($facts, static fn (FactView $fact): bool => $fact->id === $factId) ?? throw new \LogicException('The fact was just saved.');
+        $fact = array_find($facts, $isTheFact) ?? throw new \LogicException('The fact was just saved.');
 
         return new JsonResponse(FactResponse::fromView($fact), $status);
     }

@@ -36,6 +36,14 @@ trait ReadsJsonBodies
     }
 
     /**
+     * Whether the body is a JSON object: toArray() also reads a JSON list, which has no fields to read.
+     */
+    private function isJsonObject(Request $request): bool
+    {
+        return json_decode($request->getContent(), false) instanceof \stdClass;
+    }
+
+    /**
      * Whether the body, a JSON object, holds a JSON object at this key. Request::toArray() decodes
      * `{}` and `[]` alike, so only the raw body tells them apart.
      */

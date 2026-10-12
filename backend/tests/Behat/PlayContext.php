@@ -35,8 +35,11 @@ use App\Play\Application\EndFlowScene;
 use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Application\EndSession;
 use App\Play\Application\EndSessionHandler;
+use App\Play\Application\FactIdGenerator;
 use App\Play\Application\FactLinkView;
 use App\Play\Application\FactView;
+use App\Play\Application\FillFactSlot;
+use App\Play\Application\FillFactSlotHandler;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
 use App\Play\Application\GetJournal;
@@ -44,6 +47,7 @@ use App\Play\Application\GetJournalHandler;
 use App\Play\Application\JournalEntryView;
 use App\Play\Application\ListMyCampaigns;
 use App\Play\Application\ListMyCampaignsHandler;
+use App\Play\Application\NpcIdGenerator;
 use App\Play\Application\NpcView;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\PauseGuidance;
@@ -75,19 +79,27 @@ use App\Play\Application\StartSession;
 use App\Play\Application\StartSessionHandler;
 use App\Play\Application\SwitchSceneType;
 use App\Play\Application\SwitchSceneTypeHandler;
+use App\Play\Application\ThreadIdGenerator;
 use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerView;
+use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\InvalidSceneCast;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\GuidedReleases;
@@ -130,6 +142,7 @@ final class PlayContext implements Context
     private readonly EditCurrentSceneCastHandler $editCurrentSceneCast;
     private readonly AddFactHandler $addFact;
     private readonly EditFactHandler $editFact;
+    private readonly FillFactSlotHandler $fillFactSlot;
     private readonly AddThreadHandler $addThread;
     private readonly EditThreadHandler $editThread;
     private readonly CloseThreadHandler $closeThread;
@@ -173,6 +186,50 @@ final class PlayContext implements Context
         $this->editCurrentSceneCast = new EditCurrentSceneCastHandler($owned, $campaigns);
         $this->addFact = new AddFactHandler($owned, $campaigns, $this->releases);
         $this->editFact = new EditFactHandler($owned, $campaigns, $this->releases);
+        $this->fillFactSlot = new FillFactSlotHandler(
+            $owned,
+            $campaigns,
+            $this->releases,
+            new readonly class(fn (): int => ++$this->factCount) implements FactIdGenerator {
+                /**
+                 * @param \Closure(): int $next
+                 */
+                public function __construct(private \Closure $next)
+                {
+                }
+
+                public function generate(): FactId
+                {
+                    return FactId::fromString('fact-'.($this->next)());
+                }
+            },
+            new readonly class(fn (): int => ++$this->npcCount) implements NpcIdGenerator {
+                /**
+                 * @param \Closure(): int $next
+                 */
+                public function __construct(private \Closure $next)
+                {
+                }
+
+                public function generate(): NpcId
+                {
+                    return NpcId::fromString('npc-'.($this->next)());
+                }
+            },
+            new readonly class(fn (): int => ++$this->threadCount) implements ThreadIdGenerator {
+                /**
+                 * @param \Closure(): int $next
+                 */
+                public function __construct(private \Closure $next)
+                {
+                }
+
+                public function generate(): ThreadId
+                {
+                    return ThreadId::fromString('thread-'.($this->next)());
+                }
+            },
+        );
         $this->addThread = new AddThreadHandler($owned, $campaigns, $this->releases);
         $this->editThread = new EditThreadHandler($owned, $campaigns, $this->releases);
         $this->closeThread = new CloseThreadHandler($owned, $campaigns);
@@ -221,6 +278,13 @@ final class PlayContext implements Context
     {
         // Tags "ally" (Ally) and "rival" (Rival, with a hint).
         $this->releases->add(Snapshots::withTags($key, $name, $version));
+    }
+
+    #[Given('release version :version of the GameSystem :key named :name is published with Tags and Fact slots')]
+    public function aReleaseWithTagsAndFactSlotsIsPublished(int $version, string $key, string $name): void
+    {
+        // Tags "ally" and "rival"; Fact slots "city" (text) and "prince" (npc).
+        $this->releases->add(new GameSystemSnapshot($key, $name, $version, null, [], [], factSlots: [new FactSlot('city', 'City', FactSlotType::Text), new FactSlot('prince', 'Prince', FactSlotType::Npc)], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', 'Someone in the way')]));
     }
 
     #[Given('release version :version of the GameSystem :key named :name is published with Scene Types')]
@@ -395,6 +459,34 @@ final class PlayContext implements Context
         $this->assertNoFailure();
     }
 
+    #[Given('I filled the fact slot :slot with the text :text')]
+    public function iFilledTheFactSlotWithTheText(string $slot, string $text): void
+    {
+        $this->iFillTheFactSlotWithTheText($slot, $text);
+        $this->assertNoFailure();
+    }
+
+    #[When('I fill the fact slot :slot with the text :text')]
+    public function iFillTheFactSlotWithTheText(string $slot, string $text): void
+    {
+        $this->attempt(fn () => ($this->fillFactSlot)(new FillFactSlot($this->campaignId(), self::ME, $slot, $text, null, null)));
+    }
+
+    #[When('I fill the fact slot :slot with a new NPC named :name')]
+    public function iFillTheFactSlotWithANewNpc(string $slot, string $name): void
+    {
+        $this->attempt(fn () => ($this->fillFactSlot)(new FillFactSlot($this->campaignId(), self::ME, $slot, null, null, $name)));
+    }
+
+    #[When('I link the slot fact :label to the NPC :name')]
+    public function iLinkTheSlotFactToTheNpc(string $label, string $name): void
+    {
+        // A slot fact takes only links: its label is the slot's and its value changes by filling the slot.
+        $fact = $this->fact($label);
+        $this->attempt(fn () => ($this->editFact)(new EditFact($this->campaignId(), self::ME, $fact->id, null, null, [...$this->linksOf($fact), ['kind' => 'npc', 'id' => $this->npc($name)->id]])));
+        $this->assertNoFailure();
+    }
+
     #[When('I change the text of the fact :label to :text')]
     public function iChangeTheTextOfTheFact(string $label, string $text): void
     {
@@ -416,6 +508,19 @@ final class PlayContext implements Context
         $fact = $this->fact($label);
         $links = [...$this->linksOf($fact), ['kind' => 'npc', 'id' => $this->npc($name)->id]];
         $this->attempt(fn () => ($this->editFact)(new EditFact($this->campaignId(), self::ME, $fact->id, $fact->label, $fact->text, $links)));
+    }
+
+    #[When('I try to fill the fact slot :slot with the text :text')]
+    public function iTryToFillTheFactSlotWithTheText(string $slot, string $text): void
+    {
+        $this->iFillTheFactSlotWithTheText($slot, $text);
+    }
+
+    #[Then('I am told that the slot does not take that value')]
+    public function iAmToldTheSlotDoesNotTakeThatValue(): void
+    {
+        Assert::assertInstanceOf(InvalidFact::class, $this->failure);
+        Assert::assertSame('A "npc" slot takes an NPC.', $this->failure->getMessage());
     }
 
     #[Then('I am told that the fact links to the same NPC twice')]

@@ -99,7 +99,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 | T2 | 1 | Play ACL: `FactSlot` hint, `FillFactEffect`, typed and framework-free; FlowRun ignores `fillFact` and Play `Placeholders` renders `{fact:key}` empty until slice 5; the four example fixtures gain their 8b parts (examples README); translator tests | delegated writer (slice 1, 4+ non-trivial files) | [x] | `d4ae473`, `a0f5122` |
 | T3 | 2 | Campaign facts (domain: free facts, fill and refill a slot by hand incl. creating an NPC / Thread, edit label, text, links, limits, all or nothing); JSONB column, Doctrine type, migration; repository round trip incl. legacy rows | delegated writer (slice 2, 4+ non-trivial files) | [x] | `6510d64`, `346f3db` |
 | T4a | 3 | Campaign response gains `factSlots` and `facts` (values and link names resolved); commands, handlers and endpoints to add a free fact and edit a fact (free: label, text, links; slot: links); API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 3, 4+ non-trivial files) | [x] | `3fed407`, `0692c2c`, `b1b277c`, `421836a` |
-| T4b | 4 | Fill / refill a slot over HTTP (text, existing NPC / Thread, new one by name): command, handler, endpoint; editing a slot fact's links end to end; API tests (400/404/409/422), Behat; `make api` | | [ ] | |
+| T4b | 4 | Fill / refill a slot over HTTP (text, existing NPC / Thread, new one by name): command, handler, endpoint; editing a slot fact's links end to end; API tests (400/404/409/422), Behat; `make api` | delegated writer (slice 4, 4+ non-trivial files) | [x] | |
 | T5 | 5 | FlowRun: `fillFact` (text, `{picked}` NPC / Thread, refill, limit, generated id), `{fact:key}` in views and effect text (an unknown key fails closed: slice 1 review), step view `fills` and its HTTP field; unit, integration and API tests; `make api` | | [ ] | |
 | T6 | 6 | UI: Facts panel beside the journal (slots with hints, fill by text or pick / create, free facts, edit, links), linked facts on NPC and Thread rows, slots a step fills on the step card; tests and stories | | [ ] | |
 | T7 | 6 | Glossary and contract doc wrap-up; e2e smoke for facts | | [ ] | |
@@ -115,6 +115,7 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 - 2026-10-12: slice 3 — T4a read model: campaign response gains `factSlots` and `facts` (values and link names resolved, slot label for slot facts); handler unit tests and API tests (new campaign, values, rename); `make api`; frontend fixtures gain empty lists.
 - 2026-10-12: slice 3 — T4a free fact endpoints: `AddFact` / `EditFact` with handlers, `FactIdGenerator` port and UUID v7 adapter, `CampaignFactsController` (`POST /api/campaigns/{id}/facts`, `PUT .../facts/{factId}`); a free fact edit needs label and text (handler), a slot fact takes only links (domain); handler unit tests, API tests (400/401/403/404/409/415/422, concurrent save), Behat `facts.feature`; `make api`.
 - 2026-10-12: slice 4 — slice 3 review fixes: a JSON object as `links` is a 400, unreadable-release API tests for the fact endpoints, `tryFrom` for link kinds (`InvalidFact`), guarded post-save read, `GetCampaignHandler` fail-closed tests (a slot the release lacks, on a fact and on a link target; dangling links are refused earlier by `reconstitute()`), `UuidFactIdGenerator` test. RED observed for the `{}` links and link kind fixes; the other tests passed at once (the code was right).
+- 2026-10-12: slice 4 — T4b fill a slot: `FillFactSlot` and handler (text, existing subject, or a new NPC / Thread by name; exactly one value; ids from the generators), `PUT /api/campaigns/{id}/fact-slots/{slot}` (`fillFactSlot`, 200 for a first fill and a refill; 400/401/403/404/409/415/422, unreadable release 500); handler unit tests, API tests incl. concurrent save, editing a slot fact's links end to end, Behat scenarios. Handler and API tests were written with the code, so RED was not observed separately except a list body (`[3]`) that first answered 422 instead of 400.
 
 ## Reviews
 
@@ -126,4 +127,4 @@ Safe on `main`: slice 1 lets Studio accept the new parts and Play read them; rel
 
 ## Next step
 
-Slice 4 (T4b): commit 1 the slice 3 review fixes, then filling a slot over HTTP. Slice 5 carries the slice 1 review suggestion (unknown `{fact:key}` fails closed).
+Slice 4 (T4b) is written: review it, then open the PR. Slice 5 carries the slice 1 review suggestion (unknown `{fact:key}` fails closed).

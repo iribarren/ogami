@@ -51,7 +51,7 @@ final class ReleaseVersion2
         'counter' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'min' => true, 'max' => true, 'initial' => true, 'levels' => false],
         'clock' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'segments' => true],
     ];
-    private const array FACT_SLOT = ['key' => true, 'label' => true, 'type' => true];
+    private const array FACT_SLOT = ['key' => true, 'label' => true, 'type' => true, 'hint' => false];
     private const array TAG = ['key' => true, 'label' => true, 'hint' => false];
     private const array SCENE_TYPE = ['key' => true, 'name' => true, 'purpose' => true, 'tips' => false, 'oracles' => true, 'setup' => true, 'play' => true, 'closing' => true];
     private const array FLOW = [
@@ -79,11 +79,11 @@ final class ReleaseVersion2
         [$trackers, $trackerRanges] = self::trackers($release['trackers']);
         $oracles = ReleaseOracles::validate($release['oracles'], self::ENTRY, self::CHAOS);
         self::chaosTrackers($oracles['likelihood'], $trackerRanges);
-        $factSlots = self::factSlots($release['factSlots']);
+        [$factSlots, $factSlotTypes] = self::factSlots($release['factSlots']);
         [$tags, $tagKeys] = self::tags($release['tags'] ?? null);
 
         [$sceneTypes, $sceneTypeKeys] = self::sceneTypes($release['sceneTypes'], $oracles);
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys);
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys, $factSlotTypes);
 
         $oracles['tables'] = self::tableEntries($oracles['tables'], $catalog);
         foreach ($sceneTypes as $index => $sceneType) {
@@ -93,7 +93,7 @@ final class ReleaseVersion2
         }
 
         $flows = self::flows($release['flows'], $oracles, $catalog);
-        FlowReferences::check($oracles['tables'], $trackers, $sceneTypes, $flows);
+        FlowReferences::check($oracles['tables'], $trackers, $sceneTypes, $flows, $factSlotTypes);
 
         $parts = ['oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots];
         if ([] !== $tags) {
@@ -178,27 +178,30 @@ final class ReleaseVersion2
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return array{list<array<string, mixed>>, array<string, string>} the fact slots and their types by key
      */
     private static function factSlots(mixed $value): array
     {
         $slots = [];
-        $keys = [];
+        $types = [];
         foreach (ReleaseFields::sizedList($value, 'factSlots', 0, self::MAX_FACT_SLOTS, 'fact slots') as $index => $slot) {
             $path = \sprintf('factSlots[%d]', $index);
             $slot = ReleaseFields::object($slot, $path, self::FACT_SLOT);
             $key = ReleaseFields::key($slot['key'], $path.'.key');
-            if (isset($keys[$key])) {
+            if (isset($types[$key])) {
                 throw InvalidReleaseContent::at($path.'.key', \sprintf('duplicate fact slot key "%s"', $key));
             }
 
-            $keys[$key] = true;
             ReleaseFields::text($slot['label'], $path.'.label', 1, self::MAX_NAME_LENGTH);
-            ReleaseFields::oneOf($slot['type'], $path.'.type', ['text', 'npc', 'thread']);
+            $types[$key] = ReleaseFields::oneOf($slot['type'], $path.'.type', ['text', 'npc', 'thread']);
+            if (isset($slot['hint'])) {
+                ReleaseFields::text($slot['hint'], $path.'.hint', 0, self::MAX_HINT_LENGTH);
+            }
+
             $slots[] = $slot;
         }
 
-        return $slots;
+        return [$slots, $types];
     }
 
     /**

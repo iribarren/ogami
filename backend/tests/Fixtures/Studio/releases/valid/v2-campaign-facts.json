@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "campaign-facts", "name": "Campaign facts", "description": "Fact slot hints, the fillFact effect and the {fact:key} placeholder."},
+  "oracles": {
+    "tables": [
+      {"key": "rumours", "name": "Rumours", "entries": [{"text": "A rumour of {fact:city}", "key": "city-rumour", "effects": [{"kind": "fillFact", "slot": "goal"}]}, {"text": "Nothing", "key": "nothing"}]}
+    ],
+    "likelihood": []
+  },
+  "trackers": [],
+  "factSlots": [
+    {"key": "city", "label": "City", "type": "text", "hint": "Where the chronicle begins."},
+    {"key": "prince", "label": "Prince", "type": "npc", "hint": "Who rules the city."},
+    {"key": "goal", "label": "Goal", "type": "thread", "hint": null},
+    {"key": "ambition", "label": "Ambition", "type": "text"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "scene", "name": "Scene", "purpose": "Fill the facts of the chronicle.", "oracles": [],
+      "setup": [
+        {"key": "city", "kind": "prompt", "title": "Name the city", "prompt": "Where does {fact:ambition} lead you?", "effects": [{"kind": "fillFact", "slot": "city"}]}
+      ],
+      "play": [
+        {"key": "prince", "kind": "prompt", "title": "Rule of {fact:city}", "tip": "Ambition: {fact:ambition}", "effects": [{"kind": "createNpc", "name": "Prince of {fact:city}"}, {"kind": "fillFact", "slot": "prince"}]},
+        {"key": "ambition", "kind": "prompt", "title": "Ambition", "effects": [{"kind": "fillFact", "slot": "ambition", "text": "{answer}, in {fact:city}"}, {"kind": "fillFact", "slot": "ambition", "text": null}, {"kind": "createThread", "name": "Reach {fact:ambition}"}, {"kind": "fillFact", "slot": "goal"}]}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

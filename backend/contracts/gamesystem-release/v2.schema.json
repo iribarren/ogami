@@ -20,7 +20,7 @@
       "items": { "$ref": "#/$defs/tracker" }
     },
     "factSlots": {
-      "description": "Declared only in schema version 2: feature 8b fills them. May be empty.",
+      "description": "Slots a Campaign fills with facts: a text, an NPC or a Thread. Flows fill them with the fillFact effect. May be empty.",
       "type": "array",
       "maxItems": 100,
       "items": { "$ref": "#/$defs/factSlot" }
@@ -265,7 +265,8 @@
       "properties": {
         "key": { "$ref": "#/$defs/key" },
         "label": { "$ref": "#/$defs/label" },
-        "type": { "enum": ["text", "npc", "thread"] }
+        "type": { "enum": ["text", "npc", "thread"] },
+        "hint": { "type": ["string", "null"], "maxLength": 500 }
       }
     },
     "sceneType": {
@@ -740,6 +741,16 @@
           "additionalProperties": false,
           "properties": {
             "kind": { "const": "closeThread" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "slot"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "fillFact" },
+            "slot": { "$ref": "#/$defs/key" },
+            "text": { "type": ["string", "null"], "minLength": 1, "maxLength": 2000 }
           }
         }
       ]

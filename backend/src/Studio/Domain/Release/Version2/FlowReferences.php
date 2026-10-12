@@ -24,8 +24,9 @@ final class FlowReferences
      * @param list<array<string, mixed>> $trackers   canonical trackers
      * @param list<array<string, mixed>> $sceneTypes canonical Scene Types
      * @param list<array<string, mixed>> $flows      canonical flows
+     * @param array<string, string>      $factSlots  the fact slot types by key
      */
-    public static function check(array $tables, array $trackers, array $sceneTypes, array $flows): void
+    public static function check(array $tables, array $trackers, array $sceneTypes, array $flows, array $factSlots): void
     {
         $tablesByKey = self::byKey($tables);
         $sceneTypesByKey = self::byKey($sceneTypes);
@@ -38,7 +39,7 @@ final class FlowReferences
         /** @var list<string> $trackerKeys */
         $trackerKeys = array_column($trackers, 'key');
         $releaseTrackers = array_fill_keys($trackerKeys, true);
-        self::checkPlaceholders($allLists, array_keys($tables), $tables, $releaseTrackers, self::stepKeys($allLists), null);
+        self::checkPlaceholders($allLists, array_keys($tables), $tables, $releaseTrackers, self::stepKeys($allLists), $factSlots, null);
 
         foreach ($flows as $flowIndex => $flow) {
             /** @var string $flowKey */
@@ -53,7 +54,7 @@ final class FlowReferences
             $flowTrackers = array_fill_keys($flowTrackerKeys, true);
             self::checkTrackers($lists, $rolledTables, $tables, $flowTrackers, $flowKey);
             self::checkSceneTypeOracles($flow, $flowKey, $sceneTypes, $reachedSceneTypes);
-            self::checkPlaceholders($lists, $rolledTables, $tables, $flowTrackers, self::stepKeys($lists), $flowKey);
+            self::checkPlaceholders($lists, $rolledTables, $tables, $flowTrackers, self::stepKeys($lists), $factSlots, $flowKey);
         }
     }
 
@@ -218,20 +219,21 @@ final class FlowReferences
      * @param list<array<string, mixed>>                $tables
      * @param array<string, true>                       $trackers
      * @param array<string, true>                       $steps
+     * @param array<string, string>                     $factSlots
      */
-    private static function checkPlaceholders(array $lists, array $rolledTables, array $tables, array $trackers, array $steps, ?string $flowKey): void
+    private static function checkPlaceholders(array $lists, array $rolledTables, array $tables, array $trackers, array $steps, array $factSlots, ?string $flowKey): void
     {
         foreach ($lists as $path => $list) {
             foreach ($list as $index => $step) {
                 foreach (StepParts::texts($step, \sprintf('%s[%d]', $path, $index)) as $textPath => [$text, $effectText]) {
-                    Placeholders::check($text, $textPath, $effectText, $trackers, $steps, $flowKey);
+                    Placeholders::check($text, $textPath, $effectText, $trackers, $steps, $factSlots, $flowKey);
                 }
             }
         }
 
         foreach (self::entryEffects($rolledTables, $tables) as $effectPath => $effect) {
             foreach (StepParts::effectTexts($effect, $effectPath) as $textPath => [$text, $effectText]) {
-                Placeholders::check($text, $textPath, $effectText, $trackers, $steps, $flowKey);
+                Placeholders::check($text, $textPath, $effectText, $trackers, $steps, $factSlots, $flowKey);
             }
         }
     }

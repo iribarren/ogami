@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
+use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
@@ -81,7 +82,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $label,
             $fact->text(),
             $subject,
-            $fact->text() ?? $subject?->name ?? throw new \LogicException(\sprintf('Fact "%s" holds neither a text nor a subject.', $fact->id()->toString())),
+            $fact->text() ?? ($subject instanceof FactLinkView ? $subject->name : throw new \LogicException(\sprintf('Fact "%s" holds neither a text nor a subject.', $fact->id()->toString()))),
             array_map(static fn (FactLink $link): FactLinkView => self::factLink($link, $campaign, $snapshot), $fact->links()),
         );
     }
@@ -92,7 +93,9 @@ final readonly class GetCampaignHandler implements QueryHandler
             return $fact->label() ?? throw new \LogicException(\sprintf('Free fact "%s" has no label.', $fact->id()->toString()));
         }
 
-        return $snapshot->factSlot($fact->slot() ?? '')?->label ?? throw new \LogicException(\sprintf('Fact "%s" fills slot "%s", which the pinned release does not declare.', $fact->id()->toString(), $fact->slot()));
+        $slot = $snapshot->factSlot($fact->slot() ?? '');
+
+        return $slot instanceof FactSlot ? $slot->label : throw new \LogicException(\sprintf('Fact "%s" fills slot "%s", which the pinned release does not declare.', $fact->id()->toString(), $fact->slot()));
     }
 
     private static function factLink(FactLink $link, Campaign $campaign, GameSystemSnapshot $snapshot): FactLinkView

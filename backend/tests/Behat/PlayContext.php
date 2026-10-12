@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Behat;
 
+use App\Play\Application\AddFact;
+use App\Play\Application\AddFactHandler;
 use App\Play\Application\AddNpc;
 use App\Play\Application\AddNpcHandler;
 use App\Play\Application\AddThread;
@@ -23,6 +25,8 @@ use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
 use App\Play\Application\EditCurrentSceneCast;
 use App\Play\Application\EditCurrentSceneCastHandler;
+use App\Play\Application\EditFact;
+use App\Play\Application\EditFactHandler;
 use App\Play\Application\EditNpc;
 use App\Play\Application\EditNpcHandler;
 use App\Play\Application\EditThread;
@@ -31,6 +35,8 @@ use App\Play\Application\EndFlowScene;
 use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Application\EndSession;
 use App\Play\Application\EndSessionHandler;
+use App\Play\Application\FactLinkView;
+use App\Play\Application\FactView;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
 use App\Play\Application\GetJournal;
@@ -71,6 +77,7 @@ use App\Play\Application\SwitchSceneType;
 use App\Play\Application\SwitchSceneTypeHandler;
 use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerView;
+use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
@@ -121,6 +128,8 @@ final class PlayContext implements Context
     private readonly CloseNpcHandler $closeNpc;
     private readonly ReopenNpcHandler $reopenNpc;
     private readonly EditCurrentSceneCastHandler $editCurrentSceneCast;
+    private readonly AddFactHandler $addFact;
+    private readonly EditFactHandler $editFact;
     private readonly AddThreadHandler $addThread;
     private readonly EditThreadHandler $editThread;
     private readonly CloseThreadHandler $closeThread;
@@ -141,6 +150,7 @@ final class PlayContext implements Context
     private ?string $campaignId = null;
     private int $npcCount = 0;
     private int $threadCount = 0;
+    private int $factCount = 0;
     private ?\Throwable $failure = null;
 
     public function __construct()
@@ -161,6 +171,8 @@ final class PlayContext implements Context
         $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
         $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
         $this->editCurrentSceneCast = new EditCurrentSceneCastHandler($owned, $campaigns);
+        $this->addFact = new AddFactHandler($owned, $campaigns, $this->releases);
+        $this->editFact = new EditFactHandler($owned, $campaigns, $this->releases);
         $this->addThread = new AddThreadHandler($owned, $campaigns, $this->releases);
         $this->editThread = new EditThreadHandler($owned, $campaigns, $this->releases);
         $this->closeThread = new CloseThreadHandler($owned, $campaigns);
@@ -361,6 +373,56 @@ final class PlayContext implements Context
     public function iAmToldAnNpcIsInTheCastTwice(): void
     {
         Assert::assertInstanceOf(InvalidSceneCast::class, $this->failure);
+    }
+
+    #[Given('I added the free fact :label with the text :text')]
+    public function iAddedTheFreeFact(string $label, string $text): void
+    {
+        $this->iAddTheFreeFact($label, $text);
+        $this->assertNoFailure();
+    }
+
+    #[When('I add the free fact :label with the text :text')]
+    public function iAddTheFreeFact(string $label, string $text): void
+    {
+        $this->attempt(fn () => ($this->addFact)(new AddFact($this->campaignId(), self::ME, 'fact-'.++$this->factCount, $label, $text, [])));
+    }
+
+    #[When('I add the free fact :label with the text :text linked to the NPC :name')]
+    public function iAddTheFreeFactLinkedToTheNpc(string $label, string $text, string $name): void
+    {
+        $this->attempt(fn () => ($this->addFact)(new AddFact($this->campaignId(), self::ME, 'fact-'.++$this->factCount, $label, $text, [['kind' => 'npc', 'id' => $this->npc($name)->id]])));
+        $this->assertNoFailure();
+    }
+
+    #[When('I change the text of the fact :label to :text')]
+    public function iChangeTheTextOfTheFact(string $label, string $text): void
+    {
+        $fact = $this->fact($label);
+        $this->attempt(fn () => ($this->editFact)(new EditFact($this->campaignId(), self::ME, $fact->id, $fact->label, $text, $this->linksOf($fact))));
+        $this->assertNoFailure();
+    }
+
+    #[When('I link the fact :label to the NPC :name')]
+    public function iLinkTheFactToTheNpc(string $label, string $name): void
+    {
+        $this->iTryToLinkTheFactToTheNpc($label, $name);
+        $this->assertNoFailure();
+    }
+
+    #[When('I try to link the fact :label to the NPC :name')]
+    public function iTryToLinkTheFactToTheNpc(string $label, string $name): void
+    {
+        $fact = $this->fact($label);
+        $links = [...$this->linksOf($fact), ['kind' => 'npc', 'id' => $this->npc($name)->id]];
+        $this->attempt(fn () => ($this->editFact)(new EditFact($this->campaignId(), self::ME, $fact->id, $fact->label, $fact->text, $links)));
+    }
+
+    #[Then('I am told that the fact links to the same NPC twice')]
+    public function iAmToldTheFactLinksToTheSameNpcTwice(): void
+    {
+        Assert::assertInstanceOf(InvalidFact::class, $this->failure);
+        Assert::assertStringContainsString('linked twice', $this->failure->getMessage());
     }
 
     #[When('I rename the NPC :name to :newName with the agenda :agenda and the weight :weight')]
@@ -624,6 +686,15 @@ final class PlayContext implements Context
         );
     }
 
+    #[Then('my facts are:')]
+    public function myFactsAre(TableNode $table): void
+    {
+        Assert::assertSame(
+            array_map(static fn (array $row): array => [$row['label'], $row['text'], $row['links']], $table->getColumnsHash()),
+            array_map(static fn (FactView $fact): array => [$fact->label, $fact->value, implode(', ', array_map(static fn (FactLinkView $link): string => $link->name, $fact->links))], $this->myCampaign()->facts),
+        );
+    }
+
     #[Then('my NPCs are:')]
     public function myNpcsAre(TableNode $table): void
     {
@@ -824,6 +895,19 @@ final class PlayContext implements Context
         return array_find($this->myCampaign()->npcs, static fn (NpcView $npc): bool => $npc->name === $name) ?? throw new \LogicException(\sprintf('No NPC "%s".', $name));
     }
 
+    private function fact(string $label): FactView
+    {
+        return array_find($this->myCampaign()->facts, static fn (FactView $fact): bool => $fact->label === $label) ?? throw new \LogicException(\sprintf('No fact "%s".', $label));
+    }
+
+    /**
+     * @return list<array{kind: string, id: string}>
+     */
+    private function linksOf(FactView $fact): array
+    {
+        return array_map(static fn (FactLinkView $link): array => ['kind' => $link->kind, 'id' => $link->id], $fact->links);
+    }
+
     private function thread(string $name): ThreadView
     {
         return array_find($this->myCampaign()->threads, static fn (ThreadView $thread): bool => $thread->name === $name) ?? throw new \LogicException(\sprintf('No Thread "%s".', $name));
@@ -840,7 +924,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact $failure) {
             $this->failure = $failure;
         }
     }

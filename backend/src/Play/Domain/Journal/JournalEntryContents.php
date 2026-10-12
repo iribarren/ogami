@@ -28,6 +28,7 @@ final class JournalEntryContents
             OracleTableContent::KIND => OracleTableContent::fromArray($data),
             LikelihoodContent::KIND => LikelihoodContent::fromArray($data),
             ChoiceContent::KIND => ChoiceContent::fromArray($data),
+            PickContent::KIND => PickContent::fromArray($data),
             default => throw InvalidJournalEntryContent::unknownKind($kind),
         };
     }

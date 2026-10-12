@@ -9,8 +9,10 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
 use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDbalType;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Exception\InvalidType;
@@ -23,14 +25,16 @@ use Doctrine\DBAL\Types\JsonType;
  *
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
- * switchCount, hook, phaseOpened, sessionOpeningDue, history: [{event, at, details: {…}}]}, every
+ * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, history: [{event, at, details: {…}}]}, every
  * field present (null where the FlowRun has none). The details are those of the event's
  * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
  * microseconds and UTC offset. Reading checks the shape and every enumerated value and fails on
  * anything else, a hook without stage "hook" or the other way round included; other FlowRun rules
  * are not checked again (FlowRun::reconstitute()). Rows stored before hooks ran (play-flow-run
  * slice 20) lack hook, phaseOpened and sessionOpeningDue: they read as no hook, the current phase's
- * opening already run and no session opening due.
+ * opening already run and no session opening due. Rows stored before the pick step (play-threads-npcs
+ * slice 7) lack picked: they read as nothing picked. Picked items need a Scene (they end with it), at
+ * most 10 distinct ids, and a kind of NPC or Thread.
  *
  * Registered by its attribute (DoctrineBundle autoconfiguration), not in doctrine.yaml.
  */
@@ -73,6 +77,7 @@ final class CampaignFlowRunType extends JsonType
             'hook' => $value->hook()?->value,
             'phaseOpened' => $value->phaseOpened(),
             'sessionOpeningDue' => $value->sessionOpeningDue(),
+            'picked' => $value->picked() instanceof PickedItems ? ['kind' => $value->picked()->kind->value, 'ids' => $value->picked()->ids] : null,
             'history' => array_map(
                 static fn (FlowRunHistoryEntry $entry): array => [
                     'event' => $entry->event->value,
@@ -97,12 +102,18 @@ final class CampaignFlowRunType extends JsonType
             throw $this->malformed('hook', FlowRunStage::Hook === $stage ? 'set at stage "hook"' : 'null outside stage "hook"');
         }
 
+        $sceneNumber = $this->optionalInt($data, 'sceneNumber');
+        $picked = $this->picked($data);
+        if ($picked instanceof PickedItems && null === $sceneNumber) {
+            throw $this->malformed('picked', 'null outside a Scene');
+        }
+
         return FlowRun::reconstitute(
             $this->enum(FlowRunStatus::class, $data, 'status') ?? throw $this->malformed('status', $this->oneOf(FlowRunStatus::cases())),
             $this->int($data, 'phaseIndex'),
             $stage,
             $this->optionalInt($data, 'sessionNumber'),
-            $this->optionalInt($data, 'sceneNumber'),
+            $sceneNumber,
             $this->optionalString($data, 'sceneType'),
             $this->enum(ScenePart::class, $data, 'part'),
             $this->optionalString($data, 'stepKey'),
@@ -116,7 +127,31 @@ final class CampaignFlowRunType extends JsonType
             $hook,
             $this->bool($data, 'phaseOpened', true),
             $this->bool($data, 'sessionOpeningDue', false),
+            $picked,
         );
+    }
+
+    /**
+     * @return ?PickedItems null for a row stored before the pick step, or without picked items
+     */
+    private function picked(mixed $data): ?PickedItems
+    {
+        $picked = $this->field($data, 'picked');
+        if (null === $picked) {
+            return null;
+        }
+
+        $kind = $this->enum(ItemKind::class, $picked, 'kind') ?? throw $this->malformed('kind', $this->oneOf(ItemKind::cases()));
+        $ids = array_map(
+            fn (mixed $id): string => \is_string($id) ? $id : throw $this->malformed('picked', 'a list of id strings'),
+            $this->list($this->field($picked, 'ids'), 'picked'),
+        );
+
+        try {
+            return new PickedItems($kind, $ids);
+        } catch (\InvalidArgumentException $e) {
+            throw ValueNotConvertible::new('picked', self::NAME, \sprintf('Stored campaign FlowRun: "picked" is invalid: %s', $e->getMessage()));
+        }
     }
 
     private function historyEntry(mixed $entry): FlowRunHistoryEntry

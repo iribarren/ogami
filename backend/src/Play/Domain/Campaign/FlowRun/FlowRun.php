@@ -18,6 +18,7 @@ use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PhaseMode;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
@@ -55,12 +56,17 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  *
  * A finished step takes the Outcome of its result: an oracle answer's branch (an exceptional answer
  * without one uses yes / no), the branch of the entry rolled on a table step's own table (else
- * "otherwise"), the band of a roll total or of a condition step's Tracker, the chosen option. Its
+ * "otherwise"), the band of a roll total or of a condition step's Tracker, the chosen option, "found"
+ * or "none" for a pick step. Its
  * Effects apply in order: the step's, those of the table entries it rolled (nested tables
  * included), then the Outcome's. Then it advances to the Outcome's "next", else the step's "next",
  * else the following step; "end" ends the part; a condition step advances on its own. The first
  * switchSceneType Effect of a scene changes its Scene Type in place and goes on at the new type's
  * setup instead; later ones are ignored (recorded). Hand switches do not count.
+ *
+ * A pick step's picked items are "{picked}" in the Scene they were picked in: the most recent pick
+ * replaces the previous one (none picked leaves nothing picked), and a Scene ending or starting
+ * clears them.
  *
  * Paused, the FlowRun takes no command and the player plays freely; resuming goes on where it
  * stopped. A guided scene or hook Scene that is no longer the current scene when guidance resumes
@@ -108,6 +114,9 @@ final class FlowRun
     /** whether a session started whose opening has not run yet */
     private bool $sessionOpeningDue = false;
 
+    /** the items "{picked}" stands for in the current Scene, null when nothing was picked in it */
+    private ?PickedItems $picked = null;
+
     /** @var list<FlowRunHistoryEntry> */
     private array $history = [];
 
@@ -134,6 +143,7 @@ final class FlowRun
      * @param ?Hook                     $hook              the hook running at stage Hook, else null
      * @param bool                      $phaseOpened       whether the current phase's opening ran
      * @param bool                      $sessionOpeningDue whether a session started whose opening has not run yet
+     * @param ?PickedItems              $picked            the items "{picked}" stands for, null when nothing was picked in the Scene
      */
     public static function reconstitute(
         FlowRunStatus $status,
@@ -154,6 +164,7 @@ final class FlowRun
         ?Hook $hook = null,
         bool $phaseOpened = true,
         bool $sessionOpeningDue = false,
+        ?PickedItems $picked = null,
     ): self {
         $flowRun = new self();
         $flowRun->status = $status;
@@ -174,6 +185,7 @@ final class FlowRun
         $flowRun->hook = $hook;
         $flowRun->phaseOpened = $phaseOpened;
         $flowRun->sessionOpeningDue = $sessionOpeningDue;
+        $flowRun->picked = $picked;
 
         return $flowRun;
     }
@@ -211,6 +223,7 @@ final class FlowRun
         }
 
         $outcome = null;
+        $newlyPicked = null;
         $answer = $result->answer;
         $rolledEffects = [];
         if ($step instanceof ChoiceStep) {
@@ -234,11 +247,25 @@ final class FlowRun
             $outcome = $this->band($step->bands, $result->roll->total(), $context);
         } elseif ($step instanceof OracleStep) {
             $outcome = $result->likelihood instanceof \App\Randomness\Domain\Oracle\LikelihoodAnswer ? $step->branches->for($result->likelihood->answer()) : null;
+        } elseif ($step instanceof PickStep) {
+            if ($result->of !== $step->of) {
+                throw InvalidStepResult::otherItems($step->key, $step->of->value);
+            }
+
+            // The names are the candidates' now, not the result's.
+            $picked = $context->pickCandidates($step)->select($step, array_map(static fn (PickedItem $item): string => $item->id, $result->picked));
+            $answer = StepResult::pick($step->of, $picked)->answer;
+            $outcome = [] === $picked ? $step->none : $step->found;
+            $newlyPicked = [] === $picked ? null : new PickedItems($step->of, array_map(static fn (PickedItem $item): string => $item->id, $picked));
         } elseif ($step instanceof PromptStep && '' === $answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
 
         $this->answers[$step->key] = $answer;
+        if ($step instanceof PickStep) {
+            $this->picked = $newlyPicked;
+        }
+
         $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context);
     }
 
@@ -462,10 +489,11 @@ final class FlowRun
      *
      * @param ?int               $sessionNumber the number of the session under way, null when none is
      * @param array<string, int> $trackerValues the campaign's value of every Tracker of the release, by key, for placeholders
+     * @param list<string>       $pickedNames   the current names of the picked items, for "{picked}"
      */
-    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues): FlowRunView
+    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $pickedNames): FlowRunView
     {
-        $placeholders = new Placeholders($trackerValues, $this->answers);
+        $placeholders = new Placeholders($trackerValues, $this->answers, picked: $pickedNames);
         if (FlowRunStatus::Completed === $this->status) {
             return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete', false);
         }
@@ -586,6 +614,14 @@ final class FlowRun
     public function answers(): array
     {
         return $this->answers;
+    }
+
+    /**
+     * The items "{picked}" stands for; null when nothing was picked in the current Scene.
+     */
+    public function picked(): ?PickedItems
+    {
+        return $this->picked;
     }
 
     public function forcedNextSceneType(): ?string
@@ -747,6 +783,7 @@ final class FlowRun
         $this->stage = FlowRunStage::Scene;
         $this->sceneType = $sceneType->key;
         $this->switchCount = 0;
+        $this->picked = null;
         ++$this->scenesPlayed;
         if (null !== $this->forcedNextSceneType) {
             $this->forcedNextSceneType = null;
@@ -813,6 +850,7 @@ final class FlowRun
         if ($this->hook instanceof Hook && null === $this->sceneNumber) {
             $this->sceneNumber = $context->startHookScene($this->hook, $this->phase($context->flow));
             $this->sessionNumber = $context->sessionNumber();
+            $this->picked = null;
         }
     }
 
@@ -851,7 +889,7 @@ final class FlowRun
         } elseif ($effect instanceof SceneTitleEffect) {
             // Rendered when it applies, cut to the longest title; an empty title is ignored.
             $this->enterHookScene($context);
-            $title = trim(mb_substr(trim(new Placeholders($context->trackerValues(), $this->answers, $answer)->render($effect->title)), 0, Scene::MAX_TITLE_LENGTH));
+            $title = trim(mb_substr(trim(new Placeholders($context->trackerValues(), $this->answers, $answer, $context->pickedNames($this->picked))->render($effect->title)), 0, Scene::MAX_TITLE_LENGTH));
             if ('' !== $title) {
                 $context->renameScene($title);
             }
@@ -958,6 +996,7 @@ final class FlowRun
         $this->stage = FlowRunStage::ScenePick;
         $this->sessionNumber = $this->sceneNumber = $this->sceneType = $this->part = $this->stepKey = null;
         $this->switchCount = 0;
+        $this->picked = null;
         if ($this->phaseFinished($context->flow)) {
             $this->closePhase($context);
         } else {
@@ -975,6 +1014,7 @@ final class FlowRun
         $this->stage = FlowRunStage::ScenePick;
         $this->hook = null;
         $this->sessionNumber = $this->sceneNumber = $this->stepKey = null;
+        $this->picked = null;
         if (Hook::PhaseClosing === $hook) {
             $this->finishPhase($context);
 

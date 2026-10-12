@@ -13,11 +13,15 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
+use App\Play\Domain\Campaign\FlowRun\PickDraw;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
+use App\Play\Domain\GameSystem\Flow\PickMode;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\Step;
@@ -37,6 +41,7 @@ use App\Play\Domain\Journal\JournalEntryContent;
 use App\Play\Domain\Journal\LikelihoodContent;
 use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
+use App\Play\Domain\Journal\PickContent;
 use App\Play\Domain\Journal\RollContent;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\InvalidDiceExpression;
@@ -63,7 +68,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * @throws CampaignNotFound
      * @throws FlowRunNotActive                when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
-     * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank or the option unknown
+     * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown or a picked id is no candidate
      * @throws InvalidJournalEntryId
      * @throws JournalEntryAlreadyExists
      * @throws InvalidJournalEntryContent      when the text or the step's question is too long
@@ -112,6 +117,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
             $step instanceof TableStep => $this->table($command, $step, $release),
             $step instanceof OracleStep => $this->oracle($command, $step, $campaign, $release),
             $step instanceof ChoiceStep => $this->choice($command, $step),
+            $step instanceof PickStep => $this->pick($command, $step, $campaign),
             default => throw InvalidStepResult::conditionStep($step->key),
         };
     }
@@ -183,13 +189,36 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     }
 
     /**
+     * A random pick draws on the server; a chosen one takes the ids the player sends, which must be
+     * candidates. Both are validated again by the FlowRun.
+     *
+     * @return array{StepResult, JournalEntryContent}
+     */
+    private function pick(CompleteFlowStep $command, PickStep $step, Campaign $campaign): array
+    {
+        $candidates = $campaign->pickCandidates($step->of, $step->tags);
+        if (PickMode::Random === $step->mode) {
+            $this->refuseFieldsOtherThan($command, $step);
+            $picked = new PickDraw($this->random)->draw($step, $candidates);
+        } else {
+            $this->refuseFieldsOtherThan($command, $step, 'pickedIds');
+            $picked = $candidates->select($step, $command->pickedIds ?? throw InvalidStepResult::missingField($step->key, StepKind::Pick, 'pickedIds'));
+        }
+
+        return [
+            StepResult::pick($step->of, $picked),
+            PickContent::of($step->of, $step->tags, array_map(static fn (PickedItem $item): array => ['id' => $item->id, 'name' => $item->name], $picked)),
+        ];
+    }
+
+    /**
      * Fails closed on a field the step's kind does not take, rather than ignoring it.
      *
      * @throws InvalidStepResult
      */
     private function refuseFieldsOtherThan(CompleteFlowStep $command, Step $step, string ...$allowed): void
     {
-        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor];
+        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds];
         foreach ($given as $field => $value) {
             if (null !== $value && !\in_array($field, $allowed, true)) {
                 throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), $field);

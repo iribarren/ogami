@@ -166,9 +166,9 @@ final class CampaignFlowRunApiTest extends WebTestCase
     {
         $this->startGuidedSession();
         $this->dispatch(new PickSceneType(self::CAMPAIGN, $this->userId, 'tour'));
-        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, $this->userId, self::ENTRY_1, 'intro', 'Ada, a fixer', null, null, null));
+        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, $this->userId, self::ENTRY_1, 'intro', 'Ada, a fixer', null, null, null, null));
         $this->skipUntil('fork');
-        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, $this->userId, self::ENTRY_2, 'fork', null, 'right', null, null));
+        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, $this->userId, self::ENTRY_2, 'fork', null, 'right', null, null, null));
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/notes', self::CAMPAIGN), ['text' => 'Written by hand']);
         self::assertResponseStatusCodeSame(201);
 

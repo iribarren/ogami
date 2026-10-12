@@ -65,7 +65,7 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
     #[Test]
     public function aCompletedStepPersistsItsJournalEntryAndTheFlowRunTogether(): void
     {
-        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null));
+        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null, null));
 
         $journal = $this->queries->ask(new GetJournal(self::CAMPAIGN, self::PLAYER));
         self::assertCount(1, $journal);
@@ -78,9 +78,9 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
     #[Test]
     public function aRefusedStepPersistsNothing(): void
     {
-        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null));
+        $this->dispatch(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null, null));
 
-        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_2, 'second', null, 'left', null, null), InvalidStepResult::class);
+        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_2, 'second', null, 'left', null, null, null), InvalidStepResult::class);
 
         self::assertCount(1, $this->queries->ask(new GetJournal(self::CAMPAIGN, self::PLAYER)));
         self::assertSame('second', $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun?->step?->step->key);
@@ -92,7 +92,7 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
         $before = $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun;
         $this->entityManager->getEventManager()->addEventListener(Events::preFlush, $this->anotherRequestSavesTheCampaign());
 
-        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null), CampaignModifiedConcurrently::class);
+        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada, a netrunner', null, null, null, null), CampaignModifiedConcurrently::class);
 
         self::assertSame([], $this->queries->ask(new GetJournal(self::CAMPAIGN, self::PLAYER)));
         self::assertEquals($before, $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER))->flowRun);
@@ -102,7 +102,7 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
     public function pausedGuidanceRefusesStepsAndResumesWhereItStopped(): void
     {
         $this->dispatch(new PauseGuidance(self::CAMPAIGN, self::PLAYER));
-        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada', null, null, null), FlowRunNotActive::class);
+        $this->dispatchRefused(new CompleteFlowStep(self::CAMPAIGN, self::PLAYER, self::ENTRY_1, 'first', 'Ada', null, null, null, null), FlowRunNotActive::class);
         self::assertSame([], $this->queries->ask(new GetJournal(self::CAMPAIGN, self::PLAYER)));
 
         $this->dispatch(new ResumeGuidance(self::CAMPAIGN, self::PLAYER));
@@ -119,10 +119,10 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
         $this->dispatch(new CreateCampaign('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, 'The tour', 'guided', 'tour'));
         $this->dispatch(new StartSession('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER));
         $this->dispatch(new PickSceneType('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, 'tour'));
-        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, self::ENTRY_1, 'intro', 'Ada', null, null, null));
-        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, self::ENTRY_2, 'dice', null, null, null, null));
+        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, self::ENTRY_1, 'intro', 'Ada', null, null, null, null));
+        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, self::ENTRY_2, 'dice', null, null, null, null, null));
 
-        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5313', 'omen', null, null, null, null));
+        $this->dispatch(new CompleteFlowStep('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER, '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5313', 'omen', null, null, null, null, null));
 
         $journal = $this->queries->ask(new GetJournal('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5203', self::PLAYER));
         $entry = $journal[2];

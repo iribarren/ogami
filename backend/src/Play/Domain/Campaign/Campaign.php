@@ -12,6 +12,9 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
+use App\Play\Domain\Campaign\FlowRun\PickCandidate;
+use App\Play\Domain\Campaign\FlowRun\PickCandidates;
+use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
@@ -609,6 +612,44 @@ final class Campaign
     }
 
     /**
+     * The candidates of a pick step: the open NPCs or Threads carrying all the given release Tag
+     * keys (any, when none), in list order; free tags never match.
+     *
+     * @param list<string> $tags
+     */
+    public function pickCandidates(ItemKind $of, array $tags): PickCandidates
+    {
+        $items = ItemKind::Npc === $of ? $this->npcs : $this->threads;
+
+        return new PickCandidates(array_values(array_map(
+            static fn (Npc|Thread $item): PickCandidate => new PickCandidate($item->id()->toString(), $item->name(), $item->weight()),
+            array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen() && $item->carries($tags)),
+        )));
+    }
+
+    /**
+     * The current names of NPCs or Threads by id, in the order of the ids; an id the campaign does
+     * not hold has none.
+     *
+     * @param list<string> $ids
+     *
+     * @return list<string>
+     */
+    public function itemNames(ItemKind $of, array $ids): array
+    {
+        $items = ItemKind::Npc === $of ? $this->npcs : $this->threads;
+        $names = [];
+        foreach ($ids as $id) {
+            $item = array_find($items, static fn (Npc|Thread $held): bool => $held->id()->toString() === $id);
+            if (null !== $item) {
+                $names[] = $item->name();
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * Completes the FlowRun's current step with a result of its kind.
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
@@ -745,7 +786,19 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release));
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->pickedNames());
+    }
+
+    /**
+     * The current names of the items "{picked}" stands for, in pick order.
+     *
+     * @return list<string>
+     */
+    private function pickedNames(): array
+    {
+        $picked = $this->flowRun?->picked();
+
+        return $picked instanceof PickedItems ? $this->itemNames($picked->kind, $picked->ids) : [];
     }
 
     /**

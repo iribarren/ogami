@@ -24,6 +24,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0018 | [NarrativeFlow control flow and cast](0018-narrativeflow-control-flow-and-cast.md) | Accepted, amended by 0020 |
 | 0019 | [Random events from fate-question doubles](0019-random-events-from-fate-question-doubles.md) | Accepted |
 | 0020 | [The scene pick waits after a scene](0020-scene-pick-waits-after-a-scene.md) | Accepted |
+| 0021 | [Release credits for fan presets](0021-release-credits-for-fan-presets.md) | Accepted |
 
 ## Template
 

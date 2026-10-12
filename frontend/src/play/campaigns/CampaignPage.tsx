@@ -10,6 +10,7 @@ import { useFlowView, type FlowView } from '../flow/useFlowView'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
 import { useJournal, useRecordRoll } from '../journal/useJournal'
+import { ListPanel } from '../lists/ListPanel'
 import { OraclePanel } from '../oracles/OraclePanel'
 import { TrackersPanel } from '../trackers/TrackersPanel'
 import { visibleTrackers } from '../trackers/useTrackers'
@@ -118,6 +119,12 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
               <TrackersPanel campaign={campaign} />
             </Section>
           )}
+          <Section title="Threads">
+            <ListPanel campaign={campaign} kind="thread" />
+          </Section>
+          <Section title="NPCs">
+            <ListPanel campaign={campaign} kind="npc" />
+          </Section>
           <Section title="Oracles">
             <OraclePanel
               campaignId={campaign.id}

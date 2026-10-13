@@ -9,6 +9,8 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\Characters\Character;
+use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\FactId;
@@ -30,8 +32,14 @@ use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\ListField;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
+use App\Play\Domain\GameSystem\Sheet\TextField;
+use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
+use App\Play\Infrastructure\Persistence\Doctrine\CampaignCharactersType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFactsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType;
@@ -591,6 +599,83 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function charactersRoundTripWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithCharacters($id);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(['Vi', 'Mira'], array_map(static fn (Character $character): string => $character->name(), $loaded?->characters() ?? []));
+        self::assertSame(['characters' => 'jsonb'], $this->entityManager->getConnection()->fetchAllKeyValue(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'play_campaign' AND column_name = 'characters'",
+        ));
+        self::assertEquals(
+            [
+                ['id' => 'c-1', 'name' => 'Vi', 'tags' => ['ally'], 'freeTags' => ['Fixer'], 'values' => ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12, 'max' => 40], 'gear' => ['Knife', 'Pistol']], 'promotedFrom' => null],
+                ['id' => 'c-2', 'name' => 'Mira', 'tags' => [], 'freeTags' => [], 'values' => ['role' => '', 'reflexes' => 4, 'hp' => ['current' => 40, 'max' => 40], 'gear' => []], 'promotedFrom' => null],
+            ],
+            $this->storedList($id->toString(), 'characters'),
+        );
+    }
+
+    #[Test]
+    public function aChangeToACharacterIsSaved(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaignWithCharacters($id));
+        $this->forgetLoaded();
+        $campaign = $this->repository->ofId($id);
+        self::assertNotNull($campaign);
+
+        $campaign->editCharacter(CharacterId::fromString('c-1'), 'Violet', [], [], ['reflexes' => 9], $this->releaseWithSheet());
+        $this->repository->save($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(9, $loaded?->character(CharacterId::fromString('c-1'))?->values()['reflexes']);
+    }
+
+    #[Test]
+    public function aRowStoredBeforeCharactersExistedReadsWithNoCharacters(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement(
+            "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions, tracker_values) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', ?, 'Old', 'heist', 1, 'Heist', '2026-10-06 10:00:00+00', '[]', '{}')",
+            [self::OWNER],
+        );
+
+        $campaign = $this->repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'));
+
+        self::assertSame([], $campaign?->characters());
+        self::assertSame('[]', $connection->fetchOne('SELECT characters FROM play_campaign'));
+    }
+
+    #[Test]
+    public function aSaveAfterACharacterChangeRefusesAStaleCopy(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add(Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00')));
+        $this->forgetLoaded();
+        $mine = $this->repository->ofId($id);
+        $theirs = $this->campaignsElsewhere()->ofId($id);
+        self::assertNotNull($mine);
+        self::assertNotNull($theirs);
+
+        $theirs->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], [], $this->releaseWithSheet());
+        $this->campaignsElsewhere()->save($theirs);
+        $mine->addCharacter(CharacterId::fromString('c-2'), 'Mira', [], [], [], $this->releaseWithSheet());
+
+        $this->expectException(CampaignModifiedConcurrently::class);
+
+        $this->repository->save($mine);
+    }
+
+    #[Test]
     public function aSaveAfterAListChangeRefusesAStaleCopy(): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
@@ -633,6 +718,23 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'npc free tags not strings' => ['npcs', $npc(['freeTags' => 'Fence']), 'Stored campaign npcs: "freeTags" must be a list of strings.'];
         yield 'npc duplicate id' => ['npcs', json_encode([$npcRow([]), $npcRow(['name' => 'Brann'])], \JSON_THROW_ON_ERROR), 'Stored campaign npcs: id "npc-1" is listed twice.'];
         yield 'npcs over the limit' => ['npcs', json_encode(array_map(static fn (int $i): array => ['id' => 'npc-'.$i, 'name' => 'NPC '.$i, 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign npcs: at most 500 NPCs are allowed, got 501.'];
+        $characterRow = static fn (array $fields): array => $fields + ['id' => 'c-1', 'name' => 'Vi', 'tags' => [], 'freeTags' => [], 'values' => ['luck' => 2], 'promotedFrom' => null];
+        $character = static fn (array $fields): string => json_encode([$characterRow($fields)], \JSON_THROW_ON_ERROR);
+
+        yield 'characters not a list' => ['characters', '{"a": 1}', 'Stored campaign characters: "characters" must be a list.'];
+        yield 'character missing id' => ['characters', $character(['id' => null]), 'Stored campaign characters: "id" must be a string.'];
+        yield 'character blank id' => ['characters', $character(['id' => ' ']), 'A Character id must not be blank.'];
+        yield 'character blank name' => ['characters', $character(['name' => ' ']), 'The name must not be blank.'];
+        yield 'character tags not strings' => ['characters', $character(['tags' => [3]]), 'Stored campaign characters: "tags" must be a list of strings.'];
+        yield 'character duplicate tag' => ['characters', $character(['tags' => ['ally', 'ally']]), 'Tag "ally" is listed twice.'];
+        yield 'character free tags not strings' => ['characters', $character(['freeTags' => 'Fixer']), 'Stored campaign characters: "freeTags" must be a list of strings.'];
+        yield 'character values not an object' => ['characters', $character(['values' => 'many']), 'Stored campaign characters: "values" must be an object.'];
+        yield 'character value of no field type' => ['characters', $character(['values' => ['luck' => 1.5]]), 'Field "luck" holds a value of no field type.'];
+        yield 'character track above its max' => ['characters', $character(['values' => ['hp' => ['current' => 5, 'max' => 3]]]), 'The current of field "hp" must be 0 to 3, got 5.'];
+        yield 'character promoted from a blank NPC id' => ['characters', $character(['promotedFrom' => ' ']), 'An NPC id must not be blank.'];
+        yield 'character promoted from a non-string' => ['characters', $character(['promotedFrom' => 4]), 'Stored campaign characters: "promotedFrom" must be a string.'];
+        yield 'character duplicate id' => ['characters', json_encode([$characterRow([]), $characterRow(['name' => 'Mira'])], \JSON_THROW_ON_ERROR), 'Stored campaign characters: id "c-1" is listed twice.'];
+        yield 'characters over the limit' => ['characters', json_encode(array_map(static fn (int $i): array => ['id' => 'c-'.$i] + $characterRow([]), range(1, 101)), \JSON_THROW_ON_ERROR), 'Stored campaign characters: at most 100 Characters are allowed, got 101.'];
         yield 'threads not a list' => ['threads', '{"a": 1}', 'Stored campaign threads: "threads" must be a list.'];
         yield 'thread unknown status' => ['threads', $thread(['status' => 'done']), 'Stored campaign threads: "status" must be one of "open", "closed".'];
         yield 'thread free tag duplicate' => ['threads', $thread(['freeTags' => ['Fence', 'fence']]), 'Free tag "fence" is listed twice.'];
@@ -694,13 +796,16 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     /**
-     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType|CampaignFactsType, mixed}>
+     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType|CampaignFactsType|CampaignCharactersType, mixed}>
      */
     public static function valuesThatAreNotLists(): iterable
     {
         yield 'npcs: a string' => [new CampaignNpcsType(), 'npc-1'];
         yield 'npcs: a stored-shape array item' => [new CampaignNpcsType(), [['id' => 'npc-1']]];
         yield 'npcs: a thread among them' => [new CampaignNpcsType(), [Thread::of(ThreadId::fromString('thread-1'), 'Vault', [], [], 1)]];
+        yield 'characters: a string' => [new CampaignCharactersType(), 'c-1'];
+        yield 'characters: a stored-shape array item' => [new CampaignCharactersType(), [['id' => 'c-1']]];
+        yield 'characters: an npc among them' => [new CampaignCharactersType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
         yield 'facts: a string' => [new CampaignFactsType(), 'fact-1'];
         yield 'facts: a stored-shape array item' => [new CampaignFactsType(), [['id' => 'fact-1']]];
         yield 'facts: an npc among them' => [new CampaignFactsType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
@@ -711,11 +816,34 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
     #[Test]
     #[DataProvider('valuesThatAreNotLists')]
-    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType|CampaignFactsType $type, mixed $value): void
+    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType|CampaignFactsType|CampaignCharactersType $type, mixed $value): void
     {
         $this->expectException(InvalidType::class);
 
         $type->convertToDatabaseValue($value, $this->entityManager->getConnection()->getDatabasePlatform());
+    }
+
+    private function releaseWithSheet(): GameSystemSnapshot
+    {
+        return new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival')], sheet: new SheetTemplate([
+            new TextField('role', 'Role'),
+            new NumberField('reflexes', 'Reflexes', min: 1, max: 10, default: 4),
+            new TrackField('hp', 'Hit points', max: 40),
+            new ListField('gear', 'Gear'),
+        ]));
+    }
+
+    /**
+     * A campaign with two Characters: one with every field type set, one with every default.
+     */
+    private function campaignWithCharacters(CampaignId $id): Campaign
+    {
+        $release = $this->releaseWithSheet();
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', ['ally'], ['Fixer'], ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12], 'gear' => ['Knife', 'Pistol']], $release);
+        $campaign->addCharacter(CharacterId::fromString('c-2'), 'Mira', [], [], [], $release);
+
+        return $campaign;
     }
 
     private function release(): GameSystemSnapshot

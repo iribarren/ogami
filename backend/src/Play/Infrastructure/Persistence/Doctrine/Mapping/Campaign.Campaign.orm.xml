@@ -9,8 +9,8 @@
          Identity, ownership, the pinned release, the Flow and the creation time are columns; the
          sessions with their scenes are one JSONB value (ADR 0007, CampaignSessionsType), and so are
          the tracker values, an object of integers by Tracker key (empty: {} or []), and so are the
-         NPCs, Threads and Campaign facts (CampaignNpcsType, CampaignThreadsType, CampaignFactsType;
-         lists, empty by default) and the
+         NPCs, Threads, Campaign facts and Characters (CampaignNpcsType, CampaignThreadsType,
+         CampaignFactsType, CampaignCharactersType; lists, empty by default) and the
          FlowRun (CampaignFlowRunType; null when played freely). -->
     <entity name="App\Play\Domain\Campaign\Campaign" table="play_campaign">
         <indexes>
@@ -53,6 +53,13 @@
         </field>
         <!-- Rows stored before Campaign facts existed hold the default, an empty list. -->
         <field name="facts" type="play_campaign_facts" column="facts">
+            <options>
+                <option name="jsonb">true</option>
+                <option name="default">[]</option>
+            </options>
+        </field>
+        <!-- Rows stored before Characters existed hold the default, an empty list. -->
+        <field name="characters" type="play_campaign_characters" column="characters">
             <options>
                 <option name="jsonb">true</option>
                 <option name="default">[]</option>

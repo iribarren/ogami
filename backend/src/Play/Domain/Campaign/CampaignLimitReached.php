@@ -33,4 +33,9 @@ final class CampaignLimitReached extends \DomainException
     {
         return new self(\sprintf('A campaign holds at most %d facts.', $max));
     }
+
+    public static function characters(int $max): self
+    {
+        return new self(\sprintf('A campaign holds at most %d Characters.', $max));
+    }
 }

@@ -1193,7 +1193,7 @@ export interface components {
              * @example npc
              * @enum {string}
              */
-            of: "npc" | "thread";
+            of: "npc" | "thread" | "character";
             /**
              * @description Drawn by the server, or chosen by the player.
              * @example choose
@@ -1240,7 +1240,7 @@ export interface components {
              * @example prompt
              * @enum {string}
              */
-            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick";
+            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick" | "character";
             /** @example Who is on the crew? */
             title: string;
             /**
@@ -1737,6 +1737,11 @@ export interface components {
             chaosFactor?: number | null;
             /** @description Pick step in mode choose: the ids of the candidates chosen, between the step's minimum and maximum, none twice; an empty list when nothing matches. Must be omitted or null in mode random. */
             pickedIds?: string[] | null;
+            /**
+             * @description Character step: the id of a Character of the campaign. Must be omitted or null for the other kinds.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701
+             */
+            characterId?: string | null;
         };
         SkipFlowStepRequest: {
             /**
@@ -1985,7 +1990,7 @@ export interface components {
              * @example npc
              * @enum {string}
              */
-            of: "npc" | "thread";
+            of: "npc" | "thread" | "character";
             /** @description The keys of the release Tags the step asked for, as they were stored; empty when it asked for none. */
             tags: string[];
             /** @description The items picked, in the order picked, named as they were at pick time; empty when nothing matched. */

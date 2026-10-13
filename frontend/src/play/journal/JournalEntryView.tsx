@@ -26,7 +26,11 @@ const answerLabels: Record<LikelihoodContent['answer'], string> = {
   exceptional_no: 'Exceptional no',
 }
 
-const kindLabels: Record<PickContent['of'], string> = { npc: 'NPC', thread: 'Thread' }
+const kindLabels: Record<PickContent['of'], string> = {
+  npc: 'NPC',
+  thread: 'Thread',
+  character: 'Character',
+}
 
 /** The accessible name of an entry: its kind and what it is about. */
 function entryLabel(content: JournalEntry['content']) {

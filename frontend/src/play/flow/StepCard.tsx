@@ -16,6 +16,7 @@ const kindLabels: Record<FlowStep['kind'], string> = {
   roll: 'Dice roll',
   choice: 'Choice',
   pick: 'Pick',
+  character: 'Character',
 }
 
 interface StepProps {
@@ -160,6 +161,9 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
           }}
         />
       )
+    case 'character':
+      // The card that picks or creates the Character comes with the party UI.
+      return <p className="text-sm text-muted-foreground">This step is not playable here yet.</p>
   }
 }
 

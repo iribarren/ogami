@@ -1,7 +1,7 @@
 # Feature: play-checks
 
 - **Locator:** `odd/tasks/play-checks.md` · Engram topic `odd/play-checks/tasks`
-- **Issue:** #114 · **Branch:** `feat/play-checks-3-play-acl` · **Status:** in progress (slice 3)
+- **Issue:** #114 · **Branch:** `feat/play-checks-4-sheet` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `rules-derived-values` (PRs #108–#113)
@@ -88,7 +88,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | Docs: this feature doc; ADR 0024 (parent); ADR index row; status notes on ADR 0022 and ADR 0017 ("amended by 0024"); ADR 0023 consequence note (`{check:key}` reference); vision open question moved to resolved; glossary (Check, Outcome band, Flow step kinds, Check difficulty, Situational modifier); contract line 255 points to ADR 0024 | delegated writer (slice 1) | [x] | e80a74d |
 | T2 | 1 | Formula kernel: reference kind `{check:key}` (`Reference::check()`, tokenizer/parser, `references()`), PHP and TS evaluators, conformance vectors (evaluate and references); existing contexts (Studio `Formulas`, Play translator, `DerivedValues`, flow resolver) reject a `check` reference where it is not allowed | delegated writer (slice 1) | [x] | 33d9af9 |
 | T3 | 2 | Contract: `checks` and the `check` step in `v2.schema.json` and the Version2 validator (dice, formulas and scope, band keys and bounds, difficulty range, step references); agreement fixtures; example release; contract doc section | delegated writer (slice 2) | [x] | 7c68c28, e9e9155 |
-| T4 | 3 | Play ACL and domain: translator reads `checks` (re-checks every rule; `check` steps still refused); `Check` snapshot; public sheet resolver extracted from `DerivedValues`; check performance (dice, modifier, situational, difficulty, band) with evaluation failure as a domain error; doc example release gains a check (user, 2026-10-14); unit tests | delegated writer (slice 3) | [x] | |
+| T4 | 3 | Play ACL and domain: translator reads `checks` (re-checks every rule; `check` steps still refused); `Check` snapshot; public sheet resolver extracted from `DerivedValues`; check performance (dice, modifier, situational, difficulty, band) with evaluation failure as a domain error; doc example release gains a check (user, 2026-10-14); unit tests | delegated writer (slice 3) | [x] | 8ad5766, 7f84f68 |
 | T5 | 4 | Sheet checks: `check` journal content; `POST /api/campaigns/{id}/journal/checks`; Campaign response exposes checks; 404/422 mapping and API tests; `make api` | | [ ] | |
 | T6 | 5 | Check step: translator reads `check` steps (step `check` exists, `difficulty` only for a check with one, `outcomes[].band` exists and unique; doc example gains a check step), `StepKind::Check`, `StepResult::check`, FlowRun branching by band key and effects, Character eligibility (Scene characters, else party), fixed step difficulty; handler, request and response; API tests; `make api` | | [ ] | |
 | T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | | [ ] | |
@@ -109,7 +109,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `review-f202bd1c19b1295f` | e80a74d, 33d9af9 | approved, acknowledged; R3 suggestion: glossary "Formula reference" row lacks `{check:key}` (fixed in slice 2) | [#115](https://github.com/iribarren/ogami/pull/115) |
 | 2 | `review-702624a43129a102` | 7c68c28, e9e9155 | approved, acknowledged; R3-001: no test for a fixed step difficulty above the check's max (`Steps.php:314-316`); R3-002: no test for an authoring warning that depends on a check outcome's `next` (`AuthoringWarnings.php:155`) (both fixed in slice 3) | [#116](https://github.com/iribarren/ogami/pull/116) |
+| 3 | `review-32c07dedbf5699fb` | 8ad5766, 7f84f68 | approved, acknowledged; R3-001: the translator's `try/catch (\InvalidArgumentException)` wraps the whole `Check` construction instead of only the constructor, and malformed-check tests don't assert exact messages; R3-002: `total` overflow near `PHP_INT_MAX` gives a `TypeError` instead of `CheckEvaluationFailed` (`Check.php:99`) (both fixed in slice 4) | [#117](https://github.com/iribarren/ogami/pull/117) |
 
 ## Next step
 
-Slice 3 (T4) on `feat/play-checks-3-play-acl`: slice 2 review fixes (R3-001, R3-002), then checks in Play's snapshot and check performance.
+Slice 4 (T5) on `feat/play-checks-4-sheet`: slice 3 review fixes (R3-001, R3-002), then sheet checks: `check` journal content, `POST /api/campaigns/{id}/journal/checks`, checks in the Campaign response.

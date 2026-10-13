@@ -745,16 +745,12 @@ final readonly class GameSystemReleaseTranslator
 
             $difficulty = null === ($check['difficulty'] ?? null) ? null : $this->checkDifficulty($view, $check['difficulty'], $path.'.difficulty');
             $modifier = null === ($check['modifier'] ?? null) ? null : $this->checkFormula($view, $check['modifier'], $path.'.modifier', $fields, $trackerKeys, null);
+            $label = $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH);
+            $hint = null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false);
+            $dice = $this->dice($view, $check['dice'] ?? null, $path.'.dice');
+            $bands = $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty);
             try {
-                $checks[$key] = new Check(
-                    $key,
-                    $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH),
-                    null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false),
-                    $this->dice($view, $check['dice'] ?? null, $path.'.dice'),
-                    $modifier,
-                    $difficulty,
-                    $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty),
-                );
+                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands);
             } catch (\InvalidArgumentException $invalid) {
                 throw $this->invalid($view, $path.'.bands', $invalid->getMessage());
             }

@@ -315,7 +315,7 @@ Play never imports Studio `Domain/` or `Infrastructure/` (enforced by PHPat, [AD
 
 ## Evolving the contract
 
-- A new capability means a **new schema version**: add `v<N>.schema.json` next to the others and a new section here, as [schema version 2](#schema-version-2) did.
+- A new capability means a **new schema version**: add `v<N>.schema.json` next to the others and a new section here, as [schema version 2](#schema-version-2) did. Additive extensions (an optional field or a new value) stay in the current version when every valid release remains valid with the same content hash, as [`credits`](#credits) and the [sheet](#sheet-additive-in-schema-version-2) did ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)).
 - Never edit a released schema file (`v1.schema.json`, `v2.schema.json`): published releases and presets depend on it.
 - Studio validates each schema version it accepts; Play's translator lists the schema versions it supports explicitly and rejects others.
 - Studio is a core context ([ADR 0013](../adr/0013-studio-is-a-core-context.md)): future versions may carry system-specific, even code-backed, flow or rule extensions.

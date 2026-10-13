@@ -56,7 +56,15 @@ export function fromDraft(field: SheetField, draft: Draft): SheetValue {
 }
 
 /** One short phrase for a field's value, as the Characters list shows it. */
-export function summarize(field: SheetField, stored: SheetValue | undefined): string | null {
+export function summarize(
+  field: SheetField,
+  stored: SheetValue | undefined,
+  derived: Record<string, number | null> = {},
+): string | null {
+  if (field.type === 'derived') {
+    // Computed by the server, never here.
+    return `${field.label}: ${String(derived[field.key] ?? '—')}`
+  }
   const value = valueOrDefault(field, stored)
   if (typeof value === 'string') {
     const shown = value.length > 40 ? `${value.slice(0, 40)}…` : value

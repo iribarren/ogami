@@ -3,7 +3,14 @@ import { expect, userEvent, within } from 'storybook/test'
 
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { lostMineWithCharacters, nightJobCampaign, oldCharacter, viCharacter } from './fixtures'
+import {
+  initiativeField,
+  lostMineWithCharacters,
+  nightJobCampaign,
+  oldCharacter,
+  sheet,
+  viCharacter,
+} from './fixtures'
 import { CharactersPanel } from './CharactersPanel'
 
 const meta = {
@@ -34,6 +41,22 @@ export const WithSheet: Story = {}
 
 /** A release without sheet fields: name and Tags only. */
 export const NoSheet: Story = { args: { campaign: lostMineWithCharacters } }
+
+/** A derived field: the summary shows the server's value, the form recomputes it as you type. */
+export const WithDerivedField: Story = {
+  args: {
+    campaign: {
+      ...nightJobCampaign,
+      pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, initiativeField] },
+      characters: [{ ...viCharacter, derived: { initiative: 13 } }],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit Vi' }))
+    await expect(canvas.getByLabelText('Initiative')).toHaveTextContent('13')
+  },
+}
 
 export const Empty: Story = { args: { campaign: { ...nightJobCampaign, characters: [] } } }
 

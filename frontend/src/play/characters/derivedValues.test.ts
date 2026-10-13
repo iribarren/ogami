@@ -1,0 +1,90 @@
+import { edgeTracker } from '../campaigns/fixtures'
+import { computeDerived } from './derivedValues'
+import { initiativeField, sheet } from './fixtures'
+import type { Draft } from './sheetValues'
+import type { SheetField } from './useCharacters'
+
+const drafts: Record<string, Draft> = {
+  reflexes: '7',
+  body: '6',
+  hp: { current: '30', max: '40' },
+}
+
+/** A derived field over the fixture sheet. */
+const derived = (key: string, formula: string): SheetField => ({
+  ...initiativeField,
+  key,
+  label: key,
+  type: 'derived',
+  formula,
+})
+
+describe('computeDerived', () => {
+  it('reads numbers, tracks, trackers and other derived values, in dependency order', () => {
+    const fields = [
+      derived('total', '{initiative} * 2'),
+      derived('initiative', '{reflexes} + {body}'),
+      derived('hp-left', '{hp.max} - {hp}'),
+      derived('edgy', '{reflexes} + {tracker:edge}'),
+      ...sheet,
+    ]
+
+    expect(computeDerived(fields, drafts, [edgeTracker])).toEqual({
+      total: { value: 26 },
+      initiative: { value: 13 },
+      'hp-left': { value: 10 },
+      edgy: { value: 8 },
+    })
+  })
+
+  it('fails with a reason on division by zero, overflow and an unknown tracker, and so do dependents', () => {
+    const fields = [
+      ...sheet,
+      derived('zero', '{body} / ({reflexes} - 7)'),
+      derived('big', '{reflexes} * 1000000 * 1000'),
+      derived('lost', '{tracker:nope}'),
+      derived('after', '{zero} + 1'),
+    ]
+
+    expect(computeDerived(fields, drafts, [])).toEqual({
+      zero: { reason: 'division by zero' },
+      big: { reason: 'overflow' },
+      lost: { reason: 'incomplete value' },
+      after: { reason: 'depends on zero' },
+    })
+  })
+
+  it('is incomplete while a number or track draft is empty or not an integer', () => {
+    const fields = [
+      ...sheet,
+      derived('a', '{reflexes} + 1'),
+      derived('b', '{hp}'),
+      derived('c', '{body}'),
+    ]
+
+    expect(
+      computeDerived(
+        fields,
+        { ...drafts, reflexes: '', hp: { current: '1.5', max: '4' }, body: '1e2' },
+        [],
+      ),
+    ).toEqual({
+      a: { reason: 'incomplete value' },
+      b: { reason: 'incomplete value' },
+      c: { reason: 'incomplete value' },
+    })
+  })
+
+  it('shows a formula that does not parse or reads text as failed, never throws', () => {
+    const fields = [...sheet, derived('bad', '{reflexes} +'), derived('text', '{role}')]
+
+    expect(computeDerived(fields, { ...drafts, role: 'Solo' }, [])).toEqual({
+      bad: { reason: 'invalid formula' },
+      text: { reason: 'incomplete value' },
+    })
+  })
+
+  it('gives nothing for a sheet without derived fields', () => {
+    expect(computeDerived(sheet, drafts, [])).toEqual({})
+  })
+})

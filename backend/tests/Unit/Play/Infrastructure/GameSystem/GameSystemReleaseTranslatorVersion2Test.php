@@ -346,6 +346,7 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         yield 'band tracker form naming an undeclared tracker' => [$band, ['tracker' => 'nope'], $bandPath.': unknown tracker "nope".'];
         yield 'effect formula reading an undeclared tracker' => [$value, ['formula' => 'max({tracker:nope}, 1)'], $valuePath.': unknown tracker "nope".'];
         yield 'effect tracker form naming an undeclared tracker' => [$value, ['tracker' => 'nope'], $valuePath.': unknown tracker "nope".'];
+        yield 'counter level bound naming a tracker' => ['trackers.1.levels', [['upTo' => ['tracker' => 'nope'], 'label' => 'Low']], 'trackers[1].levels[0].upTo: must be an integer'];
         yield 'formula as a bare string' => [$value, '{tracker:edge}', $valuePath.$shape];
     }
 

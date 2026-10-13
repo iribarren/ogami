@@ -1,0 +1,34 @@
+/** A value a formula reads: `{key}`, `{key.max}` or `{tracker:key}`. */
+export interface Reference {
+  kind: 'field' | 'trackMax' | 'tracker'
+  key: string
+}
+
+const keyPattern = /^[a-z0-9-]{1,64}$/
+const trackerPrefix = 'tracker:'
+const maxSuffix = '.max'
+
+/** Reads what is written between the braces; null when it is none of the three spellings. */
+export function referenceFromInner(inner: string): Reference | null {
+  if (inner.startsWith(trackerPrefix)) {
+    const key = inner.slice(trackerPrefix.length)
+    return keyPattern.test(key) ? { kind: 'tracker', key } : null
+  }
+  if (inner.endsWith(maxSuffix)) {
+    const key = inner.slice(0, -maxSuffix.length)
+    return keyPattern.test(key) ? { kind: 'trackMax', key } : null
+  }
+  return keyPattern.test(inner) ? { kind: 'field', key: inner } : null
+}
+
+/** The canonical spelling inside the braces: `str`, `hp.max` or `tracker:chaos`. */
+export function referenceToString(reference: Reference): string {
+  switch (reference.kind) {
+    case 'field':
+      return reference.key
+    case 'trackMax':
+      return `${reference.key}${maxSuffix}`
+    case 'tracker':
+      return `${trackerPrefix}${reference.key}`
+  }
+}

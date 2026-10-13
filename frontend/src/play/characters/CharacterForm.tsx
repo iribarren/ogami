@@ -6,8 +6,10 @@ import { Label } from '@/shared/ui/label'
 
 import { TagFields, type ReleaseTag } from '../lists/TagFields'
 import { useFreeTags } from '../lists/useFreeTags'
+import type { Tracker } from '../trackers/useTrackers'
+import { computeDerived } from './derivedValues'
 import { SheetFields } from './SheetFields'
-import { fromDraft, toDraft, type Draft } from './sheetValues'
+import { fromDraft, storedFields, toDraft, type Draft } from './sheetValues'
 import type { Character, CharacterFields, SheetField } from './useCharacters'
 
 const maxName = 100
@@ -15,11 +17,13 @@ const maxName = 100
 /**
  * Adds or edits a Character: name, the pinned release's sheet fields, Tags and free tags. It
  * always submits the whole Character. The API validates; its refusal shows as it comes and the
- * form keeps what was typed.
+ * form keeps what was typed. Derived fields are shown read-only, recomputed as the player types
+ * from the drafts and the Campaign's `trackers`; they are never submitted.
  */
 export function CharacterForm({
   character,
   sheet,
+  trackers,
   releaseTags,
   pending,
   error,
@@ -27,7 +31,9 @@ export function CharacterForm({
   onCancel,
 }: {
   character: Character | null
+  /** Every field of the sheet, derived ones included. */
   sheet: SheetField[]
+  trackers: Tracker[]
   releaseTags: ReleaseTag[]
   pending: boolean
   error: string | undefined
@@ -38,9 +44,10 @@ export function CharacterForm({
   const id = useId()
   const free = useFreeTags(character?.freeTags ?? [])
   // A field the Character has no value for starts as its default.
+  const stored = storedFields(sheet)
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
     Object.fromEntries(
-      sheet.map((field) => [field.key, toDraft(field, character?.values[field.key])]),
+      stored.map((field) => [field.key, toDraft(field, character?.values[field.key])]),
     ),
   )
 
@@ -53,7 +60,7 @@ export function CharacterForm({
       tags: data.getAll('tags').filter((tag) => typeof tag === 'string'),
       freeTags: free.toSave(),
       values: Object.fromEntries(
-        sheet.map((field) => [
+        stored.map((field) => [
           field.key,
           fromDraft(field, drafts[field.key] ?? toDraft(field, undefined)),
         ]),
@@ -81,6 +88,7 @@ export function CharacterForm({
         <SheetFields
           fields={sheet}
           drafts={drafts}
+          derived={computeDerived(sheet, drafts, trackers)}
           onChange={(key, draft) => {
             setDrafts({ ...drafts, [key]: draft })
           }}

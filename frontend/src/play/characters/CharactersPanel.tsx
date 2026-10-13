@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/button'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { TagChips } from '../lists/TagFields'
 import { CharacterForm } from './CharacterForm'
-import { storedFields, summarize } from './sheetValues'
+import { summarize } from './sheetValues'
 import { useCharacterActions, type Character, type CharacterFields } from './useCharacters'
 
 /**
@@ -15,7 +15,7 @@ import { useCharacterActions, type Character, type CharacterFields } from './use
  */
 export function CharactersPanel({ campaign }: { campaign: Campaign }) {
   const { save } = useCharacterActions(campaign.id)
-  const sheet = storedFields(campaign.pinnedRelease.sheet)
+  const sheet = campaign.pinnedRelease.sheet
   // The id of the Character being edited, 'new' for the add form, none when no form is open.
   const [form, setForm] = useState<string | null>(null)
 
@@ -29,6 +29,7 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
       <CharacterForm
         character={character}
         sheet={sheet}
+        trackers={campaign.trackers}
         releaseTags={campaign.tags}
         pending={save.isPending}
         error={save.error?.message}
@@ -76,7 +77,9 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {sheet
-                    .map((field) => summarize(field, character.values[field.key]))
+                    .map((field) =>
+                      summarize(field, character.values[field.key], character.derived),
+                    )
                     .filter((part) => part !== null)
                     .join(' · ')}
                 </p>

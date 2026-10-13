@@ -4,14 +4,15 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
+import { edgeTracker } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import {
+  initiativeField,
   lostMineWithCharacters,
   nightJobCampaign,
   oldCharacter,
   sheet,
   viCharacter,
-  type SheetField,
 } from './fixtures'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
@@ -210,25 +211,10 @@ describe('the Characters panel', () => {
   it('leaves derived fields out of the form and sends no value for them', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
-    const derived: SheetField = {
-      key: 'initiative',
-      label: 'Initiative',
-      hint: null,
-      group: 'Stats',
-      type: 'derived',
-      min: null,
-      max: null,
-      default: null,
-      multiline: null,
-      maxLength: null,
-      itemLabel: null,
-      maxItems: null,
-      formula: '{reflexes} + {body}',
-    }
     renderCharacters(
       {
         ...nightJobCampaign,
-        pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, derived] },
+        pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, initiativeField] },
       },
       { [`PUT ${path}/characters/${viCharacter.id}`]: () => Response.json(viCharacter) },
       sent,
@@ -236,13 +222,98 @@ describe('the Characters panel', () => {
 
     const panel = await characters()
     await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
-    expect(panel.queryByLabelText('Initiative')).not.toBeInTheDocument()
+    // Shown read-only, as an output: not a field to type in, and never sent.
+    expect(panel.getByLabelText('Initiative').tagName).toBe('OUTPUT')
+    expect(panel.queryByRole('spinbutton', { name: 'Initiative' })).not.toBeInTheDocument()
     await user.click(panel.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
       expect(sent).toEqual([
         { name: 'Vi', tags: ['leader'], freeTags: ['Fixer'], values: viCharacter.values },
       ])
+    })
+  })
+
+  describe('derived fields', () => {
+    const withDerived = (formula: string, trackers: Campaign['trackers'] = []): Campaign => ({
+      ...nightJobCampaign,
+      trackers,
+      pinnedRelease: {
+        ...nightJobCampaign.pinnedRelease,
+        sheet: [...sheet, { ...initiativeField, formula }],
+      },
+    })
+
+    async function editVi() {
+      const user = userEvent.setup()
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
+      return { user, panel }
+    }
+
+    it('shows the value, the hint and the formula, and recomputes as the player types', async () => {
+      renderCharacters(withDerived('{reflexes} + {body}'))
+
+      const { user, panel } = await editVi()
+      expect(panel.getByLabelText('Initiative')).toHaveTextContent('13')
+      expect(panel.getByText('Reflexes plus body.')).toBeInTheDocument()
+      expect(panel.getByText('{reflexes} + {body}')).toBeInTheDocument()
+      await user.clear(panel.getByLabelText('Reflexes'))
+      await user.type(panel.getByLabelText('Reflexes'), '8')
+      expect(panel.getByLabelText('Initiative')).toHaveTextContent('14')
+    })
+
+    it('lays a derived field out in its group, in sheet order', async () => {
+      renderCharacters({
+        ...nightJobCampaign,
+        pinnedRelease: {
+          ...nightJobCampaign.pinnedRelease,
+          sheet: [...sheet.slice(0, 3), initiativeField, ...sheet.slice(3)],
+        },
+      })
+
+      const { panel } = await editVi()
+      const stats = within(panel.getByRole('group', { name: 'Stats' }))
+      expect(stats.getAllByRole('spinbutton')).toHaveLength(2)
+      expect(stats.getByLabelText('Initiative')).toBeInTheDocument()
+      expect(panel.getAllByRole('group', { name: 'Stats' })).toHaveLength(1)
+    })
+
+    it('reads the Campaign trackers', async () => {
+      renderCharacters(withDerived('{reflexes} + {tracker:edge}', [edgeTracker]))
+
+      const { panel } = await editVi()
+      expect(panel.getByLabelText('Initiative')).toHaveTextContent('8')
+    })
+
+    it('shows a dash with the reason when the formula fails or a value is incomplete', async () => {
+      renderCharacters(withDerived('{body} / ({reflexes} - 7)'))
+
+      const { user, panel } = await editVi()
+      expect(panel.getByLabelText('Initiative')).toHaveTextContent('— (division by zero)')
+      await user.clear(panel.getByLabelText('Reflexes'))
+      expect(panel.getByLabelText('Initiative')).toHaveTextContent('— (incomplete value)')
+    })
+
+    it('shows a dash for a formula that does not parse', async () => {
+      renderCharacters(withDerived('{reflexes} +'))
+
+      const { panel } = await editVi()
+      expect(panel.getByLabelText('Initiative')).toHaveTextContent('— (invalid formula)')
+    })
+
+    it("summarises derived fields from the server's values, a dash for none", async () => {
+      renderCharacters({
+        ...withDerived('{reflexes} + {body}'),
+        characters: [
+          { ...viCharacter, derived: { initiative: 13 } },
+          { ...oldCharacter, derived: { initiative: null } },
+        ],
+      })
+
+      const [vi, old] = (await characters()).getAllByRole('listitem') as [HTMLElement, HTMLElement]
+      expect(within(vi).getByText(/Initiative: 13/)).toBeInTheDocument()
+      expect(within(old).getByText(/Initiative: —/)).toBeInTheDocument()
     })
   })
 

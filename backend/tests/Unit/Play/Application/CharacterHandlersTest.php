@@ -13,6 +13,8 @@ use App\Play\Application\EditCharacterHandler;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\GetCampaignHandler;
 use App\Play\Application\OwnedCampaigns;
+use App\Play\Application\PromoteNpc;
+use App\Play\Application\PromoteNpcHandler;
 use App\Play\Application\SheetFieldView;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
@@ -20,6 +22,9 @@ use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -41,6 +46,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(AddCharacterHandler::class)]
 #[CoversClass(EditCharacter::class)]
 #[CoversClass(EditCharacterHandler::class)]
+#[CoversClass(PromoteNpc::class)]
+#[CoversClass(PromoteNpcHandler::class)]
 #[CoversClass(CharacterView::class)]
 #[CoversClass(SheetFieldView::class)]
 #[CoversClass(GetCampaignHandler::class)]
@@ -156,6 +163,74 @@ final class CharacterHandlersTest extends TestCase
         ], $view->pinnedRelease->sheet);
         self::assertSame(['Vi', 'Mira'], array_map(static fn (CharacterView $character): string => $character->name, $view->characters));
         self::assertSame(['reflexes', 'hp', 'role', 'gear'], array_keys($view->characters[1]->values));
+    }
+
+    #[Test]
+    public function itPromotesAnNpcAgainstThePinnedReleaseAndSavesBothSides(): void
+    {
+        $this->campaignWithNpc();
+
+        (new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases))(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
+
+        $character = $this->character('c-1');
+        self::assertSame(['Mira', ['ally'], ['Fence'], ['reflexes' => 4, 'hp' => ['current' => 40, 'max' => 40], 'role' => '', 'gear' => []], 'npc-1'], [$character?->name(), $character?->tags(), $character?->freeTags(), $character?->values(), $character?->promotedFrom()?->toString()]);
+        self::assertSame('c-1', $this->campaign()->npc(NpcId::fromString('npc-1'))?->promotedTo()?->toString());
+    }
+
+    #[Test]
+    public function aPromotedNpcIsRefusedASecondPromotionAndNothingChanges(): void
+    {
+        $this->campaignWithNpc();
+        $promote = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases);
+        $promote(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
+
+        try {
+            $promote(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-2'));
+            self::fail('The second promotion was accepted.');
+        } catch (NpcAlreadyPromoted) {
+            self::assertSame(['c-1'], array_map(static fn (Character $character): string => $character->id()->toString(), $this->campaign()->characters()));
+        }
+    }
+
+    #[Test]
+    public function anUnknownNpcIsNotFoundBeforeTheReleaseIsRead(): void
+    {
+        $handler = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)));
+
+        $this->expectException(UnknownNpc::class);
+
+        $handler(new PromoteNpc('campaign-1', 'user-1', 'missing', 'c-1'));
+    }
+
+    #[Test]
+    public function anUnreadablePinnedReleaseFailsThePromotionAndNothingChanges(): void
+    {
+        $this->campaignWithNpc();
+        $handler = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)));
+
+        try {
+            $handler(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
+            self::fail('The promotion was accepted.');
+        } catch (GameSystemReleaseNotFound) {
+            self::assertSame([[], false], [$this->campaign()->characters(), $this->campaign()->npc(NpcId::fromString('npc-1'))?->isPromoted()]);
+        }
+    }
+
+    #[Test]
+    public function aCampaignOfAnotherPlayerIsNotFoundWhenPromoting(): void
+    {
+        $this->campaignWithNpc();
+
+        $this->expectException(CampaignNotFound::class);
+
+        (new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases))(new PromoteNpc('campaign-1', 'user-2', 'npc-1', 'c-1'));
+    }
+
+    private function campaignWithNpc(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, ['ally'], ['Fence'], 1, $this->releases->get('heist', 1));
+        $this->campaigns->save($campaign);
     }
 
     private function character(string $id): ?Character

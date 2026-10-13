@@ -80,7 +80,7 @@ final class CampaignNpcsApiTest extends WebTestCase
         $npc = $this->json();
         self::assertIsString($npc['id'] ?? null);
         self::assertMatchesRegularExpression(self::UUID_PATTERN, $npc['id']);
-        self::assertSame(['name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], array_diff_key($npc, ['id' => 1]));
+        self::assertSame(['name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open', 'promotedTo' => null], array_diff_key($npc, ['id' => 1]));
         self::assertSame([$npc], $this->campaignNpcs($id));
     }
 
@@ -107,7 +107,7 @@ final class CampaignNpcsApiTest extends WebTestCase
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs', $id), ['name' => 'Mira', 'agenda' => null, 'tags' => null, 'freeTags' => null, 'weight' => null]);
 
         self::assertResponseStatusCodeSame(201);
-        self::assertSame(['name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], array_diff_key($this->json(), ['id' => 1]));
+        self::assertSame(['name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open', 'promotedTo' => null], array_diff_key($this->json(), ['id' => 1]));
     }
 
     #[Test]
@@ -121,7 +121,7 @@ final class CampaignNpcsApiTest extends WebTestCase
         $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/npcs/%s', $id, $npcId), ['name' => 'Mira Vane', 'tags' => ['hostile']]);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['id' => $npcId, 'name' => 'Mira Vane', 'agenda' => null, 'tags' => ['hostile'], 'freeTags' => [], 'weight' => 1, 'status' => 'closed'], $this->json());
+        self::assertSame(['id' => $npcId, 'name' => 'Mira Vane', 'agenda' => null, 'tags' => ['hostile'], 'freeTags' => [], 'weight' => 1, 'status' => 'closed', 'promotedTo' => null], $this->json());
         self::assertSame([$this->json()], $this->campaignNpcs($id));
     }
 

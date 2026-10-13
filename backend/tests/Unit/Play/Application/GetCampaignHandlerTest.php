@@ -142,8 +142,8 @@ final class GetCampaignHandlerTest extends TestCase
 
         self::assertEquals([new TagView('ally', 'Ally', null), new TagView('rival', 'Rival', 'Someone in the way')], $view->tags);
         self::assertEquals([
-            new NpcView('npc-2', 'Brann', null, [], [], 1, 'open'),
-            new NpcView('npc-1', 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, 'closed'),
+            new NpcView('npc-2', 'Brann', null, [], [], 1, 'open', null),
+            new NpcView('npc-1', 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, 'closed', null),
         ], $view->npcs);
         self::assertEquals([new ThreadView('thread-1', 'Rob the vault', ['ally'], ['Heist'], 2, 'open')], $view->threads);
     }

@@ -234,6 +234,8 @@ Start feature `play-characters` (ODD). Extend the release schema with SheetTempl
 
 **11. rules-derived-values**
 
+Done: the `Formula` shared kernel (parser, evaluator and dependency order over `{field}`, `{field.max}` and `{tracker:key}` references, with a conformance file) and [ADR 0023](adr/0023-formula-kernel-and-derived-values.md); the `derived` field type and `{formula}` in band `upTo` and effect `value`, additive in schema version 2; derived values on Characters computed by the server and live in the Character form through a TypeScript evaluator that runs the same conformance file. The `night-job` preset gains `cool` and `wounded`. See [odd/tasks/rules-derived-values.md](../odd/tasks/rules-derived-values.md). The prompt is kept for reference.
+
 ```text
 Start feature `rules-derived-values` (ODD). Formula language for DerivedValue over sheet fields (arithmetic, min/max, field references), evaluated live on the sheet. Formulas can read campaign trackers (ADR 0017), and a tracker reference in a band bound or effect becomes a trivial formula. First decide where formula evaluation lives (Randomness kernel vs a new shared kernel) and record it as an ADR. Extend the release schema.
 ```

@@ -56,9 +56,12 @@ export function computeDerived(
     order = dependencyOrder(formulas)
   } catch {
     // A cycle: published content never has one, so none of the formulas is trusted.
-    return Object.fromEntries(
-      [...formulas.keys()].map((key) => [key, { reason: 'invalid formula' }]),
-    )
+    return {
+      ...results,
+      ...Object.fromEntries(
+        [...formulas.keys()].map((key) => [key, { reason: 'invalid formula' }]),
+      ),
+    }
   }
 
   const read = (reference: Reference): number | undefined => {
@@ -94,11 +97,16 @@ export function computeDerived(
       const failed = formula.references.find(
         (reference) =>
           reference.kind === 'field' &&
-          formulas.has(reference.key) &&
+          fields.get(reference.key)?.type === 'derived' &&
           'reason' in (results[reference.key] ?? {}),
       )
+      // Only a reference that could not be read is blamed on its dependency; a failure of the
+      // formula's own arithmetic keeps its own reason.
       results[key] = {
-        reason: failed === undefined ? failures[error.kind] : `depends on ${failed.key}`,
+        reason:
+          failed !== undefined && error.kind === 'unknownReference'
+            ? `depends on ${failed.key}`
+            : failures[error.kind],
       }
     }
   }

@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Play;
 use App\Play\Application\GetGameSystemSnapshot;
 use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -168,7 +169,7 @@ final class PresetsTest extends KernelTestCase
 
         $sheet = $snapshot->sheet();
         self::assertSame(
-            ['role', 'nerve', 'hands', 'wits', 'grit', 'charm', 'hp', 'humanity', 'gear', 'cyberware'],
+            ['role', 'nerve', 'hands', 'wits', 'grit', 'charm', 'cool', 'hp', 'wounded', 'humanity', 'gear', 'cyberware'],
             array_map(static fn (Field $field): string => $field->key, $sheet->fields()),
         );
         foreach (['role' => TextField::class, 'nerve' => NumberField::class, 'hp' => TrackField::class, 'humanity' => TrackField::class, 'gear' => ListField::class, 'cyberware' => ListField::class] as $key => $type) {
@@ -182,6 +183,15 @@ final class PresetsTest extends KernelTestCase
         self::assertInstanceOf(TrackField::class, $humanity);
         self::assertSame([40, 50], [$hp->max, $humanity->max]);
         self::assertSame(['Identity', 'Stats', 'Condition', 'Kit'], array_values(array_unique(array_map(static fn (Field $field): ?string => $field->group, $sheet->fields()))));
+
+        // Cool and Wounded at are derived: computed from Nerve and the Alarm Tracker, and from the HP maximum.
+        $formulas = [];
+        foreach (['cool', 'wounded'] as $key) {
+            $derived = $sheet->field($key);
+            self::assertInstanceOf(DerivedField::class, $derived, $key);
+            $formulas[$key] = $derived->formula->toString();
+        }
+        self::assertSame(['cool' => 'max(0, {nerve} - {tracker:alarm} / 2)', 'wounded' => '{hp.max} / 2'], $formulas);
     }
 
     private function assertPublishesOnce(string $preset): void

@@ -84,6 +84,45 @@ describe('computeDerived', () => {
     })
   })
 
+  it('labels a dependency only when the reference itself is what failed', () => {
+    const fields = [
+      ...sheet,
+      derived('broken', '{tracker:nope}'),
+      derived('zero', '1 / 0 + {broken}'),
+      derived('after', '{broken} + 1'),
+    ]
+
+    expect(computeDerived(fields, drafts, [])).toEqual({
+      broken: { reason: 'incomplete value' },
+      zero: { reason: 'division by zero' },
+      after: { reason: 'depends on broken' },
+    })
+  })
+
+  it('keeps every derived key accounted for on a cycle and next to an unparsable formula', () => {
+    const fields = [
+      ...sheet,
+      derived('bad', '{reflexes} +'),
+      derived('first', '{second}'),
+      derived('second', '{first}'),
+    ]
+
+    expect(computeDerived(fields, drafts, [])).toEqual({
+      bad: { reason: 'invalid formula' },
+      first: { reason: 'invalid formula' },
+      second: { reason: 'invalid formula' },
+    })
+  })
+
+  it('reads a derived value that depends on an unparsable one as a failed dependency', () => {
+    const fields = [...sheet, derived('bad', '{reflexes} +'), derived('after', '{bad} + 1')]
+
+    expect(computeDerived(fields, drafts, [])).toEqual({
+      bad: { reason: 'invalid formula' },
+      after: { reason: 'depends on bad' },
+    })
+  })
+
   it('gives nothing for a sheet without derived fields', () => {
     expect(computeDerived(sheet, drafts, [])).toEqual({})
   })

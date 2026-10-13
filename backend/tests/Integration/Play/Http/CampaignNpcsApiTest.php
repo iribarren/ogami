@@ -354,6 +354,23 @@ final class CampaignNpcsApiTest extends WebTestCase
         self::assertSame(['Mira'], array_column($this->campaignNpcs($id), 'name'));
     }
 
+    #[Test]
+    public function promotingAnNpcWithATagTheReleaseLacksIsUnprocessableAndChangesNothing(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $npcs = [['id' => $npcId, 'name' => 'Mira', 'agenda' => null, 'tags' => ['ghost'], 'freeTags' => [], 'weight' => 1, 'status' => 'open']];
+        $this->connection()->executeStatement('UPDATE play_campaign SET npcs = ? WHERE id = ?', [json_encode($npcs, \JSON_THROW_ON_ERROR), $id]);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => 'Tag "ghost" not found in the pinned release.'], $this->json());
+        self::assertSame(0, $this->connection()->fetchOne('SELECT jsonb_array_length(characters) FROM play_campaign WHERE id = ?', [$id]));
+        self::assertSame(['open', null], $this->connection()->fetchNumeric("SELECT npcs->0->>'status', npcs->0->>'promotedTo' FROM play_campaign WHERE id = ?", [$id]));
+    }
+
     /**
      * @return iterable<string, array{string}>
      */

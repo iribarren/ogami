@@ -218,6 +218,11 @@ After the epilogue the FlowRun is `completed`; play continues unguided.
 | `pick` with two tags and a `none` branch; the picked NPC joins the Scene cast | 16, 22 |
 | A `completed` FlowRun | 10 |
 
+**Played as a preset**
+- Shipped as the `night-job` preset (`backend/presets/night-job.json`, feature 9b) and played end to end as a novice on 2026-10-13: every control-flow feature above behaved as designed and the Flow completed.
+- The playtest fixed wording (Payday quote, phase button name, crew name tips, table tips, the heist opening) and the game system picker. Accepted: at alarm 4-5 the guards world turn forces a Firefight and does not lower the alarm, because rising pressure is the design.
+- Backlog (N8-N13): silent tracker effects, stale guide tips after a scene, previews of branch-only steps, world turns taking a scene number, the Black ICE step without a result to gate on, the campaign form below the list.
+
 **Notes**
 - Netrun floors use a suggested step plus the `net-floors` and `black-ice` shortcuts. Repeating a floor happens in free play (accepted limit).
 - The Scene cast holds the crew members present (8).

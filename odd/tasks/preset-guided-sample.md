@@ -1,7 +1,7 @@
 # Feature: preset-guided-sample
 
 - **Locator:** `odd/tasks/preset-guided-sample.md` · Engram topic `odd/preset-guided-sample/tasks`
-- **Issue:** #92 · **Branch:** `fix/preset-guided-sample-3-playtest` · **Status:** in progress (slice 3)
+- **Issue:** #92 · **Branch:** `fix/preset-guided-sample-3-playtest` · **Status:** complete (slice 3, pending review and PR)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-mythic-flow` (PRs #89–#91)
@@ -89,10 +89,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3a | 2 | Slice 1 review fixes: Play translator enforces the credits length limits (notice 1–2000 trimmed, license ≤ 200, url ≤ 500) and a schema version 1 release never yields credits (tested); `CreditsNotice` falls back to the URL as link text when `license` is empty | delegated writer (slice 2) | [x] | 7892be3 |
 | T4 | 2 | Preset `night-job` v1 per Design; `PresetsTest` and a `NightJobPresetFlowTest` (validates, passes the ACL, briefing fills the facts, the alarm conditions, the Infiltration → Firefight switch, Grab ends the phase, Getaway → Chase with both pick branches, Payday quotes the payout, the FlowRun completes) | delegated writer (slice 2) | [x] | d8fdf2c |
 | T5 | 2 | e2e: create a Night Job campaign, see the disclaimer and introduction, complete the mandatory crew step; `make e2e` | delegated writer (slice 2) | [x] | 890d7ab |
-| T6a | 3 | Slice 2 review fix: `NightJobPresetFlowTest` asserts the Chase `wheel` pick candidates Play computes (`Campaign::pickCandidates`) instead of building them in the test | | [ ] | |
+| T6a | 3 | Slice 2 review fix: `NightJobPresetFlowTest` asserts the Chase `wheel` pick candidates Play computes (`Campaign::pickCandidates`) instead of building them in the test | delegated writer (slice 3) | [x] | |
 | T6 | 3 | Playtest as a novice in Chrome: every phase, the alarm rising, a switch, the escape, Payday; findings logged below | parent (browser) | [x] | — |
-| T7 | 3 | Fix playtest findings N1–N6 (preset wording, form label and game system description); N8–N13 stay in the findings as backlog | | [ ] | |
-| T8 | 3 | Wrap-up: roadmap 9b done, M2 complete, flow example 2 notes, feature doc closed | | [ ] | |
+| T7 | 3 | Fix playtest findings N1–N6 (preset wording, form label and game system description); N8–N13 stay in the findings as backlog | delegated writer (slice 3) | [x] | |
+| T8 | 3 | Wrap-up: roadmap 9b done, M2 complete, flow example 2 notes, feature doc closed | delegated writer (slice 3) | [x] | |
 
 ## Playtest findings
 
@@ -124,6 +124,9 @@ Played on 2026-10-13 in Chrome by Claude (campaign "Playtest heist", `night-job`
 - 2026-10-13: T4 done. `backend/presets/night-job.json` (schema version 2, neon theme, credits, flow `heist` with introduction, tips on every Scene Type, 9 original tables, a `fate` likelihood oracle; `rumors` is left out of the flow for free play). The Crew Scene Type gained a `wheelman` step (crew + nomad) so the Chase pick finds a driver. `PresetsTest` and `NightJobPresetFlowTest` (13 tests). Tests were written after the preset, so no RED run; the preset is data and its tests pin the contract. GREEN: `NightJobPresetFlowTest` 13 OK, `PresetsTest` 3 OK. Route: delegated writer.
 - 2026-10-13: T5 done. `play-night-job.spec.ts`: Night Job campaign, the disclaimer and license link in the form and on the campaign page, the Flow introduction in the form, then the mandatory crew step in the focus view (the Flow opens in focus, so the step lives in the "Focus mode" region, not "Guided play"). No existing e2e or Behat test broke. The spec failed once (wrong region) before the fix; GREEN: `make e2e` 14 passed. Route: delegated writer.
 - 2026-10-13: T6 done. Played Night Job end to end in Chrome as a novice; the Flow completed and every control-flow feature behaved as designed. 13 findings logged (N1–N13): N1–N6 fixed in T7, N7 accepted, N8–N13 backlog. Route: parent (browser).
+- 2026-10-13: T6a done. `NightJobPresetFlowTest` reads the Chase `wheel` candidates from the FlowRun view (Play's own `pickCandidates`, crew AND nomad) and asserts exactly `Rook` (or none without a driver) before picking from that set; the "none" branch tests are intact. A test refactor over existing behavior, so no RED run. GREEN: `NightJobPresetFlowTest` 13 OK. Route: delegated writer.
+- 2026-10-13: T7 done. N1–N5 in `night-job.json` (Payday "Was the job worth it?", introduction "use End the phase", crew tips ask for a street name, client tip matches Roll/Refill, heist opening "Security is on alert"); N6 `NewCampaignForm` label "Game system" and the game system description under the picker. RED: the Payday assertion failed against the old preset (1 failure) and 5 Vitest cases failed before the form change; the other wording changes are data with no assertion, an exception. GREEN: `NightJobPresetFlowTest` + `PresetsTest` 16 OK, `src/play` Vitest 243 OK. `make presets` published night-job v2 and printed the accepted N7 warning. Route: delegated writer.
+- 2026-10-13: T8 done. Roadmap 9b done and M2 complete, flow example 2 "Played as a preset" note, feature doc closed. Docs only, no RED/GREEN. Route: delegated writer.
 
 ## Reviews
 
@@ -134,4 +137,4 @@ Played on 2026-10-13 in Chrome by Claude (campaign "Playtest heist", `night-job`
 
 ## Next step
 
-Slice 3 on `fix/preset-guided-sample-3-playtest`: the parent playtests Night Job in Chrome (T6) and logs findings; then one writer does T6a, T7 (blocking findings) and T8; native review, push, PR closing #92.
+Parent: native review of slice 3, PR closing #92.

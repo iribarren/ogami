@@ -54,6 +54,15 @@ describe('computeDerived', () => {
     })
   })
 
+  it('never reads a sheet field through a check reference', () => {
+    const fields = [...sheet, derived('a', '{check:reflexes}'), derived('b', '{check:hp}')]
+
+    expect(computeDerived(fields, drafts, [])).toEqual({
+      a: { reason: 'incomplete value' },
+      b: { reason: 'incomplete value' },
+    })
+  })
+
   it('is incomplete while a number or track draft is empty or not an integer', () => {
     const fields = [
       ...sheet,

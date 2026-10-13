@@ -668,6 +668,10 @@ final readonly class GameSystemReleaseTranslator
      */
     private function derivedReferenceProblem(Reference $reference, array $fields, array $trackerKeys): ?string
     {
+        if (ReferenceKind::Check === $reference->kind) {
+            return 'a check reference is read only by the bands of a check';
+        }
+
         if (ReferenceKind::Tracker === $reference->kind) {
             return \in_array($reference->key, $trackerKeys, true) ? null : \sprintf('unknown tracker "%s"', $reference->key);
         }

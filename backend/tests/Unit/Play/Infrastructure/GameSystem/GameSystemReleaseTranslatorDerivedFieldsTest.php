@@ -78,6 +78,8 @@ final class GameSystemReleaseTranslatorDerivedFieldsTest extends TestCase
         yield 'a max of a number' => ['{str.max}', 'sheet.fields[4].formula: {str.max}: field "str" is not a track field, only a track field has a max.'];
         yield 'a max of an unknown field' => ['{ghost.max}', 'sheet.fields[4].formula: {ghost.max}: unknown field "ghost".'];
         yield 'an undeclared tracker' => ['{tracker:nope}', 'sheet.fields[4].formula: {tracker:nope}: unknown tracker "nope".'];
+        yield 'a check reference' => ['{check:difficulty}', 'sheet.fields[4].formula: {check:difficulty}: a check reference is read only by the bands of a check.'];
+        yield 'a check reference named like a field' => ['{check:str}', 'sheet.fields[4].formula: {check:str}: a check reference is read only by the bands of a check.'];
         yield 'itself' => ['{self}', 'sheet.fields[4].formula: Derived values depend on each other in a cycle: self -> self.'];
     }
 

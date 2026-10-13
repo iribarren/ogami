@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Formula\Domain;
 
 /**
- * A value a formula reads: `{key}`, `{key.max}` or `{tracker:key}`. Keys follow the key rule of the
+ * A value a formula reads: `{key}`, `{key.max}`, `{tracker:key}` or `{check:key}`. Keys follow the key rule of the
  * release contract: 1 to 64 characters of `a-z`, `0-9` and `-`.
  */
 final readonly class Reference
 {
     public const string KEY_PATTERN = '[a-z0-9-]{1,64}';
     private const string TRACKER_PREFIX = 'tracker:';
+    private const string CHECK_PREFIX = 'check:';
     private const string MAX_SUFFIX = '.max';
 
     private function __construct(
@@ -45,7 +46,15 @@ final readonly class Reference
     }
 
     /**
-     * Reads what is written between the braces ("str", "hp.max" or "tracker:chaos"); null when it is none of the three.
+     * @throws InvalidFormula when the key breaks the key rule
+     */
+    public static function check(string $key): self
+    {
+        return new self(ReferenceKind::Check, self::checkedKey($key));
+    }
+
+    /**
+     * Reads what is written between the braces ("str", "hp.max", "tracker:chaos" or "check:difficulty"); null when it is none of the four.
      */
     public static function fromInner(string $inner): ?self
     {
@@ -55,6 +64,12 @@ final readonly class Reference
             $trackerKey = substr($inner, \strlen(self::TRACKER_PREFIX));
 
             return 1 === preg_match($key, $trackerKey) ? self::tracker($trackerKey) : null;
+        }
+
+        if (str_starts_with($inner, self::CHECK_PREFIX)) {
+            $checkKey = substr($inner, \strlen(self::CHECK_PREFIX));
+
+            return 1 === preg_match($key, $checkKey) ? self::check($checkKey) : null;
         }
 
         if (str_ends_with($inner, self::MAX_SUFFIX)) {
@@ -67,7 +82,7 @@ final readonly class Reference
     }
 
     /**
-     * The canonical spelling inside the braces: "str", "hp.max" or "tracker:chaos".
+     * The canonical spelling inside the braces: "str", "hp.max", "tracker:chaos" or "check:difficulty".
      */
     public function toString(): string
     {
@@ -75,6 +90,7 @@ final readonly class Reference
             ReferenceKind::Field => $this->key,
             ReferenceKind::TrackMax => $this->key.self::MAX_SUFFIX,
             ReferenceKind::Tracker => self::TRACKER_PREFIX.$this->key,
+            ReferenceKind::Check => self::CHECK_PREFIX.$this->key,
         };
     }
 

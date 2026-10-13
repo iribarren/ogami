@@ -1,6 +1,6 @@
 # 0022. Character sheets in schema version 2
 
-- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md)
+- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md) and [0024](0024-structured-checks-without-scripting.md)
 - **Date:** 2026-10-13
 
 ## Context
@@ -12,7 +12,7 @@ A sheet template is the same kind of change: no existing release uses it, `{}` s
 ## Decision
 
 - **Additive in schema version 2** (user decision, 2026-10-13). `sheet` gains an optional `fields` list, the `character` step kind joins the flow steps, and `pick` / `condition` `of` gain `character`. Every release valid before stays valid with the same content hash. `{}` and `{"fields": []}` both canonicalize to `{}`.
-- **Schema version 3 is for what changes meaning:** sheet effects, derived values and checks.
+- **Schema version 3 is for what changes meaning:** sheet effects. Derived values ([ADR 0023](0023-formula-kernel-and-derived-values.md)) and checks ([ADR 0024](0024-structured-checks-without-scripting.md)) were later settled as additive in version 2.
 - **Four field types**, each with its own closed set of properties (unknown ones fail closed):
   - `number`: optional `min`, `max`, `default` (integers, −1,000,000 to 1,000,000; `min ≤ default ≤ max`).
   - `text`: optional `multiline`, `maxLength` (1–2000).

@@ -18,7 +18,9 @@ use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\PickMode;
 use App\Play\Domain\GameSystem\Flow\PickStep;
@@ -68,7 +70,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * @throws CampaignNotFound
      * @throws FlowRunNotActive                when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
-     * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown or a picked id is no candidate
+     * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate or the Character is unknown
      * @throws InvalidJournalEntryId
      * @throws JournalEntryAlreadyExists
      * @throws InvalidJournalEntryContent      when the text or the step's question is too long
@@ -118,6 +120,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
             $step instanceof OracleStep => $this->oracle($command, $step, $campaign, $release),
             $step instanceof ChoiceStep => $this->choice($command, $step),
             $step instanceof PickStep => $this->pick($command, $step, $campaign),
+            $step instanceof CharacterStep => $this->character($command, $step, $campaign),
             default => throw InvalidStepResult::conditionStep($step->key),
         };
     }
@@ -212,13 +215,27 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     }
 
     /**
+     * The player brings an existing Character of the campaign; the journal notes its name.
+     *
+     * @return array{StepResult, JournalEntryContent}
+     */
+    private function character(CompleteFlowStep $command, CharacterStep $step, Campaign $campaign): array
+    {
+        $this->refuseFieldsOtherThan($command, $step, 'characterId');
+        $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::Character, 'characterId');
+        $name = $campaign->itemNames(ItemKind::Character, [$id])[0] ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
+
+        return [StepResult::character($id), NoteContent::of($name)];
+    }
+
+    /**
      * Fails closed on a field the step's kind does not take, rather than ignoring it.
      *
      * @throws InvalidStepResult
      */
     private function refuseFieldsOtherThan(CompleteFlowStep $command, Step $step, string ...$allowed): void
     {
-        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds];
+        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId];
         foreach ($given as $field => $value) {
             if (null !== $value && !\in_array($field, $allowed, true)) {
                 throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), $field);

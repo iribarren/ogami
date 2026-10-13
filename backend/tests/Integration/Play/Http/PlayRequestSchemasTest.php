@@ -29,7 +29,7 @@ final class PlayRequestSchemasTest extends WebTestCase
         yield 'Thread' => ['ThreadRequest', ['name'], ['tags', 'freeTags', 'weight']];
         yield 'record note' => ['RecordNoteRequest', ['text'], []];
         yield 'record roll' => ['RecordRollRequest', ['expression'], []];
-        yield 'complete FlowRun step' => ['CompleteFlowStepRequest', ['stepKey'], ['text', 'optionKey', 'likelihood', 'chaosFactor', 'pickedIds']];
+        yield 'complete FlowRun step' => ['CompleteFlowStepRequest', ['stepKey'], ['text', 'optionKey', 'likelihood', 'chaosFactor', 'pickedIds', 'characterId']];
         yield 'edit scene cast' => ['EditSceneCastRequest', ['npcIds'], ['characterIds']];
         yield 'edit session party' => ['EditSessionPartyRequest', ['characterIds'], []];
         yield 'skip FlowRun step' => ['SkipFlowStepRequest', ['stepKey'], []];

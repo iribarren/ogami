@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\PickStep;
@@ -205,12 +206,11 @@ final class GameSystemReleaseTranslatorSheetTest extends TestCase
     }
 
     #[Test]
-    public function itFailsClosedOnTheCharacterStepUntilPlayPlaysIt(): void
+    public function itReadsTheCharacterStepWithTheCommonProperties(): void
     {
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sceneTypes[0].setup[0].kind: step kind "character" is not supported by Play yet.');
+        $step = $this->translate(ReleaseViews::fixtureContent('valid/v2-sheet'))->sceneType('scene')?->setup->steps[0] ?? null;
 
-        $this->translate(ReleaseViews::fixtureContent('valid/v2-sheet'));
+        self::assertEquals(new CharacterStep('hero', 'Who are you?', 'Create your Character or pick one.', 'Fill the sheet.', true, null, []), $step);
     }
 
     #[Test]

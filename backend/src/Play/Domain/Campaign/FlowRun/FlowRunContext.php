@@ -128,6 +128,14 @@ final readonly class FlowRunContext
     }
 
     /**
+     * The current name of a Character of the campaign; null when it holds none with this id.
+     */
+    public function characterName(string $id): ?string
+    {
+        return $this->campaign->itemNames(ItemKind::Character, [$id])[0] ?? null;
+    }
+
+    /**
      * Adds the NPCs or Characters among the items to the current scene's cast; Threads have no
      * cast. Characters also join the current session's party when $toParty (in a hook).
      *

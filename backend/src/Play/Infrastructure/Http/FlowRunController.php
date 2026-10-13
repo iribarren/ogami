@@ -62,7 +62,7 @@ final readonly class FlowRunController
 {
     use ReadsJsonBodies;
 
-    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor" and a list of strings "pickedIds", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
+    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor", a list of strings "pickedIds" and a string "characterId", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
     private const string MALFORMED_SKIP = 'Send a JSON object with a string "stepKey", such as {"stepKey": "dice"}.';
     private const string MALFORMED_PICK = 'Send a JSON object with a string "sceneType", such as {"sceneType": "tour"}.';
     private const string MALFORMED_END_SCENE = 'Send a JSON object with an integer "sceneNumber", such as {"sceneNumber": 1}.';
@@ -104,11 +104,12 @@ final readonly class FlowRunController
         $likelihood = $body['likelihood'] ?? null;
         $chaosFactor = $body['chaosFactor'] ?? null;
         $pickedIds = $body['pickedIds'] ?? null;
-        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds))) {
+        $characterId = $body['characterId'] ?? null;
+        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds)) || (null !== $characterId && !\is_string($characterId))) {
             return $this->error(self::MALFORMED_ANSWER, Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds), $campaignId, $user);
+        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds, $characterId), $campaignId, $user);
     }
 
     #[Route('/api/campaigns/{campaignId}/flow-run/skip', name: 'api_campaigns_flow_run_skip', methods: ['POST'])]

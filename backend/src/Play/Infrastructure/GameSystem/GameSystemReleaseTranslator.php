@@ -8,6 +8,7 @@ use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceOption;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
@@ -474,7 +475,7 @@ final readonly class GameSystemReleaseTranslator
                 ),
                 'condition' => $this->conditionStep($view, $common, $step, $stepPath),
                 'pick' => $this->pickStep($view, $common, $step, $stepPath),
-                'character' => throw $this->invalid($view, $stepPath.'.kind', 'step kind "character" is not supported by Play yet.'),
+                'character' => new CharacterStep(...$common),
                 default => throw $this->invalid($view, $stepPath.'.kind', \sprintf('unknown step kind "%s".', $kind)),
             };
         }

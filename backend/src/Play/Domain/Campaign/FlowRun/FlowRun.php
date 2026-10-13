@@ -15,6 +15,7 @@ use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
@@ -281,12 +282,21 @@ final class FlowRun
             $answer = StepResult::pick($step->of, $picked)->answer;
             $outcome = [] === $picked ? $step->none : $step->found;
             $newlyPicked = [] === $picked ? null : new PickedItems($step->of, array_map(static fn (PickedItem $item): string => $item->id, $picked));
+        } elseif ($step instanceof CharacterStep) {
+            $id = $result->characterId ?? '';
+            // The answer is the Character's name now, so {step:key} and the history read it.
+            $answer = $context->characterName($id) ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
+            $newlyPicked = new PickedItems(ItemKind::Character, [$id]);
         } elseif ($step instanceof PromptStep && '' === $answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
 
         $this->answers[$step->key] = $answer;
-        if ($step instanceof PickStep) {
+        if ($step instanceof CharacterStep) {
+            // Like a one-item pick, but "{picked}" stays as it was.
+            $this->enterHookScene($context);
+            $context->joinSceneCast($newlyPicked, FlowRunStage::Hook === $this->stage);
+        } elseif ($step instanceof PickStep) {
             // A pick in a hook belongs to the hook Scene (it is under way once the step waits; this
             // makes sure of it), so entering it later cannot clear the pick.
             $this->enterHookScene($context);

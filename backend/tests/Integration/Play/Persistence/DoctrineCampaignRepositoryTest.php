@@ -328,6 +328,45 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals([FlowRunStage::Hook, SceneKind::Hook, new PickedItems(ItemKind::Npc, ['ana'])], [$loaded?->flowRun()?->stage(), $loaded?->currentScene()?->kind(), $loaded?->flowRun()?->picked()]);
     }
 
+    #[Test]
+    public function aCharacterStepInAHookRoundTripsWithItsAnswerThePartyAndTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $at = new \DateTimeImmutable('2026-10-10T09:00:00+00:00');
+        $step = static fn (string $key, string $kind, array $fields = []): array => ['key' => $key, 'kind' => $kind, 'title' => $key] + $fields;
+        $release = new GameSystemReleaseTranslator()->translate(ReleaseViews::of([
+            'schemaVersion' => 2,
+            'gameSystem' => ['key' => 'hook-hero', 'name' => 'Hook hero'],
+            'oracles' => ['tables' => [], 'likelihood' => []],
+            'trackers' => [],
+            'factSlots' => [],
+            'tags' => [],
+            'sceneTypes' => [['key' => 'quiet', 'name' => 'Quiet', 'purpose' => 'Quiet.', 'oracles' => [], 'setup' => [$step('quiet', 'prompt')], 'play' => [], 'closing' => []]],
+            'flows' => [['key' => 'turns', 'name' => 'Turns', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => [], 'phases' => [
+                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['quiet']], 'worldTurn' => [$step('hero', 'character'), $step('after', 'prompt', ['title' => 'Hello {step:hero}'])]],
+            ]]],
+            'checks' => [],
+        ]));
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('hook-hero', 1, 'Hook hero'), $at, [], $release->flow('turns'));
+        $campaign->addCharacter(CharacterId::fromString('ada'), 'Ada', [], [], [], $release);
+        $campaign->startSession($at, $release);
+        $campaign->completeFlowStep('quiet', StepResult::prompt('ok'), $release, $at);
+        $campaign->endFlowScene(1, $release, $at);
+        $campaign->completeFlowStep('hero', StepResult::character('ada'), $release, $at);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals(['quiet' => 'ok', 'hero' => 'Ada'], $loaded?->flowRun()?->answers());
+        self::assertSame(['ada'], array_map(static fn (CharacterId $character): string => $character->toString(), $loaded?->currentSession()?->party() ?? []));
+        $stored = $this->storedFlowRun($id->toString())['answers'];
+        self::assertIsArray($stored);
+        ksort($stored);
+        self::assertSame(['hero' => 'Ada', 'quiet' => 'ok'], $stored, 'JSONB does not keep the key order.');
+    }
+
     /**
      * @return array<mixed> the stored FlowRun column, decoded
      */

@@ -13,7 +13,8 @@ use App\Randomness\Domain\Roll;
 
 /**
  * What the player brings to complete a step, typed by step kind: a prompt's answer, a roll, a
- * table result, a likelihood answer, a choice option or the items a pick step picked. "answer" is the step's answer text kept for
+ * table result, a likelihood answer, a choice option, the items a pick step picked or the Character a
+ * character step names. "answer" is the step's answer text kept for
  * placeholders: the prompt text, the roll total, the entry texts, the answer label, the option key
  * (the FlowRun keeps the option's label) or the picked names joined with ", " (empty when nothing was
  * picked).
@@ -31,6 +32,7 @@ final readonly class StepResult
         public ?LikelihoodAnswer $likelihood = null,
         public ?ItemKind $of = null,
         public array $picked = [],
+        public ?string $characterId = null,
     ) {
     }
 
@@ -71,6 +73,15 @@ final readonly class StepResult
     public static function pick(ItemKind $of, array $picked): self
     {
         return new self(StepKind::Pick, implode(', ', array_map(static fn (PickedItem $item): string => $item->name, $picked)), of: $of, picked: $picked);
+    }
+
+    /**
+     * The Character a character step brings, by id. Its answer is the Character's name, which the
+     * FlowRun reads from the campaign when it completes the step.
+     */
+    public static function character(string $characterId): self
+    {
+        return new self(StepKind::Character, '', characterId: $characterId);
     }
 
     public static function choice(string $optionKey): self

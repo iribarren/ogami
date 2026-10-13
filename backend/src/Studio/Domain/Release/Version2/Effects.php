@@ -141,7 +141,7 @@ final class Effects
                 ReleaseFields::oneOf($effect['op'], $path.'.op', ['add', 'set']);
                 $effect['value'] = \is_int($effect['value'])
                     ? ReleaseFields::integer($effect['value'], $path.'.value', -self::MAX_VALUE, self::MAX_VALUE)
-                    : self::valueRef($effect['value'], $path.'.value', $catalog);
+                    : self::reference($effect['value'], $path.'.value', $catalog);
                 break;
             case 'nextScene':
             case 'switchSceneType':
@@ -186,14 +186,18 @@ final class Effects
     }
 
     /**
-     * @return array{tracker: string}
+     * The object forms of a band "upTo" and a tracker effect "value": {tracker: key} or {formula: string}.
+     *
+     * @return array{tracker: string}|array{formula: string}
      */
-    private static function valueRef(mixed $value, string $path, Catalog $catalog): array
+    public static function reference(mixed $value, string $path, Catalog $catalog): array
     {
         if (!\is_array($value) || [] === $value || array_is_list($value)) {
-            throw InvalidReleaseContent::at($path, 'must be an integer or {tracker: key}');
+            throw InvalidReleaseContent::at($path, 'must be an integer, {tracker: key} or {formula: string}');
         }
 
-        return self::trackerRef($value, $path, $catalog);
+        return \array_key_exists('formula', $value)
+            ? Formulas::flow($value, $path, $catalog)
+            : self::trackerRef($value, $path, $catalog);
     }
 }

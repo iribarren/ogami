@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its four field types, the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`, and the `sheet`'s fields. It fails closed on the `character` step and on `of: character` until slice 4 of `play-characters`. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its five field types, including `derived` fields, the formulas of derived fields, band `upTo` and tracker effect `value` ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)), the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`, and the `sheet`'s fields of the four stored types. It fails closed on the `character` step and on `of: character` until slice 4 of `play-characters`, and on `derived` fields and `{formula}` values until slices 3 and 4 of `rules-derived-values`. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `checks` (now "not supported in schema version 2"), the `sheet` (version 2 extends it, see [Sheet](#sheet-additive-in-schema-version-2)), optional fields, unknown properties and errors.
 
@@ -168,8 +168,8 @@ Every `next` (of a step, band, branch, option, `otherwise` or `pick` branch) fol
 
 | Part | Shape | Rules |
 |---|---|---|
-| Band | `{upTo?: int \| {tracker: key}, next?, effects?}` | Ordered upper bounds: every band but the last has `upTo`; the last omits it and catches the rest; literal `upTo` values strictly increase |
-| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` · `{kind: fillFact, slot, text? (1–2000)}` | At most 10 per list; referenced trackers, Scene Types, tags and fact slots exist; `tags` unique; `name`, `agenda` and `text` are placeholder text; `fillFact` `text` is allowed on a `text` slot only (on an `npc` or `thread` slot the value is the picked item) |
+| Band | `{upTo?: int \| {tracker: key} \| {formula: string}, next?, effects?}` | Ordered upper bounds: every band but the last has `upTo`; the last omits it and catches the rest; literal `upTo` values strictly increase (`{tracker}` and `{formula}` bounds are not compared). A `{formula}` is a [flow formula](#formulas-adr-0023) |
+| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key} \| {formula: string}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` · `{kind: fillFact, slot, text? (1–2000)}` | At most 10 per list; referenced trackers, Scene Types, tags and fact slots exist; `tags` unique; `name`, `agenda` and `text` are placeholder text; `fillFact` `text` is allowed on a `text` slot only (on an `npc` or `thread` slot the value is the picked item) |
 
 ### References inside a flow
 
@@ -250,10 +250,25 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 | `text` | `multiline?` (boolean), `maxLength?` (1–2000) | `maxLength` defaults to 200, or 2000 when `multiline` |
 | `list` | `itemLabel?` (1–60), `maxItems?` (1–100) | Items are trimmed strings of 1–200 characters; `maxItems` defaults to 50. For inventory, cyberware and the like |
 | `track` | `max?` (1–999) | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full |
+| `derived` | `formula` (required, 1–200 characters) | A DerivedValue computed from other fields and trackers by a [formula](#formulas-adr-0023); a Character stores no value for it |
 
-Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects or checks: they open schema version 3. Derived values arrive as an additive `derived` field type in schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed.
+Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects or checks: they open schema version 3. Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
 
 The `character` step kind and `of: character` in `pick` and `condition` counts are part of the same additive change (see [Steps](#steps)).
+
+### Formulas (ADR 0023)
+
+A **formula** is a string of 1–200 characters in three places: a `derived` field's `formula`, a band's `upTo: {formula}` and a tracker effect's `value: {formula}`. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
+
+- Integers from 0 to 1,000,000, `+ - * /` with parentheses and unary minus, `min(a, b, …)` and `max(…)` with 2–10 arguments. Division rounds down. Intermediate results stay within ±1,000,000,000.
+- References are braced: `{key}` reads a field, `{key.max}` a `track` field's max and `{tracker:key}` a tracker's current value. Keys follow the key rule.
+
+| Scope | Where | Rules |
+|---|---|---|
+| Sheet | `derived` field `formula` | `{key}` names a `number`, `track` or `derived` field; `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
+| Flow | band `upTo`, tracker effect `value` | Only `{tracker:key}` references, to trackers of the release (and, as for `{tracker: key}`, of the flow); `{key}` and `{key.max}` are rejected because a flow formula reads trackers only |
+
+A syntax error is reported at the formula's path with the kernel's message. A `derived` field shares the key namespace and the `group` layout of the other field types. A `{formula}` band `upTo` still counts as an `upTo` for the "every band but the last" rule. Counter `levels` keep literal `upTo` only. A formula that fails at play time (division by zero, overflow) is an evaluation error, not a content error: it is Play's concern (`rules-derived-values` slices 3 and 4).
 
 ### Play behaviour of the fact parts
 

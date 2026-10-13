@@ -547,8 +547,8 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'band upTo not increasing across a tracker bound' => [$condition([['upTo' => 3], ['upTo' => ['tracker' => 'edge']], ['upTo' => 3], []]), 'sceneTypes[3].closing[0].bands[2].upTo: must be greater than 3, the previous upTo, 3 given'];
         yield 'band upTo naming an unknown tracker' => [$condition([['upTo' => ['tracker' => 'noise']], []]), 'sceneTypes[3].closing[0].bands[0].upTo.tracker: unknown tracker "noise"'];
         yield 'band upTo with another property' => [$condition([['upTo' => ['tracker' => 'edge', 'plus' => 1]], []]), 'sceneTypes[3].closing[0].bands[0].upTo.plus: unknown property'];
-        yield 'band upTo a string' => [$condition([['upTo' => '3'], []]), 'sceneTypes[3].closing[0].bands[0].upTo: must be an integer or {tracker: key}'];
-        yield 'band upTo a fractional number' => [$condition([['upTo' => 2.5], []]), 'sceneTypes[3].closing[0].bands[0].upTo: must be an integer or {tracker: key}'];
+        yield 'band upTo a string' => [$condition([['upTo' => '3'], []]), 'sceneTypes[3].closing[0].bands[0].upTo: must be an integer, {tracker: key} or {formula: string}'];
+        yield 'band upTo a fractional number' => [$condition([['upTo' => 2.5], []]), 'sceneTypes[3].closing[0].bands[0].upTo: must be an integer, {tracker: key} or {formula: string}'];
         yield 'unknown band property' => [$condition([['upTo' => 3, 'label' => 'Low'], []]), 'sceneTypes[3].closing[0].bands[0].label: unknown property'];
 
         // Effects.
@@ -558,7 +558,7 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'unknown effect tracker' => [$effect(['kind' => 'tracker', 'tracker' => 'noise', 'op' => 'add', 'value' => 1]), 'sceneTypes[2].setup[0].effects[0].tracker: unknown tracker "noise"'];
         yield 'unknown effect op' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'multiply', 'value' => 2]), 'sceneTypes[2].setup[0].effects[0].op: must be one of "add", "set", \'multiply\' given'];
         yield 'effect value too high' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1001]), 'sceneTypes[2].setup[0].effects[0].value: must be at most 1000, 1001 given'];
-        yield 'fractional effect value' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1.5]), 'sceneTypes[2].setup[0].effects[0].value: must be an integer or {tracker: key}'];
+        yield 'fractional effect value' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1.5]), 'sceneTypes[2].setup[0].effects[0].value: must be an integer, {tracker: key} or {formula: string}'];
         yield 'effect value naming an unknown tracker' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'set', 'value' => ['tracker' => 'noise']]), 'sceneTypes[2].setup[0].effects[0].value.tracker: unknown tracker "noise"'];
         yield 'nextScene naming an unknown Scene Type' => [$effect(['kind' => 'nextScene', 'sceneType' => 'dawn']), 'sceneTypes[2].setup[0].effects[0].sceneType: unknown Scene Type "dawn"'];
         yield 'switchSceneType without Scene Type' => [$effect(['kind' => 'switchSceneType']), 'sceneTypes[2].setup[0].effects[0].sceneType: required'];

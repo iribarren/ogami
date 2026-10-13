@@ -99,7 +99,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: too-long-step-prompt' => ['flow.steps[0].prompt: must be at most 2000 characters', '/flow/steps/0/prompt'],
         'generated: entry-text-too-long' => ['oracles.tables: ', '/oracles/tables/0/entries/0/text'],
         'v2-bad-entry-key' => ['oracles.tables[0].entries[0].key: must be 1 to 64 characters', '/oracles/tables/0/entries/0/key'],
-        'v2-band-up-to-string' => ['sceneTypes[0].play[0].bands[0].upTo: must be an integer or {tracker: key}', '/sceneTypes/0/play/0/bands/0/upTo'],
+        'v2-band-up-to-string' => ['sceneTypes[0].play[0].bands[0].upTo: must be an integer, {tracker: key} or {formula: string}', '/sceneTypes/0/play/0/bands/0/upTo'],
         'v2-choice-one-option' => ['sceneTypes[0].play[0].options: at least 2 options', '/sceneTypes/0/play/0/options'],
         'v2-credits-empty-notice' => ['gameSystem.credits.notice: must not be empty', '/gameSystem/credits/notice'],
         'v2-credits-http-url' => ['gameSystem.credits.url: must be an absolute https:// URL', '/gameSystem/credits/url'],
@@ -183,6 +183,15 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-too-long-credits-license' => ['gameSystem.credits.license: must be at most 200 characters', '/gameSystem/credits/license'],
         'generated: v2-too-long-credits-url' => ['gameSystem.credits.url: must be at most 500 characters', '/gameSystem/credits/url'],
         'generated: v2-too-long-introduction' => ['flows[0].introduction: must be at most 5000 characters', '/flows/0/introduction'],
+        'generated: v2-derived-without-formula' => ['sheet.fields[0].formula: required', '/sheet/fields/0'],
+        'generated: v2-derived-empty-formula' => ['sheet.fields[0].formula: must not be empty', '/sheet/fields/0/formula'],
+        'generated: v2-derived-formula-too-long' => ['sheet.fields[0].formula: must be at most 200 characters', '/sheet/fields/0/formula'],
+        'generated: v2-derived-formula-not-a-string' => ['sheet.fields[0].formula: must be a string', '/sheet/fields/0/formula'],
+        'generated: v2-derived-with-min' => ['sheet.fields[0].min: unknown property', '/sheet/fields/0'],
+        'generated: v2-band-formula-with-extra-property' => ['sceneTypes[0].play[0].bands[0].upTo.plus: unknown property', '/sceneTypes/0/play/0/bands/0/upTo'],
+        'generated: v2-band-formula-empty' => ['sceneTypes[0].play[0].bands[0].upTo.formula: must not be empty', '/sceneTypes/0/play/0/bands/0/upTo/formula'],
+        'generated: v2-effect-formula-with-extra-property' => ['sceneTypes[0].play[0].effects[0].value.plus: unknown property', '/sceneTypes/0/play/0/effects/0/value'],
+        'generated: v2-effect-formula-too-long' => ['sceneTypes[0].play[0].effects[0].value.formula: must be at most 200 characters', '/sceneTypes/0/play/0/effects/0/value/formula'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
     ];
 
@@ -286,6 +295,9 @@ final class ReleaseSchemaAgreementTest extends TestCase
     public static function validCases(): iterable
     {
         yield from self::fixtures('valid');
+        foreach (self::generatedFormulaReleases() as $name => $release) {
+            yield 'generated: '.$name => [json_encode($release, \JSON_THROW_ON_ERROR)];
+        }
 
         foreach (self::fixtures('examples') as $name => $json) {
             yield 'example: '.$name => $json;
@@ -419,11 +431,63 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-too-long-introduction' => ['sceneTypes' => $sceneType([]), 'flows' => [['introduction' => str_repeat('i', 5001)] + $flow(1)]],
         ];
 
+        $alarm = ['key' => 'alarm', 'name' => 'Alarm', 'kind' => 'clock', 'segments' => 6];
+        /** @param array<string, mixed> $extra */
+        $derived = static fn (mixed $formula, array $extra = []): array => self::derivedSheet([['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => $formula] + $extra]);
+        $upTo = static fn (mixed $upTo): array => ['trackers' => [$alarm], 'sceneTypes' => $sceneType([['key' => 'check', 'kind' => 'condition', 'title' => 'Check', 'tracker' => 'alarm', 'bands' => [['upTo' => $upTo], new \stdClass()]]])];
+        $value = static fn (mixed $value): array => ['trackers' => [$alarm], 'sceneTypes' => $sceneType([['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => $value]]] + $prompt(1)])];
+        $generatedV2 += [
+            'v2-derived-without-formula' => self::derivedSheet([['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived']]),
+            'v2-derived-empty-formula' => $derived(''),
+            'v2-derived-formula-too-long' => $derived(str_repeat('1', 201)),
+            'v2-derived-formula-not-a-string' => $derived(3),
+            'v2-derived-with-min' => $derived('1', ['min' => 0]),
+            'v2-band-formula-with-extra-property' => $upTo(['formula' => '1', 'plus' => 1]),
+            'v2-band-formula-empty' => $upTo(['formula' => '']),
+            'v2-effect-formula-with-extra-property' => $value(['formula' => '1', 'plus' => 1]),
+            'v2-effect-formula-too-long' => $value(['formula' => str_repeat('1', 201)]),
+        ];
         foreach ($generatedV2 as $name => $overrides) {
             $cases['generated: '.$name] = [json_encode([...self::minimalReleaseV2(), ...$overrides], \JSON_THROW_ON_ERROR)];
         }
 
         return $cases;
+    }
+
+    /**
+     * Valid releases with formulas, built in code: a derived field, a formula band bound and a formula effect value.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private static function generatedFormulaReleases(): array
+    {
+        $alarm = ['key' => 'alarm', 'name' => 'Alarm', 'kind' => 'clock', 'segments' => 6];
+        $scene = static fn (array $play): array => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []]];
+
+        return [
+            'v2-derived-fields' => [...self::minimalReleaseV2(), ...self::derivedSheet([
+                ['key' => 'str', 'label' => 'Strength', 'type' => 'number'],
+                ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track'],
+                ['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '({str}-10)/2', 'hint' => 'Modifier', 'group' => 'Derived'],
+                ['key' => 'reserve', 'label' => 'Reserve', 'type' => 'derived', 'formula' => 'max({bonus},{hp.max})+{tracker:alarm}', 'hint' => null, 'group' => null],
+            ]), 'trackers' => [$alarm]],
+            'v2-formula-band-bound' => [...self::minimalReleaseV2(), 'trackers' => [$alarm], 'sceneTypes' => $scene([
+                ['key' => 'check', 'kind' => 'condition', 'title' => 'Check', 'tracker' => 'alarm', 'bands' => [['upTo' => ['formula' => '{tracker:alarm}*2']], ['upTo' => 9], new \stdClass()]],
+            ])],
+            'v2-formula-effect-value' => [...self::minimalReleaseV2(), 'trackers' => [$alarm], 'sceneTypes' => $scene([
+                ['key' => 'begin', 'kind' => 'prompt', 'title' => 'Begin', 'effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'set', 'value' => ['formula' => 'min({tracker:alarm},3)']]]],
+            ])],
+        ];
+    }
+
+    /**
+     * @param list<array<mixed>> $fields
+     *
+     * @return array{sheet: array{fields: list<array<mixed>>}}
+     */
+    private static function derivedSheet(array $fields): array
+    {
+        return ['sheet' => ['fields' => $fields]];
     }
 
     /**

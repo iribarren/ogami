@@ -81,7 +81,9 @@ final readonly class ReleaseContent
             ? ['oracles' => ReleaseOracles::validate($release['oracles']), 'flow' => self::flow($release['flow'])]
             : ReleaseVersion2::validate($release);
 
-        $sheet = 1 === $version ? self::reservedSheet($release['sheet']) : SheetFields::validate($release['sheet']);
+        /** @var list<string> $trackerKeys */
+        $trackerKeys = array_column($parts['trackers'] ?? [], 'key');
+        $sheet = 1 === $version ? self::reservedSheet($release['sheet']) : SheetFields::validate($release['sheet'], $trackerKeys);
 
         if ([] !== $release['checks']) {
             throw InvalidReleaseContent::at('checks', \sprintf('not supported in schema version %d, must be []', $version));

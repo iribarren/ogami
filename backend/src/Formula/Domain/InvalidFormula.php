@@ -6,6 +6,13 @@ namespace App\Formula\Domain;
 
 final class InvalidFormula extends \DomainException
 {
+    /**
+     * The keys around the cycle when derived values depend on each other, from its first key back to the same key.
+     *
+     * @var list<string>
+     */
+    public array $cycle = [];
+
     public static function empty(): self
     {
         return new self('The formula is empty; expected a formula such as "{str}+1".');
@@ -79,6 +86,9 @@ final class InvalidFormula extends \DomainException
      */
     public static function cycle(array $path): self
     {
-        return new self(\sprintf('Derived values depend on each other in a cycle: %s.', implode(' -> ', $path)));
+        $invalid = new self(\sprintf('Derived values depend on each other in a cycle: %s.', implode(' -> ', $path)));
+        $invalid->cycle = $path;
+
+        return $invalid;
     }
 }

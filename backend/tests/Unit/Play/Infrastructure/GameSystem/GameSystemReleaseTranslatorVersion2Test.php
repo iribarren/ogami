@@ -302,4 +302,40 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
 
         new GameSystemReleaseTranslator()->translate(ReleaseViews::of($edited));
     }
+
+    /**
+     * @return iterable<string, array{string, mixed, string}>
+     */
+    public static function formulaParts(): iterable
+    {
+        yield 'derived field' => ['sheet', ['fields' => [['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '1']]], 'sheet.fields[0].type: unknown field type "derived".'];
+        yield 'formula band upTo' => ['sceneTypes.3.closing.1.bands.0.upTo', ['formula' => '{tracker:edge}'], 'sceneTypes[3].closing[1].bands[0].upTo: must be an integer or {"tracker": key}.'];
+        yield 'formula effect value' => ['sceneTypes.2.setup.0.effects.0.value', ['formula' => '{tracker:edge}'], 'sceneTypes[2].setup[0].effects[0].value: must be an integer or {"tracker": key}.'];
+    }
+
+    /**
+     * Studio validates formulas from rules-derived-values slice 2, Play reads them from slices 3 and 4:
+     * until then a release that uses one is refused, never half read.
+     */
+    #[Test]
+    #[DataProvider('formulaParts')]
+    public function aFormulaIsRefusedUntilPlayReadsFormulas(string $path, mixed $value, string $expectedMessage): void
+    {
+        $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
+        $node = &$content;
+        foreach (explode('.', $path) as $segment) {
+            \assert(\is_array($node));
+            $node = &$node[$segment];
+        }
+
+        $node = $value;
+        unset($node);
+        /** @var array<string, mixed> $edited */
+        $edited = $content;
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains($expectedMessage);
+
+        new GameSystemReleaseTranslator()->translate(ReleaseViews::of($edited));
+    }
 }

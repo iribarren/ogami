@@ -10,7 +10,8 @@ use App\Studio\Domain\Release\ReleaseFields;
 /**
  * Outcome bands (ADR 0018, decision 2) and counter levels, which follow the same ordering: every
  * band but the last has an "upTo" upper bound, the last omits it and catches the rest, and literal
- * "upTo" values strictly increase. Band "upTo" may also be a tracker's current value.
+ * "upTo" values strictly increase. Band "upTo" may also be a tracker's current value or a formula over
+ * trackers; those are left out of the ordering.
  *
  * @internal
  */
@@ -34,9 +35,9 @@ final class Bands
             $bandPath = \sprintf('%s[%d]', $path, $index);
             $band = ReleaseFields::object($band, $bandPath, self::BAND);
             if (isset($band['upTo'])) {
-                $band['upTo'] = \is_array($band['upTo']) && [] !== $band['upTo'] && !array_is_list($band['upTo'])
-                    ? Effects::trackerRef($band['upTo'], $bandPath.'.upTo', $catalog)
-                    : self::literal($band['upTo'], $bandPath.'.upTo', 'must be an integer or {tracker: key}');
+                $band['upTo'] = \is_int($band['upTo'])
+                    ? $band['upTo']
+                    : Effects::reference($band['upTo'], $bandPath.'.upTo', $catalog);
             }
 
             if (isset($band['next'])) {

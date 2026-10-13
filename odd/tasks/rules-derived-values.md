@@ -1,7 +1,7 @@
 # Feature: rules-derived-values
 
 - **Locator:** `odd/tasks/rules-derived-values.md` · Engram topic `odd/rules-derived-values/tasks`
-- **Issue:** #107 · **Branch:** `feat/rules-derived-values-1-kernel` · **Status:** slice 1 in progress
+- **Issue:** #107 · **Branch:** `feat/rules-derived-values-2-contract` · **Status:** slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-characters` (PRs #97–#106)
@@ -79,6 +79,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
+| 1 | `review-d1f7272dab31b356` | `321418e`, `a4c658b` | Approved, acknowledged. Fixed in slice 2: R3 `Formula::fromString` trims with `trim()` defaults (NUL, vertical tab) while the tokenizer accepts only space, tab, CR, LF; R3 ADR 0023 index row sits outside the table; R3 suggestion: pin error precedence (left, right, operator) with mixed-error vectors | [#108](https://github.com/iribarren/ogami/pull/108) |
 | 1 | `feat/rules-derived-values-1-kernel` | `feat(formula): rules-derived-values 1/6 formula kernel` | T1, T2 | ~1,300 |
 | 2 | `feat/rules-derived-values-2-contract` | `feat(studio): rules-derived-values 2/6 formula contract` | T3 | ~1,200 |
 | 3 | `feat/rules-derived-values-3-play-acl` | `feat(play): rules-derived-values 3/6 formulas in play` | T4 | ~1,200 |
@@ -90,8 +91,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0023 (parent); ADR index; status notes on ADR 0022 and ADR 0017 ("amended by 0023"); glossary (Formula, Formula reference, DerivedValue updated); contract line 254 and the evolution note point to ADR 0023; context map lists the Formula kernel | delegated writer (slice 1) | [x] | |
-| T2 | 1 | `Formula` kernel: tokenizer, parser, AST, evaluator with `ValueResolver`, `references()`, `DependencyOrder` with cycle detection, `InvalidFormula` / `FormulaEvaluationFailed`; `backend/contracts/formula/conformance.json` run by PHPUnit; PHPat `CONTEXTS` and `SHARED_KERNEL` gain `Formula` | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0023 (parent); ADR index; status notes on ADR 0022 and ADR 0017 ("amended by 0023"); glossary (Formula, Formula reference, DerivedValue updated); contract line 254 and the evolution note point to ADR 0023; context map lists the Formula kernel | delegated writer (slice 1) | [x] | `321418e` |
+| T2 | 1 | `Formula` kernel: tokenizer, parser, AST, evaluator with `ValueResolver`, `references()`, `DependencyOrder` with cycle detection, `InvalidFormula` / `FormulaEvaluationFailed`; `backend/contracts/formula/conformance.json` run by PHPUnit; PHPat `CONTEXTS` and `SHARED_KERNEL` gain `Formula` | delegated writer (slice 1) | [x] | `a4c658b` |
 | T3 | 2 | Contract: `derived` field type, `{formula}` in band `upTo` and effect `value` in `v2.schema.json` and the Version2 validator (syntax, references, kinds, cycles, flow scope = trackers only); agreement fixtures; canonical form keeps hashes; contract doc section | | [ ] | |
 | T4 | 3 | Play ACL and flows: `DerivedField` in the snapshot; translator re-checks formulas; `Band.upTo` and `TrackerEffect.value` become `int\|Formula`, `{tracker}` read as a trivial formula, `TrackerReference` removed; `FlowRun::band()` and `applyTrackerEffect()` evaluate; evaluation failure → 422; tests | | [ ] | |
 | T5 | 4 | Derived values on Characters: domain computation in dependency order (defaults, trackers, `null` on failure); `CharacterValues` refuses derived keys; `CharacterView.derived`, `SheetFieldView.formula`; API tests; `make api` | | [ ] | |
@@ -105,6 +106,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: Exploration done (Randomness parser, PHPat kernel rules, tracker refs, sheet and Character views). Three decisions taken with the user; ADR 0023 written by the parent. Issue #107.
 - 2026-10-13: T1 docs done (feature doc, ADR 0023, ADR index and status notes, glossary, context map, contract note, CLAUDE.md). Structural readback only, docs task, no RED/GREEN. Route: delegated writer.
 - 2026-10-13: T2 Formula kernel done. RED: 160 errors and 3 failures, `App\Formula\Domain\*` classes missing; GREEN: all Formula tests pass; `make qa` and `make test` green. Route: delegated writer.
+- 2026-10-13: Slice 1 review fixes done: `Formula::fromString` trims only space, tab, CR, LF; error precedence (left operand, right operand, operator; first failing `min`/`max` argument) pinned with 14 vectors, the evaluator already behaved that way; ADR 0023 index row moved into the table. RED: 4 conformance failures (NUL / vertical tab accepted), precedence vectors green on first run; GREEN: 185 Formula tests pass. Route: delegated writer.
 
 ## Reviews
 
@@ -113,4 +115,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 1: T1 docs and T2 Formula kernel on `feat/rules-derived-values-1-kernel`.
+Slice 2: slice 1 review fixes, then T3 formula contract on `feat/rules-derived-values-2-contract`. Play keeps failing closed on `derived` fields and `{formula}` values until slices 3–4 (pinned by translator tests).

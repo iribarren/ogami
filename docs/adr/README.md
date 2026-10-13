@@ -26,6 +26,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0020 | [The scene pick waits after a scene](0020-scene-pick-waits-after-a-scene.md) | Accepted |
 | 0021 | [Release credits for fan presets](0021-release-credits-for-fan-presets.md) | Accepted |
 | 0022 | [Character sheets in schema version 2](0022-character-sheets-in-schema-version-2.md) | Accepted, amended by 0023 |
+| 0023 | [Formula kernel and derived values](0023-formula-kernel-and-derived-values.md) | Accepted |
 
 ## Template
 
@@ -39,4 +40,3 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 ## Decision
 ## Consequences
 ```
-| 0023 | [Formula kernel and derived values](0023-formula-kernel-and-derived-values.md) | Accepted |

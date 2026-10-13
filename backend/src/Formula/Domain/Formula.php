@@ -47,7 +47,8 @@ final readonly class Formula implements \Stringable
      */
     public static function fromString(string $formula): self
     {
-        $text = trim($formula);
+        // Exactly the tokenizer's whitespace: trim() would also strip NUL and vertical tab.
+        $text = trim($formula, " \t\r\n");
         if ('' === $text) {
             throw InvalidFormula::empty();
         }

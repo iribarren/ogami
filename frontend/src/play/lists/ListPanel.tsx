@@ -80,11 +80,13 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
                 pending: promote.isPending,
                 onAsk: () => {
                   promote.reset()
+                  setStatus.reset()
                   setConfirming(item.id)
                 },
                 onConfirm: () => {
+                  // Only a success closes the confirmation: a refusal stays beside its message.
                   promote.mutate(item.id, {
-                    onSettled: () => {
+                    onSuccess: () => {
                       setConfirming(null)
                     },
                   })
@@ -99,6 +101,7 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
           openForm(item.id)
         }}
         onToggle={() => {
+          promote.reset()
           setStatus.mutate({ id: item.id, close: item.status === 'open' })
         }}
       />
@@ -241,6 +244,7 @@ function ItemRow({
               variant="ghost"
               size="sm"
               aria-label={`Promote ${item.name} to Character`}
+              disabled={promotion.pending}
               onClick={promotion.onAsk}
             >
               Promote to Character
@@ -249,7 +253,7 @@ function ItemRow({
         </span>
       </div>
       {promoted && <p className="text-xs text-muted-foreground">Promoted</p>}
-      {promotion?.confirming === true && (
+      {promotion?.confirming === true && !promoted && (
         <div role="group" aria-label={`Promote ${item.name}`} className="space-y-2 text-sm">
           <p>Promote {item.name} to a Character? The NPC is closed for good.</p>
           <div className="flex gap-2">

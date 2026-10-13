@@ -1,7 +1,7 @@
 # Feature: play-characters
 
 - **Locator:** `odd/tasks/play-characters.md` · Engram topic `odd/play-characters/tasks`
-- **Issue:** #96 · **Branch:** `feat/play-characters-5-sheet-ui` · **Status:** slices 1–4 merged (PRs #97–#100); slice 5 in progress
+- **Issue:** #96 · **Branch:** `feat/play-characters-6-party` · **Status:** slices 1–5 merged (PRs #97–#101); slice 6 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-guided-sample` (PRs #93–#95, M2 complete)
@@ -89,8 +89,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 2 | Slice 1 review fixes. `Character` value object, `CharacterId`, values validated against the snapshot sheet, `Campaign::addCharacter` / `editCharacter` / `characters()`, `characters` column + Doctrine type + migration, legacy rows read empty | delegated writer (slice 2) | [x] | f4fb913, 76d0338 |
 | T5 | 3 | Characters API: create and edit endpoints, Campaign response `characters` and `pinnedRelease.sheet`, error mapping (404/409/422), API tests, Behat `characters.feature`, `make api` | delegated writer (slice 2 session) | [x] | 687a571, c301fab, f85a3e8 |
 | T6 | 4 | NPC promotion: `Campaign::promoteNpc`, endpoint, NPC `promotedTo` (persisted, legacy rows null), promoted NPC cannot be reopened or promoted again (409), API tests. The current Scene cast swap moves to T9, where the cast gains Characters | delegated writer (slice 4) | [x] | a713d7f, 7b4eebb, 2f64714 |
-| T7 | 5 | Characters panel: list, create and edit forms for number, text, list and track fields grouped by `group`; release and free tags; Vitest | delegated writer (slice 5) | [x] | |
-| T8 | 5 | "Promote to Character" on an NPC; e2e: create and edit a Character, promote an NPC | delegated writer (slice 5) | [x] | |
+| T7 | 5 | Characters panel: list, create and edit forms for number, text, list and track fields grouped by `group`; release and free tags; Vitest | delegated writer (slice 5) | [x] | bc4f7a8 |
+| T8 | 5 | "Promote to Character" on an NPC; e2e: create and edit a Character, promote an NPC | delegated writer (slice 5) | [x] | 6761bfc |
 | T9 | 6 | Session party and the Character part of the Scene cast: domain, promotion swaps the NPC for its Character in the current Scene's cast, persistence (legacy rows empty), party endpoint, cast endpoint with Characters, a new Scene's cast starts as the party, creation/promotion joins party and cast; API tests, `make api` | | [ ] | |
 | T10 | 7 | `character` step kind and `ItemKind::Character` in the ACL and FlowRun: step completion with a Character id, `{step:key}` name, pick candidates and condition counts over Characters, picks join the party in session hooks and the cast in scenes; exhaustive matches; FlowRun view | | [ ] | |
 | T11 | 8 | UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | | [ ] | |
@@ -110,6 +110,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: Slice 4 review fix R3-001: the 422 for `UnknownReleaseTag` on promote already held; pinned with an API test (stored NPC with Tag `ghost`, 422 with the Tag message, no Character persisted, NPC still open and not promoted). No RED possible (passed on first run: 1 test, 12 assertions). Route: delegated writer.
 - 2026-10-13: T7 done. `play/characters/`: `CharactersPanel` (list with Tags and a value summary, add and edit), `CharacterForm`, `SheetFields` (number, text or textarea, list rows up to `maxItems`, track with the max editable only when the field fixes none; consecutive `group`s together), `sheetValues` (defaults for missing or mis-shaped values), `useCharacters` (add and edit, refetch, 409 refetch), mounted as the `characters` `PlayPanel`. Tag chips and the free tags editor moved from `ListPanel` to `lists/TagFields` and `useFreeTags` so NPCs and Characters share them. RED: `CharactersPanel.test.tsx` written first, 10 of 10 failing (no Characters region). GREEN: 10 tests, `src/play` 253 tests. Route: delegated writer.
 - 2026-10-13: T8 done. "Promote to Character" on open and closed NPCs in `ListPanel` with an inline confirm ("Confirm promotion" / "Keep as NPC"), `usePromoteNpc` (201 refetches; 409 refetches and shows the message; 404/422 show the API message); a promoted NPC shows "Promoted" and offers no promote or reopen, an NPC without `promotedTo` reads as not promoted; Threads unchanged. `e2e/play-characters.spec.ts`: create and edit a Character (name, free tags), add and promote an NPC. RED: the 5 new `ListPanel` tests failed (5 of 28) with `ListPanel.tsx` at its previous version, written after the implementation and run against the old file. GREEN: 28 tests. e2e: new spec passes (15 of 15 in the suite). Route: delegated writer.
+- 2026-10-13: Slice 5 review fixes. R3-001: `ListPanel` shows a refused promotion (a refused close no longer masks it: each action resets the other's error) and the confirmation closes only on success (and not once a refetch shows the NPC promoted); R3-002: every Promote and Confirm promotion button is disabled while a promotion is pending. RED: 3 new/changed `ListPanel` cases failed (3 of 30). GREEN: 30 tests. Route: delegated writer.
 
 ## Reviews
 
@@ -119,7 +120,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `review-c7b6aa6128e62140` | f4fb913, 76d0338 | Approved, acknowledged. Fixed in slice 3: R3-001 (suggestion) `CharacterValues::track` read an explicit `max: null` as the field's fixed max; now refused like any non-integer max | #98 |
 | 3 | `review-5bad51fb75a8a904` | 687a571, c301fab (f85a3e8 generated, review skipped by the user) | Approved, acknowledged. Fixed in slice 4: R3-001 (suggestion) `CampaignCharactersController::character()` finds the saved Character by the raw path id; normalize with `CharacterId::fromString($id)->toString()` | #99 |
 | 4 | `review-222c66ae21b1fe20` | a713d7f, 7b4eebb, 2f64714 | Approved, acknowledged. Fixed in slice 5: R3-001 (suggestion) the 422 for `UnknownReleaseTag` on promote (`CampaignNpcsController`) is untested; seed a stored NPC with a Tag missing from the release, assert 422 and no Character persisted | #100 |
+| 5 | `review-81eec73f83f23e5d` | 93ca98c, bc4f7a8, 6761bfc | Approved, acknowledged. Fixed in slice 6: R3-001 (warning) `ListPanel.tsx` shows a stale `setStatus.error` before `promote.error`, and the confirm box closes on settle, so a refused promotion is hidden; R3-002 (suggestion) the promote mutation is shared, so Promote on another NPC while one is pending resets it and loses its callbacks; disable Promote while pending | #101 |
 
 ## Next step
 
-Slice 5 (T7, T8) on `feat/play-characters-5-sheet-ui`: slice 4 review fix (R3-001), then the Characters panel and NPC promotion in the UI. If T7 alone passes ~1,350 changed lines, T8 moves to slice 8.
+Slice 6 (T9) on `feat/play-characters-6-party`: slice 5 review fixes (R3-001, R3-002), then the Session party and the Character part of the Scene cast (backend, endpoints, `make api`). If the slice passes ~1,700 changed lines, the generated API files are committed on their own and reviewed apart.

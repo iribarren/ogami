@@ -144,6 +144,7 @@ final class CampaignCharactersTest extends TestCase
         yield 'a track with an unknown part' => [['hp' => ['current' => 1, 'min' => 0]], 'Field "hp" must be {current, max}.'];
         yield 'a track without current' => [['hp' => ['max' => 40]], 'Field "hp" must be {current, max} with integers.'];
         yield 'a track with a string current' => [['hp' => ['current' => '5']], 'Field "hp" must be {current, max} with integers.'];
+        yield 'a track with a null max against its fixed max' => [['hp' => ['current' => 5, 'max' => null]], 'Field "hp" must be {current, max} with integers.'];
         yield 'a track against its fixed max' => [['hp' => ['current' => 5, 'max' => 30]], 'Field "hp" has a fixed max of 40, got 30.'];
         yield 'a track above its max' => [['hp' => ['current' => 41]], 'The current of field "hp" must be 0 to 40, got 41.'];
         yield 'a track below zero' => [['hp' => ['current' => -1]], 'The current of field "hp" must be 0 to 40, got -1.'];

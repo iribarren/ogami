@@ -1,7 +1,7 @@
 # Feature: play-characters
 
 - **Locator:** `odd/tasks/play-characters.md` · Engram topic `odd/play-characters/tasks`
-- **Issue:** #96 · **Branch:** `feat/play-characters-2-characters` · **Status:** slice 1 merged (PR #97); slice 2 in progress
+- **Issue:** #96 · **Branch:** `feat/play-characters-3-api` · **Status:** slices 1–2 merged (PRs #97, #98); slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-guided-sample` (PRs #93–#95, M2 complete)
@@ -61,20 +61,23 @@ pick.of / condition count.of: "npc" | "thread" | "character"
 
 - Schema version 2 extended additively; JSON Schema and Version2 validator agree. Play reads releases only through its ACL ([ADR 0010](../../docs/adr/0010-versioned-gamesystem-releases.md), [ADR 0012](../../docs/adr/0012-phpat-boundary-enforcement.md)).
 - `make api` after response changes; commit `openapi.json` and `schema.d.ts`.
-- Every slice safe on `main` alone: slice 1 is validation and a snapshot nobody reads; slice 2 endpoints unused until slice 3's UI; slices 4–5 likewise.
+- Every slice safe on `main` alone: slice 1 is validation and a snapshot nobody reads; slices 2–4 are domain and endpoints unused until slice 5's UI; slices 6–7 likewise until slice 8.
 - Fan-content rule (ADR 0018 decision 29) for the Night Job sheet.
 
 ## Slice plan
 
-Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice.
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Slice 2's writer built T4 and T5 together (3,686 lines), so the plan was split from 5 to 8 slices (user, 2026-10-13); writer forecasts ran about 2x, so plan with that margin. Each slice's first commit carries the previous slice's review fixes.
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/play-characters-1-contract` | `feat(studio): play-characters 1/5 sheet contract` | T1, T2, T3 | ~1,450 |
-| 2 | `feat/play-characters-2-characters` | `feat(play): play-characters 2/5 characters api` | T4, T5, T6 | ~1,700 |
-| 3 | `feat/play-characters-3-sheet-ui` | `feat(play): play-characters 3/5 sheet ui` | T7, T8 | ~1,500 |
-| 4 | `feat/play-characters-4-party` | `feat(play): play-characters 4/5 party and character step` | T9, T10 | ~1,700 |
-| 5 | `feat/play-characters-5-play` | `feat(play): play-characters 5/5 party ui and preset` | T11, T12, T13 | ~1,300 |
+| 2 | `feat/play-characters-2-characters` | `feat(play): play-characters 2/8 characters in the campaign` | T4 | 1,386 |
+| 3 | `feat/play-characters-3-api` | `feat(play): play-characters 3/8 characters api` | T5 | ~2,350 (877 generated, reviewed apart) |
+| 4 | `feat/play-characters-4-promotion` | `feat(play): play-characters 4/8 npc promotion` | T6 | ~1,000 |
+| 5 | `feat/play-characters-5-sheet-ui` | `feat(play): play-characters 5/8 sheet ui` | T7, T8 | ~1,500 |
+| 6 | `feat/play-characters-6-party` | `feat(play): play-characters 6/8 party` | T9 | ~1,500 |
+| 7 | `feat/play-characters-7-character-step` | `feat(play): play-characters 7/8 character step` | T10 | ~1,500 |
+| 8 | `feat/play-characters-8-play` | `feat(play): play-characters 8/8 party ui and preset` | T11, T12, T13 | ~1,300 |
 
 ## Tasks
 
@@ -83,16 +86,16 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | Docs: this feature doc; ADR 0022 "Character sheets in schema version 2" (additive decision, field types, Characters in the Campaign, party and promotion rules); ADR 0017 status note on M3 step kinds; contract "new capability" rule amended; glossary (SheetTemplate, Field types, Resource track, Character, Party); ADR index | delegated writer (slice 1) | [x] | 23247cd |
 | T2 | 1 | Contract: `sheet.fields` and the four field types, the `character` step kind, `of: character` in `pick` and `condition` counts in `v2.schema.json` and the Version2 validator; canonical form keeps existing hashes; agreement fixtures (valid + structural + semantic); West Marches example uses `pick of: character` and gains a small sheet; examples README; contract doc section | delegated writer (slice 1) | [x] | 46a5ce0 |
 | T3 | 1 | Play ACL: `SheetTemplate` and `Field` snapshot classes, translator reads `sheet` with limits re-checked; `character` step and `of: character` fail closed with Play's translator error until slice 4; translator tests | delegated writer (slice 1) | [x] | 5089994 |
-| T4 | 2 | Slice 1 review fixes. `Character` value object, `CharacterId`, values validated against the snapshot sheet, `Campaign::addCharacter` / `editCharacter` / `characters()`, `characters` column + Doctrine type + migration, legacy rows read empty | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Characters API: create and edit endpoints, Campaign response `characters` and `pinnedRelease.sheet`, error mapping (404/409/422), API tests, Behat `characters.feature`, `make api` | | [ ] | |
-| T6 | 2 | NPC promotion: `Campaign::promoteNpc`, endpoint, NPC `promotedTo` (persisted, legacy rows null), promoted NPC cannot be reopened or promoted again (409), API tests. The current Scene cast swap moves to T9, where the cast gains Characters | | [ ] | |
-| T7 | 3 | Slice 2 review fixes. Characters panel: list, create and edit forms for number, text, list and track fields grouped by `group`; release and free tags; Vitest | | [ ] | |
-| T8 | 3 | "Promote to Character" on an NPC; e2e: create and edit a Character, promote an NPC | | [ ] | |
-| T9 | 4 | Slice 3 review fixes. Session party and the Character part of the Scene cast: domain, promotion swaps the NPC for its Character in the current Scene's cast, persistence (legacy rows empty), party endpoint, cast endpoint with Characters, a new Scene's cast starts as the party, creation/promotion joins party and cast; API tests, `make api` | | [ ] | |
-| T10 | 4 | `character` step kind and `ItemKind::Character` in the ACL and FlowRun: step completion with a Character id, `{step:key}` name, pick candidates and condition counts over Characters, picks join the party in session hooks and the cast in scenes; exhaustive matches; FlowRun view | | [ ] | |
-| T11 | 5 | Slice 4 review fixes. UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | | [ ] | |
-| T12 | 5 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | | [ ] | |
-| T13 | 5 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | | [ ] | |
+| T4 | 2 | Slice 1 review fixes. `Character` value object, `CharacterId`, values validated against the snapshot sheet, `Campaign::addCharacter` / `editCharacter` / `characters()`, `characters` column + Doctrine type + migration, legacy rows read empty | delegated writer (slice 2) | [x] | f4fb913, 76d0338 |
+| T5 | 3 | Characters API: create and edit endpoints, Campaign response `characters` and `pinnedRelease.sheet`, error mapping (404/409/422), API tests, Behat `characters.feature`, `make api` | | [ ] | |
+| T6 | 4 | NPC promotion: `Campaign::promoteNpc`, endpoint, NPC `promotedTo` (persisted, legacy rows null), promoted NPC cannot be reopened or promoted again (409), API tests. The current Scene cast swap moves to T9, where the cast gains Characters | | [ ] | |
+| T7 | 5 | Characters panel: list, create and edit forms for number, text, list and track fields grouped by `group`; release and free tags; Vitest | | [ ] | |
+| T8 | 5 | "Promote to Character" on an NPC; e2e: create and edit a Character, promote an NPC | | [ ] | |
+| T9 | 6 | Session party and the Character part of the Scene cast: domain, promotion swaps the NPC for its Character in the current Scene's cast, persistence (legacy rows empty), party endpoint, cast endpoint with Characters, a new Scene's cast starts as the party, creation/promotion joins party and cast; API tests, `make api` | | [ ] | |
+| T10 | 7 | `character` step kind and `ItemKind::Character` in the ACL and FlowRun: step completion with a Character id, `{step:key}` name, pick candidates and condition counts over Characters, picks join the party in session hooks and the cast in scenes; exhaustive matches; FlowRun view | | [ ] | |
+| T11 | 8 | UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | | [ ] | |
+| T12 | 8 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | | [ ] | |
+| T13 | 8 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | | [ ] | |
 
 ## Progress
 
@@ -100,13 +103,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: T2 done. `sheet.fields` (four types), `character` step, `of: character` in `pick` / `condition` in `v2.schema.json` and `SheetFields` / `Steps`; fixtures, agreement cases, `ReleaseContentSheetTest`; contract doc. RED: with the schema, `ReleaseContent` and `Steps` stashed, 6 errors and 18 failures in `tests/Unit/Studio`. GREEN: 731 tests. Hashes of every pre-change fixture, example (but West Marches) and preset equal before and after. West Marches gains a sheet; its `pick of: character` waits for slice 4 because `PlayReadsPublishedGameSystemReleasesTest` runs every example through the ACL. Route: delegated writer.
 - 2026-10-13: T3 done. `Sheet/` value objects (`SheetTemplate`, `NumberField`, `TextField`, `ListField`, `TrackField`), `GameSystemSnapshot::sheet()`, translator reads and re-checks the sheet; `character` step and `of: character` fail closed ("not supported by Play yet"). RED: new translator test 35 of 36 failing before the translator change. GREEN: 36 tests; `tests/Unit/Play` and the West Marches integration read pass. Note: `tests/Support/Play/ReleaseViews::of()` blanks the sheet, so the sheet tests rebuild the view; fix in slice 2. Route: delegated writer.
 - 2026-10-13: T4 done. Review fixes: R3-001 already held (Studio's `ReleaseFields::text` trims), pinned with three semantic agreement fixtures (label, group, itemLabel); R3-002 was a real bug, creating a campaign with a release Play cannot read yet (character step) was a 500, now a 422 (`CampaignController::create` maps `InvalidGameSystemRelease` / `UnsupportedReleaseSchemaVersion`), catalog listing pinned; R3-003 translator already rejected duplicates (existing test), `SheetTemplate` now refuses them too; `ReleaseViews::of()` keeps the sheet. `Characters/` (`Character`, `CharacterId`, `CharacterValues`, `InvalidCharacter`, `UnknownCharacter`, `CharacterAlreadyExists`), `Campaign::addCharacter` / `editCharacter` / `character` / `characters`, `characters` JSONB column + `CampaignCharactersType` + migration `Version20261013120000`. RED: 500 on the campaign create test before the mapping; `CampaignCharactersTest` 39 errors and 10 failures with the domain classes set aside. GREEN: 49 domain tests, 236 with persistence (round trip compares the whole aggregate, legacy row, stale copy, malformed rows). Route: delegated writer.
+- 2026-10-13: Slice 2 review fix R3-001: `CharacterValues::track` refuses an explicit `max: null` instead of reading the fixed max. RED: new "null max against its fixed max" case, "The value was accepted". GREEN: `CampaignCharactersTest` 49 tests. Plan split to 8 slices. Route: parent inline (one file, understood fix).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-1bd08a5815e4b5fe` | 23247cd, 46a5ce0, 5089994 | Approved, acknowledged. Fixed in slice 2: R3-001 Studio accepts a whitespace-only field `label`, `group` or `itemLabel` that Play's translator rejects; R3-002 Studio accepts the `character` step and `of: character` before Play reads them (pin that Play's catalog lists such a release without Flows and campaign creation fails cleanly); R3-003 `SheetTemplate` silently keeps the last of two fields with the same key. Also the T3 note: `ReleaseViews::of()` blanks the sheet | #97 |
+| 2 | `review-c7b6aa6128e62140` | f4fb913, 76d0338 | Approved, acknowledged. Fixed in slice 3: R3-001 (suggestion) `CharacterValues::track` read an explicit `max: null` as the field's fixed max; now refused like any non-integer max | #98 |
 
 ## Next step
 
-Slice 2 (T4–T6) on `feat/play-characters-2-characters`: slice 1 review fixes, Characters in the Campaign, Characters API, NPC promotion.
+Slice 3 (T5) on `feat/play-characters-3-api`: slice 2 review fix (R3-001), Characters API, regenerated API files in their own commit; review the fix and T5 together, the generated commit apart.

@@ -120,6 +120,7 @@ final class GetCampaignHandlerTest extends TestCase
             [],
             [],
             [],
+            [],
         ), $view);
     }
 

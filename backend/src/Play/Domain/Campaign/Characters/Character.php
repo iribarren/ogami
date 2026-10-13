@@ -9,8 +9,9 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 
 /**
  * A player character of a campaign: a name, release Tags and free tags as NPCs have, and the
- * values of the pinned release's sheet (field key to value, see CharacterValues), kept in sheet
- * field order. It records the NPC it was promoted from, if any.
+ * values of the pinned release's sheet (field key to value, see CharacterValues), one per field. It
+ * records the NPC it was promoted from, if any. The order of the values is not part of it: stored
+ * JSONB does not keep one, so readers order them by the sheet.
  *
  * The rules are checked here, so a stored Character read back is checked too; whether the release
  * Tags exist and the values fit the sheet is the Campaign's check (ItemRules::assertInRelease(),
@@ -97,7 +98,7 @@ final readonly class Character
     }
 
     /**
-     * @return array<string, int|string|list<string>|array{current: int, max: int}> by field key, in sheet field order
+     * @return array<string, int|string|list<string>|array{current: int, max: int}> by field key
      */
     public function values(): array
     {

@@ -171,7 +171,7 @@ final class CampaignApiTest extends WebTestCase
         $this->client->request('GET', '/api/campaigns/'.$id);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['gameSystemKey' => 'minimal', 'gameSystemName' => 'Minimal', 'version' => 1, 'theme' => 'noir', 'credits' => null], $this->json()['pinnedRelease'] ?? null);
+        self::assertSame(['gameSystemKey' => 'minimal', 'gameSystemName' => 'Minimal', 'version' => 1, 'theme' => 'noir', 'credits' => null, 'sheet' => []], $this->json()['pinnedRelease'] ?? null);
     }
 
     #[Test]
@@ -275,7 +275,7 @@ final class CampaignApiTest extends WebTestCase
                 'id' => $id,
                 'name' => 'The lost mine',
                 'createdAt' => '2026-10-06T09:00:00+00:00',
-                'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null],
+                'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null, 'sheet' => []],
                 'sessions' => [
                     [
                         'number' => 1,
@@ -299,6 +299,7 @@ final class CampaignApiTest extends WebTestCase
                 'threads' => [],
                 'factSlots' => [],
                 'facts' => [],
+                'characters' => [],
             ], \JSON_THROW_ON_ERROR),
             $this->content(),
         );
@@ -326,7 +327,7 @@ final class CampaignApiTest extends WebTestCase
         $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'Fresh start', 'gameSystemKey' => 'example-journal']);
         self::assertResponseStatusCodeSame(201);
         self::assertSame(
-            ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal, revised', 'version' => 2, 'theme' => null, 'credits' => null],
+            ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal, revised', 'version' => 2, 'theme' => null, 'credits' => null, 'sheet' => []],
             $this->json()['pinnedRelease'] ?? null,
         );
         self::assertSame([], $this->json()['likelihoodOracles'] ?? null);
@@ -689,7 +690,7 @@ final class CampaignApiTest extends WebTestCase
             'id' => $id,
             'name' => $name,
             'createdAt' => '2026-10-06T09:00:00+00:00',
-            'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null],
+            'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null, 'sheet' => []],
             'sessions' => [],
             'currentSessionNumber' => null,
             'currentSceneNumber' => null,
@@ -705,6 +706,7 @@ final class CampaignApiTest extends WebTestCase
             'threads' => [],
             'factSlots' => [],
             'facts' => [],
+            'characters' => [],
         ], \JSON_THROW_ON_ERROR);
     }
 

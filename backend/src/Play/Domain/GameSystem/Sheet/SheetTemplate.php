@@ -14,12 +14,18 @@ final readonly class SheetTemplate
     private array $fields;
 
     /**
-     * @param list<Field> $fields in definition order, unique keys (the translator checks both)
+     * @param list<Field> $fields in definition order
+     *
+     * @throws \InvalidArgumentException when two fields share a key
      */
     public function __construct(array $fields = [])
     {
         $byKey = [];
         foreach ($fields as $field) {
+            if (isset($byKey[$field->key])) {
+                throw new \InvalidArgumentException(\sprintf('Sheet field key "%s" is listed twice.', $field->key));
+            }
+
             $byKey[$field->key] = $field;
         }
 

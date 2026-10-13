@@ -11,6 +11,7 @@ doctrine:
         types:
             play_campaign_sessions: App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType
             play_campaign_npcs: App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType
+            play_campaign_characters: App\Play\Infrastructure\Persistence\Doctrine\CampaignCharactersType
             play_campaign_threads: App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType
             play_campaign_facts: App\Play\Infrastructure\Persistence\Doctrine\CampaignFactsType
             play_journal_entry_content: App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType

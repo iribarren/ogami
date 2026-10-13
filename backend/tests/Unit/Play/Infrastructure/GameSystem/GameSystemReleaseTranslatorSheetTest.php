@@ -13,7 +13,6 @@ use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
-use App\Studio\Application\PublishedReleaseView;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -40,10 +39,7 @@ final class GameSystemReleaseTranslatorSheetTest extends TestCase
     {
         /** @var array<string, mixed> $typed */
         $typed = $content;
-        // ReleaseViews::of() blanks the sheet; Studio hands Play the stored one.
         $view = ReleaseViews::of($typed, schemaVersion: $schemaVersion);
-        $sheet = $typed['sheet'] ?? [];
-        $view = new PublishedReleaseView($view->releaseId, $view->gameSystemKey, $view->version, $view->schemaVersion, $view->publishedAt, [...$view->content, 'sheet' => $sheet]);
 
         return new GameSystemReleaseTranslator()->translate($view);
     }

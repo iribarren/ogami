@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\Campaign\Characters\Character;
+use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
+use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Characters\CharacterValues;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
+use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactAlreadyExists;
 use App\Play\Domain\Campaign\Facts\FactFill;
@@ -98,6 +104,8 @@ final class Campaign
 
     public const int MAX_FACTS = 500;
 
+    public const int MAX_CHARACTERS = 100;
+
     /**
      * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
      * stale copy is refused (CampaignModifiedConcurrently). The model never changes it.
@@ -112,6 +120,7 @@ final class Campaign
      * @param list<Npc>          $npcs          in creation order
      * @param list<Thread>       $threads       in creation order
      * @param list<Fact>         $facts         in creation order
+     * @param list<Character>    $characters    in creation order
      */
     private function __construct(
         private readonly string $id,
@@ -127,6 +136,7 @@ final class Campaign
         private array $npcs = [],
         private array $threads = [],
         private array $facts = [],
+        private array $characters = [],
     ) {
     }
 
@@ -174,17 +184,19 @@ final class Campaign
      * @param list<Npc>          $npcs          in creation order
      * @param list<Thread>       $threads       in creation order
      * @param list<Fact>         $facts         in creation order
+     * @param list<Character>    $characters    in creation order
      *
-     * @throws NpcAlreadyExists     when two NPCs share an id
-     * @throws ThreadAlreadyExists  when two Threads share an id
-     * @throws FactAlreadyExists    when two facts share an id
-     * @throws CampaignLimitReached when there are more than 500 facts
-     * @throws InvalidFact          when two facts fill one slot, or a fact links to itself
-     * @throws UnknownNpc           when a link or subject names an NPC the campaign does not hold
-     * @throws UnknownThread        when a link or subject names a Thread the campaign does not hold
-     * @throws UnknownFact          when a link names a fact the campaign does not hold
+     * @throws NpcAlreadyExists       when two NPCs share an id
+     * @throws CharacterAlreadyExists when two Characters share an id
+     * @throws ThreadAlreadyExists    when two Threads share an id
+     * @throws FactAlreadyExists      when two facts share an id
+     * @throws CampaignLimitReached   when there are more than 500 facts
+     * @throws InvalidFact            when two facts fill one slot, or a fact links to itself
+     * @throws UnknownNpc             when a link or subject names an NPC the campaign does not hold
+     * @throws UnknownThread          when a link or subject names a Thread the campaign does not hold
+     * @throws UnknownFact            when a link names a fact the campaign does not hold
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = [], array $facts = []): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = [], array $facts = [], array $characters = []): self
     {
         $npcIds = [];
         foreach ($npcs as $npc) {
@@ -206,6 +218,16 @@ final class Campaign
             $threadIds[$key] = true;
         }
 
+        $characterIds = [];
+        foreach ($characters as $character) {
+            $key = $character->id()->toString();
+            if (isset($characterIds[$key])) {
+                throw CharacterAlreadyExists::withId($character->id());
+            }
+
+            $characterIds[$key] = true;
+        }
+
         $campaign = new self(
             $id->toString(),
             $ownerId,
@@ -220,6 +242,7 @@ final class Campaign
             $npcs,
             $threads,
             $facts,
+            $characters,
         );
         $campaign->flowRun = $flowRun;
         $campaign->startMissingFlowRun();
@@ -586,6 +609,74 @@ final class Campaign
     public function npcs(): array
     {
         return $this->openFirst($this->npcs);
+    }
+
+    /**
+     * Adds a Character at the end of the list. Values not given take the field default; the
+     * Character stores one value per field of the pinned release's sheet.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     * @param array<mixed> $values   field key to value
+     *
+     * @throws InvalidCharacter       when a value breaks a rule or does not fit the sheet
+     * @throws UnknownReleaseTag      when a Tag key is not in the pinned release
+     * @throws CharacterAlreadyExists when the campaign holds a Character with this id
+     * @throws CampaignLimitReached   when the campaign already holds 100 Characters
+     */
+    public function addCharacter(CharacterId $id, string $name, array $tags, array $freeTags, array $values, GameSystemSnapshot $release): Character
+    {
+        $this->assertPinned($release);
+        if (\count($this->characters) >= self::MAX_CHARACTERS) {
+            throw CampaignLimitReached::characters(self::MAX_CHARACTERS);
+        }
+
+        if ($this->character($id) instanceof Character) {
+            throw CharacterAlreadyExists::withId($id);
+        }
+
+        $character = Character::of($id, $name, $tags, $freeTags, CharacterValues::resolve($release->sheet(), $values));
+        ItemRules::assertInRelease($character->tags(), $release);
+        $this->characters = [...$this->characters, $character];
+
+        return $character;
+    }
+
+    /**
+     * Replaces the Character's name, Tags, free tags and values; the NPC it was promoted from stays.
+     * The values replace the old ones as a whole: a field not given goes back to its default. All
+     * or nothing.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     * @param array<mixed> $values   field key to value
+     *
+     * @throws UnknownCharacter  when the campaign holds no Character with this id
+     * @throws InvalidCharacter  when a value breaks a rule or does not fit the sheet
+     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     */
+    public function editCharacter(CharacterId $id, string $name, array $tags, array $freeTags, array $values, GameSystemSnapshot $release): Character
+    {
+        $this->assertPinned($release);
+        $index = $this->characterIndex($id);
+        $edited = $this->characters[$index]->edited($name, $tags, $freeTags, CharacterValues::resolve($release->sheet(), $values));
+        ItemRules::assertInRelease($edited->tags(), $release);
+        $this->characters = $this->replaced($this->characters, $index, $edited);
+
+        return $edited;
+    }
+
+    public function character(CharacterId $id): ?Character
+    {
+        return $this->characters[$this->characterIndexOrNull($id) ?? -1] ?? null;
+    }
+
+    /**
+     * @return list<Character> in creation order
+     */
+    public function characters(): array
+    {
+        return $this->characters;
     }
 
     /**
@@ -1208,6 +1299,25 @@ final class Campaign
     }
 
     /**
+     * @throws UnknownCharacter
+     */
+    private function characterIndex(CharacterId $id): int
+    {
+        return $this->characterIndexOrNull($id) ?? throw UnknownCharacter::withId($id);
+    }
+
+    private function characterIndexOrNull(CharacterId $id): ?int
+    {
+        foreach ($this->characters as $index => $character) {
+            if ($character->id()->equals($id)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @throws UnknownNpc
      */
     private function npcIndex(NpcId $id): int
@@ -1357,14 +1467,14 @@ final class Campaign
     }
 
     /**
-     * @template T of Npc|Thread|Fact
+     * @template T of Npc|Thread|Fact|Character
      *
      * @param list<T> $items
      * @param T       $item
      *
      * @return list<T> a copy with the item at the index replaced, so that the stored list is seen to change
      */
-    private function replaced(array $items, int $index, Npc|Thread|Fact $item): array
+    private function replaced(array $items, int $index, Npc|Thread|Fact|Character $item): array
     {
         $items[$index] = $item;
 

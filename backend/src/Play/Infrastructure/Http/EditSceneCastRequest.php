@@ -14,7 +14,8 @@ use OpenApi\Attributes as OA;
 final readonly class EditSceneCastRequest
 {
     /**
-     * @param list<string> $npcIds
+     * @param list<string>  $npcIds
+     * @param ?list<string> $characterIds
      */
     public function __construct(
         #[OA\Property(
@@ -23,6 +24,13 @@ final readonly class EditSceneCastRequest
             items: new OA\Items(type: 'string'),
         )]
         public array $npcIds,
+        #[OA\Property(
+            description: 'The whole new Characters part of the cast, in order: Characters of the campaign, none twice. Absent or null keeps the Characters in the cast.',
+            type: 'array',
+            items: new OA\Items(type: 'string'),
+            nullable: true,
+        )]
+        public ?array $characterIds,
     ) {
     }
 }

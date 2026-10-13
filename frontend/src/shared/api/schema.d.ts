@@ -209,6 +209,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/sessions/current/party": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the party of the current session of one of my campaigns */
+        put: operations["editSessionParty"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/trackers/{trackerKey}": {
         parameters: {
             query?: never;
@@ -971,7 +988,7 @@ export interface components {
         };
         ItemRefResponse: {
             /**
-             * @description The id of the NPC or Thread.
+             * @description The id of the NPC, Thread or Character.
              * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b
              */
             id: string;
@@ -1012,6 +1029,8 @@ export interface components {
             hook: "sessionOpening" | "sessionClosing" | "phaseOpening" | "phaseClosing" | "worldTurn" | null;
             /** @description The NPCs in the scene, in cast order, named as the campaign names them now; closed NPCs stay. Empty for a scene without a cast. */
             cast: components["schemas"]["ItemRefResponse"][];
+            /** @description The Characters in the scene, in cast order, named as the campaign names them now. A new scene starts with the session's party. Empty for a scene without Characters. */
+            characters: components["schemas"]["ItemRefResponse"][];
         };
         SessionResponse: {
             /**
@@ -1028,6 +1047,8 @@ export interface components {
              * @description When the session ended; null while it is under way.
              */
             endedAt: string | null;
+            /** @description The Characters playing, in the order they joined, named as the campaign names them now. The next session starts with the same party. */
+            party: components["schemas"]["ItemRefResponse"][];
         };
         OracleTableResponse: {
             /** @example weather */
@@ -1560,6 +1581,12 @@ export interface components {
         EditSceneCastRequest: {
             /** @description The whole new cast of the current scene, in cast order: NPCs of the campaign, closed ones allowed, none twice. An empty list empties the cast. */
             npcIds: string[];
+            /** @description The whole new Characters part of the cast, in order: Characters of the campaign, none twice. Absent or null keeps the Characters in the cast. */
+            characterIds?: string[] | null;
+        };
+        EditSessionPartyRequest: {
+            /** @description The whole new party of the session under way, in order: Characters of the campaign, none twice. An empty list empties the party. Scenes keep the Characters they have. */
+            characterIds: string[];
         };
         SetTrackerValueRequest: {
             /**
@@ -3047,7 +3074,7 @@ export interface operations {
                     "application/json": components["schemas"]["SceneResponse"];
                 };
             };
-            /** @description The JSON body is malformed or "npcIds" is not a list of strings. */
+            /** @description The JSON body is malformed, or "npcIds" or "characterIds" is not a list of strings. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3074,7 +3101,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id, or an id is not an NPC of the campaign (a blank or malformed one included). */
+            /** @description No campaign of the player has this id, or an id is not an NPC (or, in "characterIds", a Character) of the campaign (a blank or malformed one included). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3101,7 +3128,96 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description An NPC is listed twice. */
+            /** @description An NPC or a Character is listed twice. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    editSessionParty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditSessionPartyRequest"];
+            };
+        };
+        responses: {
+            /** @description The current session with its new party; its scenes keep the Characters they have. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or "characterIds" is not a list of strings. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or an id is not a Character of the campaign (a blank or malformed one included). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A Character is listed twice. */
             422: {
                 headers: {
                     [name: string]: unknown;

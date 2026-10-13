@@ -13,11 +13,12 @@ use OpenApi\Attributes as OA;
  * A scene of play, with an optional Scene Type of the campaign's pinned release, or a hook Scene
  * that records a phase boundary.
  */
-#[OA\Schema(required: ['number', 'title', 'startedAt', 'kind', 'sceneType', 'sceneTypeName', 'hook', 'cast'])]
+#[OA\Schema(required: ['number', 'title', 'startedAt', 'kind', 'sceneType', 'sceneTypeName', 'hook', 'cast', 'characters'])]
 final readonly class SceneResponse
 {
     /**
      * @param list<ItemRefResponse> $cast
+     * @param list<ItemRefResponse> $characters
      */
     private function __construct(
         #[OA\Property(description: 'Numbered from 1 within its session.', example: 1)]
@@ -40,11 +41,22 @@ final readonly class SceneResponse
             items: new OA\Items(ref: new Model(type: ItemRefResponse::class)),
         )]
         public array $cast,
+        #[OA\Property(
+            description: 'The Characters in the scene, in cast order, named as the campaign names them now. A new scene starts with the session\'s party. Empty for a scene without Characters.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: ItemRefResponse::class)),
+        )]
+        public array $characters,
     ) {
     }
 
     public static function fromView(SceneView $view): self
     {
-        return new self($view->number, $view->title, $view->startedAt->format(\DATE_ATOM), $view->kind, $view->sceneType, $view->sceneTypeName, $view->hook, array_map(static fn (CastMemberView $member): ItemRefResponse => ItemRefResponse::of($member->id, $member->name), $view->cast));
+        return new self($view->number, $view->title, $view->startedAt->format(\DATE_ATOM), $view->kind, $view->sceneType, $view->sceneTypeName, $view->hook, array_map(self::member(...), $view->cast), array_map(self::member(...), $view->characters));
+    }
+
+    private static function member(CastMemberView $member): ItemRefResponse
+    {
+        return ItemRefResponse::of($member->id, $member->name);
     }
 }

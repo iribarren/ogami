@@ -36,10 +36,11 @@ describe('groupJournal', () => {
   it('keeps sessions and scenes without entries, in number order', () => {
     const groups = groupJournal(
       [
-        { number: 2, startedAt: '2026-10-06T12:00:00+00:00', scenes: [], endedAt: null },
+        { number: 2, startedAt: '2026-10-06T12:00:00+00:00', scenes: [], endedAt: null, party: [] },
         {
           number: 1,
           startedAt: '2026-10-05T12:00:00+00:00',
+          party: [],
           scenes: [
             {
               number: 2,
@@ -50,6 +51,7 @@ describe('groupJournal', () => {
               sceneTypeName: null,
               hook: null,
               cast: [],
+              characters: [],
             },
             {
               number: 1,
@@ -60,6 +62,7 @@ describe('groupJournal', () => {
               sceneTypeName: null,
               hook: null,
               cast: [],
+              characters: [],
             },
           ],
           endedAt: null,

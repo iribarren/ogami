@@ -571,6 +571,8 @@ describe('promoting an NPC to a Character', () => {
 
     expect(await panel.findByRole('alert')).toHaveTextContent('already promoted')
     expect(await panel.findByText('Promoted')).toBeInTheDocument()
+    // The refetch shows the NPC promoted, so the confirmation has nothing left to ask.
+    expect(panel.queryByRole('button', { name: 'Confirm promotion' })).not.toBeInTheDocument()
   })
 
   it('shows an unprocessable promotion as the API words it', async () => {
@@ -585,6 +587,55 @@ describe('promoting an NPC to a Character', () => {
     await user.click(panel.getByRole('button', { name: 'Confirm promotion' }))
 
     expect(await panel.findByRole('alert')).toHaveTextContent('Tag "leader" not found')
-    expect(panel.getByRole('button', { name: 'Promote Mira Vane to Character' })).toBeEnabled()
+    // The confirmation stays open beside the refusal; only a success closes it.
+    expect(panel.getByRole('button', { name: 'Confirm promotion' })).toBeEnabled()
+  })
+
+  it('shows a refused promotion over an older refused close', async () => {
+    const user = userEvent.setup()
+    renderLists(lostMineWithLists, {
+      [`POST ${path}/npcs/${brannNpc.id}/close`]: () =>
+        Response.json({ error: 'NPC not found.' }, { status: 404 }),
+      [`POST ${promotePath}`]: () =>
+        Response.json({ error: 'Tag "leader" not found in the pinned release.' }, { status: 422 }),
+    })
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Close Brann' }))
+    expect(await panel.findByRole('alert')).toHaveTextContent('NPC not found.')
+
+    await user.click(panel.getByRole('button', { name: 'Promote Mira Vane to Character' }))
+    await user.click(panel.getByRole('button', { name: 'Confirm promotion' }))
+
+    expect(await panel.findByRole('alert')).toHaveTextContent('Tag "leader" not found')
+    expect(panel.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('disables every promotion button while a promotion is pending', async () => {
+    const user = userEvent.setup()
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { server } = renderLists(lostMineWithLists, {
+      [`POST ${promotePath}`]: async () => {
+        await gate
+        server.campaign = { ...server.campaign, npcs: [promoted, brannNpc, oldGuardNpc] }
+        return Response.json({ id: 'character-1' }, { status: 201 })
+      },
+    })
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Promote Mira Vane to Character' }))
+    await user.click(panel.getByRole('button', { name: 'Confirm promotion' }))
+
+    expect(panel.getByRole('button', { name: 'Confirm promotion' })).toBeDisabled()
+    expect(panel.getByRole('button', { name: 'Promote Brann to Character' })).toBeDisabled()
+
+    release()
+    await waitFor(() => {
+      expect(panel.queryByRole('button', { name: 'Confirm promotion' })).not.toBeInTheDocument()
+    })
+    expect(panel.getByRole('button', { name: 'Promote Brann to Character' })).toBeEnabled()
   })
 })

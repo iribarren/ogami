@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
+import type { DerivedResult } from './derivedValues'
 import { toDraft, type Draft } from './sheetValues'
 import type { SheetField } from './useCharacters'
 
@@ -17,10 +18,13 @@ const maxItemLength = 200
 export function SheetFields({
   fields,
   drafts,
+  derived,
   onChange,
 }: {
   fields: SheetField[]
   drafts: Record<string, Draft>
+  /** What derived fields show, by key; a field without an entry shows a dash. */
+  derived: Record<string, DerivedResult>
   onChange: (key: string, draft: Draft) => void
 }) {
   const blocks: { group: string | null; fields: SheetField[] }[] = []
@@ -42,6 +46,7 @@ export function SheetFields({
             key={field.key}
             field={field}
             draft={drafts[field.key] ?? toDraft(field, undefined)}
+            derived={derived[field.key]}
             onChange={(draft) => {
               onChange(field.key, draft)
             }}
@@ -65,10 +70,12 @@ export function SheetFields({
 function FieldControl({
   field,
   draft,
+  derived,
   onChange,
 }: {
   field: SheetField
   draft: Draft
+  derived: DerivedResult | undefined
   onChange: (draft: Draft) => void
 }) {
   const id = useId()
@@ -78,6 +85,36 @@ function FieldControl({
       {field.hint}
     </p>
   )
+
+  if (field.type === 'derived') {
+    // Computed from the other fields: shown, never edited or submitted.
+    return (
+      <div className="space-y-1">
+        <Label htmlFor={id}>{field.label}</Label>
+        <output
+          id={id}
+          aria-describedby={field.hint === null ? undefined : hintId}
+          className="block text-sm font-medium"
+        >
+          {derived !== undefined && 'value' in derived ? (
+            String(derived.value)
+          ) : (
+            <>
+              —
+              <span className="text-xs font-normal text-muted-foreground">
+                {' '}
+                ({derived?.reason ?? 'no value'})
+              </span>
+            </>
+          )}
+        </output>
+        {hint}
+        <p className="text-xs text-muted-foreground">
+          <code>{field.formula}</code>
+        </p>
+      </div>
+    )
+  }
 
   if (Array.isArray(draft)) {
     const item = field.itemLabel ?? 'Item'

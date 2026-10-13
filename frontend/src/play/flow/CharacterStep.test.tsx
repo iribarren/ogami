@@ -110,7 +110,8 @@ describe('a character step', () => {
     )
 
     const step = await card()
-    expect(step.queryByLabelText('Initiative')).not.toBeInTheDocument()
+    // Shown read-only as an output: no input to type in.
+    expect(step.getByLabelText('Initiative').tagName).toBe('OUTPUT')
     await user.type(step.getByLabelText('Name'), 'Vi')
     await user.click(step.getByRole('button', { name: 'Save' }))
 

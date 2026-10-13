@@ -1,7 +1,7 @@
 # Feature: rules-derived-values
 
 - **Locator:** `odd/tasks/rules-derived-values.md` · Engram topic `odd/rules-derived-values/tasks`
-- **Issue:** #107 · **Branch:** `feat/rules-derived-values-6-preset` · **Status:** done (slice 6 under review)
+- **Issue:** #107 · **Branch:** `feat/rules-derived-values-6-preset` · **Status:** done (PRs #108–#113)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-characters` (PRs #97–#106)
@@ -98,8 +98,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 4 | Derived values on Characters: `DerivedField` in the snapshot (translator re-checks references, kinds and cycles); domain computation in dependency order (defaults, trackers, `null` on failure); `CharacterValues` refuses derived keys; `CharacterView.derived`, `SheetFieldView.formula`; API tests; `make api` | delegated writer (slice 4) | [x] | `533988f` (slice 3 fixes), `07d4033`, `b3bf365`, `a059c41` |
 | T6 | 5 | TS evaluator in `frontend/src/shared/lib/formula/` mirroring the kernel; node container mounts `backend/contracts` read-only; Vitest runs the conformance file | delegated writer (slice 5) | [x] | `29475f6` (slice 4 fixes), `a60511d` |
 | T7 | 5 | UI: derived fields read-only and live in the Character form, from form state and tracker values; Characters panel shows `derived`; Vitest | delegated writer (slice 5) | [x] | `bc1e6d5` |
-| T8 | 6 | Night Job preset gains derived values: `cool` (Stats, `max(0, {nerve} - {tracker:alarm} / 2)`) and `wounded` (Condition, `{hp.max} / 2`), original wording (ADR 0018 decision 29); preset tests; e2e: edit a stat, see the derived value change | delegated writer (slice 6) | [x] | |
-| T9 | 6 | Wrap-up: roadmap 11 done, feature doc closed | delegated writer (slice 6) | [x] | |
+| T8 | 6 | Night Job preset gains derived values: `cool` (Stats, `max(0, {nerve} - {tracker:alarm} / 2)`) and `wounded` (Condition, `{hp.max} / 2`), original wording (ADR 0018 decision 29); preset tests; e2e: edit a stat, see the derived value change | delegated writer (slice 6) | [x] | `6b582db` (slice 5 fixes), `0fa6a25` |
+| T9 | 6 | Wrap-up: roadmap 11 done, feature doc closed | delegated writer (slice 6) | [x] | `245a442` |
 
 ## Progress
 
@@ -130,7 +130,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `review-7d73d024fe8eaf11` | `28e1e35`, `e34c24f` | Approved, acknowledged. Fixed in slice 4: R3 a formula effect `value` is unbounded and no test pins 422 vs 500 when its evaluation overflows (`FlowRunContext.php:227`); R3 the translator does not check that a flow formula's trackers are declared in the release, so an unknown tracker is a `LogicException` 500 at runtime (`GameSystemReleaseTranslator.php:868-872`); R3 suggestion: `FlowRunFormulasTest` asserts the failing-band rollback through a clone, assert the FlowRun position | [#110](https://github.com/iribarren/ogami/pull/110) |
 | 4 | `review-8ab04f8617ca7a1b` | `533988f`, `07d4033`, `b3bf365`, `a059c41` | Approved, acknowledged. Fixed in slice 5: R3 suggestion: `assertFormulaTrackersDeclared` (`GameSystemReleaseTranslator.php:238-240`) reads `upTo` on every node, scope it to band and effect nodes or pin that a counter level `upTo` never reaches it; R3 suggestion: no `CharacterStepForm` test that derived fields stay out of the form and the payload | [#111](https://github.com/iribarren/ogami/pull/111) |
 | 5 | `review-4d98bf9e899e7370` | `29475f6`, `a60511d`, `bc1e6d5` | Approved, acknowledged. Fixed in slice 6: R3 `derivedValues.ts:94-102` labels any evaluation failure that references a failed derived value as `depends on <key>`, even a division by zero or overflow (label only on `unknownReference`); R3 `derivedValues.ts:57-61` the cycle early return drops the `invalid formula` results of unparsable formulas, and a value reading an unparsable derived value reads `incomplete value` instead of `depends on <key>` | [#112](https://github.com/iribarren/ogami/pull/112) |
+| 6 | — | `6b582db`, `0fa6a25`, `245a442` | Review skipped (declined by the user: 130 lines of slice 5 fixes, preset data checked at publish, e2e and docs). No findings | [#113](https://github.com/iribarren/ogami/pull/113) |
 
 ## Next step
 
-Slice 6 review and PR; then the feature is closed. Next feature: 12 `play-checks`.
+Feature closed once PR #113 is merged. Next feature: 12 `play-checks`.

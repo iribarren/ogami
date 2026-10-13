@@ -80,6 +80,7 @@ final class FlowRunFormulasTest extends FlowRunTestCase
     {
         $campaign = $this->inScene('broken');
         $before = clone $campaign;
+        $position = self::position($campaign);
 
         try {
             $campaign->completeFlowStep('broken', self::prompt('ok'), $this->release, self::at());
@@ -88,6 +89,7 @@ final class FlowRunFormulasTest extends FlowRunTestCase
             self::assertStringContainsString('{tracker:heat} / {tracker:zero}', $exception->getMessage());
             self::assertStringContainsString('divides by zero', $exception->getMessage());
             self::assertEquals($before, $campaign);
+            self::assertSame($position, self::position($campaign));
             self::assertSame([3, 0], [$this->tracker($campaign, 'heat'), $this->tracker($campaign, 'alarm')], 'The effect before the failing one is undone too.');
         }
     }
@@ -97,12 +99,50 @@ final class FlowRunFormulasTest extends FlowRunTestCase
     {
         $campaign = $this->inScene('brokenBand');
         $before = clone $campaign;
+        $position = self::position($campaign);
 
         $this->expectException(FlowFormulaFailed::class);
 
         try {
             $campaign->completeFlowStep('brokenBand', self::roll('1d6', 3), $this->release, self::at());
         } finally {
+            self::assertEquals($before, $campaign);
+            self::assertSame($position, self::position($campaign), 'The roll step is still the current one.');
+        }
+    }
+
+    #[Test]
+    public function aFormulaEffectWorthABillionIsClampedToTheTrackerRange(): void
+    {
+        $campaign = $this->inScene('big');
+
+        $campaign->completeFlowStep('big', self::prompt('ok'), $this->release, self::at());
+
+        self::assertSame(20, $this->tracker($campaign, 'alarm'), '1,000 * 1,000,000 reaches the alarm max');
+    }
+
+    #[Test]
+    public function aNegativeFormulaEffectWorthABillionIsClampedToTheTrackerMinimum(): void
+    {
+        $campaign = $this->inScene('bigDrop');
+        $campaign->setTrackerValue($this->trackerOf('alarm'), 5);
+
+        $campaign->completeFlowStep('bigDrop', self::prompt('ok'), $this->release, self::at());
+
+        self::assertSame(0, $this->tracker($campaign, 'alarm'));
+    }
+
+    #[Test]
+    public function aFormulaEffectThatOverflowsFailsTheCommandAndChangesNothing(): void
+    {
+        $campaign = $this->inScene('overflow');
+        $before = clone $campaign;
+
+        try {
+            $campaign->completeFlowStep('overflow', self::prompt('ok'), $this->release, self::at());
+            self::fail('An overflowing formula was accepted.');
+        } catch (FlowFormulaFailed $exception) {
+            self::assertStringContainsString('outside', $exception->getMessage());
             self::assertEquals($before, $campaign);
         }
     }
@@ -140,7 +180,7 @@ final class FlowRunFormulasTest extends FlowRunTestCase
             'schemaVersion' => 2,
             'gameSystem' => ['key' => 'formulas', 'name' => 'Formulas'],
             'oracles' => ['tables' => [], 'likelihood' => []],
-            'trackers' => [$counter('limit', 9, 2), $counter('heat', 9, 3), $counter('zero', 9, 0), $counter('alarm', 20, 0)],
+            'trackers' => [$counter('limit', 9, 2), $counter('heat', 9, 3), $counter('zero', 9, 0), $counter('alarm', 20, 0), $counter('huge', 1000, 1000)],
             'factSlots' => [],
             'sceneTypes' => [
                 $sceneType('gamble', [
@@ -148,14 +188,17 @@ final class FlowRunFormulasTest extends FlowRunTestCase
                     $prompt('low', 'Low'), $prompt('high', 'High'),
                 ]),
                 $sceneType('boost', [$prompt('boost', 'Boost', ['effects' => [$tracker('alarm', 'add', ['formula' => 'max({tracker:limit}, 3)'])]])]),
+                $sceneType('big', [$prompt('big', 'Big', ['effects' => [$tracker('alarm', 'add', ['formula' => '{tracker:huge} * 1000000'])]])]),
+                $sceneType('bigDrop', [$prompt('bigDrop', 'Big drop', ['effects' => [$tracker('alarm', 'add', ['formula' => '0 - {tracker:huge} * 1000000'])]])]),
+                $sceneType('overflow', [$prompt('overflow', 'Overflow', ['effects' => [$tracker('alarm', 'add', ['formula' => '{tracker:huge} * 1000000 * 1000'])]])]),
                 $sceneType('broken', [$prompt('broken', 'Broken', ['effects' => [$tracker('heat', 'add', 1), $tracker('alarm', 'add', ['formula' => '{tracker:heat} / {tracker:zero}'])]])]),
                 $sceneType('brokenBand', [
                     ['key' => 'brokenBand', 'kind' => 'roll', 'title' => 'Broken', 'dice' => '1d6', 'bands' => [['upTo' => ['formula' => '1 / {tracker:zero}'], 'next' => 'low'], ['next' => 'high']]],
                     $prompt('low', 'Low'), $prompt('high', 'High'),
                 ]),
             ],
-            'flows' => [['key' => 'formulas', 'name' => 'Formulas', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['limit', 'heat', 'zero', 'alarm'], 'phases' => [
-                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['gamble', 'boost', 'broken', 'brokenBand']]],
+            'flows' => [['key' => 'formulas', 'name' => 'Formulas', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['limit', 'heat', 'zero', 'alarm', 'huge'], 'phases' => [
+                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['gamble', 'boost', 'broken', 'brokenBand', 'big', 'bigDrop', 'overflow']]],
             ]]],
             'checks' => [],
         ];

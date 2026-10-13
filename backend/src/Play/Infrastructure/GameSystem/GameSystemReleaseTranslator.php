@@ -214,8 +214,34 @@ final readonly class GameSystemReleaseTranslator
             $this->assertFactSlotFilled($view, $node, $path, $snapshot);
         }
 
+        $this->assertFormulaTrackersDeclared($view, $node, $path, $snapshot);
+
         foreach ($node as $name => $child) {
             $this->assertTagsExist($view, $child, \is_int($name) ? \sprintf('%s[%d]', $path, $name) : ('' === $path ? $name : $path.'.'.$name), $snapshot);
+        }
+    }
+
+    /**
+     * A band bound or a tracker Effect value that reads a Tracker, as {"tracker": key} or in a formula,
+     * reads one the release declares: an unknown one would fail at runtime. Studio checks this on
+     * publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $node
+     */
+    private function assertFormulaTrackersDeclared(PublishedReleaseView $view, array $node, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $values = ['upTo' => $node['upTo'] ?? null];
+        if ('tracker' === ($node['kind'] ?? null)) {
+            $values['value'] = $node['value'] ?? null;
+        }
+
+        foreach ($values as $name => $value) {
+            $formula = \is_array($value) ? $this->value($view, $value, $path.'.'.$name) : null;
+            foreach ($formula instanceof Formula ? $formula->references() : [] as $reference) {
+                if (!$snapshot->tracker($reference->key) instanceof Tracker) {
+                    throw $this->invalid($view, $path.'.'.$name, \sprintf('unknown tracker "%s".', $reference->key));
+                }
+            }
         }
     }
 

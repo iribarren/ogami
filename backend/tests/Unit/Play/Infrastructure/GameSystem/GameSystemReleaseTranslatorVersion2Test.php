@@ -354,6 +354,10 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         yield 'neither tracker nor formula' => [$value, [], $valuePath.$shape];
         yield 'extra key' => [$band, ['formula' => '1', 'plus' => 1], $bandPath.$shape];
         yield 'formula not a string' => [$band, ['formula' => 3], $bandPath.$shape];
+        yield 'band formula reading an undeclared tracker' => [$band, ['formula' => '{tracker:edge} + {tracker:nope}'], $bandPath.': unknown tracker "nope".'];
+        yield 'band tracker form naming an undeclared tracker' => [$band, ['tracker' => 'nope'], $bandPath.': unknown tracker "nope".'];
+        yield 'effect formula reading an undeclared tracker' => [$value, ['formula' => 'max({tracker:nope}, 1)'], $valuePath.': unknown tracker "nope".'];
+        yield 'effect tracker form naming an undeclared tracker' => [$value, ['tracker' => 'nope'], $valuePath.': unknown tracker "nope".'];
         yield 'formula as a bare string' => [$value, '{tracker:edge}', $valuePath.$shape];
     }
 

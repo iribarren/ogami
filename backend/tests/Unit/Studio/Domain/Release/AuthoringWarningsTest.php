@@ -287,6 +287,43 @@ final class AuthoringWarningsTest extends TestCase
         self::assertSame([], ReleaseContent::fromArray($release)->warnings());
     }
 
+    /**
+     * A condition continues to a check step whose outcome may jump over a quiet step to the one
+     * forcing the Scene Type: only the outcome's "next" reaches it.
+     *
+     * @return array<mixed>
+     */
+    private function conditionThenCheckStep(?string $failNext): array
+    {
+        $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
+        $release = ReleaseArrays::with($release, 'checks', [
+            ['key' => 'sneak', 'label' => 'Sneak', 'dice' => '1d6', 'bands' => [['key' => 'fail', 'label' => 'Fail', 'upTo' => 3], ['key' => 'pass', 'label' => 'Pass']]],
+        ]);
+
+        return ReleaseArrays::with($release, self::WORLD_TURN, [
+            ['key' => 'response', 'kind' => 'condition', 'title' => 'Does security respond?', 'tracker' => 'alarm', 'bands' => [['upTo' => 3, 'next' => 'sneak-past'], ['next' => 'end']]],
+            ['key' => 'sneak-past', 'kind' => 'check', 'title' => 'Sneak past', 'check' => 'sneak', 'outcomes' => null === $failNext ? [] : [['band' => 'fail', 'next' => $failNext]]],
+            ['key' => 'quiet', 'kind' => 'prompt', 'title' => 'Quiet night', 'next' => 'end'],
+            ['key' => 'late', 'kind' => 'prompt', 'title' => 'Reinforcements', 'effects' => [['kind' => 'nextScene', 'sceneType' => 'firefight']]],
+        ]);
+    }
+
+    #[Test]
+    public function itWarnsWhenACheckOutcomeLeadsToTheForcedScene(): void
+    {
+        self::assertSame(
+            ['flows[0].phases[1].worldTurn[3]: nextScene firefight does not lower tracker alarm; the consequence may fire every turn'],
+            ReleaseContent::fromArray($this->conditionThenCheckStep('late'))->warnings(),
+        );
+    }
+
+    #[Test]
+    public function itDoesNotWarnWhenNoCheckOutcomeLeadsToTheForcedScene(): void
+    {
+        self::assertSame([], ReleaseContent::fromArray($this->conditionThenCheckStep(null))->warnings());
+        self::assertSame([], ReleaseContent::fromArray($this->conditionThenCheckStep('end'))->warnings());
+    }
+
     #[Test]
     public function itDoesNotWarnForASwitchInPlace(): void
     {

@@ -186,5 +186,15 @@
     }
   ],
   "sheet": {},
-  "checks": []
+  "checks": [
+    {
+      "key": "slip-past", "label": "Slip past the guards", "hint": "Roll 2d6 against how alert the guards are.",
+      "dice": "2d6",
+      "difficulty": {"label": "Alert level", "default": 7, "min": 2, "max": 12},
+      "bands": [
+        {"key": "caught", "label": "Caught", "upTo": {"formula": "{check:difficulty}-1"}},
+        {"key": "through", "label": "Through"}
+      ]
+    }
+  ]
 }

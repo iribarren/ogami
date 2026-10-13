@@ -51,6 +51,17 @@ final class ReleaseContentChecksTest extends TestCase
     }
 
     #[Test]
+    public function aStepDifficultyAboveTheMaxOfTheCheckRangeIsRefused(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-checks'), 'sceneTypes.0.play.0.difficulty', 30);
+
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains('sceneTypes[0].play[0].difficulty: must be at most 29, the difficulty max of check "skill", 30 given');
+
+        ReleaseContent::fromArray($release);
+    }
+
+    #[Test]
     public function checksAreStillReservedInSchemaVersion1(): void
     {
         $release = ReleaseArrays::fixture('valid/v2-checks');

@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Play\Domain\GameSystem\Check;
+
+use App\Randomness\Domain\Roll;
+
+/**
+ * What performing a check produced: the dice rolled, the modifier formula, the situational
+ * modifier and the difficulty that applied, their total, and the Outcome band the total falls in.
+ */
+final readonly class CheckResult
+{
+    public function __construct(
+        public Roll $roll,
+        public int $modifier,
+        public int $situational,
+        public ?int $difficulty,
+        public int $total,
+        public CheckBand $band,
+    ) {
+    }
+}

@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { CreditsNotice } from './CreditsNotice'
 import { releaseLabel } from './releaseLabel'
 import { useCreateCampaign, type GameSystemSummary } from './useCampaigns'
 
@@ -21,7 +22,8 @@ function defaultFlowKey(gameSystem: GameSystemSummary | undefined) {
 
 /**
  * Names a new campaign and picks the GameSystem it is pinned to (its latest release) and, when
- * the release has Flows, the Flow to play along (its default one, or playing freely).
+ * the release has Flows, the Flow to play along (its default one, or playing freely). It shows the credits of the chosen
+ * release and the introduction of the chosen Flow.
  * Creating it opens the campaign; a refusal shows the API's message.
  */
 export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummary[] }) {
@@ -32,8 +34,10 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
   const nameId = useId()
   const gameSystemId = useId()
   const flowId = useId()
-  const flows =
-    gameSystems.find((gameSystem) => gameSystem.gameSystemKey === gameSystemKey)?.flows ?? []
+  const chosenGameSystem = gameSystems.find(
+    (gameSystem) => gameSystem.gameSystemKey === gameSystemKey,
+  )
+  const flows = chosenGameSystem?.flows ?? []
   const chosenFlow = flows.find((flow) => flow.key === flowKey)
   const valid = name.trim() !== '' && gameSystemKey !== ''
 
@@ -81,6 +85,7 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
             </option>
           ))}
         </NativeSelect>
+        <CreditsNotice credits={chosenGameSystem?.credits ?? null} />
       </div>
       {flows.length > 0 && (
         <div className="space-y-2">
@@ -101,6 +106,9 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
           </NativeSelect>
           {chosenFlow?.description && (
             <p className="text-sm text-muted-foreground">{chosenFlow.description}</p>
+          )}
+          {chosenFlow?.introduction && (
+            <p className="text-sm whitespace-pre-line">{chosenFlow.introduction}</p>
           )}
         </div>
       )}

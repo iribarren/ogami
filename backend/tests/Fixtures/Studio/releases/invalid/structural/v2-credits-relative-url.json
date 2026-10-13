@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal", "credits": {"notice": "Fan content.", "url": "/policy"}},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

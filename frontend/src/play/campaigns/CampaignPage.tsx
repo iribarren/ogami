@@ -17,6 +17,7 @@ import { ListPanel } from '../lists/ListPanel'
 import { OraclePanel } from '../oracles/OraclePanel'
 import { TrackersPanel } from '../trackers/TrackersPanel'
 import { visibleTrackers } from '../trackers/useTrackers'
+import { CreditsNotice } from './CreditsNotice'
 import { PlayPanel } from './PlayPanel'
 import { releaseLabel } from './releaseLabel'
 import { SessionControls } from './SessionControls'
@@ -97,6 +98,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         <p className="text-muted-foreground">
           {releaseLabel(campaign.pinnedRelease.gameSystemName, campaign.pinnedRelease.version)}
         </p>
+        <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>
       <SessionControls campaign={campaign} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_var(--play-sidebar-width)]">

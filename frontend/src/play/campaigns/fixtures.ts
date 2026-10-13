@@ -8,6 +8,7 @@ export const freeJournal: GameSystemSummary = {
   description: 'Play any setting as a journal.',
   version: 2,
   flows: [],
+  credits: null,
 }
 
 export const mythicStyle: GameSystemSummary = {
@@ -16,6 +17,7 @@ export const mythicStyle: GameSystemSummary = {
   description: null,
   version: 1,
   flows: [],
+  credits: null,
 }
 
 /** A GameSystem with two Flows, the second one the default. */
@@ -25,9 +27,16 @@ export const heist: GameSystemSummary = {
   description: 'Plan and pull a job.',
   version: 1,
   flows: [
-    { key: 'quick', name: 'Quick job', description: 'One phase, no hooks.', default: false },
-    { key: 'full', name: 'Full heist', description: null, default: true },
+    {
+      key: 'quick',
+      name: 'Quick job',
+      description: 'One phase, no hooks.',
+      introduction: null,
+      default: false,
+    },
+    { key: 'full', name: 'Full heist', description: null, introduction: null, default: true },
   ],
+  credits: null,
 }
 
 export const lostMine: CampaignSummary = {
@@ -49,6 +58,28 @@ export const sunkenTemple: CampaignSummary = {
   createdAt: '2026-09-28T12:00:00+00:00',
 }
 
+/** A fan preset: credits with a license link, and a default Flow with a two-paragraph introduction. */
+export const fanPreset: GameSystemSummary = {
+  gameSystemKey: 'night-job',
+  name: 'Night Job',
+  description: 'A heist one-shot.',
+  version: 1,
+  flows: [
+    {
+      key: 'heist',
+      name: 'Heist',
+      description: null,
+      introduction: 'You play alone.\n\nThe guide asks one thing at a time.',
+      default: true,
+    },
+  ],
+  credits: {
+    notice: 'Night Job is unofficial content and is not approved or endorsed by the publisher.',
+    license: 'Homebrew Content Policy',
+    url: 'https://example.com/homebrew-policy',
+  },
+}
+
 /** `lostMine` as `GET /api/campaigns/{id}` returns it, in session 2, scene 1. */
 export const lostMineCampaign: Campaign = {
   id: lostMine.id,
@@ -59,6 +90,7 @@ export const lostMineCampaign: Campaign = {
     gameSystemName: 'Free journal',
     version: 2,
     theme: null,
+    credits: null,
   },
   sessions: [
     {
@@ -159,6 +191,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
       gameSystemName: gameSystem.name,
       version: gameSystem.version,
       theme: null,
+      credits: gameSystem.credits,
     },
     sessions: [],
     currentSessionNumber: null,
@@ -253,7 +286,19 @@ export const lostMineWithTypes: Campaign = {
     },
   ],
   sceneTypes: [
-    { key: 'legwork', name: 'Legwork', purpose: 'Learn about the target.', oracles: ['fate'] },
-    { key: 'firefight', name: 'Firefight', purpose: 'Shoot your way out.', oracles: [] },
+    {
+      key: 'legwork',
+      name: 'Legwork',
+      purpose: 'Learn about the target.',
+      tips: null,
+      oracles: ['fate'],
+    },
+    {
+      key: 'firefight',
+      name: 'Firefight',
+      purpose: 'Shoot your way out.',
+      tips: null,
+      oracles: [],
+    },
   ],
 }

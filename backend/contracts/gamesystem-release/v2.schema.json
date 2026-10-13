@@ -107,7 +107,19 @@
       "properties": {
         "key": { "$ref": "#/$defs/key" },
         "name": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "description": { "type": ["string", "null"], "maxLength": 2000 }
+        "description": { "type": ["string", "null"], "maxLength": 2000 },
+        "credits": { "$ref": "#/$defs/credits" }
+      }
+    },
+    "credits": {
+      "description": "The notice, license and link a release carries, such as a fan preset's publisher disclaimer (ADR 0021). Optional; omitted or null means no credits.",
+      "type": ["object", "null"],
+      "required": ["notice"],
+      "additionalProperties": false,
+      "properties": {
+        "notice": { "description": "The text Play shows. Trimmed, 1 to 2000 characters.", "type": "string", "minLength": 1, "maxLength": 2000 },
+        "license": { "description": "The name of the license or policy the content is provided under.", "type": ["string", "null"], "maxLength": 200 },
+        "url": { "description": "Where the license or policy is published: an absolute https:// URL.", "type": ["string", "null"], "maxLength": 500, "pattern": "^https://[^\\s/?#]+\\S*$" }
       }
     },
     "oracles": {

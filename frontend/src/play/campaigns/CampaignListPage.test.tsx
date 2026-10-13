@@ -4,7 +4,15 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { freeJournal, heist, lostMine, mythicStyle, newCampaign, sunkenTemple } from './fixtures'
+import {
+  fanPreset,
+  freeJournal,
+  heist,
+  lostMine,
+  mythicStyle,
+  newCampaign,
+  sunkenTemple,
+} from './fixtures'
 
 const soloPlayer = signedInAs('SOLO_PLAYER')
 
@@ -282,6 +290,67 @@ describe('the Play campaign list', () => {
       await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Heist v1')
 
       expect(within(form).getByLabelText('Flow')).toHaveDisplayValue('Full heist')
+    })
+  })
+
+  describe('credits and the Flow introduction', () => {
+    async function openForm(gameSystems = [fanPreset, freeJournal]) {
+      renderAppAt('/play', {
+        'GET /api/auth/me': soloPlayer,
+        'GET /api/campaigns': json([]),
+        'GET /api/play/game-systems': json(gameSystems),
+      })
+      const form = await screen.findByRole('form', { name: 'New campaign' })
+      await within(form).findByRole('option', { name: 'Night Job v1' })
+      return form
+    }
+
+    it('shows the notice of the chosen GameSystem, with its license as a link', async () => {
+      const form = await openForm()
+
+      const about = within(within(form).getByRole('region', { name: 'About this game' }))
+      expect(about.getByText(/is not approved or endorsed by the publisher/)).toBeInTheDocument()
+      expect(about.getByRole('link', { name: 'Homebrew Content Policy' })).toHaveAttribute(
+        'href',
+        'https://example.com/homebrew-policy',
+      )
+    })
+
+    it('shows the license as plain text when the release gives no link', async () => {
+      const credits = { notice: 'Fan content.', license: 'A policy', url: null }
+      const form = await openForm([{ ...fanPreset, credits }])
+
+      const about = within(within(form).getByRole('region', { name: 'About this game' }))
+      expect(about.getByText(/A policy/)).toBeInTheDocument()
+      expect(about.queryByRole('link')).not.toBeInTheDocument()
+    })
+
+    it('shows no notice for a GameSystem without credits, and follows the choice', async () => {
+      const user = userEvent.setup()
+      const form = await openForm()
+
+      await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Free journal v2')
+
+      expect(
+        within(form).queryByRole('region', { name: 'About this game' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows the introduction of the chosen Flow, keeping its paragraphs', async () => {
+      const form = await openForm()
+
+      const introduction = within(form).getByText(/You play alone/)
+      expect(introduction).toHaveTextContent('You play alone. The guide asks one thing at a time.')
+      expect(introduction.className).toContain('whitespace-pre-line')
+    })
+
+    it('shows no introduction when the Flow has none', async () => {
+      const form = await openForm([
+        { ...fanPreset, flows: fanPreset.flows.map((flow) => ({ ...flow, introduction: null })) },
+      ])
+
+      expect(within(form).queryByText(/You play alone/)).not.toBeInTheDocument()
+      expect(within(form).getByLabelText('Flow')).toBeInTheDocument()
     })
   })
 })

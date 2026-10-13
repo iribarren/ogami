@@ -75,7 +75,7 @@ final readonly class ReleaseContent
 
         /** @var 1|2 $version */
         $release = self::object($data, self::ROOT, 1 === $version ? self::RELEASE : ReleaseVersion2::RELEASE);
-        $gameSystem = self::gameSystem($release['gameSystem']);
+        $gameSystem = self::gameSystem($release['gameSystem'], $version);
         $parts = 1 === $version
             ? ['oracles' => ReleaseOracles::validate($release['oracles']), 'flow' => self::flow($release['flow'])]
             : ReleaseVersion2::validate($release);
@@ -176,15 +176,21 @@ final readonly class ReleaseContent
     }
 
     /**
+     * @param 1|2 $version
+     *
      * @return array<string, mixed>
      */
-    private static function gameSystem(mixed $value): array
+    private static function gameSystem(mixed $value, int $version): array
     {
-        $gameSystem = self::object($value, 'gameSystem', self::GAME_SYSTEM);
+        $gameSystem = self::object($value, 'gameSystem', 1 === $version ? self::GAME_SYSTEM : ReleaseVersion2::GAME_SYSTEM);
         self::key($gameSystem['key'], 'gameSystem.key');
         self::text($gameSystem['name'], 'gameSystem.name', 1, self::MAX_GAME_SYSTEM_NAME_LENGTH);
         if (isset($gameSystem['description'])) {
             self::text($gameSystem['description'], 'gameSystem.description', 0, self::MAX_DESCRIPTION_LENGTH);
+        }
+
+        if (isset($gameSystem['credits'])) {
+            $gameSystem['credits'] = ReleaseVersion2::credits($gameSystem['credits']);
         }
 
         return $gameSystem;

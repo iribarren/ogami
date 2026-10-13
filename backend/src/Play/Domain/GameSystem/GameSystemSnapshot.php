@@ -44,6 +44,7 @@ final readonly class GameSystemSnapshot
      * @param list<Flow>                              $flows             in definition order, unique keys, at most one default
      * @param list<Tag>                               $tags              in definition order, unique keys
      * @param ?string                                 $theme             the name of a Theme (one of the Theme cases), null for the default app theme
+     * @param ?Credits                                $credits           the notice, license and link the release carries, null without
      *
      * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows or tags share a key,
      *                                  or two flows are the default
@@ -62,6 +63,7 @@ final readonly class GameSystemSnapshot
         array $flows = [],
         array $tags = [],
         private ?string $theme = null,
+        private ?Credits $credits = null,
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -107,6 +109,14 @@ final readonly class GameSystemSnapshot
     public function theme(): ?string
     {
         return $this->theme;
+    }
+
+    /**
+     * The credits the release carries (ADR 0021), or null without.
+     */
+    public function credits(): ?Credits
+    {
+        return $this->credits;
     }
 
     /**

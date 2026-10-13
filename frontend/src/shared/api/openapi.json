@@ -3646,12 +3646,40 @@
                 },
                 "type": "object"
             },
+            "CreditsResponse": {
+                "required": [
+                    "notice",
+                    "license",
+                    "url"
+                ],
+                "properties": {
+                    "notice": {
+                        "description": "The text to show, such as a publisher disclaimer.",
+                        "type": "string",
+                        "example": "Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games."
+                    },
+                    "license": {
+                        "description": "The name of the license or policy; null when the release names none.",
+                        "type": "string",
+                        "example": "R. Talsorian Games Homebrew Content Policy",
+                        "nullable": true
+                    },
+                    "url": {
+                        "description": "An absolute https:// URL of the license or policy; null when the release gives none.",
+                        "type": "string",
+                        "example": "https://rtalsoriangames.com/homebrew-content-policy/",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "PinnedReleaseResponse": {
                 "required": [
                     "gameSystemKey",
                     "gameSystemName",
                     "version",
-                    "theme"
+                    "theme",
+                    "credits"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -3678,6 +3706,15 @@
                             "eldritch",
                             "starship"
                         ]
+                    },
+                    "credits": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CreditsResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The notice, license and link the release carries; null when it has none."
                     }
                 },
                 "type": "object"
@@ -4294,6 +4331,7 @@
                     "key",
                     "name",
                     "purpose",
+                    "tips",
                     "oracles"
                 ],
                 "properties": {
@@ -4308,6 +4346,12 @@
                     "purpose": {
                         "type": "string",
                         "example": "Learn about the target."
+                    },
+                    "tips": {
+                        "description": "Advice for playing the scene; null when the Scene Type has none.",
+                        "type": "string",
+                        "example": "Ask what the contact wants before you ask for anything.",
+                        "nullable": true
                     },
                     "oracles": {
                         "description": "The keys of the oracles the Scene Type shortcuts, in shortcut order.",
@@ -5221,6 +5265,7 @@
                     "key",
                     "name",
                     "description",
+                    "introduction",
                     "default"
                 ],
                 "properties": {
@@ -5238,6 +5283,11 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "introduction": {
+                        "description": "A longer text that orients a new player; null when the Flow has none.",
+                        "type": "string",
+                        "nullable": true
+                    },
                     "default": {
                         "description": "Whether this is the release's default Flow (at most one is), to preselect.",
                         "type": "boolean"
@@ -5251,7 +5301,8 @@
                     "name",
                     "description",
                     "version",
-                    "flows"
+                    "flows",
+                    "credits"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -5279,6 +5330,15 @@
                         "items": {
                             "$ref": "#/components/schemas/GameSystemFlowResponse"
                         }
+                    },
+                    "credits": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CreditsResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The notice, license and link the release carries; null when it has none."
                     }
                 },
                 "type": "object"

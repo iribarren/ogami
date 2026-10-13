@@ -746,6 +746,23 @@ export interface components {
              */
             flowKey?: string | null;
         };
+        CreditsResponse: {
+            /**
+             * @description The text to show, such as a publisher disclaimer.
+             * @example Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games.
+             */
+            notice: string;
+            /**
+             * @description The name of the license or policy; null when the release names none.
+             * @example R. Talsorian Games Homebrew Content Policy
+             */
+            license: string | null;
+            /**
+             * @description An absolute https:// URL of the license or policy; null when the release gives none.
+             * @example https://rtalsoriangames.com/homebrew-content-policy/
+             */
+            url: string | null;
+        };
         PinnedReleaseResponse: {
             /** @example ironsworn */
             gameSystemKey: string;
@@ -759,6 +776,8 @@ export interface components {
              * @enum {string|null}
              */
             theme: "parchment" | "neon" | "noir" | "eldritch" | "starship" | null;
+            /** @description The notice, license and link the release carries; null when it has none. */
+            credits: components["schemas"]["CreditsResponse"] | null;
         };
         ItemRefResponse: {
             /**
@@ -1059,6 +1078,11 @@ export interface components {
             name: string;
             /** @example Learn about the target. */
             purpose: string;
+            /**
+             * @description Advice for playing the scene; null when the Scene Type has none.
+             * @example Ask what the contact wants before you ask for anything.
+             */
+            tips: string | null;
             /**
              * @description The keys of the oracles the Scene Type shortcuts, in shortcut order.
              * @example [
@@ -1528,6 +1552,8 @@ export interface components {
             name: string;
             /** @description Null when the Flow has none. */
             description: string | null;
+            /** @description A longer text that orients a new player; null when the Flow has none. */
+            introduction: string | null;
             /** @description Whether this is the release's default Flow (at most one is), to preselect. */
             default: boolean;
         };
@@ -1548,6 +1574,8 @@ export interface components {
             version: number;
             /** @description The Flows a new campaign can play, in definition order; empty for schema version 1 (a campaign is always played freely then). */
             flows: components["schemas"]["GameSystemFlowResponse"][];
+            /** @description The notice, license and link the release carries; null when it has none. */
+            credits: components["schemas"]["CreditsResponse"] | null;
         };
         NoteContentResponse: {
             /**

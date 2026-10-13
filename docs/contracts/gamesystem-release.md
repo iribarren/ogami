@@ -116,7 +116,7 @@ Everything not listed here works as in version 1: the key rule, `gameSystem`, th
 
 ```text
 schemaVersion  2
-gameSystem     { key, name, description? }                       unchanged
+gameSystem     { key, name, description?, credits? }             credits is new
 theme          parchment | neon | noir | eldritch | starship   optional
 oracles        { tables: [OracleTable], likelihood: [LikelihoodOracle] }
 trackers       [Tracker]
@@ -222,6 +222,19 @@ A release may name one curated **Theme**, which Play applies to the whole screen
 | Release `theme` | optional top-level string | One of `parchment`, `neon`, `noir`, `eldritch`, `starship` (JSON Schema `enum`, mirrored by the Studio validator). Any other value, or a non-string, is rejected. Omitted from the canonical form when absent, so a release without it keeps its hash |
 
 Adding it is additive: every release valid before stays valid and reads the same. Play's translator reads it into the snapshot and fails closed on an unknown name (a stored release is not trusted); the Campaign response carries it as `pinnedRelease.theme` (`null` for the default app theme). The palettes live in the client, not in the release.
+
+### Credits
+
+A release may carry **credits** ([ADR 0021](adr/0021-release-credits-for-fan-presets.md)): the notice, license and link a fan preset shows for its publisher's disclaimer.
+
+| Part | Shape | Rules |
+|---|---|---|
+| `gameSystem.credits` | optional object, or `null` | Exactly `notice`, `license`, `url`; any other property is rejected |
+| `credits.notice` | required string | 1–2000 characters, not blank once trimmed |
+| `credits.license` | optional string, or `null` | At most 200 characters. The name of the license or policy |
+| `credits.url` | optional string, or `null` | At most 500 characters, an absolute `https://` URL with a host (`http://` and relative URLs are rejected) |
+
+Adding it is additive and only in schema version 2; a schema version 1 `gameSystem` still rejects `credits`. Null fields are omitted from the canonical form, so a release without credits keeps its hash. Play's translator reads credits into the snapshot, a release stored without them reads as no credits, and the API carries them as `credits` on each game system of the catalog and as `pinnedRelease.credits` on a Campaign (`null` without credits).
 
 ### Play behaviour of the fact parts
 

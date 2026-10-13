@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * A Scene Type of the campaign's pinned release.
  */
-#[OA\Schema(required: ['key', 'name', 'purpose', 'oracles'])]
+#[OA\Schema(required: ['key', 'name', 'purpose', 'tips', 'oracles'])]
 final readonly class SceneTypeSummaryResponse
 {
     /**
@@ -23,6 +23,8 @@ final readonly class SceneTypeSummaryResponse
         public string $name,
         #[OA\Property(example: 'Learn about the target.')]
         public string $purpose,
+        #[OA\Property(description: 'Advice for playing the scene; null when the Scene Type has none.', example: 'Ask what the contact wants before you ask for anything.', nullable: true)]
+        public ?string $tips,
         #[OA\Property(description: 'The keys of the oracles the Scene Type shortcuts, in shortcut order.', type: 'array', items: new OA\Items(type: 'string'), example: ['fate', 'complications'])]
         public array $oracles,
     ) {
@@ -30,6 +32,6 @@ final readonly class SceneTypeSummaryResponse
 
     public static function fromView(SceneTypeSummaryView $view): self
     {
-        return new self($view->key, $view->name, $view->purpose, $view->oracles);
+        return new self($view->key, $view->name, $view->purpose, $view->tips, $view->oracles);
     }
 }

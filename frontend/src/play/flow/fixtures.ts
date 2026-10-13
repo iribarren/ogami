@@ -5,8 +5,20 @@ import type { FlowRun, FlowStep } from './useFlowRun'
 
 // Shared by the guided panel's tests and stories; the campaign is `lostMineCampaign` along the Flow "tour".
 
-const tour = { key: 'tour', name: 'Tour', purpose: 'Meet someone on the road.', oracles: [] }
-const quiet = { key: 'quiet', name: 'Quiet', purpose: 'Rest and take stock.', oracles: [] }
+export const tour = {
+  key: 'tour',
+  name: 'Tour',
+  purpose: 'Meet someone on the road.',
+  tips: null,
+  oracles: [],
+}
+export const quiet = {
+  key: 'quiet',
+  name: 'Quiet',
+  purpose: 'Rest and take stock.',
+  tips: null,
+  oracles: [],
+}
 
 /** A step with nothing set but its key and title; the kinds below fill in what they need. */
 function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title'>): FlowStep {

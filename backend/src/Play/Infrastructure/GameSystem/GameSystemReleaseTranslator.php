@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\GameSystem;
 
+use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
@@ -142,6 +143,7 @@ final readonly class GameSystemReleaseTranslator
             $this->flows($view, $this->list($view, $content['flows'] ?? null, 'flows')),
             $tags,
             $this->theme($view, $content['theme'] ?? null),
+            $this->credits($view, $gameSystem['credits'] ?? null),
         );
         $this->assertTagsExist($view, $content, '', $snapshot);
 
@@ -478,6 +480,37 @@ final readonly class GameSystemReleaseTranslator
         $name = $this->optionalString($view, $theme, 'theme');
 
         return null === $name ? null : (Theme::tryFrom($name) ?? throw $this->invalid($view, 'theme', \sprintf('unknown theme "%s".', $name)))->value;
+    }
+
+    /**
+     * The optional credits of the GameSystem. Studio checks them on publish; the stored content is
+     * not trusted, so the notice, license and link are checked again.
+     */
+    private function credits(PublishedReleaseView $view, mixed $value): ?Credits
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        $path = 'gameSystem.credits';
+        $credits = $this->object($view, $value, $path);
+        foreach (array_keys($credits) as $name) {
+            if (!\in_array($name, ['notice', 'license', 'url'], true)) {
+                throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
+            }
+        }
+
+        $notice = $this->string($view, $credits['notice'] ?? null, $path.'.notice');
+        if ('' === trim($notice)) {
+            throw $this->invalid($view, $path.'.notice', 'must not be blank.');
+        }
+
+        $url = $this->optionalString($view, $credits['url'] ?? null, $path.'.url');
+        if (null !== $url && 1 !== preg_match('~^https://[^\\s/?\#]+\\S*$~u', $url)) {
+            throw $this->invalid($view, $path.'.url', 'must be an absolute https:// URL.');
+        }
+
+        return new Credits($notice, $this->optionalString($view, $credits['license'] ?? null, $path.'.license'), $url);
     }
 
     private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind

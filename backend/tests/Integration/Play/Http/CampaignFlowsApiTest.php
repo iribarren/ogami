@@ -41,11 +41,11 @@ final class CampaignFlowsApiTest extends WebTestCase
     ];
 
     private const array SCENE_TYPES = [
-        ['key' => 'legwork', 'name' => 'Legwork', 'purpose' => 'Learn about the target.', 'oracles' => ['fate']],
-        ['key' => 'infiltration', 'name' => 'Infiltration', 'purpose' => 'Get inside unseen.', 'oracles' => ['fate', 'complications']],
-        ['key' => 'firefight', 'name' => 'Firefight', 'purpose' => 'Shoot your way out.', 'oracles' => ['fate']],
-        ['key' => 'getaway', 'name' => 'Getaway', 'purpose' => 'Get away clean.', 'oracles' => ['escape-routes']],
-        ['key' => 'downtime', 'name' => 'Downtime', 'purpose' => 'Rest between jobs; no flow reaches it.', 'oracles' => ['heist-scenes']],
+        ['key' => 'legwork', 'name' => 'Legwork', 'purpose' => 'Learn about the target.', 'tips' => null, 'oracles' => ['fate']],
+        ['key' => 'infiltration', 'name' => 'Infiltration', 'purpose' => 'Get inside unseen.', 'tips' => null, 'oracles' => ['fate', 'complications']],
+        ['key' => 'firefight', 'name' => 'Firefight', 'purpose' => 'Shoot your way out.', 'tips' => 'Keep it short and loud.', 'oracles' => ['fate']],
+        ['key' => 'getaway', 'name' => 'Getaway', 'purpose' => 'Get away clean.', 'tips' => 'Pick a route.', 'oracles' => ['escape-routes']],
+        ['key' => 'downtime', 'name' => 'Downtime', 'purpose' => 'Rest between jobs; no flow reaches it.', 'tips' => null, 'oracles' => ['heist-scenes']],
     ];
 
     private KernelBrowser $client;
@@ -69,8 +69,8 @@ final class CampaignFlowsApiTest extends WebTestCase
         self::assertIsArray($catalog[0]);
         self::assertSame('every-part', $catalog[0]['gameSystemKey']);
         self::assertSame([
-            ['key' => 'heist', 'name' => 'Heist', 'description' => 'Plan the job, break in, get out.', 'default' => true],
-            ['key' => 'quick', 'name' => 'Quick job', 'description' => null, 'default' => false],
+            ['key' => 'heist', 'name' => 'Heist', 'description' => 'Plan the job, break in, get out.', 'introduction' => 'Learn what you can, then go in. Watch the alarm.', 'default' => true],
+            ['key' => 'quick', 'name' => 'Quick job', 'description' => null, 'introduction' => null, 'default' => false],
         ], $catalog[0]['flows']);
     }
 

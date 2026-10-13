@@ -29,7 +29,7 @@ final readonly class ListGameSystemsHandler implements QueryHandler
     private function withFlows(GameSystemSummary $summary): GameSystemSummary
     {
         try {
-            $flows = $this->releases->get($summary->gameSystemKey, $summary->version)->flows();
+            $release = $this->releases->get($summary->gameSystemKey, $summary->version);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $summary;
         }
@@ -39,7 +39,8 @@ final readonly class ListGameSystemsHandler implements QueryHandler
             $summary->name,
             $summary->description,
             $summary->version,
-            array_map(FlowSummaryView::of(...), $flows),
+            array_map(FlowSummaryView::of(...), $release->flows()),
+            $release->credits(),
         );
     }
 }

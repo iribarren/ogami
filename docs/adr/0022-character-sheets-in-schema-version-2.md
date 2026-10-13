@@ -1,6 +1,6 @@
 # 0022. Character sheets in schema version 2
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md)
 - **Date:** 2026-10-13
 
 ## Context

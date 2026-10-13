@@ -38,7 +38,7 @@ Ogami is a web app for solo tabletop RPG play: **Play** (solo player runs campai
 
 ```
 backend/                     Symfony app (PHP 8.5, Symfony 8.1)
-  src/<Context>/             Play, Studio, Randomness, Identity, Admin, Shared
+  src/<Context>/             Play, Studio, Randomness, Formula, Identity, Admin, Shared
     Domain/                  framework-free model
     Application/             commands, queries, handlers, ports
     Infrastructure/          Doctrine, HTTP controllers (Http/), adapters

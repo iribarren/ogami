@@ -11,6 +11,7 @@ Terms in this document are defined in the [glossary](glossary.md).
 | Play | Core | Run solo campaigns: characters, sessions, scenes, flow runs, journal | `SOLO_PLAYER` |
 | Studio | Core | Author game systems and publish releases | `GAME_MANAGER` |
 | Randomness | Shared kernel | Dice expressions, oracle tables, likelihood oracles | Used by Play and Studio (no direct users) |
+| Formula | Shared kernel | Formulas over sheet values and trackers: parse, check, evaluate | Used by Play and Studio (no direct users) |
 | Identity & Access | Generic | Users, authentication, roles | All roles |
 | Admin | Generic | App settings and user management | `OWNER` |
 | Narrative assist | Port (later) | AI suggestions for the flow; interface only for now | Used by Play |
@@ -24,6 +25,7 @@ flowchart LR
         Play["Play<br/>(core)"]
     end
     Randomness["Randomness<br/>(shared kernel)"]
+    Formula["Formula<br/>(shared kernel)"]
     IAM["Identity & Access<br/>(generic)"]
     Admin["Admin<br/>(generic)"]
     Assist["Narrative assist<br/>(port, later)"]
@@ -31,6 +33,8 @@ flowchart LR
     Studio -- "GameSystem release<br/>(Published Language,<br/>consumed via ACL)" --> Play
     Studio --- Randomness
     Play --- Randomness
+    Studio --- Formula
+    Play --- Formula
     Play -- "port" --> Assist
     IAM -- "user + roles" --> Play
     IAM -- "user + roles" --> Studio
@@ -44,6 +48,7 @@ flowchart LR
 |---|---|---|---|
 | Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release ([contract](../contracts/gamesystem-release.md)). Play translates it into its own model. A campaign pins one release by key and version and stays on it until the player chooses to upgrade ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) |
 | Randomness | Play, Studio | Shared kernel | Pure domain types and services: `DiceExpression`, `Roll`, oracle resolution. Changes need agreement of both consumers |
+| Formula | Play, Studio | Shared kernel | Pure domain types: `Formula`, `Reference`, `ValueResolver`, `DependencyOrder`. Changes need agreement of both consumers ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)) |
 | Identity & Access | Play, Studio, Admin | Open host (conformist consumers) | Current user id and roles |
 | Admin | Identity & Access | Customer / supplier | Admin use cases call Identity & Access application services to manage users and roles |
 | Play | Narrative assist | Port (hexagonal) | A Play-owned interface; no adapter yet ([ADR 0002](../adr/0002-modular-monolith-hexagonal-ddd.md)) |
@@ -88,6 +93,15 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 | Responsibilities | Parse and evaluate dice expressions; resolve oracle tables; answer likelihood oracles |
 | Aggregates / concepts | DiceExpression, Roll, OracleTable, Likelihood oracle (value objects and pure domain services) |
 | Depends on | Nothing. Pure domain, framework-free; randomness source injected so results are testable |
+| Roles | None directly; used by Play and Studio |
+
+### Formula (shared kernel)
+
+| Aspect | Detail |
+|---|---|
+| Responsibilities | Parse, check and evaluate formulas; pure; value resolver injected |
+| Aggregates / concepts | Formula, Reference, ValueResolver, DependencyOrder (value objects and pure domain services) |
+| Depends on | Nothing. Pure domain, framework-free |
 | Roles | None directly; used by Play and Studio |
 
 ### Identity & Access (generic)

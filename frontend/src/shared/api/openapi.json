@@ -950,7 +950,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed or \"npcIds\" is not a list of strings.",
+                        "description": "The JSON body is malformed, or \"npcIds\" or \"characterIds\" is not a list of strings.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -980,7 +980,7 @@
                         }
                     },
                     "404": {
-                        "description": "No campaign of the player has this id, or an id is not an NPC of the campaign (a blank or malformed one included).",
+                        "description": "No campaign of the player has this id, or an id is not an NPC (or, in \"characterIds\", a Character) of the campaign (a blank or malformed one included).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1010,7 +1010,118 @@
                         }
                     },
                     "422": {
-                        "description": "An NPC is listed twice.",
+                        "description": "An NPC or a Character is listed twice.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/sessions/current/party": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Replace the party of the current session of one of my campaigns",
+                "operationId": "editSessionParty",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditSessionPartyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The current session with its new party; its scenes keep the Characters they have.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or \"characterIds\" is not a list of strings.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or an id is not a Character of the campaign (a blank or malformed one included).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "No session is under way (none has started, or it has ended), or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A Character is listed twice.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4318,7 +4429,7 @@
                 ],
                 "properties": {
                     "id": {
-                        "description": "The id of the NPC or Thread.",
+                        "description": "The id of the NPC, Thread or Character.",
                         "type": "string",
                         "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
                     },
@@ -4338,7 +4449,8 @@
                     "sceneType",
                     "sceneTypeName",
                     "hook",
-                    "cast"
+                    "cast",
+                    "characters"
                 ],
                 "properties": {
                     "number": {
@@ -4395,6 +4507,13 @@
                         "items": {
                             "$ref": "#/components/schemas/ItemRefResponse"
                         }
+                    },
+                    "characters": {
+                        "description": "The Characters in the scene, in cast order, named as the campaign names them now. A new scene starts with the session's party. Empty for a scene without Characters.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemRefResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -4404,7 +4523,8 @@
                     "number",
                     "startedAt",
                     "scenes",
-                    "endedAt"
+                    "endedAt",
+                    "party"
                 ],
                 "properties": {
                     "number": {
@@ -4428,6 +4548,13 @@
                         "type": "string",
                         "format": "date-time",
                         "nullable": true
+                    },
+                    "party": {
+                        "description": "The Characters playing, in the order they joined, named as the campaign names them now. The next session starts with the same party.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemRefResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -5561,6 +5688,29 @@
                 "properties": {
                     "npcIds": {
                         "description": "The whole new cast of the current scene, in cast order: NPCs of the campaign, closed ones allowed, none twice. An empty list empties the cast.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "characterIds": {
+                        "description": "The whole new Characters part of the cast, in order: Characters of the campaign, none twice. Absent or null keeps the Characters in the cast.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "EditSessionPartyRequest": {
+                "required": [
+                    "characterIds"
+                ],
+                "properties": {
+                    "characterIds": {
+                        "description": "The whole new party of the session under way, in order: Characters of the campaign, none twice. An empty list empties the party. Scenes keep the Characters they have.",
                         "type": "array",
                         "items": {
                             "type": "string"

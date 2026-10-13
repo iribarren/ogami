@@ -97,6 +97,7 @@ export const lostMineCampaign: Campaign = {
     {
       number: 1,
       startedAt: '2026-10-05T12:05:00+00:00',
+      party: [],
       scenes: [
         {
           number: 1,
@@ -107,6 +108,7 @@ export const lostMineCampaign: Campaign = {
           sceneTypeName: null,
           hook: null,
           cast: [],
+          characters: [],
         },
       ],
       endedAt: null,
@@ -114,6 +116,7 @@ export const lostMineCampaign: Campaign = {
     {
       number: 2,
       startedAt: '2026-10-06T12:00:00+00:00',
+      party: [],
       scenes: [
         {
           number: 1,
@@ -124,6 +127,7 @@ export const lostMineCampaign: Campaign = {
           sceneTypeName: null,
           hook: null,
           cast: [],
+          characters: [],
         },
       ],
       endedAt: null,
@@ -176,7 +180,7 @@ export const lostMineInNewSession: Campaign = {
   ...lostMineCampaign,
   sessions: [
     ...lostMineCampaign.sessions,
-    { number: 3, startedAt: '2026-10-07T12:00:00+00:00', scenes: [], endedAt: null },
+    { number: 3, startedAt: '2026-10-07T12:00:00+00:00', scenes: [], endedAt: null, party: [] },
   ],
   currentSessionNumber: 3,
   currentSceneNumber: null,

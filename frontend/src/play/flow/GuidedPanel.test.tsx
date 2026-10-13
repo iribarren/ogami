@@ -463,6 +463,7 @@ describe('the guided panel', () => {
       sceneTypeName: null,
       hook: null,
       cast: [],
+      characters: [],
     }
     renderGuided(
       {
@@ -471,6 +472,7 @@ describe('the guided panel', () => {
           {
             number: 1,
             startedAt: '2026-10-05T12:05:00+00:00',
+            party: [],
             endedAt: null,
             scenes: [
               {

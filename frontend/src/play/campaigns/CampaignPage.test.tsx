@@ -204,7 +204,9 @@ describe('the Play screen', () => {
   it('starts a session, then a scene, which enables the journal tools', async () => {
     const inSession: Campaign = {
       ...created,
-      sessions: [{ number: 1, startedAt: '2026-10-06T12:05:00+00:00', scenes: [], endedAt: null }],
+      sessions: [
+        { number: 1, startedAt: '2026-10-06T12:05:00+00:00', scenes: [], endedAt: null, party: [] },
+      ],
       currentSessionNumber: 1,
     }
     const inScene: Campaign = {
@@ -213,6 +215,7 @@ describe('the Play screen', () => {
         {
           number: 1,
           startedAt: '2026-10-06T12:05:00+00:00',
+          party: [],
           scenes: [
             {
               number: 1,
@@ -223,6 +226,7 @@ describe('the Play screen', () => {
               sceneTypeName: null,
               hook: null,
               cast: [],
+              characters: [],
             },
           ],
           endedAt: null,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\GameSystem;
 
+use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -34,6 +35,9 @@ final readonly class GameSystemSnapshot
     /** @var array<string, Tag> */
     private array $tags;
 
+    /** @var array<string, Check> */
+    private array $checks;
+
     /**
      * @param ?OracleTableSet                         $oracleTables      null when the release has no oracle tables
      * @param list<SnapshotLikelihoodOracle>          $likelihoodOracles in definition order, unique keys
@@ -47,8 +51,9 @@ final readonly class GameSystemSnapshot
      * @param ?string                                 $theme             the name of a Theme (one of the Theme cases), null for the default app theme
      * @param ?Credits                                $credits           the notice, license and link the release carries, null without
      * @param ?SheetTemplate                          $sheet             the character sheet, null for an empty one
+     * @param list<Check>                             $checks            in definition order, unique keys
      *
-     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows or tags share a key,
+     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows, tags or checks share a key,
      *                                  or two flows are the default
      */
     public function __construct(
@@ -67,6 +72,7 @@ final readonly class GameSystemSnapshot
         private ?string $theme = null,
         private ?Credits $credits = null,
         private ?SheetTemplate $sheet = null,
+        array $checks = [],
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -85,6 +91,7 @@ final readonly class GameSystemSnapshot
         $this->sceneTypes = $this->byKey($sceneTypes, 'sceneTypes');
         $this->flows = $this->byKey($flows, 'flows');
         $this->tags = $this->byKey($tags, 'tags');
+        $this->checks = $this->byKey($checks, 'checks');
         $defaults = array_keys(array_filter($flows, static fn (Flow $flow): bool => $flow->default));
         if (\count($defaults) > 1) {
             throw InvalidGameSystemRelease::of($gameSystemKey, $releaseVersion, \sprintf('flows[%d].default', $defaults[1]), 'only one flow may be the default.');
@@ -227,6 +234,19 @@ final readonly class GameSystemSnapshot
         return $this->tags[$key] ?? null;
     }
 
+    /**
+     * @return list<Check> in definition order; none for a release that defines no checks
+     */
+    public function checks(): array
+    {
+        return array_values($this->checks);
+    }
+
+    public function check(string $key): ?Check
+    {
+        return $this->checks[$key] ?? null;
+    }
+
     public function factSlot(string $key): ?FactSlot
     {
         return array_find($this->factSlots, static fn (FactSlot $slot): bool => $slot->key === $key);
@@ -316,7 +336,7 @@ final readonly class GameSystemSnapshot
     }
 
     /**
-     * @template T of Tracker|SceneType|Flow|Tag
+     * @template T of Tracker|SceneType|Flow|Tag|Check
      *
      * @param list<T> $parts
      *

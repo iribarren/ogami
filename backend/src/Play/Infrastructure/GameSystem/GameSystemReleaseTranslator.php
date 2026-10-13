@@ -9,6 +9,9 @@ use App\Formula\Domain\Formula;
 use App\Formula\Domain\InvalidFormula;
 use App\Formula\Domain\Reference;
 use App\Formula\Domain\ReferenceKind;
+use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckBand;
+use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
@@ -63,6 +66,8 @@ use App\Play\Domain\GameSystem\Theme;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\InvalidOracleTable;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
@@ -101,6 +106,14 @@ final readonly class GameSystemReleaseTranslator
         'track' => ['max'],
         'derived' => ['formula'],
     ];
+
+    // The check limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
+    private const int MAX_CHECKS = 50;
+    private const int MAX_CHECK_BANDS = 10;
+    private const int MAX_CHECK_LABEL_LENGTH = 100;
+    private const int MAX_CHECK_HINT_LENGTH = 500;
+    private const int MAX_DIFFICULTY_LABEL_LENGTH = 60;
+    private const int MAX_DIFFICULTY = 1000;
 
     private const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
@@ -165,6 +178,9 @@ final readonly class GameSystemReleaseTranslator
 
         // Read first: a derived field of the sheet may read any Tracker of the release.
         $trackers = $this->trackers($view, $this->list($view, $content['trackers'] ?? null, 'trackers'));
+        $trackerKeys = array_map(static fn (Tracker $tracker): string => $tracker->key, $trackers);
+        // Then the sheet, which the modifier and the bands of a check read.
+        $sheet = $this->sheet($view, $content['sheet'] ?? null, $trackerKeys);
         $snapshot = new GameSystemSnapshot(
             $view->gameSystemKey,
             $this->string($view, $gameSystem['name'] ?? null, 'gameSystem.name'),
@@ -180,7 +196,8 @@ final readonly class GameSystemReleaseTranslator
             $tags,
             $this->theme($view, $content['theme'] ?? null),
             $this->credits($view, $gameSystem['credits'] ?? null),
-            $this->sheet($view, $content['sheet'] ?? null, array_map(static fn (Tracker $tracker): string => $tracker->key, $trackers)),
+            $sheet,
+            $this->checks($view, $content['checks'] ?? [], $sheet, $trackerKeys),
         );
         $this->assertTagsExist($view, $content, '', $snapshot);
 
@@ -222,6 +239,11 @@ final readonly class GameSystemReleaseTranslator
         $this->assertFormulaTrackersDeclared($view, $node, $path, $snapshot);
 
         foreach ($node as $name => $child) {
+            // The bands of a check read the sheet, not only Trackers; checks() has checked them.
+            if ('' === $path && 'checks' === $name) {
+                continue;
+            }
+
             $this->assertTagsExist($view, $child, \is_int($name) ? \sprintf('%s[%d]', $path, $name) : ('' === $path ? $name : $path.'.'.$name), $snapshot);
         }
     }
@@ -690,6 +712,196 @@ final readonly class GameSystemReleaseTranslator
             : \sprintf('field "%s" is a text or list field, a formula reads number, track and derived fields only', $reference->key);
     }
 
+    /**
+     * The checks of a schema version 2 release (ADR 0024). Studio checks every rule on publish; the
+     * stored content is not trusted. The modifier and the bands read the sheet and the release's
+     * Trackers; a band also reads {check:difficulty} when its check declares a difficulty.
+     *
+     * @param list<string> $trackerKeys
+     *
+     * @return list<Check>
+     */
+    private function checks(PublishedReleaseView $view, mixed $value, SheetTemplate $sheet, array $trackerKeys): array
+    {
+        $list = $this->list($view, $value ?? [], 'checks');
+        if (\count($list) > self::MAX_CHECKS) {
+            throw $this->invalid($view, 'checks', \sprintf('at most %d checks.', self::MAX_CHECKS));
+        }
+
+        $fields = [];
+        foreach ($sheet->fields() as $field) {
+            $fields[$field->key] = $field;
+        }
+
+        $checks = [];
+        foreach ($list as $index => $item) {
+            $path = \sprintf('checks[%d]', $index);
+            $check = $this->object($view, $item, $path);
+            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'difficulty', 'bands']);
+            $key = $this->key($view, $check['key'] ?? null, $path.'.key');
+            if (isset($checks[$key])) {
+                throw $this->invalid($view, $path.'.key', \sprintf('duplicate check key "%s".', $key));
+            }
+
+            $difficulty = null === ($check['difficulty'] ?? null) ? null : $this->checkDifficulty($view, $check['difficulty'], $path.'.difficulty');
+            $modifier = null === ($check['modifier'] ?? null) ? null : $this->checkFormula($view, $check['modifier'], $path.'.modifier', $fields, $trackerKeys, null);
+            try {
+                $checks[$key] = new Check(
+                    $key,
+                    $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH),
+                    null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false),
+                    $this->dice($view, $check['dice'] ?? null, $path.'.dice'),
+                    $modifier,
+                    $difficulty,
+                    $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty),
+                );
+            } catch (\InvalidArgumentException $invalid) {
+                throw $this->invalid($view, $path.'.bands', $invalid->getMessage());
+            }
+        }
+
+        return array_values($checks);
+    }
+
+    private function dice(PublishedReleaseView $view, mixed $value, string $path): DiceExpression
+    {
+        try {
+            return DiceExpression::fromString($this->string($view, $value, $path));
+        } catch (InvalidDiceExpression $invalid) {
+            throw $this->invalid($view, $path, 'invalid dice notation: '.$invalid->getMessage());
+        }
+    }
+
+    private function checkDifficulty(PublishedReleaseView $view, mixed $value, string $path): CheckDifficulty
+    {
+        $difficulty = $this->object($view, $value, $path);
+        $this->assertProperties($view, $difficulty, $path, ['label', 'default', 'min', 'max']);
+        $label = $this->boundedString($view, $difficulty['label'] ?? null, $path.'.label', self::MAX_DIFFICULTY_LABEL_LENGTH);
+        $default = $this->optionalInt($view, $difficulty['default'] ?? null, $path.'.default', -self::MAX_DIFFICULTY, self::MAX_DIFFICULTY)
+            ?? throw $this->invalid($view, $path.'.default', 'required.');
+        $min = $this->optionalInt($view, $difficulty['min'] ?? null, $path.'.min', -self::MAX_DIFFICULTY, self::MAX_DIFFICULTY);
+        $max = $this->optionalInt($view, $difficulty['max'] ?? null, $path.'.max', -self::MAX_DIFFICULTY, self::MAX_DIFFICULTY);
+        if (null !== $min && $min > $default) {
+            throw $this->invalid($view, $path.'.min', \sprintf('must be at most default (%d).', $default));
+        }
+
+        if (null !== $max && $max < $default) {
+            throw $this->invalid($view, $path.'.max', \sprintf('must be at least default (%d).', $default));
+        }
+
+        return new CheckDifficulty($label, $default, $min, $max);
+    }
+
+    /**
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     *
+     * @return list<CheckBand>
+     */
+    private function checkBands(PublishedReleaseView $view, mixed $value, string $path, array $fields, array $trackerKeys, bool $difficulty): array
+    {
+        $list = $this->list($view, $value, $path);
+        if ([] === $list || \count($list) > self::MAX_CHECK_BANDS) {
+            throw $this->invalid($view, $path, \sprintf('%d to %d bands.', 1, self::MAX_CHECK_BANDS));
+        }
+
+        $bands = $keys = [];
+        foreach ($list as $index => $item) {
+            $bandPath = \sprintf('%s[%d]', $path, $index);
+            $band = $this->object($view, $item, $bandPath);
+            $this->assertProperties($view, $band, $bandPath, ['key', 'label', 'upTo']);
+            $key = $this->key($view, $band['key'] ?? null, $bandPath.'.key');
+            if (isset($keys[$key])) {
+                throw $this->invalid($view, $bandPath.'.key', \sprintf('duplicate band key "%s".', $key));
+            }
+
+            $keys[$key] = true;
+            $upTo = $band['upTo'] ?? null;
+            $bands[] = new CheckBand(
+                $key,
+                $this->boundedString($view, $band['label'] ?? null, $bandPath.'.label', self::MAX_CHECK_LABEL_LENGTH),
+                \is_int($upTo) || null === $upTo ? $upTo : $this->checkBound($view, $upTo, $bandPath.'.upTo', $fields, $trackerKeys, $difficulty),
+            );
+        }
+
+        return $bands;
+    }
+
+    /**
+     * {"tracker": key} (the formula {tracker:key}) or {"formula": string} over the sheet.
+     *
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function checkBound(PublishedReleaseView $view, mixed $value, string $path, array $fields, array $trackerKeys, bool $difficulty): Formula
+    {
+        $bound = $this->object($view, $value, $path);
+        if ([] === $bound || (!isset($bound['formula']) && !isset($bound['tracker']))) {
+            throw $this->invalid($view, $path, 'must be an integer, {"tracker": key} or {"formula": string}.');
+        }
+
+        if (\array_key_exists('formula', $bound)) {
+            $this->assertProperties($view, $bound, $path, ['formula']);
+
+            return $this->checkFormula($view, $bound['formula'], $path.'.formula', $fields, $trackerKeys, $difficulty);
+        }
+
+        $this->assertProperties($view, $bound, $path, ['tracker']);
+        $tracker = $this->key($view, $bound['tracker'], $path.'.tracker');
+
+        return $this->checkFormula($view, '{tracker:'.$tracker.'}', $path.'.tracker', $fields, $trackerKeys, $difficulty);
+    }
+
+    /**
+     * A formula of a check over the sheet's number, track and derived fields and the release's
+     * Trackers. $difficulty is whether the check declares one, null for its modifier, which never
+     * reads a check reference; only a band reads {check:difficulty}.
+     *
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function checkFormula(PublishedReleaseView $view, mixed $value, string $path, array $fields, array $trackerKeys, ?bool $difficulty): Formula
+    {
+        $formula = $this->fieldFormula($view, $value, $path);
+        foreach ($formula->references() as $reference) {
+            $problem = ReferenceKind::Check === $reference->kind && null !== $difficulty
+                ? match (true) {
+                    'difficulty' !== $reference->key => \sprintf('unknown check value "%s", only "difficulty" can be read', $reference->key),
+                    !$difficulty => 'the check declares no difficulty',
+                    default => null,
+                }
+            : $this->derivedReferenceProblem($reference, $fields, $trackerKeys);
+            if (null !== $problem) {
+                throw $this->invalid($view, $path, \sprintf('{%s}: %s.', $reference->toString(), $problem));
+            }
+        }
+
+        return $formula;
+    }
+
+    /**
+     * @param array<mixed> $object
+     * @param list<string> $allowed
+     */
+    private function assertProperties(PublishedReleaseView $view, array $object, string $path, array $allowed): void
+    {
+        foreach (array_keys($object) as $name) {
+            if (!\in_array($name, $allowed, true)) {
+                throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
+            }
+        }
+    }
+
+    private function key(PublishedReleaseView $view, mixed $value, string $path): string
+    {
+        $key = $this->string($view, $value, $path);
+        if (1 !== preg_match('/^[a-z0-9-]{1,64}$/', $key)) {
+            throw $this->invalid($view, $path, 'must be 1 to 64 characters among a-z, 0-9 and "-".');
+        }
+
+        return $key;
+    }
+
     private function sheetField(PublishedReleaseView $view, mixed $value, string $path): Field
     {
         $field = $this->object($view, $value, $path);
@@ -704,10 +916,7 @@ final readonly class GameSystemReleaseTranslator
             }
         }
 
-        $key = $this->string($view, $field['key'] ?? null, $path.'.key');
-        if (1 !== preg_match('/^[a-z0-9-]{1,64}$/', $key)) {
-            throw $this->invalid($view, $path.'.key', 'must be 1 to 64 characters among a-z, 0-9 and "-".');
-        }
+        $key = $this->key($view, $field['key'] ?? null, $path.'.key');
 
         $common = [
             $key,

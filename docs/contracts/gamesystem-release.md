@@ -287,7 +287,7 @@ Optional `null` fields are left out of the canonical form; checks keep their aut
  "outcomes": [{"band": "fail", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {"band": "crit", "next": "end"}]}
 ```
 
-Play's translator does not read checks yet: it refuses a `check` step as an unknown step kind and ignores `checks`.
+Play's translator reads `checks` into the GameSystem snapshot and re-checks every rule above (a stored release is not trusted), failing closed on anything malformed. It still refuses a `check` step as an unknown step kind until the check step is played.
 
 ### Formulas (ADR 0023)
 
@@ -447,7 +447,7 @@ A complete, valid release file with a ranged table, a weighted table, a likeliho
 
 ## Example (schema version 2)
 
-A complete, valid release file with a clock, a counter with levels bound to the chaos factor, one fact slot, three Scene Types and one flow of three phases (one per selection rule). It uses every step kind, every effect kind, bands, branches and the three placeholders. The forced Firefight lowers the alarm, so it publishes without a warning.
+A complete, valid release file with a clock, a counter with levels bound to the chaos factor, one fact slot, three Scene Types and one flow of three phases (one per selection rule). It uses every step kind except `check`, every effect kind, bands, branches, the three placeholders and one check. The forced Firefight lowers the alarm, so it publishes without a warning.
 
 ```json
 {
@@ -638,6 +638,16 @@ A complete, valid release file with a clock, a counter with levels bound to the 
     }
   ],
   "sheet": {},
-  "checks": []
+  "checks": [
+    {
+      "key": "slip-past", "label": "Slip past the guards", "hint": "Roll 2d6 against how alert the guards are.",
+      "dice": "2d6",
+      "difficulty": {"label": "Alert level", "default": 7, "min": 2, "max": 12},
+      "bands": [
+        {"key": "caught", "label": "Caught", "upTo": {"formula": "{check:difficulty}-1"}},
+        {"key": "through", "label": "Through"}
+      ]
+    }
+  ]
 }
 ```

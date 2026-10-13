@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Domain\GameSystem;
 
+use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tag;
+use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -54,5 +57,33 @@ final class GameSystemSnapshotTest extends TestCase
             new Tag('ally', 'Ally'),
             new Tag('ally', 'Ally again'),
         ]);
+    }
+
+    #[Test]
+    public function checksAreListedInDefinitionOrderAndFoundByKey(): void
+    {
+        $luck = $this->check('luck');
+        $skill = $this->check('skill');
+
+        $snapshot = new GameSystemSnapshot('free-journal', 'Free journal', 2, null, [], [], checks: [$skill, $luck]);
+
+        self::assertSame([$skill, $luck], $snapshot->checks());
+        self::assertSame($luck, $snapshot->check('luck'));
+        self::assertNull($snapshot->check('ghost'));
+        self::assertSame([], new GameSystemSnapshot('free-journal', 'Free journal', 2, null, [], [])->checks());
+    }
+
+    #[Test]
+    public function checkKeysAreUnique(): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "free-journal" v2 cannot be read by Play: checks[1].key: duplicate key "luck".');
+
+        new GameSystemSnapshot('free-journal', 'Free journal', 2, null, [], [], checks: [$this->check('luck'), $this->check('luck')]);
+    }
+
+    private function check(string $key): Check
+    {
+        return new Check($key, ucfirst($key), null, DiceExpression::fromString('1d6'), null, null, [new CheckBand('only', 'Only')]);
     }
 }

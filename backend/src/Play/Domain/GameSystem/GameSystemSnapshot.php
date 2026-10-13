@@ -6,6 +6,7 @@ namespace App\Play\Domain\GameSystem;
 
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\Flow;
+use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Randomness\Domain\Oracle\OracleTableResult;
 use App\Randomness\Domain\Oracle\OracleTableSet;
 use App\Randomness\Domain\Oracle\OracleTableStep;
@@ -45,6 +46,7 @@ final readonly class GameSystemSnapshot
      * @param list<Tag>                               $tags              in definition order, unique keys
      * @param ?string                                 $theme             the name of a Theme (one of the Theme cases), null for the default app theme
      * @param ?Credits                                $credits           the notice, license and link the release carries, null without
+     * @param ?SheetTemplate                          $sheet             the character sheet, null for an empty one
      *
      * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows or tags share a key,
      *                                  or two flows are the default
@@ -64,6 +66,7 @@ final readonly class GameSystemSnapshot
         array $tags = [],
         private ?string $theme = null,
         private ?Credits $credits = null,
+        private ?SheetTemplate $sheet = null,
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -117,6 +120,15 @@ final readonly class GameSystemSnapshot
     public function credits(): ?Credits
     {
         return $this->credits;
+    }
+
+    /**
+     * The character sheet template (ADR 0022); empty for a schema version 1 release and for a
+     * release that defines no fields.
+     */
+    public function sheet(): SheetTemplate
+    {
+        return $this->sheet ?? new SheetTemplate();
     }
 
     /**

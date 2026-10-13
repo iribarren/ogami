@@ -170,6 +170,7 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
         self::assertSame(array_column($content['sceneTypes'], 'key'), array_map(static fn (SceneType $type): string => $type->key, $snapshot->sceneTypes()));
 
         $example = basename($fixture);
+        self::assertSame('west-marches' === $example, !$snapshot->sheet()->isEmpty(), 'Only the West Marches example defines a sheet.');
         self::assertArrayHasKey($example, self::EXAMPLE_FLOWS);
         [$flowKey, $phases] = self::EXAMPLE_FLOWS[$example];
         self::assertCount(1, $snapshot->flows());

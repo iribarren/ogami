@@ -29,6 +29,7 @@ final class JournalEntryContents
             LikelihoodContent::KIND => LikelihoodContent::fromArray($data),
             ChoiceContent::KIND => ChoiceContent::fromArray($data),
             PickContent::KIND => PickContent::fromArray($data),
+            CheckContent::KIND => CheckContent::fromArray($data),
             default => throw InvalidJournalEntryContent::unknownKind($kind),
         };
     }

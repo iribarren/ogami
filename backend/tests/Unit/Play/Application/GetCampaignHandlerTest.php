@@ -7,6 +7,8 @@ namespace App\Tests\Unit\Play\Application;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignView;
 use App\Play\Application\CastMemberView;
+use App\Play\Application\CheckDifficultyView;
+use App\Play\Application\CheckView;
 use App\Play\Application\FactLinkView;
 use App\Play\Application\FactSlotView;
 use App\Play\Application\FactView;
@@ -70,6 +72,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(FlowSummaryView::class)]
 #[CoversClass(SceneTypeSummaryView::class)]
 #[CoversClass(TagView::class)]
+#[CoversClass(CheckView::class)]
+#[CoversClass(CheckDifficultyView::class)]
 #[CoversClass(NpcView::class)]
 #[CoversClass(ThreadView::class)]
 #[CoversClass(FactSlotView::class)]
@@ -121,7 +125,25 @@ final class GetCampaignHandlerTest extends TestCase
             [],
             [],
             [],
+            [],
         ), $view);
+    }
+
+    #[Test]
+    public function itShowsTheChecksOfThePinnedReleaseWithoutTheirBands(): void
+    {
+        $this->releases->add(Snapshots::withChecks('heist', 'Heist', 1));
+        // A newer release without checks: the campaign keeps reading its pinned v1.
+        $this->releases->add(Snapshots::bare('heist', 'Heist, revised', 2));
+        $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00')));
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        self::assertEquals([
+            new CheckView('skill', 'Skill check', 'A stat against a Difficulty Value.', '1d10', new CheckDifficultyView('Difficulty Value', 13, 9, 29)),
+            new CheckView('luck', 'Luck', null, '1d100', null),
+        ], $view->checks);
+        self::assertSame([], ($this->handler)(new GetCampaign('campaign-1', 'user-1'))->checks);
     }
 
     #[Test]

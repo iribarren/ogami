@@ -14,7 +14,7 @@ use OpenApi\Attributes as OA;
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
  * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs, Threads, Fact slots, facts and Characters.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'npcs', 'threads', 'factSlots', 'facts', 'characters'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'checks', 'npcs', 'threads', 'factSlots', 'facts', 'characters'])]
 final readonly class CampaignResponse
 {
     /**
@@ -25,6 +25,7 @@ final readonly class CampaignResponse
      * @param list<FlowSummaryResponse>      $flows
      * @param list<SceneTypeSummaryResponse> $sceneTypes
      * @param list<TagResponse>              $tags
+     * @param list<CheckResponse>            $checks
      * @param list<NpcResponse>              $npcs
      * @param list<ThreadResponse>           $threads
      * @param list<FactSlotResponse>         $factSlots
@@ -91,6 +92,12 @@ final readonly class CampaignResponse
         )]
         public array $tags,
         #[OA\Property(
+            description: 'The Checks of the pinned release, in definition order; empty for releases without any. A Character performs one with `POST /api/campaigns/{campaignId}/journal/checks`.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: CheckResponse::class)),
+        )]
+        public array $checks,
+        #[OA\Property(
             description: 'The campaign\'s NPCs: the open ones first, then the closed ones, each in creation order.',
             type: 'array',
             items: new OA\Items(ref: new Model(type: NpcResponse::class)),
@@ -141,6 +148,7 @@ final readonly class CampaignResponse
             array_map(FlowSummaryResponse::fromView(...), $view->flows),
             array_map(SceneTypeSummaryResponse::fromView(...), $view->sceneTypes),
             array_map(TagResponse::fromView(...), $view->tags),
+            array_map(CheckResponse::fromView(...), $view->checks),
             array_map(NpcResponse::fromView(...), $view->npcs),
             array_map(ThreadResponse::fromView(...), $view->threads),
             array_map(FactSlotResponse::fromView(...), $view->factSlots),

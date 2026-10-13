@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Support\Play;
 
+use App\Formula\Domain\Formula;
+use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckBand;
+use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\Flow\Phase;
@@ -12,10 +16,14 @@ use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
+use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\Oracle\LikelihoodOracle;
 use App\Randomness\Domain\Oracle\OracleTableSet;
 
@@ -92,6 +100,38 @@ final class Snapshots
     public static function withTags(string $key, string $name, int $version): GameSystemSnapshot
     {
         return new GameSystemSnapshot($key, $name, $version, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', 'Someone in the way')]);
+    }
+
+    /**
+     * A schema version 2 snapshot with the number field "hands" (default 4), the derived field "edge"
+     * (hands / 2) and two checks: "skill" (1d10 + hands + edge, a Check difficulty of 13 within 9 to 29,
+     * bands "fail" up to difficulty - 1, "success" up to difficulty + 4, "crit") and "luck" (d%, no
+     * modifier or difficulty, bands "bad" up to 20 and "good").
+     */
+    public static function withChecks(string $key, string $name, int $version): GameSystemSnapshot
+    {
+        $sheet = new SheetTemplate([
+            new NumberField('hands', 'Hands', default: 4),
+            new DerivedField('edge', 'Edge', null, null, Formula::fromString('{hands} / 2')),
+        ]);
+        $checks = [
+            new Check(
+                'skill',
+                'Skill check',
+                'A stat against a Difficulty Value.',
+                DiceExpression::fromString('1d10'),
+                Formula::fromString('{hands} + {edge}'),
+                new CheckDifficulty('Difficulty Value', 13, 9, 29),
+                [
+                    new CheckBand('fail', 'Fail', Formula::fromString('{check:difficulty} - 1')),
+                    new CheckBand('success', 'Success', Formula::fromString('{check:difficulty} + 4')),
+                    new CheckBand('crit', 'Critical success'),
+                ],
+            ),
+            new Check('luck', 'Luck', null, DiceExpression::fromString('d%'), null, null, [new CheckBand('bad', 'Bad', 20), new CheckBand('good', 'Good')]),
+        ];
+
+        return new GameSystemSnapshot($key, $name, $version, null, [], [], sheet: $sheet, checks: $checks);
     }
 
     /**

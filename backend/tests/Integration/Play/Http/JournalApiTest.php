@@ -496,6 +496,7 @@ final class JournalApiTest extends WebTestCase
         yield 'note' => ['notes', 'Send the note as JSON.'];
         yield 'roll' => ['rolls', 'Send the roll as JSON.'];
         yield 'likelihood oracle' => ['likelihood-oracles/fate', 'Send the question as JSON.'];
+        yield 'check' => ['checks', 'Send the check as JSON.'];
     }
 
     #[Test]
@@ -520,6 +521,7 @@ final class JournalApiTest extends WebTestCase
         yield 'record roll' => ['POST', '/api/campaigns/%s/journal/rolls', ['expression' => '2d6']];
         yield 'record oracle table result' => ['POST', '/api/campaigns/%s/journal/oracle-tables/weather', null];
         yield 'record likelihood answer' => ['POST', '/api/campaigns/%s/journal/likelihood-oracles/fate', ['likelihood' => 'even']];
+        yield 'perform check' => ['POST', '/api/campaigns/%s/journal/checks', ['check' => 'slip-past', 'character' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001']];
     }
 
     /**

@@ -3614,6 +3614,117 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/journal/checks": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Perform a check of the pinned release for a Character on the server and record the result in the current scene of one of my campaigns",
+                "operationId": "performCheck",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PerformCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed: no string \"check\" or \"character\", or a non-integer \"difficulty\" or \"situational\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign has no current scene, or the generated entry id is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The pinned release has no check with this key, the campaign has no such Character, a difficulty is sent for a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}": {
             "post": {
                 "tags": [
@@ -5409,6 +5520,80 @@
                 },
                 "type": "object"
             },
+            "CheckDifficultyResponse": {
+                "required": [
+                    "label",
+                    "default",
+                    "min",
+                    "max"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "What the difficulty is called.",
+                        "type": "string",
+                        "example": "Difficulty Value"
+                    },
+                    "default": {
+                        "description": "Used when the player sends none.",
+                        "type": "integer",
+                        "example": 13
+                    },
+                    "min": {
+                        "description": "The lowest difficulty accepted; null when unbounded.",
+                        "type": "integer",
+                        "example": 9,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "The highest difficulty accepted; null when unbounded.",
+                        "type": "integer",
+                        "example": 29,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CheckResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "hint",
+                    "dice",
+                    "difficulty"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "skill"
+                    },
+                    "label": {
+                        "description": "What players see for the check.",
+                        "type": "string",
+                        "example": "Skill check"
+                    },
+                    "hint": {
+                        "description": "Shown where the check is chosen; null when the check has none.",
+                        "type": "string",
+                        "example": "A stat against a Difficulty Value.",
+                        "nullable": true
+                    },
+                    "dice": {
+                        "description": "The dice rolled, in dice notation.",
+                        "type": "string",
+                        "example": "1d10"
+                    },
+                    "difficulty": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckDifficultyResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The difficulty the player sets when rolling; null when the check declares none."
+                    }
+                },
+                "type": "object"
+            },
             "NpcResponse": {
                 "required": [
                     "id",
@@ -5635,6 +5820,7 @@
                     "flows",
                     "sceneTypes",
                     "tags",
+                    "checks",
                     "npcs",
                     "threads",
                     "factSlots",
@@ -5731,6 +5917,13 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/TagResponse"
+                        }
+                    },
+                    "checks": {
+                        "description": "The Checks of the pinned release, in definition order; empty for releases without any. A Character performs one with `POST /api/campaigns/{campaignId}/journal/checks`.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckResponse"
                         }
                     },
                     "npcs": {
@@ -6578,6 +6771,100 @@
                 },
                 "type": "object"
             },
+            "CheckContentResponse": {
+                "required": [
+                    "kind",
+                    "characterId",
+                    "characterName",
+                    "checkKey",
+                    "checkLabel",
+                    "expression",
+                    "groups",
+                    "diceTotal",
+                    "modifier",
+                    "situational",
+                    "difficulty",
+                    "total",
+                    "bandKey",
+                    "bandLabel"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "check"
+                        ]
+                    },
+                    "characterId": {
+                        "description": "The Character the check was performed for.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "characterName": {
+                        "description": "The name of the Character when the check was performed.",
+                        "type": "string",
+                        "example": "Vi"
+                    },
+                    "checkKey": {
+                        "type": "string",
+                        "example": "skill"
+                    },
+                    "checkLabel": {
+                        "description": "The label of the check when it was performed.",
+                        "type": "string",
+                        "example": "Skill check"
+                    },
+                    "expression": {
+                        "description": "The normalized notation of the dice rolled.",
+                        "type": "string",
+                        "example": "1d10"
+                    },
+                    "groups": {
+                        "description": "Every dice group, in notation order; empty when the dice expression rolls no dice.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalDiceGroupResponse"
+                        }
+                    },
+                    "diceTotal": {
+                        "description": "The value of the dice expression, counting kept dice only.",
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "modifier": {
+                        "description": "What the check's modifier formula gave for the Character; 0 for a check without one.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "situational": {
+                        "description": "The Situational modifier.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "difficulty": {
+                        "description": "The Check difficulty that applied; null when the check declares none.",
+                        "type": "integer",
+                        "example": 13,
+                        "nullable": true
+                    },
+                    "total": {
+                        "description": "The dice plus the modifier plus the Situational modifier.",
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "bandKey": {
+                        "description": "The key of the Outcome band the total falls in.",
+                        "type": "string",
+                        "example": "success"
+                    },
+                    "bandLabel": {
+                        "description": "The label of the Outcome band when the check was performed.",
+                        "type": "string",
+                        "example": "Success"
+                    }
+                },
+                "type": "object"
+            },
             "JournalFlowStepResponse": {
                 "required": [
                     "key",
@@ -6638,7 +6925,8 @@
                             "oracle-table",
                             "likelihood",
                             "choice",
-                            "pick"
+                            "pick",
+                            "check"
                         ]
                     },
                     "content": {
@@ -6650,7 +6938,8 @@
                                 "oracle-table": "#/components/schemas/OracleTableContentResponse",
                                 "likelihood": "#/components/schemas/LikelihoodContentResponse",
                                 "choice": "#/components/schemas/ChoiceContentResponse",
-                                "pick": "#/components/schemas/PickContentResponse"
+                                "pick": "#/components/schemas/PickContentResponse",
+                                "check": "#/components/schemas/CheckContentResponse"
                             }
                         },
                         "oneOf": [
@@ -6671,6 +6960,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/PickContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/CheckContentResponse"
                             }
                         ]
                     },
@@ -6709,6 +7001,37 @@
                         "description": "Dice notation, rolled on the server (same grammar as `POST /api/rolls`).",
                         "type": "string",
                         "example": "2d6+1"
+                    }
+                },
+                "type": "object"
+            },
+            "PerformCheckRequest": {
+                "required": [
+                    "check",
+                    "character"
+                ],
+                "properties": {
+                    "check": {
+                        "description": "The key of a check of the campaign's pinned release.",
+                        "type": "string",
+                        "example": "skill"
+                    },
+                    "character": {
+                        "description": "The id of any Character of the campaign, in the current scene or not.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "difficulty": {
+                        "description": "The Check difficulty, within the min..max of the check; omitted or null, the default of the check applies. Refused for a check that declares none.",
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    },
+                    "situational": {
+                        "description": "The Situational modifier, from -100 to 100; omitted or null, 0.",
+                        "type": "integer",
+                        "example": -2,
+                        "nullable": true
                     }
                 },
                 "type": "object"

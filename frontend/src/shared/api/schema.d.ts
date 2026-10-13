@@ -651,6 +651,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/journal/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Perform a check of the pinned release for a Character on the server and record the result in the current scene of one of my campaigns */
+        post: operations["performCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}": {
         parameters: {
             query?: never;
@@ -1408,6 +1425,49 @@ export interface components {
              */
             hint: string | null;
         };
+        CheckDifficultyResponse: {
+            /**
+             * @description What the difficulty is called.
+             * @example Difficulty Value
+             */
+            label: string;
+            /**
+             * @description Used when the player sends none.
+             * @example 13
+             */
+            default: number;
+            /**
+             * @description The lowest difficulty accepted; null when unbounded.
+             * @example 9
+             */
+            min: number | null;
+            /**
+             * @description The highest difficulty accepted; null when unbounded.
+             * @example 29
+             */
+            max: number | null;
+        };
+        CheckResponse: {
+            /** @example skill */
+            key: string;
+            /**
+             * @description What players see for the check.
+             * @example Skill check
+             */
+            label: string;
+            /**
+             * @description Shown where the check is chosen; null when the check has none.
+             * @example A stat against a Difficulty Value.
+             */
+            hint: string | null;
+            /**
+             * @description The dice rolled, in dice notation.
+             * @example 1d10
+             */
+            dice: string;
+            /** @description The difficulty the player sets when rolling; null when the check declares none. */
+            difficulty: components["schemas"]["CheckDifficultyResponse"] | null;
+        };
         NpcResponse: {
             /** Format: uuid */
             id: string;
@@ -1562,6 +1622,8 @@ export interface components {
             sceneTypes: components["schemas"]["SceneTypeSummaryResponse"][];
             /** @description The Tags of the pinned release, in definition order; empty for releases without any. NPCs and Threads carry them by key. */
             tags: components["schemas"]["TagResponse"][];
+            /** @description The Checks of the pinned release, in definition order; empty for releases without any. A Character performs one with `POST /api/campaigns/{campaignId}/journal/checks`. */
+            checks: components["schemas"]["CheckResponse"][];
             /** @description The campaign's NPCs: the open ones first, then the closed ones, each in creation order. */
             npcs: components["schemas"]["NpcResponse"][];
             /** @description The campaign's Threads: the open ones first, then the closed ones, each in creation order. */
@@ -2011,6 +2073,72 @@ export interface components {
             /** @description The items picked, in the order picked, named as they were at pick time; empty when nothing matched. */
             picked: components["schemas"]["ItemRefResponse"][];
         };
+        CheckContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "check";
+            /**
+             * Format: uuid
+             * @description The Character the check was performed for.
+             */
+            characterId: string;
+            /**
+             * @description The name of the Character when the check was performed.
+             * @example Vi
+             */
+            characterName: string;
+            /** @example skill */
+            checkKey: string;
+            /**
+             * @description The label of the check when it was performed.
+             * @example Skill check
+             */
+            checkLabel: string;
+            /**
+             * @description The normalized notation of the dice rolled.
+             * @example 1d10
+             */
+            expression: string;
+            /** @description Every dice group, in notation order; empty when the dice expression rolls no dice. */
+            groups: components["schemas"]["JournalDiceGroupResponse"][];
+            /**
+             * @description The value of the dice expression, counting kept dice only.
+             * @example 7
+             */
+            diceTotal: number;
+            /**
+             * @description What the check's modifier formula gave for the Character; 0 for a check without one.
+             * @example 6
+             */
+            modifier: number;
+            /**
+             * @description The Situational modifier.
+             * @example 2
+             */
+            situational: number;
+            /**
+             * @description The Check difficulty that applied; null when the check declares none.
+             * @example 13
+             */
+            difficulty: number | null;
+            /**
+             * @description The dice plus the modifier plus the Situational modifier.
+             * @example 15
+             */
+            total: number;
+            /**
+             * @description The key of the Outcome band the total falls in.
+             * @example success
+             */
+            bandKey: string;
+            /**
+             * @description The label of the Outcome band when the check was performed.
+             * @example Success
+             */
+            bandLabel: string;
+        };
         JournalFlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -2035,8 +2163,8 @@ export interface components {
              * @description The same as `content.kind`.
              * @enum {string}
              */
-            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick";
-            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"];
+            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"];
             /** @description The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand. */
             flowStep: components["schemas"]["JournalFlowStepResponse"] | null;
         };
@@ -2053,6 +2181,28 @@ export interface components {
              * @example 2d6+1
              */
             expression: string;
+        };
+        PerformCheckRequest: {
+            /**
+             * @description The key of a check of the campaign's pinned release.
+             * @example skill
+             */
+            check: string;
+            /**
+             * Format: uuid
+             * @description The id of any Character of the campaign, in the current scene or not.
+             */
+            character: string;
+            /**
+             * @description The Check difficulty, within the min..max of the check; omitted or null, the default of the check applies. Refused for a check that declares none.
+             * @example 15
+             */
+            difficulty?: number | null;
+            /**
+             * @description The Situational modifier, from -100 to 100; omitted or null, 0.
+             * @example -2
+             */
+            situational?: number | null;
         };
         RecordLikelihoodAnswerRequest: {
             /**
@@ -5188,6 +5338,95 @@ export interface operations {
                 };
             };
             /** @description The dice expression is invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    performCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PerformCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The new entry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description The JSON body is malformed: no string "check" or "character", or a non-integer "difficulty" or "situational". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or the generated entry id is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The pinned release has no check with this key, the campaign has no such Character, a difficulty is sent for a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. */
             422: {
                 headers: {
                     [name: string]: unknown;

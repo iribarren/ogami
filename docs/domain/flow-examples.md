@@ -143,7 +143,8 @@ A short heist flow for one sitting. Generic Scene Types (Social, Exploration) si
 **The job**
 
 ```
-Crew      prompt "Who is your first crew member?" (mandatory)  → createNpc [crew]
+Crew      character "Who are you?" (mandatory)                 → the player's Character (joins party and cast)
+          prompt "Who is your first crew member?" (mandatory)  → createNpc [crew]
           prompt "Who else is in?" (suggested)                 → createNpc [crew]
 Briefing  table job-clients → createNpc [client], fillFact client
           table job-targets → fillFact target

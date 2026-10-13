@@ -126,6 +126,41 @@ describe('a character step', () => {
     expect(step.getByLabelText('Name')).toHaveValue('Vi')
   })
 
+  it('keeps the created Character pickable when completing the step is refused, never creating twice', async () => {
+    const user = userEvent.setup()
+    let answers = 0
+    const { sent } = renderStep(
+      characterStep,
+      {
+        characters: () => Response.json(viCharacter, { status: 201 }),
+        'flow-run/answer': () => {
+          answers += 1
+          return answers === 1
+            ? Response.json({ error: 'The step cannot be completed.' }, { status: 422 })
+            : Response.json(afterStep)
+        },
+      },
+      { ...guidedWithCharacters(atStep(characterStep)), characters: [] },
+    )
+
+    const step = await card()
+    await user.type(step.getByLabelText('Name'), 'Vi')
+    await user.click(step.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('The step cannot be completed.')).toBeInTheDocument()
+    expect(step.queryByLabelText('Name')).not.toBeInTheDocument()
+    expect(step.getByRole('radio', { name: 'Vi' })).toBeChecked()
+    await user.click(step.getByRole('button', { name: 'Choose' }))
+
+    await waitFor(() => {
+      expect(sent['flow-run/answer']).toEqual([
+        { stepKey: 'crew', characterId: viCharacter.id },
+        { stepKey: 'crew', characterId: viCharacter.id },
+      ])
+    })
+    expect(sent.characters).toHaveLength(1)
+  })
+
   it("shows the API's reason when the step is refused", async () => {
     const user = userEvent.setup()
     renderStep(characterStep, {

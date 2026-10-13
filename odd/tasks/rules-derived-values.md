@@ -1,7 +1,7 @@
 # Feature: rules-derived-values
 
 - **Locator:** `odd/tasks/rules-derived-values.md` · Engram topic `odd/rules-derived-values/tasks`
-- **Issue:** #107 · **Branch:** `feat/rules-derived-values-6-preset` · **Status:** slice 6 in progress
+- **Issue:** #107 · **Branch:** `feat/rules-derived-values-6-preset` · **Status:** done (slice 6 under review)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-characters` (PRs #97–#106)
@@ -99,7 +99,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 5 | TS evaluator in `frontend/src/shared/lib/formula/` mirroring the kernel; node container mounts `backend/contracts` read-only; Vitest runs the conformance file | delegated writer (slice 5) | [x] | `29475f6` (slice 4 fixes), `a60511d` |
 | T7 | 5 | UI: derived fields read-only and live in the Character form, from form state and tracker values; Characters panel shows `derived`; Vitest | delegated writer (slice 5) | [x] | `bc1e6d5` |
 | T8 | 6 | Night Job preset gains derived values: `cool` (Stats, `max(0, {nerve} - {tracker:alarm} / 2)`) and `wounded` (Condition, `{hp.max} / 2`), original wording (ADR 0018 decision 29); preset tests; e2e: edit a stat, see the derived value change | delegated writer (slice 6) | [x] | |
-| T9 | 6 | Wrap-up: roadmap 11 done, feature doc closed | | [ ] | |
+| T9 | 6 | Wrap-up: roadmap 11 done, feature doc closed | delegated writer (slice 6) | [x] | |
 
 ## Progress
 
@@ -119,6 +119,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: T7 live derived values done. `computeDerived` (`characters/derivedValues.ts`) mirrors `DerivedValues.php` over the form drafts and the Campaign trackers (an empty or non-integer draft is `incomplete value`, a failed dependency `depends on <key>`, an unparsable formula `invalid formula`, nothing throws); `CharacterForm` takes the whole sheet and `trackers`, keeps `storedFields()` as the payload source, and `SheetFields` renders a derived field as a labelled `<output>` with hint and formula; the Characters panel summary shows the server's `derived` (`null` as a dash) through `summarize`. RED: 7 new component tests and the unit file failed (no module, no output element); GREEN: Play Vitest 301 pass, legacy sheets without derived fields covered by the unchanged existing tests. Route: delegated writer.
 - 2026-10-13: Slice 5 review fixes done: `computeDerived` blames `depends on <key>` only on an `unknownReference` failure (a division by zero or overflow keeps its own reason), decides a failed dependency by the referenced field being a derived field with a `reason` result (so an unparsable derived value reads as a dependency), and the cycle return keeps the `invalid formula` results already recorded. RED: 3 new `derivedValues` tests failed (wrong reason twice, dropped result once); GREEN: 8 pass. Route: delegated writer.
 - 2026-10-13: T8 Night Job derived values done. `night-job.json` gains `cool` (Stats, after `charm`) and `wounded` (Condition, after `hp`) with original hints; `PresetsTest::nightJobHasAnOriginalSheet` pins the field order and both formulas as `DerivedField`s; `NightJobPresetFlowTest` does not assert the sheet, left unchanged; no example copy of the preset exists in the fixtures. New e2e `play-derived-values.spec.ts`: Add Character on a Night Job campaign, `Cool` follows Nerve live (4, 7, then a dash with its reason when emptied), `Wounded at` is 20, save works. RED (preset stashed): `PresetsTest` failed on the field list; GREEN: 18 preset and flow tests pass, the e2e spec passes (its first run failed on the reason text next to the dash, assertion fixed). Route: delegated writer.
+- 2026-10-13: T9 wrap-up done: roadmap feature 11 has its "Done:" paragraph, the feature doc is closed (status, next step). Docs only, structural readback, no RED/GREEN. Route: delegated writer.
 
 ## Reviews
 
@@ -132,4 +133,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 6 on `feat/rules-derived-values-6-preset`: slice 5 review fixes, then T8 Night Job derived values and e2e, T9 wrap-up (roadmap 11 done, feature doc closed). Feature complete after its review and PR.
+Slice 6 review and PR; then the feature is closed. Next feature: 12 `play-checks`.

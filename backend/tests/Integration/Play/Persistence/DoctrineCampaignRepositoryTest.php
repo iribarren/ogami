@@ -177,8 +177,8 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
         yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
         yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn", "finished".'];
-        yield 'picked not an object' => [['picked' => 'Ana'], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread".'];
-        yield 'picked of an unknown kind' => [['picked' => ['kind' => 'faction', 'ids' => ['a']]], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread".'];
+        yield 'picked not an object' => [['picked' => 'Ana'], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread", "character".'];
+        yield 'picked of an unknown kind' => [['picked' => ['kind' => 'faction', 'ids' => ['a']]], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread", "character".'];
         yield 'picked ids not a list' => [['picked' => ['kind' => 'npc', 'ids' => 'a']], 'Stored campaign FlowRun: "picked" must be a list.'];
         yield 'a picked id not a string' => [['picked' => ['kind' => 'npc', 'ids' => [1]]], 'Stored campaign FlowRun: "picked" must be a list of id strings.'];
         yield 'picked without ids' => [['picked' => ['kind' => 'npc', 'ids' => []]], 'Stored campaign FlowRun: "picked" is invalid: Picked items hold 1 to 10 ids, got 0.'];
@@ -267,12 +267,13 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
-    public function thePickedItemsRoundTripWithTheWholeFlowRun(): void
+    #[DataProvider('pickedKinds')]
+    public function thePickedItemsRoundTripWithTheWholeFlowRun(ItemKind $kind): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
         $base = $this->guidedCampaign($id->toString());
         $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
-        $flowRun = FlowRun::reconstitute($run->status(), $run->phaseIndex(), $run->stage(), $run->scene()[0] ?? null, $run->scene()[1] ?? null, $run->sceneType(), $run->part(), $run->stepKey(), $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), $run->forcedNextSceneType(), $run->phaseEndingReason(), $run->switchCount(), $run->history(), $run->hook(), $run->phaseOpened(), $run->sessionOpeningDue(), new PickedItems(ItemKind::Thread, ['t2', 't1']));
+        $flowRun = FlowRun::reconstitute($run->status(), $run->phaseIndex(), $run->stage(), $run->scene()[0] ?? null, $run->scene()[1] ?? null, $run->sceneType(), $run->part(), $run->stepKey(), $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), $run->forcedNextSceneType(), $run->phaseEndingReason(), $run->switchCount(), $run->history(), $run->hook(), $run->phaseOpened(), $run->sessionOpeningDue(), new PickedItems($kind, ['t2', 't1']));
         $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
         $this->repository->add($campaign);
         $this->forgetLoaded();
@@ -280,8 +281,17 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $loaded = $this->repository->ofId($id);
 
         self::assertEquals($campaign, $loaded);
-        self::assertEquals(new PickedItems(ItemKind::Thread, ['t2', 't1']), $loaded?->flowRun()?->picked());
-        self::assertEquals(['kind' => 'thread', 'ids' => ['t2', 't1']], $this->storedFlowRun($id->toString())['picked']);
+        self::assertEquals(new PickedItems($kind, ['t2', 't1']), $loaded?->flowRun()?->picked());
+        self::assertEquals(['kind' => $kind->value, 'ids' => ['t2', 't1']], $this->storedFlowRun($id->toString())['picked']);
+    }
+
+    /**
+     * @return iterable<string, array{ItemKind}>
+     */
+    public static function pickedKinds(): iterable
+    {
+        yield 'Threads' => [ItemKind::Thread];
+        yield 'Characters' => [ItemKind::Character];
     }
 
     #[Test]

@@ -105,6 +105,16 @@ final readonly class Character
         return $this->values;
     }
 
+    /**
+     * @param list<string> $tags release Tag keys
+     *
+     * @return bool whether it carries all of them (any, when none are given)
+     */
+    public function carries(array $tags): bool
+    {
+        return [] === array_diff($tags, $this->tags);
+    }
+
     public function promotedFrom(): ?NpcId
     {
         return $this->promotedFrom;

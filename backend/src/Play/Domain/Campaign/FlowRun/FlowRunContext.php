@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
@@ -100,7 +101,7 @@ final readonly class FlowRunContext
     }
 
     /**
-     * The number of open NPCs or Threads a count condition counts.
+     * The number of open NPCs or Threads, or of Characters, a count condition counts.
      */
     public function openItemCount(ItemCount $count): int
     {
@@ -108,7 +109,7 @@ final readonly class FlowRunContext
     }
 
     /**
-     * The candidates of a pick step: the campaign's open items of its kind carrying all its Tags.
+     * The candidates of a pick step: the campaign's open items (every Character) of its kind carrying all its Tags.
      */
     public function pickCandidates(PickStep $step): PickCandidates
     {
@@ -127,15 +128,18 @@ final readonly class FlowRunContext
     }
 
     /**
-     * Adds the NPCs among the items to the current scene's cast; Threads have no cast.
+     * Adds the NPCs or Characters among the items to the current scene's cast; Threads have no
+     * cast. Characters also join the current session's party when $toParty (in a hook).
      *
      * @throws NoCurrentScene
      */
-    public function joinSceneCast(PickedItems $items): void
+    public function joinSceneCast(PickedItems $items, bool $toParty = false): void
     {
-        if (ItemKind::Npc === $items->kind) {
-            $this->campaign->addToCurrentSceneCast(array_map(NpcId::fromString(...), $items->ids));
-        }
+        match ($items->kind) {
+            ItemKind::Npc => $this->campaign->addToCurrentSceneCast(array_map(NpcId::fromString(...), $items->ids)),
+            ItemKind::Character => $this->campaign->addToCurrentSceneCharacters(array_map(CharacterId::fromString(...), $items->ids), $toParty),
+            ItemKind::Thread => null,
+        };
     }
 
     /**

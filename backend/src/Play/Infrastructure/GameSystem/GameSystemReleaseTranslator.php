@@ -678,11 +678,7 @@ final readonly class GameSystemReleaseTranslator
 
     private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind
     {
-        if ('character' === ($name = $this->string($view, $kind, $path))) {
-            throw $this->invalid($view, $path, 'item kind "character" is not supported by Play yet.');
-        }
-
-        return ItemKind::tryFrom($name)
+        return ItemKind::tryFrom($name = $this->string($view, $kind, $path))
             ?? throw $this->invalid($view, $path, \sprintf('unknown item kind "%s".', $name));
     }
 

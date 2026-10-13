@@ -52,9 +52,7 @@ Warnings: none (Hit squad sets `heat` to 4, Month's end sets `month` to 0 when t
 
 Facts: the founding Town fills `town`; every session opening fills `expedition` (hint "Renewed each session") and the session closing asks "Is {fact:expedition} resolved?".
 
-| Left out | Feature |
-|---|---|
-| `pick of: character` for the Session party (now a `prompt`, "Who goes on this expedition?"). The sheet is in; Play reads `of: character` from slice 4 of `play-characters`, so the pick waits for it | 10 |
+The session opening ends with `pick of: character` ("Who goes on this expedition?", one to six): the Characters picked join the Session's party and the hook Scene's cast. With no Character yet it completes as none.
 
 Sheet: Class, Level (1–20), Hit points (track), Notes, and Gear and Treasure lists, grouped Adventurer and Pack.
 

@@ -39,6 +39,15 @@ final class PickContentTest extends TestCase
         self::assertEquals($none, JournalEntryContents::fromArray($none->toArray()));
     }
 
+    #[Test]
+    public function aPickOfCharactersRoundTrips(): void
+    {
+        $pick = PickContent::of(ItemKind::Character, ['crew'], [['id' => 'a', 'name' => 'Ada']]);
+
+        self::assertSame(['kind' => 'pick', 'of' => 'character', 'tags' => ['crew'], 'picked' => [['id' => 'a', 'name' => 'Ada']]], $pick->toArray());
+        self::assertEquals($pick, JournalEntryContents::fromArray($pick->toArray()));
+    }
+
     /**
      * @return iterable<string, array{array<mixed>}>
      */

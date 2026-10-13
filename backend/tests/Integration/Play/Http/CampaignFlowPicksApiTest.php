@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Play\Http;
 
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
+use App\Play\Application\AddCharacter;
 use App\Play\Application\AddNpc;
 use App\Play\Application\AddThread;
 use App\Play\Application\Clock;
@@ -20,6 +21,7 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\PeopleReleases;
+use App\Tests\Support\Studio\ReleaseArrays;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -50,7 +52,7 @@ final class CampaignFlowPicksApiTest extends WebTestCase
         $container = self::getContainer();
         $container->set(Clock::class, new FixedClock('2026-10-10T09:00:00+00:00'));
         $this->commands = $container->get(CommandBus::class);
-        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9311', PeopleReleases::content() + ['sheet' => []], false));
+        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9311', $this->release(), false));
         $this->userId = $container->get(UserIdGenerator::class)->generate()->toString();
         $this->commands->dispatch(new CreateUser($this->userId, 'ada@example.com', self::PASSWORD, ['SOLO_PLAYER']));
         $this->client->jsonRequest('POST', '/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD]);
@@ -151,6 +153,45 @@ final class CampaignFlowPicksApiTest extends WebTestCase
             array_map(static fn (string $key): mixed => self::at($entry, 'content', $key), ['kind', 'of', 'tags', 'picked']),
         );
         self::assertSame('pick', $entry['kind']);
+    }
+
+    #[Test]
+    public function aPickOfCharactersListsThemAndJoinsTheSceneCastNotTheParty(): void
+    {
+        $this->withCharacters([['vi', 'Vi', 'ally'], ['jax', 'Jax', 'rival'], ['oz', 'Oz', 'ally']]);
+        $step = $this->campaign();
+
+        self::assertSame(
+            ['character', [['key' => 'ally', 'label' => 'Ally']], [['id' => 'char-vi', 'name' => 'Vi'], ['id' => 'char-oz', 'name' => 'Oz']]],
+            array_map(static fn (string $key): mixed => self::at($step, 'flowRun', 'step', 'pick', $key), ['of', 'tags', 'candidates']),
+        );
+
+        $this->answer(['stepKey' => 'who', 'pickedIds' => ['char-oz']]);
+
+        self::assertResponseStatusCodeSame(200);
+        $campaign = $this->json();
+        self::assertSame('With Oz', self::at($campaign, 'flowRun', 'step', 'title'));
+        self::assertSame([['id' => 'char-oz', 'name' => 'Oz']], self::at($this->currentScene($campaign), 'characters'));
+        self::assertSame([], self::at($this->currentScene($campaign), 'cast'));
+        $sessions = self::at($campaign, 'sessions');
+        self::assertIsArray($sessions);
+        self::assertSame([], self::at(array_last($sessions), 'party'));
+        $content = self::at($this->journal()[0], 'content');
+        self::assertSame(['pick', 'character', ['ally'], [['id' => 'char-oz', 'name' => 'Oz']]], array_map(static fn (string $key): mixed => self::at($content, $key), ['kind', 'of', 'tags', 'picked']));
+    }
+
+    #[Test]
+    public function aCharacterThatIsNotACandidateIsRefusedAndNothingChanges(): void
+    {
+        $this->withCharacters([['jax', 'Jax', 'rival'], ['oz', 'Oz', 'ally']]);
+        $before = $this->campaign();
+
+        $this->answer(['stepKey' => 'who', 'pickedIds' => ['char-jax']]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('no candidate "char-jax"', $this->error());
+        self::assertSame($before, $this->campaign());
+        self::assertSame([], $this->journal());
     }
 
     #[Test]
@@ -296,6 +337,42 @@ final class CampaignFlowPicksApiTest extends WebTestCase
         self::assertStringNotContainsString('"cast"', $stored);
 
         self::assertSame([], self::at($this->currentScene($this->campaign()), 'cast'));
+    }
+
+    /**
+     * A guided campaign in a "crew" scene, after these Characters (id, name, Tag) were added: they
+     * are in no party and no cast.
+     *
+     * @param list<array{string, string, string}> $characters
+     */
+    private function withCharacters(array $characters): void
+    {
+        $this->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The people', 'people', 'tour'));
+        foreach ($characters as [$id, $name, $tag]) {
+            $this->dispatch(new AddCharacter(self::CAMPAIGN, $this->userId, 'char-'.$id, $name, [$tag], [], []));
+        }
+
+        $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
+        $this->dispatch(new PickSceneType(self::CAMPAIGN, $this->userId, 'crew'));
+    }
+
+    /**
+     * Release "people" with a Scene Type "crew" that picks Characters tagged Ally.
+     *
+     * @return array<mixed>
+     */
+    private function release(): array
+    {
+        $content = PeopleReleases::content() + ['sheet' => []];
+        $sceneTypes = $content['sceneTypes'];
+        self::assertIsArray($sceneTypes);
+        $crew = ['key' => 'crew', 'name' => 'Crew', 'purpose' => 'A crew scene.', 'oracles' => [], 'play' => [], 'closing' => [], 'setup' => [
+            ['key' => 'who', 'kind' => 'pick', 'title' => 'Which Character?', 'of' => 'character', 'tags' => ['ally'], 'mode' => 'choose'],
+            ['key' => 'show', 'kind' => 'prompt', 'title' => 'With {picked}'],
+        ]];
+        $content = ReleaseArrays::with($content, 'sceneTypes', [...$sceneTypes, $crew]);
+
+        return ReleaseArrays::with($content, 'flows.0.phases.0.selection.sceneTypes', ['spawn', 'spawn-thread', 'choose', 'draw', 'quiet', 'crew']);
     }
 
     /**

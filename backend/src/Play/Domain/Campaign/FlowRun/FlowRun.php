@@ -292,7 +292,7 @@ final class FlowRun
             $this->enterHookScene($context);
             $this->picked = $newlyPicked;
             if ($newlyPicked instanceof PickedItems) {
-                $context->joinSceneCast($newlyPicked);
+                $context->joinSceneCast($newlyPicked, FlowRunStage::Hook === $this->stage);
             }
         }
 
@@ -1000,10 +1000,14 @@ final class FlowRun
             return;
         }
 
-        $kind = FactSlotType::Npc === $type ? ItemKind::Npc : ItemKind::Thread;
-        $id = $this->picked instanceof PickedItems && $this->picked->kind === $kind ? ($this->picked->ids[0] ?? null) : null;
+        // A picked Character fits no slot (they hold NPCs and Threads): like any other kind mismatch, nothing is linked.
+        $slotKind = match ($type) {
+            FactSlotType::Npc => ItemKind::Npc,
+            FactSlotType::Thread => ItemKind::Thread,
+        };
+        $id = $this->picked instanceof PickedItems && $this->picked->kind === $slotKind ? ($this->picked->ids[0] ?? null) : null;
         if (null !== $id) {
-            $context->fillFact($effect->slot, null, ItemKind::Npc === $kind ? FactLink::npc(NpcId::fromString($id)) : FactLink::thread(ThreadId::fromString($id)));
+            $context->fillFact($effect->slot, null, FactSlotType::Npc === $type ? FactLink::npc(NpcId::fromString($id)) : FactLink::thread(ThreadId::fromString($id)));
         }
     }
 

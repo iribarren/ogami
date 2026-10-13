@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Studio\Domain\Release\Version2;
 
+use App\Formula\Domain\Formula;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseFields;
 
 /**
- * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of four
- * types, each with its own closed set of properties. The canonical sheet is [] without fields, so
+ * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of five
+ * types, each with its own closed set of properties; a "derived" field holds a formula (ADR 0023). The canonical sheet is [] without fields, so
  * a release that never used the sheet keeps its content hash.
  *
  * @internal
@@ -25,6 +26,7 @@ final class SheetFields
     public const int MAX_ITEM_LABEL_LENGTH = 60;
     public const int MAX_LIST_ITEMS = 100;
     public const int MAX_TRACK = 999;
+    public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
 
     private const array SHEET = ['fields' => false];
     private const array COMMON = ['key' => true, 'label' => true, 'hint' => false, 'group' => false, 'type' => true];
@@ -35,16 +37,20 @@ final class SheetFields
         'text' => ['multiline' => false, 'maxLength' => false],
         'list' => ['itemLabel' => false, 'maxItems' => false],
         'track' => ['max' => false],
+        'derived' => ['formula' => true],
     ];
 
     /**
+     * @param list<string> $trackerKeys the trackers of the release, which derived fields may read
+     *
      * @return array{fields?: list<array<string, mixed>>} no "fields" key when the sheet has none
      */
-    public static function validate(mixed $value): array
+    public static function validate(mixed $value, array $trackerKeys = []): array
     {
         $sheet = ReleaseFields::object($value, 'sheet', self::SHEET);
         $fields = [];
         $keys = [];
+        $derived = [];
         foreach (ReleaseFields::sizedList($sheet['fields'] ?? [], 'sheet.fields', 0, self::MAX_FIELDS, 'fields') as $index => $field) {
             $path = \sprintf('sheet.fields[%d]', $index);
             $field = self::field($field, $path);
@@ -54,9 +60,20 @@ final class SheetFields
                 throw InvalidReleaseContent::at($path.'.key', \sprintf('duplicate field key "%s"', $key));
             }
 
-            $keys[$key] = true;
+            /** @var string $type */
+            $type = $field['type'];
+            $keys[$key] = $type;
+            if ('derived' === $type) {
+                /** @var string $formula */
+                $formula = $field['formula'];
+                $derived[$key] = ['path' => $path, 'formula' => $formula];
+            }
+
             $fields[] = $field;
         }
+
+        // A formula may read a field listed after it, so the references are checked once every field is known.
+        Formulas::sheet($derived, $keys, $trackerKeys);
 
         return [] === $fields ? [] : ['fields' => $fields];
     }
@@ -84,6 +101,7 @@ final class SheetFields
             'text' => self::text($field, $path),
             'list' => self::list($field, $path),
             'track' => self::track($field, $path),
+            'derived' => self::derived($field, $path),
         };
 
         return array_filter($field, static fn (mixed $part): bool => false !== $part);
@@ -165,6 +183,20 @@ final class SheetFields
         if (isset($field['max'])) {
             ReleaseFields::integer($field['max'], $path.'.max', 1, self::MAX_TRACK);
         }
+
+        return $field;
+    }
+
+    /**
+     * Only the shape of the formula; its syntax, references and cycles are checked once all fields are known.
+     *
+     * @param array<string, mixed> $field
+     *
+     * @return array<string, mixed>
+     */
+    private static function derived(array $field, string $path): array
+    {
+        ReleaseFields::text($field['formula'], $path.'.formula', 1, self::MAX_FORMULA_LENGTH);
 
         return $field;
     }

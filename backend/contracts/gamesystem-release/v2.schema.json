@@ -86,7 +86,8 @@
         { "$ref": "#/$defs/numberField" },
         { "$ref": "#/$defs/textField" },
         { "$ref": "#/$defs/listField" },
-        { "$ref": "#/$defs/trackField" }
+        { "$ref": "#/$defs/trackField" },
+        { "$ref": "#/$defs/derivedField" }
       ]
     },
     "numberField": {
@@ -148,6 +149,35 @@
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
         "type": { "const": "track" },
         "max": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 }
+      }
+    },
+    "derivedField": {
+      "description": "A DerivedValue: computed from other fields and trackers by a formula (ADR 0023), never stored. References, kinds, cycles and syntax are checked by the domain.",
+      "type": "object",
+      "required": ["key", "label", "type", "formula"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "type": { "const": "derived" },
+        "formula": { "$ref": "#/$defs/formulaText" }
+      }
+    },
+    "formulaText": {
+      "description": "A formula such as \"({dex}-10)/2\" or \"{tracker:chaos}*2\" (ADR 0023); its syntax is checked by the domain.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "formulaRef": {
+      "description": "A formula over trackers: {tracker:key} references only.",
+      "type": "object",
+      "required": ["formula"],
+      "additionalProperties": false,
+      "properties": {
+        "formula": { "$ref": "#/$defs/formulaText" }
       }
     },
     "tag": {
@@ -775,7 +805,7 @@
       "additionalProperties": false,
       "properties": {
         "upTo": {
-          "anyOf": [{ "type": "integer" }, { "$ref": "#/$defs/trackerRef" }, { "type": "null" }]
+          "anyOf": [{ "type": "integer" }, { "$ref": "#/$defs/trackerRef" }, { "$ref": "#/$defs/formulaRef" }, { "type": "null" }]
         },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" }
@@ -797,7 +827,11 @@
             "tracker": { "$ref": "#/$defs/key" },
             "op": { "enum": ["add", "set"] },
             "value": {
-              "anyOf": [{ "type": "integer", "minimum": -1000, "maximum": 1000 }, { "$ref": "#/$defs/trackerRef" }]
+              "anyOf": [
+                { "type": "integer", "minimum": -1000, "maximum": 1000 },
+                { "$ref": "#/$defs/trackerRef" },
+                { "$ref": "#/$defs/formulaRef" }
+              ]
             }
           }
         },

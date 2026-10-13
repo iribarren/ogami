@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Studio\Domain\Release\Version2;
 
+use App\Formula\Domain\Formula;
+use App\Formula\Domain\ReferenceKind;
+
 /**
  * Walks the parts of canonical schema version 2 steps, with their paths: the outcomes that may
  * carry "next" and "effects" (the step itself, its bands, branches, "otherwise" and options), the
@@ -111,7 +114,7 @@ final class StepParts
 
         yield $path.'.tracker' => self::string($effect['tracker'] ?? null);
         if (\is_array($effect['value'] ?? null)) {
-            yield $path.'.value.tracker' => self::string($effect['value']['tracker'] ?? null);
+            yield from self::referencedTrackers($effect['value'], $path.'.value');
         }
     }
 
@@ -138,7 +141,7 @@ final class StepParts
 
         foreach (self::objects($step['bands'] ?? []) as $index => $band) {
             if (\is_array($band['upTo'] ?? null)) {
-                yield \sprintf('%s.bands[%d].upTo.tracker', $path, $index) => self::string($band['upTo']['tracker'] ?? null);
+                yield from self::referencedTrackers($band['upTo'], \sprintf('%s.bands[%d].upTo', $path, $index));
             }
         }
 
@@ -216,6 +219,29 @@ final class StepParts
         $objects = array_filter($value, \is_array(...));
 
         return $objects;
+    }
+
+    /**
+     * The trackers a canonical {tracker: key} or {formula: string} reads.
+     *
+     * @param array<array-key, mixed> $reference
+     *
+     * @return iterable<string, string> path => tracker key
+     */
+    private static function referencedTrackers(array $reference, string $path): iterable
+    {
+        if (!\array_key_exists('formula', $reference)) {
+            yield $path.'.tracker' => self::string($reference['tracker'] ?? null);
+
+            return;
+        }
+
+        // The formula passed validation, so it parses.
+        foreach (Formula::fromString(self::string($reference['formula']))->references() as $read) {
+            if (ReferenceKind::Tracker === $read->kind) {
+                yield \sprintf('%s.formula[tracker:%s]', $path, $read->key) => $read->key;
+            }
+        }
     }
 
     private static function string(mixed $value): string

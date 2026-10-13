@@ -32,22 +32,7 @@ final readonly class RollContent implements JournalEntryContent
 
     public static function fromRoll(Roll $roll): self
     {
-        return new self(
-            $roll->expression()->notation(),
-            $roll->total(),
-            array_map(
-                static fn (DiceGroup $group): array => [
-                    'notation' => $group->notation(),
-                    'sides' => $group->sides(),
-                    'dice' => array_map(
-                        static fn (RolledDie $die): array => ['value' => $die->value(), 'kept' => $die->isKept()],
-                        $group->dice(),
-                    ),
-                    'subtotal' => $group->subtotal(),
-                ],
-                $roll->groups(),
-            ),
-        );
+        return new self($roll->expression()->notation(), $roll->total(), self::groupsOf($roll));
     }
 
     /**
@@ -60,18 +45,57 @@ final readonly class RollContent implements JournalEntryContent
         return new self(
             ContentData::string($data, 'expression'),
             ContentData::int($data, 'total'),
-            array_map(
-                static fn (array $group): array => [
-                    'notation' => ContentData::string($group, 'notation'),
-                    'sides' => ContentData::int($group, 'sides'),
-                    'dice' => array_map(
-                        static fn (array $die): array => ['value' => ContentData::int($die, 'value'), 'kept' => ContentData::bool($die, 'kept')],
-                        ContentData::listOfArrays($group, 'dice'),
-                    ),
-                    'subtotal' => ContentData::int($group, 'subtotal'),
-                ],
-                ContentData::listOfArrays($data, 'groups'),
-            ),
+            self::groupsFromArray($data),
+        );
+    }
+
+    /**
+     * The dice groups of a roll in the shape a roll stores them, for the contents that embed a roll.
+     *
+     * @return list<DiceGroupData>
+     *
+     * @internal used by the content value objects that embed a roll
+     */
+    public static function groupsOf(Roll $roll): array
+    {
+        return array_map(
+            static fn (DiceGroup $group): array => [
+                'notation' => $group->notation(),
+                'sides' => $group->sides(),
+                'dice' => array_map(
+                    static fn (RolledDie $die): array => ['value' => $die->value(), 'kept' => $die->isKept()],
+                    $group->dice(),
+                ),
+                'subtotal' => $group->subtotal(),
+            ],
+            $roll->groups(),
+        );
+    }
+
+    /**
+     * The dice groups of a stored content array, read strictly.
+     *
+     * @param array<mixed> $data the stored content, holding a "groups" list
+     *
+     * @return list<DiceGroupData>
+     *
+     * @throws InvalidJournalEntryContent
+     *
+     * @internal used by the content value objects that embed a roll
+     */
+    public static function groupsFromArray(array $data): array
+    {
+        return array_map(
+            static fn (array $group): array => [
+                'notation' => ContentData::string($group, 'notation'),
+                'sides' => ContentData::int($group, 'sides'),
+                'dice' => array_map(
+                    static fn (array $die): array => ['value' => ContentData::int($die, 'value'), 'kept' => ContentData::bool($die, 'kept')],
+                    ContentData::listOfArrays($group, 'dice'),
+                ),
+                'subtotal' => ContentData::int($group, 'subtotal'),
+            ],
+            ContentData::listOfArrays($data, 'groups'),
         );
     }
 

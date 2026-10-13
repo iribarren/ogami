@@ -162,6 +162,20 @@ final class CheckTest extends TestCase
         self::assertSame(100, $this->skill()->perform(new ScriptedRandomNumberGenerator(1), $this->sheet(), null, 100)->situational);
     }
 
+    #[Test]
+    public function aTotalThatOverflowsAnIntegerFailsInsteadOfBecomingAFloat(): void
+    {
+        // The dice total stays below PHP_INT_MAX, the modifier (up to 10^9) pushes the sum past it.
+        $check = new Check('huge', 'Huge', null, DiceExpression::fromString('9*1000000*1000000*1000000+223372*1000000*1000000+36854*1000000+773759'), Formula::fromString('{hands} * 1000000 * 1000'), null, [new CheckBand('only', 'Only')]);
+
+        try {
+            $check->perform(new ScriptedRandomNumberGenerator(), $this->sheet(['hands' => 1]), null, 0);
+            self::fail('The total overflows.');
+        } catch (CheckEvaluationFailed $failed) {
+            self::assertSame('Check "huge" cannot be performed: the total of the check overflows.', $failed->getMessage());
+        }
+    }
+
     /**
      * @return iterable<string, array{?string, list<CheckBand>}>
      */

@@ -64,6 +64,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map(FlowSummaryView::of(...), $snapshot->flows()),
             array_map(SceneTypeSummaryView::of(...), $snapshot->sceneTypes()),
             array_map(static fn (Tag $tag): TagView => new TagView($tag->key, $tag->label, $tag->hint), $snapshot->tags()),
+            array_map(CheckView::of(...), $snapshot->checks()),
             array_map(NpcView::of(...), $campaign->npcs()),
             array_map(ThreadView::of(...), $campaign->threads()),
             array_map(FactSlotView::of(...), $snapshot->factSlots()),

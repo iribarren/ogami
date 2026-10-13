@@ -12,7 +12,7 @@ use App\Play\Domain\Journal\JournalEntry;
 final readonly class JournalEntryView
 {
     /**
-     * @param string                                              $kind     "note", "roll", "oracle-table", "likelihood", "choice" or "pick"
+     * @param string                                              $kind     "note", "roll", "oracle-table", "likelihood", "choice", "pick" or "check"
      * @param array<string, mixed>                                $content  the content's canonical shape, "kind" included
      * @param ?array{key: string, title: string, prompt: ?string} $flowStep the Flow step that recorded the entry, null when the player did
      */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Domain\Journal;
 
 use App\Play\Domain\GameSystem\Flow\ItemKind;
+use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\ChoiceContent;
 use App\Play\Domain\Journal\ContentData;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
@@ -33,6 +34,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(LikelihoodContent::class)]
 #[CoversClass(ChoiceContent::class)]
 #[CoversClass(PickContent::class)]
+#[CoversClass(CheckContent::class)]
 #[CoversClass(InvalidJournalEntryContent::class)]
 final class JournalEntryContentsTest extends TestCase
 {
@@ -59,6 +61,7 @@ final class JournalEntryContentsTest extends TestCase
         yield 'likelihood without question' => [LikelihoodContent::fromAnswer('fate', 'Fate', null, LikelihoodContentTest::likelyAnswer())];
         yield 'choice' => [ChoiceContent::of('Did you gain an edge?', 'yes', 'Yes')];
         yield 'pick' => [PickContent::of(ItemKind::Npc, ['rival'], [['id' => 'a', 'name' => 'Ana']])];
+        yield 'check' => [CheckContentTest::edgeCheck()];
         yield 'pick of nothing' => [PickContent::of(ItemKind::Thread, [], [])];
     }
 

@@ -78,7 +78,7 @@ final readonly class Check
      * @throws CheckDifficultyNotDeclared    when a difficulty is given and the check declares none
      * @throws CheckDifficultyOutOfRange     when the difficulty is outside the declared min..max
      * @throws SituationalModifierOutOfRange when the situational modifier is outside -100..100
-     * @throws CheckEvaluationFailed         when a formula or the dice cannot be evaluated
+     * @throws CheckEvaluationFailed         when a formula or the dice cannot be evaluated, or the total overflows
      */
     public function perform(RandomNumberGenerator $random, ValueResolver $sheet, ?int $difficulty, int $situational): CheckResult
     {
@@ -94,6 +94,11 @@ final readonly class Check
             $roll = $this->dice->roll($random);
         } catch (FormulaEvaluationFailed|InvalidDiceExpression $failed) {
             throw CheckEvaluationFailed::of($this->key, $failed);
+        }
+
+        // The dice total can be close to PHP_INT_MAX, so adding the modifiers can leave the integers (as in the dice kernel).
+        if (abs((float) $roll->total() + $modifier + $situational) >= (float) \PHP_INT_MAX) {
+            throw CheckEvaluationFailed::of($this->key, new \OverflowException('the total of the check overflows.'));
         }
 
         $total = $roll->total() + $modifier + $situational;

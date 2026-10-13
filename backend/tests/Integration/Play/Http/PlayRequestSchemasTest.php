@@ -37,6 +37,7 @@ final class PlayRequestSchemasTest extends WebTestCase
         yield 'end FlowRun scene' => ['EndFlowSceneRequest', ['sceneNumber'], []];
         yield 'move on' => ['MoveOnRequest', ['phase'], []];
         yield 'record likelihood answer' => ['RecordLikelihoodAnswerRequest', ['likelihood'], ['chaosFactor', 'question']];
+        yield 'perform check' => ['PerformCheckRequest', ['check', 'character'], ['difficulty', 'situational']];
     }
 
     /**

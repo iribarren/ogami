@@ -10,13 +10,21 @@ use App\Play\Application\GetJournal;
 use App\Play\Application\GetJournalEntry;
 use App\Play\Application\JournalEntryIdGenerator;
 use App\Play\Application\JournalEntryNotFound;
+use App\Play\Application\PerformCheck;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordNote;
 use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordRoll;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
+use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
+use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
+use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
+use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
+use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
+use App\Play\Domain\GameSystem\Check\UnknownCheck;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
@@ -50,6 +58,8 @@ final readonly class JournalController
     private const string MALFORMED_NOTE = 'Send a JSON object with a string "text", such as {"text": "The gate is open."}.';
     private const string MALFORMED_ROLL = 'Send a JSON object with a string "expression", such as {"expression": "2d6+1"}.';
     private const string MALFORMED_LIKELIHOOD = 'Send a JSON object with a string "likelihood", and optionally an integer "chaosFactor" and a string "question", such as {"likelihood": "likely", "chaosFactor": 5, "question": "Is the door locked?"}.';
+
+    private const string MALFORMED_CHECK = 'Send a JSON object with a string "check" and a string "character", and optionally an integer "difficulty" and an integer "situational", such as {"check": "skill", "character": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001", "difficulty": 15, "situational": -2}.';
 
     public function __construct(
         private CommandBus $commandBus,
@@ -135,6 +145,42 @@ final readonly class JournalController
         return $this->record(new RecordRoll($entryId, $campaignId, $user->id(), $expression), $entryId, $campaignId, $user);
     }
 
+    #[Route('/api/campaigns/{campaignId}/journal/checks', name: 'api_campaigns_journal_checks_perform', methods: ['POST'])]
+    #[OA\Post(operationId: 'performCheck', summary: 'Perform a check of the pinned release for a Character on the server and record the result in the current scene of one of my campaigns')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: PerformCheckRequest::class)))]
+    #[OA\Response(response: 201, description: 'The new entry.', content: new OA\JsonContent(ref: new Model(type: JournalEntryResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "check" or "character", or a non-integer "difficulty" or "situational".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign has no current scene, or the generated entry id is already taken.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The pinned release has no check with this key, the campaign has no such Character, a difficulty is sent for a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function performCheck(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the check as JSON.', self::MALFORMED_CHECK);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $check = $body['check'] ?? null;
+        $character = $body['character'] ?? null;
+        $difficulty = $body['difficulty'] ?? null;
+        $situational = $body['situational'] ?? null;
+        if (!\is_string($check) || !\is_string($character) || (null !== $difficulty && !\is_int($difficulty)) || (null !== $situational && !\is_int($situational))) {
+            return $this->error(self::MALFORMED_CHECK, Response::HTTP_BAD_REQUEST);
+        }
+
+        $entryId = $this->entryIds->generate()->toString();
+
+        return $this->record(
+            new PerformCheck($entryId, $campaignId, $user->id(), $check, $character, $difficulty, $situational ?? 0),
+            $entryId,
+            $campaignId,
+            $user,
+        );
+    }
+
     #[Route('/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}', name: 'api_campaigns_journal_oracle_tables_record', methods: ['POST'])]
     #[OA\Post(operationId: 'recordOracleTableResult', summary: 'Roll on an oracle table of the pinned release and record the result in the current scene of one of my campaigns')]
     #[OA\Response(response: 201, description: 'The new entry.', content: new OA\JsonContent(ref: new Model(type: JournalEntryResponse::class)))]
@@ -200,7 +246,7 @@ final readonly class JournalController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (NoCurrentScene|JournalEntryAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker $exception) {
+        } catch (InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

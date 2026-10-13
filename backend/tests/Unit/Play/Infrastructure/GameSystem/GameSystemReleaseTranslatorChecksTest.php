@@ -29,6 +29,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Check::class)]
 final class GameSystemReleaseTranslatorChecksTest extends TestCase
 {
+    private const string UNREADABLE = 'GameSystem "minimal" v1 cannot be read by Play: ';
+
     /**
      * @param array<string, mixed> $changes replaced in the skill check; null leaves a property out
      *
@@ -160,11 +162,11 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         yield 'a label over 100 characters' => [[self::skill(['label' => str_repeat('a', 101)])], 'checks[0].label: must be at most 100 characters.'];
         yield 'a hint over 500 characters' => [[self::skill(['hint' => str_repeat('a', 501)])], 'checks[0].hint: must be at most 500 characters.'];
         yield 'dice that are not a string' => [[self::skill(['dice' => 6])], 'checks[0].dice: must be a string.'];
-        yield 'dice that do not parse' => [[self::skill(['dice' => '1d'])], 'checks[0].dice: invalid dice notation: '];
-        yield 'dice over 100 characters' => [[self::skill(['dice' => str_repeat('1+', 60).'1'])], 'checks[0].dice: invalid dice notation: '];
-        yield 'a modifier that does not parse' => [[self::skill(['modifier' => '{hands} +'])], 'checks[0].modifier: Unexpected end of the formula'];
+        yield 'dice that do not parse' => [[self::skill(['dice' => '1d'])], 'checks[0].dice: invalid dice notation: Unexpected end of the dice expression; expected the number of sides or "%".'];
+        yield 'dice over 100 characters' => [[self::skill(['dice' => str_repeat('1+', 60).'1'])], 'checks[0].dice: invalid dice notation: A dice expression has at most 100 characters, 121 given.'];
+        yield 'a modifier that does not parse' => [[self::skill(['modifier' => '{hands} +'])], 'checks[0].modifier: Unexpected end of the formula; expected a number, a reference, "min", "max", "-" or "(".'];
         yield 'a modifier reading an unknown field' => [[self::skill(['modifier' => '{ghost}'])], 'checks[0].modifier: {ghost}: unknown field "ghost".'];
-        yield 'a modifier reading a text field' => [[self::skill(['modifier' => '{role}'])], 'checks[0].modifier: {role}: field "role" is a text or list field'];
+        yield 'a modifier reading a text field' => [[self::skill(['modifier' => '{role}'])], 'checks[0].modifier: {role}: field "role" is a text or list field, a formula reads number, track and derived fields only.'];
         yield 'a modifier reading an unknown tracker' => [[self::skill(['modifier' => '{tracker:nope}'])], 'checks[0].modifier: {tracker:nope}: unknown tracker "nope".'];
         yield 'a modifier reading the difficulty' => [[self::skill(['modifier' => '{check:difficulty}'])], 'checks[0].modifier: {check:difficulty}: a check reference is read only by the bands of a check.'];
         yield 'a difficulty that is not an object' => [[self::skill(['difficulty' => 5])], 'checks[0].difficulty: must be an object.'];
@@ -180,16 +182,16 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         yield 'no band' => [[self::skill(['bands' => []])], 'checks[0].bands: 1 to 10 bands.'];
         yield 'more than 10 bands' => [[self::skill(['bands' => [...array_map(static fn (int $n): array => $band('b'.$n, $n), range(1, 10)), $last]])], 'checks[0].bands: 1 to 10 bands.'];
         yield 'a band with an unknown property' => [[self::skill($bands($last + ['next' => 'x']))], 'checks[0].bands[0].next: unknown property.'];
-        yield 'a band key that breaks the pattern' => [[self::skill($bands(['key' => 'A', 'label' => 'A']))], 'checks[0].bands[0].key: must be 1 to 64 characters'];
+        yield 'a band key that breaks the pattern' => [[self::skill($bands(['key' => 'A', 'label' => 'A']))], 'checks[0].bands[0].key: must be 1 to 64 characters among a-z, 0-9 and "-".'];
         yield 'a duplicate band key' => [[self::skill($bands($band('a', 1), ['key' => 'a', 'label' => 'A again']))], 'checks[0].bands[1].key: duplicate band key "a".'];
         yield 'a blank band label' => [[self::skill($bands(['key' => 'a', 'label' => '']))], 'checks[0].bands[0].label: must not be blank.'];
         yield 'a bound that is a string' => [[self::skill($bands($band('a', 'high'), $last))], 'checks[0].bands[0].upTo: must be an object.'];
         yield 'an empty bound' => [[self::skill($bands($band('a', []), $last))], 'checks[0].bands[0].upTo: must be an integer, {"tracker": key} or {"formula": string}.'];
         yield 'a bound with a tracker and a formula' => [[self::skill($bands($band('a', ['formula' => '1', 'tracker' => 'alarm']), $last))], 'checks[0].bands[0].upTo.tracker: unknown property.'];
         yield 'a bound with another property' => [[self::skill($bands($band('a', ['tracker' => 'alarm', 'step' => 1]), $last))], 'checks[0].bands[0].upTo.step: unknown property.'];
-        yield 'a bound tracker that breaks the key rule' => [[self::skill($bands($band('a', ['tracker' => 'Alarm']), $last))], 'checks[0].bands[0].upTo.tracker: must be 1 to 64 characters'];
+        yield 'a bound tracker that breaks the key rule' => [[self::skill($bands($band('a', ['tracker' => 'Alarm']), $last))], 'checks[0].bands[0].upTo.tracker: must be 1 to 64 characters among a-z, 0-9 and "-".'];
         yield 'a bound naming an unknown tracker' => [[self::skill($bands($band('a', ['tracker' => 'nope']), $last))], 'checks[0].bands[0].upTo.tracker: {tracker:nope}: unknown tracker "nope".'];
-        yield 'a bound formula that does not parse' => [[self::skill($bands($band('a', ['formula' => '1 +']), $last))], 'checks[0].bands[0].upTo.formula: Unexpected end of the formula'];
+        yield 'a bound formula that does not parse' => [[self::skill($bands($band('a', ['formula' => '1 +']), $last))], 'checks[0].bands[0].upTo.formula: Unexpected end of the formula; expected a number, a reference, "min", "max", "-" or "(".'];
         yield 'a bound formula reading an unknown field' => [[self::skill($bands($band('a', ['formula' => '{ghost}']), $last))], 'checks[0].bands[0].upTo.formula: {ghost}: unknown field "ghost".'];
         yield 'a bound formula reading another check value' => [[self::skill($bands($band('a', ['formula' => '{check:other}']), $last))], 'checks[0].bands[0].upTo.formula: {check:other}: unknown check value "other", only "difficulty" can be read.'];
         yield 'a bound reading the difficulty of a check without one' => [[self::skill(['difficulty' => null])], 'checks[0].bands[0].upTo.formula: {check:difficulty}: the check declares no difficulty.'];
@@ -202,9 +204,11 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
     #[DataProvider('malformedChecks')]
     public function itFailsClosedOnChecksStudioWouldHaveRejected(mixed $checks, string $message): void
     {
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains($message);
-
-        $this->translate($checks);
+        try {
+            $this->translate($checks);
+            self::fail('The checks are malformed.');
+        } catch (InvalidGameSystemRelease $invalid) {
+            self::assertSame(self::UNREADABLE.$message, $invalid->getMessage());
+        }
     }
 }

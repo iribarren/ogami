@@ -92,6 +92,24 @@ trait JournalEntryRepositoryContract
         ]];
         yield 'choice' => [['kind' => 'choice', 'question' => 'Did you gain an edge?', 'optionKey' => 'yes', 'label' => 'Yes']];
         yield 'pick' => [['kind' => 'pick', 'of' => 'npc', 'tags' => ['rival', 'ally'], 'picked' => [['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001', 'name' => 'Mira Vane'], ['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7002', 'name' => 'Brann']]]];
+        $check = [
+            'kind' => 'check',
+            'characterId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001',
+            'characterName' => 'Vi',
+            'checkKey' => 'skill',
+            'checkLabel' => 'Skill check',
+            'expression' => '2d6+1',
+            'groups' => [['notation' => '2d6', 'sides' => 6, 'dice' => [['value' => 5, 'kept' => true], ['value' => 4, 'kept' => true]], 'subtotal' => 9]],
+            'diceTotal' => 10,
+            'modifier' => 5,
+            'situational' => -2,
+            'difficulty' => 13,
+            'total' => 13,
+            'bandKey' => 'success',
+            'bandLabel' => 'Success',
+        ];
+        yield 'check' => [$check];
+        yield 'check without difficulty' => [array_replace($check, ['difficulty' => null])];
         yield 'pick of nothing' => [['kind' => 'pick', 'of' => 'thread', 'tags' => [], 'picked' => []]];
     }
 

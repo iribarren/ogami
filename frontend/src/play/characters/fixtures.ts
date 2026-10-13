@@ -62,6 +62,17 @@ export const sheet: SheetField[] = [
   { ...base, key: 'notes', label: 'Notes', type: 'text', multiline: true, maxLength: 2000 },
 ]
 
+/** A derived field over two numbers of `sheet`; add it to a sheet where a test needs one. */
+export const initiativeField: SheetField = {
+  ...base,
+  key: 'initiative',
+  label: 'Initiative',
+  hint: 'Reflexes plus body.',
+  group: 'Stats',
+  type: 'derived',
+  formula: '{reflexes} + {body}',
+}
+
 export const viCharacter: Character = {
   id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
   name: 'Vi',

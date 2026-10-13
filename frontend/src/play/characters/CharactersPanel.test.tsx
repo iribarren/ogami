@@ -6,12 +6,12 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import {
+  initiativeField,
   lostMineWithCharacters,
   nightJobCampaign,
   oldCharacter,
   sheet,
   viCharacter,
-  type SheetField,
 } from './fixtures'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
@@ -210,25 +210,10 @@ describe('the Characters panel', () => {
   it('leaves derived fields out of the form and sends no value for them', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
-    const derived: SheetField = {
-      key: 'initiative',
-      label: 'Initiative',
-      hint: null,
-      group: 'Stats',
-      type: 'derived',
-      min: null,
-      max: null,
-      default: null,
-      multiline: null,
-      maxLength: null,
-      itemLabel: null,
-      maxItems: null,
-      formula: '{reflexes} + {body}',
-    }
     renderCharacters(
       {
         ...nightJobCampaign,
-        pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, derived] },
+        pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, initiativeField] },
       },
       { [`PUT ${path}/characters/${viCharacter.id}`]: () => Response.json(viCharacter) },
       sent,

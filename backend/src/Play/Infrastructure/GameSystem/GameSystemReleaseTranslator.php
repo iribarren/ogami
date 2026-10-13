@@ -235,7 +235,11 @@ final readonly class GameSystemReleaseTranslator
      */
     private function assertFormulaTrackersDeclared(PublishedReleaseView $view, array $node, string $path, GameSystemSnapshot $snapshot): void
     {
-        $values = ['upTo' => $node['upTo'] ?? null];
+        // Only a band bound and a tracker effect value: a counter level's upTo is an integer, read elsewhere.
+        $values = [];
+        if (1 === preg_match('/\.bands\[\d+\]$/', $path)) {
+            $values['upTo'] = $node['upTo'] ?? null;
+        }
         if ('tracker' === ($node['kind'] ?? null)) {
             $values['value'] = $node['value'] ?? null;
         }

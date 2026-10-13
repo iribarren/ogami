@@ -81,7 +81,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0022 "Character sheets in schema version 2" (additive decision, field types, Characters in the Campaign, party and promotion rules); ADR 0017 status note on M3 step kinds; contract "new capability" rule amended; glossary (SheetTemplate, Field types, Resource track, Character, Party); ADR index | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Contract: `sheet.fields` and the four field types, the `character` step kind, `of: character` in `pick` and `condition` counts in `v2.schema.json` and the Version2 validator; canonical form keeps existing hashes; agreement fixtures (valid + structural + semantic); West Marches example uses `pick of: character` and gains a small sheet; examples README; contract doc section | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Contract: `sheet.fields` and the four field types, the `character` step kind, `of: character` in `pick` and `condition` counts in `v2.schema.json` and the Version2 validator; canonical form keeps existing hashes; agreement fixtures (valid + structural + semantic); West Marches example uses `pick of: character` and gains a small sheet; examples README; contract doc section | delegated writer (slice 1) | [x] | |
 | T3 | 1 | Play ACL: `SheetTemplate` and `Field` snapshot classes, translator reads `sheet` with limits re-checked; `character` step and `of: character` fail closed with Play's translator error until slice 4; translator tests | delegated writer (slice 1) | [ ] | |
 | T4 | 2 | Slice 1 review fixes. `Character` value object, `CharacterId`, values validated against the snapshot sheet, `Campaign::addCharacter` / `editCharacter` / `characters()`, `characters` column + Doctrine type + migration, legacy rows read empty | | [ ] | |
 | T5 | 2 | Characters API: create and edit endpoints, Campaign response `characters` and `pinnedRelease.sheet`, error mapping (404/409/422), API tests, Behat `characters.feature`, `make api` | | [ ] | |
@@ -97,6 +97,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 ## Progress
 
 - 2026-10-13: T1 done. ADR 0022, ADR index, ADR 0017 note, contract evolution rule, glossary. Docs only: structural readback, no RED/GREEN. Route: delegated writer.
+- 2026-10-13: T2 done. `sheet.fields` (four types), `character` step, `of: character` in `pick` / `condition` in `v2.schema.json` and `SheetFields` / `Steps`; fixtures, agreement cases, `ReleaseContentSheetTest`; contract doc. RED: with the schema, `ReleaseContent` and `Steps` stashed, 6 errors and 18 failures in `tests/Unit/Studio`. GREEN: 731 tests. Hashes of every pre-change fixture, example (but West Marches) and preset equal before and after. West Marches gains a sheet; its `pick of: character` waits for slice 4 because `PlayReadsPublishedGameSystemReleasesTest` runs every example through the ACL. Route: delegated writer.
 
 ## Reviews
 

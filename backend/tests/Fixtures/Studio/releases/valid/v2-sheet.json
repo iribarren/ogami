@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "sheet", "name": "Sheet", "description": "A character sheet with the four field types, the character step and Characters in pick and condition."},
+  "oracles": {"tables": [], "likelihood": []},
+  "tags": [{"key": "crew", "label": "Crew"}, {"key": "leader", "label": "Leader"}],
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "scene", "name": "Scene", "purpose": "Meet the crew.", "oracles": [],
+      "setup": [
+        {"key": "hero", "kind": "character", "title": "Who are you?", "prompt": "Create your Character or pick one.", "tip": "Fill the sheet.", "mandatory": true},
+        {"key": "greet", "kind": "prompt", "title": "{step:hero} walks in.", "prompt": "Describe {step:hero}."}
+      ],
+      "play": [
+        {"key": "party", "kind": "pick", "title": "Who goes?", "of": "character", "tags": ["crew"], "mode": "choose", "count": {"min": 1, "max": 4}, "branches": {"found": {"next": "crew-size"}, "none": {"next": "crew-size"}}},
+        {"key": "crew-size", "kind": "condition", "title": "How big is the crew?", "count": {"of": "character", "tags": ["crew", "leader"]}, "bands": [{"upTo": 1}, {}]}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "role", "label": "Role", "hint": "What you do for the crew.", "group": "Identity", "type": "text"},
+      {"key": "look", "label": "Look", "group": "Identity", "type": "text", "multiline": true, "maxLength": 2000},
+      {"key": "reflexes", "label": "Reflexes", "group": "Stats", "type": "number", "min": 1, "max": 10, "default": 4},
+      {"key": "luck", "label": "Luck", "group": "Stats", "type": "number"},
+      {"key": "debt", "label": "Debt", "type": "number", "min": -1000000, "max": 1000000, "default": 0},
+      {"key": "hp", "label": "Hit points", "group": "Health", "type": "track", "max": 40},
+      {"key": "humanity", "label": "Humanity", "group": "Health", "type": "track"},
+      {"key": "gear", "label": "Gear", "group": "Belongings", "type": "list", "itemLabel": "Item", "maxItems": 20},
+      {"key": "cyberware", "label": "Cyberware", "group": "Belongings", "type": "list"}
+    ]
+  },
+  "checks": []
+}

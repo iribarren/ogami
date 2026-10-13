@@ -27,6 +27,9 @@ final class Steps
     public const int MAX_PICK_COUNT = 10;
     public const string END = 'end';
 
+    /** What a pick or a condition count ranges over. */
+    public const array ITEM_KINDS = ['npc', 'thread', 'character'];
+
     private const array COMMON = ['key' => true, 'kind' => true, 'title' => true, 'prompt' => false, 'tip' => false, 'mandatory' => false, 'next' => false, 'effects' => false];
 
     /** The fields each kind adds to COMMON, in schema order: name => required. */
@@ -38,6 +41,7 @@ final class Steps
         'choice' => ['options' => true, 'skip' => false],
         'condition' => ['tracker' => false, 'count' => false, 'bands' => true],
         'pick' => ['of' => true, 'tags' => false, 'mode' => true, 'count' => false, 'branches' => false],
+        'character' => [],
     ];
 
     private const array PICK_BRANCHES = ['found' => false, 'none' => false];
@@ -105,7 +109,7 @@ final class Steps
 
         $step = [...$step, ...self::outcome($step, $path, $catalog)];
         $step = match ($kind) {
-            'prompt' => $step,
+            'prompt', 'character' => $step,
             'oracle' => self::oracle($step, $path, $catalog),
             'table' => self::table($step, $path, $catalog),
             'roll' => self::roll($step, $path, $catalog),
@@ -293,7 +297,7 @@ final class Steps
             $step['tracker'] = Effects::tracker($step['tracker'], $path.'.tracker', $catalog);
         } elseif (isset($step['count'])) {
             $count = ReleaseFields::object($step['count'], $path.'.count', self::CONDITION_COUNT);
-            ReleaseFields::oneOf($count['of'], $path.'.count.of', ['npc', 'thread']);
+            ReleaseFields::oneOf($count['of'], $path.'.count.of', self::ITEM_KINDS);
             $count['tags'] = Effects::tags($count['tags'] ?? null, $path.'.count.tags', $catalog);
             $step['count'] = array_filter($count, static fn (mixed $field): bool => [] !== $field);
         } else {
@@ -312,7 +316,7 @@ final class Steps
      */
     private static function pick(array $step, string $path, Catalog $catalog): array
     {
-        ReleaseFields::oneOf($step['of'], $path.'.of', ['npc', 'thread']);
+        ReleaseFields::oneOf($step['of'], $path.'.of', self::ITEM_KINDS);
         ReleaseFields::oneOf($step['mode'], $path.'.mode', ['random', 'choose']);
         $step['tags'] = Effects::tags($step['tags'] ?? null, $path.'.tags', $catalog);
 

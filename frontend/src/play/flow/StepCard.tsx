@@ -6,6 +6,7 @@ import { NativeSelect } from '@/shared/ui/native-select'
 import { Textarea } from '@/shared/ui/textarea'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { CharacterStepForm } from './CharacterStepForm'
 import { PickForm } from './PickForm'
 import type { FlowRunCommand, FlowStep } from './useFlowRun'
 
@@ -162,8 +163,15 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
         />
       )
     case 'character':
-      // The card that picks or creates the Character comes with the party UI.
-      return <p className="text-sm text-muted-foreground">This step is not playable here yet.</p>
+      return (
+        <CharacterStepForm
+          campaign={campaign}
+          pending={pending}
+          onPick={(characterId) => {
+            answer({ characterId })
+          }}
+        />
+      )
   }
 }
 

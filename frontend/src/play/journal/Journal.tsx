@@ -24,6 +24,7 @@ export function Journal({
   sceneTypes,
   tags,
   npcs,
+  characters,
   oracleTables,
   current,
   entries,
@@ -35,6 +36,8 @@ export function Journal({
   tags: Campaign['tags']
   /** The campaign's NPCs, which the cast of the current scene draws from. */
   npcs: Campaign['npcs']
+  /** The campaign's Characters, which the cast of the current scene also draws from. */
+  characters: Campaign['characters']
   /** The release's oracle tables, which name the table a random event rolls. */
   oracleTables: Campaign['oracleTables']
   /** The scene play is in, which is the only one a rolled Scene Type can be switched in. */
@@ -73,6 +76,7 @@ export function Journal({
                 <SceneCastHeader
                   campaignId={campaignId}
                   npcs={npcs}
+                  characters={characters}
                   sessionNumber={session.number}
                   scene={listed(sessions, session.number, scene.number)}
                   editable={current?.session === session.number && current.scene === scene.number}

@@ -6,12 +6,15 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
+import { viCharacter } from '../characters/fixtures'
 import {
   atStep,
+  chooseCharacterStep,
   chooseOneStep,
   chooseTwoStep,
   chooseUpToTwoStep,
   guidedWithLists,
+  noMatchCharacterStep,
   noMatchChooseStep,
   noMatchRandomStep,
   promptStep,
@@ -217,5 +220,30 @@ describe('a pick step in general', () => {
     const step = await card('Who shows up?')
     expect(step.getByRole('alert')).toHaveTextContent('This pick step has no details to show.')
     expect(step.queryByRole('button', { name: 'Choose' })).not.toBeInTheDocument()
+  })
+})
+
+describe('a pick step over Characters', () => {
+  it('lists the Characters as candidates and sends the one chosen, as for NPCs', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderPick(chooseCharacterStep, { 'flow-run/answer': answering(afterPick) })
+
+    const step = await card('Who takes the job?')
+    expect(step.getByText('Choose 1 Character')).toBeInTheDocument()
+    await user.click(step.getByRole('checkbox', { name: 'Vi' }))
+    await user.click(step.getByRole('button', { name: 'Choose' }))
+
+    await waitFor(() => {
+      expect(sent['flow-run/answer']).toEqual({
+        stepKey: 'who-plays',
+        pickedIds: [viCharacter.id],
+      })
+    })
+  })
+
+  it('says No match when there is no Character to pick', async () => {
+    renderPick(noMatchCharacterStep)
+
+    expect((await card('Who is left to play?')).getByText('No match')).toBeInTheDocument()
   })
 })

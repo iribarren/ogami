@@ -14,6 +14,7 @@ function renderJournal(current: { session: number; scene: number } | null) {
       sceneTypes={lostMineCampaign.sceneTypes}
       tags={lostMineCampaign.tags}
       npcs={lostMineCampaign.npcs}
+      characters={lostMineCampaign.characters}
       oracleTables={lostMineCampaign.oracleTables}
       current={current}
       entries={[fateDouble]}

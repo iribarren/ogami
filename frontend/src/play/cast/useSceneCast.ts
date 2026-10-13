@@ -10,9 +10,15 @@ import {
   type Campaign,
 } from '../campaigns/useCampaigns'
 
+/** The whole new cast: the NPCs and the Characters, each in cast order. */
+export interface SceneCastIds {
+  npcIds: string[]
+  characterIds: string[]
+}
+
 /**
  * `PUT /api/campaigns/{campaignId}/scenes/current/cast`: replaces the whole cast of the current
- * scene, which the answer returns, so it replaces the cast in the cached campaign. A refusal is
+ * scene (NPCs and Characters), which the answer returns, so it replaces the cast in the cached campaign. A refusal is
  * the mutation's error, with the API's message; a 409 (no current scene, or the campaign changed
  * meanwhile) also refetches the campaign.
  */
@@ -21,10 +27,10 @@ export function useEditSceneCast(campaignId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (npcIds: string[]) => {
+    mutationFn: async (body: SceneCastIds) => {
       const { data, error, response } = await api.PUT(
         '/api/campaigns/{campaignId}/scenes/current/cast',
-        { params: { path: { campaignId } }, body: { npcIds } },
+        { params: { path: { campaignId } }, body },
       )
       if (data !== undefined) {
         return data
@@ -42,7 +48,9 @@ export function useEditSceneCast(campaignId: string) {
                   ? {
                       ...session,
                       scenes: session.scenes.map((held) =>
-                        held.number === scene.number ? { ...held, cast: scene.cast } : held,
+                        held.number === scene.number
+                          ? { ...held, cast: scene.cast, characters: scene.characters }
+                          : held,
                       ),
                     }
                   : session,

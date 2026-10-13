@@ -12,30 +12,68 @@ interface SceneCastProps {
   campaignId: string
   /** Every NPC of the campaign, open or closed: any can join a cast. */
   npcs: Campaign['npcs']
+  /** Every Character of the campaign: any can join a cast. */
+  characters: Campaign['characters']
   sessionNumber: number
-  scene: Pick<Scene, 'number' | 'cast'>
+  scene: Pick<Scene, 'number' | 'cast' | 'characters'>
   /** Only the current scene's cast is edited; a past scene's is read-only. */
   editable: boolean
 }
 
 /**
- * The NPCs in a scene. In the current scene the player edits the cast: "Edit cast" shows a
- * remove button on each NPC and a select to add any other NPC of the campaign. Each change
- * sends the whole new cast.
+ * The NPCs and Characters in a scene. In the current scene the player edits the cast: "Edit
+ * cast" shows a remove button on each member and a select to add any other NPC or Character of
+ * the campaign. Each change sends the whole new cast, NPCs and Characters apart.
  */
-export function SceneCast({ campaignId, npcs, sessionNumber, scene, editable }: SceneCastProps) {
+export function SceneCast({
+  campaignId,
+  npcs,
+  characters,
+  sessionNumber,
+  scene,
+  editable,
+}: SceneCastProps) {
   const [editing, setEditing] = useState(false)
   const edit = useEditSceneCast(campaignId)
   const addId = useId()
   const [toAdd, setToAdd] = useState('')
-  const inCast = new Set(scene.cast.map(({ id }) => id))
-  const addable = npcs.filter(({ id }) => !inCast.has(id))
-  // The selection falls back to the first NPC that can still be added.
-  const selected = addable.some(({ id }) => id === toAdd) ? toAdd : (addable[0]?.id ?? '')
-  const send = (ids: string[]) => {
-    edit.mutate(ids)
+  const npcIds = scene.cast.map(({ id }) => id)
+  const characterIds = scene.characters.map(({ id }) => id)
+  const members = [
+    ...scene.cast.map(({ id, name }) => ({ value: `npc:${id}`, name })),
+    ...scene.characters.map(({ id, name }) => ({ value: `character:${id}`, name })),
+  ]
+  const addable = [
+    ...npcs
+      .filter(({ id }) => !npcIds.includes(id))
+      .map(({ id, name, status }) => ({
+        value: `npc:${id}`,
+        label: status === 'closed' ? `${name} (closed)` : name,
+      })),
+    ...characters
+      .filter(({ id }) => !characterIds.includes(id))
+      .map(({ id, name }) => ({ value: `character:${id}`, label: `${name} (Character)` })),
+  ]
+  // The selection falls back to the first member that can still be added.
+  const selected = addable.some(({ value }) => value === toAdd) ? toAdd : (addable[0]?.value ?? '')
+  const send = (next: { npcIds: string[]; characterIds: string[] }) => {
+    edit.mutate(next)
   }
-  if (!editable && scene.cast.length === 0) {
+  const without = (value: string) => {
+    send({
+      npcIds: npcIds.filter((id) => `npc:${id}` !== value),
+      characterIds: characterIds.filter((id) => `character:${id}` !== value),
+    })
+  }
+  const withSelected = () => {
+    const [kind, id = ''] = selected.split(':')
+    send(
+      kind === 'npc'
+        ? { npcIds: [...npcIds, id], characterIds }
+        : { npcIds, characterIds: [...characterIds, id] },
+    )
+  }
+  if (!editable && members.length === 0) {
     return null
   }
 
@@ -47,12 +85,12 @@ export function SceneCast({ campaignId, npcs, sessionNumber, scene, editable }: 
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-muted-foreground">Cast:</span>
-        {scene.cast.length === 0 ? (
+        {members.length === 0 ? (
           <span>No cast</span>
         ) : (
           <ul className="flex flex-wrap gap-x-3 gap-y-1">
-            {scene.cast.map(({ id, name }) => (
-              <li key={id} className="flex items-center gap-1">
+            {members.map(({ value, name }) => (
+              <li key={value} className="flex items-center gap-1">
                 <span className="font-medium">{name}</span>
                 {editing && (
                   <Button
@@ -62,7 +100,7 @@ export function SceneCast({ campaignId, npcs, sessionNumber, scene, editable }: 
                     aria-label={`Remove ${name}`}
                     disabled={edit.isPending}
                     onClick={() => {
-                      send(scene.cast.map((member) => member.id).filter((held) => held !== id))
+                      without(value)
                     }}
                   >
                     ×
@@ -98,9 +136,9 @@ export function SceneCast({ campaignId, npcs, sessionNumber, scene, editable }: 
               setToAdd(event.target.value)
             }}
           >
-            {addable.map(({ id, name, status }) => (
-              <option key={id} value={id}>
-                {status === 'closed' ? `${name} (closed)` : name}
+            {addable.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
               </option>
             ))}
           </NativeSelect>
@@ -108,9 +146,7 @@ export function SceneCast({ campaignId, npcs, sessionNumber, scene, editable }: 
             type="button"
             size="sm"
             disabled={edit.isPending || selected === ''}
-            onClick={() => {
-              send([...scene.cast.map(({ id }) => id), selected])
-            }}
+            onClick={withSelected}
           >
             Add
           </Button>

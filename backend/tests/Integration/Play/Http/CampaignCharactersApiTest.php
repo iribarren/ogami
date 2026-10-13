@@ -280,9 +280,10 @@ final class CampaignCharactersApiTest extends WebTestCase
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
         $id = $this->createCampaign();
-        $this->addCharacter($id, ['name' => 'Vi']);
+        $existing = $this->addCharacter($id, ['name' => 'Vi']);
 
-        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' '] as $characterId) {
+        // Ids are opaque strings compared as given: the same id in another letter case is another id.
+        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' ', strtoupper($existing)] as $characterId) {
             $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/characters/%s', $id, rawurlencode($characterId)), ['name' => 'Brann']);
 
             self::assertResponseStatusCodeSame(404);

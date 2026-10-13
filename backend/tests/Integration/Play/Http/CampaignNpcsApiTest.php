@@ -289,8 +289,10 @@ final class CampaignNpcsApiTest extends WebTestCase
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
         $id = $this->createCampaign();
+        $existing = $this->addNpc($id, ['name' => 'Mira']);
 
-        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' '] as $npcId) {
+        // Ids are opaque strings compared as given: the same id in another letter case is another id.
+        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' ', strtoupper($existing)] as $npcId) {
             foreach ([
                 ['PUT', \sprintf('/api/campaigns/%s/npcs/%s', $id, rawurlencode($npcId)), ['name' => 'Brann']],
                 ['POST', \sprintf('/api/campaigns/%s/npcs/%s/close', $id, rawurlencode($npcId)), []],

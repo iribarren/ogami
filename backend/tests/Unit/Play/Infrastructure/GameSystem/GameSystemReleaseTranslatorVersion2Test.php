@@ -304,18 +304,6 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
     }
 
     #[Test]
-    public function aDerivedFieldIsRefusedUntilPlayReadsDerivedValues(): void
-    {
-        $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
-        $content['sheet'] = ['fields' => [['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '1']]];
-
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sheet.fields[0].type: unknown field type "derived".');
-
-        new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
-    }
-
-    #[Test]
     public function aFormulaBandBoundAndEffectValueAreReadAsFormulas(): void
     {
         $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
@@ -354,6 +342,10 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         yield 'neither tracker nor formula' => [$value, [], $valuePath.$shape];
         yield 'extra key' => [$band, ['formula' => '1', 'plus' => 1], $bandPath.$shape];
         yield 'formula not a string' => [$band, ['formula' => 3], $bandPath.$shape];
+        yield 'band formula reading an undeclared tracker' => [$band, ['formula' => '{tracker:edge} + {tracker:nope}'], $bandPath.': unknown tracker "nope".'];
+        yield 'band tracker form naming an undeclared tracker' => [$band, ['tracker' => 'nope'], $bandPath.': unknown tracker "nope".'];
+        yield 'effect formula reading an undeclared tracker' => [$value, ['formula' => 'max({tracker:nope}, 1)'], $valuePath.': unknown tracker "nope".'];
+        yield 'effect tracker form naming an undeclared tracker' => [$value, ['tracker' => 'nope'], $valuePath.': unknown tracker "nope".'];
         yield 'formula as a bare string' => [$value, '{tracker:edge}', $valuePath.$shape];
     }
 

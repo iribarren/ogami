@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Domain\Campaign;
 
+use App\Formula\Domain\Formula;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignLimitReached;
@@ -17,6 +18,7 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -98,6 +100,31 @@ final class CampaignCharactersTest extends TestCase
             ['role' => 'Solo', 'look' => '', 'reflexes' => 4, 'luck' => -3, 'hp' => ['current' => 12, 'max' => 40], 'humanity' => ['current' => 6, 'max' => 8], 'gear' => ['Knife', 'Pistol']],
             $character->values(),
         );
+    }
+
+    #[Test]
+    public function aDerivedFieldHoldsNoValue(): void
+    {
+        $release = $this->releaseWith([new NumberField('luck', 'Luck'), new DerivedField('dodge', 'Dodge', null, null, Formula::fromString('{luck} * 2'))]);
+
+        $character = $this->campaign()->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['luck' => 3], $release);
+
+        self::assertSame(['luck' => 3], $character->values(), 'Nothing is stored for the derived field.');
+    }
+
+    #[Test]
+    public function aValueGivenForADerivedFieldIsRefusedAndNothingIsAdded(): void
+    {
+        $release = $this->releaseWith([new NumberField('luck', 'Luck'), new DerivedField('dodge', 'Dodge', null, null, Formula::fromString('{luck} * 2'))]);
+        $campaign = $this->campaign();
+
+        try {
+            $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['dodge' => 6], $release);
+            self::fail('A value for a derived field was accepted.');
+        } catch (InvalidCharacter $exception) {
+            self::assertSame('Field "dodge" is derived; it holds no value.', $exception->getMessage());
+            self::assertSame([], $campaign->characters());
+        }
     }
 
     #[Test]

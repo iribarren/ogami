@@ -26,7 +26,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * Formulas in a Flow over the Play API (ADR 0023), on a release with the counters "heat" (3),
  * "zero" (0) and "alarm" (0 to 20): the Scene Type "boost" adds max(heat, 2) to the alarm,
  * "broken" bumps the heat and then divides it by zero, and "trap" opens with a condition step
- * whose band bound divides by zero. An evaluation failure is a 422 that leaves the campaign as it
+ * whose band bound divides by zero. "Huge" holds a thousand: "big" adds a formula worth a billion
+ * (valid, clamped to the alarm's range) and "overflow" one past it (a 422). An evaluation failure is a 422 that leaves the campaign as it
  * was, whatever the command had already done.
  */
 #[CoversClass(FlowRunController::class)]
@@ -130,6 +131,30 @@ final class CampaignFlowFormulasApiTest extends WebTestCase
         self::assertSame($before, $this->campaign());
     }
 
+    #[Test]
+    public function aFormulaEffectWorthABillionIsClampedToTheTrackerRange(): void
+    {
+        $this->inScene('big');
+
+        $this->client->jsonRequest('POST', $this->url('answer'), ['stepKey' => 'big', 'text' => 'Go']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(20, $this->trackerValue('alarm'), '1,000 * 1,000,000 is clamped to the alarm max');
+    }
+
+    #[Test]
+    public function aFormulaEffectThatOverflowsIsA422AndChangesNothing(): void
+    {
+        $this->inScene('overflow');
+        $before = $this->campaign();
+
+        $this->client->jsonRequest('POST', $this->url('answer'), ['stepKey' => 'overflow', 'text' => 'Go']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('cannot be evaluated', $this->error());
+        self::assertSame($before, $this->campaign());
+    }
+
     private function inScene(string $sceneType): void
     {
         $this->commands->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The formulas', 'formulas', 'formulas'));
@@ -208,22 +233,24 @@ final class CampaignFlowFormulasApiTest extends WebTestCase
             'gameSystem' => ['key' => 'formulas', 'name' => 'Formulas'],
             'sheet' => [],
             'oracles' => ['tables' => [], 'likelihood' => []],
-            'trackers' => [$tracker('heat', 9, 3), $tracker('zero', 9, 0), $tracker('alarm', 20, 0)],
+            'trackers' => [$tracker('heat', 9, 3), $tracker('zero', 9, 0), $tracker('alarm', 20, 0), $tracker('huge', 1000, 1000)],
             'factSlots' => [],
             'sceneTypes' => [
                 $sceneType('boost', [$prompt('boost', ['effects' => [$effect('alarm', ['formula' => 'max({tracker:heat}, 2)'])]])]),
                 $sceneType('broken', [$prompt('broken', ['effects' => [$effect('heat', 1), $effect('alarm', ['formula' => '{tracker:heat} / {tracker:zero}'])]])]),
+                $sceneType('big', [$prompt('big', ['effects' => [$effect('alarm', ['formula' => '{tracker:huge} * 1000000'])]])]),
+                $sceneType('overflow', [$prompt('overflow', ['effects' => [$effect('alarm', ['formula' => '{tracker:huge} * 1000000 * 1000'])]])]),
                 $sceneType('trap', [
                     ['key' => 'trap', 'kind' => 'condition', 'title' => 'Trap', 'tracker' => 'heat', 'bands' => [['upTo' => ['formula' => '1 / {tracker:zero}'], 'next' => 'low'], ['next' => 'high']]],
                     $prompt('low'), $prompt('high'),
                 ]),
             ],
-            'flows' => [...array_map(static fn (string $hook): array => ['key' => $hook, 'name' => ucfirst($hook), 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['heat', 'zero', 'alarm'], 'phases' => [
+            'flows' => [...array_map(static fn (string $hook): array => ['key' => $hook, 'name' => ucfirst($hook), 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['heat', 'zero', 'alarm', 'huge'], 'phases' => [
                 ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['boost', 'broken']], 'session'.ucfirst($hook) => [
                     ['key' => 'check', 'kind' => 'condition', 'title' => 'Check', 'tracker' => 'heat', 'bands' => [['upTo' => ['formula' => '1 / {tracker:zero}']], []]],
                 ]],
-            ]], ['opening', 'closing']), ['key' => 'formulas', 'name' => 'Formulas', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['heat', 'zero', 'alarm'], 'phases' => [
-                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['boost', 'broken', 'trap']]],
+            ]], ['opening', 'closing']), ['key' => 'formulas', 'name' => 'Formulas', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['heat', 'zero', 'alarm', 'huge'], 'phases' => [
+                ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['boost', 'broken', 'trap', 'big', 'overflow']]],
             ]]],
             'checks' => [],
         ];

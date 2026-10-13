@@ -5,7 +5,14 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import type { Campaign } from '../campaigns/useCampaigns'
-import { lostMineWithCharacters, nightJobCampaign, oldCharacter, viCharacter } from './fixtures'
+import {
+  lostMineWithCharacters,
+  nightJobCampaign,
+  oldCharacter,
+  sheet,
+  viCharacter,
+  type SheetField,
+} from './fixtures'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
 
@@ -196,6 +203,45 @@ describe('the Characters panel', () => {
     await waitFor(() => {
       expect(sent).toEqual([
         { name: 'Violet', tags: ['leader'], freeTags: ['Fixer'], values: viCharacter.values },
+      ])
+    })
+  })
+
+  it('leaves derived fields out of the form and sends no value for them', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    const derived: SheetField = {
+      key: 'initiative',
+      label: 'Initiative',
+      hint: null,
+      group: 'Stats',
+      type: 'derived',
+      min: null,
+      max: null,
+      default: null,
+      multiline: null,
+      maxLength: null,
+      itemLabel: null,
+      maxItems: null,
+      formula: '{reflexes} + {body}',
+    }
+    renderCharacters(
+      {
+        ...nightJobCampaign,
+        pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, derived] },
+      },
+      { [`PUT ${path}/characters/${viCharacter.id}`]: () => Response.json(viCharacter) },
+      sent,
+    )
+
+    const panel = await characters()
+    await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
+    expect(panel.queryByLabelText('Initiative')).not.toBeInTheDocument()
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        { name: 'Vi', tags: ['leader'], freeTags: ['Fixer'], values: viCharacter.values },
       ])
     })
   })

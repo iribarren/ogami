@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\GameSystem;
 
+use App\Formula\Domain\DependencyOrder;
 use App\Formula\Domain\Formula;
 use App\Formula\Domain\InvalidFormula;
 use App\Formula\Domain\Reference;
@@ -48,6 +49,7 @@ use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -97,6 +99,7 @@ final readonly class GameSystemReleaseTranslator
         'text' => ['multiline', 'maxLength'],
         'list' => ['itemLabel', 'maxItems'],
         'track' => ['max'],
+        'derived' => ['formula'],
     ];
 
     private const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
@@ -160,6 +163,8 @@ final readonly class GameSystemReleaseTranslator
             $tables[$index] = ['entries' => $tableEntries] + $table;
         }
 
+        // Read first: a derived field of the sheet may read any Tracker of the release.
+        $trackers = $this->trackers($view, $this->list($view, $content['trackers'] ?? null, 'trackers'));
         $snapshot = new GameSystemSnapshot(
             $view->gameSystemKey,
             $this->string($view, $gameSystem['name'] ?? null, 'gameSystem.name'),
@@ -167,7 +172,7 @@ final readonly class GameSystemReleaseTranslator
             $this->oracleTables($view, $tables),
             $this->likelihoodOracles($view, $this->list($view, $oracles['likelihood'] ?? null, 'oracles.likelihood'), $this->tableKeys($tables)),
             [],
-            $this->trackers($view, $this->list($view, $content['trackers'] ?? null, 'trackers')),
+            $trackers,
             $this->factSlots($view, $this->list($view, $content['factSlots'] ?? null, 'factSlots')),
             $this->sceneTypes($view, $this->list($view, $content['sceneTypes'] ?? null, 'sceneTypes')),
             $entries,
@@ -175,7 +180,7 @@ final readonly class GameSystemReleaseTranslator
             $tags,
             $this->theme($view, $content['theme'] ?? null),
             $this->credits($view, $gameSystem['credits'] ?? null),
-            $this->sheet($view, $content['sheet'] ?? null),
+            $this->sheet($view, $content['sheet'] ?? null, array_map(static fn (Tracker $tracker): string => $tracker->key, $trackers)),
         );
         $this->assertTagsExist($view, $content, '', $snapshot);
 
@@ -214,8 +219,34 @@ final readonly class GameSystemReleaseTranslator
             $this->assertFactSlotFilled($view, $node, $path, $snapshot);
         }
 
+        $this->assertFormulaTrackersDeclared($view, $node, $path, $snapshot);
+
         foreach ($node as $name => $child) {
             $this->assertTagsExist($view, $child, \is_int($name) ? \sprintf('%s[%d]', $path, $name) : ('' === $path ? $name : $path.'.'.$name), $snapshot);
+        }
+    }
+
+    /**
+     * A band bound or a tracker Effect value that reads a Tracker, as {"tracker": key} or in a formula,
+     * reads one the release declares: an unknown one would fail at runtime. Studio checks this on
+     * publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $node
+     */
+    private function assertFormulaTrackersDeclared(PublishedReleaseView $view, array $node, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $values = ['upTo' => $node['upTo'] ?? null];
+        if ('tracker' === ($node['kind'] ?? null)) {
+            $values['value'] = $node['value'] ?? null;
+        }
+
+        foreach ($values as $name => $value) {
+            $formula = \is_array($value) ? $this->value($view, $value, $path.'.'.$name) : null;
+            foreach ($formula instanceof Formula ? $formula->references() : [] as $reference) {
+                if (!$snapshot->tracker($reference->key) instanceof Tracker) {
+                    throw $this->invalid($view, $path.'.'.$name, \sprintf('unknown tracker "%s".', $reference->key));
+                }
+            }
         }
     }
 
@@ -562,8 +593,10 @@ final readonly class GameSystemReleaseTranslator
     /**
      * The character sheet template of a schema version 2 release (ADR 0022). Studio checks every
      * rule on publish; the stored content is not trusted.
+     *
+     * @param list<string> $trackerKeys the Trackers of the release, which derived fields may read
      */
-    private function sheet(PublishedReleaseView $view, mixed $value): SheetTemplate
+    private function sheet(PublishedReleaseView $view, mixed $value, array $trackerKeys): SheetTemplate
     {
         $sheet = $this->object($view, $value ?? [], 'sheet');
         foreach (array_keys($sheet) as $name) {
@@ -577,9 +610,9 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, 'sheet.fields', \sprintf('at most %d fields.', self::MAX_SHEET_FIELDS));
         }
 
-        $fields = [];
+        $fields = $paths = [];
         foreach ($list as $index => $field) {
-            $field = $this->sheetField($view, $field, \sprintf('sheet.fields[%d]', $index));
+            $field = $this->sheetField($view, $field, $paths[] = \sprintf('sheet.fields[%d]', $index));
             if (isset($fields[$field->key])) {
                 throw $this->invalid($view, \sprintf('sheet.fields[%d].key', $index), \sprintf('duplicate field key "%s".', $field->key));
             }
@@ -587,7 +620,66 @@ final readonly class GameSystemReleaseTranslator
             $fields[$field->key] = $field;
         }
 
+        $this->assertDerivedFieldsReadable($view, $fields, array_combine(array_keys($fields), $paths), $trackerKeys);
+
         return new SheetTemplate(array_values($fields));
+    }
+
+    /**
+     * A derived field reads number, track and derived fields of the sheet and Trackers of the release
+     * (a track's max as {key.max}), and derived fields never read each other in a cycle. Studio checks
+     * this on publish; the stored content is not trusted.
+     *
+     * @param array<string, Field>  $fields      by key
+     * @param array<string, string> $paths       the path of each field, by key
+     * @param list<string>          $trackerKeys
+     */
+    private function assertDerivedFieldsReadable(PublishedReleaseView $view, array $fields, array $paths, array $trackerKeys): void
+    {
+        $formulas = [];
+        foreach ($fields as $key => $field) {
+            if (!$field instanceof DerivedField) {
+                continue;
+            }
+
+            $formulas[$key] = $field->formula;
+            foreach ($field->formula->references() as $reference) {
+                $problem = $this->derivedReferenceProblem($reference, $fields, $trackerKeys);
+                if (null !== $problem) {
+                    throw $this->invalid($view, $paths[$key].'.formula', \sprintf('{%s}: %s.', $reference->toString(), $problem));
+                }
+            }
+        }
+
+        try {
+            DependencyOrder::of($formulas);
+        } catch (InvalidFormula $cycle) {
+            throw $this->invalid($view, ($paths[$cycle->cycle[0] ?? ''] ?? 'sheet.fields').'.formula', $cycle->getMessage());
+        }
+    }
+
+    /**
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function derivedReferenceProblem(Reference $reference, array $fields, array $trackerKeys): ?string
+    {
+        if (ReferenceKind::Tracker === $reference->kind) {
+            return \in_array($reference->key, $trackerKeys, true) ? null : \sprintf('unknown tracker "%s"', $reference->key);
+        }
+
+        $field = $fields[$reference->key] ?? null;
+        if (!$field instanceof Field) {
+            return \sprintf('unknown field "%s"', $reference->key);
+        }
+
+        if (ReferenceKind::TrackMax === $reference->kind) {
+            return $field instanceof TrackField ? null : \sprintf('field "%s" is not a track field, only a track field has a max', $reference->key);
+        }
+
+        return $field instanceof NumberField || $field instanceof TrackField || $field instanceof DerivedField
+            ? null
+            : \sprintf('field "%s" is a text or list field, a formula reads number, track and derived fields only', $reference->key);
     }
 
     private function sheetField(PublishedReleaseView $view, mixed $value, string $path): Field
@@ -628,8 +720,18 @@ final readonly class GameSystemReleaseTranslator
                 itemLabel: null === ($field['itemLabel'] ?? null) ? null : $this->boundedString($view, $field['itemLabel'], $path.'.itemLabel', self::MAX_FIELD_ITEM_LABEL_LENGTH),
                 maxItems: $this->optionalInt($view, $field['maxItems'] ?? null, $path.'.maxItems', 1, self::MAX_LIST_FIELD_ITEMS),
             ),
+            'derived' => new DerivedField(...$common, formula: $this->fieldFormula($view, $field['formula'] ?? null, $path.'.formula')),
             default => new TrackField(...$common, max: $this->optionalInt($view, $field['max'] ?? null, $path.'.max', 1, self::MAX_TRACK_FIELD_MAX)),
         };
+    }
+
+    private function fieldFormula(PublishedReleaseView $view, mixed $value, string $path): Formula
+    {
+        try {
+            return Formula::fromString($this->string($view, $value, $path));
+        } catch (InvalidFormula $exception) {
+            throw $this->invalid($view, $path, $exception->getMessage());
+        }
     }
 
     /**

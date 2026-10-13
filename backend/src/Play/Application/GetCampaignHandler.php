@@ -46,6 +46,7 @@ final readonly class GetCampaignHandler implements QueryHandler
         $pinned = $campaign->pinnedRelease();
         // Oracles come from the pinned release, never the latest one (ADR 0014).
         $snapshot = $this->releases->get($pinned->gameSystemKey(), $pinned->releaseVersion());
+        $trackerValues = $campaign->trackerValuesOf($snapshot);
 
         return new CampaignView(
             $campaign->id()->toString(),
@@ -67,7 +68,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map(ThreadView::of(...), $campaign->threads()),
             array_map(FactSlotView::of(...), $snapshot->factSlots()),
             array_map(static fn (Fact $fact): FactView => self::fact($fact, $campaign, $snapshot), $campaign->facts($snapshot)),
-            array_map(static fn (Character $character): CharacterView => CharacterView::of($character, $snapshot->sheet()), $campaign->characters()),
+            array_map(static fn (Character $character): CharacterView => CharacterView::of($character, $snapshot->sheet(), $trackerValues), $campaign->characters()),
         );
     }
 

@@ -21,6 +21,7 @@ const base: SheetField = {
   maxLength: null,
   itemLabel: null,
   maxItems: null,
+  formula: null,
 }
 
 /** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes. */
@@ -75,6 +76,7 @@ export const viCharacter: Character = {
     gear: ['Knife', 'Agent'],
     notes: 'Owes a favor.',
   },
+  derived: {},
   promotedFrom: null,
 }
 
@@ -85,6 +87,7 @@ export const oldCharacter: Character = {
   tags: [],
   freeTags: [],
   values: {},
+  derived: {},
   promotedFrom: null,
 }
 

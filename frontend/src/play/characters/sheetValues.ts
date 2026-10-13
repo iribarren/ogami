@@ -6,6 +6,14 @@ import type { SheetField, SheetValue } from './useCharacters'
  */
 export type Draft = string | string[] | { current: string; max: string }
 
+/**
+ * The fields a Character stores a value for: every field but the derived ones, which the API
+ * computes and refuses a value for.
+ */
+export function storedFields(sheet: SheetField[]): SheetField[] {
+  return sheet.filter((field) => field.type !== 'derived')
+}
+
 /** The value of `field`: the stored one, or its default when there is none or it has another shape. */
 export function valueOrDefault(field: SheetField, stored: SheetValue | undefined): SheetValue {
   switch (field.type) {
@@ -19,6 +27,9 @@ export function valueOrDefault(field: SheetField, stored: SheetValue | undefined
       return typeof stored === 'object' && !Array.isArray(stored)
         ? stored
         : { current: field.max ?? 0, max: field.max ?? 0 }
+    case 'derived':
+      // Never stored: storedFields() leaves derived fields out of the form and the summary.
+      return 0
   }
 }
 

@@ -336,6 +336,8 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         yield 'band formula syntax' => [$band, ['formula' => '{tracker:edge} +'], $bandPath.': Unexpected end of the formula'];
         yield 'effect formula syntax' => [$value, ['formula' => '1 2'], $valuePath.': Unexpected "2"'];
         yield 'band formula reading a field' => [$band, ['formula' => '{str} + 1'], $bandPath.': {str}: a flow formula reads trackers only.'];
+        yield 'band formula reading a check reference' => [$band, ['formula' => '{check:difficulty}'], $bandPath.': {check:difficulty}: a flow formula reads trackers only.'];
+        yield 'effect formula reading a check reference' => [$value, ['formula' => '{check:difficulty}'], $valuePath.': {check:difficulty}: a flow formula reads trackers only.'];
         yield 'effect formula reading a track max' => [$value, ['formula' => '{hp.max}'], $valuePath.': {hp.max}: a flow formula reads trackers only.'];
         yield 'tracker key breaking the key rule' => [$value, ['tracker' => 'heat} + {tracker:edge'], $valuePath.': '];
         yield 'both tracker and formula' => [$value, ['tracker' => 'edge', 'formula' => '1'], $valuePath.$shape];

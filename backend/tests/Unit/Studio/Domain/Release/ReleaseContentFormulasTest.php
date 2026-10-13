@@ -186,6 +186,8 @@ final class ReleaseContentFormulasTest extends TestCase
         yield 'max of an unknown field' => [self::sheet(self::fields('{ghost.max}')), 'sheet.fields[4].formula: {ghost.max}: unknown field "ghost"'];
         yield 'unknown tracker in a sheet formula' => [self::sheet(self::fields('{tracker:noise}')), 'sheet.fields[4].formula: {tracker:noise}: unknown tracker "noise"'];
         yield 'second derived field is the one named' => [self::sheet([...self::fields(), ['key' => 'other', 'label' => 'Other', 'type' => 'derived', 'formula' => '{dex}']]), 'sheet.fields[5].formula: {dex}: unknown field "dex"'];
+        yield 'check reference in a derived formula' => [self::sheet(self::fields('{check:difficulty}')), 'sheet.fields[4].formula: {check:difficulty}: a check reference is read only by the bands of a check'];
+        yield 'check reference named like a field' => [self::sheet(self::fields('{check:str}')), 'sheet.fields[4].formula: {check:str}: a check reference is read only by the bands of a check'];
 
         // Cycles.
         yield 'self reference' => [self::sheet(self::fields('{bonus}+1')), 'sheet.fields[4].formula: Derived values depend on each other in a cycle: bonus -> bonus.'];
@@ -204,6 +206,8 @@ final class ReleaseContentFormulasTest extends TestCase
         yield 'band formula reading a track max' => [self::bands([['upTo' => ['formula' => '{hp.max}']], []]), 'sceneTypes[3].closing[0].bands[0].upTo.formula: {hp.max}: a flow formula reads trackers only'];
         yield 'band formula reading an unknown tracker' => [self::bands([['upTo' => ['formula' => '{tracker:noise}']], []]), 'sceneTypes[3].closing[0].bands[0].upTo.formula: {tracker:noise}: unknown tracker "noise"'];
         yield 'effect formula reading a field' => [self::effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => ['formula' => '{str}+1']]), 'sceneTypes[2].setup[0].effects[0].value.formula: {str}: a flow formula reads trackers only'];
+        yield 'band formula reading a check reference' => [self::bands([['upTo' => ['formula' => '{check:difficulty}']], []]), 'sceneTypes[3].closing[0].bands[0].upTo.formula: {check:difficulty}: a flow formula reads trackers only'];
+        yield 'effect formula reading a check reference' => [self::effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => ['formula' => '{check:difficulty}']]), 'sceneTypes[2].setup[0].effects[0].value.formula: {check:difficulty}: a flow formula reads trackers only'];
         yield 'effect formula reading an unknown tracker' => [self::effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => ['formula' => '{tracker:noise}']]), 'sceneTypes[2].setup[0].effects[0].value.formula: {tracker:noise}: unknown tracker "noise"'];
 
         // Shape.

@@ -17,4 +17,7 @@ enum ReferenceKind
 
     /** `{tracker:key}`: the value of a Campaign tracker. */
     case Tracker;
+
+    /** `{check:key}`: a roll-time input of a check; only `difficulty` exists (ADR 0024). */
+    case Check;
 }

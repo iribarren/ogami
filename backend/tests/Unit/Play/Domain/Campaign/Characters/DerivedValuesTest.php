@@ -83,6 +83,15 @@ final class DerivedValuesTest extends TestCase
     }
 
     #[Test]
+    public function aCheckReferenceNeverReadsASheetField(): void
+    {
+        // Published content cannot hold one; if it ever did, it must not resolve to the field of the same key.
+        $derived = DerivedValues::of($this->sheet(['edge' => '{check:reflexes}']), ['reflexes' => 5], []);
+
+        self::assertSame(['edge' => null], $derived);
+    }
+
+    #[Test]
     public function aSheetWithoutDerivedFieldsHasNoDerivedValues(): void
     {
         self::assertSame([], DerivedValues::of($this->sheet([]), ['reflexes' => 3], []));

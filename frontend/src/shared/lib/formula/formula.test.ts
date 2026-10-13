@@ -74,7 +74,9 @@ describe('dependencyOrder', () => {
   })
 
   it('ignores references to other things than the map', () => {
-    expect(dependencyOrder(formulas({ a: '{a.max} + {tracker:a} + {str}' }))).toEqual(['a'])
+    expect(dependencyOrder(formulas({ a: '{a.max} + {tracker:a} + {check:a} + {str}' }))).toEqual([
+      'a',
+    ])
   })
 
   it('refuses a cycle, naming it', () => {

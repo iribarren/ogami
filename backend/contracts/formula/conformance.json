@@ -35,6 +35,9 @@
     {"formula": "{tracker:chaos}", "values": {"tracker:chaos": 5}, "result": 5},
     {"formula": "{tracker:chaos}*2+{str}", "values": {"tracker:chaos": 5, "str": 3}, "result": 13},
     {"formula": "{tracker}", "values": {"tracker": 2}, "result": 2},
+    {"formula": "{check:difficulty}", "values": {"check:difficulty": 15}, "result": 15},
+    {"formula": "{check:difficulty}-{str}*2", "values": {"check:difficulty": 15, "str": 3}, "result": 9},
+    {"formula": "{check}", "values": {"check": 4}, "result": 4},
     {"formula": "{123}+{hp.max}", "values": {"123": 1, "hp.max": 2}, "result": 3},
     {"formula": "min({a},{b})", "values": {"a": 3, "b": -2}, "result": -2},
     {"formula": "({dex}-10)/2", "values": {"dex": 15}, "result": 2},
@@ -59,6 +62,8 @@
     {"formula": "{hp.max}", "values": {"hp": 5}, "error": "unknownReference"},
     {"formula": "{tracker:chaos}", "values": {"chaos": 5}, "error": "unknownReference"},
     {"formula": "{tracker:chaos}", "error": "unknownReference"},
+    {"formula": "{check:difficulty}", "values": {"difficulty": 15}, "error": "unknownReference"},
+    {"formula": "{check:difficulty}", "error": "unknownReference"},
     {"formula": "{missing}/0", "error": "unknownReference"},
     {"formula": "5/{missing}", "error": "unknownReference"},
     {"formula": "{missing}+(1/0)", "error": "unknownReference"},
@@ -122,6 +127,11 @@
     {"formula": "{tracker:}", "error": "syntax"},
     {"formula": "{tracker:x.max}", "error": "syntax"},
     {"formula": "{tracker:a:b}", "error": "syntax"},
+    {"formula": "{check:}", "error": "syntax"},
+    {"formula": "{check:Bad}", "error": "syntax"},
+    {"formula": "{check:a.max}", "error": "syntax"},
+    {"formula": "{check:a:b}", "error": "syntax"},
+    {"formula": "{check:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}", "error": "syntax"},
     {"formula": "{.max}", "error": "syntax"},
     {"formula": "{a", "error": "syntax"},
     {"formula": "a}", "error": "syntax"},
@@ -142,6 +152,7 @@
     {"formula": "min({b},{a},{b})", "references": ["b", "a"]},
     {"formula": "1+2", "references": []},
     {"formula": "{tracker:a}+{a}+{tracker:a}+{a.max}", "references": ["tracker:a", "a", "a.max"]},
+    {"formula": "{check:difficulty}+{check:difficulty}+{difficulty}", "references": ["check:difficulty", "difficulty"]},
     {"formula": "max({3d}, -{x-1}) / 2", "references": ["3d", "x-1"]}
   ]
 }

@@ -55,7 +55,7 @@ final class InvalidFormula extends \DomainException
     public static function invalidReference(string $reference, int $position): self
     {
         return new self(\sprintf(
-            'Invalid reference "%s" at position %d; expected "{key}", "{key.max}" or "{tracker:key}" with a key of 1 to 64 characters of a-z, 0-9 and "-", and no spaces.',
+            'Invalid reference "%s" at position %d; expected "{key}", "{key.max}", "{tracker:key}" or "{check:key}" with a key of 1 to 64 characters of a-z, 0-9 and "-", and no spaces.',
             $reference,
             $position,
         ));

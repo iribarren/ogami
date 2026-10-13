@@ -67,6 +67,11 @@ final class DerivedValues implements ValueResolver
 
     public function value(Reference $reference): int
     {
+        if (ReferenceKind::Check === $reference->kind) {
+            // Only a check's bands read this; a sheet formula that holds one is invalid and has no value.
+            throw FormulaEvaluationFailed::unknownReference($reference);
+        }
+
         if (ReferenceKind::Tracker === $reference->kind) {
             return $this->trackerValues[$reference->key] ?? throw FormulaEvaluationFailed::unknownReference($reference);
         }

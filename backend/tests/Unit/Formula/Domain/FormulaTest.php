@@ -44,6 +44,8 @@ final class FormulaTest extends TestCase
         yield 'min suffix' => ['{a.min}', 'Invalid reference "{a.min}" at position 1;'];
         yield 'empty tracker' => ['{tracker:}', 'Invalid reference "{tracker:}" at position 1;'];
         yield 'tracker max' => ['{tracker:x.max}', 'Invalid reference "{tracker:x.max}" at position 1;'];
+        yield 'empty check' => ['{check:}', 'Invalid reference "{check:}" at position 1;'];
+        yield 'check max' => ['{check:x.max}', 'Invalid reference "{check:x.max}" at position 1;'];
         yield 'key too long' => ['{'.str_repeat('a', 65).'}', 'Invalid reference'];
         yield 'unclosed reference' => ['1+{a', 'Unclosed "{" at position 3;'];
         yield 'one argument' => ['min(1)', '"min" takes between 2 and 10 arguments, 1 given.'];
@@ -108,13 +110,24 @@ final class FormulaTest extends TestCase
     }
 
     #[Test]
+    public function itListsACheckReferenceApartFromTheSameKeyRead(): void
+    {
+        self::assertEquals(
+            [Reference::check('difficulty'), Reference::field('difficulty')],
+            Formula::fromString('{check:difficulty}+{difficulty}+{check:difficulty}')->references(),
+        );
+    }
+
+    #[Test]
     public function itSpellsReferencesCanonically(): void
     {
         self::assertSame('str', Reference::field('str')->toString());
         self::assertSame('hp.max', Reference::trackMax('hp')->toString());
         self::assertSame('tracker:chaos', Reference::tracker('chaos')->toString());
+        self::assertSame('check:difficulty', Reference::check('difficulty')->toString());
         self::assertTrue(Reference::field('a')->equals(Reference::field('a')));
         self::assertFalse(Reference::field('a')->equals(Reference::tracker('a')));
+        self::assertFalse(Reference::check('a')->equals(Reference::tracker('a')));
     }
 
     #[Test]

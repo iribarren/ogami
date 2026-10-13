@@ -65,6 +65,10 @@ export function computeDerived(
   }
 
   const read = (reference: Reference): number | undefined => {
+    if (reference.kind === 'check') {
+      // Only a check's bands read it; in a derived value it is invalid and has no value.
+      return undefined
+    }
     if (reference.kind === 'tracker') {
       return trackers.find(({ key }) => key === reference.key)?.value
     }

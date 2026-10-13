@@ -1272,7 +1272,7 @@ export interface components {
              * @example prompt
              * @enum {string}
              */
-            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick" | "character";
+            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick" | "character" | "check";
             /** @example Who is on the crew? */
             title: string;
             /**
@@ -1313,6 +1313,18 @@ export interface components {
             pick: components["schemas"]["FlowPickStepResponse"] | null;
             /** @description The Fact slots any Effect of the step may fill, in the release's slot order (a fillFact Effect fills a slot once the step is completed); empty for a step that fills none. */
             fills: components["schemas"]["FactSlotResponse"][];
+            /**
+             * @description The key of the check performed (check step); null for the other kinds.
+             * @example slip-past
+             */
+            check: string | null;
+            /**
+             * @description The Check difficulty the check step fixes, as it stands now; null when the player sets it, for the other kinds, and when the step's formula cannot be evaluated (answering the step is then refused).
+             * @example 7
+             */
+            difficulty: number | null;
+            /** @description The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds. */
+            characters: components["schemas"]["ItemRefResponse"][];
         };
         SceneTypeSummaryResponse: {
             /** @example legwork */
@@ -1815,10 +1827,20 @@ export interface components {
             /** @description Pick step in mode choose: the ids of the candidates chosen, between the step's minimum and maximum, none twice; an empty list when nothing matches. Must be omitted or null in mode random. */
             pickedIds?: string[] | null;
             /**
-             * @description Character step: the id of a Character of the campaign. Must be omitted or null for the other kinds.
+             * @description Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Must be omitted or null for the other kinds.
              * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701
              */
             characterId?: string | null;
+            /**
+             * @description Check step: the Check difficulty, within the min and max of the check; omitted or null for its default. Must be omitted or null when the step fixes one or the check declares none.
+             * @example 15
+             */
+            difficulty?: number | null;
+            /**
+             * @description Check step: the Situational modifier, from -100 to 100; omitted or null for none.
+             * @example -2
+             */
+            situational?: number | null;
         };
         SkipFlowStepRequest: {
             /**
@@ -4461,7 +4483,7 @@ export interface operations {
                     "application/json": components["schemas"]["CampaignResponse"];
                 };
             };
-            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", or "pickedIds" that is not a list of strings. */
+            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", "difficulty" or "situational", or "pickedIds" that is not a list of strings. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -4515,7 +4537,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. Or a formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker Effect value or a step's difficulty divides by zero or overflows; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

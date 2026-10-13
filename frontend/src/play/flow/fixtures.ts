@@ -34,6 +34,9 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     options: [],
     pick: null,
     fills: [],
+    check: null,
+    difficulty: null,
+    characters: [],
     ...fields,
   }
 }

@@ -9,7 +9,9 @@ export function CreditsNotice({ credits }: { credits: GameSystemSummary['credits
   if (credits === null) {
     return null
   }
-  const license = credits.license ?? credits.url
+  // A blank license name never makes an empty link: the URL names itself.
+  const name = credits.license?.trim() ? credits.license : null
+  const license = name ?? credits.url
   return (
     <section
       aria-label="About this game"

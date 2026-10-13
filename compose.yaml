@@ -74,6 +74,8 @@ services:
     init: true
     volumes:
       - ./frontend:/app
+      # The formula conformance file, which Vitest reads as ../backend/contracts/... from /app.
+      - ./backend/contracts:/backend/contracts:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 10s

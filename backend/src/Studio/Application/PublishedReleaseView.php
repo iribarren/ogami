@@ -9,7 +9,7 @@ namespace App\Studio\Application;
  * and Play (docs/contracts/gamesystem-release.md). It holds no Studio Domain types.
  *
  * $content is the canonical release document of its schema version: plain arrays in schema key
- * order, absent optionals left out, integers as integers. "sheet" is an empty \stdClass, so
+ * order, absent optionals left out, integers as integers. An empty "sheet" is an \stdClass, so
  * json_encode($content) gives back the exact canonical JSON (whose sha256 is the content hash);
  * every other JSON object is a string-keyed array and every JSON array a list.
  */

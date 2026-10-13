@@ -199,6 +199,15 @@
       ]
     }
   ],
-  "sheet": {},
+  "sheet": {
+    "fields": [
+      {"key": "class", "label": "Class", "hint": "Your adventuring trade.", "group": "Adventurer", "type": "text"},
+      {"key": "level", "label": "Level", "group": "Adventurer", "type": "number", "min": 1, "max": 20, "default": 1},
+      {"key": "hp", "label": "Hit points", "group": "Adventurer", "type": "track"},
+      {"key": "notes", "label": "Notes", "group": "Adventurer", "type": "text", "multiline": true},
+      {"key": "gear", "label": "Gear", "group": "Pack", "type": "list", "itemLabel": "Item", "maxItems": 30},
+      {"key": "treasure", "label": "Treasure", "group": "Pack", "type": "list", "itemLabel": "Find"}
+    ]
+  },
   "checks": []
 }

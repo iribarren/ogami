@@ -48,9 +48,16 @@
       "items": { "$ref": "#/$defs/flow" }
     },
     "sheet": {
-      "description": "Reserved; must be empty in schema version 2.",
+      "description": "The character sheet template (ADR 0022). {} and {\"fields\": []} are the same sheet: no fields. Field keys are unique (checked by the domain).",
       "type": "object",
-      "maxProperties": 0
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "type": ["array", "null"],
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/sheetField" }
+        }
+      }
     },
     "checks": {
       "description": "Reserved; must be empty in schema version 2.",
@@ -73,6 +80,76 @@
       "items": { "$ref": "#/$defs/key" }
     },
     "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "sheetField": {
+      "description": "One field of the sheet, by its type.",
+      "oneOf": [
+        { "$ref": "#/$defs/numberField" },
+        { "$ref": "#/$defs/textField" },
+        { "$ref": "#/$defs/listField" },
+        { "$ref": "#/$defs/trackField" }
+      ]
+    },
+    "numberField": {
+      "description": "A bounded integer. min <= default <= max (checked by the domain).",
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "type": { "const": "number" },
+        "min": { "$ref": "#/$defs/sheetNumber" },
+        "max": { "$ref": "#/$defs/sheetNumber" },
+        "default": { "$ref": "#/$defs/sheetNumber" }
+      }
+    },
+    "sheetNumber": { "type": ["integer", "null"], "minimum": -1000000, "maximum": 1000000 },
+    "textField": {
+      "description": "Free text, 200 characters by default and 2000 when multiline.",
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "type": { "const": "text" },
+        "multiline": { "type": ["boolean", "null"] },
+        "maxLength": { "type": ["integer", "null"], "minimum": 1, "maximum": 2000 }
+      }
+    },
+    "listField": {
+      "description": "A list of short texts, such as an inventory.",
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "type": { "const": "list" },
+        "itemLabel": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "maxItems": { "type": ["integer", "null"], "minimum": 1, "maximum": 100 }
+      }
+    },
+    "trackField": {
+      "description": "A resource track {current, max}, such as hit points. A fixed max when set, else each Character sets its own.",
+      "type": "object",
+      "required": ["key", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "hint": { "type": ["string", "null"], "maxLength": 500 },
+        "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "type": { "const": "track" },
+        "max": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 }
+      }
+    },
     "tag": {
       "type": "object",
       "required": ["key", "label"],
@@ -423,8 +500,25 @@
         { "$ref": "#/$defs/rollStep" },
         { "$ref": "#/$defs/choiceStep" },
         { "$ref": "#/$defs/conditionStep" },
-        { "$ref": "#/$defs/pickStep" }
+        { "$ref": "#/$defs/pickStep" },
+        { "$ref": "#/$defs/characterStep" }
       ]
+    },
+    "characterStep": {
+      "description": "Completes with the Character the player picks, or creates from the step.",
+      "type": "object",
+      "required": ["key", "kind", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/stepKey" },
+        "kind": { "const": "character" },
+        "title": { "$ref": "#/$defs/label" },
+        "prompt": { "$ref": "#/$defs/optionalText2000" },
+        "tip": { "$ref": "#/$defs/optionalText2000" },
+        "mandatory": { "$ref": "#/$defs/optionalFlag" },
+        "next": { "$ref": "#/$defs/next" },
+        "effects": { "$ref": "#/$defs/optionalEffects" }
+      }
     },
     "promptStep": {
       "description": "The player writes an answer.",
@@ -611,12 +705,12 @@
       "required": ["of"],
       "additionalProperties": false,
       "properties": {
-        "of": { "enum": ["npc", "thread"] },
+        "of": { "enum": ["npc", "thread", "character"] },
         "tags": { "$ref": "#/$defs/tagKeys" }
       }
     },
     "pickStep": {
-      "description": "Picks open NPCs or Threads carrying all the tags: at random, or chosen by the player. Outcome found or none.",
+      "description": "Picks open NPCs, Threads or Characters carrying all the tags: at random, or chosen by the player. Outcome found or none.",
       "type": "object",
       "required": ["key", "kind", "title", "of", "mode"],
       "additionalProperties": false,
@@ -629,7 +723,7 @@
         "mandatory": { "$ref": "#/$defs/optionalFlag" },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" },
-        "of": { "enum": ["npc", "thread"] },
+        "of": { "enum": ["npc", "thread", "character"] },
         "tags": { "$ref": "#/$defs/tagKeys" },
         "mode": { "enum": ["random", "choose"] },
         "count": {

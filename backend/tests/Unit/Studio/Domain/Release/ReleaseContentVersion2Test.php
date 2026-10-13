@@ -345,7 +345,7 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'missing Scene Types' => [self::unset('sceneTypes'), 'sceneTypes: required'];
         yield 'missing flows' => [self::unset('flows'), 'flows: required'];
         yield 'Scene Types not a list' => [self::set('sceneTypes', 'legwork'), 'sceneTypes: must be a list'];
-        yield 'non-empty sheet' => [self::set('sheet', ['hp' => 1]), 'sheet: not supported in schema version 2'];
+        yield 'non-empty sheet' => [self::set('sheet', ['hp' => 1]), 'sheet.hp: unknown property'];
         yield 'non-empty checks' => [self::set('checks', [1]), 'checks: not supported in schema version 2'];
 
         // Oracle table entries and chaos.
@@ -506,7 +506,7 @@ final class ReleaseContentVersion2Test extends TestCase
         // Steps.
         yield 'too many steps' => [self::scenes('sceneTypes.0.play', array_map(static fn (int $i): array => ['key' => 's-'.$i, 'kind' => 'prompt', 'title' => 'S'], range(1, 51))), 'sceneTypes[0].play: at most 50 steps, 51 given'];
         yield 'step without kind' => [self::unset('sceneTypes.0.setup.0.kind', self::scenes()), 'sceneTypes[0].setup[0].kind: required'];
-        yield 'unknown step kind' => [self::scenes('sceneTypes.0.setup.0.kind', 'summon'), 'sceneTypes[0].setup[0].kind: must be one of "prompt", "oracle", "table", "roll", "choice", "condition", "pick", \'summon\' given'];
+        yield 'unknown step kind' => [self::scenes('sceneTypes.0.setup.0.kind', 'summon'), 'sceneTypes[0].setup[0].kind: must be one of "prompt", "oracle", "table", "roll", "choice", "condition", "pick", "character", \'summon\' given'];
         yield 'field of another kind' => [self::scenes('sceneTypes.0.setup.0.dice', '1d6'), 'sceneTypes[0].setup[0].dice: unknown property'];
         yield 'step key end' => [self::scenes('sceneTypes.0.setup.0.key', 'end'), 'sceneTypes[0].setup[0].key: "end" is reserved'];
         yield 'duplicate step key in one list' => [self::scenes('sceneTypes.3.setup.1.key', 'how'), 'sceneTypes[3].setup[1].key: duplicate step key "how"'];

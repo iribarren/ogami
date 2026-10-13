@@ -1,6 +1,6 @@
 # 0017. The NarrativeFlow model
 
-- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party
+- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party. Amended by [ADR 0022](0022-character-sheets-in-schema-version-2.md): the `character` step kind and sheets arrive additively in schema version 2
 - **Date:** 2026-10-08
 
 ## Context
@@ -171,7 +171,7 @@ oracle table entry: + optional sceneType
 ```
 
 - **M2 step kinds:** `prompt`, `oracle` (likelihood question), `table`, `roll` (dice, optional outcome bands), `choice`, `pick` (Thread or NPC).
-- **M3 step kinds:** `character`, `check`. They arrive as later schema versions ([ADR 0013](0013-studio-is-a-core-context.md)).
+- **M3 step kinds:** `character`, `check`. `character` arrives additively in schema version 2 ([ADR 0022](0022-character-sheets-in-schema-version-2.md)); `check` arrives as a later schema version ([ADR 0013](0013-studio-is-a-core-context.md)).
 - **Schema version 1 releases stay readable.** The anti-corruption layer maps their empty `flow` to "no flows".
 
 ### What M2 implements

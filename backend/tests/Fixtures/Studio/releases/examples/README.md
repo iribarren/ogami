@@ -8,7 +8,7 @@ Feature 8b (fact slot hints, `fillFact`, `{fact:key}`) is in every example that 
 
 | Feature | Adds |
 |---|---|
-| 10 | Characters, the Session party |
+| 10 | Sheet fields and the `character` step (schema version 2, [ADR 0022](../../../../../../docs/adr/0022-character-sheets-in-schema-version-2.md)); Characters, the Session party |
 
 ## `vtm-chronicle.json`
 
@@ -54,7 +54,9 @@ Facts: the founding Town fills `town`; every session opening fills `expedition` 
 
 | Left out | Feature |
 |---|---|
-| The roster as Characters; `pick Characters` for the Session party (now "Who goes on this expedition?") | 10 |
+| `pick of: character` for the Session party (now a `prompt`, "Who goes on this expedition?"). The sheet is in; Play reads `of: character` from slice 4 of `play-characters`, so the pick waits for it | 10 |
+
+Sheet: Class, Level (1–20), Hit points (track), Notes, and Gear and Treasure lists, grouped Adventurer and Pack.
 
 Tags: `roster`, `hireling`. The roster and hirelings are created with `createNpc`, rumors with `createThread`; the session opening picks the expedition Thread (`pick Thread`) and `closeThread` runs when it is resolved.
 

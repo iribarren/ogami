@@ -6,6 +6,7 @@ namespace App\Studio\Domain\Release;
 
 use App\Studio\Domain\Release\Version2\AuthoringWarnings;
 use App\Studio\Domain\Release\Version2\ReleaseVersion2;
+use App\Studio\Domain\Release\Version2\SheetFields;
 
 /**
  * The validated content of a GameSystem release, schema version 1 or 2: the Published Language
@@ -39,7 +40,7 @@ final readonly class ReleaseContent
     private const array STEP = ['key' => true, 'title' => true, 'prompt' => false];
 
     /**
-     * @param array<string, mixed> $content  canonical content; "sheet" is kept as []
+     * @param array<string, mixed> $content  canonical content; an empty "sheet" is kept as []
      * @param list<string>         $warnings authoring warnings, each starting with its path
      */
     private function __construct(
@@ -80,10 +81,7 @@ final readonly class ReleaseContent
             ? ['oracles' => ReleaseOracles::validate($release['oracles']), 'flow' => self::flow($release['flow'])]
             : ReleaseVersion2::validate($release);
 
-        $sheet = $release['sheet'];
-        if ([] !== $sheet && (!$sheet instanceof \stdClass || [] !== get_object_vars($sheet))) {
-            throw InvalidReleaseContent::at('sheet', \sprintf('not supported in schema version %d, must be {}', $version));
-        }
+        $sheet = 1 === $version ? self::reservedSheet($release['sheet']) : SheetFields::validate($release['sheet']);
 
         if ([] !== $release['checks']) {
             throw InvalidReleaseContent::at('checks', \sprintf('not supported in schema version %d, must be []', $version));
@@ -93,7 +91,7 @@ final readonly class ReleaseContent
             'schemaVersion' => $version,
             'gameSystem' => $gameSystem,
             ...$parts,
-            'sheet' => [],
+            'sheet' => $sheet,
             'checks' => [],
         ];
         /** @var string $key */
@@ -164,15 +162,34 @@ final readonly class ReleaseContent
     }
 
     /**
+     * An empty sheet encodes as {} (an \stdClass); a sheet with fields is a string-keyed array, which
+     * encodes as an object too.
+     *
      * @param array<string, mixed> $content
      *
      * @return array<string, mixed>
      */
     private static function withSheetObject(array $content): array
     {
-        $content['sheet'] = new \stdClass();
+        if ([] === $content['sheet']) {
+            $content['sheet'] = new \stdClass();
+        }
 
         return $content;
+    }
+
+    /**
+     * Schema version 1 reserves the sheet: it must be {}.
+     *
+     * @return array{}
+     */
+    private static function reservedSheet(mixed $sheet): array
+    {
+        if ([] !== $sheet && (!$sheet instanceof \stdClass || [] !== get_object_vars($sheet))) {
+            throw InvalidReleaseContent::at('sheet', 'not supported in schema version 1, must be {}');
+        }
+
+        return [];
     }
 
     /**

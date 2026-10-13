@@ -44,6 +44,12 @@ use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\ListField;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
+use App\Play\Domain\GameSystem\Sheet\TextField;
+use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\TableEntryMetadata;
 use App\Play\Domain\GameSystem\Tag;
@@ -72,6 +78,22 @@ final readonly class GameSystemReleaseTranslator
     private const int MAX_CREDITS_NOTICE_LENGTH = 2000;
     private const int MAX_CREDITS_LICENSE_LENGTH = 200;
     private const int MAX_CREDITS_URL_LENGTH = 500;
+
+    // The sheet limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
+    private const int MAX_SHEET_FIELDS = 100;
+    private const int MAX_FIELD_LABEL_LENGTH = 100;
+    private const int MAX_FIELD_HINT_LENGTH = 500;
+    private const int MAX_FIELD_GROUP_LENGTH = 60;
+    private const int MAX_FIELD_ITEM_LABEL_LENGTH = 60;
+    private const int MAX_TEXT_FIELD_LENGTH = 2000;
+    private const int MAX_LIST_FIELD_ITEMS = 100;
+    private const int MAX_TRACK_FIELD_MAX = 999;
+    private const array FIELD_PROPERTIES = [
+        'number' => ['min', 'max', 'default'],
+        'text' => ['multiline', 'maxLength'],
+        'list' => ['itemLabel', 'maxItems'],
+        'track' => ['max'],
+    ];
 
     private const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
@@ -149,6 +171,7 @@ final readonly class GameSystemReleaseTranslator
             $tags,
             $this->theme($view, $content['theme'] ?? null),
             $this->credits($view, $gameSystem['credits'] ?? null),
+            $this->sheet($view, $content['sheet'] ?? null),
         );
         $this->assertTagsExist($view, $content, '', $snapshot);
 
@@ -451,6 +474,7 @@ final readonly class GameSystemReleaseTranslator
                 ),
                 'condition' => $this->conditionStep($view, $common, $step, $stepPath),
                 'pick' => $this->pickStep($view, $common, $step, $stepPath),
+                'character' => throw $this->invalid($view, $stepPath.'.kind', 'step kind "character" is not supported by Play yet.'),
                 default => throw $this->invalid($view, $stepPath.'.kind', \sprintf('unknown step kind "%s".', $kind)),
             };
         }
@@ -531,9 +555,134 @@ final readonly class GameSystemReleaseTranslator
         return new Credits($notice, $license, $url);
     }
 
+    /**
+     * The character sheet template of a schema version 2 release (ADR 0022). Studio checks every
+     * rule on publish; the stored content is not trusted.
+     */
+    private function sheet(PublishedReleaseView $view, mixed $value): SheetTemplate
+    {
+        $sheet = $this->object($view, $value ?? [], 'sheet');
+        foreach (array_keys($sheet) as $name) {
+            if ('fields' !== $name) {
+                throw $this->invalid($view, 'sheet.'.$name, 'unknown property.');
+            }
+        }
+
+        $list = $this->list($view, $sheet['fields'] ?? [], 'sheet.fields');
+        if (\count($list) > self::MAX_SHEET_FIELDS) {
+            throw $this->invalid($view, 'sheet.fields', \sprintf('at most %d fields.', self::MAX_SHEET_FIELDS));
+        }
+
+        $fields = [];
+        foreach ($list as $index => $field) {
+            $field = $this->sheetField($view, $field, \sprintf('sheet.fields[%d]', $index));
+            if (isset($fields[$field->key])) {
+                throw $this->invalid($view, \sprintf('sheet.fields[%d].key', $index), \sprintf('duplicate field key "%s".', $field->key));
+            }
+
+            $fields[$field->key] = $field;
+        }
+
+        return new SheetTemplate(array_values($fields));
+    }
+
+    private function sheetField(PublishedReleaseView $view, mixed $value, string $path): Field
+    {
+        $field = $this->object($view, $value, $path);
+        $type = $this->string($view, $field['type'] ?? null, $path.'.type');
+        if (!isset(self::FIELD_PROPERTIES[$type])) {
+            throw $this->invalid($view, $path.'.type', \sprintf('unknown field type "%s".', $type));
+        }
+
+        foreach (array_keys($field) as $name) {
+            if (!\in_array($name, ['key', 'label', 'hint', 'group', 'type', ...self::FIELD_PROPERTIES[$type]], true)) {
+                throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
+            }
+        }
+
+        $key = $this->string($view, $field['key'] ?? null, $path.'.key');
+        if (1 !== preg_match('/^[a-z0-9-]{1,64}$/', $key)) {
+            throw $this->invalid($view, $path.'.key', 'must be 1 to 64 characters among a-z, 0-9 and "-".');
+        }
+
+        $common = [
+            $key,
+            $this->boundedString($view, $field['label'] ?? null, $path.'.label', self::MAX_FIELD_LABEL_LENGTH),
+            null === ($field['hint'] ?? null) ? null : $this->boundedString($view, $field['hint'], $path.'.hint', self::MAX_FIELD_HINT_LENGTH, false),
+            null === ($field['group'] ?? null) ? null : $this->boundedString($view, $field['group'], $path.'.group', self::MAX_FIELD_GROUP_LENGTH),
+        ];
+
+        return match ($type) {
+            'number' => $this->numberField($view, $common, $field, $path),
+            'text' => new TextField(
+                ...$common,
+                multiline: $this->flag($view, $field['multiline'] ?? null, $path.'.multiline'),
+                maxLength: $this->optionalInt($view, $field['maxLength'] ?? null, $path.'.maxLength', 1, self::MAX_TEXT_FIELD_LENGTH),
+            ),
+            'list' => new ListField(
+                ...$common,
+                itemLabel: null === ($field['itemLabel'] ?? null) ? null : $this->boundedString($view, $field['itemLabel'], $path.'.itemLabel', self::MAX_FIELD_ITEM_LABEL_LENGTH),
+                maxItems: $this->optionalInt($view, $field['maxItems'] ?? null, $path.'.maxItems', 1, self::MAX_LIST_FIELD_ITEMS),
+            ),
+            default => new TrackField(...$common, max: $this->optionalInt($view, $field['max'] ?? null, $path.'.max', 1, self::MAX_TRACK_FIELD_MAX)),
+        };
+    }
+
+    /**
+     * @param array{string, string, ?string, ?string} $common key, label, hint, group
+     * @param array<mixed>                            $field
+     */
+    private function numberField(PublishedReleaseView $view, array $common, array $field, string $path): NumberField
+    {
+        $min = $this->optionalInt($view, $field['min'] ?? null, $path.'.min', -NumberField::LIMIT, NumberField::LIMIT);
+        $max = $this->optionalInt($view, $field['max'] ?? null, $path.'.max', -NumberField::LIMIT, NumberField::LIMIT);
+        $default = $this->optionalInt($view, $field['default'] ?? null, $path.'.default', -NumberField::LIMIT, NumberField::LIMIT);
+        if (null !== $min && null !== $max && $max < $min) {
+            throw $this->invalid($view, $path.'.max', \sprintf('must be at least min (%d).', $min));
+        }
+
+        if (null !== $default && ((null !== $min && $default < $min) || (null !== $max && $default > $max))) {
+            throw $this->invalid($view, $path.'.default', 'must be within min..max.');
+        }
+
+        return new NumberField(...$common, min: $min, max: $max, default: $default);
+    }
+
+    /**
+     * A string of at most $max characters, not blank once trimmed unless $nonBlank is false.
+     */
+    private function boundedString(PublishedReleaseView $view, mixed $value, string $path, int $max, bool $nonBlank = true): string
+    {
+        $text = $this->string($view, $value, $path);
+        if ($nonBlank && '' === trim($text)) {
+            throw $this->invalid($view, $path, 'must not be blank.');
+        }
+
+        if (mb_strlen($text) > $max) {
+            throw $this->invalid($view, $path, \sprintf('must be at most %d characters.', $max));
+        }
+
+        return $text;
+    }
+
+    private function optionalInt(PublishedReleaseView $view, mixed $value, string $path, int $min, int $max): ?int
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        $int = $this->int($view, $value, $path);
+
+        return $int < $min || $int > $max ? throw $this->invalid($view, $path, \sprintf('must be between %d and %d.', $min, $max)) : $int;
+    }
+
     private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind
     {
-        return ItemKind::tryFrom($name = $this->string($view, $kind, $path))
+        if ('character' === ($name = $this->string($view, $kind, $path))) {
+            throw $this->invalid($view, $path, 'item kind "character" is not supported by Play yet.');
+        }
+
+        return ItemKind::tryFrom($name)
             ?? throw $this->invalid($view, $path, \sprintf('unknown item kind "%s".', $name));
     }
 

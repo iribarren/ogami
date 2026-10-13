@@ -135,6 +135,19 @@ final class ExampleReleasesTest extends TestCase
     }
 
     #[Test]
+    public function theMarchesSheetHasOneFieldOfEachType(): void
+    {
+        $release = ReleaseContent::fromArray(ReleaseArrays::fixture('examples/west-marches'))->toArray();
+
+        self::assertIsArray($release['sheet']);
+        /** @var list<array{type: string}> $fields */
+        $fields = $release['sheet']['fields'];
+        $types = array_values(array_unique(array_column($fields, 'type')));
+        sort($types);
+        self::assertSame(['list', 'number', 'text', 'track'], $types);
+    }
+
+    #[Test]
     public function everyExampleFileHasItsExpectedWarnings(): void
     {
         $files = array_map(static fn (string $file): string => basename($file, '.json'), glob(self::EXAMPLES.'/*.json') ?: []);

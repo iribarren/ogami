@@ -108,9 +108,9 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its four field types, the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`, and the `sheet`'s fields. It fails closed on the `character` step and on `of: character` until slice 4 of `play-characters`. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
 
-Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `sheet` and `checks` (now "not supported in schema version 2"), optional fields, unknown properties and errors.
+Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `checks` (now "not supported in schema version 2"), the `sheet` (version 2 extends it, see [Sheet](#sheet-additive-in-schema-version-2)), optional fields, unknown properties and errors.
 
 ### Structure
 
@@ -124,7 +124,7 @@ factSlots      [FactSlot]
 tags           [Tag]   optional
 sceneTypes     [SceneType]
 flows          [Flow]
-sheet          {}   reserved
+sheet          { fields?: [Field] }   fields are new (additive), see Sheet
 checks         []   reserved
 ```
 
@@ -158,8 +158,9 @@ A step list (`setup`, `play`, `closing` and each hook) holds at most 50 steps.
 | `table` | `table` (table key), `branches?: [{entry, next?, effects?}]` (≤1000), `otherwise?: {next?, effects?}` | The table exists; `entry` is a key of an entry of the step's own table, unique in the list |
 | `roll` | `dice`, `bands?: [Band]` (≤20) | Valid dice notation |
 | `choice` | `options: [{key, label (1–100), next?, effects?}]` (2–10), `skip?` (option key) | Option keys unique; `skip` is one of them. A suggested (not mandatory) choice must name `skip` |
-| `condition` | exactly one of `tracker` or `count: {of: npc \| thread, tags?: [key] (≤5)}`, plus `bands: [Band]` (1–20) | The tracker exists, or the tags exist and are unique. A `count` compares the number of open NPCs or Threads carrying all the tags to the bands. Never `mandatory`; never skipped; writes no journal entry |
-| `pick` | `of: npc \| thread`, `tags?: [key]` (≤5), `mode: random \| choose`, `count?: {min, max}`, `branches?: {found?, none?}` | Tags exist and are unique; `1 ≤ min ≤ max ≤ 10`, default `{min: 1, max: 1}`; branches are `{next?, effects?}`. `mandatory` allowed. Picks open items carrying all the tags: `random` draws, `choose` lets the player select |
+| `condition` | exactly one of `tracker` or `count: {of: npc \| thread \| character, tags?: [key] (≤5)}`, plus `bands: [Band]` (1–20) | The tracker exists, or the tags exist and are unique. A `count` compares the number of open NPCs or Threads, or of Characters, carrying all the tags to the bands. Never `mandatory`; never skipped; writes no journal entry |
+| `pick` | `of: npc \| thread \| character`, `tags?: [key]` (≤5), `mode: random \| choose`, `count?: {min, max}`, `branches?: {found?, none?}` | Tags exist and are unique; `1 ≤ min ≤ max ≤ 10`, default `{min: 1, max: 1}`; branches are `{next?, effects?}`. `mandatory` allowed. Picks open items (every Character) carrying all the tags: `random` draws, `choose` lets the player select |
+| `character` | — | Completes with a Character of the Campaign (see [Sheet](#sheet-additive-in-schema-version-2)). `mandatory`, `next` and `effects` as for `prompt`; no branches. `{step:key}` may name it |
 
 Every `next` (of a step, band, branch, option, `otherwise` or `pick` branch) follows the forward-only rule of the step list it is in. Branches and `otherwise` are `{next?, effects?}`.
 
@@ -235,6 +236,24 @@ A release may carry **credits** ([ADR 0021](adr/0021-release-credits-for-fan-pre
 | `credits.url` | optional string, or `null` | At most 500 characters, an absolute `https://` URL with a host (`http://` and relative URLs are rejected) |
 
 Adding it is additive and only in schema version 2; a schema version 1 `gameSystem` still rejects `credits`. Null fields are omitted from the canonical form, so a release without credits keeps its hash. Play's translator reads credits into the snapshot, a release stored without them reads as no credits, and the API carries them as `credits` on each game system of the catalog and as `pinnedRelease.credits` on a Campaign (`null` without credits).
+
+### Sheet (additive in schema version 2)
+
+A release may define a **sheet template** ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)): the fields every Character of a Campaign pinned to it fills in. Adding it is additive and only in schema version 2; every release valid before stays valid with the same hash. A schema version 1 `sheet` must still be `{}`.
+
+| Part | Shape | Rules |
+|---|---|---|
+| `sheet` | object | Exactly `fields`; any other property is rejected. `{}`, `{"fields": []}` and `{"fields": null}` are the same sheet and canonicalize to `{}` |
+| `sheet.fields` | optional list of Field | At most 100; keys unique (domain check) |
+| Field (all types) | `{key, label (1–100), hint? (≤500), group? (1–60), type}` | `key` follows the key rule. `label` is not blank once trimmed. Consecutive fields with the same `group` render together |
+| `number` | `min?`, `max?`, `default?` | Integers from −1,000,000 to 1,000,000; `min ≤ default ≤ max` when given (domain check). A missing `default` reads as 0, or the nearest bound when 0 is outside `min..max` |
+| `text` | `multiline?` (boolean), `maxLength?` (1–2000) | `maxLength` defaults to 200, or 2000 when `multiline` |
+| `list` | `itemLabel?` (1–60), `maxItems?` (1–100) | Items are trimmed strings of 1–200 characters; `maxItems` defaults to 50. For inventory, cyberware and the like |
+| `track` | `max?` (1–999) | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full |
+
+Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects, derived values or checks: they open schema version 3. Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed.
+
+The `character` step kind and `of: character` in `pick` and `condition` counts are part of the same additive change (see [Steps](#steps)).
 
 ### Play behaviour of the fact parts
 
@@ -315,7 +334,7 @@ Play never imports Studio `Domain/` or `Infrastructure/` (enforced by PHPat, [AD
 
 ## Evolving the contract
 
-- A new capability means a **new schema version**: add `v<N>.schema.json` next to the others and a new section here, as [schema version 2](#schema-version-2) did.
+- A new capability means a **new schema version**: add `v<N>.schema.json` next to the others and a new section here, as [schema version 2](#schema-version-2) did. Additive extensions (an optional field or a new value) stay in the current version when every valid release remains valid with the same content hash, as [`credits`](#credits) and the [sheet](#sheet-additive-in-schema-version-2) did ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)).
 - Never edit a released schema file (`v1.schema.json`, `v2.schema.json`): published releases and presets depend on it.
 - Studio validates each schema version it accepts; Play's translator lists the schema versions it supports explicitly and rejects others.
 - Studio is a core context ([ADR 0013](../adr/0013-studio-is-a-core-context.md)): future versions may carry system-specific, even code-backed, flow or rule extensions.

@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PickCandidate;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
@@ -172,8 +173,11 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         $this->grabIt($campaign);
 
         self::assertSame(['Getaway 1', 'chase', 'setup', 'wheel'], [$campaign->currentScene()?->title(), $campaign->currentScene()?->sceneType(), ...self::position($campaign)]);
-        $nomads = array_values(array_filter($campaign->npcs(), static fn (Npc $npc): bool => \in_array('nomad', $npc->tags(), true)));
-        $campaign->completeFlowStep('wheel', StepResult::pick(ItemKind::Npc, array_map(static fn (Npc $npc): PickedItem => new PickedItem($npc->id()->toString(), $npc->name()), $nomads)), $this->release, self::at());
+        // The candidates are the ones Play computes: crew AND nomad, so neither the crew without the
+        // nomad tag nor the client qualify.
+        $candidates = ($campaign->flowRunView($this->release)?->step->pick ?? self::fail('The wheel offers no pick.'))->candidates;
+        self::assertSame($driver ? ['Rook'] : [], array_map(static fn (PickCandidate $candidate): string => $candidate->name, $candidates));
+        $campaign->completeFlowStep('wheel', StepResult::pick(ItemKind::Npc, array_map(static fn (PickCandidate $candidate): PickedItem => new PickedItem($candidate->id, $candidate->name), $candidates)), $this->release, self::at());
 
         self::assertSame($driver ? ['setup', 'driver'] : ['setup', 'you-drive'], self::position($campaign));
         self::assertSame($prompt, $campaign->flowRunView($this->release)?->step?->prompt);

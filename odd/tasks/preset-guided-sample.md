@@ -1,7 +1,7 @@
 # Feature: preset-guided-sample
 
 - **Locator:** `odd/tasks/preset-guided-sample.md` · Engram topic `odd/preset-guided-sample/tasks`
-- **Issue:** #92 · **Branch:** `feat/preset-guided-sample-2-preset` · **Status:** in progress (slice 2)
+- **Issue:** #92 · **Branch:** `fix/preset-guided-sample-3-playtest` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-mythic-flow` (PRs #89–#91)
@@ -73,7 +73,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `feat/preset-guided-sample-1-credits` | `feat(play): preset-guided-sample 1/3 credits` | T1, T2, T3 | ~1,500 |
 | 2 | `feat/preset-guided-sample-2-preset` | `feat(play): preset-guided-sample 2/3 preset` | T3a, T4, T5 | ~1,500 |
-| 3 | `fix/preset-guided-sample-3-playtest` | `fix(play): preset-guided-sample 3/3 playtest` | T6, T7, T8 | ~1,000 |
+| 3 | `fix/preset-guided-sample-3-playtest` | `fix(play): preset-guided-sample 3/3 playtest` | T6a, T6, T7, T8 | ~1,000 |
 
 - **Slice 1** adds an optional field no preset sets and shows texts Play already receives.
 - **Slice 2** adds a new preset under a new key; existing campaigns are untouched.
@@ -86,16 +86,33 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | Feature doc. ADR 0021 (release credits), vision open question resolved, glossary "Credits", ADR index | delegated writer (slice 1) | [x] | 540408c |
 | T2 | 1 | Contract and pipeline: `credits` in `v2.schema.json` and the Version2 validator, agreement fixtures, Studio domain, ACL translator and snapshot, game system list and campaign views, API tests, `make api`, contract doc | delegated writer (slice 1) | [x] | 8baae56 |
 | T3 | 1 | UI: credits notice in `NewCampaignForm` and on the campaign page; flow introduction in `NewCampaignForm` and in guided play; Scene Type tips on the pick card and the current scene; Vitest tests; fixtures | delegated writer (slice 1) | [x] | 3f530df |
-| T3a | 2 | Slice 1 review fixes: Play translator enforces the credits length limits (notice 1–2000 trimmed, license ≤ 200, url ≤ 500) and a schema version 1 release never yields credits (tested); `CreditsNotice` falls back to the URL as link text when `license` is empty | delegated writer (slice 2) | [x] | |
-| T4 | 2 | Preset `night-job` v1 per Design; `PresetsTest` and a `NightJobPresetFlowTest` (validates, passes the ACL, briefing fills the facts, the alarm conditions, the Infiltration → Firefight switch, Grab ends the phase, Getaway → Chase with both pick branches, Payday quotes the payout, the FlowRun completes) | delegated writer (slice 2) | [x] | |
-| T5 | 2 | e2e: create a Night Job campaign, see the disclaimer and introduction, complete the mandatory crew step; `make e2e` | delegated writer (slice 2) | [x] | |
-| T6 | 3 | Playtest as a novice in Chrome: every phase, the alarm rising, a switch, the escape, Payday; findings logged below | parent (browser) | [ ] | — |
-| T7 | 3 | Fix the blocking playtest findings; the rest go to the backlog | | [ ] | |
+| T3a | 2 | Slice 1 review fixes: Play translator enforces the credits length limits (notice 1–2000 trimmed, license ≤ 200, url ≤ 500) and a schema version 1 release never yields credits (tested); `CreditsNotice` falls back to the URL as link text when `license` is empty | delegated writer (slice 2) | [x] | 7892be3 |
+| T4 | 2 | Preset `night-job` v1 per Design; `PresetsTest` and a `NightJobPresetFlowTest` (validates, passes the ACL, briefing fills the facts, the alarm conditions, the Infiltration → Firefight switch, Grab ends the phase, Getaway → Chase with both pick branches, Payday quotes the payout, the FlowRun completes) | delegated writer (slice 2) | [x] | d8fdf2c |
+| T5 | 2 | e2e: create a Night Job campaign, see the disclaimer and introduction, complete the mandatory crew step; `make e2e` | delegated writer (slice 2) | [x] | 890d7ab |
+| T6a | 3 | Slice 2 review fix: `NightJobPresetFlowTest` asserts the Chase `wheel` pick candidates Play computes (`Campaign::pickCandidates`) instead of building them in the test | | [ ] | |
+| T6 | 3 | Playtest as a novice in Chrome: every phase, the alarm rising, a switch, the escape, Payday; findings logged below | parent (browser) | [x] | — |
+| T7 | 3 | Fix playtest findings N1–N6 (preset wording, form label and game system description); N8–N13 stay in the findings as backlog | | [ ] | |
 | T8 | 3 | Wrap-up: roadmap 9b done, M2 complete, flow example 2 notes, feature doc closed | | [ ] | |
 
 ## Playtest findings
 
-(T6)
+Played on 2026-10-13 in Chrome by Claude (campaign "Playtest heist", `night-job` v1, the e2e player): the form (disclaimer, license link, introduction), the job (crew of three with a nomad driver, briefing rolls filling client, target and payout, the plan), legwork (Exploration with a fate question and an edge, the "word gets around" world turn), the heist (two Infiltrations raising the alarm to 2, an edge spent, a complication, the alarm set to 4 by hand, the "Security is on edge" opening, a Netrun, the guards world turn forcing a Firefight, a Grab ending the phase), the escape (Getaway switched to Chase at alarm 4, Dusty picked as driver), Payday and the double-cross roll; the Flow completed. Every control-flow feature behaved as designed.
+
+| ID | Finding | Severity | Plan |
+|---|---|---|---|
+| N1 | Payday reads "Was Vex loops the cameras, Brick and I walk in as cleaners, Dusty waits in the van. worth it?": the prompt quotes the whole `plan` answer mid-sentence | High | Fix (T7): preset wording |
+| N2 | The introduction says "Use Move on when you are ready to leave a phase", but the button reads "End the <phase> phase" (renamed in `preset-mythic-flow` P3) | Medium | Fix (T7): preset wording |
+| N3 | The crew steps' tip "A name and a skill is enough" makes the whole answer the NPC name ("Vex, a netrunner who owes me a favor." in the cast and NPC list) | Medium | Fix (T7): tips ask for a name only, details in a note |
+| N4 | The client step's tip says "Roll, or pick an entry you like. Rename the client if you want", but the step offers only Roll and Skip and a filled fact has only Refill | Medium | Fix (T7): tips match the controls (check every table step) |
+| N5 | The heist opening "Security is on edge… Guards walk faster, doors are watched" also opens a Firefight that has already started | Low | Fix (T7): neutral wording that fits every heist Scene Type |
+| N6 | The game system picker is labelled "GameSystem" (a code term) and the game system description ("…for players new to solo play.") is not shown in the form | Low | Fix (T7): label "Game system", description under the picker |
+| N7 | `make presets` warns that the guards world turn (`nextScene firefight`) does not lower the alarm. At alarm 4–5 every heist scene risks a forced Firefight | — | Accepted: rising pressure is the design; Grab or lockdown ends the phase |
+| N8 | Tracker effects are silent: a "No" that raises the alarm, an edge spent, the Getaway → Chase switch show no journal line, only the tracker panel changes | Medium | Backlog (engine: log effect outcomes) |
+| N9 | After End scene the guide keeps the previous scene's tips and "So far" entries; world-turn results appear in "So far" of the next phase | Low | Backlog |
+| N10 | The guide's "Next" previews branch-only steps ("Next: Double-cross! Who sold you out?" before the roll) and still reads "Next: Next scene: Briefing" | Low | Backlog |
+| N11 | World turns take a scene number: the Firefight was "Scene 9", and a skipped world turn leaves a gap (no scene 10) | Low | Backlog |
+| N12 | The Netrun "Which Black ICE is it?" step shows even when the floor rolled no Black ICE; losing the Chase has no consequence | Low | Backlog (needs conditions on table results) |
+| N13 | The new campaign form sits below the whole campaign list | Low | Backlog |
 
 ## Progress
 
@@ -106,13 +123,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: T3a done. The Play translator enforces the credits limits (notice 2000, license 200, url 500) and a schema version 1 release is pinned to yield no credits (the version 1 path never read the key). `CreditsNotice` falls back to the URL as link text for an empty or blank license. RED: 3 translator limit cases and 2 `CreditsNotice` cases failed before the change; the version 1 test passed on first run (it pins existing behavior). GREEN: Play translator suite 143 OK, `CreditsNotice` Vitest 5 OK. Route: delegated writer.
 - 2026-10-13: T4 done. `backend/presets/night-job.json` (schema version 2, neon theme, credits, flow `heist` with introduction, tips on every Scene Type, 9 original tables, a `fate` likelihood oracle; `rumors` is left out of the flow for free play). The Crew Scene Type gained a `wheelman` step (crew + nomad) so the Chase pick finds a driver. `PresetsTest` and `NightJobPresetFlowTest` (13 tests). Tests were written after the preset, so no RED run; the preset is data and its tests pin the contract. GREEN: `NightJobPresetFlowTest` 13 OK, `PresetsTest` 3 OK. Route: delegated writer.
 - 2026-10-13: T5 done. `play-night-job.spec.ts`: Night Job campaign, the disclaimer and license link in the form and on the campaign page, the Flow introduction in the form, then the mandatory crew step in the focus view (the Flow opens in focus, so the step lives in the "Focus mode" region, not "Guided play"). No existing e2e or Behat test broke. The spec failed once (wrong region) before the fix; GREEN: `make e2e` 14 passed. Route: delegated writer.
+- 2026-10-13: T6 done. Played Night Job end to end in Chrome as a novice; the Flow completed and every control-flow feature behaved as designed. 13 findings logged (N1–N13): N1–N6 fixed in T7, N7 accepted, N8–N13 backlog. Route: parent (browser).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-3ccd1db0276e0321` | 540408c, 8baae56, 3f530df | approved, acknowledged. WARNING: Play translator re-check skips the credits length limits and reads `credits` on a schema version 1 release; SUGGESTION: empty `license` with a `url` renders a link with no text. Fixed in slice 2 (T3a) | #93 (merged) |
+| 2 | `review-5a2ca9c8e26f5867` | 7892be3, d8fdf2c, 890d7ab | approved, acknowledged. WARNING: `NightJobPresetFlowTest` builds the Chase `wheel` pick candidates in test code instead of asserting Play's computed candidates (`Campaign::pickCandidates`, all-of tag semantics). Fixed in slice 3 (T6a) | #94 (merged) |
 
 ## Next step
 
-Slice 2 (T3a, T4, T5) on `feat/preset-guided-sample-2-preset`: writer builds it, then the parent runs the native review, pushes and opens the PR.
+Slice 3 on `fix/preset-guided-sample-3-playtest`: the parent playtests Night Job in Chrome (T6) and logs findings; then one writer does T6a, T7 (blocking findings) and T8; native review, push, PR closing #92.

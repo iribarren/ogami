@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 const player = 'e2e-player@example.test'
 const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 
-test('a solo player sees the disclaimer and the introduction, then completes the crew step', async ({
+test('a solo player sees the disclaimer and the introduction, creates their Character, then completes the crew step', async ({
   page,
 }) => {
   await page.goto('/login')
@@ -39,6 +39,18 @@ test('a solo player sees the disclaimer and the introduction, then completes the
   await page.getByRole('button', { name: 'Play Crew' }).click()
   // The Flow opens in the focus view, which holds the current step.
   const guide = page.getByRole('region', { name: 'Focus mode' })
+
+  // Session Zero starts with the player's own Character: no Character exists yet, so the step shows the sheet.
+  const you = guide.getByRole('region', { name: 'Current step: Who are you?' })
+  await expect(you.getByRole('group', { name: 'Stats' })).toBeVisible()
+  await you.getByLabel('Name').fill('Vi')
+  await you.getByLabel('Role').fill('Netrunner')
+  await you.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('region', { name: 'Characters' })).toContainText('Vi')
+  // The Character joins the party and the scene's cast.
+  await expect(page.getByRole('group', { name: 'Party' })).toContainText('Vi')
+  await expect(guide.getByRole('group', { name: /^Cast of session/ })).toContainText('Vi')
+
   const first = guide.getByRole('region', { name: 'Current step: Who is your first crew member?' })
   await first.getByLabel('Your answer').fill('Ada, a netrunner')
   await first.getByRole('button', { name: 'Record' }).click()

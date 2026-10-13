@@ -138,7 +138,7 @@ final class CampaignSessionsType extends JsonType
         } catch (InvalidSceneKind) {
             throw self::malformed('hook', SceneKind::Hook === $kind ? 'set on a hook scene' : 'null on a scene of play');
         } catch (InvalidSceneCast $exception) {
-            throw self::malformed('cast', 'a list of distinct NPC ids ('.$exception->getMessage().')');
+            throw 'characters' === $exception->field ? self::malformed('characters', 'a list of distinct Character ids ('.$exception->getMessage().')') : self::malformed('cast', 'a list of distinct NPC ids ('.$exception->getMessage().')');
         }
     }
 

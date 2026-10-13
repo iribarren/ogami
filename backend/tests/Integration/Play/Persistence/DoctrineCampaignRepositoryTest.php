@@ -427,7 +427,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'characters that are not a list' => ['"characters": "c-1"', 'Stored campaign sessions: "characters" must be a list.'];
         yield 'characters with a non-string id' => ['"characters": ["c-1", 7]', 'Stored campaign sessions: "characters" must be a list of Character id strings.'];
         yield 'characters with a blank id' => ['"characters": ["c-1", " "]', 'Stored campaign sessions: "characters" must be a list of non-blank Character ids.'];
-        yield 'characters with a Character twice' => ['"characters": ["c-1", "c-1"]', 'Stored campaign sessions: "cast" must be a list of distinct NPC ids (Character "c-1" is in the cast twice.).'];
+        yield 'characters with a Character twice' => ['"characters": ["c-1", "c-1"]', 'Stored campaign sessions: "characters" must be a list of distinct Character ids (Character "c-1" is in the cast twice.).'];
         yield 'hook name without a kind' => ['"hook": "worldTurn"', 'Stored campaign sessions: "hook" must be null on a scene of play.'];
         yield 'unknown hook' => ['"kind": "hook", "hook": "dawn"', 'Stored campaign sessions: "hook" must be one of "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
     }

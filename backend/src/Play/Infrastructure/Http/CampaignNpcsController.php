@@ -7,16 +7,21 @@ namespace App\Play\Infrastructure\Http;
 use App\Identity\Application\AuthenticatedUser;
 use App\Play\Application\AddNpc;
 use App\Play\Application\CampaignNotFound;
+use App\Play\Application\CharacterIdGenerator;
+use App\Play\Application\CharacterView;
 use App\Play\Application\CloseNpc;
 use App\Play\Application\EditNpc;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\NpcIdGenerator;
 use App\Play\Application\NpcView;
+use App\Play\Application\PromoteNpc;
 use App\Play\Application\ReopenNpc;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
+use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -35,7 +40,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * The NPCs of a solo player's campaigns: add, edit, close and reopen (security.yaml restricts these
+ * The NPCs of a solo player's campaigns: add, edit, close, reopen and promote (security.yaml restricts these
  * routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly like an unknown
  * one (the campaign is checked first), and so is an NPC id the campaign does not hold, such as one
  * that is not a UUID. The Tags come from the campaign's pinned release.
@@ -52,6 +57,7 @@ final readonly class CampaignNpcsController
         private CommandBus $commandBus,
         private QueryBus $queryBus,
         private NpcIdGenerator $npcIds,
+        private CharacterIdGenerator $characterIds,
     ) {
     }
 
@@ -127,7 +133,7 @@ final readonly class CampaignNpcsController
 
     #[Route('/api/campaigns/{campaignId}/npcs/{npcId}/close', name: 'api_campaigns_npcs_close', methods: ['POST'])]
     #[OA\Post(operationId: 'closeNpc', summary: 'Close an NPC of one of my campaigns: flows no longer pick or count it')]
-    #[OA\Response(response: 200, description: 'The closed NPC. Closing a closed one changes nothing.', content: new OA\JsonContent(ref: new Model(type: NpcResponse::class)))]
+    #[OA\Response(response: 200, description: 'The closed NPC. Closing a closed one, or a promoted one, changes nothing.', content: new OA\JsonContent(ref: new Model(type: NpcResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it holds no NPC with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
@@ -153,20 +159,51 @@ final readonly class CampaignNpcsController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it holds no NPC with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The NPC was promoted to a Character and stays closed, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function reopen(string $campaignId, string $npcId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         try {
             $this->commandBus->dispatch(new ReopenNpc($campaignId, $user->id(), $npcId));
         } catch (CampaignNotFound|UnknownNpc $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (CampaignModifiedConcurrently $exception) {
+        } catch (CampaignModifiedConcurrently|NpcAlreadyPromoted $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InvalidNpc) {
             return $this->blankNpcNotFound($npcId);
         }
 
         return $this->npc($campaignId, $npcId, $user, Response::HTTP_OK);
+    }
+
+    #[Route('/api/campaigns/{campaignId}/npcs/{npcId}/promote', name: 'api_campaigns_npcs_promote', methods: ['POST'])]
+    #[OA\Post(operationId: 'promoteNpc', summary: 'Promote an NPC of one of my campaigns to a Character; the NPC is closed for good')]
+    #[OA\Response(response: 201, description: 'The new Character: the NPC\'s name, Tags and free tags, the default of every sheet field, and the NPC as its origin. Any request body is ignored.', content: new OA\JsonContent(ref: new Model(type: CharacterResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it holds no NPC with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The NPC was promoted already, the campaign already holds 100 Characters, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A Tag of the NPC is not in the pinned release.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function promote(string $campaignId, string $npcId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $characterId = $this->characterIds->generate()->toString();
+        try {
+            $this->commandBus->dispatch(new PromoteNpc($campaignId, $user->id(), $npcId, $characterId));
+        } catch (CampaignNotFound|UnknownNpc $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (NpcAlreadyPromoted|CampaignLimitReached|CharacterAlreadyExists|CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (InvalidNpc) {
+            return $this->blankNpcNotFound($npcId);
+        } catch (UnknownReleaseTag $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
+        }
+
+        $characters = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->characters;
+        $character = array_find($characters, static fn (CharacterView $character): bool => $character->id === $characterId) ?? throw new \LogicException('The Character was just saved.');
+
+        return new JsonResponse(CharacterResponse::fromView($character), Response::HTTP_CREATED);
     }
 
     /**

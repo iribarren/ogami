@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Persistence\Doctrine;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\ItemStatus;
 use App\Play\Domain\Campaign\Lists\Npc;
@@ -18,8 +20,9 @@ use Doctrine\DBAL\Types\JsonType;
  * Maps a campaign's NPCs to one JSON column (JSONB with the "jsonb" option). They are immutable
  * values identified by their id within the campaign, always loaded and saved with it (ADR 0007).
  *
- * Stored shape: [{id, name, agenda, tags, freeTags, weight, status}], in creation order; `status` is
- * "open" or "closed". The column defaults to an empty list, which is what a campaign stored before
+ * Stored shape: [{id, name, agenda, tags, freeTags, weight, status, promotedTo}], in creation order;
+ * `status` is "open" or "closed"; `promotedTo` is the id of the Character the NPC was promoted to, or
+ * null (rows stored before promotion lack the key, which reads as null). The column defaults to an empty list, which is what a campaign stored before
  * NPCs reads as. Reading checks the shape, the 500 limit, distinct ids and the rules Npc::of() holds (not whether the Tags
  * are in the release, which only the pinned release can tell); stored data that breaks either
  * fails closed with a clear error instead of loading a campaign in a state the domain refuses.
@@ -52,6 +55,7 @@ final class CampaignNpcsType extends JsonType
                 'freeTags' => $npc->freeTags(),
                 'weight' => $npc->weight(),
                 'status' => $npc->status()->value,
+                'promotedTo' => $npc->promotedTo()?->toString(),
             ];
         }
 
@@ -103,8 +107,9 @@ final class CampaignNpcsType extends JsonType
                 $this->strings($data, 'freeTags'),
                 $this->int($data, 'weight'),
                 ItemStatus::tryFrom($status) ?? throw $this->malformed('status', 'one of "open", "closed"'),
+                null === ($promotedTo = $this->optionalString($data, 'promotedTo')) ? null : CharacterId::fromString($promotedTo),
             );
-        } catch (InvalidNpc $exception) {
+        } catch (InvalidNpc|InvalidCharacter $exception) {
             throw ValueNotConvertible::new(Npc::class, self::NAME, 'Stored campaign npcs: '.$exception->getMessage());
         }
     }

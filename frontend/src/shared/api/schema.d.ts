@@ -345,6 +345,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/npcs/{npcId}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promote an NPC of one of my campaigns to a Character; the NPC is closed for good */
+        post: operations["promoteNpc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/threads": {
         parameters: {
             query?: never;
@@ -1390,6 +1407,11 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "closed";
+            /**
+             * Format: uuid
+             * @description The id of the Character this NPC was promoted to; null when it was not. A promoted NPC is closed for good.
+             */
+            promotedTo: string | null;
         };
         ThreadResponse: {
             /** Format: uuid */
@@ -3631,7 +3653,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The closed NPC. Closing a closed one changes nothing. */
+            /** @description The closed NPC. Closing a closed one, or a promoted one, changes nothing. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3726,8 +3748,76 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request changed the campaign meanwhile. */
+            /** @description The NPC was promoted to a Character and stays closed, or another request changed the campaign meanwhile. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    promoteNpc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                npcId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new Character: the NPC's name, Tags and free tags, the default of every sheet field, and the NPC as its origin. Any request body is ignored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no NPC with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The NPC was promoted already, the campaign already holds 100 Characters, or another request changed it meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A Tag of the NPC is not in the pinned release. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -10,6 +10,7 @@ use App\Play\Application\CharacterIdGenerator;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Infrastructure\Http\CampaignCharactersController;
 use App\Play\Infrastructure\Http\CampaignController;
+use App\Play\Infrastructure\Http\CampaignNpcsController;
 use App\Play\Infrastructure\Http\CharacterResponse;
 use App\Play\Infrastructure\Http\PinnedReleaseResponse;
 use App\Play\Infrastructure\Http\SheetFieldResponse;
@@ -34,6 +35,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 #[CoversClass(CampaignCharactersController::class)]
 #[CoversClass(CampaignController::class)]
+#[CoversClass(CampaignNpcsController::class)]
 #[CoversClass(CharacterResponse::class)]
 #[CoversClass(PinnedReleaseResponse::class)]
 #[CoversClass(SheetFieldResponse::class)]
@@ -280,9 +282,10 @@ final class CampaignCharactersApiTest extends WebTestCase
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
         $id = $this->createCampaign();
-        $this->addCharacter($id, ['name' => 'Vi']);
+        $existing = $this->addCharacter($id, ['name' => 'Vi']);
 
-        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' '] as $characterId) {
+        // Ids are opaque strings compared as given: the same id in another letter case is another id.
+        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' ', strtoupper($existing)] as $characterId) {
             $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/characters/%s', $id, rawurlencode($characterId)), ['name' => 'Brann']);
 
             self::assertResponseStatusCodeSame(404);
@@ -400,6 +403,181 @@ final class CampaignCharactersApiTest extends WebTestCase
         }
     }
 
+    #[Test]
+    public function promotingAnNpcMakesACharacterOfItAndClosesTheNpc(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira', 'agenda' => 'Wants the ledger', 'tags' => ['crew'], 'freeTags' => ['Fence'], 'weight' => 3]);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId), ['ignored' => true]);
+
+        self::assertResponseStatusCodeSame(201);
+        $character = $this->json();
+        self::assertIsString($character['id'] ?? null);
+        self::assertMatchesRegularExpression(self::UUID_PATTERN, $character['id']);
+        self::assertSame(['name' => 'Mira', 'tags' => ['crew'], 'freeTags' => ['Fence'], 'values' => self::DEFAULT_VALUES, 'promotedFrom' => $npcId], array_diff_key($character, ['id' => 1]));
+        self::assertSame([$character], $this->campaignCharacters($id));
+        self::assertSame([['id' => $npcId, 'name' => 'Mira', 'agenda' => 'Wants the ledger', 'tags' => ['crew'], 'freeTags' => ['Fence'], 'weight' => 3, 'status' => 'closed', 'promotedTo' => $character['id']]], $this->campaignNpcs($id));
+    }
+
+    #[Test]
+    public function aClosedNpcCanBePromoted(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/close', $id, $npcId));
+        self::assertResponseStatusCodeSame(200);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame($this->json()['id'] ?? null, $this->campaignNpcs($id)[0]['promotedTo'] ?? null);
+    }
+
+    #[Test]
+    public function aPromotedNpcIsNotPromotedAgainNorReopenedButCanBeClosedAndEdited(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+        self::assertResponseStatusCodeSame(201);
+        $promoted = $this->campaignNpcs($id);
+        $characters = $this->campaignCharacters($id);
+
+        foreach (['promote', 'reopen'] as $action) {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/%s', $id, $npcId, $action));
+
+            self::assertResponseStatusCodeSame(409);
+            self::assertSame(['error' => ['promote' => \sprintf('NPC "%s" was already promoted to a Character.', $npcId), 'reopen' => \sprintf('NPC "%s" was promoted to a Character and stays closed.', $npcId)][$action]], $this->json());
+            self::assertSame([$promoted, $characters], [$this->campaignNpcs($id), $this->campaignCharacters($id)]);
+        }
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/close', $id, $npcId));
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame($promoted[0], $this->json());
+
+        $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/npcs/%s', $id, $npcId), ['name' => 'Mira Vane']);
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['Mira Vane', 'closed', $promoted[0]['promotedTo']], [$this->json()['name'] ?? null, $this->json()['status'] ?? null, $this->json()['promotedTo'] ?? null]);
+    }
+
+    #[Test]
+    public function promotingAnUnknownMalformedOrForeignNpcIsNotFound(): void
+    {
+        $this->signIn('bob@example.com', ['SOLO_PLAYER']);
+        $bobs = $this->createCampaign();
+        $bobsNpc = $this->addNpc($bobs, ['name' => 'Bob']);
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+
+        foreach ([self::UNKNOWN_ID, 'not-a-uuid', ' '] as $npcId) {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, rawurlencode($npcId)));
+
+            self::assertResponseStatusCodeSame(404);
+            self::assertSame(['error' => \sprintf('NPC "%s" not found.', $npcId)], $this->json());
+        }
+
+        foreach ([[$bobs, $bobsNpc], [self::UNKNOWN_ID, $bobsNpc]] as [$campaignId, $npcId]) {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $campaignId, $npcId));
+
+            self::assertResponseStatusCodeSame(404);
+            self::assertSame(['error' => \sprintf('Campaign "%s" not found.', $campaignId)], $this->json());
+        }
+
+        self::assertSame([], $this->campaignCharacters($id));
+        self::assertSame(['open', null], $this->connection()->fetchNumeric("SELECT npcs->0->>'status', npcs->0->>'promotedTo' FROM play_campaign WHERE id = ?", [$bobs]));
+    }
+
+    #[Test]
+    public function aCampaignAtTheLimitRefusesAPromotionAndTheNpcStaysOpen(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $characters = array_map(static fn (int $i): array => ['id' => \sprintf('c-%d', $i), 'name' => 'Character '.$i, 'tags' => [], 'freeTags' => [], 'values' => [], 'promotedFrom' => null], range(1, 100));
+        $this->connection()->executeStatement('UPDATE play_campaign SET characters = ? WHERE id = ?', [json_encode($characters, \JSON_THROW_ON_ERROR), $id]);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'A campaign holds at most 100 Characters.'], $this->json());
+        self::assertSame(['open', null], [$this->campaignNpcs($id)[0]['status'] ?? null, $this->campaignNpcs($id)[0]['promotedTo'] ?? null]);
+        self::assertCount(100, $this->campaignCharacters($id));
+    }
+
+    #[Test]
+    public function aGeneratedCharacterIdThatIsAlreadyTakenIsAConflictWhenPromoting(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        // Set before the first NPC request: the controller takes the generator when it is built.
+        self::getContainer()->set(CharacterIdGenerator::class, new readonly class implements CharacterIdGenerator {
+            public function generate(): CharacterId
+            {
+                return CharacterId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001');
+            }
+        });
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $this->addCharacter($id, ['name' => 'Vi']);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'Character "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001" already exists.'], $this->json());
+        self::assertSame(['open', ['Vi']], [$this->campaignNpcs($id)[0]['status'] ?? null, array_column($this->campaignCharacters($id), 'name')]);
+    }
+
+    #[Test]
+    public function aPromotionOnACampaignSavedByAnotherRequestMeanwhileIsAConflict(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+
+        $this->requestWhileAnotherRequestSaves($id, 'POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId), []);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => \sprintf('Campaign "%s" was changed by another request. Reload it and try again.', $id)], $this->json());
+        self::assertSame(['open', []], [$this->campaignNpcs($id)[0]['status'] ?? null, $this->campaignCharacters($id)]);
+    }
+
+    #[Test]
+    #[DataProvider('unreadableReleases')]
+    public function aPromotionOnAPinnedReleaseThatCannotBeReadIsAServerErrorWithoutInternals(string $breakTheRelease): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        $this->connection()->executeStatement($breakTheRelease);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(500);
+        self::assertSame(['error' => 'The GameSystem release this campaign plays can no longer be read.'], $this->json());
+        self::assertSame(0, $this->connection()->fetchOne('SELECT jsonb_array_length(characters) FROM play_campaign WHERE id = ?', [$id]));
+    }
+
+    #[Test]
+    public function promotingIsForSoloPlayersOnly(): void
+    {
+        $uri = \sprintf('/api/campaigns/%s/npcs/%s/promote', self::UNKNOWN_ID, self::UNKNOWN_ID);
+
+        $this->client->jsonRequest('POST', $uri);
+        self::assertResponseStatusCodeSame(401);
+
+        foreach (['manager@example.com' => ['GAME_MANAGER'], 'owner@example.com' => ['OWNER']] as $email => $roles) {
+            $this->signIn($email, $roles);
+
+            $this->client->jsonRequest('POST', $uri);
+
+            self::assertResponseStatusCodeSame(403);
+            self::assertSame(['error' => 'Access denied.'], $this->json());
+        }
+    }
+
     /**
      * @param array<string, mixed> $body
      */
@@ -439,6 +617,34 @@ final class CampaignCharactersApiTest extends WebTestCase
         $list = array_values($characters);
 
         return $list;
+    }
+
+    /**
+     * @return list<array<string, mixed>> the NPCs of the campaign as GET /api/campaigns/{id} shows them
+     */
+    private function campaignNpcs(string $id): array
+    {
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        $npcs = $this->json()['npcs'] ?? null;
+        self::assertIsArray($npcs);
+
+        /** @var list<array<string, mixed>> $list */
+        $list = array_values($npcs);
+
+        return $list;
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    private function addNpc(string $campaignId, array $body): string
+    {
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs', $campaignId), $body);
+        self::assertResponseStatusCodeSame(201);
+        $id = $this->json()['id'] ?? null;
+        self::assertIsString($id);
+
+        return $id;
     }
 
     /**

@@ -7,7 +7,7 @@ namespace App\Play\Application;
 use App\Play\Domain\Campaign\Lists\Npc;
 
 /**
- * An NPC of a campaign: its Agenda, release Tag keys, free tags, weight and status ("open" or "closed").
+ * An NPC of a campaign: its Agenda, release Tag keys, free tags, weight and status ("open" or "closed"), and the id of the Character it was promoted to, if any.
  */
 final readonly class NpcView
 {
@@ -23,11 +23,12 @@ final readonly class NpcView
         public array $freeTags,
         public int $weight,
         public string $status,
+        public ?string $promotedTo,
     ) {
     }
 
     public static function of(Npc $npc): self
     {
-        return new self($npc->id()->toString(), $npc->name(), $npc->agenda(), $npc->tags(), $npc->freeTags(), $npc->weight(), $npc->status()->value);
+        return new self($npc->id()->toString(), $npc->name(), $npc->agenda(), $npc->tags(), $npc->freeTags(), $npc->weight(), $npc->status()->value, $npc->promotedTo()?->toString());
     }
 }

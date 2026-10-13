@@ -36,10 +36,12 @@ use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\GeneratedItemId;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidPromotion;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
 use App\Play\Domain\Campaign\Lists\ItemRules;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
+use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
@@ -195,6 +197,7 @@ final class Campaign
      * @throws UnknownNpc             when a link or subject names an NPC the campaign does not hold
      * @throws UnknownThread          when a link or subject names a Thread the campaign does not hold
      * @throws UnknownFact            when a link names a fact the campaign does not hold
+     * @throws InvalidPromotion       when a promotion is named by one side only
      */
     public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = [], array $facts = [], array $characters = []): self
     {
@@ -588,7 +591,8 @@ final class Campaign
     /**
      * Reopens the Npc. Reopening an open one changes nothing.
      *
-     * @throws UnknownNpc when the campaign holds no Npc with this id
+     * @throws UnknownNpc         when the campaign holds no Npc with this id
+     * @throws NpcAlreadyPromoted when the Npc was promoted to a Character, which closes it for good
      */
     public function reopenNpc(NpcId $id): void
     {
@@ -596,6 +600,39 @@ final class Campaign
         if (!$this->npcs[$index]->isOpen()) {
             $this->npcs = $this->replaced($this->npcs, $index, $this->npcs[$index]->reopened());
         }
+    }
+
+    /**
+     * Promotes the Npc to a new Character: its name, Tags and free tags, the default of every
+     * field of the pinned release's sheet, and the Npc recorded as its origin. The Npc, open or
+     * closed, ends closed and records the Character. All or nothing.
+     *
+     * @throws UnknownNpc             when the campaign holds no Npc with this id
+     * @throws NpcAlreadyPromoted     when the Npc was promoted already
+     * @throws CampaignLimitReached   when the campaign already holds 100 Characters
+     * @throws CharacterAlreadyExists when the campaign holds a Character with this id
+     * @throws UnknownReleaseTag      when a Tag key is not in the pinned release
+     */
+    public function promoteNpc(NpcId $npcId, CharacterId $characterId, GameSystemSnapshot $release): Character
+    {
+        $this->assertPinned($release);
+        $index = $this->npcIndex($npcId);
+        $promoted = $this->npcs[$index]->promoted($characterId);
+        if (\count($this->characters) >= self::MAX_CHARACTERS) {
+            throw CampaignLimitReached::characters(self::MAX_CHARACTERS);
+        }
+
+        if ($this->character($characterId) instanceof Character) {
+            throw CharacterAlreadyExists::withId($characterId);
+        }
+
+        $npc = $this->npcs[$index];
+        $character = Character::of($characterId, $npc->name(), $npc->tags(), $npc->freeTags(), CharacterValues::resolve($release->sheet(), []), $npcId);
+        ItemRules::assertInRelease($character->tags(), $release);
+        $this->npcs = $this->replaced($this->npcs, $index, $promoted);
+        $this->characters = [...$this->characters, $character];
+
+        return $character;
     }
 
     public function npc(NpcId $id): ?Npc
@@ -1381,7 +1418,8 @@ final class Campaign
 
     /**
      * The facts hold together: at most 500, distinct ids, one fact per slot, and every link and
-     * subject names an NPC, Thread or fact of this campaign. Called by reconstitute() and, for a
+     * subject names an NPC, Thread or fact of this campaign, and every promotion is named by both
+     * its NPC and its Character (see assertPromotionsConsistent()). Called by reconstitute() and, for a
      * stored row, after Doctrine loads it (the facts column cannot see the NPCs and Threads).
      *
      * @throws FactAlreadyExists    when two facts share an id
@@ -1390,9 +1428,12 @@ final class Campaign
      * @throws UnknownNpc           when a link or subject names an NPC the campaign does not hold
      * @throws UnknownThread        when a link or subject names a Thread the campaign does not hold
      * @throws UnknownFact          when a link names a fact the campaign does not hold
+     * @throws InvalidPromotion     when a promotion is named by one side only
      */
     public function assertFactsConsistent(): void
     {
+        $this->assertPromotionsConsistent();
+
         if (\count($this->facts) > self::MAX_FACTS) {
             throw CampaignLimitReached::facts(self::MAX_FACTS);
         }
@@ -1418,6 +1459,29 @@ final class Campaign
         foreach ($this->facts as $fact) {
             foreach ([...$fact->links(), ...(null === $fact->subject() ? [] : [$fact->subject()])] as $link) {
                 $this->assertLinkResolves($link);
+            }
+        }
+    }
+
+    /**
+     * A promoted NPC names a Character of the campaign that names it back, and a Character that
+     * names an NPC is named back by an NPC of the campaign.
+     *
+     * @throws InvalidPromotion when a promotion is named by one side only
+     */
+    private function assertPromotionsConsistent(): void
+    {
+        foreach ($this->npcs as $npc) {
+            $characterId = $npc->promotedTo();
+            if ($characterId instanceof CharacterId && !($this->character($characterId)?->promotedFrom()?->equals($npc->id()) ?? false)) {
+                throw InvalidPromotion::because(\sprintf('NPC "%s" was promoted to Character "%s", which does not come from it.', $npc->id()->toString(), $characterId->toString()));
+            }
+        }
+
+        foreach ($this->characters as $character) {
+            $npcId = $character->promotedFrom();
+            if ($npcId instanceof NpcId && !($this->npc($npcId)?->promotedTo()?->equals($character->id()) ?? false)) {
+                throw InvalidPromotion::because(\sprintf('Character "%s" comes from NPC "%s", which was not promoted to it.', $character->id()->toString(), $npcId->toString()));
             }
         }
     }

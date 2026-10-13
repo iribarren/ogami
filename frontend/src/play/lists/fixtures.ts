@@ -18,6 +18,7 @@ export const miraNpc: Npc = {
   freeTags: ['Fence'],
   weight: 2,
   status: 'open',
+  promotedTo: null,
 }
 
 export const brannNpc: Npc = {
@@ -28,6 +29,7 @@ export const brannNpc: Npc = {
   freeTags: [],
   weight: 1,
   status: 'open',
+  promotedTo: null,
 }
 
 export const oldGuardNpc: Npc = {
@@ -38,6 +40,7 @@ export const oldGuardNpc: Npc = {
   freeTags: [],
   weight: 1,
   status: 'closed',
+  promotedTo: null,
 }
 
 export const vaultThread: Thread = {

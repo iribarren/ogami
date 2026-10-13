@@ -1737,7 +1737,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The closed NPC. Closing a closed one changes nothing.",
+                        "description": "The closed NPC. Closing a closed one, or a promoted one, changes nothing.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1856,7 +1856,96 @@
                         }
                     },
                     "409": {
-                        "description": "Another request changed the campaign meanwhile.",
+                        "description": "The NPC was promoted to a Character and stays closed, or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/npcs/{npcId}/promote": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Promote an NPC of one of my campaigns to a Character; the NPC is closed for good",
+                "operationId": "promoteNpc",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "npcId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The new Character: the NPC's name, Tags and free tags, the default of every sheet field, and the NPC as its origin. Any request body is ignored.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharacterResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no NPC with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The NPC was promoted already, the campaign already holds 100 Characters, or another request changed it meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A Tag of the NPC is not in the pinned release.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5078,7 +5167,8 @@
                     "tags",
                     "freeTags",
                     "weight",
-                    "status"
+                    "status",
+                    "promotedTo"
                 ],
                 "properties": {
                     "id": {
@@ -5128,6 +5218,12 @@
                             "open",
                             "closed"
                         ]
+                    },
+                    "promotedTo": {
+                        "description": "The id of the Character this NPC was promoted to; null when it was not. A promoted NPC is closed for good.",
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
                     }
                 },
                 "type": "object"

@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * An NPC of a campaign.
  */
-#[OA\Schema(required: ['id', 'name', 'agenda', 'tags', 'freeTags', 'weight', 'status'])]
+#[OA\Schema(required: ['id', 'name', 'agenda', 'tags', 'freeTags', 'weight', 'status', 'promotedTo'])]
 final readonly class NpcResponse
 {
     /**
@@ -32,11 +32,13 @@ final readonly class NpcResponse
         public int $weight,
         #[OA\Property(description: 'A closed NPC is no longer picked or counted.', example: 'open', enum: ['open', 'closed'])]
         public string $status,
+        #[OA\Property(description: 'The id of the Character this NPC was promoted to; null when it was not. A promoted NPC is closed for good.', format: 'uuid', nullable: true)]
+        public ?string $promotedTo,
     ) {
     }
 
     public static function fromView(NpcView $view): self
     {
-        return new self($view->id, $view->name, $view->agenda, $view->tags, $view->freeTags, $view->weight, $view->status);
+        return new self($view->id, $view->name, $view->agenda, $view->tags, $view->freeTags, $view->weight, $view->status, $view->promotedTo);
     }
 }

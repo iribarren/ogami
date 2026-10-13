@@ -33,3 +33,11 @@ Feature: Keep a campaign's Characters
     And my Characters are:
       | name | reflexes | hit points |
       | Vi   | 7        | 40/40      |
+
+  Scenario: I promote an NPC to a Character, which closes the NPC
+    Given I added the NPC "Mira" with the Tag "ally" and the free tag "Fence"
+    When I promote the NPC "Mira" to a Character
+    Then my Characters are:
+      | name | reflexes | hit points |
+      | Mira | 4        | 40/40      |
+    And the NPC "Mira" is closed and became the Character "Mira"

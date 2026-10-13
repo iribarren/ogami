@@ -479,7 +479,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'play_campaign' AND column_name IN ('npcs', 'threads') ORDER BY column_name",
         ));
         self::assertEquals(
-            [['id' => 'npc-1', 'name' => 'Mira', 'agenda' => 'Wants the ledger', 'tags' => ['ally', 'rival'], 'freeTags' => ['Fence'], 'weight' => 3, 'status' => 'open']],
+            [['id' => 'npc-1', 'name' => 'Mira', 'agenda' => 'Wants the ledger', 'tags' => ['ally', 'rival'], 'freeTags' => ['Fence'], 'weight' => 3, 'status' => 'open', 'promotedTo' => null]],
             \array_slice($this->storedList($id->toString(), 'npcs'), 0, 1),
         );
     }
@@ -656,6 +656,71 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function aPromotedNpcAndItsCharacterRoundTripWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithCharacters($id);
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $this->releaseWithSheet());
+        $campaign->promoteNpc(NpcId::fromString('npc-1'), CharacterId::fromString('c-3'), $this->releaseWithSheet());
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame('c-3', $loaded?->npc(NpcId::fromString('npc-1'))?->promotedTo()?->toString());
+        self::assertSame('npc-1', $loaded->character(CharacterId::fromString('c-3'))?->promotedFrom()?->toString());
+        self::assertEquals(
+            [['id' => 'npc-1', 'name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'closed', 'promotedTo' => 'c-3']],
+            $this->storedList($id->toString(), 'npcs'),
+        );
+    }
+
+    #[Test]
+    public function anNpcRowStoredBeforePromotionExistedReadsAsNotPromoted(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $row = ['id' => 'npc-1', 'name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'closed'];
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET npcs = ? WHERE id = ?', [json_encode([$row], \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $npc = $this->repository->ofId($id)?->npc(NpcId::fromString('npc-1'));
+
+        self::assertNotNull($npc);
+        self::assertFalse($npc->isPromoted());
+        self::assertNull($npc->promotedTo());
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function brokenPromotions(): iterable
+    {
+        $npc = static fn (?string $promotedTo): string => json_encode([['id' => 'npc-1', 'name' => 'Mira', 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'closed', 'promotedTo' => $promotedTo]], \JSON_THROW_ON_ERROR);
+        $character = static fn (?string $promotedFrom): string => json_encode([['id' => 'c-1', 'name' => 'Mira', 'tags' => [], 'freeTags' => [], 'values' => [], 'promotedFrom' => $promotedFrom]], \JSON_THROW_ON_ERROR);
+
+        yield 'an NPC promoted to a missing Character' => [$npc('c-1'), '[]', 'NPC "npc-1" was promoted to Character "c-1", which does not come from it.'];
+        yield 'an NPC promoted to a Character from nowhere' => [$npc('c-1'), $character(null), 'NPC "npc-1" was promoted to Character "c-1", which does not come from it.'];
+        yield 'a Character from a missing NPC' => ['[]', $character('npc-1'), 'Character "c-1" comes from NPC "npc-1", which was not promoted to it.'];
+        yield 'a Character from an NPC that was not promoted' => [$npc(null), $character('npc-1'), 'Character "c-1" comes from NPC "npc-1", which was not promoted to it.'];
+    }
+
+    #[Test]
+    #[DataProvider('brokenPromotions')]
+    public function aPromotionNamedByOneSideOnlyFailsToLoad(string $npcs, string $characters, string $error): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET npcs = ?, characters = ? WHERE id = ?', [$npcs, $characters, $id->toString()]);
+        $this->forgetLoaded();
+
+        $this->expectExceptionMessageIsOrContains($error);
+
+        $this->repository->ofId($id);
+    }
+
+    #[Test]
     public function aSaveAfterACharacterChangeRefusesAStaleCopy(): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
@@ -715,6 +780,9 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'npc duplicate tag' => ['npcs', $npc(['tags' => ['ally', 'ally']]), 'Tag "ally" is listed twice.'];
         yield 'npc blank name' => ['npcs', $npc(['name' => ' ']), 'The name must not be blank.'];
         yield 'npc blank id' => ['npcs', $npc(['id' => '']), 'An NPC id must not be blank.'];
+        yield 'npc promoted to a non-string' => ['npcs', $npc(['status' => 'closed', 'promotedTo' => 4]), 'Stored campaign npcs: "promotedTo" must be a string.'];
+        yield 'npc promoted to a blank Character id' => ['npcs', $npc(['status' => 'closed', 'promotedTo' => ' ']), 'A Character id must not be blank.'];
+        yield 'npc promoted but open' => ['npcs', $npc(['promotedTo' => 'c-1']), 'A promoted NPC must be closed.'];
         yield 'npc free tags not strings' => ['npcs', $npc(['freeTags' => 'Fence']), 'Stored campaign npcs: "freeTags" must be a list of strings.'];
         yield 'npc duplicate id' => ['npcs', json_encode([$npcRow([]), $npcRow(['name' => 'Brann'])], \JSON_THROW_ON_ERROR), 'Stored campaign npcs: id "npc-1" is listed twice.'];
         yield 'npcs over the limit' => ['npcs', json_encode(array_map(static fn (int $i): array => ['id' => 'npc-'.$i, 'name' => 'NPC '.$i, 'agenda' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign npcs: at most 500 NPCs are allowed, got 501.'];

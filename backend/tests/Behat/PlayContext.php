@@ -59,6 +59,8 @@ use App\Play\Application\PauseGuidance;
 use App\Play\Application\PauseGuidanceHandler;
 use App\Play\Application\PickSceneType;
 use App\Play\Application\PickSceneTypeHandler;
+use App\Play\Application\PromoteNpc;
+use App\Play\Application\PromoteNpcHandler;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordLikelihoodAnswerHandler;
 use App\Play\Application\RecordNote;
@@ -150,6 +152,7 @@ final class PlayContext implements Context
     private readonly EditNpcHandler $editNpc;
     private readonly AddCharacterHandler $addCharacter;
     private readonly EditCharacterHandler $editCharacter;
+    private readonly PromoteNpcHandler $promoteNpc;
     private readonly CloseNpcHandler $closeNpc;
     private readonly ReopenNpcHandler $reopenNpc;
     private readonly EditCurrentSceneCastHandler $editCurrentSceneCast;
@@ -197,6 +200,7 @@ final class PlayContext implements Context
         $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
         $this->addCharacter = new AddCharacterHandler($owned, $campaigns, $this->releases);
         $this->editCharacter = new EditCharacterHandler($owned, $campaigns, $this->releases);
+        $this->promoteNpc = new PromoteNpcHandler($owned, $campaigns, $this->releases);
         $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
         $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
         $this->editCurrentSceneCast = new EditCurrentSceneCastHandler($owned, $campaigns);
@@ -432,6 +436,22 @@ final class PlayContext implements Context
     {
         $character = $this->character($name);
         $this->attempt(fn () => ($this->editCharacter)(new EditCharacter($this->campaignId(), self::ME, $character->id, $name, [], [], ['reflexes' => $reflexes, 'hp' => ['current' => $current]])));
+    }
+
+    #[When('I promote the NPC :name to a Character')]
+    public function iPromoteTheNpc(string $name): void
+    {
+        $npc = $this->npc($name);
+        $this->attempt(fn () => ($this->promoteNpc)(new PromoteNpc($this->campaignId(), self::ME, $npc->id, 'character-'.++$this->characterCount)));
+    }
+
+    #[Then('the NPC :name is closed and became the Character :character')]
+    public function theNpcBecameTheCharacter(string $name, string $character): void
+    {
+        $npc = $this->npc($name);
+        $promoted = $this->character($character);
+        Assert::assertSame(['closed', $promoted->id], [$npc->status, $npc->promotedTo]);
+        Assert::assertSame($npc->id, $promoted->promotedFrom);
     }
 
     #[Given('I added the NPC :name with the Tag :tag and the free tag :freeTag')]

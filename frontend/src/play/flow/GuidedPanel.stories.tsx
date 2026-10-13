@@ -89,7 +89,7 @@ export const ForcedSceneType: Story = {
   parameters: {
     api: guidedApi(
       atTheScenePick({
-        cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', oracles: [] }],
+        cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', tips: null, oracles: [] }],
         forced: true,
       }),
     ),

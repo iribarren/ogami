@@ -85,7 +85,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Feature doc. ADR 0021 (release credits), vision open question resolved, glossary "Credits", ADR index | delegated writer (slice 1) | [x] | |
 | T2 | 1 | Contract and pipeline: `credits` in `v2.schema.json` and the Version2 validator, agreement fixtures, Studio domain, ACL translator and snapshot, game system list and campaign views, API tests, `make api`, contract doc | delegated writer (slice 1) | [x] | |
-| T3 | 1 | UI: credits notice in `NewCampaignForm` and on the campaign page; flow introduction in `NewCampaignForm` and in guided play; Scene Type tips on the pick card and the current scene; Vitest tests; fixtures | | [ ] | |
+| T3 | 1 | UI: credits notice in `NewCampaignForm` and on the campaign page; flow introduction in `NewCampaignForm` and in guided play; Scene Type tips on the pick card and the current scene; Vitest tests; fixtures | delegated writer (slice 1) | [x] | |
 | T4 | 2 | Preset `night-job` v1 per Design; `PresetsTest` and a `NightJobPresetFlowTest` (validates, passes the ACL, briefing fills the facts, the alarm conditions, the Infiltration → Firefight switch, Grab ends the phase, Getaway → Chase with both pick branches, Payday quotes the payout, the FlowRun completes) | | [ ] | |
 | T5 | 2 | e2e: create a Night Job campaign, see the disclaimer and introduction, complete the mandatory crew step; `make e2e` | | [ ] | |
 | T6 | 3 | Playtest as a novice in Chrome: every phase, the alarm rising, a switch, the escape, Payday; findings logged below | parent (browser) | [ ] | — |
@@ -101,6 +101,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: feature started. Explored the example fixture, the v2 contract (no credits field; introduction and tips exist but Play shows neither) and the RTG Homebrew Content Policy. Credits shape, page references and name decided with the user. Doc and slice plan written; issue #92.
 - 2026-10-13: T1 done. Feature doc committed; ADR 0021 (release credits), ADR index, vision question resolved, glossary "Credits". Docs only, no RED/GREEN. Route: delegated writer.
 - 2026-10-13: T2 done. `gameSystem.credits` in schema v2, Version2 validator, Credits value object, ACL translator, `credits` on the game system list and `pinnedRelease.credits`, `make api`, contract doc. RED: agreement cases (11 failures) and translator test (class missing) before implementation; API and handler tests written after the code, no separate RED run. GREEN: ReleaseSchemaAgreementTest 238 OK, translator credits 12 OK, Play suites 1546 OK. Route: delegated writer.
+- 2026-10-13: T3 done. The API now sends Scene Type `tips` (campaign `sceneTypes` and scene pick cards) and the Flow `introduction` in the game system catalog. `NewCampaignForm` shows the credits notice (license link) and the Flow introduction; campaign page "About this game"; guided play "How this flow works" (open before the first session, folded after) and "Tips for <Scene Type>", tips on the pick card. RED: `CampaignFlowsApiTest` expectations (2 failures) before the API change; Vitest tests written with the code, no separate RED run. GREEN: `src/play` Vitest 237 OK. Route: delegated writer.
 
 ## Reviews
 
@@ -109,4 +110,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 1: T1–T3 by one delegated writer.
+Slice 1 written (T1–T3): parent runs the native review, then pushes and opens the PR.

@@ -7,7 +7,7 @@ namespace App\Play\Application;
 use App\Play\Domain\GameSystem\SceneType;
 
 /**
- * A Scene Type of a release, as the player picks one for a scene, with its oracle shortcuts.
+ * A Scene Type of a release, as the player picks one for a scene, with its oracle shortcuts and tips (null when it has none).
  */
 final readonly class SceneTypeSummaryView
 {
@@ -19,11 +19,12 @@ final readonly class SceneTypeSummaryView
         public string $name,
         public string $purpose,
         public array $oracles,
+        public ?string $tips = null,
     ) {
     }
 
     public static function of(SceneType $sceneType): self
     {
-        return new self($sceneType->key, $sceneType->name, $sceneType->purpose, $sceneType->oracles);
+        return new self($sceneType->key, $sceneType->name, $sceneType->purpose, $sceneType->oracles, $sceneType->tips);
     }
 }

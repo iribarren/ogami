@@ -27,8 +27,14 @@ export const heist: GameSystemSummary = {
   description: 'Plan and pull a job.',
   version: 1,
   flows: [
-    { key: 'quick', name: 'Quick job', description: 'One phase, no hooks.', default: false },
-    { key: 'full', name: 'Full heist', description: null, default: true },
+    {
+      key: 'quick',
+      name: 'Quick job',
+      description: 'One phase, no hooks.',
+      introduction: null,
+      default: false,
+    },
+    { key: 'full', name: 'Full heist', description: null, introduction: null, default: true },
   ],
   credits: null,
 }
@@ -50,6 +56,28 @@ export const sunkenTemple: CampaignSummary = {
   gameSystemName: 'Mythic style',
   releaseVersion: 1,
   createdAt: '2026-09-28T12:00:00+00:00',
+}
+
+/** A fan preset: credits with a license link, and a default Flow with a two-paragraph introduction. */
+export const fanPreset: GameSystemSummary = {
+  gameSystemKey: 'night-job',
+  name: 'Night Job',
+  description: 'A heist one-shot.',
+  version: 1,
+  flows: [
+    {
+      key: 'heist',
+      name: 'Heist',
+      description: null,
+      introduction: 'You play alone.\n\nThe guide asks one thing at a time.',
+      default: true,
+    },
+  ],
+  credits: {
+    notice: 'Night Job is unofficial content and is not approved or endorsed by the publisher.',
+    license: 'Homebrew Content Policy',
+    url: 'https://example.com/homebrew-policy',
+  },
 }
 
 /** `lostMine` as `GET /api/campaigns/{id}` returns it, in session 2, scene 1. */
@@ -258,7 +286,19 @@ export const lostMineWithTypes: Campaign = {
     },
   ],
   sceneTypes: [
-    { key: 'legwork', name: 'Legwork', purpose: 'Learn about the target.', oracles: ['fate'] },
-    { key: 'firefight', name: 'Firefight', purpose: 'Shoot your way out.', oracles: [] },
+    {
+      key: 'legwork',
+      name: 'Legwork',
+      purpose: 'Learn about the target.',
+      tips: null,
+      oracles: ['fate'],
+    },
+    {
+      key: 'firefight',
+      name: 'Firefight',
+      purpose: 'Shoot your way out.',
+      tips: null,
+      oracles: [],
+    },
   ],
 }

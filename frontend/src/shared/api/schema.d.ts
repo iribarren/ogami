@@ -1079,6 +1079,11 @@ export interface components {
             /** @example Learn about the target. */
             purpose: string;
             /**
+             * @description Advice for playing the scene; null when the Scene Type has none.
+             * @example Ask what the contact wants before you ask for anything.
+             */
+            tips: string | null;
+            /**
              * @description The keys of the oracles the Scene Type shortcuts, in shortcut order.
              * @example [
              *       "fate",
@@ -1547,6 +1552,8 @@ export interface components {
             name: string;
             /** @description Null when the Flow has none. */
             description: string | null;
+            /** @description A longer text that orients a new player; null when the Flow has none. */
+            introduction: string | null;
             /** @description Whether this is the release's default Flow (at most one is), to preselect. */
             default: boolean;
         };

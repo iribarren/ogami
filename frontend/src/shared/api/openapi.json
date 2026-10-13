@@ -4331,6 +4331,7 @@
                     "key",
                     "name",
                     "purpose",
+                    "tips",
                     "oracles"
                 ],
                 "properties": {
@@ -4345,6 +4346,12 @@
                     "purpose": {
                         "type": "string",
                         "example": "Learn about the target."
+                    },
+                    "tips": {
+                        "description": "Advice for playing the scene; null when the Scene Type has none.",
+                        "type": "string",
+                        "example": "Ask what the contact wants before you ask for anything.",
+                        "nullable": true
                     },
                     "oracles": {
                         "description": "The keys of the oracles the Scene Type shortcuts, in shortcut order.",
@@ -5258,6 +5265,7 @@
                     "key",
                     "name",
                     "description",
+                    "introduction",
                     "default"
                 ],
                 "properties": {
@@ -5272,6 +5280,11 @@
                     },
                     "description": {
                         "description": "Null when the Flow has none.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "introduction": {
+                        "description": "A longer text that orients a new player; null when the Flow has none.",
                         "type": "string",
                         "nullable": true
                     },

@@ -7,6 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { atStep, guided, promptStep } from '../flow/fixtures'
 import { lostMineJournal, recordedEntry } from '../journal/fixtures'
 import {
+  fanPreset,
   freeJournal,
   lostMine,
   lostMineCampaign,
@@ -81,6 +82,28 @@ describe('the Play screen', () => {
       'href',
       '/play',
     )
+  })
+
+  it('shows the credits of the pinned release in an About this game area', async () => {
+    const campaign: Campaign = {
+      ...lostMineCampaign,
+      pinnedRelease: { ...lostMineCampaign.pinnedRelease, credits: fanPreset.credits },
+    }
+    renderPlayScreen(campaign)
+
+    const about = within(await screen.findByRole('region', { name: 'About this game' }))
+    expect(about.getByText(/is not approved or endorsed by the publisher/)).toBeInTheDocument()
+    expect(about.getByRole('link', { name: 'Homebrew Content Policy' })).toHaveAttribute(
+      'href',
+      'https://example.com/homebrew-policy',
+    )
+  })
+
+  it('shows no About this game area when the release has no credits', async () => {
+    renderPlayScreen(lostMineCampaign)
+
+    await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
+    expect(screen.queryByRole('region', { name: 'About this game' })).not.toBeInTheDocument()
   })
 
   it('applies the theme of the pinned release while the campaign is open', async () => {

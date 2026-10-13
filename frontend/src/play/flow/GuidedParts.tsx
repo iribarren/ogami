@@ -1,6 +1,7 @@
 import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { Disclosure } from './Disclosure'
 import { canEndScene } from './progress'
 import { ScenePickCard } from './ScenePickCard'
 import { StepCard } from './StepCard'
@@ -13,14 +14,40 @@ interface PartProps {
   onCommand: (command: FlowRunCommand) => void
 }
 
+/** The Scene Type of the scene under way; undefined before a scene starts. */
+function currentSceneType(campaign: Campaign) {
+  const scene = campaign.sessions
+    .find(({ number }) => number === campaign.currentSessionNumber)
+    ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
+  return campaign.sceneTypes.find(({ key }) => key === scene?.sceneType)
+}
+
 /**
  * What the FlowRun waits on, the same in the journal and in focus mode: how guidance stands,
  * the step or the scene pick to answer, and the next step named.
  */
 export function GuidedBody({ campaign, flowRun, command, onCommand }: PartProps) {
   const active = flowRun.status === 'active'
+  const introduction = campaign.flows.find(({ key }) => key === campaign.flowKey)?.introduction
+  const beforeFirstSession = campaign.sessions.length === 0
+  const sceneType = currentSceneType(campaign)
   return (
     <>
+      {introduction && (
+        // Open before the first session; keyed so it folds when that session starts.
+        <Disclosure
+          key={beforeFirstSession ? 'before-first-session' : 'started'}
+          title="How this flow works"
+          defaultOpen={beforeFirstSession}
+        >
+          {introduction}
+        </Disclosure>
+      )}
+      {active && sceneType?.tips && (
+        <Disclosure key={sceneType.key} title={`Tips for ${sceneType.name}`} defaultOpen={false}>
+          {sceneType.tips}
+        </Disclosure>
+      )}
       {flowRun.status === 'completed' && (
         <p className="font-medium">Flow complete. Play on freely.</p>
       )}

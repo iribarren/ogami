@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * A Flow a new campaign can play, as the release catalog offers it.
  */
-#[OA\Schema(required: ['key', 'name', 'description', 'default'])]
+#[OA\Schema(required: ['key', 'name', 'description', 'introduction', 'default'])]
 final readonly class GameSystemFlowResponse
 {
     private function __construct(
@@ -20,6 +20,8 @@ final readonly class GameSystemFlowResponse
         public string $name,
         #[OA\Property(description: 'Null when the Flow has none.', nullable: true)]
         public ?string $description,
+        #[OA\Property(description: 'A longer text that orients a new player; null when the Flow has none.', nullable: true)]
+        public ?string $introduction,
         #[OA\Property(description: 'Whether this is the release\'s default Flow (at most one is), to preselect.')]
         public bool $default,
     ) {
@@ -27,6 +29,6 @@ final readonly class GameSystemFlowResponse
 
     public static function fromView(FlowSummaryView $view): self
     {
-        return new self($view->key, $view->name, $view->description, $view->default);
+        return new self($view->key, $view->name, $view->description, $view->introduction, $view->default);
     }
 }

@@ -48,6 +48,9 @@ export function ScenePickCard({
                 <p className="text-xs text-muted-foreground">Forced for this scene</p>
               )}
               <p className="text-sm text-muted-foreground">{card.purpose}</p>
+              {card.tips !== null && (
+                <p className="text-xs whitespace-pre-line text-muted-foreground">{card.tips}</p>
+              )}
               <Button
                 type="button"
                 variant="outline"

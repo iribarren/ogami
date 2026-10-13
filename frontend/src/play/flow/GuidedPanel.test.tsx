@@ -279,7 +279,7 @@ describe('the guided panel', () => {
       renderGuided(
         guided(
           atTheScenePick({
-            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', oracles: [] }],
+            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', tips: null, oracles: [] }],
             ...overrides,
           }),
         ),
@@ -295,7 +295,7 @@ describe('the guided panel', () => {
       const { sent } = renderGuided(
         guided(
           atTheScenePick({
-            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', oracles: [] }],
+            cards: [{ key: 'tour', name: 'Tour', purpose: 'A tour.', tips: null, oracles: [] }],
           }),
         ),
         { 'flow-run/pick': answering(guided(atStep(promptStep))) },

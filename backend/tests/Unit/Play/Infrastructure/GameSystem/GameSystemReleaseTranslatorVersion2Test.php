@@ -304,18 +304,6 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
     }
 
     #[Test]
-    public function aDerivedFieldIsRefusedUntilPlayReadsDerivedValues(): void
-    {
-        $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
-        $content['sheet'] = ['fields' => [['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '1']]];
-
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sheet.fields[0].type: unknown field type "derived".');
-
-        new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
-    }
-
-    #[Test]
     public function aFormulaBandBoundAndEffectValueAreReadAsFormulas(): void
     {
         $content = ReleaseViews::fixtureContent('valid/v2-scene-types');

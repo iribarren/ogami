@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\Characters;
 
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -18,7 +19,7 @@ use App\Play\Domain\GameSystem\Sheet\TrackField;
  * InvalidCharacter.
  *
  * resolve() checks given values against the template on every write and completes the map with the
- * field defaults, in sheet field order. assertWellFormed() is the template-free check of the shape
+ * field defaults, in sheet field order. A derived field holds no value: it is neither given nor stored. assertWellFormed() is the template-free check of the shape
  * and the contract's absolute limits, which a stored Character read back is held to.
  */
 final class CharacterValues
@@ -34,20 +35,29 @@ final class CharacterValues
     /**
      * @param array<mixed> $given field key to value; a missing key takes the field default
      *
-     * @return array<string, int|string|list<string>|array{current: int, max: int}> one value per field of the sheet
+     * @return array<string, int|string|list<string>|array{current: int, max: int}> one value per stored field of the sheet
      *
-     * @throws InvalidCharacter on an unknown key, a value of the wrong type or out of bounds
+     * @throws InvalidCharacter on an unknown key, a value for a derived field, a value of the wrong type or out of bounds
      */
     public static function resolve(SheetTemplate $sheet, array $given): array
     {
         foreach (array_keys($given) as $key) {
-            if (!$sheet->field((string) $key) instanceof Field) {
+            $field = $sheet->field((string) $key);
+            if (!$field instanceof Field) {
                 throw InvalidCharacter::because(\sprintf('The sheet has no field "%s".', $key));
+            }
+
+            if ($field instanceof DerivedField) {
+                throw InvalidCharacter::because(\sprintf('Field "%s" is derived; it holds no value.', $key));
             }
         }
 
         $values = [];
         foreach ($sheet->fields() as $field) {
+            if ($field instanceof DerivedField) {
+                continue;
+            }
+
             $values[$field->key] = \array_key_exists($field->key, $given) ? self::checked($field, $given[$field->key]) : self::initial($field);
         }
 
@@ -93,9 +103,11 @@ final class CharacterValues
     }
 
     /**
+     * What a Character holds in a field it was given no value for.
+     *
      * @return int|string|list<string>|array{current: int, max: int}
      */
-    private static function initial(Field $field): int|string|array
+    public static function initial(Field $field): int|string|array
     {
         return match (true) {
             $field instanceof NumberField => $field->initial(),

@@ -85,7 +85,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         $sheet = array_map(static fn (mixed $field): array => (array) $field, array_values($sheet));
         self::assertSame(['role', 'look', 'reflexes', 'luck', 'debt', 'hp', 'humanity', 'gear', 'cyberware'], array_column($sheet, 'key'));
         self::assertSame(
-            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null],
+            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null],
             $sheet[0],
         );
         self::assertSame(['number', 1, 10, 4], [$sheet[2]['type'] ?? null, $sheet[2]['min'] ?? null, $sheet[2]['max'] ?? null, $sheet[2]['default'] ?? null]);
@@ -106,7 +106,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         $character = $this->json();
         self::assertIsString($character['id'] ?? null);
         self::assertMatchesRegularExpression(self::UUID_PATTERN, $character['id']);
-        self::assertSame(['name' => 'Vi', 'tags' => [], 'freeTags' => [], 'values' => self::DEFAULT_VALUES, 'promotedFrom' => null], array_diff_key($character, ['id' => 1]));
+        self::assertSame(['name' => 'Vi', 'tags' => [], 'freeTags' => [], 'values' => self::DEFAULT_VALUES, 'derived' => [], 'promotedFrom' => null], array_diff_key($character, ['id' => 1]));
         self::assertSame([$character], $this->campaignCharacters($id));
     }
 
@@ -139,6 +139,20 @@ final class CampaignCharactersApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aSheetWithoutDerivedFieldsShowsDerivedAsAnEmptyObject(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi']);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertStringContainsString('"derived":{}', (string) $this->client->getResponse()->getContent());
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        self::assertStringContainsString('"derived":{}', (string) $this->client->getResponse()->getContent());
+    }
+
+    #[Test]
     public function nullOptionalFieldsReadAsTheirDefaults(): void
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
@@ -147,7 +161,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'tags' => null, 'freeTags' => null, 'values' => null]);
 
         self::assertResponseStatusCodeSame(201);
-        self::assertSame(['name' => 'Vi', 'tags' => [], 'freeTags' => [], 'values' => self::DEFAULT_VALUES, 'promotedFrom' => null], array_diff_key($this->json(), ['id' => 1]));
+        self::assertSame(['name' => 'Vi', 'tags' => [], 'freeTags' => [], 'values' => self::DEFAULT_VALUES, 'derived' => [], 'promotedFrom' => null], array_diff_key($this->json(), ['id' => 1]));
     }
 
     #[Test]
@@ -416,7 +430,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         $character = $this->json();
         self::assertIsString($character['id'] ?? null);
         self::assertMatchesRegularExpression(self::UUID_PATTERN, $character['id']);
-        self::assertSame(['name' => 'Mira', 'tags' => ['crew'], 'freeTags' => ['Fence'], 'values' => self::DEFAULT_VALUES, 'promotedFrom' => $npcId], array_diff_key($character, ['id' => 1]));
+        self::assertSame(['name' => 'Mira', 'tags' => ['crew'], 'freeTags' => ['Fence'], 'values' => self::DEFAULT_VALUES, 'derived' => [], 'promotedFrom' => $npcId], array_diff_key($character, ['id' => 1]));
         self::assertSame([$character], $this->campaignCharacters($id));
         self::assertSame([['id' => $npcId, 'name' => 'Mira', 'agenda' => 'Wants the ledger', 'tags' => ['crew'], 'freeTags' => ['Fence'], 'weight' => 3, 'status' => 'closed', 'promotedTo' => $character['id']]], $this->campaignNpcs($id));
     }

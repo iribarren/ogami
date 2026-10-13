@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib/utils'
 import { useCampaignTheme } from '@/shared/theme/useCampaignTheme'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
+import { CharactersPanel } from '../characters/CharactersPanel'
 import { DiceRoller } from '../dice/DiceRoller'
 import { FactsPanel } from '../facts/FactsPanel'
 import { FocusPanel } from '../flow/FocusPanel'
@@ -146,6 +147,9 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           </PlayPanel>
           <PlayPanel id="npcs" title="NPCs" count={campaign.npcs.length}>
             <ListPanel campaign={campaign} kind="npc" />
+          </PlayPanel>
+          <PlayPanel id="characters" title="Characters" count={campaign.characters.length}>
+            <CharactersPanel campaign={campaign} />
           </PlayPanel>
           <PlayPanel id="oracles" title="Oracles">
             <OraclePanel

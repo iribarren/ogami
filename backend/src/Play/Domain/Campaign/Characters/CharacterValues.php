@@ -179,7 +179,8 @@ final class CharacterValues
             throw InvalidCharacter::because(\sprintf('Field "%s" must be {current, max}.', $key));
         }
 
-        $max = $value['max'] ?? $fixedMax;
+        // An explicit null max is refused, not read as the fixed max
+        $max = \array_key_exists('max', $value) ? $value['max'] : $fixedMax;
         if (!\is_int($max) || !\is_int($value['current'] ?? null)) {
             throw InvalidCharacter::because(\sprintf('Field "%s" must be {current, max} with integers.', $key));
         }

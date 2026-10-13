@@ -12,9 +12,9 @@ use OpenApi\Attributes as OA;
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
- * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs, Threads, Fact slots and facts.
+ * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs, Threads, Fact slots, facts and Characters.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'npcs', 'threads', 'factSlots', 'facts'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'npcs', 'threads', 'factSlots', 'facts', 'characters'])]
 final readonly class CampaignResponse
 {
     /**
@@ -29,6 +29,7 @@ final readonly class CampaignResponse
      * @param list<ThreadResponse>           $threads
      * @param list<FactSlotResponse>         $factSlots
      * @param list<FactResponse>             $facts
+     * @param list<CharacterResponse>        $characters
      */
     private function __construct(
         #[OA\Property(format: 'uuid')]
@@ -113,6 +114,12 @@ final readonly class CampaignResponse
             items: new OA\Items(ref: new Model(type: FactResponse::class)),
         )]
         public array $facts,
+        #[OA\Property(
+            description: 'The campaign\'s Characters in creation order; their values follow the pinned release\'s sheet.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: CharacterResponse::class)),
+        )]
+        public array $characters,
     ) {
     }
 
@@ -138,6 +145,7 @@ final readonly class CampaignResponse
             array_map(ThreadResponse::fromView(...), $view->threads),
             array_map(FactSlotResponse::fromView(...), $view->factSlots),
             array_map(FactResponse::fromView(...), $view->facts),
+            array_map(CharacterResponse::fromView(...), $view->characters),
         );
     }
 }

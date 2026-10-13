@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Behat;
 
+use App\Play\Application\AddCharacter;
+use App\Play\Application\AddCharacterHandler;
 use App\Play\Application\AddFact;
 use App\Play\Application\AddFactHandler;
 use App\Play\Application\AddNpc;
@@ -15,6 +17,7 @@ use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignSummaryView;
 use App\Play\Application\CampaignView;
 use App\Play\Application\CastMemberView;
+use App\Play\Application\CharacterView;
 use App\Play\Application\CloseNpc;
 use App\Play\Application\CloseNpcHandler;
 use App\Play\Application\CloseThread;
@@ -23,6 +26,8 @@ use App\Play\Application\CompleteFlowStep;
 use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Application\CreateCampaign;
 use App\Play\Application\CreateCampaignHandler;
+use App\Play\Application\EditCharacter;
+use App\Play\Application\EditCharacterHandler;
 use App\Play\Application\EditCurrentSceneCast;
 use App\Play\Application\EditCurrentSceneCastHandler;
 use App\Play\Application\EditFact;
@@ -71,6 +76,7 @@ use App\Play\Application\ResumeGuidanceHandler;
 use App\Play\Application\SceneView;
 use App\Play\Application\SetTrackerValue;
 use App\Play\Application\SetTrackerValueHandler;
+use App\Play\Application\SheetFieldView;
 use App\Play\Application\SkipFlowStep;
 use App\Play\Application\SkipFlowStepHandler;
 use App\Play\Application\StartScene;
@@ -82,6 +88,8 @@ use App\Play\Application\SwitchSceneTypeHandler;
 use App\Play\Application\ThreadIdGenerator;
 use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerView;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
+use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -99,6 +107,9 @@ use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
+use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Tests\Support\Play\FixedClock;
@@ -137,6 +148,8 @@ final class PlayContext implements Context
     private readonly SetTrackerValueHandler $setTrackerValue;
     private readonly AddNpcHandler $addNpc;
     private readonly EditNpcHandler $editNpc;
+    private readonly AddCharacterHandler $addCharacter;
+    private readonly EditCharacterHandler $editCharacter;
     private readonly CloseNpcHandler $closeNpc;
     private readonly ReopenNpcHandler $reopenNpc;
     private readonly EditCurrentSceneCastHandler $editCurrentSceneCast;
@@ -162,6 +175,7 @@ final class PlayContext implements Context
 
     private ?string $campaignId = null;
     private int $npcCount = 0;
+    private int $characterCount = 0;
     private int $threadCount = 0;
     private int $factCount = 0;
     private ?\Throwable $failure = null;
@@ -181,6 +195,8 @@ final class PlayContext implements Context
         $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases, $clock);
         $this->addNpc = new AddNpcHandler($owned, $campaigns, $this->releases);
         $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
+        $this->addCharacter = new AddCharacterHandler($owned, $campaigns, $this->releases);
+        $this->editCharacter = new EditCharacterHandler($owned, $campaigns, $this->releases);
         $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
         $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
         $this->editCurrentSceneCast = new EditCurrentSceneCastHandler($owned, $campaigns);
@@ -383,6 +399,39 @@ final class PlayContext implements Context
     public function iSetTheTracker(string $key, int $value): void
     {
         ($this->setTrackerValue)(new SetTrackerValue($this->campaignId(), self::ME, $key, $value));
+    }
+
+    #[Given('release version :version of the GameSystem :key named :name is published with a character sheet')]
+    public function aReleaseWithACharacterSheetIsPublished(int $version, string $key, string $name): void
+    {
+        // Tag "ally"; sheet fields "reflexes" (number 1 to 10, default 4) and "hp" (track, fixed max 40).
+        $this->releases->add(new GameSystemSnapshot($key, $name, $version, null, [], [], tags: [new Tag('ally', 'Ally')], sheet: new SheetTemplate([new NumberField('reflexes', 'Reflexes', min: 1, max: 10, default: 4), new TrackField('hp', 'Hit points', max: 40)])));
+    }
+
+    #[Given('I added the Character :name with Reflexes :reflexes')]
+    public function iAddedTheCharacter(string $name, int $reflexes): void
+    {
+        $this->iAddTheCharacter($name, $reflexes);
+        $this->assertNoFailure();
+    }
+
+    #[When('I add the Character :name with Reflexes :reflexes')]
+    public function iAddTheCharacter(string $name, int $reflexes): void
+    {
+        $this->attempt(fn () => ($this->addCharacter)(new AddCharacter($this->campaignId(), self::ME, 'character-'.++$this->characterCount, $name, [], [], ['reflexes' => $reflexes])));
+    }
+
+    #[When('I add the Character :name without values')]
+    public function iAddTheCharacterWithoutValues(string $name): void
+    {
+        $this->attempt(fn () => ($this->addCharacter)(new AddCharacter($this->campaignId(), self::ME, 'character-'.++$this->characterCount, $name, [], [], [])));
+    }
+
+    #[When('I edit the Character :name to have Reflexes :reflexes and :current hit points')]
+    public function iEditTheCharacter(string $name, int $reflexes, int $current): void
+    {
+        $character = $this->character($name);
+        $this->attempt(fn () => ($this->editCharacter)(new EditCharacter($this->campaignId(), self::ME, $character->id, $name, [], [], ['reflexes' => $reflexes, 'hp' => ['current' => $current]])));
     }
 
     #[Given('I added the NPC :name with the Tag :tag and the free tag :freeTag')]
@@ -800,6 +849,28 @@ final class PlayContext implements Context
         );
     }
 
+    #[Then('my campaign offers the sheet fields :keys')]
+    public function myCampaignOffersTheSheetFields(string $keys): void
+    {
+        Assert::assertSame($keys, implode(', ', array_map(static fn (SheetFieldView $field): string => $field->key, $this->myCampaign()->pinnedRelease->sheet)));
+    }
+
+    #[Then('my Characters are:')]
+    public function myCharactersAre(TableNode $table): void
+    {
+        Assert::assertSame(
+            array_map(static fn (array $row): array => [$row['name'], (int) $row['reflexes'], $row['hit points']], $table->getColumnsHash()),
+            array_map(static fn (CharacterView $character): array => [$character->name, $character->values['reflexes'] ?? null, \sprintf('%d/%d', $character->values['hp']['current'] ?? -1, $character->values['hp']['max'] ?? -1)], $this->myCampaign()->characters),
+        );
+    }
+
+    #[Then('I am told that the value breaks the sheet')]
+    public function iAmToldTheValueBreaksTheSheet(): void
+    {
+        Assert::assertInstanceOf(InvalidCharacter::class, $this->failure);
+        Assert::assertSame('Field "reflexes" must be 1 to 10, got 11.', $this->failure->getMessage());
+    }
+
     #[Then('my NPCs are:')]
     public function myNpcsAre(TableNode $table): void
     {
@@ -1018,6 +1089,11 @@ final class PlayContext implements Context
         return array_find($this->myCampaign()->threads, static fn (ThreadView $thread): bool => $thread->name === $name) ?? throw new \LogicException(\sprintf('No Thread "%s".', $name));
     }
 
+    private function character(string $name): CharacterView
+    {
+        return array_find($this->myCampaign()->characters, static fn (CharacterView $character): bool => $character->name === $name) ?? throw new \LogicException(\sprintf('No Character "%s".', $name));
+    }
+
     private function campaignId(): string
     {
         return $this->campaignId ?? throw new \LogicException('No campaign was created.');
@@ -1029,7 +1105,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter $failure) {
             $this->failure = $failure;
         }
     }

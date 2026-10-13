@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\FactLink;
@@ -49,7 +50,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $campaign->id()->toString(),
             $campaign->name(),
             $campaign->createdAt(),
-            new PinnedReleaseView($pinned->gameSystemKey(), $pinned->gameSystemName(), $pinned->releaseVersion(), $snapshot->theme(), $snapshot->credits()),
+            new PinnedReleaseView($pinned->gameSystemKey(), $pinned->gameSystemName(), $pinned->releaseVersion(), $snapshot->theme(), $snapshot->credits(), array_map(SheetFieldView::of(...), $snapshot->sheet()->fields())),
             array_map(static fn (Session $session): SessionView => self::session($session, $snapshot, $campaign), $campaign->sessions()),
             $campaign->currentSession()?->number(),
             $campaign->currentScene()?->number(),
@@ -65,6 +66,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map(ThreadView::of(...), $campaign->threads()),
             array_map(FactSlotView::of(...), $snapshot->factSlots()),
             array_map(static fn (Fact $fact): FactView => self::fact($fact, $campaign, $snapshot), $campaign->facts($snapshot)),
+            array_map(static fn (Character $character): CharacterView => CharacterView::of($character, $snapshot->sheet()), $campaign->characters()),
         );
     }
 

@@ -55,6 +55,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/characters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a Character to one of my campaigns */
+        post: operations["addCharacter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/characters/{characterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the name, Tags, free tags and values of a Character of one of my campaigns */
+        put: operations["editCharacter"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns": {
         parameters: {
             query?: never;
@@ -712,6 +746,92 @@ export interface components {
             /** @description A human-readable message; never says whether an email exists. */
             error: string;
         };
+        CharacterRequest: {
+            /**
+             * @description 1 to 100 characters once trimmed.
+             * @example Vi
+             */
+            name: string;
+            /**
+             * @description Keys of Tags of the campaign's pinned release, at most 10, each once; none when omitted or null.
+             * @example [
+             *       "ally"
+             *     ]
+             */
+            tags?: string[] | null;
+            /**
+             * @description The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.
+             * @example [
+             *       "Fixer"
+             *     ]
+             */
+            freeTags?: string[] | null;
+            /**
+             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
+             * @example {
+             *       "role": "Solo",
+             *       "reflexes": 7,
+             *       "hp": {
+             *         "current": 30,
+             *         "max": 40
+             *       },
+             *       "gear": [
+             *         "Knife"
+             *       ]
+             *     }
+             */
+            values?: {
+                [key: string]: number | string | string[] | {
+                    current: number;
+                    max: number;
+                };
+            } | null;
+        };
+        CharacterResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example Vi */
+            name: string;
+            /**
+             * @description The keys of the pinned release's Tags the Character carries.
+             * @example [
+             *       "ally"
+             *     ]
+             */
+            tags: string[];
+            /**
+             * @description The player's own labels, as typed.
+             * @example [
+             *       "Fixer"
+             *     ]
+             */
+            freeTags: string[];
+            /**
+             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list) or {current, max} (track). Empty when the release has no sheet.
+             * @example {
+             *       "role": "Solo",
+             *       "reflexes": 7,
+             *       "hp": {
+             *         "current": 30,
+             *         "max": 40
+             *       },
+             *       "gear": [
+             *         "Knife"
+             *       ]
+             *     }
+             */
+            values: {
+                [key: string]: number | string | string[] | {
+                    current: number;
+                    max: number;
+                };
+            };
+            /**
+             * Format: uuid
+             * @description The id of the NPC this Character was promoted from; null when it was created as a Character.
+             */
+            promotedFrom: string | null;
+        };
         CampaignSummaryResponse: {
             /** Format: uuid */
             id: string;
@@ -763,6 +883,57 @@ export interface components {
              */
             url: string | null;
         };
+        SheetFieldResponse: {
+            /**
+             * @description The key Character values are stored under.
+             * @example reflexes
+             */
+            key: string;
+            /** @example Reflexes */
+            label: string;
+            /** @description Help shown with the field; null when there is none. */
+            hint: string | null;
+            /**
+             * @description Consecutive fields with the same group are laid out together; null when ungrouped.
+             * @example Stats
+             */
+            group: string | null;
+            /**
+             * @description A number is an integer, a text a string, a list an array of strings and a track {current, max}.
+             * @example number
+             * @enum {string}
+             */
+            type: "number" | "text" | "list" | "track";
+            /**
+             * @description Number: the lowest value (-1000000 when the field sets none). Null for other types.
+             * @example 1
+             */
+            min: number | null;
+            /**
+             * @description Number: the highest value (1000000 when the field sets none). Track: the fixed max; null when each Character sets its own. Null for other types.
+             * @example 10
+             */
+            max: number | null;
+            /**
+             * @description Number: the value of a Character that has none. Null for other types.
+             * @example 4
+             */
+            default: number | null;
+            /** @description Text: whether it may span lines. Null for other types. */
+            multiline: boolean | null;
+            /**
+             * @description Text: the most characters (200, or 2000 when multiline, unless the field sets one). Null for other types.
+             * @example 200
+             */
+            maxLength: number | null;
+            /** @description List: what one item is called, such as "Item". Null when none or for other types. */
+            itemLabel: string | null;
+            /**
+             * @description List: the most items (50 unless the field sets one). Null for other types.
+             * @example 50
+             */
+            maxItems: number | null;
+        };
         PinnedReleaseResponse: {
             /** @example ironsworn */
             gameSystemKey: string;
@@ -778,6 +949,8 @@ export interface components {
             theme: "parchment" | "neon" | "noir" | "eldritch" | "starship" | null;
             /** @description The notice, license and link the release carries; null when it has none. */
             credits: components["schemas"]["CreditsResponse"] | null;
+            /** @description The fields of the release's character sheet in layout order; empty for a release without one. Characters hold a value per field. */
+            sheet: components["schemas"]["SheetFieldResponse"][];
         };
         ItemRefResponse: {
             /**
@@ -1339,6 +1512,8 @@ export interface components {
             factSlots: components["schemas"]["FactSlotResponse"][];
             /** @description The campaign's facts: the slot facts first, in slot order, then the free facts in creation order; empty for a campaign without any. */
             facts: components["schemas"]["FactResponse"][];
+            /** @description The campaign's Characters in creation order; their values follow the pinned release's sheet. */
+            characters: components["schemas"]["CharacterResponse"][];
         };
         /** @description A title, a Scene Type, or both. */
         StartSceneRequest: {
@@ -2186,6 +2361,185 @@ export interface operations {
             };
         };
     };
+    addCharacter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterRequest"];
+            };
+        };
+        responses: {
+            /** @description The new Character, its values complete: a field not given has its default. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of another JSON type than documented. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already holds 100 Characters, or another request changed it meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, "values" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    editCharacter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                characterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterRequest"];
+            };
+        };
+        responses: {
+            /** @description The edited Character; a value not given went back to its default, the NPC it was promoted from stays. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of another JSON type than documented. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no Character with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, "values" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listCampaigns: {
         parameters: {
             query?: never;
@@ -2302,7 +2656,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The name is blank or too long. */
+            /** @description The name is blank or too long, or Play cannot read the latest release of the GameSystem yet. */
             422: {
                 headers: {
                     [name: string]: unknown;

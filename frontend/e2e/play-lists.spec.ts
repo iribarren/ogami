@@ -20,7 +20,7 @@ test('a solo player keeps NPCs and Threads, edits them, and closes and reopens o
   // A new campaign per run: the dev database keeps the campaigns of earlier runs.
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Lists ${String(Date.now())}`)
-  await form.getByLabel('GameSystem').selectOption('free-journal')
+  await form.getByLabel('Game system').selectOption('free-journal')
   await form.getByRole('button', { name: 'Create campaign' }).click()
   await expect(page).toHaveURL(/\/play\/campaigns\/[0-9a-f-]{36}$/)
 

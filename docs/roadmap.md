@@ -21,7 +21,7 @@ Terms are defined in the [glossary](domain/glossary.md). Contexts are described 
 |---|---|---|---|
 | M0 Foundation | Docs, monorepo, CI | Done | — |
 | M1 Oracle journal | Free-form solo play: dice, oracles, journal in a campaign | A free-journal session played with only oracles and dice | Yes |
-| M2 Guided flow | A narrative flow drives play step by step | A full Mythic-style session end to end (played 2026-10-13, feature 9), and a guided sample session played as a novice (Session Zero, scenes, world turns); the player always knows the next step | Yes |
+| M2 Guided flow | A narrative flow drives play step by step | A full Mythic-style session end to end (played 2026-10-13, feature 9), and a guided sample session played as a novice (Session Zero, scenes, world turns); the player always knows the next step. Done: the guided sample session was played 2026-10-13 (feature 9b) | Yes |
 | M3 System rules | Characters, derived values, checks | A real game system played with sheet and checks. **MVP complete** | Yes |
 | M4 Studio | Author game systems without code | A game system built in Studio, published and played | No |
 | M5 Admin and lifecycle | Users, roles, campaign upgrades | The owner manages users; a campaign upgrades to a newer release safely | No |
@@ -215,6 +215,8 @@ Start feature `preset-mythic-flow` (ODD). Complete the Mythic-style preset relea
 ```
 
 **9b. preset-guided-sample**
+
+Done: the `night-job` fan preset on example 2, release credits for fan presets ([ADR 0021](adr/0021-release-credits-for-fan-presets.md)), and the novice support in Play (Flow introduction, Scene Type tips). M2 exit, second half: a guided sample session was played as a novice on 2026-10-13, which completes M2. Findings N1–N6 were fixed; N7 is accepted (rising pressure is the design) and N8–N13 (silent tracker effects, stale guide tips after a scene, previews of branch-only steps, world turns taking a scene number, ungated Black ICE step, the form below the campaign list) are backlog, see [odd/tasks/preset-guided-sample.md](../odd/tasks/preset-guided-sample.md#playtest-findings). The prompt is kept for reference.
 
 ```text
 Start feature `preset-guided-sample` (ODD). Hand-author a Cyberpunk RED heist one-shot fan preset for novice players, following example 2 of docs/domain/flow-examples.md, that proves the model of ADR 0017 and ADR 0018 without Studio: a crew and briefing phase that fills fact slots, legwork, heist, escape and epilogue phases; generic Scene Types (Social, Exploration) beside game-specific ones (Netrun, Infiltration, Firefight, Getaway, Chase…); mandatory and suggested steps; an alarm clock with condition steps, an in-place switch into a firefight, world turns that add pressure; tips and an introduction, `defaultView: focus`, and a flow-specific oracle selection. Fan-content rule (ADR 0018): no verbatim book text (own words or short summaries, page references to the books) and the publisher's fan-content disclaimer. Settle the release credits / license field (vision open question). Play a session as a novice; fix the gaps it reveals and log UX findings as follow-up tasks. This completes M2.

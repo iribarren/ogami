@@ -17,7 +17,7 @@ test('a solo player plays the premise and the first scene check of a guided camp
   // A new campaign per run, along the release's default Flow.
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Guided ${String(Date.now())}`)
-  await form.getByLabel('GameSystem').selectOption('mythic-style')
+  await form.getByLabel('Game system').selectOption('mythic-style')
   await expect(form.getByLabel('Flow')).toHaveValue('mythic')
   await form.getByRole('button', { name: 'Create campaign' }).click()
   await expect(page).toHaveURL(/\/play\/campaigns\/[0-9a-f-]{36}$/)

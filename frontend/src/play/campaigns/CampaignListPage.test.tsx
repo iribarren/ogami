@@ -99,7 +99,7 @@ describe('the Play campaign list', () => {
     const form = await screen.findByRole('form', { name: 'New campaign' })
     await within(form).findByRole('option', { name: 'Mythic style v1' })
     await user.type(within(form).getByLabelText('Campaign name'), '  The haunted keep ')
-    await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Mythic style v1')
+    await user.selectOptions(within(form).getByLabelText('Game system'), 'Mythic style v1')
     await user.click(within(form).getByRole('button', { name: 'Create campaign' }))
 
     expect(
@@ -123,7 +123,7 @@ describe('the Play campaign list', () => {
 
     const form = await screen.findByRole('form', { name: 'New campaign' })
     await within(form).findByRole('option', { name: 'Free journal v2' })
-    expect(within(form).getByLabelText('GameSystem')).toHaveDisplayValue('Free journal v2')
+    expect(within(form).getByLabelText('Game system')).toHaveDisplayValue('Free journal v2')
     const create = within(form).getByRole('button', { name: 'Create campaign' })
     expect(create).toBeDisabled()
     await user.type(within(form).getByLabelText('Campaign name'), '   ')
@@ -285,9 +285,9 @@ describe('the Play campaign list', () => {
       const form = await openForm()
 
       await user.selectOptions(within(form).getByLabelText('Flow'), 'Quick job')
-      await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Free journal v2')
+      await user.selectOptions(within(form).getByLabelText('Game system'), 'Free journal v2')
       expect(within(form).queryByLabelText('Flow')).not.toBeInTheDocument()
-      await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Heist v1')
+      await user.selectOptions(within(form).getByLabelText('Game system'), 'Heist v1')
 
       expect(within(form).getByLabelText('Flow')).toHaveDisplayValue('Full heist')
     })
@@ -329,11 +329,25 @@ describe('the Play campaign list', () => {
       const user = userEvent.setup()
       const form = await openForm()
 
-      await user.selectOptions(within(form).getByLabelText('GameSystem'), 'Free journal v2')
+      await user.selectOptions(within(form).getByLabelText('Game system'), 'Free journal v2')
 
       expect(
         within(form).queryByRole('region', { name: 'About this game' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('labels the picker "Game system" and shows the description of the chosen one, if any', async () => {
+      const user = userEvent.setup()
+      const form = await openForm([fanPreset, mythicStyle])
+
+      expect(within(form).queryByLabelText('GameSystem')).not.toBeInTheDocument()
+      expect(within(form).getByLabelText('Game system')).toHaveDisplayValue('Night Job v1')
+      const description = within(form).getByText('A heist one-shot.')
+      expect(description.className).toContain('text-muted-foreground')
+
+      await user.selectOptions(within(form).getByLabelText('Game system'), 'Mythic style v1')
+
+      expect(within(form).queryByText('A heist one-shot.')).not.toBeInTheDocument()
     })
 
     it('shows the introduction of the chosen Flow, keeping its paragraphs', async () => {

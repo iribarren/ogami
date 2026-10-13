@@ -1,7 +1,7 @@
 # Feature: play-characters
 
 - **Locator:** `odd/tasks/play-characters.md` · Engram topic `odd/play-characters/tasks`
-- **Issue:** #96 · **Branch:** `feat/play-characters-8-play` · **Status:** slices 1–8 complete (slices 1–7 merged, PRs #97–#103); slice 8 awaits review and PR
+- **Issue:** #96 · **Branch:** `fix/play-characters-9-review-fixes` · **Status:** slices 1–8 merged (PRs #97–#104, #96 closed); slice 8 review fixes in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-guided-sample` (PRs #93–#95, M2 complete)
@@ -77,7 +77,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 5 | `feat/play-characters-5-sheet-ui` | `feat(play): play-characters 5/8 sheet ui` | T7, T8 | ~1,500 |
 | 6 | `feat/play-characters-6-party` | `feat(play): play-characters 6/8 party` | T9 | ~2,000 incl. generated files, reviewed apart; actual size accepted by the user 2026-10-13 (commit 2 is ~1,540 lines, tests ~880) |
 | 7 | `feat/play-characters-7-character-step` | `feat(play): play-characters 7/8 character step` | T10 | ~1,500 |
-| 8 | `feat/play-characters-8-play` | `feat(play): play-characters 8/8 party ui and preset` | T11, T12, T13 | ~1,300 |
+| 8 | `feat/play-characters-8-play` | `feat(play): play-characters 8/8 party ui and preset` | T11, T12, T13 | ~1,300 (actual ~1,000) |
+| 9 | `fix/play-characters-9-review-fixes` | `fix(play): play-characters 9/9 review fixes` | T14 | ~250 |
 
 ## Tasks
 
@@ -93,9 +94,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 5 | "Promote to Character" on an NPC; e2e: create and edit a Character, promote an NPC | delegated writer (slice 5) | [x] | 6761bfc |
 | T9 | 6 | Session party and the Character part of the Scene cast: domain, promotion swaps the NPC for its Character in the current Scene's cast, persistence (legacy rows empty), party endpoint, cast endpoint with Characters, a new Scene's cast starts as the party, creation/promotion joins party and cast; API tests, `make api` | delegated writer (slice 6) | [x] | e724a74 (fixes 58dc18b, generated e9afee2) |
 | T10 | 7 | `character` step kind and `ItemKind::Character` in the ACL and FlowRun: step completion with a Character id, `{step:key}` name, pick candidates and condition counts over Characters, picks join the party in session hooks and the cast in scenes; exhaustive matches; FlowRun view; West Marches example gains its `pick of: character` | delegated writer (slice 7) | [x] | 2240e5e, 5e6e230 (fixes beaffb2, generated e8fa788) |
-| T11 | 8 | UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | delegated writer (slice 8) | [x] | |
-| T12 | 8 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | delegated writer (slice 8) | [x] | |
-| T13 | 8 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | delegated writer (slice 8) | [x] | |
+| T11 | 8 | UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | delegated writer (slice 8) | [x] | 19ac614 |
+| T12 | 8 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | delegated writer (slice 8) | [x] | 09ab632 |
+| T13 | 8 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | delegated writer (slice 8) | [x] | f313bee |
+| T14 | 9 | Slice 8 review fixes: R3-001 party editor Cancel clears a refused save's error; R3-002 a Character created inline in a `character` step stays pickable when completing the step is refused, never a second create; R3-003 party editor test title; flow-examples Crew gains the `character` step | delegated writer (slice 9) | [x] | |
 
 ## Progress
 
@@ -118,6 +120,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: T11 done (closes slice 7 review R3-001). `PartyEditor` + `useEditParty` (party of the current Session: names, "Edit party" checkbox list, order kept for those who stay; hidden without Characters or a current Session; 409 refetches, other refusals show the API message; Save disabled while pending), mounted in `SessionControls`. `SceneCast` shows and edits NPCs and Characters (`Name (Character)` in the add select; every edit sends `npcIds` and `characterIds`); `Journal` passes the campaign's Characters through (one prop, `journal/Journal.tsx`, outside the stated surfaces). `CharacterStepForm` replaces the `character` step placeholder: radio list plus "Choose", "New Character" toggle, `CharacterForm` inline (the only way with no Characters; Cancel only when there is a list to go back to), create then complete with the new id, a failed create leaves the step open with the message. `PickForm` already rendered and submitted `character` candidates: pinned with tests. RED: 23 of 49 failing in the new/changed test files before the implementation (the two pick tests already passed). GREEN: 75 tests in those files, `src/play` 286 tests, `tsc` clean. Route: delegated writer.
 - 2026-10-13: T12 done. Night Job gains an original sheet (`role` text; `nerve`, `hands`, `wits`, `grit`, `charm` numbers 1–8 default 4 in Stats; `hp` max 40 and `humanity` max 50 tracks in Condition; `gear` and `cyberware` lists in Kit) and a mandatory `character` step "Who are you?" first in the Crew scene; the tip no longer says the character already exists. `NightJobPresetFlowTest` creates the Character before the crew steps (new test: step mandatory, Character joins the party); `PresetsTest::nightJobHasAnOriginalSheet`. `play-night-job.spec.ts` creates Vi through the step card and sees it in Characters, the party and the cast. RED: with the preset stashed, 13 errors and 2 failures of 18; GREEN: 18 tests, 246 assertions; e2e `play-night-job` passes. Route: delegated writer.
 - 2026-10-13: T13 done. `docs/roadmap.md` feature 10 marked done; examples README notes where feature 10 is used (West Marches, Night Job). `docs/domain/flow-examples.md` unchanged (outside the slice's edit surfaces; its example 2 still lists Crew without the character step). Docs only: structural readback, no RED/GREEN. Route: delegated writer.
+- 2026-10-13: T14 done (slice 8 review fixes). `PartyEditor` Cancel calls `edit.reset()` (R3-001); `CharacterStepForm` keeps the created Character in state and lists it in the pick list, selected, until the refetch holds it, so the create form never shows again and the save runs once (R3-002); party test retitled (R3-003); `flow-examples.md` Crew gains the `character` step (no future-work note to update). RED: the two new tests failed against the old code (alert still shown; create form still shown). GREEN: `src/play` all passing. Route: delegated writer.
 
 ## Reviews
 
@@ -130,7 +133,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 5 | `review-81eec73f83f23e5d` | 93ca98c, bc4f7a8, 6761bfc | Approved, acknowledged. Fixed in slice 6: R3-001 (warning) `ListPanel.tsx` shows a stale `setStatus.error` before `promote.error`, and the confirm box closes on settle, so a refused promotion is hidden; R3-002 (suggestion) the promote mutation is shared, so Promote on another NPC while one is pending resets it and loses its callbacks; disable Promote while pending | #101 |
 | 6 | `review-c286189f5b37cd5e` | 58dc18b, e724a74 (e9afee2 generated, review skipped by the user) | Approved, acknowledged. Fixed in slice 7: R3-001 (warning) the `CampaignSessionsType` scene reader maps every `InvalidSceneCast` to the NPC `cast` message, so a stored Scene listing a Character twice under `characters` reports the wrong field (`DoctrineCampaignRepositoryTest` locks that message in); give `characters` its own message | #102 |
 | 7 | `review-8db146b654913fc8` | beaffb2, 2240e5e, 5e6e230, e8fa788 | Approved, acknowledged. Fixed in slice 8: R3-001 (warning) `StepCard.tsx` renders the `character` step as "not playable here yet" with no way to send `characterId`, so a mandatory `character` step stalls guided play; closed by the T11 step card | #103 |
+| 8 | `review-2e996815418b2b90` | 19ac614, 09ab632, f313bee | Approved, acknowledged. Fixed in slice 9: R3-001 (suggestion) `PartyEditor.tsx` Cancel after a refused save leaves the refusal alert visible (no `edit.reset()`); R3-002 (suggestion) `CharacterStepForm.tsx` untested path: a Character created inline, then completing the step refused; until the refetch lands the form shows again, and a second Save would create a duplicate; R3-003 (suggestion) `PartyEditor.test.tsx` test title claims the no-Session case it does not check | #104 |
 
 ## Next step
 
-Slice 8 review and PR, then feature closed.
+Slice 9 (T14) on `fix/play-characters-9-review-fixes`: review fixes of slice 8; then review, PR (`Part of #96`), merge, feature closed.

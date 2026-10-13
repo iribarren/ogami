@@ -92,6 +92,7 @@ export function PartyEditor({ campaign }: { campaign: Campaign }) {
               size="sm"
               disabled={edit.isPending}
               onClick={() => {
+                edit.reset()
                 setDraft(null)
               }}
             >

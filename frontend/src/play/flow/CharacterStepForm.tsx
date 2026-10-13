@@ -23,8 +23,15 @@ export function CharacterStepForm({
   const { save } = useCharacterActions(campaign.id)
   const [creating, setCreating] = useState(false)
   const [chosen, setChosen] = useState('')
+  // The Character created here: kept so the form never shows again for this step, even before
+  // the campaign refetch lands.
+  const [created, setCreated] = useState<{ id: string; name: string } | null>(null)
+  const characters =
+    created === null || campaign.characters.some(({ id }) => id === created.id)
+      ? campaign.characters
+      : [...campaign.characters, created]
 
-  if (creating || campaign.characters.length === 0) {
+  if (creating || characters.length === 0) {
     return (
       <CharacterForm
         character={null}
@@ -38,6 +45,7 @@ export function CharacterStepForm({
             {
               onSuccess: (character) => {
                 // If completing the step is refused, the Character exists and can be picked.
+                setCreated({ id: character.id, name: character.name })
                 setChosen(character.id)
                 setCreating(false)
                 onPick(character.id)
@@ -46,7 +54,7 @@ export function CharacterStepForm({
           )
         }}
         onCancel={
-          campaign.characters.length === 0
+          characters.length === 0
             ? undefined
             : () => {
                 save.reset()
@@ -66,7 +74,7 @@ export function CharacterStepForm({
       }}
     >
       <div role="radiogroup" aria-label="Characters" className="space-y-1">
-        {campaign.characters.map(({ id, name }) => (
+        {characters.map(({ id, name }) => (
           <label key={id} className="flex items-center gap-2">
             <input
               type="radio"

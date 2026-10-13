@@ -68,7 +68,7 @@ describe('the party of the current Session', () => {
     expect((await party()).getByText('No party')).toBeInTheDocument()
   })
 
-  it('is hidden without Characters or without a current Session', async () => {
+  it('is hidden without Characters', async () => {
     renderParty({ ...inSession([]), characters: [] })
     await screen.findByRole('heading', { level: 1, name: nightJobCampaign.name })
     expect(screen.queryByRole('group', { name: 'Party' })).not.toBeInTheDocument()
@@ -146,6 +146,20 @@ describe('the party of the current Session', () => {
     expect(await (await party()).findByRole('alert')).toHaveTextContent(message)
     expect((await party()).getByRole('button', { name: 'Save party' })).toBeEnabled()
     expect(reads.campaign).toBe(1)
+  })
+
+  it('drops the refusal with the abandoned edit on Cancel', async () => {
+    const user = userEvent.setup()
+    renderParty(inSession([ref(viCharacter)]), () =>
+      Response.json({ error: 'The party lists a Character twice.' }, { status: 422 }),
+    )
+
+    await user.click((await party()).getByRole('button', { name: 'Edit party' }))
+    await user.click((await party()).getByRole('button', { name: 'Save party' }))
+    expect(await (await party()).findByRole('alert')).toBeInTheDocument()
+    await user.click((await party()).getByRole('button', { name: 'Cancel' }))
+
+    expect((await party()).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('refetches the campaign on a conflict and shows the message', async () => {

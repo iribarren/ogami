@@ -20,12 +20,14 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 |---|---|---|
 | GameSystem | A TTRPG system as authored in Studio: its sheet templates, checks, narrative flow and oracles. Mutable draft | Studio |
 | GameSystem release | An immutable, versioned snapshot of a GameSystem, published by a game manager. The only form Play consumes. Its release version counts up per GameSystem key (1, 2, …) | Studio (published), Play (snapshot) |
-| SheetTemplate | The definition of a character sheet for a GameSystem: its fields, grouped for layout, and later derived values ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)) | Studio |
+| SheetTemplate | The definition of a character sheet for a GameSystem: its fields, grouped for layout, and derived values ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)) | Studio |
 | Field | One input on a sheet template. Types: `number` (bounded integer), `text`, `list` (strings, e.g. inventory or cyberware) and `track` (a resource track) | Studio |
 | Resource track | A `track` field's value `{current, max}`, e.g. hit points; it starts full | Studio (defined), Play (held) |
-| DerivedValue | A sheet value computed by a formula from fields or other derived values (e.g. a modifier) | Studio |
+| DerivedValue | A `derived` sheet field whose formula reads fields, other derived values and trackers. Never stored, computed live (e.g. a modifier) ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)) | Studio (defined), Play (computed) |
+| Formula | An integer expression over sheet values and trackers (`+ - * /`, `min`, `max`, braced references), evaluated by the Formula kernel ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)) | Studio (authored), Play (evaluated) |
+| Formula reference | A braced name in a formula: `{key}`, `{key.max}` or `{tracker:key}` | Studio (authored), Play (evaluated) |
 | Check | A named rule that rolls a dice expression against sheet values and maps the result to outcome bands | Studio (defined), Play (performed) |
-| Outcome band | A range of results with a meaning (e.g. "miss", "weak hit", "strong hit"). Bands are ordered upper bounds (`upTo`, a literal or a tracker reference); the last band catches the rest. Used by checks, `roll` and `condition` steps and table entries ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
+| Outcome band | A range of results with a meaning (e.g. "miss", "weak hit", "strong hit"). Bands are ordered upper bounds (`upTo`, a literal, a tracker reference or a formula); the last band catches the rest. Used by checks, `roll` and `condition` steps and table entries ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
 | NarrativeFlow | A guided procedure of play for a GameSystem: ordered Phases of Scenes picked from Scene Types. A release has zero or more flows ([ADR 0017](../adr/0017-narrativeflow-model.md)) | Studio |
 | Phase | An ordered part of a NarrativeFlow (e.g. Session Zero, Adventure, Epilogue) that runs `once` or `loop`s. It has a scene selection rule, hooks and an optional act label | Studio |
 | Act | An optional label that groups phases (e.g. "Act 2: The big job"). Not a level of the flow ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
@@ -39,7 +41,7 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Pick step | A flow step (`pick`) that picks open NPCs or Threads carrying all its tags: `random` (the server draws, weighted) or `choose` (the player selects between `min` and `max`). The outcome is `found` or `none`; fewer candidates than `min` is "No match". Journal entry kind `pick` | Studio (defined), Play (played) |
 | `{picked}` | Placeholder for the names of the items most recently picked or created in the current Scene; empty before any pick and when a new Scene starts | Studio (defined), Play (read) |
 | Condition step | A flow step that compares a tracker or a count (tagged NPCs or Characters, open Threads) to outcome bands. No dice, no journal entry; it advances on its own ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
-| Effect | A typed change a step outcome or an oracle table entry applies. Kinds: `tracker` (add or set), `nextScene`, `switchSceneType`, `endPhase`, `sceneTitle`, `createNpc`, `createThread`, `closeThread`, `fillFact`; later sheet-field effects ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
+| Effect | A typed change a step outcome or an oracle table entry applies. Kinds: `tracker` (add or set; the value may be a formula), `nextScene`, `switchSceneType`, `endPhase`, `sceneTitle`, `createNpc`, `createThread`, `closeThread`, `fillFact`; later sheet-field effects ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) | Studio |
 | Tracker | A campaign number declared by the release: a `counter` (e.g. chaos factor) or a `clock` (segments), with an optional `hint`. A counter may name its `levels` (e.g. lifestyle "Kibble / Prepak"). Its value lives on the Campaign | Studio (declared), Play (value) |
 | Fact slot | A named, typed place for a Campaign fact, declared by the release: `text`, `npc` or `thread`, with an optional `hint` | Studio |
 | `fillFact` | Effect that fills a Fact slot: a `text` slot with the effect's `text` (default `{answer}`), an `npc` or `thread` slot with the first item of that kind in `{picked}`. A filled slot is replaced and keeps its links; an empty text or nothing picked changes nothing | Studio (defined), Play (applied) |
@@ -90,5 +92,5 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Published Language | The shared, versioned contract Studio publishes (a GameSystem release); see the [release contract](../contracts/gamesystem-release.md) | Studio → Play |
 | Anti-corruption layer (ACL) | Play's translation from a release snapshot into Play's own model | Play |
 | GameSystemSnapshot | Play's own model of a GameSystem release, produced by the anti-corruption layer. Holds no Studio types | Play |
-| Shared kernel | Code shared by agreement between contexts; here, Randomness | Randomness |
+| Shared kernel | Code shared by agreement between contexts; here, Randomness and Formula | Randomness |
 | Narrative assist | A port for AI-assisted ideas during play; implementation later | Play |

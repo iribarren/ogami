@@ -251,7 +251,7 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 | `list` | `itemLabel?` (1–60), `maxItems?` (1–100) | Items are trimmed strings of 1–200 characters; `maxItems` defaults to 50. For inventory, cyberware and the like |
 | `track` | `max?` (1–999) | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full |
 
-Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects, derived values or checks: they open schema version 3. Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed.
+Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects or checks: they open schema version 3. Derived values arrive as an additive `derived` field type in schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed.
 
 The `character` step kind and `of: character` in `pick` and `condition` counts are part of the same additive change (see [Steps](#steps)).
 

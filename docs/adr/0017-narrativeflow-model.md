@@ -1,6 +1,6 @@
 # 0017. The NarrativeFlow model
 
-- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party. Amended by [ADR 0022](0022-character-sheets-in-schema-version-2.md): the `character` step kind and sheets arrive additively in schema version 2
+- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party. Amended by [ADR 0022](0022-character-sheets-in-schema-version-2.md): the `character` step kind and sheets arrive additively in schema version 2. Amended by [ADR 0023](0023-formula-kernel-and-derived-values.md): formulas, so a reference is a trivial formula
 - **Date:** 2026-10-08
 
 ## Context

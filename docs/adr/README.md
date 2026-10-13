@@ -20,13 +20,14 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0014 | [Campaigns stay pinned to their GameSystem release](0014-campaigns-pinned-to-their-release.md) | Accepted |
 | 0015 | [Sequential slice delivery to main](0015-sequential-slice-delivery.md) | Accepted |
 | 0016 | [The flow is presented in the journal, with an optional focus mode](0016-flow-presentation-journal-with-focus-mode.md) | Accepted, amended by 0017 |
-| 0017 | [The NarrativeFlow model](0017-narrativeflow-model.md) | Accepted, amended by 0018, 0022 and 0023 |
+| 0017 | [The NarrativeFlow model](0017-narrativeflow-model.md) | Accepted, amended by 0018, 0022, 0023 and 0024 |
 | 0018 | [NarrativeFlow control flow and cast](0018-narrativeflow-control-flow-and-cast.md) | Accepted, amended by 0020 |
 | 0019 | [Random events from fate-question doubles](0019-random-events-from-fate-question-doubles.md) | Accepted |
 | 0020 | [The scene pick waits after a scene](0020-scene-pick-waits-after-a-scene.md) | Accepted |
 | 0021 | [Release credits for fan presets](0021-release-credits-for-fan-presets.md) | Accepted |
-| 0022 | [Character sheets in schema version 2](0022-character-sheets-in-schema-version-2.md) | Accepted, amended by 0023 |
-| 0023 | [Formula kernel and derived values](0023-formula-kernel-and-derived-values.md) | Accepted |
+| 0022 | [Character sheets in schema version 2](0022-character-sheets-in-schema-version-2.md) | Accepted, amended by 0023 and 0024 |
+| 0023 | [Formula kernel and derived values](0023-formula-kernel-and-derived-values.md) | Accepted, amended by 0024 |
+| 0024 | [Structured checks without scripting](0024-structured-checks-without-scripting.md) | Accepted |
 
 ## Template
 

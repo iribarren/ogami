@@ -1,0 +1,110 @@
+# Feature: play-checks
+
+- **Locator:** `odd/tasks/play-checks.md` · Engram topic `odd/play-checks/tasks`
+- **Issue:** #114 · **Branch:** `feat/play-checks-1-decision` · **Status:** in progress (slice 1)
+- **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
+- **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
+- **Previous feature:** `rules-derived-values` (PRs #108–#113)
+
+## Objective
+
+Roadmap feature 12 (milestone M3). Check definitions in the release (dice expression + formula modifier + outcome bands). Run checks from the sheet and from flow steps (a `check` step kind, [ADR 0017](../../docs/adr/0017-narrativeflow-model.md)), for a Character in the Scene cast ([ADR 0018](../../docs/adr/0018-narrativeflow-control-flow-and-cast.md)); log results to the journal. The vision question "How far do structured checks go?" is settled by [ADR 0024](../../docs/adr/0024-structured-checks-without-scripting.md).
+
+Out of scope: exploding dice, stat-sized dice pools, success counting, opposed rolls, re-rolls (ADR 0024 known gaps); Studio's check editor (feature 17); sheet-field effects.
+
+## Problem and why
+
+- The glossary defines Check, but the release reserves `checks: []` (`v2.schema.json:62-66` `maxItems: 0`; `Studio/Domain/Release/ReleaseContent.php:88-90`), and Play's translator never reads it.
+- No `check` step kind exists (`Play/Domain/Campaign/FlowRun/StepKind.php`, `Studio/.../Version2/Steps.php:36-45`).
+- Night Job (Cyberpunk RED rules) tells the player to roll from their book; the app cannot roll 1d10 + stat against a DV.
+- ADR 0022:15, ADR 0017:174 and the contract (`docs/contracts/gamesystem-release.md:255`) said checks open schema version 3.
+
+## Decisions
+
+| Question | Decision |
+|---|---|
+| Schema version (user, 2026-10-13) | **Additive in schema version 2**: fill the reserved `checks` section and add the `check` step kind. Every hash kept. Amends ADR 0022, ADR 0017 and the contract |
+| Roll-time inputs (user, 2026-10-13) | **Difficulty + situational modifier**: a check may declare `difficulty {label, default, min?, max?}`, set by the player at roll time, read by band formulas as `{check:difficulty}`; the player can always add a situational modifier −100..100 (default 0) |
+| Sheet checks (user, 2026-10-13) | **Any Campaign Character**, in or out of a Scene. Flow `check` steps roll for a Character in the current Scene (`Scene::characters()`), else the Session party |
+| Scripting (Claude, ADR 0024) | None. `total = dice + modifier formula + situational`; first band with `upTo ≥ total`, last catches the rest. Known gaps listed in ADR 0024 |
+| Difficulty reference (Claude) | Formula kernel gains reference kind `{check:key}` (PHP, TS, conformance vectors); Studio and Play allow only `difficulty`, only in band formulas of a check that declares one |
+| Step branching (Claude) | `outcomes: [{band, next?, effects?}]` keyed by band key, same rules as a `roll` band; a band without an entry continues. Step `difficulty?` (int, `{tracker}`, `{formula}` with trackers) fixes the difficulty |
+| Failures (Claude) | Modifier or band evaluation failure → 422, nothing rolled or logged. Difficulty sent to a check without one → 422; outside `min..max` → 422 |
+
+## Design
+
+### Contract (schema version 2, additive)
+
+```
+checks  ≤ 50 of Check, keys unique
+Check   { key, label (1–100), hint? (≤500), dice (DiceExpression, ≤100), modifier? (formula 1–200, sheet scope),
+          difficulty? { label (1–60), default, min?, max? } (ints ±1,000; min ≤ default ≤ max),
+          bands 1–10 of { key, label (1–100), upTo?: int | {tracker} | {formula} } (keys unique; all but the last have upTo) }
+Step    check { key, kind: "check", title, tip?, mandatory?, check, difficulty?: int | {tracker} | {formula} (trackers), outcomes?: [{band, next?, effects?}] }
+```
+
+- Sheet scope = what a derived formula reads (number, track current and `.max`, derived, trackers). Band formulas also `{check:difficulty}` when declared.
+- JSON Schema checks structure; the Version2 validator checks dice notation, formulas, references, kinds, band keys, difficulty range, step `check` exists, step `difficulty` only for a check with one, `outcomes[].band` exists and is unique. Agreement fixtures for each rule. Canonical form unchanged for existing content.
+
+### Play
+
+- Translator: `Check` definitions in the GameSystem snapshot (`Play/Domain/GameSystem/Check/`), re-checking every rule; `CheckStep` in flows.
+- Performing a check (Play Domain): roll the `DiceExpression` with the injected RNG, evaluate the modifier and band bounds against one Character (a public sheet resolver extracted from `DerivedValues`, plus `{check:difficulty}`), pick the band. Result: roll, modifier, situational, difficulty, total, band.
+- Journal entry kind `check` (`CheckContent`): Character id and name, check key and label, roll groups, modifier, situational, difficulty, total, band key and label; flow-step snapshot when from a step.
+- Sheet: `POST /api/campaigns/{id}/journal/checks` `{check, character, difficulty?, situational?}` for any Campaign Character; the Campaign response exposes the release's checks.
+- Flow: `StepKind::Check`, `StepResult::check`, `CompleteFlowStepHandler` answers with `{character, difficulty?, situational?}`; Character must be in `Scene::characters()` (or the Session party outside a Scene); `outcomes` branch by band key.
+
+### UI
+
+- Characters panel: a "Roll a check" action per Character opens a dialog (check, difficulty when declared, situational modifier, Roll).
+- Journal: a `check` entry shows Character, check, dice, modifiers, total vs difficulty and the outcome.
+- Step card for `check`: Character picker (preselected when one), difficulty (fixed when the step sets it), situational modifier, Roll.
+
+## Constraints
+
+- Schema version 2 extended additively; JSON Schema and Version2 validator agree. Play reads releases only through its ACL ([ADR 0010](../../docs/adr/0010-versioned-gamesystem-releases.md), [ADR 0012](../../docs/adr/0012-phpat-boundary-enforcement.md)). Play composes Randomness and Formula; neither kernel imports the other.
+- `make api` after response changes; commit `openapi.json` and `schema.d.ts`.
+- Every slice safe on `main` alone: slice 1 is a decision and a kernel reference nobody uses; slice 2 validates content no preset uses (Play's translator keeps refusing `check` content until slice 3); slices 4–5 add endpoints the UI ignores until slice 6.
+- Fan-content rule (ADR 0018 decision 29) for Night Job checks: original wording, generic mechanic only.
+
+## Slice plan
+
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Each slice's first commit carries the previous slice's review fixes.
+
+| # | Branch | PR title | Tasks | Forecast |
+|---|---|---|---|---|
+| 1 | `feat/play-checks-1-decision` | `feat(formula): play-checks 1/7 check decision and reference` | T1, T2 | ~900 |
+| 2 | `feat/play-checks-2-contract` | `feat(studio): play-checks 2/7 check contract` | T3 | ~1,400 |
+| 3 | `feat/play-checks-3-play-acl` | `feat(play): play-checks 3/7 checks in the snapshot` | T4 | ~1,300 |
+| 4 | `feat/play-checks-4-sheet` | `feat(play): play-checks 4/7 sheet checks and journal` | T5 | ~1,600 incl. ~400 generated |
+| 5 | `feat/play-checks-5-step` | `feat(play): play-checks 5/7 check step` | T6 | ~1,500 incl. ~400 generated |
+| 6 | `feat/play-checks-6-ui` | `feat(play): play-checks 6/7 checks in the UI` | T7 | ~1,500 |
+| 7 | `feat/play-checks-7-preset` | `feat(play): play-checks 7/7 Night Job checks and wrap-up` | T8, T9 | ~700 |
+
+## Tasks
+
+| ID | Slice | Task | Route | Status | Commit |
+|---|---|---|---|---|---|
+| T1 | 1 | Docs: this feature doc; ADR 0024 (parent); ADR index row; status notes on ADR 0022 and ADR 0017 ("amended by 0024"); ADR 0023 consequence note (`{check:key}` reference); vision open question moved to resolved; glossary (Check, Outcome band, Flow step kinds, Check difficulty, Situational modifier); contract line 255 points to ADR 0024 | delegated writer (slice 1) | [x] | |
+| T2 | 1 | Formula kernel: reference kind `{check:key}` (`Reference::check()`, tokenizer/parser, `references()`), PHP and TS evaluators, conformance vectors (evaluate and references); existing contexts (Studio `Formulas`, Play translator, `DerivedValues`, flow resolver) reject a `check` reference where it is not allowed | | [ ] | |
+| T3 | 2 | Contract: `checks` and the `check` step in `v2.schema.json` and the Version2 validator (dice, formulas and scope, band keys and bounds, difficulty range, step references); agreement fixtures; example release; contract doc section | | [ ] | |
+| T4 | 3 | Play ACL and domain: translator reads checks and check steps (re-checks every rule); `Check` snapshot; public sheet resolver extracted from `DerivedValues`; check performance (dice, modifier, situational, difficulty, band) with evaluation failure as a domain error; unit tests | | [ ] | |
+| T5 | 4 | Sheet checks: `check` journal content; `POST /api/campaigns/{id}/journal/checks`; Campaign response exposes checks; 404/422 mapping and API tests; `make api` | | [ ] | |
+| T6 | 5 | Check step: `StepKind::Check`, `StepResult::check`, FlowRun branching by band key and effects, Character eligibility (Scene characters, else party), fixed step difficulty; handler, request and response; API tests; `make api` | | [ ] | |
+| T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | | [ ] | |
+| T8 | 7 | Night Job checks (stats vs DV, original wording) and check steps in the heist flow; preset tests; e2e: roll a check from the sheet and from a step | | [ ] | |
+| T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | | [ ] | |
+
+## Progress
+
+- 2026-10-13: Exploration done (reserved `checks` section, Formula kernel and `DerivedValues` resolver, `DiceExpression`, step-kind path, `Scene::characters()`, journal kinds, Night Job). Three decisions taken with the user; ADR 0024 written by the parent. Issue #114.
+- 2026-10-13: T1 done (docs only; structural readback, no RED/GREEN). Route: delegated writer (slice 1).
+
+## Reviews
+
+| Slice | Lineage | Commits | Outcome | PR |
+|---|---|---|---|---|
+
+## Next step
+
+Slice 1 (T1, T2) on `feat/play-checks-1-decision`.

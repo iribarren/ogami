@@ -1,6 +1,6 @@
 # 0023. Formula kernel and derived values
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0024](0024-structured-checks-without-scripting.md)
 - **Date:** 2026-10-13
 
 ## Context
@@ -75,3 +75,4 @@ reference  := "{" key "}" | "{" key ".max" "}" | "{tracker:" key "}"
 - There are two evaluators to maintain. The conformance vectors are the contract between them, and a new operator or function lands in both, with vectors, in the same change.
 - Derived values are never stored, so a release upgrade (feature 20) or a tracker change recomputes them for free.
 - Sheet-field effects, checks and anything beyond integer arithmetic with `min` and `max` (rounding modes, conditionals, dice inside formulas) are left until a real game needs them.
+- Checks add the `{check:key}` reference kind, read only in band formulas ([ADR 0024](0024-structured-checks-without-scripting.md)).

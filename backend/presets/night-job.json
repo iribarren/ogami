@@ -1,0 +1,421 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "night-job",
+    "name": "Night Job",
+    "description": "A heist one-shot for use with Cyberpunk RED, for players new to solo play. Original content: a guided flow, an alarm clock and tables for one evening of work.",
+    "credits": {
+      "notice": "Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.",
+      "license": "R. Talsorian Games Homebrew Content Policy",
+      "url": "https://rtalsoriangames.com/homebrew-content-policy/"
+    }
+  },
+  "theme": "neon",
+  "oracles": {
+    "tables": [
+      {
+        "key": "job-clients",
+        "name": "Job clients",
+        "entries": [
+          {"text": "A fixer who needs a deniable crew"},
+          {"text": "A nomad elder protecting the family's road rights"},
+          {"text": "A newscaster chasing the story that ends a career"},
+          {"text": "A back-alley surgeon who is owed favors"},
+          {"text": "A corporate manager who wants out"},
+          {"text": "A street preacher with surprisingly deep pockets"},
+          {"text": "A gang boss who cannot be seen doing it herself"},
+          {"text": "A retired solo with one last debt"},
+          {"text": "A club owner whose neighbor got too greedy"},
+          {"text": "A scared clerk with a stolen access badge"},
+          {"text": "An insurance adjuster who knows too much"},
+          {"text": "A data broker playing both sides"}
+        ]
+      },
+      {
+        "key": "job-targets",
+        "name": "Job targets",
+        "entries": [
+          {"text": "A prototype locked in a lab safe"},
+          {"text": "A data shard in a penthouse vault"},
+          {"text": "A doctor held in a private clinic"},
+          {"text": "A shipment sitting on the docks"},
+          {"text": "A server humming in a basement"},
+          {"text": "A ledger kept in a casino office"},
+          {"text": "A witness hidden in a safe apartment"},
+          {"text": "A stolen vehicle in a guarded garage"},
+          {"text": "A signed contract in a lawyer's tower"},
+          {"text": "A crate of medical supplies at a depot"},
+          {"text": "An old memory chip in a museum display"},
+          {"text": "A courier case chained to a bodyguard"}
+        ]
+      },
+      {
+        "key": "payouts",
+        "name": "Payouts",
+        "dice": "1d10",
+        "entries": [
+          {"min": 1, "max": 1, "text": "300 eb and a handshake"},
+          {"min": 2, "max": 2, "text": "500 eb"},
+          {"min": 3, "max": 3, "text": "800 eb"},
+          {"min": 4, "max": 4, "text": "1,000 eb"},
+          {"min": 5, "max": 5, "text": "1,500 eb"},
+          {"min": 6, "max": 6, "text": "2,000 eb"},
+          {"min": 7, "max": 7, "text": "3,000 eb"},
+          {"min": 8, "max": 8, "text": "A favor you can call in later"},
+          {"min": 9, "max": 9, "text": "A share of whatever the job turns up"},
+          {"min": 10, "max": 10, "text": "5,000 eb, if you survive the night"}
+        ]
+      },
+      {
+        "key": "complications",
+        "name": "Complications",
+        "entries": [
+          {"key": "patrol", "text": "A patrol walks by", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+          {"key": "lucky-break", "text": "A lucky break", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": -1}]},
+          {"key": "spotted", "text": "Spotted!", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 2}]},
+          {"key": "new-code", "text": "The door code changed"},
+          {"key": "camera", "text": "A camera swings your way", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+          {"key": "power-flicker", "text": "The lights flicker and cover you", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": -1}]},
+          {"key": "wrong-floor", "text": "The plans were wrong about this floor"},
+          {"key": "late-worker", "text": "A tired worker stays past closing"},
+          {"key": "gear-fails", "text": "A piece of your gear acts up"},
+          {"key": "noisy", "text": "Something falls over, loudly", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+          {"key": "friendly-guard", "text": "A guard looks the other way"},
+          {"key": "rival-crew", "text": "Someone else is here for the same thing"}
+        ]
+      },
+      {
+        "key": "net-floors",
+        "name": "Net floors",
+        "entries": [
+          {"text": "A password gate"},
+          {"text": "A file cache"},
+          {"text": "A control node"},
+          {"text": "An empty floor"},
+          {"text": "Black ICE"},
+          {"text": "A sleepy sentry program"},
+          {"text": "A mirror maze of fake files"},
+          {"text": "A camera feed archive"},
+          {"text": "A door lock controller"},
+          {"text": "A trapped file"},
+          {"text": "A chat log nobody cleaned"},
+          {"text": "A backdoor left by someone else"}
+        ]
+      },
+      {
+        "key": "black-ice",
+        "name": "Black ICE",
+        "entries": [
+          {"text": "A burning hound"},
+          {"text": "A black bird"},
+          {"text": "A static wraith"},
+          {"text": "A neural spike"},
+          {"text": "A looping labyrinth"},
+          {"text": "A patient spider"},
+          {"text": "A chorus of screaming packets"},
+          {"text": "A smiling clerk program"},
+          {"text": "A pack of glass wolves"},
+          {"text": "A slow, heavy sentinel"}
+        ]
+      },
+      {
+        "key": "security-response",
+        "name": "Security response",
+        "entries": [
+          {"text": "Two guards with smartguns"},
+          {"text": "A drone swarm"},
+          {"text": "Shutters slam down"},
+          {"text": "A corp solo walks in"},
+          {"text": "A guard dog on a long leash"},
+          {"text": "Gas fills the corridor"},
+          {"text": "An armored door seals behind you"},
+          {"text": "A sniper on the opposite roof"},
+          {"text": "A rapid response van screeches in"},
+          {"text": "A turret wakes up in the ceiling"},
+          {"text": "The elevator stops between floors"},
+          {"text": "A reinforcement team, still pulling on armor"}
+        ]
+      },
+      {
+        "key": "npc-name",
+        "name": "Street names",
+        "entries": [
+          {"text": "Razor"},
+          {"text": "Juno"},
+          {"text": "Tinman"},
+          {"text": "Static"},
+          {"text": "Mama Lux"},
+          {"text": "Ghostwire"},
+          {"text": "Copper"},
+          {"text": "Little Ash"},
+          {"text": "Vesper"},
+          {"text": "Dutch"},
+          {"text": "Halo"},
+          {"text": "Nine-Lives"},
+          {"text": "Pixel"},
+          {"text": "Sable"},
+          {"text": "Rook"},
+          {"text": "Cinder"}
+        ]
+      },
+      {
+        "key": "rumors",
+        "name": "Street rumors",
+        "entries": [
+          {"text": "The new security chief used to work for a rival"},
+          {"text": "Someone is buying every spare access badge in the district"},
+          {"text": "A shipment arrives early this week"},
+          {"text": "The cleaning crew sells floor plans for a few eddies"},
+          {"text": "A patrol goes silent every night at the same hour"},
+          {"text": "The building's power grid is failing"},
+          {"text": "A gang plans to hit the same place first"},
+          {"text": "A guard owes a debt and can be leaned on"},
+          {"text": "The vault door has a manual override nobody mentions"},
+          {"text": "A reporter is camped across the street"},
+          {"text": "The client has hired two crews for the same job"},
+          {"text": "Something in the basement is not on any plan"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "fate",
+        "name": "Fate question",
+        "sides": 100,
+        "levels": [
+          {"key": "very-unlikely", "label": "Very unlikely", "target": 10},
+          {"key": "unlikely", "label": "Unlikely", "target": 30},
+          {"key": "even", "label": "50/50", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 70},
+          {"key": "very-likely", "label": "Very likely", "target": 90}
+        ],
+        "exceptionalPercent": 20
+      }
+    ]
+  },
+  "tags": [
+    {"key": "crew", "label": "Crew", "hint": "Part of your crew"},
+    {"key": "client", "label": "Client", "hint": "The one paying for the job"},
+    {"key": "nomad", "label": "Nomad", "hint": "Good behind the wheel"}
+  ],
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "hint": "At 6/6 security locks down and you run", "kind": "clock", "segments": 6},
+    {"key": "edge", "name": "Edge", "hint": "A spare advantage you can spend to dodge trouble", "kind": "counter", "min": 0, "max": 3, "initial": 0},
+    {"key": "objective", "name": "Objective", "kind": "counter", "min": 0, "max": 1, "initial": 0, "levels": [{"upTo": 0, "label": "Not yet"}, {"label": "In hand"}]}
+  ],
+  "factSlots": [
+    {"key": "client", "label": "Client", "type": "npc"},
+    {"key": "target", "label": "Target", "type": "text"},
+    {"key": "payout", "label": "Payout", "type": "text"},
+    {"key": "plan", "label": "Plan", "type": "text"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "social",
+      "name": "Social",
+      "purpose": "Talk, bargain or bluff with someone.",
+      "tips": "Decide what you want from the other person before you ask. Use the Fate question when you do not know how they react, and play the dice for the hard parts with your Cyberpunk RED rules (see the Cyberpunk RED core rulebook, Skills chapter).",
+      "oracles": ["fate", "npc-name"],
+      "setup": [],
+      "play": [
+        {"key": "talk", "kind": "prompt", "title": "Who do you talk to, and what do you want?", "tip": "Name them with the Street names table if you have no one in mind."},
+        {"key": "reaction", "kind": "oracle", "title": "Do they give you what you ask?", "tip": "Ask for something fair as 50/50, something steep as unlikely.", "oracle": "fate", "likelihood": "even"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "exploration",
+      "name": "Exploration",
+      "purpose": "Look around a place and see what is there.",
+      "tips": "Scout the job site: entrances, guards, cameras. One good detail is worth more than a long list. Anything you learn can help you in the heist.",
+      "oracles": ["fate"],
+      "setup": [],
+      "play": [
+        {"key": "look", "kind": "prompt", "title": "Where do you look around?"},
+        {"key": "find", "kind": "oracle", "title": "Do you find a way in?", "tip": "A yes is a lead, not a free pass.", "oracle": "fate", "likelihood": "even"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "crew",
+      "name": "Crew",
+      "purpose": "Put the crew together.",
+      "tips": "A crew of two to four is plenty. Give each person a role and a street name, and say what they are good at. Your own character is already part of it.",
+      "oracles": ["npc-name"],
+      "setup": [
+        {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "tip": "Someone you trust with your back. A name and a skill is enough.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "second", "kind": "prompt", "title": "Who else is in?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "wheelman", "kind": "prompt", "title": "Who drives?", "tip": "Skip it if nobody on the crew can drive: you will take the wheel yourself.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew", "nomad"]}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "briefing",
+      "name": "Briefing",
+      "purpose": "Meet the client and hear the job.",
+      "tips": "Roll the tables to get the job, then make it yours. The facts you fill appear in the Facts panel, and the payout comes back at the end.",
+      "oracles": ["job-clients", "job-targets", "payouts"],
+      "setup": [
+        {"key": "client", "kind": "table", "title": "Who is the client?", "tip": "Roll, or pick an entry you like. Rename the client if you want.", "table": "job-clients", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}, {"kind": "fillFact", "slot": "client"}]},
+        {"key": "target", "kind": "table", "title": "What is the target?", "table": "job-targets", "effects": [{"kind": "fillFact", "slot": "target"}]},
+        {"key": "payout", "kind": "table", "title": "What does it pay?", "table": "payouts", "effects": [{"kind": "fillFact", "slot": "payout"}]},
+        {"key": "plan", "kind": "prompt", "title": "What's the plan?", "tip": "One sentence: how you get in, and how you get out.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "plan"}]},
+        {"key": "catch", "kind": "prompt", "title": "What's the catch?", "tip": "Every job has a catch the client left out. Decide it now or leave it for later."}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "netrun",
+      "name": "Netrun",
+      "purpose": "Jack in and work the net architecture.",
+      "tips": "Go down one floor at a time and roll what waits on each. Run the details with your Cyberpunk RED rules (see the Cyberpunk RED core rulebook, Netrunning chapter). Keep it short: a few floors tell the story.",
+      "oracles": ["net-floors", "black-ice"],
+      "setup": [],
+      "play": [
+        {"key": "floor", "kind": "table", "title": "What waits on this floor?", "table": "net-floors"},
+        {"key": "ice", "kind": "table", "title": "Which Black ICE is it?", "tip": "Only when the floor holds Black ICE.", "table": "black-ice"},
+        {"key": "jack", "kind": "prompt", "title": "What do you do here, and how does it go?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "infiltration",
+      "name": "Infiltration",
+      "purpose": "Get inside unseen.",
+      "tips": "Move quietly and describe one obstacle at a time. A failed attempt raises the alarm. A very bad one blows your cover and turns the scene into a firefight.",
+      "oracles": ["fate", "complications"],
+      "setup": [],
+      "play": [
+        {"key": "approach", "kind": "prompt", "title": "How do you try to get in?"},
+        {"key": "slip-past", "kind": "oracle", "title": "Do you slip past?", "tip": "A no raises the alarm by one. An exceptional no starts a firefight.", "oracle": "fate", "likelihood": "even", "branches": {"no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}}}
+      ],
+      "closing": []
+    },
+    {
+      "key": "firefight",
+      "name": "Firefight",
+      "purpose": "Shoot your way through.",
+      "tips": "Keep it short and loud. Run the shooting with your Cyberpunk RED rules (see the Cyberpunk RED core rulebook, Combat chapter) and use this scene only to learn who comes for you and how it ends.",
+      "oracles": ["fate", "security-response"],
+      "setup": [
+        {"key": "who-shoots", "kind": "prompt", "title": "Who opens fire?", "effects": [{"kind": "sceneTitle", "title": "Firefight: {answer}"}]}
+      ],
+      "play": [
+        {"key": "response", "kind": "table", "title": "Who comes for you?", "table": "security-response"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "grab",
+      "name": "Grab",
+      "purpose": "Take what you came for.",
+      "tips": "This is the moment of the job. Describe how you reach the target, then say if you got it. Getting it ends the heist and starts the escape.",
+      "oracles": ["fate"],
+      "setup": [],
+      "play": [
+        {"key": "reach", "kind": "prompt", "title": "How do you get to the target?"}
+      ],
+      "closing": [
+        {"key": "got-it", "kind": "choice", "title": "Got it?", "tip": "Choose Yes when the target is in your hands. The heist phase ends.", "mandatory": true, "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "objective", "op": "set", "value": 1}, {"kind": "endPhase"}]}, {"key": "no", "label": "No"}]}
+      ]
+    },
+    {
+      "key": "getaway",
+      "name": "Getaway",
+      "purpose": "Get out before the doors close.",
+      "tips": "If the alarm is high the building is hunting you: the scene becomes a chase. Otherwise you slip away and describe it.",
+      "oracles": ["fate"],
+      "setup": [
+        {"key": "heat", "kind": "condition", "title": "How hot is it out there?", "tip": "Decided by the alarm: above 3 and you are chased.", "tracker": "alarm", "bands": [{"upTo": 3}, {"next": "end", "effects": [{"kind": "switchSceneType", "sceneType": "chase"}]}]},
+        {"key": "slip-out", "kind": "prompt", "title": "You slip out. How?"}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "chase",
+      "name": "Chase",
+      "purpose": "Lose the pursuit on the streets.",
+      "tips": "Describe streets, traffic and the vehicles behind you. Use the Fate question to see if you lose them, and your Cyberpunk RED rules for the driving (see the Cyberpunk RED core rulebook, Combat chapter).",
+      "oracles": ["fate"],
+      "setup": [
+        {"key": "wheel", "kind": "pick", "title": "Who takes the wheel?", "tip": "A nomad in the crew is a good choice.", "of": "npc", "tags": ["crew", "nomad"], "mode": "random", "branches": {"found": {"next": "driver"}, "none": {"next": "you-drive"}}},
+        {"key": "driver", "kind": "prompt", "title": "A driver steps up", "prompt": "{picked} takes the wheel.", "next": "end"},
+        {"key": "you-drive", "kind": "prompt", "title": "Nobody else can drive", "prompt": "You take the wheel."}
+      ],
+      "play": [
+        {"key": "lose-them", "kind": "oracle", "title": "Do you lose them?", "oracle": "fate", "likelihood": "unlikely"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "payday",
+      "name": "Payday",
+      "purpose": "Get paid, or not.",
+      "tips": "Without the objective there is no pay. With it, the client pays what was promised and you check if they keep their word.",
+      "oracles": [],
+      "setup": [
+        {"key": "delivered", "kind": "condition", "title": "Did you get the objective?", "tracker": "objective", "bands": [{"upTo": 0, "next": "no-pay"}, {"next": "paid"}]},
+        {"key": "no-pay", "kind": "prompt", "title": "No job, no pay.", "tip": "Say what it costs you, and who you owe now.", "next": "end"},
+        {"key": "paid", "kind": "prompt", "title": "The client pays up.", "prompt": "The client pays {fact:payout}. Was {step:plan} worth it?"},
+        {"key": "double-cross", "kind": "roll", "title": "Is it a double-cross?", "tip": "Roll 1d6. A 1 means the client sells you out.", "dice": "1d6", "bands": [{"upTo": 1, "next": "betrayed"}, {"next": "end"}]},
+        {"key": "betrayed", "kind": "prompt", "title": "Double-cross! Who sold you out?"}
+      ],
+      "play": [],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "heist",
+      "name": "Heist",
+      "description": "A one-shot heist for one sitting: set it up, do the legwork, pull the job, get away.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play one job: you put a crew together, meet the client, scout the place, pull the heist, get away and get paid. Each step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them.\n\nWatch the Alarm clock. Mistakes and bad luck fill it. When it reaches 6 the building locks down and the job is over: you run.\n\nIn the legwork and the heist you choose which scene to play next. Use Move on when you are ready to leave a phase. Rules for fighting, hacking and skills come from your Cyberpunk RED book: this guide only decides what happens next.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["fate", "job-clients", "job-targets", "payouts", "complications", "net-floors", "black-ice", "security-response", "npc-name"],
+      "trackers": ["alarm", "edge", "objective"],
+      "phases": [
+        {"key": "the-job", "name": "The job", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["crew", "briefing"]}},
+        {
+          "key": "legwork",
+          "name": "Legwork",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["social", "exploration", "netrun"]},
+          "sceneClosing": [
+            {"key": "gain-edge", "kind": "choice", "title": "Did you gain an edge?", "tip": "Choose Yes if the scene taught you something that will help in the heist.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
+          ],
+          "worldTurn": [
+            {"key": "word", "kind": "roll", "title": "Does word get around?", "tip": "Roll 1d6. A 1 raises the alarm by one before the heist even starts.", "dice": "1d6", "bands": [{"upTo": 1, "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {}]}
+          ]
+        },
+        {
+          "key": "the-heist",
+          "name": "The heist",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["infiltration", "netrun", "grab"]},
+          "sceneOpening": [
+            {"key": "pressure", "kind": "condition", "title": "How alert is security?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {"upTo": 5}, {"next": "end"}]},
+            {"key": "notice", "kind": "prompt", "title": "Security is on edge", "prompt": "The alarm is at {tracker:alarm}. What do you notice?", "tip": "Guards walk faster, doors are watched. Let it change how you play the scene."}
+          ],
+          "sceneClosing": [
+            {"key": "edge-left", "kind": "condition", "title": "Do you have an edge?", "tracker": "edge", "bands": [{"upTo": 0, "next": "complication"}, {}]},
+            {"key": "spend-edge", "kind": "choice", "title": "Spend an edge to avoid trouble?", "tip": "Spending it skips the complication and costs one edge.", "options": [{"key": "yes", "label": "Yes", "next": "lockdown", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": -1}]}, {"key": "no", "label": "No", "next": "complication"}], "skip": "no"},
+            {"key": "complication", "kind": "table", "title": "What goes wrong?", "tip": "Some entries move the alarm for you.", "table": "complications"},
+            {"key": "lockdown", "kind": "condition", "title": "Is the alarm full?", "tracker": "alarm", "bands": [{"upTo": 5}, {"effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "response", "kind": "condition", "title": "Does security respond?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {}]},
+            {"key": "guards", "kind": "roll", "title": "Do the guards find you?", "tip": "Roll 1d6. On 1 to 3 a firefight starts right now.", "dice": "1d6", "bands": [{"upTo": 3, "effects": [{"kind": "nextScene", "sceneType": "firefight"}]}, {}]}
+          ]
+        },
+        {"key": "escape", "name": "Escape", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["getaway"]}},
+        {"key": "epilogue", "name": "Epilogue", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["payday"]}}
+      ]
+    }
+  ],
+  "sheet": {},
+  "checks": []
+}

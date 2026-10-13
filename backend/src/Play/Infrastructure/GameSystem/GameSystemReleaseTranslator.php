@@ -68,6 +68,11 @@ final readonly class GameSystemReleaseTranslator
     /** @var list<int> */
     public const array SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 
+    // The credits limits of the contract (v2.schema.json); Play never imports Studio's validator.
+    private const int MAX_CREDITS_NOTICE_LENGTH = 2000;
+    private const int MAX_CREDITS_LICENSE_LENGTH = 200;
+    private const int MAX_CREDITS_URL_LENGTH = 500;
+
     private const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
     /**
@@ -505,12 +510,25 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, $path.'.notice', 'must not be blank.');
         }
 
+        if (mb_strlen(trim($notice)) > self::MAX_CREDITS_NOTICE_LENGTH) {
+            throw $this->invalid($view, $path.'.notice', \sprintf('must be at most %d characters.', self::MAX_CREDITS_NOTICE_LENGTH));
+        }
+
+        $license = $this->optionalString($view, $credits['license'] ?? null, $path.'.license');
+        if (null !== $license && mb_strlen($license) > self::MAX_CREDITS_LICENSE_LENGTH) {
+            throw $this->invalid($view, $path.'.license', \sprintf('must be at most %d characters.', self::MAX_CREDITS_LICENSE_LENGTH));
+        }
+
         $url = $this->optionalString($view, $credits['url'] ?? null, $path.'.url');
         if (null !== $url && 1 !== preg_match('~^https://[^\\s/?\#]+\\S*$~u', $url)) {
             throw $this->invalid($view, $path.'.url', 'must be an absolute https:// URL.');
         }
 
-        return new Credits($notice, $this->optionalString($view, $credits['license'] ?? null, $path.'.license'), $url);
+        if (null !== $url && mb_strlen($url) > self::MAX_CREDITS_URL_LENGTH) {
+            throw $this->invalid($view, $path.'.url', \sprintf('must be at most %d characters.', self::MAX_CREDITS_URL_LENGTH));
+        }
+
+        return new Credits($notice, $license, $url);
     }
 
     private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind

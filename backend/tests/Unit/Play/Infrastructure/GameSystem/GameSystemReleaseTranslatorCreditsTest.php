@@ -92,6 +92,9 @@ final class GameSystemReleaseTranslatorCreditsTest extends TestCase
         yield 'license not a string' => [['notice' => 'x', 'license' => 3], 'gameSystem.credits.license: must be a string.'];
         yield 'http url' => [['notice' => 'x', 'url' => 'http://example.com/policy'], 'gameSystem.credits.url: must be an absolute https:// URL.'];
         yield 'relative url' => [['notice' => 'x', 'url' => '/policy'], 'gameSystem.credits.url: must be an absolute https:// URL.'];
+        yield 'notice over the limit' => [['notice' => str_repeat('n', 2001)], 'gameSystem.credits.notice: must be at most 2000 characters.'];
+        yield 'license over the limit' => [['notice' => 'x', 'license' => str_repeat('l', 201)], 'gameSystem.credits.license: must be at most 200 characters.'];
+        yield 'url over the limit' => [['notice' => 'x', 'url' => 'https://example.com/'.str_repeat('u', 481)], 'gameSystem.credits.url: must be at most 500 characters.'];
         yield 'unknown property' => [['notice' => 'x', 'author' => 'me'], 'gameSystem.credits.author: unknown property.'];
     }
 
@@ -103,5 +106,28 @@ final class GameSystemReleaseTranslatorCreditsTest extends TestCase
         $this->expectExceptionMessageIsOrContains($message);
 
         $this->translate($this->withCredits($credits));
+    }
+
+    #[Test]
+    public function itAcceptsCreditsExactlyAtTheLimits(): void
+    {
+        $url = 'https://example.com/'.str_repeat('u', 480);
+        $credits = $this->translate($this->withCredits(['notice' => str_repeat('n', 2000), 'license' => str_repeat('l', 200), 'url' => $url]))->credits();
+
+        self::assertEquals(new Credits(str_repeat('n', 2000), str_repeat('l', 200), $url), $credits);
+    }
+
+    /**
+     * Credits exist from schema version 2 on; stored version 1 content never yields them, even with a stray key.
+     */
+    #[Test]
+    public function aSchemaVersionOneReleaseNeverYieldsCredits(): void
+    {
+        $content = ReleaseViews::contractDocExampleContent();
+        $gameSystem = $content['gameSystem'];
+        self::assertIsArray($gameSystem);
+        $content = ReleaseArrays::with($content, 'gameSystem', [...$gameSystem, 'credits' => ['notice' => 'Stray.']]);
+
+        self::assertNull($this->translate($content)->credits());
     }
 }

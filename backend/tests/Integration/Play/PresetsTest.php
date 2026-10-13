@@ -124,6 +124,37 @@ final class PresetsTest extends KernelTestCase
         $this->assertAnswer(YesNoAnswer::No, 0, $oracle->ask('impossible', 1, new ScriptedRandomNumberGenerator(1)));
     }
 
+    #[Test]
+    public function nightJobPublishesOnceWithItsCreditsThemeAndOracles(): void
+    {
+        $this->assertPublishesOnce('night-job');
+
+        $snapshot = $this->snapshot('night-job');
+        self::assertSame('Night Job', $snapshot->name());
+        self::assertSame(1, $snapshot->releaseVersion());
+        // The publisher's disclaimer (ADR 0021) and the neon Theme travel with the release through the ACL.
+        self::assertSame('neon', $snapshot->theme());
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringStartsWith('Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games', $credits->notice);
+        self::assertSame(['R. Talsorian Games Homebrew Content Policy', 'https://rtalsoriangames.com/homebrew-content-policy/'], [$credits->license, $credits->url]);
+
+        $flow = $snapshot->defaultFlow();
+        self::assertSame(['heist', FlowView::Focus], [$flow?->key, $flow?->defaultView]);
+        self::assertSame(['the-job', 'legwork', 'the-heist', 'escape', 'epilogue'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? []));
+        self::assertSame(['alarm', 'edge', 'objective'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+
+        // Every table of the flow resolves at both ends; "rumors" is for free play only.
+        foreach (['job-clients' => 12, 'job-targets' => 12, 'complications' => 12, 'net-floors' => 12, 'black-ice' => 10, 'security-response' => 12, 'npc-name' => 16, 'rumors' => 12] as $table => $entries) {
+            $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
+        }
+
+        self::assertContains('rumors', $snapshot->oracleTableKeys());
+        self::assertNotContains('rumors', $flow->oracles ?? []);
+        self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
+        self::assertSame(['very-unlikely' => 10, 'unlikely' => 30, 'even' => 50, 'likely' => 70, 'very-likely' => 90], $this->targets($snapshot->likelihoodOracle('fate')->oracle()->levels()));
+    }
+
     private function assertPublishesOnce(string $preset): void
     {
         $file = self::PRESETS.'/'.$preset.'.json';

@@ -1,7 +1,7 @@
 # Feature: play-characters
 
 - **Locator:** `odd/tasks/play-characters.md` · Engram topic `odd/play-characters/tasks`
-- **Issue:** #96 · **Branch:** `fix/play-characters-9-review-fixes` · **Status:** slices 1–8 merged (PRs #97–#104, #96 closed); slice 8 review fixes in progress
+- **Issue:** #96 (closed) · **Branch:** — · **Status:** complete; slices 1–9 merged (PRs #97–#105)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-guided-sample` (PRs #93–#95, M2 complete)
@@ -97,7 +97,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T11 | 8 | UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | delegated writer (slice 8) | [x] | 19ac614 |
 | T12 | 8 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | delegated writer (slice 8) | [x] | 09ab632 |
 | T13 | 8 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | delegated writer (slice 8) | [x] | f313bee |
-| T14 | 9 | Slice 8 review fixes: R3-001 party editor Cancel clears a refused save's error; R3-002 a Character created inline in a `character` step stays pickable when completing the step is refused, never a second create; R3-003 party editor test title; flow-examples Crew gains the `character` step | delegated writer (slice 9) | [x] | |
+| T14 | 9 | Slice 8 review fixes: R3-001 party editor Cancel clears a refused save's error; R3-002 a Character created inline in a `character` step stays pickable when completing the step is refused, never a second create; R3-003 party editor test title; flow-examples Crew gains the `character` step | delegated writer (slice 9) | [x] | 1b9c103 |
 
 ## Progress
 
@@ -134,7 +134,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 6 | `review-c286189f5b37cd5e` | 58dc18b, e724a74 (e9afee2 generated, review skipped by the user) | Approved, acknowledged. Fixed in slice 7: R3-001 (warning) the `CampaignSessionsType` scene reader maps every `InvalidSceneCast` to the NPC `cast` message, so a stored Scene listing a Character twice under `characters` reports the wrong field (`DoctrineCampaignRepositoryTest` locks that message in); give `characters` its own message | #102 |
 | 7 | `review-8db146b654913fc8` | beaffb2, 2240e5e, 5e6e230, e8fa788 | Approved, acknowledged. Fixed in slice 8: R3-001 (warning) `StepCard.tsx` renders the `character` step as "not playable here yet" with no way to send `characterId`, so a mandatory `character` step stalls guided play; closed by the T11 step card | #103 |
 | 8 | `review-2e996815418b2b90` | 19ac614, 09ab632, f313bee | Approved, acknowledged. Fixed in slice 9: R3-001 (suggestion) `PartyEditor.tsx` Cancel after a refused save leaves the refusal alert visible (no `edit.reset()`); R3-002 (suggestion) `CharacterStepForm.tsx` untested path: a Character created inline, then completing the step refused; until the refetch lands the form shows again, and a second Save would create a duplicate; R3-003 (suggestion) `PartyEditor.test.tsx` test title claims the no-Session case it does not check | #104 |
+| 9 | — | 1b9c103 | Review skipped by the user (fixes of slice 8 review findings only, 85 lines) | #105 |
 
 ## Next step
 
-Slice 9 (T14) on `fix/play-characters-9-review-fixes`: review fixes of slice 8; then review, PR (`Part of #96`), merge, feature closed.
+Feature closed. Next feature: 11 `rules-derived-values` ([roadmap](../../docs/roadmap.md)).

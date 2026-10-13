@@ -425,7 +425,9 @@
       {"key": "wits", "label": "Wits", "hint": "Reading a room and a plan.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
       {"key": "grit", "label": "Grit", "hint": "Taking a hit and staying on your feet.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
       {"key": "charm", "label": "Charm", "hint": "Talking your way past people.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
+      {"key": "cool", "label": "Cool", "hint": "Nerve, minus half the Alarm: how steady you stay as security closes in.", "group": "Stats", "type": "derived", "formula": "max(0, {nerve} - {tracker:alarm} / 2)"},
       {"key": "hp", "label": "HP", "hint": "Hit points: at zero you are down.", "group": "Condition", "type": "track", "max": 40},
+      {"key": "wounded", "label": "Wounded at", "hint": "Half your HP: at or below it you are badly hurt.", "group": "Condition", "type": "derived", "formula": "{hp.max} / 2"},
       {"key": "humanity", "label": "Humanity", "hint": "What is left of you under the chrome.", "group": "Condition", "type": "track", "max": 50},
       {"key": "gear", "label": "Gear", "group": "Kit", "type": "list", "itemLabel": "Item", "maxItems": 20},
       {"key": "cyberware", "label": "Cyberware", "group": "Kit", "type": "list", "itemLabel": "Implant", "maxItems": 10}

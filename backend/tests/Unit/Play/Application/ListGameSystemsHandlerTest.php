@@ -9,6 +9,7 @@ use App\Play\Application\GameSystemSummary;
 use App\Play\Application\ListGameSystems;
 use App\Play\Application\ListGameSystemsHandler;
 use App\Play\Application\PublishedGameSystemReleases;
+use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -57,6 +58,22 @@ final class ListGameSystemsHandlerTest extends TestCase
                 new FlowSummaryView('the-heist', 'The heist', 'Plan it, pull it off, get away.', 'Every crew needs a score.', true, 'focus', [], []),
                 new FlowSummaryView('one-shot', 'One shot', null, null, false, 'journal', [], []),
             ]),
+        ], $summaries);
+    }
+
+    #[Test]
+    public function eachLatestReleaseListsItsCredits(): void
+    {
+        $credits = new Credits('Unofficial fan content.', 'A policy', 'https://example.com/policy');
+        $releases = new InMemoryPublishedGameSystemReleases();
+        $releases->add(new GameSystemSnapshot('fan', 'Fan', 1, null, [], [], credits: $credits));
+        $releases->add(Snapshots::bare('plain', 'Plain', 1));
+
+        $summaries = new ListGameSystemsHandler($releases)(new ListGameSystems());
+
+        self::assertEquals([
+            new GameSystemSummary('fan', 'Fan', null, 1, [], $credits),
+            new GameSystemSummary('plain', 'Plain', null, 1),
         ], $summaries);
     }
 

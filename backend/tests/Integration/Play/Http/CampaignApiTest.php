@@ -76,11 +76,31 @@ final class CampaignApiTest extends WebTestCase
                         "name": "Example journal, revised",
                         "description": "A minimal game system that shows every part of the contract.",
                         "version": 2,
-                        "flows": []
+                        "flows": [],
+                        "credits": null
                     }
                 ]
                 JSON,
             $this->content(),
+        );
+    }
+
+    #[Test]
+    public function theGameSystemListCarriesTheCreditsOfTheLatestRelease(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6012', ReleaseViews::fixtureContent('valid/v2-credits'), false));
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6013', ReleaseViews::fixtureContent('valid/v2-credits-notice-only'), false));
+
+        $this->client->request('GET', '/api/play/game-systems');
+
+        self::assertResponseIsSuccessful();
+        $latest = $this->json()[0] ?? null;
+        self::assertIsArray($latest);
+        self::assertSame(
+            ['notice' => 'Fan content.', 'license' => null, 'url' => null],
+            $latest['credits'] ?? null,
+            'The latest release (notice only) is listed, with null for the fields it leaves out.',
         );
     }
 
@@ -126,7 +146,32 @@ final class CampaignApiTest extends WebTestCase
         $this->client->request('GET', '/api/campaigns/'.$id);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['gameSystemKey' => 'minimal', 'gameSystemName' => 'Minimal', 'version' => 1, 'theme' => 'noir'], $this->json()['pinnedRelease'] ?? null);
+        self::assertSame(['gameSystemKey' => 'minimal', 'gameSystemName' => 'Minimal', 'version' => 1, 'theme' => 'noir', 'credits' => null], $this->json()['pinnedRelease'] ?? null);
+    }
+
+    #[Test]
+    public function aCampaignReadsTheCreditsItsPinnedReleaseCarries(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6014', ReleaseViews::fixtureContent('valid/v2-credits'), false));
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'Night shift', 'gameSystemKey' => 'minimal']);
+        self::assertResponseStatusCodeSame(201);
+        $id = $this->json()['id'] ?? null;
+        self::assertIsString($id);
+
+        $this->client->request('GET', '/api/campaigns/'.$id);
+
+        self::assertResponseIsSuccessful();
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        self::assertSame(
+            [
+                'notice' => 'Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games.',
+                'license' => 'R. Talsorian Games Homebrew Content Policy',
+                'url' => 'https://rtalsoriangames.com/homebrew-content-policy/',
+            ],
+            $pinned['credits'] ?? null,
+        );
     }
 
     #[Test]
@@ -205,7 +250,7 @@ final class CampaignApiTest extends WebTestCase
                 'id' => $id,
                 'name' => 'The lost mine',
                 'createdAt' => '2026-10-06T09:00:00+00:00',
-                'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null],
+                'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null],
                 'sessions' => [
                     [
                         'number' => 1,
@@ -256,7 +301,7 @@ final class CampaignApiTest extends WebTestCase
         $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'Fresh start', 'gameSystemKey' => 'example-journal']);
         self::assertResponseStatusCodeSame(201);
         self::assertSame(
-            ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal, revised', 'version' => 2, 'theme' => null],
+            ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal, revised', 'version' => 2, 'theme' => null, 'credits' => null],
             $this->json()['pinnedRelease'] ?? null,
         );
         self::assertSame([], $this->json()['likelihoodOracles'] ?? null);
@@ -619,7 +664,7 @@ final class CampaignApiTest extends WebTestCase
             'id' => $id,
             'name' => $name,
             'createdAt' => '2026-10-06T09:00:00+00:00',
-            'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null],
+            'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null],
             'sessions' => [],
             'currentSessionNumber' => null,
             'currentSceneNumber' => null,

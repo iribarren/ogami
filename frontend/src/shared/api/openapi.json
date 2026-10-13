@@ -3646,12 +3646,40 @@
                 },
                 "type": "object"
             },
+            "CreditsResponse": {
+                "required": [
+                    "notice",
+                    "license",
+                    "url"
+                ],
+                "properties": {
+                    "notice": {
+                        "description": "The text to show, such as a publisher disclaimer.",
+                        "type": "string",
+                        "example": "Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games."
+                    },
+                    "license": {
+                        "description": "The name of the license or policy; null when the release names none.",
+                        "type": "string",
+                        "example": "R. Talsorian Games Homebrew Content Policy",
+                        "nullable": true
+                    },
+                    "url": {
+                        "description": "An absolute https:// URL of the license or policy; null when the release gives none.",
+                        "type": "string",
+                        "example": "https://rtalsoriangames.com/homebrew-content-policy/",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "PinnedReleaseResponse": {
                 "required": [
                     "gameSystemKey",
                     "gameSystemName",
                     "version",
-                    "theme"
+                    "theme",
+                    "credits"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -3678,6 +3706,15 @@
                             "eldritch",
                             "starship"
                         ]
+                    },
+                    "credits": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CreditsResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The notice, license and link the release carries; null when it has none."
                     }
                 },
                 "type": "object"
@@ -5251,7 +5288,8 @@
                     "name",
                     "description",
                     "version",
-                    "flows"
+                    "flows",
+                    "credits"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -5279,6 +5317,15 @@
                         "items": {
                             "$ref": "#/components/schemas/GameSystemFlowResponse"
                         }
+                    },
+                    "credits": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CreditsResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The notice, license and link the release carries; null when it has none."
                     }
                 },
                 "type": "object"

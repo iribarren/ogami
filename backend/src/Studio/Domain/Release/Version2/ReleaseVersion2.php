@@ -34,6 +34,9 @@ final class ReleaseVersion2
     public const int MAX_PURPOSE_LENGTH = 500;
     public const int MAX_TEXT_LENGTH = 2000;
     public const int MAX_INTRODUCTION_LENGTH = 5000;
+    public const int MAX_CREDITS_NOTICE_LENGTH = 2000;
+    public const int MAX_CREDITS_LICENSE_LENGTH = 200;
+    public const int MAX_CREDITS_URL_LENGTH = 500;
 
     /** The step lists of a Scene Type, and the hooks of a phase, in schema order. */
     public const array SCENE_TYPE_PARTS = ['setup', 'play', 'closing'];
@@ -41,6 +44,11 @@ final class ReleaseVersion2
 
     /** The curated Themes a release may name (docs/contracts/gamesystem-release.md, "Theme"). */
     public const array THEMES = ['parchment', 'neon', 'noir', 'eldritch', 'starship'];
+
+    /** Fields of "gameSystem" in schema version 2, in schema order: name => required. */
+    public const array GAME_SYSTEM = ['key' => true, 'name' => true, 'description' => false, 'credits' => false];
+
+    private const array CREDITS = ['notice' => true, 'license' => false, 'url' => false];
 
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
@@ -110,6 +118,33 @@ final class ReleaseVersion2
         }
 
         return [...$parts, 'sceneTypes' => $sceneTypes, 'flows' => $flows];
+    }
+
+    /**
+     * The optional credits of the GameSystem (ADR 0021): a notice and, when given, a license name
+     * and an absolute https:// URL. Returned in schema order without null fields.
+     *
+     * @return array{notice: string, license?: string, url?: string}
+     */
+    public static function credits(mixed $value): array
+    {
+        $path = 'gameSystem.credits';
+        $credits = ReleaseFields::object($value, $path, self::CREDITS);
+        $checked = ['notice' => ReleaseFields::text($credits['notice'], $path.'.notice', 1, self::MAX_CREDITS_NOTICE_LENGTH)];
+        if (isset($credits['license'])) {
+            $checked['license'] = ReleaseFields::text($credits['license'], $path.'.license', 0, self::MAX_CREDITS_LICENSE_LENGTH);
+        }
+
+        if (isset($credits['url'])) {
+            $url = ReleaseFields::text($credits['url'], $path.'.url', 0, self::MAX_CREDITS_URL_LENGTH);
+            if (1 !== preg_match('~^https://[^\\s/?\#]+\\S*$~u', $url)) {
+                throw InvalidReleaseContent::at($path.'.url', \sprintf('must be an absolute https:// URL, %s given', ReleaseFields::describe($url)));
+            }
+
+            $checked['url'] = $url;
+        }
+
+        return $checked;
     }
 
     /**

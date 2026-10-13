@@ -8,6 +8,7 @@ export const freeJournal: GameSystemSummary = {
   description: 'Play any setting as a journal.',
   version: 2,
   flows: [],
+  credits: null,
 }
 
 export const mythicStyle: GameSystemSummary = {
@@ -16,6 +17,7 @@ export const mythicStyle: GameSystemSummary = {
   description: null,
   version: 1,
   flows: [],
+  credits: null,
 }
 
 /** A GameSystem with two Flows, the second one the default. */
@@ -28,6 +30,7 @@ export const heist: GameSystemSummary = {
     { key: 'quick', name: 'Quick job', description: 'One phase, no hooks.', default: false },
     { key: 'full', name: 'Full heist', description: null, default: true },
   ],
+  credits: null,
 }
 
 export const lostMine: CampaignSummary = {
@@ -59,6 +62,7 @@ export const lostMineCampaign: Campaign = {
     gameSystemName: 'Free journal',
     version: 2,
     theme: null,
+    credits: null,
   },
   sessions: [
     {
@@ -159,6 +163,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
       gameSystemName: gameSystem.name,
       version: gameSystem.version,
       theme: null,
+      credits: gameSystem.credits,
     },
     sessions: [],
     currentSessionNumber: null,

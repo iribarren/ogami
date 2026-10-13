@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "gameSystem": {"key": "minimal", "name": "Minimal", "credits": {"notice": "Fan content."}},
+  "oracles": {"tables": [], "likelihood": []},
+  "flow": {"steps": []},
+  "sheet": {},
+  "checks": []
+}

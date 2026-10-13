@@ -19,7 +19,7 @@ test('a solo player keeps free facts, edits one and links it to an NPC', async (
   // A new campaign per run: the dev database keeps the campaigns of earlier runs.
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Facts ${String(Date.now())}`)
-  await form.getByLabel('GameSystem').selectOption('free-journal')
+  await form.getByLabel('Game system').selectOption('free-journal')
   await form.getByRole('button', { name: 'Create campaign' }).click()
   await expect(page).toHaveURL(/\/play\/campaigns\/[0-9a-f-]{36}$/)
 

@@ -16,7 +16,7 @@ test('the Play screen fits a phone and its panels collapse', async ({ page }) =>
 
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Phone ${String(Date.now())}`)
-  await form.getByLabel('GameSystem').selectOption('free-journal')
+  await form.getByLabel('Game system').selectOption('free-journal')
   await form.getByRole('button', { name: 'Create campaign' }).click()
   await expect(page).toHaveURL(/\/play\/campaigns\/[0-9a-f-]{36}$/)
   await expect(page.getByRole('region', { name: 'Where play stands' })).toBeVisible()

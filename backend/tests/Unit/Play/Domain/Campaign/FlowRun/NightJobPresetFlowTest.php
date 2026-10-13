@@ -207,7 +207,7 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         $campaign->skipFlowStep('lose-them', $this->release, self::at());
         $campaign->endFlowScene(6, $this->release, self::at());
 
-        self::assertSame(['setup', 'paid', 'The client pays 300 eb and a handshake. Was In through the roof worth it?'], [...self::position($campaign), $campaign->flowRunView($this->release)?->step?->prompt]);
+        self::assertSame(['setup', 'paid', 'The client pays 300 eb and a handshake. Was the job worth it?'], [...self::position($campaign), $campaign->flowRunView($this->release)?->step?->prompt]);
         $campaign->completeFlowStep('paid', self::prompt('Barely'), $this->release, self::at());
         $campaign->completeFlowStep('double-cross', self::roll('1d6', 6), $this->release, self::at());
         $campaign->endFlowScene(7, $this->release, self::at());

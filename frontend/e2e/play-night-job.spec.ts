@@ -17,7 +17,7 @@ test('a solo player sees the disclaimer and the introduction, then completes the
   // Choosing the preset shows the publisher's disclaimer and what the Flow is about.
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Night Job ${String(Date.now())}`)
-  await form.getByLabel('GameSystem').selectOption('night-job')
+  await form.getByLabel('Game system').selectOption('night-job')
   await expect(form.getByLabel('Flow')).toHaveValue('heist')
   const about = form.getByRole('region', { name: 'About this game' })
   await expect(about).toContainText('Night Job is unofficial content provided under the Homebrew')

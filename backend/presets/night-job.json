@@ -243,9 +243,9 @@
       "tips": "A crew of two to four is plenty. Give each person a role and a street name, and say what they are good at. Your own character is already part of it.",
       "oracles": ["npc-name"],
       "setup": [
-        {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "tip": "Someone you trust with your back. A name and a skill is enough.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
-        {"key": "second", "kind": "prompt", "title": "Who else is in?", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
-        {"key": "wheelman", "kind": "prompt", "title": "Who drives?", "tip": "Skip it if nobody on the crew can drive: you will take the wheel yourself.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew", "nomad"]}]}
+        {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "tip": "Someone you trust with your back. Just a street name: it becomes the NPC's name. Write what they are good at in a note.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "second", "kind": "prompt", "title": "Who else is in?", "tip": "Just a street name: it becomes the NPC's name. Write what they are good at in a note.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "wheelman", "kind": "prompt", "title": "Who drives?", "tip": "Skip it if nobody on the crew can drive: you will take the wheel yourself. Otherwise, just a street name: it becomes the NPC's name.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew", "nomad"]}]}
       ],
       "play": [],
       "closing": []
@@ -257,7 +257,7 @@
       "tips": "Roll the tables to get the job, then make it yours. The facts you fill appear in the Facts panel, and the payout comes back at the end.",
       "oracles": ["job-clients", "job-targets", "payouts"],
       "setup": [
-        {"key": "client", "kind": "table", "title": "Who is the client?", "tip": "Roll, or pick an entry you like. Rename the client if you want.", "table": "job-clients", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}, {"kind": "fillFact", "slot": "client"}]},
+        {"key": "client", "kind": "table", "title": "Who is the client?", "tip": "Roll for a client. Not a fit? Use Refill in the Facts panel.", "table": "job-clients", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}, {"kind": "fillFact", "slot": "client"}]},
         {"key": "target", "kind": "table", "title": "What is the target?", "table": "job-targets", "effects": [{"kind": "fillFact", "slot": "target"}]},
         {"key": "payout", "kind": "table", "title": "What does it pay?", "table": "payouts", "effects": [{"kind": "fillFact", "slot": "payout"}]},
         {"key": "plan", "kind": "prompt", "title": "What's the plan?", "tip": "One sentence: how you get in, and how you get out.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "plan"}]},
@@ -359,7 +359,7 @@
       "setup": [
         {"key": "delivered", "kind": "condition", "title": "Did you get the objective?", "tracker": "objective", "bands": [{"upTo": 0, "next": "no-pay"}, {"next": "paid"}]},
         {"key": "no-pay", "kind": "prompt", "title": "No job, no pay.", "tip": "Say what it costs you, and who you owe now.", "next": "end"},
-        {"key": "paid", "kind": "prompt", "title": "The client pays up.", "prompt": "The client pays {fact:payout}. Was {step:plan} worth it?"},
+        {"key": "paid", "kind": "prompt", "title": "The client pays up.", "prompt": "The client pays {fact:payout}. Was the job worth it?"},
         {"key": "double-cross", "kind": "roll", "title": "Is it a double-cross?", "tip": "Roll 1d6. A 1 means the client sells you out.", "dice": "1d6", "bands": [{"upTo": 1, "next": "betrayed"}, {"next": "end"}]},
         {"key": "betrayed", "kind": "prompt", "title": "Double-cross! Who sold you out?"}
       ],
@@ -372,7 +372,7 @@
       "key": "heist",
       "name": "Heist",
       "description": "A one-shot heist for one sitting: set it up, do the legwork, pull the job, get away.",
-      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play one job: you put a crew together, meet the client, scout the place, pull the heist, get away and get paid. Each step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them.\n\nWatch the Alarm clock. Mistakes and bad luck fill it. When it reaches 6 the building locks down and the job is over: you run.\n\nIn the legwork and the heist you choose which scene to play next. Use Move on when you are ready to leave a phase. Rules for fighting, hacking and skills come from your Cyberpunk RED book: this guide only decides what happens next.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play one job: you put a crew together, meet the client, scout the place, pull the heist, get away and get paid. Each step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them.\n\nWatch the Alarm clock. Mistakes and bad luck fill it. When it reaches 6 the building locks down and the job is over: you run.\n\nIn the legwork and the heist you choose which scene to play next. When you are ready to leave a phase, use End the phase. Rules for fighting, hacking and skills come from your Cyberpunk RED book: this guide only decides what happens next.",
       "default": true,
       "defaultView": "focus",
       "oracles": ["fate", "job-clients", "job-targets", "payouts", "complications", "net-floors", "black-ice", "security-response", "npc-name"],
@@ -398,7 +398,7 @@
           "selection": {"rule": "player", "sceneTypes": ["infiltration", "netrun", "grab"]},
           "sceneOpening": [
             {"key": "pressure", "kind": "condition", "title": "How alert is security?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {"upTo": 5}, {"next": "end"}]},
-            {"key": "notice", "kind": "prompt", "title": "Security is on edge", "prompt": "The alarm is at {tracker:alarm}. What do you notice?", "tip": "Guards walk faster, doors are watched. Let it change how you play the scene."}
+            {"key": "notice", "kind": "prompt", "title": "Security is on alert", "prompt": "The alarm is at {tracker:alarm}. What do you notice?", "tip": "Guards are tense and doors are watched. Let it shape the scene."}
           ],
           "sceneClosing": [
             {"key": "edge-left", "kind": "condition", "title": "Do you have an edge?", "tracker": "edge", "bands": [{"upTo": 0, "next": "complication"}, {}]},

@@ -23,7 +23,7 @@ function defaultFlowKey(gameSystem: GameSystemSummary | undefined) {
 /**
  * Names a new campaign and picks the GameSystem it is pinned to (its latest release) and, when
  * the release has Flows, the Flow to play along (its default one, or playing freely). It shows the credits of the chosen
- * release and the introduction of the chosen Flow.
+ * release and the introduction of the chosen Flow, and the description of the chosen GameSystem.
  * Creating it opens the campaign; a refusal shows the API's message.
  */
 export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummary[] }) {
@@ -66,7 +66,7 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={gameSystemId}>GameSystem</Label>
+        <Label htmlFor={gameSystemId}>Game system</Label>
         <NativeSelect
           id={gameSystemId}
           value={gameSystemKey}
@@ -85,6 +85,9 @@ export function NewCampaignForm({ gameSystems }: { gameSystems: GameSystemSummar
             </option>
           ))}
         </NativeSelect>
+        {chosenGameSystem?.description && (
+          <p className="text-sm text-muted-foreground">{chosenGameSystem.description}</p>
+        )}
         <CreditsNotice credits={chosenGameSystem?.credits ?? null} />
       </div>
       {flows.length > 0 && (

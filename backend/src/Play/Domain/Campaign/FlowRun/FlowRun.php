@@ -16,6 +16,7 @@ use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
@@ -73,7 +74,8 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * A finished step takes the Outcome of its result: an oracle answer's branch (an exceptional answer
  * without one uses yes / no), the branch of the entry rolled on a table step's own table (else
  * "otherwise"), the band of a roll total or of a condition step's Tracker, the chosen option, "found"
- * or "none" for a pick step. Its
+ * or "none" for a pick step, the Outcome of the band a check step landed in (a band without one
+ * continues). Its
  * Effects apply in order: the step's, those of the table entries it rolled (nested tables
  * included), then the Outcome's. Then it advances to the Outcome's "next", else the step's "next",
  * else the following step; "end" ends the part; a condition step advances on its own. The first
@@ -286,6 +288,15 @@ final class FlowRun
             // The answer is the Character's name now, so {step:key} and the history read it.
             $answer = $context->characterName($id) ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
             $newlyPicked = new PickedItems(ItemKind::Character, [$id]);
+        } elseif ($step instanceof CheckStep) {
+            $check = $result->check ?? throw InvalidStepResult::missingField($step->key, StepKind::Check, 'check');
+            $this->assertCanRoll($step, $result->characterId ?? '', $context);
+            $fixed = null === $step->difficulty ? null : $context->evaluate($step->difficulty);
+            if (null !== $fixed && $fixed !== $check->difficulty) {
+                throw InvalidStepResult::fixedDifficulty($step->key, $fixed);
+            }
+
+            $outcome = $step->outcomeFor($check->band->key);
         } elseif ($step instanceof PromptStep && '' === $answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
@@ -306,6 +317,34 @@ final class FlowRun
         }
 
         $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context);
+    }
+
+    /**
+     * What a check step needs before its dice are rolled: the Character must be in the scene (in the
+     * session party outside one), and the player may send a difficulty only when the step fixes none.
+     *
+     * @return ?int the Check difficulty to perform with: the step's, evaluated now, else the given one (null for the check's default)
+     *
+     * @throws FlowRunNotActive        when the Flow is complete or guidance is paused
+     * @throws FlowRunPositionMismatch when the current step is not this one
+     * @throws InvalidStepResult       when the step is no check step, the Character is unknown or not in the scene, or the step fixes the difficulty and one is given
+     * @throws FlowFormulaFailed       when the step's difficulty formula divides by zero or overflows
+     */
+    public function checkDifficulty(string $stepKey, string $characterId, ?int $given, FlowRunContext $context): ?int
+    {
+        $step = $this->expectStep($stepKey, $context);
+        if (!$step instanceof CheckStep) {
+            throw InvalidStepResult::kind($step->key, StepKind::of($step), StepKind::Check);
+        }
+
+        $this->assertCanRoll($step, $characterId, $context);
+        if (null === $step->difficulty) {
+            return $given;
+        }
+
+        $fixed = $context->evaluate($step->difficulty);
+
+        return null === $given ? $fixed : throw InvalidStepResult::fixedDifficulty($step->key, $fixed);
     }
 
     /**
@@ -727,6 +766,24 @@ final class FlowRun
         $this->assertInCurrentScene($context);
 
         return $this->currentStep($context->release, $context->flow) ?? throw new \LogicException('The current step is in its list.');
+    }
+
+    /**
+     * A check step rolls for a Character of the campaign in the current Scene; in a hook that has not
+     * started its Scene, or outside any, in the session's party.
+     *
+     * @throws InvalidStepResult
+     */
+    private function assertCanRoll(CheckStep $step, string $characterId, FlowRunContext $context): void
+    {
+        if (null === $context->characterName($characterId)) {
+            throw InvalidStepResult::unknownCharacter($step->key, $characterId);
+        }
+
+        $eligible = null === $this->sceneNumber ? $context->partyCharacterIds() : $context->sceneCharacterIds();
+        if (!\in_array($characterId, $eligible, true)) {
+            throw InvalidStepResult::notInTheCast($step->key, $characterId);
+        }
     }
 
     /**

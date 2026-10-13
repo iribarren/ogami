@@ -19,6 +19,7 @@ use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
+use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -1194,6 +1195,22 @@ final class Campaign
         $draft = clone $this;
         $draft->guided()->completeStep($stepKey, $result, $draft->flowContext($release, $at));
         $this->adopt($draft);
+    }
+
+    /**
+     * Checks what the FlowRun's current check step needs before its dice are rolled and answers the
+     * Check difficulty to perform with. Changes nothing.
+     *
+     * @return ?int the step's difficulty, else the given one (null for the check's default)
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current step is another
+     * @throws InvalidStepResult       when the step is no check step, the Character is unknown or not in the scene, or the step fixes the difficulty and one is given
+     * @throws FlowFormulaFailed       when the step's difficulty formula divides by zero or overflows
+     */
+    public function flowCheckDifficulty(string $stepKey, string $characterId, ?int $difficulty, GameSystemSnapshot $release, \DateTimeImmutable $at): ?int
+    {
+        return $this->guided()->checkDifficulty($stepKey, $characterId, $difficulty, $this->flowContext($release, $at));
     }
 
     /**

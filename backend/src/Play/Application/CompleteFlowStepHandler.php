@@ -9,6 +9,9 @@ use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
+use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Characters\SheetValues;
+use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
@@ -18,7 +21,12 @@ use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
+use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
+use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
+use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
+use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
@@ -34,6 +42,7 @@ use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\ChoiceContent;
 use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
@@ -70,7 +79,12 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * @throws CampaignNotFound
      * @throws FlowRunNotActive                when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
-     * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate or the Character is unknown
+     * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate, the Character is unknown or (check step) not in the scene, or a difficulty is sent for a step that fixes one
+     * @throws FlowFormulaFailed               when a check step's difficulty formula divides by zero or overflows
+     * @throws CheckDifficultyNotDeclared      when a difficulty is sent for a check that declares none
+     * @throws CheckDifficultyOutOfRange       when the difficulty is outside the min..max of the check
+     * @throws SituationalModifierOutOfRange   when the Situational modifier is outside -100..100
+     * @throws CheckEvaluationFailed           when the modifier or a band of the check cannot be evaluated for the Character
      * @throws InvalidJournalEntryId
      * @throws JournalEntryAlreadyExists
      * @throws InvalidJournalEntryContent      when the text or the step's question is too long
@@ -97,8 +111,8 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
 
         $step = $view->step;
 
-        [$result, $content] = $this->resultOf($command, $step, $campaign, $release);
         $at = $this->clock->now();
+        [$result, $content] = $this->resultOf($command, $step, $campaign, $release, $at);
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
         $campaign->completeFlowStep($step->key, $result, $release, $at);
         // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent
@@ -111,7 +125,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     /**
      * @return array{StepResult, JournalEntryContent} the result the FlowRun takes and the journal content
      */
-    private function resultOf(CompleteFlowStep $command, Step $step, Campaign $campaign, GameSystemSnapshot $release): array
+    private function resultOf(CompleteFlowStep $command, Step $step, Campaign $campaign, GameSystemSnapshot $release, \DateTimeImmutable $at): array
     {
         return match (true) {
             $step instanceof PromptStep => $this->prompt($command, $step),
@@ -121,6 +135,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
             $step instanceof ChoiceStep => $this->choice($command, $step),
             $step instanceof PickStep => $this->pick($command, $step, $campaign),
             $step instanceof CharacterStep => $this->character($command, $step, $campaign),
+            $step instanceof CheckStep => $this->check($command, $step, $campaign, $release, $at),
             default => throw InvalidStepResult::conditionStep($step->key),
         };
     }
@@ -229,13 +244,32 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     }
 
     /**
+     * Performs the step's check for the Character. The FlowRun validates first (the Character in the
+     * scene, the difficulty the step fixes), then the check evaluates everything before it rolls, so a
+     * refused or unevaluable check rolls nothing and records nothing.
+     *
+     * @return array{StepResult, JournalEntryContent}
+     */
+    private function check(CompleteFlowStep $command, CheckStep $step, Campaign $campaign, GameSystemSnapshot $release, \DateTimeImmutable $at): array
+    {
+        $this->refuseFieldsOtherThan($command, $step, 'characterId', 'difficulty', 'situational');
+        $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::Check, 'characterId');
+        $difficulty = $campaign->flowCheckDifficulty($step->key, $id, $command->difficulty, $release, $at);
+        $check = $release->check($step->check) ?? throw new \LogicException(\sprintf('The pinned release has no check "%s".', $step->check));
+        $character = $campaign->character(CharacterId::fromString($id)) ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
+        $result = $check->perform($this->random, SheetValues::of($release->sheet(), $character->values(), $campaign->trackerValuesOf($release)), $difficulty, $command->situational ?? 0);
+
+        return [StepResult::check($id, $result), CheckContent::fromResult($id, $character->name(), $check, $result)];
+    }
+
+    /**
      * Fails closed on a field the step's kind does not take, rather than ignoring it.
      *
      * @throws InvalidStepResult
      */
     private function refuseFieldsOtherThan(CompleteFlowStep $command, Step $step, string ...$allowed): void
     {
-        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId];
+        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId, 'difficulty' => $command->difficulty, 'situational' => $command->situational];
         foreach ($given as $field => $value) {
             if (null !== $value && !\in_array($field, $allowed, true)) {
                 throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), $field);

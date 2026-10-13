@@ -51,6 +51,16 @@ final class InvalidStepResult extends \DomainException
         return new self(\sprintf('Step "%s" asks at likelihood "%s": it takes no other.', $step, $likelihood));
     }
 
+    public static function fixedDifficulty(string $step, int $difficulty): self
+    {
+        return new self(\sprintf('Step "%s" fixes the check difficulty at %d: it takes no other.', $step, $difficulty));
+    }
+
+    public static function notInTheCast(string $step, string $id): self
+    {
+        return new self(\sprintf('Check step "%s" rolls for a Character in the scene (in the session party outside one): Character "%s" is not.', $step, $id));
+    }
+
     public static function conditionStep(string $step): self
     {
         return new self(\sprintf('Step "%s" is a condition step: it advances by itself and cannot be completed.', $step));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
@@ -24,6 +25,7 @@ enum StepKind: string
     case Condition = 'condition';
     case Pick = 'pick';
     case Character = 'character';
+    case Check = 'check';
 
     public static function of(Step $step): self
     {
@@ -36,6 +38,7 @@ enum StepKind: string
             $step instanceof ConditionStep => self::Condition,
             $step instanceof PickStep => self::Pick,
             $step instanceof CharacterStep => self::Character,
+            $step instanceof CheckStep => self::Check,
             default => throw new \LogicException(\sprintf('Unknown step kind %s.', $step::class)),
         };
     }

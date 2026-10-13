@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Randomness\Domain\Oracle\LikelihoodAnswer;
 use App\Randomness\Domain\Oracle\OracleTableResult;
@@ -13,11 +14,11 @@ use App\Randomness\Domain\Roll;
 
 /**
  * What the player brings to complete a step, typed by step kind: a prompt's answer, a roll, a
- * table result, a likelihood answer, a choice option, the items a pick step picked or the Character a
- * character step names. "answer" is the step's answer text kept for
+ * table result, a likelihood answer, a choice option, the items a pick step picked, the Character a
+ * character step names or the check a check step performed for a Character. "answer" is the step's answer text kept for
  * placeholders: the prompt text, the roll total, the entry texts, the answer label, the option key
  * (the FlowRun keeps the option's label) or the picked names joined with ", " (empty when nothing was
- * picked).
+ * picked) or the label of the band a check landed in, so "{answer}" reads its outcome.
  */
 final readonly class StepResult
 {
@@ -33,6 +34,7 @@ final readonly class StepResult
         public ?ItemKind $of = null,
         public array $picked = [],
         public ?string $characterId = null,
+        public ?CheckResult $check = null,
     ) {
     }
 
@@ -82,6 +84,15 @@ final readonly class StepResult
     public static function character(string $characterId): self
     {
         return new self(StepKind::Character, '', characterId: $characterId);
+    }
+
+    /**
+     * The check a check step performed for a Character, by id. Its answer is the label of the band
+     * the total fell in, which the FlowRun branches on by the band's key.
+     */
+    public static function check(string $characterId, CheckResult $result): self
+    {
+        return new self(StepKind::Check, $result->band->label, characterId: $characterId, check: $result);
     }
 
     public static function choice(string $optionKey): self

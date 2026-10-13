@@ -137,6 +137,26 @@ final readonly class FlowRunContext
     }
 
     /**
+     * The ids of the Characters in the current Scene.
+     *
+     * @return list<string>
+     */
+    public function sceneCharacterIds(): array
+    {
+        return array_map(static fn (CharacterId $id): string => $id->toString(), $this->campaign->currentScene()?->characters() ?? []);
+    }
+
+    /**
+     * The ids of the Characters in the session under way's party.
+     *
+     * @return list<string>
+     */
+    public function partyCharacterIds(): array
+    {
+        return array_map(static fn (CharacterId $id): string => $id->toString(), $this->campaign->currentSession()?->party() ?? []);
+    }
+
+    /**
      * Adds the NPCs or Characters among the items to the current scene's cast; Threads have no
      * cast. Characters also join the current session's party when $toParty (in a hook).
      *

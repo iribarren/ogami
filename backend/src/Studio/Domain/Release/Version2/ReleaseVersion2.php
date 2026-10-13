@@ -10,8 +10,8 @@ use App\Studio\Domain\Release\ReleaseOracles;
 
 /**
  * Validates the parts schema version 2 adds or changes (docs/contracts/gamesystem-release.md):
- * oracle table entry and chaos extensions, trackers, fact slots, tags, Scene Types and flows, then the
- * references inside each flow. Returns them in canonical form; ReleaseContent handles the parts
+ * oracle table entry and chaos extensions, trackers, fact slots, tags, the sheet, checks, Scene Types and flows,
+ * then the references inside each flow. Returns them in canonical form; ReleaseContent handles the parts
  * every version shares.
  *
  * @internal used by ReleaseContent only
@@ -84,7 +84,7 @@ final class ReleaseVersion2
     /**
      * @param array<string, mixed> $release the checked top-level object (RELEASE fields)
      *
-     * @return array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>} "theme" and "tags" are left out when absent or empty
+     * @return array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>, sheet: array<string, mixed>, checks: list<array<string, mixed>>} "theme" and "tags" are left out when absent or empty
      */
     public static function validate(array $release): array
     {
@@ -96,6 +96,13 @@ final class ReleaseVersion2
 
         [$sceneTypes, $sceneTypeKeys] = self::sceneTypes($release['sceneTypes'], $oracles);
         $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys, $factSlotTypes);
+
+        // Checks read the sheet, and flow steps read the checks, so both come before the steps.
+        $sheet = SheetFields::validate($release['sheet'], array_keys($trackerRanges));
+        /** @var array<string, string> $fieldTypes */
+        $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
+        [$checks, $checkShapes] = Checks::validate($release['checks'], $fieldTypes, $catalog);
+        $catalog = $catalog->withChecks($checkShapes);
 
         $oracles['tables'] = self::tableEntries($oracles['tables'], $catalog);
         foreach ($sceneTypes as $index => $sceneType) {
@@ -117,7 +124,7 @@ final class ReleaseVersion2
             $parts['tags'] = $tags;
         }
 
-        return [...$parts, 'sceneTypes' => $sceneTypes, 'flows' => $flows];
+        return [...$parts, 'sceneTypes' => $sceneTypes, 'flows' => $flows, 'sheet' => $sheet, 'checks' => $checks];
     }
 
     /**

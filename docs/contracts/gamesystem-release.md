@@ -108,9 +108,9 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its five field types, including `derived` fields, the formulas of derived fields, band `upTo` and tracker effect `value` ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)), the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`, and the `sheet`'s fields of the four stored types. It fails closed on the `character` step and on `of: character` until slice 4 of `play-characters`, and on `derived` fields until slice 4 of `rules-derived-values`. It reads `{formula}` band `upTo`s and tracker effect `value`s (trackers only) and evaluates them when the band or effect runs; a formula that fails then refuses the action with a 422 and changes nothing. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC and Thread effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its five field types, including `derived` fields, the formulas of derived fields, band `upTo` and tracker effect `value` ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)), the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), the `checks` and the `check` step ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`, and the `sheet`'s fields of the four stored types. It fails closed on the `check` step (and ignores `checks`) until slice 3 of `play-checks`, on the `character` step and on `of: character` until slice 4 of `play-characters`, and on `derived` fields until slice 4 of `rules-derived-values`. It reads `{formula}` band `upTo`s and tracker effect `value`s (trackers only) and evaluates them when the band or effect runs; a formula that fails then refuses the action with a 422 and changes nothing. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
 
-Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the reserved `checks` (still `[]` in version 2 until slice 2 of `play-checks`; checks are additive in version 2, [ADR 0024](../adr/0024-structured-checks-without-scripting.md)), the `sheet` (version 2 extends it, see [Sheet](#sheet-additive-in-schema-version-2)), optional fields, unknown properties and errors.
+Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the `sheet` (version 2 extends it, see [Sheet](#sheet-additive-in-schema-version-2)), optional fields, unknown properties and errors.
 
 ### Structure
 
@@ -125,7 +125,7 @@ tags           [Tag]   optional
 sceneTypes     [SceneType]
 flows          [Flow]
 sheet          { fields?: [Field] }   fields are new (additive), see Sheet
-checks         []   reserved
+checks         [Check]   new (additive), see Checks
 ```
 
 There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are required and may be empty; a release with no flows is played freely. `tags` is optional and empty by default. `theme` is optional (see [Theme](#theme)).
@@ -161,8 +161,9 @@ A step list (`setup`, `play`, `closing` and each hook) holds at most 50 steps.
 | `condition` | exactly one of `tracker` or `count: {of: npc \| thread \| character, tags?: [key] (≤5)}`, plus `bands: [Band]` (1–20) | The tracker exists, or the tags exist and are unique. A `count` compares the number of open NPCs or Threads, or of Characters, carrying all the tags to the bands. Never `mandatory`; never skipped; writes no journal entry |
 | `pick` | `of: npc \| thread \| character`, `tags?: [key]` (≤5), `mode: random \| choose`, `count?: {min, max}`, `branches?: {found?, none?}` | Tags exist and are unique; `1 ≤ min ≤ max ≤ 10`, default `{min: 1, max: 1}`; branches are `{next?, effects?}`. `mandatory` allowed. Picks open items (every Character) carrying all the tags: `random` draws, `choose` lets the player select |
 | `character` | — | Completes with a Character of the Campaign (see [Sheet](#sheet-additive-in-schema-version-2)). `mandatory`, `next` and `effects` as for `prompt`; no branches. `{step:key}` may name it |
+| `check` | `check` (check key), `difficulty?: int \| {tracker: key} \| {formula: string}`, `outcomes?: [{band, next?, effects?}]` (≤10) | The check exists. `difficulty` only for a check that declares one: an integer within its `min..max`, or a tracker or [flow formula](#formulas-adr-0023). Each `band` names a band of the check, once; a band without an outcome continues. See [Checks](#checks-additive-in-schema-version-2) |
 
-Every `next` (of a step, band, branch, option, `otherwise` or `pick` branch) follows the forward-only rule of the step list it is in. Branches and `otherwise` are `{next?, effects?}`.
+Every `next` (of a step, band, branch, option, `otherwise`, `pick` branch or check outcome) follows the forward-only rule of the step list it is in. Branches and `otherwise` are `{next?, effects?}`.
 
 ### Bands and effects
 
@@ -252,21 +253,54 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 | `track` | `max?` (1–999) | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full |
 | `derived` | `formula` (required, 1–200 characters) | A DerivedValue computed from other fields and trackers by a [formula](#formulas-adr-0023); a Character stores no value for it |
 
-Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects: they open a later schema version. Checks are additive in schema version 2 ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
+Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects: they open a later schema version. Checks are described in [Checks](#checks-additive-in-schema-version-2). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
 
 The `character` step kind and `of: character` in `pick` and `condition` counts are part of the same additive change (see [Steps](#steps)).
 
+### Checks (additive in schema version 2)
+
+A release may define **checks** ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)): named rules whose total (`dice + modifier + situational modifier`) maps to an outcome band, the first whose `upTo` is at least the total; the last band catches the rest. Adding them is additive and only in schema version 2; every release valid before stays valid with the same hash. A schema version 1 `checks` must still be `[]`.
+
+| Part | Shape | Rules |
+|---|---|---|
+| `checks` | list of Check | At most 50; keys unique (domain check) |
+| Check | `{key, label (1–100), hint? (≤500), dice, modifier?, difficulty?, bands}` | `dice` is dice notation (≤100), parsed by the Randomness kernel (domain check). `modifier` is a sheet [formula](#formulas-adr-0023) of 1–200 characters |
+| `difficulty` | `{label (1–60), default, min?, max?}` | Integers from −1,000 to 1,000; `min ≤ default ≤ max` (domain check). The player sets it at roll time; band formulas read it as `{check:difficulty}` |
+| `bands` | list of `{key, label (1–100), upTo?: int \| {tracker: key} \| {formula: string}}` | 1–10; keys unique in the check; ordered as a [band](#bands-and-effects): every band but the last has `upTo`, the last omits it, literal `upTo` values strictly increase. A `{tracker}` names a tracker of the release; a `{formula}` is a sheet formula that may also read `{check:difficulty}` |
+
+Optional `null` fields are left out of the canonical form; checks keep their authored order. The step that rolls a check is the [`check` step](#steps). Example (the fixture `valid/v2-checks.json` has the whole release):
+
+```json
+"checks": [{
+  "key": "skill", "label": "Skill check", "dice": "1d10", "modifier": "{hands}+{edge}",
+  "difficulty": {"label": "Difficulty Value", "default": 13, "min": 9, "max": 29},
+  "bands": [
+    {"key": "fail", "label": "Fail", "upTo": {"formula": "{check:difficulty}-1"}},
+    {"key": "success", "label": "Success", "upTo": {"formula": "{check:difficulty}+4"}},
+    {"key": "crit", "label": "Critical success"}
+  ]
+}]
+```
+
+```json
+{"key": "pick-lock", "kind": "check", "title": "Pick the lock", "check": "skill", "difficulty": {"formula": "{tracker:alarm}+9"},
+ "outcomes": [{"band": "fail", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {"band": "crit", "next": "end"}]}
+```
+
+Play's translator does not read checks yet: it refuses a `check` step as an unknown step kind and ignores `checks`.
+
 ### Formulas (ADR 0023)
 
-A **formula** is a string of 1–200 characters in three places: a `derived` field's `formula`, a band's `upTo: {formula}` and a tracker effect's `value: {formula}`. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
+A **formula** is a string of 1–200 characters in five places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a check's `modifier` and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
 
 - Integers from 0 to 1,000,000, `+ - * /` with parentheses and unary minus, `min(a, b, …)` and `max(…)` with 2–10 arguments. Division rounds down. Intermediate results stay within ±1,000,000,000.
-- References are braced: `{key}` reads a field, `{key.max}` a `track` field's max and `{tracker:key}` a tracker's current value. Keys follow the key rule.
+- References are braced: `{key}` reads a field, `{key.max}` a `track` field's max, `{tracker:key}` a tracker's current value and `{check:difficulty}` a check's difficulty. Keys follow the key rule.
 
 | Scope | Where | Rules |
 |---|---|---|
 | Sheet | `derived` field `formula` | `{key}` names a `number`, `track` or `derived` field; `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
-| Flow | band `upTo`, tracker effect `value` | Only `{tracker:key}` references, to trackers of the release (and, as for `{tracker: key}`, of the flow); `{key}` and `{key.max}` are rejected because a flow formula reads trackers only |
+| Check | check `modifier`, check band `upTo` | The sheet scope: the references a `derived` formula may read. A band formula may also read `{check:difficulty}`, only when its check declares a `difficulty`; the modifier never reads a `{check:…}` reference, and no other check key exists |
+| Flow | band `upTo`, tracker effect `value`, check step `difficulty` | Only `{tracker:key}` references, to trackers of the release (and, as for `{tracker: key}`, of the flow); `{key}` and `{key.max}` are rejected because a flow formula reads trackers only |
 
 A syntax error is reported at the formula's path with the kernel's message. A `derived` field shares the key namespace and the `group` layout of the other field types. A `{formula}` band `upTo` still counts as an `upTo` for the "every band but the last" rule. Counter `levels` keep literal `upTo` only. A formula that fails at play time (division by zero, overflow) is an evaluation error, not a content error: it is Play's concern: a band or effect formula refuses the action with a 422 and the campaign stays as it was.
 
@@ -308,8 +342,8 @@ As in version 1: keys in schema order, absent or `null` optionals omitted, integ
 
 | Checked by | Rules |
 |---|---|
-| JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`, `of`); list sizes and lengths above; numeric bounds (incl. `count` 1–10); `end` not a step key; a `condition` never `mandatory`; a `condition` with exactly one of `tracker` and `count`; unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
-| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; the `randomEvent` table exists and the oracle has chaos and 100 sides; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation; placeholders; trimmed lengths |
+| JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`, `of`); list sizes and lengths above; numeric bounds (incl. `count` 1–10); `end` not a step key; a `condition` never `mandatory`; a `condition` with exactly one of `tracker` and `count`; the shape of a check, its difficulty, bands and `check` step (sizes, lengths, `difficulty` ±1,000); unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
+| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; the `randomEvent` table exists and the oracle has chaos and 100 sides; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation (rolls and checks); placeholders; trimmed lengths; checks: unique check and band keys, modifier and band formulas parse and read only what they may, `{tracker}` bounds exist, band order and `upTo` presence, difficulty `min ≤ default ≤ max`; `check` steps: the check exists, `difficulty` only for a check that declares one and within its range, outcome bands exist and are unique |
 
 ## Publishing
 

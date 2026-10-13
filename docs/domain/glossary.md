@@ -25,7 +25,7 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Resource track | A `track` field's value `{current, max}`, e.g. hit points; it starts full | Studio (defined), Play (held) |
 | DerivedValue | A `derived` sheet field whose formula reads fields, other derived values and trackers. Never stored, computed live (e.g. a modifier) ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)) | Studio (defined), Play (computed) |
 | Formula | An integer expression over sheet values and trackers (`+ - * /`, `min`, `max`, braced references), evaluated by the Formula kernel ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)) | Studio (authored), Play (evaluated) |
-| Formula reference | A braced name in a formula: `{key}`, `{key.max}` or `{tracker:key}` | Studio (authored), Play (evaluated) |
+| Formula reference | A braced name in a formula: `{key}`, `{key.max}`, `{tracker:key}` or `{check:key}` (read only by a check's band formulas, e.g. `{check:difficulty}`) | Studio (authored), Play (evaluated) |
 | Check | A named rule: a dice expression plus an optional formula modifier over sheet values and an optional difficulty, whose total maps to outcome bands ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)) | Studio (defined), Play (performed) |
 | Difficulty | A check's player-set target, declared with a label, default and optional range; band formulas read it as `{check:difficulty}` ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)) | Studio (declared), Play (set at roll time) |
 | Situational modifier | The player's adjustment from −100 to 100 added to a check total at roll time (default 0) | Play |

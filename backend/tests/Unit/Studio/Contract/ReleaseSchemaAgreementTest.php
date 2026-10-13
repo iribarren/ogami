@@ -194,6 +194,30 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-effect-formula-too-long' => ['sceneTypes[0].play[0].effects[0].value.formula: must be at most 200 characters', '/sceneTypes/0/play/0/effects/0/value/formula'],
         'generated: v2-counter-level-formula' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
         'generated: v2-counter-level-tracker' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
+        'generated: v2-check-unknown-property' => ['checks[0].roll: unknown property', '/checks/0'],
+        'generated: v2-check-missing-dice' => ['checks[0].dice: required', '/checks/0'],
+        'generated: v2-check-no-bands' => ['checks[0].bands: at least 1 bands', '/checks/0/bands'],
+        'generated: v2-check-too-many-bands' => ['checks[0].bands: at most 10 bands', '/checks/0/bands'],
+        'generated: v2-too-many-checks' => ['checks: at most 50 checks', '/checks'],
+        'generated: v2-check-dice-too-long' => ['checks[0].dice: must be at most 100 characters', '/checks/0/dice'],
+        'generated: v2-check-modifier-too-long' => ['checks[0].modifier: must be at most 200 characters', '/checks/0/modifier'],
+        'generated: v2-check-hint-too-long' => ['checks[0].hint: must be at most 500 characters', '/checks/0/hint'],
+        'generated: v2-check-label-empty' => ['checks[0].label: must not be empty', '/checks/0/label'],
+        'generated: v2-check-bad-key' => ['checks[0].key: must be 1 to 64 characters', '/checks/0/key'],
+        'generated: v2-check-difficulty-default-out-of-range' => ['checks[0].difficulty.default: must be at most 1000', '/checks/0/difficulty/default'],
+        'generated: v2-check-difficulty-missing-default' => ['checks[0].difficulty.default: required', '/checks/0/difficulty'],
+        'generated: v2-check-difficulty-label-empty' => ['checks[0].difficulty.label: must not be empty', '/checks/0/difficulty/label'],
+        'generated: v2-check-difficulty-unknown-property' => ['checks[0].difficulty.step: unknown property', '/checks/0/difficulty'],
+        'generated: v2-check-band-up-to-string' => ['checks[0].bands[0].upTo: must be an integer, {tracker: key} or {formula: string}', '/checks/0/bands/0/upTo'],
+        'generated: v2-check-band-missing-key' => ['checks[0].bands[0].key: required', '/checks/0/bands/0'],
+        'generated: v2-check-band-unknown-property' => ['checks[0].bands[0].next: unknown property', '/checks/0/bands/0'],
+        'generated: v2-check-band-formula-empty' => ['checks[0].bands[0].upTo.formula: must not be empty', '/checks/0/bands/0/upTo/formula'],
+        'generated: v2-check-step-missing-check' => ['sceneTypes[0].play[0].check: required', '/sceneTypes/0/play/0'],
+        'generated: v2-check-step-unknown-property' => ['sceneTypes[0].play[0].bands: unknown property', '/sceneTypes/0/play/0'],
+        'generated: v2-check-step-difficulty-string' => ['sceneTypes[0].play[0].difficulty: must be an integer, {tracker: key} or {formula: string}', '/sceneTypes/0/play/0/difficulty'],
+        'generated: v2-check-step-outcome-missing-band' => ['sceneTypes[0].play[0].outcomes[0].band: required', '/sceneTypes/0/play/0/outcomes/0'],
+        'generated: v2-check-step-outcome-unknown-property' => ['sceneTypes[0].play[0].outcomes[0].prompt: unknown property', '/sceneTypes/0/play/0/outcomes/0'],
+        'generated: v2-check-step-too-many-outcomes' => ['sceneTypes[0].play[0].outcomes: at most 10 outcomes', '/sceneTypes/0/play/0/outcomes'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
     ];
 
@@ -201,6 +225,31 @@ final class ReleaseSchemaAgreementTest extends TestCase
      * Semantic cases: name => domain message prefix (the schema accepts them).
      */
     private const array SEMANTIC = [
+        'generated: v2-check-invalid-dice' => 'checks[0].dice: invalid dice notation',
+        'generated: v2-check-modifier-syntax' => 'checks[0].modifier: ',
+        'generated: v2-check-modifier-unknown-field' => 'checks[0].modifier: {nope}: unknown field "nope"',
+        'generated: v2-check-modifier-reads-check' => 'checks[0].modifier: {check:difficulty}: a check reference is read only by the bands of a check',
+        'generated: v2-check-modifier-reads-text-field' => 'checks[0].modifier: {name}: field "name" is a text field',
+        'generated: v2-check-band-reads-undeclared-difficulty' => 'checks[0].bands[0].upTo.formula: {check:difficulty}: the check declares no difficulty',
+        'generated: v2-check-band-reads-other-check-value' => 'checks[0].bands[0].upTo.formula: {check:target}: unknown check value "target"',
+        'generated: v2-check-band-formula-unknown-field' => 'checks[0].bands[0].upTo.formula: {nope}: unknown field "nope"',
+        'generated: v2-check-band-unknown-tracker' => 'checks[0].bands[0].upTo.tracker: unknown tracker "ghost"',
+        'generated: v2-check-duplicate-band-key' => 'checks[0].bands[1].key: duplicate band key "miss"',
+        'generated: v2-check-band-without-up-to' => 'checks[0].bands[0].upTo: required, only the last band omits it',
+        'generated: v2-check-last-band-with-up-to' => 'checks[0].bands[1].upTo: the last band catches the rest and must omit upTo',
+        'generated: v2-check-bands-not-increasing' => 'checks[0].bands[1].upTo: must be greater than 5',
+        'generated: v2-check-difficulty-min-above-default' => 'checks[0].difficulty.min: must be at most default (9), 12 given',
+        'generated: v2-check-difficulty-max-below-default' => 'checks[0].difficulty.max: must be at least default (9), 7 given',
+        'generated: v2-check-duplicate-key' => 'checks[1].key: duplicate check key "hack"',
+        'generated: v2-check-step-unknown-check' => 'sceneTypes[0].play[0].check: unknown check "ghost"',
+        'generated: v2-check-step-difficulty-without-declaration' => 'sceneTypes[0].play[0].difficulty: check "hack" declares no difficulty',
+        'generated: v2-check-step-difficulty-below-min' => 'sceneTypes[0].play[0].difficulty: must be at least 6, the difficulty min of check "hack", 3 given',
+        'generated: v2-check-step-difficulty-reads-sheet' => 'sceneTypes[0].play[0].difficulty.formula: {dex}: a flow formula reads trackers only',
+        'generated: v2-check-step-difficulty-unknown-tracker' => 'sceneTypes[0].play[0].difficulty.tracker: unknown tracker "ghost"',
+        'generated: v2-check-step-outcome-unknown-band' => 'sceneTypes[0].play[0].outcomes[0].band: unknown band "ghost" of check "hack"',
+        'generated: v2-check-step-duplicate-outcome-band' => 'sceneTypes[0].play[0].outcomes[1].band: duplicate outcome band "miss"',
+        'generated: v2-check-step-outcome-next-backward' => 'sceneTypes[0].play[0].outcomes[0].next: must name a later step of the same list or "end", "try" given',
+        'generated: v2-check-step-outcome-unknown-tracker-effect' => 'sceneTypes[0].play[0].outcomes[0].effects[0].tracker: unknown tracker "ghost"',
         'chaos-not-ordered' => 'oracles.likelihood[0]: ',
         'duplicate-flow-step-key' => 'flow.steps[1].key: duplicate step key "begin"',
         'duplicate-key-across-tables-and-likelihood' => 'oracles.likelihood[0].key: duplicate oracle key "mood"',
@@ -301,6 +350,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield 'generated: '.$name => [json_encode($release, \JSON_THROW_ON_ERROR)];
         }
 
+        foreach (self::generatedCheckCases()['valid'] as $name => $json) {
+            yield $name => [$json];
+        }
+
         foreach (self::fixtures('examples') as $name => $json) {
             yield 'example: '.$name => $json;
         }
@@ -318,6 +371,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
         foreach ([...self::fixtures('invalid/structural'), ...self::generatedStructuralCases()] as $name => [$json]) {
             yield $name => [$name, $json];
         }
+
+        foreach (self::generatedCheckCases()['structural'] as $name => $json) {
+            yield $name => [$name, $json];
+        }
     }
 
     /**
@@ -326,6 +383,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
     public static function semanticallyInvalidCases(): iterable
     {
         foreach (self::fixtures('invalid/semantic') as $name => [$json]) {
+            yield $name => [$name, $json];
+        }
+
+        foreach (self::generatedCheckCases()['semantic'] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -456,6 +517,115 @@ final class ReleaseSchemaAgreementTest extends TestCase
         }
 
         return $cases;
+    }
+
+    /**
+     * Releases with checks and check steps, built in code from one valid base (a Hack check, 1d10 plus
+     * Dexterity against a Difficulty, and a step rolling it): the valid ones, the ones the schema rejects,
+     * and the ones only the domain rejects.
+     *
+     * @return array{valid: array<string, string>, structural: array<string, string>, semantic: array<string, string>} JSON by case name
+     */
+    private static function generatedCheckCases(): array
+    {
+        $difficulty = ['label' => 'DV', 'default' => 9, 'min' => 6, 'max' => 29];
+        $bands = [['key' => 'miss', 'label' => 'Miss', 'upTo' => ['formula' => '{check:difficulty}-1']], ['key' => 'hit', 'label' => 'Hit']];
+        $check = ['key' => 'hack', 'label' => 'Hack', 'dice' => '1d10', 'modifier' => '{dex}', 'difficulty' => $difficulty, 'bands' => $bands];
+        $stepOf = static fn (array $step): array => ['key' => 'try', 'kind' => 'check', 'title' => 'Try', 'check' => 'hack', ...$step];
+        $build = static fn (array $checks, array $step = [], string $omit = ''): string => json_encode([
+            ...self::minimalReleaseV2(),
+            'trackers' => [['key' => 'alarm', 'name' => 'Alarm', 'kind' => 'clock', 'segments' => 6]],
+            'sheet' => ['fields' => [['key' => 'dex', 'label' => 'Dexterity', 'type' => 'number'], ['key' => 'name', 'label' => 'Name', 'type' => 'text']]],
+            'sceneTypes' => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => [], 'play' => [array_diff_key($stepOf($step), [$omit => true])], 'closing' => []]],
+            'checks' => $checks,
+        ], \JSON_THROW_ON_ERROR);
+        /** @param array<string, mixed> $override */
+        $with = static fn (array $override, array $step = []): string => $build([[...$check, ...$override]], $step);
+        $band = static fn (int $i): array => ['key' => 'b-'.$i, 'label' => 'Band', 'upTo' => $i];
+        $trackerEffect = static fn (string $tracker): array => ['kind' => 'tracker', 'tracker' => $tracker, 'op' => 'add', 'value' => 1];
+
+        $valid = [
+            'v2-checks' => $build([$check, ['key' => 'sneak', 'label' => 'Sneak', 'hint' => 'Quietly.', 'dice' => '2d6kh1', 'bands' => [['key' => 'low', 'label' => 'Low', 'upTo' => ['tracker' => 'alarm']], ['key' => 'high', 'label' => 'High']]]], [
+                'difficulty' => ['formula' => '{tracker:alarm}+6'],
+                'outcomes' => [['band' => 'miss', 'next' => 'end', 'effects' => [$trackerEffect('alarm')]], ['band' => 'hit']],
+            ]),
+            'v2-check-minimal' => $build([['key' => 'luck', 'label' => 'Luck', 'dice' => 'd%', 'bands' => [['key' => 'only', 'label' => 'Only']]]], ['check' => 'luck']),
+            'v2-check-nulls' => $with(['hint' => null, 'modifier' => null, 'difficulty' => ['label' => 'DV', 'default' => 9, 'min' => null, 'max' => null], 'bands' => [['key' => 'only', 'label' => 'Only', 'upTo' => null]]], ['difficulty' => 40, 'outcomes' => null]),
+        ];
+
+        $structural = [
+            'v2-check-unknown-property' => $with(['roll' => 'x']),
+            'v2-check-missing-dice' => $build([['key' => 'hack', 'label' => 'Hack', 'bands' => $bands]]),
+            'v2-check-no-bands' => $with(['bands' => []]),
+            'v2-check-too-many-bands' => $with(['bands' => [...array_map($band, range(1, 10)), ['key' => 'rest', 'label' => 'Rest']]]),
+            'v2-too-many-checks' => $build(array_map(static fn (int $i): array => [...$check, 'key' => 'c-'.$i], range(1, 51))),
+            'v2-check-dice-too-long' => $with(['dice' => str_repeat('1', 101)]),
+            'v2-check-modifier-too-long' => $with(['modifier' => str_repeat('1', 201)]),
+            'v2-check-hint-too-long' => $with(['hint' => str_repeat('h', 501)]),
+            'v2-check-label-empty' => $with(['label' => '']),
+            'v2-check-bad-key' => $with(['key' => 'Hack!']),
+            'v2-check-difficulty-default-out-of-range' => $with(['difficulty' => [...$difficulty, 'max' => 1000, 'default' => 1001]]),
+            'v2-check-difficulty-missing-default' => $with(['difficulty' => ['label' => 'DV']]),
+            'v2-check-difficulty-label-empty' => $with(['difficulty' => [...$difficulty, 'label' => '']]),
+            'v2-check-difficulty-unknown-property' => $with(['difficulty' => [...$difficulty, 'step' => 1]]),
+            'v2-check-band-up-to-string' => $with(['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 'five'], ['key' => 'hit', 'label' => 'Hit']]]),
+            'v2-check-band-missing-key' => $with(['bands' => [['label' => 'Miss', 'upTo' => 5], ['key' => 'hit', 'label' => 'Hit']]]),
+            'v2-check-band-unknown-property' => $with(['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 5, 'next' => 'end'], ['key' => 'hit', 'label' => 'Hit']]]),
+            'v2-check-band-formula-empty' => $with(['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => ['formula' => '']], ['key' => 'hit', 'label' => 'Hit']]]),
+            'v2-check-step-missing-check' => $build([$check], omit: 'check'),
+            'v2-check-step-unknown-property' => $with([], ['bands' => []]),
+            'v2-check-step-difficulty-string' => $with([], ['difficulty' => 'hard']),
+            'v2-check-step-outcome-missing-band' => $with([], ['outcomes' => [['next' => 'end']]]),
+            'v2-check-step-outcome-unknown-property' => $with([], ['outcomes' => [['band' => 'miss', 'prompt' => 'x']]]),
+            'v2-check-step-too-many-outcomes' => $with([], ['outcomes' => array_fill(0, 11, ['band' => 'miss'])]),
+        ];
+
+        $upTo = static fn (mixed $upTo): array => ['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => $upTo], ['key' => 'hit', 'label' => 'Hit']]];
+        $twoUpTo = static fn (int $first, int $second): array => ['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => $first], ['key' => 'hit', 'label' => 'Hit', 'upTo' => $second], ['key' => 'crit', 'label' => 'Crit']]];
+        $semantic = [
+            'v2-check-invalid-dice' => $with(['dice' => 'banana']),
+            'v2-check-modifier-syntax' => $with(['modifier' => '1 +']),
+            'v2-check-modifier-unknown-field' => $with(['modifier' => '{nope}']),
+            'v2-check-modifier-reads-check' => $with(['modifier' => '{check:difficulty}']),
+            'v2-check-modifier-reads-text-field' => $with(['modifier' => '{name}']),
+            'v2-check-band-reads-undeclared-difficulty' => $with(['difficulty' => null]),
+            'v2-check-band-reads-other-check-value' => $with($upTo(['formula' => '{check:target}'])),
+            'v2-check-band-formula-unknown-field' => $with($upTo(['formula' => '{nope}'])),
+            'v2-check-band-unknown-tracker' => $with($upTo(['tracker' => 'ghost'])),
+            'v2-check-duplicate-band-key' => $with(['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 5], ['key' => 'miss', 'label' => 'Again']]]),
+            'v2-check-band-without-up-to' => $with(['bands' => [['key' => 'miss', 'label' => 'Miss'], ['key' => 'hit', 'label' => 'Hit']]]),
+            'v2-check-last-band-with-up-to' => $with(['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 5], ['key' => 'hit', 'label' => 'Hit', 'upTo' => 9]]]),
+            'v2-check-bands-not-increasing' => $with($twoUpTo(5, 5)),
+            'v2-check-difficulty-min-above-default' => $with(['difficulty' => [...$difficulty, 'min' => 12]]),
+            'v2-check-difficulty-max-below-default' => $with(['difficulty' => [...$difficulty, 'max' => 7]]),
+            'v2-check-duplicate-key' => $build([$check, $check]),
+            'v2-check-step-unknown-check' => $with([], ['check' => 'ghost']),
+            'v2-check-step-difficulty-without-declaration' => $with($upTo(5) + ['difficulty' => null], ['difficulty' => 5]),
+            'v2-check-step-difficulty-below-min' => $with([], ['difficulty' => 3]),
+            'v2-check-step-difficulty-reads-sheet' => $with([], ['difficulty' => ['formula' => '{dex}']]),
+            'v2-check-step-difficulty-unknown-tracker' => $with([], ['difficulty' => ['tracker' => 'ghost']]),
+            'v2-check-step-outcome-unknown-band' => $with([], ['outcomes' => [['band' => 'ghost']]]),
+            'v2-check-step-duplicate-outcome-band' => $with([], ['outcomes' => [['band' => 'miss'], ['band' => 'miss']]]),
+            'v2-check-step-outcome-next-backward' => $with([], ['outcomes' => [['band' => 'miss', 'next' => 'try']]]),
+            'v2-check-step-outcome-unknown-tracker-effect' => $with([], ['outcomes' => [['band' => 'miss', 'effects' => [$trackerEffect('ghost')]]]]),
+        ];
+
+        return ['valid' => self::generated($valid), 'structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
+    }
+
+    /**
+     * @param array<string, string> $cases
+     *
+     * @return array<string, string> the cases under their "generated: " names
+     */
+    private static function generated(array $cases): array
+    {
+        $named = [];
+        foreach ($cases as $name => $json) {
+            $named['generated: '.$name] = $json;
+        }
+
+        return $named;
     }
 
     /**

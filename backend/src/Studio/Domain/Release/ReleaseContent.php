@@ -6,7 +6,6 @@ namespace App\Studio\Domain\Release;
 
 use App\Studio\Domain\Release\Version2\AuthoringWarnings;
 use App\Studio\Domain\Release\Version2\ReleaseVersion2;
-use App\Studio\Domain\Release\Version2\SheetFields;
 
 /**
  * The validated content of a GameSystem release, schema version 1 or 2: the Published Language
@@ -77,24 +76,26 @@ final readonly class ReleaseContent
         /** @var 1|2 $version */
         $release = self::object($data, self::ROOT, 1 === $version ? self::RELEASE : ReleaseVersion2::RELEASE);
         $gameSystem = self::gameSystem($release['gameSystem'], $version);
-        $parts = 1 === $version
-            ? ['oracles' => ReleaseOracles::validate($release['oracles']), 'flow' => self::flow($release['flow'])]
-            : ReleaseVersion2::validate($release);
+        if (1 === $version) {
+            $parts = [
+                'oracles' => ReleaseOracles::validate($release['oracles']),
+                'flow' => self::flow($release['flow']),
+                'sheet' => self::reservedSheet($release['sheet']),
+            ];
+            if ([] !== $release['checks']) {
+                throw InvalidReleaseContent::at('checks', 'not supported in schema version 1, must be []');
+            }
 
-        /** @var list<string> $trackerKeys */
-        $trackerKeys = array_column($parts['trackers'] ?? [], 'key');
-        $sheet = 1 === $version ? self::reservedSheet($release['sheet']) : SheetFields::validate($release['sheet'], $trackerKeys);
-
-        if ([] !== $release['checks']) {
-            throw InvalidReleaseContent::at('checks', \sprintf('not supported in schema version %d, must be []', $version));
+            $parts['checks'] = [];
+        } else {
+            // The sheet and the checks come with the other parts: checks read the sheet and flow steps read the checks.
+            $parts = ReleaseVersion2::validate($release);
         }
 
         $content = [
             'schemaVersion' => $version,
             'gameSystem' => $gameSystem,
             ...$parts,
-            'sheet' => $sheet,
-            'checks' => [],
         ];
         /** @var string $key */
         $key = $gameSystem['key'];

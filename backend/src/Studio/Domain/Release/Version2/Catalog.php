@@ -8,6 +8,10 @@ namespace App\Studio\Domain\Release\Version2;
  * The keys a schema version 2 release declares, so steps, effects, bands and selections can check
  * that what they name exists.
  *
+ * The shape of a check, as steps see it: the difficulty range it declares (null: no difficulty) and its band keys.
+ *
+ * @phpstan-type CheckShape array{difficulty: array{min: int|null, max: int|null}|null, bands: array<string, true>}
+ *
  * @internal
  */
 final readonly class Catalog
@@ -19,6 +23,7 @@ final readonly class Catalog
      * @param array<string, true>                                    $sceneTypes
      * @param array<string, true>                                    $tags             the tag keys of the release
      * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc or thread)
+     * @param array<string, CheckShape>                              $checks           what steps may name of each check, by check key
      */
     public function __construct(
         public array $trackers,
@@ -27,7 +32,24 @@ final readonly class Catalog
         public array $sceneTypes,
         public array $tags = [],
         public array $factSlots = [],
+        public array $checks = [],
     ) {
+    }
+
+    /**
+     * @param array<string, CheckShape> $checks
+     */
+    public function withChecks(array $checks): self
+    {
+        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks);
+    }
+
+    /**
+     * @return CheckShape|null
+     */
+    public function check(string $key): ?array
+    {
+        return $this->checks[$key] ?? null;
     }
 
     public function hasTracker(string $key): bool

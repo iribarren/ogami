@@ -42,6 +42,7 @@ final class Steps
         'condition' => ['tracker' => false, 'count' => false, 'bands' => true],
         'pick' => ['of' => true, 'tags' => false, 'mode' => true, 'count' => false, 'branches' => false],
         'character' => [],
+        'check' => ['check' => true, 'difficulty' => false, 'outcomes' => false],
     ];
 
     private const array PICK_BRANCHES = ['found' => false, 'none' => false];
@@ -49,6 +50,7 @@ final class Steps
     private const array CONDITION_COUNT = ['of' => true, 'tags' => false];
     private const array ORACLE_BRANCHES = ['yes' => false, 'no' => false, 'exceptionalYes' => false, 'exceptionalNo' => false];
     private const array OUTCOME = ['next' => false, 'effects' => false];
+    private const array CHECK_OUTCOME = ['band' => true, 'next' => false, 'effects' => false];
     private const array TABLE_BRANCH = ['entry' => true, 'next' => false, 'effects' => false];
     private const array OPTION = ['key' => true, 'label' => true, 'next' => false, 'effects' => false];
 
@@ -116,6 +118,7 @@ final class Steps
             'choice' => self::choice($step, $path, $catalog),
             'condition' => self::condition($step, $path, $catalog),
             'pick' => self::pick($step, $path, $catalog),
+            'check' => self::check($step, $path, $catalog),
         };
 
         return array_filter($step, static fn (mixed $field): bool => [] !== $field && false !== $field);
@@ -232,19 +235,87 @@ final class Steps
      */
     private static function roll(array $step, string $path, Catalog $catalog): array
     {
-        ReleaseFields::text($step['dice'], $path.'.dice', 1, DiceExpression::MAX_LENGTH);
-
-        try {
-            /** @var string $dice */
-            $dice = $step['dice'];
-            DiceExpression::fromString($dice);
-        } catch (InvalidDiceExpression $invalid) {
-            throw InvalidReleaseContent::at($path.'.dice', 'invalid dice notation: '.$invalid->getMessage(), $invalid);
-        }
-
+        self::dice($step['dice'], $path.'.dice');
         $step['bands'] = Bands::outcomes($step['bands'] ?? null, $path.'.bands', 0, $catalog);
 
         return $step;
+    }
+
+    /**
+     * Dice notation of a roll step or a check, parsed by the Randomness kernel.
+     */
+    public static function dice(mixed $value, string $path): string
+    {
+        $dice = ReleaseFields::text($value, $path, 1, DiceExpression::MAX_LENGTH);
+
+        try {
+            DiceExpression::fromString($dice);
+        } catch (InvalidDiceExpression $invalid) {
+            throw InvalidReleaseContent::at($path, 'invalid dice notation: '.$invalid->getMessage(), $invalid);
+        }
+
+        return $dice;
+    }
+
+    /**
+     * A check step names a check of the release; its difficulty is fixed by an integer, a tracker or
+     * a flow formula, and each outcome names a band of the check, once.
+     *
+     * @param array<string, mixed> $step
+     *
+     * @return array<string, mixed>
+     */
+    private static function check(array $step, string $path, Catalog $catalog): array
+    {
+        $checkKey = ReleaseFields::key($step['check'], $path.'.check');
+        $check = $catalog->check($checkKey) ?? throw InvalidReleaseContent::at($path.'.check', \sprintf('unknown check "%s"', $checkKey));
+
+        if (isset($step['difficulty'])) {
+            $difficultyPath = $path.'.difficulty';
+            $range = $check['difficulty'] ?? throw InvalidReleaseContent::at($difficultyPath, \sprintf('check "%s" declares no difficulty', $checkKey));
+            $step['difficulty'] = \is_int($step['difficulty'])
+                ? self::fixedDifficulty($step['difficulty'], $difficultyPath, $checkKey, $range)
+                : Effects::reference($step['difficulty'], $difficultyPath, $catalog);
+        }
+
+        if (isset($step['outcomes'])) {
+            $outcomes = [];
+            foreach (ReleaseFields::sizedList($step['outcomes'], $path.'.outcomes', 0, Checks::MAX_BANDS, 'outcomes') as $index => $outcome) {
+                $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
+                $outcome = ReleaseFields::object($outcome, $outcomePath, self::CHECK_OUTCOME);
+                $band = ReleaseFields::key($outcome['band'], $outcomePath.'.band');
+                if (!isset($check['bands'][$band])) {
+                    throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('unknown band "%s" of check "%s"', $band, $checkKey));
+                }
+
+                if (isset($outcomes[$band])) {
+                    throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('duplicate outcome band "%s"', $band));
+                }
+
+                $outcomes[$band] = array_filter([...$outcome, ...self::outcome($outcome, $outcomePath, $catalog)], static fn (mixed $field): bool => [] !== $field);
+            }
+
+            $step['outcomes'] = array_values($outcomes);
+        }
+
+        return $step;
+    }
+
+    /**
+     * @param array{min: int|null, max: int|null} $range the difficulty range the check declares
+     */
+    private static function fixedDifficulty(int $value, string $path, string $checkKey, array $range): int
+    {
+        ReleaseFields::integer($value, $path, -Checks::MAX_DIFFICULTY, Checks::MAX_DIFFICULTY);
+        if (null !== $range['min'] && $value < $range['min']) {
+            throw InvalidReleaseContent::at($path, \sprintf('must be at least %d, the difficulty min of check "%s", %d given', $range['min'], $checkKey, $value));
+        }
+
+        if (null !== $range['max'] && $value > $range['max']) {
+            throw InvalidReleaseContent::at($path, \sprintf('must be at most %d, the difficulty max of check "%s", %d given', $range['max'], $checkKey, $value));
+        }
+
+        return $value;
     }
 
     /**

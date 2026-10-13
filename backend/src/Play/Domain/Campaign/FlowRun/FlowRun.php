@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Formula\Domain\Formula;
+use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
@@ -570,8 +572,9 @@ final class FlowRun
      * @param array<string, string>              $factValues    the value of every Fact slot of the release, by key, for "{fact:key}"
      * @param list<string>                       $pickedNames   the current names of the picked items, for "{picked}"
      * @param \Closure(PickStep): PickCandidates $candidatesOf  the campaign's candidates for a pick step
+     * @param \Closure(bool): list<PickedItem>   $charactersOf  the Characters in the current Scene (true), else in the session party, by id and name
      */
-    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $factValues, array $pickedNames, \Closure $candidatesOf): FlowRunView
+    public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $factValues, array $pickedNames, \Closure $candidatesOf, \Closure $charactersOf): FlowRunView
     {
         $placeholders = new Placeholders($trackerValues, $this->answers, $factValues, picked: $pickedNames);
         if (FlowRunStatus::Completed === $this->status) {
@@ -593,12 +596,27 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown)),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release)) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
             FlowRunStatus::Active === $this->status && FlowRunStage::ScenePick === $this->stage && null !== $sessionNumber,
         );
+    }
+
+    /**
+     * @param array<string, int>               $trackerValues
+     * @param \Closure(bool): list<PickedItem> $charactersOf
+     */
+    private function checkView(CheckStep $step, array $trackerValues, \Closure $charactersOf): CheckView
+    {
+        try {
+            $difficulty = $step->difficulty instanceof Formula ? $step->difficulty->evaluate(new TrackerValueMap($trackerValues)) : $step->difficulty;
+        } catch (FormulaEvaluationFailed) {
+            $difficulty = null;
+        }
+
+        return new CheckView($difficulty, $charactersOf(null !== $this->sceneNumber));
     }
 
     public function status(): FlowRunStatus

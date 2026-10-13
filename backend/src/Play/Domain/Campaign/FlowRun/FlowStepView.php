@@ -27,6 +27,7 @@ final readonly class FlowStepView
         public ?string $tip,
         public ?PickView $pick = null,
         public array $fills = [],
+        public ?CheckView $check = null,
     ) {
     }
 }

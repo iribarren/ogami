@@ -30,6 +30,7 @@ use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
 use App\Play\Domain\Campaign\FlowRun\PickCandidate;
 use App\Play\Domain\Campaign\FlowRun\PickCandidates;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
@@ -1335,7 +1336,19 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags));
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags), fn (bool $inScene): array => $this->namedCharacters($inScene ? $this->currentScene()?->characters() : $this->currentSession()?->party()));
+    }
+
+    /**
+     * @param ?list<CharacterId> $ids
+     *
+     * @return list<PickedItem> the Characters of the campaign among the ids, by id and current name
+     */
+    private function namedCharacters(?array $ids): array
+    {
+        $named = array_map(fn (CharacterId $id): ?PickedItem => ($character = $this->character($id)) instanceof Character ? new PickedItem($id->toString(), $character->name()) : null, $ids ?? []);
+
+        return array_values(array_filter($named));
     }
 
     /**

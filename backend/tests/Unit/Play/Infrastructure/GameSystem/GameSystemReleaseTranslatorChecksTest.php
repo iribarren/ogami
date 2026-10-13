@@ -8,6 +8,10 @@ use App\Formula\Domain\Formula;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
+use App\Play\Domain\GameSystem\Flow\Outcome;
+use App\Play\Domain\GameSystem\Flow\TrackerEffect;
+use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
@@ -23,7 +27,7 @@ use PHPUnit\Framework\TestCase;
  * Play's anti-corruption layer reads the checks of a release (ADR 0024) and re-checks what Studio
  * checks on publish. The base release has a sheet (hands, a derived edge, hp), a clock "alarm" and
  * the checks "skill" (modifier, difficulty, bands over the difficulty and the alarm) and "luck".
- * A check step stays refused until the check step is played.
+ * A check step is read with its fixed difficulty and Outcomes, and checked against its check.
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 #[CoversClass(Check::class)]
@@ -131,15 +135,94 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         self::assertInstanceOf(Check::class, $check);
         self::assertSame(['2d6', 'Alert level', 7], [$check->dice->notation(), $check->difficulty?->label, $check->difficulty?->default]);
         self::assertSame(['caught', 'through'], array_map(static fn (CheckBand $band): string => $band->key, $check->bands));
+        $step = $snapshot->sceneType('infiltration')?->play->step('sneak-by');
+        self::assertInstanceOf(CheckStep::class, $step);
+        self::assertSame(['slip-past', null, ['caught']], [$step->check, $step->difficulty, array_keys($step->outcomes)]);
     }
 
     #[Test]
-    public function aCheckStepStaysRefusedUntilItIsPlayed(): void
+    public function itReadsACheckStepWithItsFixedDifficultyAndItsOutcomesByBand(): void
     {
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sceneTypes[0].play[0].kind: unknown step kind "check".');
+        $snapshot = new GameSystemReleaseTranslator()->translate(ReleaseViews::of(ReleaseViews::fixtureContent('valid/v2-checks')));
 
-        new GameSystemReleaseTranslator()->translate(ReleaseViews::of(ReleaseViews::fixtureContent('valid/v2-checks')));
+        self::assertEquals(
+            new CheckStep(
+                'pick-lock', 'Pick the lock', null, null, false, null, [],
+                'skill',
+                Formula::fromString('{tracker:alarm}+9'),
+                ['fail' => new Outcome(null, [new TrackerEffect('alarm', TrackerOperation::Add, 1)]), 'crit' => new Outcome('end')],
+            ),
+            $snapshot->sceneType('break-in')?->play->step('pick-lock'),
+        );
+    }
+
+    #[Test]
+    public function aCheckStepWithoutDifficultyOrOutcomesIsRead(): void
+    {
+        $step = $this->checkStepIn(['difficulty' => null, 'outcomes' => null]);
+
+        self::assertEquals(new CheckStep('pick-lock', 'Pick the lock', null, null, false, null, [], 'skill', null, []), $step);
+    }
+
+    #[Test]
+    public function aLiteralDifficultyWithinTheRangeOfTheCheckIsRead(): void
+    {
+        $step = $this->checkStepIn(['difficulty' => 29]);
+
+        self::assertSame(29, $step->difficulty);
+    }
+
+    /**
+     * @param array<string, mixed> $changes
+     * @param non-empty-string     $message
+     */
+    #[Test]
+    #[DataProvider('malformedCheckSteps')]
+    public function aCheckStepThatBreaksARuleOfStudioIsRefused(array $changes, string $message): void
+    {
+        try {
+            $this->checkStepIn($changes);
+            self::fail('The release was read.');
+        } catch (InvalidGameSystemRelease $invalid) {
+            self::assertStringEndsWith($message, $invalid->getMessage());
+        }
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, non-empty-string}> the changes to the step of the fixture and the message
+     */
+    public static function malformedCheckSteps(): iterable
+    {
+        $at = 'sceneTypes[0].play[0]';
+
+        yield 'an unknown check' => [['check' => 'ghost'], $at.'.check: unknown check "ghost".'];
+        yield 'a check that is not a string' => [['check' => 5], $at.'.check: must be a string.'];
+        yield 'a difficulty for a check that declares none' => [['check' => 'luck', 'difficulty' => 5, 'outcomes' => null], $at.'.difficulty: check "luck" declares no difficulty.'];
+        yield 'a literal under the min' => [['difficulty' => 8], $at.'.difficulty: must be at least 9, the difficulty min of check "skill", 8 given.'];
+        yield 'a literal over the max' => [['difficulty' => 30], $at.'.difficulty: must be at most 29, the difficulty max of check "skill", 30 given.'];
+        yield 'a literal beyond the limits of the contract' => [['difficulty' => 1001], $at.'.difficulty: must be between -1000 and 1000.'];
+        yield 'a difficulty on an unknown Tracker' => [['difficulty' => ['tracker' => 'ghost']], $at.'.difficulty: unknown tracker "ghost".'];
+        yield 'a difficulty that is not a value' => [['difficulty' => 'hard'], $at.'.difficulty: must be an integer, {"tracker": key} or {"formula": string}.'];
+        yield 'outcomes that are not a list' => [['outcomes' => 'fail'], $at.'.outcomes: must be a list.'];
+        yield 'an outcome that is not an object' => [['outcomes' => ['fail']], $at.'.outcomes[0]: must be an object.'];
+        yield 'an outcome band that is not a string' => [['outcomes' => [['band' => 5]]], $at.'.outcomes[0].band: must be a string.'];
+        yield 'an outcome on an unknown band' => [['outcomes' => [['band' => 'ghost']]], $at.'.outcomes[0].band: unknown band "ghost" of check "skill".'];
+        yield 'two outcomes on a band' => [['outcomes' => [['band' => 'fail'], ['band' => 'fail']]], $at.'.outcomes[1].band: duplicate outcome band "fail".'];
+    }
+
+    /**
+     * @param array<string, mixed> $changes replaced in the check step of the fixture "v2-checks"; null leaves a property out
+     */
+    private function checkStepIn(array $changes): CheckStep
+    {
+        /** @var array{sceneTypes: list<array{play: list<array<string, mixed>>}>} $content */
+        $content = ReleaseViews::fixtureContent('valid/v2-checks');
+        $step = array_filter(array_replace($content['sceneTypes'][0]['play'][0], $changes), static fn (mixed $value): bool => null !== $value);
+        $content['sceneTypes'][0]['play'][0] = $step;
+        $snapshot = new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
+        $read = $snapshot->sceneType('break-in')?->play->step('pick-lock');
+
+        return $read instanceof CheckStep ? $read : self::fail('No check step.');
     }
 
     /**

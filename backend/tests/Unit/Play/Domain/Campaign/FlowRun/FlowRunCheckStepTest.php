@@ -8,10 +8,12 @@ use App\Formula\Domain\Formula;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
+use App\Play\Domain\Campaign\FlowRun\CheckView;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
@@ -94,6 +96,38 @@ final class FlowRunCheckStepTest extends FlowRunTestCase
 
         self::assertSame([StepKind::Check, 'ada', 'Success'], [$result->kind, $result->characterId, $result->answer]);
         self::assertSame(StepKind::Check, $campaign->flowRunView($release)?->step?->kind);
+    }
+
+    #[Test]
+    #[DataProvider('viewedDifficulties')]
+    public function theViewShowsTheDifficultyTheStepFixesAndTheCharactersInTheScene(int|Formula|null $fixed, ?int $expected): void
+    {
+        $release = CheckStepReleases::release(CheckStepReleases::step(difficulty: $fixed));
+        $campaign = $this->inScene($release);
+
+        $check = $campaign->flowRunView($release)?->step?->check;
+
+        self::assertEquals(new CheckView($expected, [new PickedItem('ada', 'Ada')]), $check);
+    }
+
+    /**
+     * @return iterable<string, array{int|Formula|null, ?int}>
+     */
+    public static function viewedDifficulties(): iterable
+    {
+        yield 'none fixed' => [null, null];
+        yield 'a literal' => [15, 15];
+        yield 'a formula over Trackers' => [Formula::fromString('{tracker:heat} + 5'), 15];
+        yield 'a formula that cannot be evaluated' => [Formula::fromString('{tracker:heat} / 0'), null];
+    }
+
+    #[Test]
+    public function inAHookTheViewShowsTheSessionsParty(): void
+    {
+        $release = CheckStepReleases::release(CheckStepReleases::step(), true);
+        $campaign = $this->atTheWorldTurn($release);
+
+        self::assertEquals([new PickedItem('bo', 'Bo')], $campaign->flowRunView($release)?->step?->check?->characters);
     }
 
     #[Test]

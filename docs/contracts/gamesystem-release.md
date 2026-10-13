@@ -287,7 +287,7 @@ Optional `null` fields are left out of the canonical form; checks keep their aut
  "outcomes": [{"band": "fail", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {"band": "crit", "next": "end"}]}
 ```
 
-Play's translator reads `checks` into the GameSystem snapshot and re-checks every rule above (a stored release is not trusted), failing closed on anything malformed. It still refuses a `check` step as an unknown step kind until the check step is played.
+Play's translator reads `checks` into the GameSystem snapshot and re-checks every rule above (a stored release is not trusted), failing closed on anything malformed. It reads a `check` step too and re-checks the rules of Studio's validator: the step's `check` exists, a `difficulty` is fixed only for a check that declares one (a literal within its `min`..`max`), and each `outcomes[].band` is a band of the check, once. Playing the step: the player picks a Character (one in the current Scene, else in the Session party), the server rolls the check, the band's outcome supplies `next` and `effects`, and a band without an outcome continues.
 
 ### Formulas (ADR 0023)
 
@@ -541,6 +541,13 @@ A complete, valid release file with a clock, a counter with levels bound to the 
             "no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
             "exceptionalNo": {"effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}
           }
+        },
+        {
+          "key": "sneak-by",
+          "kind": "check",
+          "title": "Slip past the guards",
+          "check": "slip-past",
+          "outcomes": [{"band": "caught", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}]
         },
         {
           "key": "complication",

@@ -28,6 +28,7 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -363,7 +364,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         );
         self::assertIsString($sessions);
         self::assertEquals(
-            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null, 'cast' => []]], 'endedAt' => null]],
+            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null, 'cast' => [], 'characters' => []]], 'endedAt' => null, 'party' => []]],
             json_decode($sessions, true, flags: \JSON_THROW_ON_ERROR),
         );
     }
@@ -423,6 +424,10 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'cast with a non-string id' => ['"cast": ["npc-1", 7]', 'Stored campaign sessions: "cast" must be a list of NPC id strings.'];
         yield 'cast with a blank id' => ['"cast": ["npc-1", " "]', 'Stored campaign sessions: "cast" must be a list of non-blank NPC ids.'];
         yield 'cast with an NPC twice' => ['"cast": ["npc-1", "npc-3", "npc-1"]', 'Stored campaign sessions: "cast" must be a list of distinct NPC ids (NPC "npc-1" is in the cast twice.).'];
+        yield 'characters that are not a list' => ['"characters": "c-1"', 'Stored campaign sessions: "characters" must be a list.'];
+        yield 'characters with a non-string id' => ['"characters": ["c-1", 7]', 'Stored campaign sessions: "characters" must be a list of Character id strings.'];
+        yield 'characters with a blank id' => ['"characters": ["c-1", " "]', 'Stored campaign sessions: "characters" must be a list of non-blank Character ids.'];
+        yield 'characters with a Character twice' => ['"characters": ["c-1", "c-1"]', 'Stored campaign sessions: "cast" must be a list of distinct NPC ids (Character "c-1" is in the cast twice.).'];
         yield 'hook name without a kind' => ['"hook": "worldTurn"', 'Stored campaign sessions: "hook" must be null on a scene of play.'];
         yield 'unknown hook' => ['"kind": "hook", "hook": "dawn"', 'Stored campaign sessions: "hook" must be one of "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
     }
@@ -460,6 +465,112 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertIsArray($stored);
         self::assertIsArray($stored['scenes']);
         self::assertSame([['npc-3', 'npc-2', 'npc-1'], []], array_column($stored['scenes'], 'cast'));
+    }
+
+    #[Test]
+    public function aPartyAndTheCharactersInAScenesCastRoundTripInOrderWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithCharacters($id);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:05:00+00:00'));
+        $campaign->editCurrentSessionParty([CharacterId::fromString('c-2'), CharacterId::fromString('c-1')]);
+        $campaign->startScene('At the gate', new \DateTimeImmutable('2026-10-10T09:06:00+00:00'));
+        $campaign->editCurrentSceneCast([], [CharacterId::fromString('c-1')]);
+        $campaign->endSession(new \DateTimeImmutable('2026-10-10T10:00:00+00:00'));
+        $campaign->startSession(new \DateTimeImmutable('2026-10-17T09:05:00+00:00'));
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertNotNull($loaded);
+        self::assertSame([['c-2', 'c-1'], ['c-2', 'c-1']], array_map(static fn (Session $session): array => array_map(static fn (CharacterId $character): string => $character->toString(), $session->party()), $loaded->sessions()));
+        self::assertSame(['c-1'], array_map(static fn (CharacterId $character): string => $character->toString(), $loaded->sessions()[0]->scenes()[0]->characters()));
+        $stored = $this->storedList($id->toString(), 'sessions');
+        self::assertSame([['c-2', 'c-1'], ['c-2', 'c-1']], array_column($stored, 'party'));
+        $first = $stored[0];
+        self::assertIsArray($first);
+        self::assertIsArray($first['scenes']);
+        self::assertSame([['c-1']], array_column($first['scenes'], 'characters'));
+    }
+
+    #[Test]
+    public function aChangeToThePartyIsSaved(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->campaignWithCharacters($id);
+        $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:05:00+00:00'));
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+        $campaign = $this->repository->ofId($id);
+        self::assertNotNull($campaign);
+
+        $campaign->editCurrentSessionParty([CharacterId::fromString('c-1')]);
+        $this->repository->save($campaign);
+        $this->forgetLoaded();
+
+        self::assertEquals($campaign, $this->repository->ofId($id));
+        self::assertSame([['c-1']], array_column($this->storedList($id->toString(), 'sessions'), 'party'));
+    }
+
+    #[Test]
+    public function aSessionAndSceneStoredBeforePartiesExistedReadWithEmptyPartiesAndCharacters(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->storeSessions($id, '[{"number": 1, "startedAt": "2026-10-06T10:05:00.000000+02:00", "scenes": [{"number": 1, "title": "At the gate", "startedAt": "2026-10-06T10:06:00.000000+02:00", "kind": "scene", "sceneType": null, "hook": null, "cast": []}], "endedAt": null}]');
+
+        $session = $this->repository->ofId($id)?->sessions()[0];
+
+        self::assertNotNull($session);
+        self::assertSame([[], []], [$session->party(), $session->scenes()[0]->characters()]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function malformedParties(): iterable
+    {
+        yield 'party that is not a list' => ['"c-1"', 'Stored campaign sessions: "party" must be a list.'];
+        yield 'party of an object' => ['{"first": "c-1"}', 'Stored campaign sessions: "party" must be a list.'];
+        yield 'party with a non-string id' => ['["c-1", 7]', 'Stored campaign sessions: "party" must be a list of Character id strings.'];
+        yield 'party with a blank id' => ['["c-1", " "]', 'Stored campaign sessions: "party" must be a list of non-blank Character ids.'];
+        yield 'party with a Character twice' => ['["c-1", "c-1"]', 'Stored campaign sessions: "party" must be a list of distinct Character ids (Character "c-1" is in the party twice.).'];
+    }
+
+    #[Test]
+    #[DataProvider('malformedParties')]
+    public function aMalformedStoredPartyFailsToLoad(string $party, string $error): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->storeSessions($id, \sprintf('[{"number": 1, "startedAt": "2026-10-06T10:05:00.000000+02:00", "scenes": [], "party": %s}]', $party));
+
+        $this->expectExceptionMessageIsOrContains($error);
+
+        $this->repository->ofId($id);
+    }
+
+    #[Test]
+    public function aPartyOrSceneCastNamingACharacterTheCampaignDoesNotHoldFailsToLoad(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaignWithCharacters($id));
+        $session = '{"number": 1, "startedAt": "2026-10-06T10:05:00.000000+02:00", "scenes": [{"number": 1, "title": "At the gate", "startedAt": "2026-10-06T10:06:00.000000+02:00", "characters": %s}], "party": %s}';
+
+        $this->storeSessions($id, \sprintf('['.$session.']', '[]', '["c-1", "ghost"]'));
+        try {
+            $this->repository->ofId($id);
+            self::fail('A party naming an unknown Character was read.');
+        } catch (\Throwable $exception) {
+            self::assertStringContainsString('The party of session 1 names Character "ghost", which the campaign does not hold.', $exception->getMessage().$exception->getPrevious()?->getMessage());
+        }
+
+        $this->storeSessions($id, \sprintf('['.$session.']', '["c-1", "ghost"]', '["c-1"]'));
+        $this->expectExceptionMessageIsOrContains('Scene 1 of session 1 casts Character "ghost", which the campaign does not hold.');
+
+        $this->repository->ofId($id);
     }
 
     #[Test]

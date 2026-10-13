@@ -6,6 +6,7 @@ namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\Character;
+use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\FactLink;
@@ -136,11 +137,12 @@ final readonly class GetCampaignHandler implements QueryHandler
             $session->startedAt(),
             array_map(static fn (Scene $scene): SceneView => self::scene($scene, $snapshot, $campaign), $session->scenes()),
             $session->endedAt(),
+            self::characters($session->party(), $campaign, \sprintf('The party of session %d', $session->number())),
         );
     }
 
     /**
-     * @throws \LogicException when the cast names an NPC the campaign does not hold (NPCs are never deleted, so the stored data is corrupt)
+     * @throws \LogicException when the cast names an NPC or a Character the campaign does not hold (they are never deleted, so the stored data is corrupt)
      */
     private static function scene(Scene $scene, GameSystemSnapshot $snapshot, Campaign $campaign): SceneView
     {
@@ -155,7 +157,20 @@ final readonly class GetCampaignHandler implements QueryHandler
             null === $sceneType ? null : $snapshot->sceneType($sceneType)?->name,
             $scene->hook()?->value,
             array_map(static fn (NpcId $id): CastMemberView => new CastMemberView($id->toString(), $campaign->npc($id)?->name() ?? throw new \LogicException(\sprintf('Scene %d casts NPC "%s", which the campaign does not hold.', $scene->number(), $id->toString()))), $scene->cast()),
+            self::characters($scene->characters(), $campaign, \sprintf('Scene %d', $scene->number())),
         );
+    }
+
+    /**
+     * @param list<CharacterId> $ids
+     *
+     * @return list<CastMemberView> the Characters, named as the campaign names them now
+     *
+     * @throws \LogicException when the campaign does not hold one
+     */
+    private static function characters(array $ids, Campaign $campaign, string $holder): array
+    {
+        return array_map(static fn (CharacterId $id): CastMemberView => new CastMemberView($id->toString(), $campaign->character($id)?->name() ?? throw new \LogicException(\sprintf('%s names Character "%s", which the campaign does not hold.', $holder, $id->toString()))), $ids);
     }
 
     /**

@@ -24,4 +24,9 @@ final class NoCurrentSession extends \DomainException
     {
         return new self(\sprintf('Session %d is not the session under way.', $number));
     }
+
+    public static function toEditParty(): self
+    {
+        return new self('No session is under way: start a session before editing its party.');
+    }
 }

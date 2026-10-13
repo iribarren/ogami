@@ -4,40 +4,55 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Play\Domain\Campaign\Characters\CharacterId;
+
 /**
  * One sitting of play within a campaign. Numbered from 1 within its campaign; its identity is the
  * campaign and its number. It is under way until it ends (endedAt). Immutable: adding or changing a
  * scene, or ending it, returns a new Session, and the Campaign aggregate replaces its current
- * session.
+ * session. Its party is the Characters playing in it: an ordered list without repeats, which the
+ * next session starts with and each new scene starts its Characters cast from.
  */
 final readonly class Session
 {
     public const int MAX_SCENES = 200;
 
     /**
-     * @param list<Scene> $scenes in number order
+     * @param list<Scene>       $scenes in number order
+     * @param list<CharacterId> $party  the Characters playing, in the order they joined
      */
     private function __construct(
         private int $number,
         private \DateTimeImmutable $startedAt,
         private array $scenes,
         private ?\DateTimeImmutable $endedAt,
+        private array $party = [],
     ) {
     }
 
-    public static function start(int $number, \DateTimeImmutable $startedAt): self
+    /**
+     * @param list<CharacterId> $party the Characters playing: the previous session's party for a new session
+     *
+     * @throws InvalidSessionParty when the party lists a Character twice
+     */
+    public static function start(int $number, \DateTimeImmutable $startedAt, array $party = []): self
     {
-        return new self($number, $startedAt, [], null);
+        return new self($number, $startedAt, [], null, self::checkedParty($party));
     }
 
     /**
      * Rebuilds a stored session, e.g. from persistence. A session stored without an end is under way.
      *
-     * @param list<Scene> $scenes in number order
+     * A session stored before parties existed has an empty one.
+     *
+     * @param list<Scene>       $scenes in number order
+     * @param list<CharacterId> $party  the Characters playing, without repeats
+     *
+     * @throws InvalidSessionParty when the party lists a Character twice
      */
-    public static function reconstitute(int $number, \DateTimeImmutable $startedAt, array $scenes, ?\DateTimeImmutable $endedAt = null): self
+    public static function reconstitute(int $number, \DateTimeImmutable $startedAt, array $scenes, ?\DateTimeImmutable $endedAt = null, array $party = []): self
     {
-        return new self($number, $startedAt, $scenes, $endedAt);
+        return new self($number, $startedAt, $scenes, $endedAt, self::checkedParty($party));
     }
 
     /**
@@ -49,7 +64,7 @@ final readonly class Session
             throw new \LogicException('The session has already ended.');
         }
 
-        return new self($this->number, $this->startedAt, $this->scenes, $endedAt);
+        return new self($this->number, $this->startedAt, $this->scenes, $endedAt, $this->party);
     }
 
     /**
@@ -62,7 +77,7 @@ final readonly class Session
      */
     public function withNewScene(string $title, \DateTimeImmutable $startedAt, ?string $sceneType = null): self
     {
-        return $this->withScene(static fn (int $number): Scene => Scene::start($number, $title, $startedAt, $sceneType));
+        return $this->withScene(static fn (int $number, array $party): Scene => Scene::start($number, $title, $startedAt, $sceneType, $party));
     }
 
     /**
@@ -73,7 +88,7 @@ final readonly class Session
      */
     public function withNewHookScene(Hook $hook, string $title, \DateTimeImmutable $startedAt): self
     {
-        return $this->withScene(static fn (int $number): Scene => Scene::startHook($number, $hook, $title, $startedAt));
+        return $this->withScene(static fn (int $number, array $party): Scene => Scene::startHook($number, $hook, $title, $startedAt, $party));
     }
 
     /**
@@ -86,7 +101,19 @@ final readonly class Session
             throw new \LogicException('Only the current scene can be replaced.');
         }
 
-        return new self($this->number, $this->startedAt, [...\array_slice($this->scenes, 0, -1), $scene], $this->endedAt);
+        return new self($this->number, $this->startedAt, [...\array_slice($this->scenes, 0, -1), $scene], $this->endedAt, $this->party);
+    }
+
+    /**
+     * The same session with another party; its scenes stay.
+     *
+     * @param list<CharacterId> $party
+     *
+     * @throws InvalidSessionParty when the party lists a Character twice
+     */
+    public function withParty(array $party): self
+    {
+        return new self($this->number, $this->startedAt, $this->scenes, $this->endedAt, self::checkedParty($party));
     }
 
     public function number(): int
@@ -129,7 +156,17 @@ final readonly class Session
     }
 
     /**
-     * @param \Closure(int): Scene $start builds the new scene from its number
+     * The Characters playing, in the order they joined, each once.
+     *
+     * @return list<CharacterId>
+     */
+    public function party(): array
+    {
+        return $this->party;
+    }
+
+    /**
+     * @param \Closure(int, list<CharacterId>): Scene $start builds the new scene from its number and the party its Characters cast starts as
      *
      * @throws CampaignLimitReached
      * @throws InvalidSceneTitle
@@ -140,6 +177,27 @@ final readonly class Session
             throw CampaignLimitReached::scenes(self::MAX_SCENES);
         }
 
-        return new self($this->number, $this->startedAt, [...$this->scenes, $start(\count($this->scenes) + 1)], $this->endedAt);
+        return new self($this->number, $this->startedAt, [...$this->scenes, $start(\count($this->scenes) + 1, $this->party)], $this->endedAt, $this->party);
+    }
+
+    /**
+     * @param list<CharacterId> $party
+     *
+     * @return list<CharacterId>
+     *
+     * @throws InvalidSessionParty
+     */
+    private static function checkedParty(array $party): array
+    {
+        $seen = [];
+        foreach ($party as $id) {
+            if (isset($seen[$id->toString()])) {
+                throw InvalidSessionParty::listedTwice($id);
+            }
+
+            $seen[$id->toString()] = true;
+        }
+
+        return $party;
     }
 }

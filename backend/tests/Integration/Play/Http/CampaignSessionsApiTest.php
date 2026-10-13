@@ -69,8 +69,9 @@ final class CampaignSessionsApiTest extends WebTestCase
         self::assertSame([
             'number' => 1,
             'startedAt' => '2026-10-10T09:00:00+00:00',
-            'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null, 'cast' => []]],
+            'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null, 'cast' => [], 'characters' => []]],
             'endedAt' => '2026-10-10T12:00:00+00:00',
+            'party' => [],
         ], $this->json());
 
         $campaign = $this->campaign($id);

@@ -268,8 +268,8 @@ final class Campaign
     }
 
     /**
-     * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet;
-     * a session still under way stays as it is. A guided FlowRun goes on in it: its session opening
+     * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet and
+     * the previous session's party (none for the first); a session still under way stays as it is. A guided FlowRun goes on in it: its session opening
      * runs (in a hook Scene), then a scene pick with one Scene Type starts that scene; a guided
      * scene or hook Scene of an earlier session is abandoned. All or nothing, like the FlowRun
      * commands.
@@ -284,7 +284,7 @@ final class Campaign
             throw CampaignLimitReached::sessions(self::MAX_SESSIONS);
         }
 
-        $session = Session::start(\count($this->sessions) + 1, $startedAt);
+        $session = Session::start(\count($this->sessions) + 1, $startedAt, array_last($this->sessions)?->party() ?? []);
         $draft = clone $this;
         $draft->sessions[] = $session;
         if ($release instanceof GameSystemSnapshot) {
@@ -409,15 +409,17 @@ final class Campaign
 
     /**
      * Replaces the current scene's cast (the player's edit; any NPC of the campaign, closed ones
-     * included). All or nothing.
+     * included). The Characters part changes only when it is given. All or nothing.
      *
-     * @param list<NpcId> $cast
+     * @param list<NpcId>        $cast       the NPCs in the scene
+     * @param ?list<CharacterId> $characters the Characters in the scene, or null to keep the ones it has
      *
      * @throws NoCurrentScene   when the current session has no scene, or no session is under way
      * @throws UnknownNpc       when an id is not an NPC of the campaign
-     * @throws InvalidSceneCast when an NPC is listed twice
+     * @throws UnknownCharacter when an id is not a Character of the campaign
+     * @throws InvalidSceneCast when an NPC or a Character is listed twice
      */
-    public function editCurrentSceneCast(array $cast): Scene
+    public function editCurrentSceneCast(array $cast, ?array $characters = null): Scene
     {
         $session = $this->currentSession();
         $scene = $session?->currentScene() ?? throw NoCurrentScene::toEditCast();
@@ -427,8 +429,39 @@ final class Campaign
             }
         }
 
+        foreach ($characters ?? [] as $id) {
+            $this->characterIndex($id);
+        }
+
         $edited = $scene->withCast($cast);
+        if (null !== $characters) {
+            $edited = $edited->withCharacters($characters);
+        }
+
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($edited)];
+
+        return $edited;
+    }
+
+    /**
+     * Replaces the current session's party (any Characters of the campaign, in this order). The
+     * scenes, the current one included, keep their Characters. All or nothing.
+     *
+     * @param list<CharacterId> $party
+     *
+     * @throws NoCurrentSession    when no session is under way (none has started, or it has ended)
+     * @throws UnknownCharacter    when an id is not a Character of the campaign
+     * @throws InvalidSessionParty when a Character is listed twice
+     */
+    public function editCurrentSessionParty(array $party): Session
+    {
+        $session = $this->currentSession() ?? throw NoCurrentSession::toEditParty();
+        foreach ($party as $id) {
+            $this->characterIndex($id);
+        }
+
+        $edited = $session->withParty($party);
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $edited];
 
         return $edited;
     }
@@ -605,7 +638,8 @@ final class Campaign
     /**
      * Promotes the Npc to a new Character: its name, Tags and free tags, the default of every
      * field of the pinned release's sheet, and the Npc recorded as its origin. The Npc, open or
-     * closed, ends closed and records the Character. All or nothing.
+     * closed, ends closed and records the Character. While a session is under way the Character
+     * joins its party and the current scene's cast, where it takes the Npc's place. All or nothing.
      *
      * @throws UnknownNpc             when the campaign holds no Npc with this id
      * @throws NpcAlreadyPromoted     when the Npc was promoted already
@@ -631,6 +665,7 @@ final class Campaign
         ItemRules::assertInRelease($character->tags(), $release);
         $this->npcs = $this->replaced($this->npcs, $index, $promoted);
         $this->characters = [...$this->characters, $character];
+        $this->joinCurrentSession($characterId, $npcId);
 
         return $character;
     }
@@ -650,7 +685,8 @@ final class Campaign
 
     /**
      * Adds a Character at the end of the list. Values not given take the field default; the
-     * Character stores one value per field of the pinned release's sheet.
+     * Character stores one value per field of the pinned release's sheet. While a session is under
+     * way the Character joins its party and the current scene's cast.
      *
      * @param list<string> $tags     release Tag keys of the pinned release
      * @param list<string> $freeTags
@@ -675,6 +711,7 @@ final class Campaign
         $character = Character::of($id, $name, $tags, $freeTags, CharacterValues::resolve($release->sheet(), $values));
         ItemRules::assertInRelease($character->tags(), $release);
         $this->characters = [...$this->characters, $character];
+        $this->joinCurrentSession($id);
 
         return $character;
     }
@@ -1419,7 +1456,8 @@ final class Campaign
     /**
      * The facts hold together: at most 500, distinct ids, one fact per slot, and every link and
      * subject names an NPC, Thread or fact of this campaign, and every promotion is named by both
-     * its NPC and its Character (see assertPromotionsConsistent()). Called by reconstitute() and, for a
+     * its NPC and its Character (see assertPromotionsConsistent()), and every party and scene cast
+     * names Characters of this campaign (see assertPartiesConsistent()). Called by reconstitute() and, for a
      * stored row, after Doctrine loads it (the facts column cannot see the NPCs and Threads).
      *
      * @throws FactAlreadyExists    when two facts share an id
@@ -1429,10 +1467,13 @@ final class Campaign
      * @throws UnknownThread        when a link or subject names a Thread the campaign does not hold
      * @throws UnknownFact          when a link names a fact the campaign does not hold
      * @throws InvalidPromotion     when a promotion is named by one side only
+     * @throws InvalidSessionParty  when a session's party names a Character the campaign does not hold
+     * @throws InvalidSceneCast     when a scene's Characters name one the campaign does not hold
      */
     public function assertFactsConsistent(): void
     {
         $this->assertPromotionsConsistent();
+        $this->assertPartiesConsistent();
 
         if (\count($this->facts) > self::MAX_FACTS) {
             throw CampaignLimitReached::facts(self::MAX_FACTS);
@@ -1459,6 +1500,32 @@ final class Campaign
         foreach ($this->facts as $fact) {
             foreach ([...$fact->links(), ...(null === $fact->subject() ? [] : [$fact->subject()])] as $link) {
                 $this->assertLinkResolves($link);
+            }
+        }
+    }
+
+    /**
+     * Every Character a session's party or a scene's Characters cast names is a Character of the
+     * campaign (Characters are never deleted, so a missing one is corrupt data).
+     *
+     * @throws InvalidSessionParty when a party names a Character the campaign does not hold
+     * @throws InvalidSceneCast    when a scene casts a Character the campaign does not hold
+     */
+    private function assertPartiesConsistent(): void
+    {
+        foreach ($this->sessions as $session) {
+            foreach ($session->party() as $id) {
+                if (!$this->character($id) instanceof Character) {
+                    throw InvalidSessionParty::unknownCharacter($session->number(), $id);
+                }
+            }
+
+            foreach ($session->scenes() as $scene) {
+                foreach ($scene->characters() as $id) {
+                    if (!$this->character($id) instanceof Character) {
+                        throw InvalidSceneCast::unknownCharacter($session->number(), $scene->number(), $id);
+                    }
+                }
             }
         }
     }
@@ -1558,6 +1625,31 @@ final class Campaign
             ...array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen()),
             ...array_filter($items, static fn (Npc|Thread $item): bool => !$item->isOpen()),
         ];
+    }
+
+    /**
+     * While a session is under way, a new Character joins its party and the current scene's
+     * cast (at the end of the Characters); when it was promoted from an NPC, that NPC leaves the
+     * scene's NPCs. Earlier scenes and sessions stay as they are. Nothing changes without a session
+     * under way.
+     */
+    private function joinCurrentSession(CharacterId $id, ?NpcId $replacing = null): void
+    {
+        $session = $this->currentSession();
+        if (!$session instanceof Session) {
+            return;
+        }
+
+        $session = $session->withParty([...$session->party(), $id]);
+        $scene = $session->currentScene();
+        if ($scene instanceof Scene) {
+            $cast = $replacing instanceof NpcId
+                ? array_values(array_filter($scene->cast(), static fn (NpcId $member): bool => !$member->equals($replacing)))
+                : $scene->cast();
+            $session = $session->withCurrentScene($scene->withCharacters([...$scene->characters(), $id])->withCast($cast));
+        }
+
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $session];
     }
 
     /**

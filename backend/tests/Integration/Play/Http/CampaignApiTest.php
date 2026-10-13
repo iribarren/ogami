@@ -280,10 +280,11 @@ final class CampaignApiTest extends WebTestCase
                     [
                         'number' => 1,
                         'startedAt' => '2026-10-06T09:05:00+00:00',
-                        'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T09:10:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null, 'cast' => []]],
+                        'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T09:10:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null, 'cast' => [], 'characters' => []]],
                         'endedAt' => null,
+                        'party' => [],
                     ],
-                    ['number' => 2, 'startedAt' => '2026-10-06T09:20:00+00:00', 'scenes' => [], 'endedAt' => null],
+                    ['number' => 2, 'startedAt' => '2026-10-06T09:20:00+00:00', 'scenes' => [], 'endedAt' => null, 'party' => []],
                 ],
                 'currentSessionNumber' => 2,
                 'currentSceneNumber' => null,

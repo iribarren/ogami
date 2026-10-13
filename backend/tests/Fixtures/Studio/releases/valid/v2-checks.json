@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "checks", "name": "Checks", "description": "Checks and a check step, the way the contract shows them."},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [
+    {"key": "alarm", "name": "Alarm", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "break-in", "name": "Break-in", "purpose": "Get past the lock.", "oracles": [],
+      "setup": [],
+      "play": [
+        {
+          "key": "pick-lock", "kind": "check", "title": "Pick the lock", "check": "skill", "difficulty": {"formula": "{tracker:alarm}+9"},
+          "outcomes": [
+            {"band": "fail", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]},
+            {"band": "crit", "next": "end"}
+          ]
+        },
+        {"key": "slip-out", "kind": "prompt", "title": "Slip out"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "hands", "label": "Hands", "type": "number", "min": 0, "max": 10, "default": 4},
+      {"key": "edge", "label": "Edge", "type": "derived", "formula": "{hands}/2"}
+    ]
+  },
+  "checks": [
+    {
+      "key": "skill", "label": "Skill check", "hint": "1d10 plus a stat against a Difficulty Value.",
+      "dice": "1d10", "modifier": "{hands}+{edge}",
+      "difficulty": {"label": "Difficulty Value", "default": 13, "min": 9, "max": 29},
+      "bands": [
+        {"key": "fail", "label": "Fail", "upTo": {"formula": "{check:difficulty}-1"}},
+        {"key": "success", "label": "Success", "upTo": {"formula": "{check:difficulty}+4"}},
+        {"key": "crit", "label": "Critical success"}
+      ]
+    },
+    {
+      "key": "luck", "label": "Luck",
+      "dice": "d%",
+      "bands": [
+        {"key": "bad", "label": "Bad luck", "upTo": 20},
+        {"key": "ok", "label": "Fine", "upTo": {"tracker": "alarm"}},
+        {"key": "good", "label": "Good luck"}
+      ]
+    }
+  ]
+}

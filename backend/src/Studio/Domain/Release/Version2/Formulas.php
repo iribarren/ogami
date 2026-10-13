@@ -14,7 +14,7 @@ use App\Studio\Domain\Release\ReleaseFields;
 
 /**
  * Formulas in a schema version 2 release (ADR 0023), parsed by the Formula kernel. A DerivedValue
- * field reads the sheet and trackers; a band "upTo" and a tracker effect "value" read trackers only.
+ * field reads the sheet and trackers, and so do the modifier and band bounds of a check (ADR 0024); a band "upTo" and a tracker effect "value" read trackers only.
  *
  * @internal
  */
@@ -50,6 +50,24 @@ final class Formulas
     }
 
     /**
+     * A formula over the sheet (a check's modifier or band "upTo" formula): it reads what a derived
+     * field reads, and {check:difficulty} when $difficulty says the check declares one (null: no
+     * check reference is allowed).
+     *
+     * @param array<string, string> $fieldTypes  the type of every field of the sheet by key
+     * @param list<string>          $trackerKeys the trackers of the release
+     */
+    public static function check(string $text, string $path, array $fieldTypes, array $trackerKeys, ?bool $difficulty): void
+    {
+        foreach (self::parse($text, $path)->references() as $reference) {
+            $problem = self::sheetProblem($reference, $fieldTypes, $trackerKeys, $difficulty);
+            if (null !== $problem) {
+                throw InvalidReleaseContent::at($path, \sprintf('{%s}: %s', $reference->toString(), $problem));
+            }
+        }
+    }
+
+    /**
      * The formulas of the derived fields of a sheet: each reads number, track and derived fields
      * of the sheet and the trackers of the release, and derived fields never depend on each other
      * in a cycle.
@@ -82,15 +100,21 @@ final class Formulas
     }
 
     /**
-     * Why a sheet formula cannot read the reference, or null when it can.
+     * Why a sheet formula cannot read the reference, or null when it can. $difficulty is whether the
+     * check the formula belongs to declares a difficulty, null outside the bands of a check.
      *
      * @param array<string, string> $fieldTypes
      * @param list<string>          $trackerKeys
      */
-    private static function sheetProblem(Reference $reference, array $fieldTypes, array $trackerKeys): ?string
+    private static function sheetProblem(Reference $reference, array $fieldTypes, array $trackerKeys, ?bool $difficulty = null): ?string
     {
         if (ReferenceKind::Check === $reference->kind) {
-            return 'a check reference is read only by the bands of a check';
+            return match (true) {
+                null === $difficulty => 'a check reference is read only by the bands of a check',
+                'difficulty' !== $reference->key => \sprintf('unknown check value "%s", only "difficulty" can be read', $reference->key),
+                !$difficulty => 'the check declares no difficulty',
+                default => null,
+            };
         }
 
         if (ReferenceKind::Tracker === $reference->kind) {

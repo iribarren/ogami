@@ -10,7 +10,7 @@ use App\Formula\Domain\ReferenceKind;
 
 /**
  * Walks the parts of canonical schema version 2 steps, with their paths: the outcomes that may
- * carry "next" and "effects" (the step itself, its bands, branches, "otherwise" and options), the
+ * carry "next" and "effects" (the step itself, its bands, branches, "otherwise", options and check outcomes), the
  * effects, tracker references (a condition counting NPCs or Threads has none), placeholder texts
  * and rolled tables.
  *
@@ -44,7 +44,7 @@ final class StepParts
     {
         yield $path => $step;
 
-        foreach (['bands', 'options'] as $name) {
+        foreach (['bands', 'options', 'outcomes'] as $name) {
             foreach (self::objects($step[$name] ?? []) as $index => $outcome) {
                 yield \sprintf('%s.%s[%d]', $path, $name, $index) => $outcome;
             }

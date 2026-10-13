@@ -152,7 +152,7 @@ final class AuthoringWarnings
     private static function successors(array $step): array
     {
         $default = $step['next'] ?? null;
-        $outcomes = [...self::outcomes($step['bands'] ?? []), ...self::outcomes($step['options'] ?? []), ...self::outcomes($step['branches'] ?? []), ...self::outcomes([$step['otherwise'] ?? null])];
+        $outcomes = [...self::outcomes($step['bands'] ?? []), ...self::outcomes($step['options'] ?? []), ...self::outcomes($step['outcomes'] ?? []), ...self::outcomes($step['branches'] ?? []), ...self::outcomes([$step['otherwise'] ?? null])];
         $nexts = array_map(static fn (array $outcome): mixed => $outcome['next'] ?? $default, $outcomes);
         $exhaustive = \in_array($step['kind'], ['condition', 'choice'], true)
             || ('roll' === $step['kind'] && [] !== $outcomes)

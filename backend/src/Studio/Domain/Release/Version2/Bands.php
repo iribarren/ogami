@@ -98,7 +98,7 @@ final class Bands
     /**
      * @param list<array<string, mixed>> $bands
      */
-    private static function order(array $bands, string $path, string $noun): void
+    public static function order(array $bands, string $path, string $noun): void
     {
         $last = \count($bands) - 1;
         $previous = null;

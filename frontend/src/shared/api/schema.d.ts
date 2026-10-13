@@ -861,6 +861,16 @@ export interface components {
                 };
             };
             /**
+             * @description The DerivedValue of each derived field of the pinned release's sheet, named by the field key, in field order: an integer, or null when its formula cannot be evaluated (division by zero, overflow) or reads such a value. Computed from the Character's values and the Campaign's Tracker values as they are now. Empty when the sheet has no derived field.
+             * @example {
+             *       "defense": 11,
+             *       "reach": null
+             *     }
+             */
+            derived: {
+                [key: string]: number | null;
+            };
+            /**
              * Format: uuid
              * @description The id of the NPC this Character was promoted from; null when it was created as a Character.
              */
@@ -933,11 +943,11 @@ export interface components {
              */
             group: string | null;
             /**
-             * @description A number is an integer, a text a string, a list an array of strings and a track {current, max}.
+             * @description A number is an integer, a text a string, a list an array of strings and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
              * @example number
              * @enum {string}
              */
-            type: "number" | "text" | "list" | "track";
+            type: "number" | "text" | "list" | "track" | "derived";
             /**
              * @description Number: the lowest value (-1000000 when the field sets none). Null for other types.
              * @example 1
@@ -967,6 +977,11 @@ export interface components {
              * @example 50
              */
             maxItems: number | null;
+            /**
+             * @description Derived: the formula, as the release writes it ({str}, {hp.max}, {tracker:chaos}, + - * /, min, max). Null for other types.
+             * @example {reflexes} + 4
+             */
+            formula: string | null;
         };
         PinnedReleaseResponse: {
             /** @example ironsworn */

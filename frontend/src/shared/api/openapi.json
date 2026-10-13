@@ -4201,6 +4201,7 @@
                     "tags",
                     "freeTags",
                     "values",
+                    "derived",
                     "promotedFrom"
                 ],
                 "properties": {
@@ -4276,6 +4277,18 @@
                                     "type": "object"
                                 }
                             ]
+                        }
+                    },
+                    "derived": {
+                        "description": "The DerivedValue of each derived field of the pinned release's sheet, named by the field key, in field order: an integer, or null when its formula cannot be evaluated (division by zero, overflow) or reads such a value. Computed from the Character's values and the Campaign's Tracker values as they are now. Empty when the sheet has no derived field.",
+                        "type": "object",
+                        "example": {
+                            "defense": 11,
+                            "reach": null
+                        },
+                        "additionalProperties": {
+                            "type": "integer",
+                            "nullable": true
                         }
                     },
                     "promotedFrom": {
@@ -4391,7 +4404,8 @@
                     "multiline",
                     "maxLength",
                     "itemLabel",
-                    "maxItems"
+                    "maxItems",
+                    "formula"
                 ],
                 "properties": {
                     "key": {
@@ -4415,14 +4429,15 @@
                         "nullable": true
                     },
                     "type": {
-                        "description": "A number is an integer, a text a string, a list an array of strings and a track {current, max}.",
+                        "description": "A number is an integer, a text a string, a list an array of strings and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
                         "type": "string",
                         "example": "number",
                         "enum": [
                             "number",
                             "text",
                             "list",
-                            "track"
+                            "track",
+                            "derived"
                         ]
                     },
                     "min": {
@@ -4463,6 +4478,12 @@
                         "description": "List: the most items (50 unless the field sets one). Null for other types.",
                         "type": "integer",
                         "example": 50,
+                        "nullable": true
+                    },
+                    "formula": {
+                        "description": "Derived: the formula, as the release writes it ({str}, {hp.max}, {tracker:chaos}, + - * /, min, max). Null for other types.",
+                        "type": "string",
+                        "example": "{reflexes} + 4",
                         "nullable": true
                     }
                 },

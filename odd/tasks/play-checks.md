@@ -1,7 +1,7 @@
 # Feature: play-checks
 
 - **Locator:** `odd/tasks/play-checks.md` · Engram topic `odd/play-checks/tasks`
-- **Issue:** #114 · **Branch:** `feat/play-checks-1-decision` · **Status:** in progress (slice 1)
+- **Issue:** #114 · **Branch:** `feat/play-checks-2-contract` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `rules-derived-values` (PRs #108–#113)
@@ -85,8 +85,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0024 (parent); ADR index row; status notes on ADR 0022 and ADR 0017 ("amended by 0024"); ADR 0023 consequence note (`{check:key}` reference); vision open question moved to resolved; glossary (Check, Outcome band, Flow step kinds, Check difficulty, Situational modifier); contract line 255 points to ADR 0024 | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Formula kernel: reference kind `{check:key}` (`Reference::check()`, tokenizer/parser, `references()`), PHP and TS evaluators, conformance vectors (evaluate and references); existing contexts (Studio `Formulas`, Play translator, `DerivedValues`, flow resolver) reject a `check` reference where it is not allowed | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0024 (parent); ADR index row; status notes on ADR 0022 and ADR 0017 ("amended by 0024"); ADR 0023 consequence note (`{check:key}` reference); vision open question moved to resolved; glossary (Check, Outcome band, Flow step kinds, Check difficulty, Situational modifier); contract line 255 points to ADR 0024 | delegated writer (slice 1) | [x] | e80a74d |
+| T2 | 1 | Formula kernel: reference kind `{check:key}` (`Reference::check()`, tokenizer/parser, `references()`), PHP and TS evaluators, conformance vectors (evaluate and references); existing contexts (Studio `Formulas`, Play translator, `DerivedValues`, flow resolver) reject a `check` reference where it is not allowed | delegated writer (slice 1) | [x] | 33d9af9 |
 | T3 | 2 | Contract: `checks` and the `check` step in `v2.schema.json` and the Version2 validator (dice, formulas and scope, band keys and bounds, difficulty range, step references); agreement fixtures; example release; contract doc section | | [ ] | |
 | T4 | 3 | Play ACL and domain: translator reads checks and check steps (re-checks every rule); `Check` snapshot; public sheet resolver extracted from `DerivedValues`; check performance (dice, modifier, situational, difficulty, band) with evaluation failure as a domain error; unit tests | | [ ] | |
 | T5 | 4 | Sheet checks: `check` journal content; `POST /api/campaigns/{id}/journal/checks`; Campaign response exposes checks; 404/422 mapping and API tests; `make api` | | [ ] | |
@@ -105,7 +105,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-f202bd1c19b1295f` | e80a74d, 33d9af9 | approved, acknowledged; R3 suggestion: glossary "Formula reference" row lacks `{check:key}` (fixed in slice 2) | [#115](https://github.com/iribarren/ogami/pull/115) |
 
 ## Next step
 
-Slice 1 (T1, T2) on `feat/play-checks-1-decision`.
+Slice 2 (T3) on `feat/play-checks-2-contract`: slice 1 review fix, then the check contract.

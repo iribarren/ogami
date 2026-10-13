@@ -19,6 +19,7 @@ use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
+use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -29,6 +30,7 @@ use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
 use App\Play\Domain\Campaign\FlowRun\PickCandidate;
 use App\Play\Domain\Campaign\FlowRun\PickCandidates;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
@@ -1197,6 +1199,22 @@ final class Campaign
     }
 
     /**
+     * Checks what the FlowRun's current check step needs before its dice are rolled and answers the
+     * Check difficulty to perform with. Changes nothing.
+     *
+     * @return ?int the step's difficulty, else the given one (null for the check's default)
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws FlowRunPositionMismatch when the current step is another
+     * @throws InvalidStepResult       when the step is no check step, the Character is unknown or not in the scene, or the step fixes the difficulty and one is given
+     * @throws FlowFormulaFailed       when the step's difficulty formula divides by zero or overflows
+     */
+    public function flowCheckDifficulty(string $stepKey, string $characterId, ?int $difficulty, GameSystemSnapshot $release, \DateTimeImmutable $at): ?int
+    {
+        return $this->guided()->checkDifficulty($stepKey, $characterId, $difficulty, $this->flowContext($release, $at));
+    }
+
+    /**
      * Skips the FlowRun's current suggested step.
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
@@ -1318,7 +1336,19 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags));
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags), fn (bool $inScene): array => $this->namedCharacters($inScene ? $this->currentScene()?->characters() : $this->currentSession()?->party()));
+    }
+
+    /**
+     * @param ?list<CharacterId> $ids
+     *
+     * @return list<PickedItem> the Characters of the campaign among the ids, by id and current name
+     */
+    private function namedCharacters(?array $ids): array
+    {
+        $named = array_map(fn (CharacterId $id): ?PickedItem => ($character = $this->character($id)) instanceof Character ? new PickedItem($id->toString(), $character->name()) : null, $ids ?? []);
+
+        return array_values(array_filter($named));
     }
 
     /**

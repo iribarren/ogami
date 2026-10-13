@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickView;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
@@ -22,17 +24,18 @@ use OpenApi\Attributes as OA;
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
  * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
-#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills'])]
+#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'difficulty', 'characters'])]
 final readonly class FlowStepResponse
 {
     /**
      * @param list<FlowStepOptionResponse> $options
      * @param list<FactSlotResponse>       $fills
+     * @param list<ItemRefResponse>        $characters
      */
     private function __construct(
         #[OA\Property(example: 'slip-past')]
         public string $key,
-        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick', 'character'])]
+        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick', 'character', 'check'])]
         public string $kind,
         #[OA\Property(example: 'Who is on the crew?')]
         public string $title,
@@ -64,6 +67,16 @@ final readonly class FlowStepResponse
             items: new OA\Items(ref: new Model(type: FactSlotResponse::class)),
         )]
         public array $fills,
+        #[OA\Property(description: 'The key of the check performed (check step); null for the other kinds.', example: 'slip-past', nullable: true)]
+        public ?string $check,
+        #[OA\Property(description: 'The Check difficulty the check step fixes, as it stands now; null when the player sets it, for the other kinds, and when the step\'s formula cannot be evaluated (answering the step is then refused).', example: 7, nullable: true)]
+        public ?int $difficulty,
+        #[OA\Property(
+            description: 'The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: ItemRefResponse::class)),
+        )]
+        public array $characters,
     ) {
     }
 
@@ -79,6 +92,7 @@ final readonly class FlowStepResponse
             $step instanceof OracleStep => self::of($view, oracle: $step->oracle, likelihood: $step->likelihood),
             $step instanceof TableStep => self::of($view, table: $step->table),
             $step instanceof RollStep => self::of($view, dice: $step->dice),
+            $step instanceof CheckStep => self::of($view, check: $step->check),
             $step instanceof ChoiceStep => self::of($view, options: array_map(FlowStepOptionResponse::of(...), $step->options)),
             $step instanceof PickStep => self::of($view, pick: $view->pick instanceof PickView ? FlowPickStepResponse::fromView($view->pick) : throw new \LogicException(\sprintf('Pick step "%s" has no pick view.', $step->key))),
             $step instanceof ConditionStep => throw new \LogicException(\sprintf('Condition step "%s" never waits: it cannot be the current step.', $step->key)),
@@ -89,10 +103,11 @@ final readonly class FlowStepResponse
     /**
      * @param list<FlowStepOptionResponse> $options
      */
-    private static function of(FlowStepView $view, ?string $oracle = null, ?string $likelihood = null, ?string $table = null, ?string $dice = null, array $options = [], ?FlowPickStepResponse $pick = null): self
+    private static function of(FlowStepView $view, ?string $oracle = null, ?string $likelihood = null, ?string $table = null, ?string $dice = null, array $options = [], ?FlowPickStepResponse $pick = null, ?string $check = null): self
     {
         $step = $view->step;
+        $checkView = $view->check;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills));
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checkView?->difficulty, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []));
     }
 }

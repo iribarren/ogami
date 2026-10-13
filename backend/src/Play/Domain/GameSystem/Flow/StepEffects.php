@@ -6,7 +6,7 @@ namespace App\Play\Domain\GameSystem\Flow;
 
 /**
  * Every Effect a step may apply, whichever way it continues: its own, those of its options, bands,
- * branches, "otherwise", pick outcomes and, for a table step, those of the entries of its table.
+ * branches, "otherwise", pick outcomes, check outcomes and, for a table step, those of the entries of its table.
  */
 final readonly class StepEffects
 {
@@ -23,6 +23,7 @@ final readonly class StepEffects
             $step instanceof RollStep, $step instanceof ConditionStep => array_map(static fn (Band $band): Outcome => $band->outcome, $step->bands),
             $step instanceof TableStep => [...array_map(static fn (TableBranch $branch): Outcome => $branch->outcome, $step->branches), $step->otherwise],
             $step instanceof PickStep => [$step->found, $step->none],
+            $step instanceof CheckStep => array_values($step->outcomes),
             default => [],
         };
 

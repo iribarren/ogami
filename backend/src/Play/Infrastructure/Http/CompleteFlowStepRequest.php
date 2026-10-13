@@ -12,7 +12,7 @@ use OpenApi\Attributes as OA;
  *
  * Which of the other fields a step takes depends on its kind: a prompt step a text, a choice step
  * an option, an oracle step a likelihood level (unless the step fixes it) and a chaos factor, a pick
- * step in mode choose the ids it picks, a character step the id of a Character of the campaign. Roll and table steps, and a pick step in mode random, take
+ * step in mode choose the ids it picks, a character step the id of a Character of the campaign, a check step the Character who rolls and, optionally, a difficulty (unless the step fixes one) and a situational modifier. Roll and table steps, and a pick step in mode random, take
  * none: the server rolls and draws. A field the kind does not take is refused.
  * Optional fields are nullable with no PHP default: a default makes Nelmio emit `default: null`,
  * which the typed client turns into a required field. `required` lists the required ones.
@@ -41,8 +41,12 @@ final readonly class CompleteFlowStepRequest
             nullable: true,
         )]
         public ?array $pickedIds,
-        #[OA\Property(description: 'Character step: the id of a Character of the campaign. Must be omitted or null for the other kinds.', example: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701', nullable: true)]
+        #[OA\Property(description: 'Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Must be omitted or null for the other kinds.', example: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701', nullable: true)]
         public ?string $characterId,
+        #[OA\Property(description: 'Check step: the Check difficulty, within the min and max of the check; omitted or null for its default. Must be omitted or null when the step fixes one or the check declares none.', example: 15, nullable: true)]
+        public ?int $difficulty,
+        #[OA\Property(description: 'Check step: the Situational modifier, from -100 to 100; omitted or null for none.', example: -2, nullable: true)]
+        public ?int $situational,
     ) {
     }
 }

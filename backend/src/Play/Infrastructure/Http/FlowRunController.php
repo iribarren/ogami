@@ -31,6 +31,10 @@ use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
+use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
+use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
+use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
+use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
@@ -63,7 +67,7 @@ final readonly class FlowRunController
 {
     use ReadsJsonBodies;
 
-    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor", a list of strings "pickedIds" and a string "characterId", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
+    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor", a list of strings "pickedIds", a string "characterId", an integer "difficulty" and an integer "situational", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
     private const string MALFORMED_SKIP = 'Send a JSON object with a string "stepKey", such as {"stepKey": "dice"}.';
     private const string MALFORMED_PICK = 'Send a JSON object with a string "sceneType", such as {"sceneType": "tour"}.';
     private const string MALFORMED_END_SCENE = 'Send a JSON object with an integer "sceneNumber", such as {"sceneNumber": 1}.';
@@ -85,13 +89,13 @@ final readonly class FlowRunController
     #[OA\Post(operationId: 'completeFlowStep', summary: 'Complete the current step of the FlowRun of one of my campaigns and record its result in the journal')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: CompleteFlowStepRequest::class)))]
     #[OA\Response(response: 200, description: 'The campaign, with its FlowRun moved on.', content: new OA\JsonContent(ref: new Model(type: CampaignResponse::class)))]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", or "pickedIds" that is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", "difficulty" or "situational", or "pickedIds" that is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: self::NO_SESSION, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no oracle (or not the Tracker its chaos is bound to) with the key of the step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. Or a formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker Effect value or a step\'s difficulty divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function answer(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the answer as JSON.', self::MALFORMED_ANSWER);
@@ -106,11 +110,13 @@ final readonly class FlowRunController
         $chaosFactor = $body['chaosFactor'] ?? null;
         $pickedIds = $body['pickedIds'] ?? null;
         $characterId = $body['characterId'] ?? null;
-        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds)) || (null !== $characterId && !\is_string($characterId))) {
+        $difficulty = $body['difficulty'] ?? null;
+        $situational = $body['situational'] ?? null;
+        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds)) || (null !== $characterId && !\is_string($characterId)) || (null !== $difficulty && !\is_int($difficulty)) || (null !== $situational && !\is_int($situational))) {
             return $this->error(self::MALFORMED_ANSWER, Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds, $characterId), $campaignId, $user);
+        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds, $characterId, $difficulty, $situational), $campaignId, $user);
     }
 
     #[Route('/api/campaigns/{campaignId}/flow-run/skip', name: 'api_campaigns_flow_run_skip', methods: ['POST'])]
@@ -269,7 +275,7 @@ final readonly class FlowRunController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (FlowRunNotActive|FlowRunPositionMismatch|StepCannotBeSkipped|MoveOnNotAllowed|SceneTypeNotOffered|NoCurrentSession|CampaignLimitReached|CampaignModifiedConcurrently|JournalEntryAlreadyExists|NpcAlreadyExists|ThreadAlreadyExists|FactAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidStepResult|FlowFormulaFailed|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression $exception) {
+        } catch (InvalidStepResult|FlowFormulaFailed|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

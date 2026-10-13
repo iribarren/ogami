@@ -18,6 +18,7 @@ const kindLabels: Record<FlowStep['kind'], string> = {
   choice: 'Choice',
   pick: 'Pick',
   character: 'Character',
+  check: 'Check',
 }
 
 interface StepProps {

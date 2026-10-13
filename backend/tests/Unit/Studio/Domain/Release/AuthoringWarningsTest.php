@@ -297,6 +297,7 @@ final class AuthoringWarningsTest extends TestCase
     {
         $release = self::firefightEffect(['kind' => 'sceneTitle', 'title' => 'Firefight']);
         $release = ReleaseArrays::with($release, 'checks', [
+            ...(\is_array($release['checks'] ?? null) ? $release['checks'] : []),
             ['key' => 'sneak', 'label' => 'Sneak', 'dice' => '1d6', 'bands' => [['key' => 'fail', 'label' => 'Fail', 'upTo' => 3], ['key' => 'pass', 'label' => 'Pass']]],
         ]);
 

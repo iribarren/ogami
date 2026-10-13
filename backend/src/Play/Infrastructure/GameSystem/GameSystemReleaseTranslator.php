@@ -17,6 +17,7 @@ use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceOption;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
@@ -236,6 +237,10 @@ final readonly class GameSystemReleaseTranslator
             $this->assertFactSlotFilled($view, $node, $path, $snapshot);
         }
 
+        if ('check' === $kind) {
+            $this->assertCheckStepMatchesItsCheck($view, $node, $path, $snapshot);
+        }
+
         $this->assertFormulaTrackersDeclared($view, $node, $path, $snapshot);
 
         foreach ($node as $name => $child) {
@@ -265,6 +270,9 @@ final readonly class GameSystemReleaseTranslator
         if ('tracker' === ($node['kind'] ?? null)) {
             $values['value'] = $node['value'] ?? null;
         }
+        if ('check' === ($node['kind'] ?? null)) {
+            $values['difficulty'] = $node['difficulty'] ?? null;
+        }
 
         foreach ($values as $name => $value) {
             $formula = \is_array($value) ? $this->value($view, $value, $path.'.'.$name) : null;
@@ -273,6 +281,52 @@ final readonly class GameSystemReleaseTranslator
                     throw $this->invalid($view, $path.'.'.$name, \sprintf('unknown tracker "%s".', $reference->key));
                 }
             }
+        }
+    }
+
+    /**
+     * A check step names a check of the release, fixes a difficulty only for a check that declares
+     * one (a literal within its min..max), and has an Outcome only for a band of the check. Studio
+     * checks this on publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $step
+     */
+    private function assertCheckStepMatchesItsCheck(PublishedReleaseView $view, array $step, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $key = $step['check'] ?? null;
+        $check = \is_string($key) ? $snapshot->check($key) : null;
+        if (!$check instanceof Check) {
+            throw $this->invalid($view, $path.'.check', \sprintf('unknown check "%s".', \is_string($key) ? $key : ''));
+        }
+
+        $difficulty = $step['difficulty'] ?? null;
+        if (null !== $difficulty) {
+            $range = $check->difficulty ?? throw $this->invalid($view, $path.'.difficulty', \sprintf('check "%s" declares no difficulty.', $check->key));
+            if (\is_int($difficulty)) {
+                $this->assertFixedDifficulty($view, $difficulty, $path.'.difficulty', $check, $range);
+            }
+        }
+
+        foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
+            $band = $this->object($view, $outcome, \sprintf('%s.outcomes[%d]', $path, $index))['band'] ?? null;
+            if (!\is_string($band) || !array_any($check->bands, static fn (CheckBand $candidate): bool => $candidate->key === $band)) {
+                throw $this->invalid($view, \sprintf('%s.outcomes[%d].band', $path, $index), \sprintf('unknown band "%s" of check "%s".', \is_string($band) ? $band : '', $check->key));
+            }
+        }
+    }
+
+    private function assertFixedDifficulty(PublishedReleaseView $view, int $value, string $path, Check $check, CheckDifficulty $range): void
+    {
+        if (abs($value) > self::MAX_DIFFICULTY) {
+            throw $this->invalid($view, $path, \sprintf('must be between %d and %d.', -self::MAX_DIFFICULTY, self::MAX_DIFFICULTY));
+        }
+
+        if (null !== $range->min && $value < $range->min) {
+            throw $this->invalid($view, $path, \sprintf('must be at least %d, the difficulty min of check "%s", %d given.', $range->min, $check->key, $value));
+        }
+
+        if (null !== $range->max && $value > $range->max) {
+            throw $this->invalid($view, $path, \sprintf('must be at most %d, the difficulty max of check "%s", %d given.', $range->max, $check->key, $value));
         }
     }
 
@@ -536,6 +590,7 @@ final readonly class GameSystemReleaseTranslator
                 'condition' => $this->conditionStep($view, $common, $step, $stepPath),
                 'pick' => $this->pickStep($view, $common, $step, $stepPath),
                 'character' => new CharacterStep(...$common),
+                'check' => $this->checkStep($view, $common, $step, $stepPath),
                 default => throw $this->invalid($view, $stepPath.'.kind', \sprintf('unknown step kind "%s".', $kind)),
             };
         }
@@ -556,6 +611,31 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return new ConditionStep(...$common, tracker: $tracker, bands: $this->bands($view, $step['bands'] ?? null, $path.'.bands'), count: $count);
+    }
+
+    /**
+     * @param array{key: string, title: string, prompt: ?string, tip: ?string, mandatory: bool, next: ?string, effects: list<Effect>} $common
+     * @param array<mixed>                                                                                                            $step
+     */
+    private function checkStep(PublishedReleaseView $view, array $common, array $step, string $path): CheckStep
+    {
+        $outcomes = [];
+        foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
+            $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
+            $band = $this->string($view, $this->object($view, $outcome, $outcomePath)['band'] ?? null, $outcomePath.'.band');
+            if (isset($outcomes[$band])) {
+                throw $this->invalid($view, $outcomePath.'.band', \sprintf('duplicate outcome band "%s".', $band));
+            }
+
+            $outcomes[$band] = $this->outcome($view, $outcome, $outcomePath);
+        }
+
+        return new CheckStep(
+            ...$common,
+            check: $this->string($view, $step['check'] ?? null, $path.'.check'),
+            difficulty: null === ($step['difficulty'] ?? null) ? null : $this->value($view, $step['difficulty'], $path.'.difficulty'),
+            outcomes: $outcomes,
+        );
     }
 
     private function itemCount(PublishedReleaseView $view, mixed $count, string $path): ItemCount

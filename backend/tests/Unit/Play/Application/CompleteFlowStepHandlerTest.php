@@ -159,6 +159,7 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
     {
         yield 'a prompt with an option' => ['intro', self::command('intro', text: 'Ada', optionKey: 'left'), InvalidStepResult::class, 'Step "intro" is a prompt step: it takes no "optionKey".'];
         yield 'a prompt with picked ids' => ['intro', new CompleteFlowStep('campaign-1', 'user-1', 'entry-1', 'intro', 'Ada', null, null, null, ['t1']), InvalidStepResult::class, 'Step "intro" is a prompt step: it takes no "pickedIds".'];
+        yield 'a prompt with a Character' => ['intro', new CompleteFlowStep('campaign-1', 'user-1', 'entry-1', 'intro', 'Ada', null, null, null, null, 'ada'), InvalidStepResult::class, 'Step "intro" is a prompt step: it takes no "characterId".'];
         yield 'a prompt without text' => ['intro', self::command('intro'), InvalidStepResult::class, 'Step "intro" is a prompt step: it needs "text".'];
         yield 'a prompt with blank text' => ['intro', self::command('intro', text: '  '), InvalidStepResult::class, 'Step "intro" needs an answer.'];
         yield 'a roll with text' => ['dice', self::command('dice', text: 'a six'), InvalidStepResult::class, 'Step "dice" is a roll step: it takes no "text".'];

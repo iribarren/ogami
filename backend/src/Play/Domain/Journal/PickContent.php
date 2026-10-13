@@ -7,7 +7,7 @@ namespace App\Play\Domain\Journal;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 
 /**
- * What a pick step picked: the kind of item (NPCs or Threads), the release Tag keys it asked for
+ * What a pick step picked: the kind of item (NPCs, Threads or Characters), the release Tag keys it asked for
  * and the items picked, with their names as they were at pick time. Nothing picked is an empty
  * list ("none").
  *
@@ -73,7 +73,7 @@ final readonly class PickContent implements JournalEntryContent
      */
     public static function fromArray(array $data): self
     {
-        $of = ItemKind::tryFrom(ContentData::string($data, 'of')) ?? throw InvalidJournalEntryContent::malformed('of', 'one of "npc", "thread"');
+        $of = ItemKind::tryFrom(ContentData::string($data, 'of')) ?? throw InvalidJournalEntryContent::malformed('of', 'one of "npc", "thread", "character"');
         $listed = $data['tags'] ?? null;
         if (!\is_array($listed) || !array_is_list($listed)) {
             throw InvalidJournalEntryContent::malformed('tags', 'a list of strings');

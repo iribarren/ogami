@@ -21,6 +21,7 @@ final readonly class CompleteFlowStep implements Command
      * @param string|null       $likelihood  oracle step: the likelihood level key, only when the step does not fix one
      * @param int|null          $chaosFactor oracle step: null for the oracle's neutral factor (or when it has no chaos)
      * @param list<string>|null $pickedIds   pick step in mode choose: the ids of the candidates chosen, none when nothing matched
+     * @param string|null       $characterId character step: the id of the Character of the campaign the player brings
      */
     public function __construct(
         public string $campaignId,
@@ -32,6 +33,7 @@ final readonly class CompleteFlowStep implements Command
         public ?string $likelihood,
         public ?int $chaosFactor,
         public ?array $pickedIds,
+        public ?string $characterId = null,
     ) {
     }
 }

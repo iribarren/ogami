@@ -4867,7 +4867,8 @@
                         "example": "npc",
                         "enum": [
                             "npc",
-                            "thread"
+                            "thread",
+                            "character"
                         ]
                     },
                     "mode": {
@@ -4972,7 +4973,8 @@
                             "table",
                             "roll",
                             "choice",
-                            "pick"
+                            "pick",
+                            "character"
                         ]
                     },
                     "title": {
@@ -5961,6 +5963,12 @@
                             "type": "string"
                         },
                         "nullable": true
+                    },
+                    "characterId": {
+                        "description": "Character step: the id of a Character of the campaign. Must be omitted or null for the other kinds.",
+                        "type": "string",
+                        "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -6427,7 +6435,8 @@
                         "example": "npc",
                         "enum": [
                             "npc",
-                            "thread"
+                            "thread",
+                            "character"
                         ]
                     },
                     "tags": {

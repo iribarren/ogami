@@ -65,7 +65,7 @@ export function PickForm({ pick, pending, onPick }: PickFormProps) {
 function PickSummary({ pick }: { pick: PickDetails }) {
   const count =
     pick.min === pick.max ? String(pick.min) : `${String(pick.min)} to ${String(pick.max)}`
-  const kind = pick.of === 'npc' ? 'NPC' : 'Thread'
+  const kind = { npc: 'NPC', thread: 'Thread', character: 'Character' }[pick.of]
   const tags = pick.tags.map(({ label }) => label).join(', ')
   return (
     <p className="text-sm text-muted-foreground">

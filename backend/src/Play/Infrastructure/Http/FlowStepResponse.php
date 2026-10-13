@@ -6,6 +6,7 @@ namespace App\Play\Infrastructure\Http;
 
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
 use App\Play\Domain\Campaign\FlowRun\PickView;
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\OracleStep;
@@ -31,7 +32,7 @@ final readonly class FlowStepResponse
     private function __construct(
         #[OA\Property(example: 'slip-past')]
         public string $key,
-        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick'])]
+        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick', 'character'])]
         public string $kind,
         #[OA\Property(example: 'Who is on the crew?')]
         public string $title,
@@ -74,7 +75,7 @@ final readonly class FlowStepResponse
         $step = $view->step;
 
         return match (true) {
-            $step instanceof PromptStep => self::of($view),
+            $step instanceof PromptStep, $step instanceof CharacterStep => self::of($view),
             $step instanceof OracleStep => self::of($view, oracle: $step->oracle, likelihood: $step->likelihood),
             $step instanceof TableStep => self::of($view, table: $step->table),
             $step instanceof RollStep => self::of($view, dice: $step->dice),

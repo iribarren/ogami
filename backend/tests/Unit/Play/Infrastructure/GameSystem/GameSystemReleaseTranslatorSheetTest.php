@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
+use App\Play\Domain\GameSystem\Flow\ConditionStep;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
+use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\Sheet\Field;
@@ -202,30 +206,36 @@ final class GameSystemReleaseTranslatorSheetTest extends TestCase
     }
 
     #[Test]
-    public function itFailsClosedOnTheCharacterStepUntilPlayPlaysIt(): void
+    public function itReadsTheCharacterStepWithTheCommonProperties(): void
     {
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sceneTypes[0].setup[0].kind: step kind "character" is not supported by Play yet.');
+        $step = $this->translate(ReleaseViews::fixtureContent('valid/v2-sheet'))->sceneType('scene')?->setup->steps[0] ?? null;
 
-        $this->translate(ReleaseViews::fixtureContent('valid/v2-sheet'));
+        self::assertEquals(new CharacterStep('hero', 'Who are you?', 'Create your Character or pick one.', 'Fill the sheet.', true, null, []), $step);
     }
 
     #[Test]
-    public function itFailsClosedOnCharacterPicksAndCountsUntilPlayPlaysThem(): void
+    public function itReadsCharacterPicksAndCounts(): void
     {
         $content = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-sheet'), 'sceneTypes.0.setup', [['key' => 'hero', 'kind' => 'prompt', 'title' => 'Hero']]);
 
-        try {
-            $this->translate($content);
-            self::fail('A pick of Characters is read.');
-        } catch (InvalidGameSystemRelease $invalid) {
-            self::assertStringContainsString('sceneTypes[0].play[0].of: item kind "character" is not supported by Play yet.', $invalid->getMessage());
-        }
+        $play = $this->translate($content)->sceneType('scene')?->play->steps ?? [];
 
-        $condition = ['key' => 'crew-size', 'kind' => 'condition', 'title' => 'How big?', 'count' => ['of' => 'character'], 'bands' => [['upTo' => 1], []]];
-        $content = ReleaseArrays::with($content, 'sceneTypes.0.play', [$condition]);
+        $pick = $play[0] ?? null;
+        $condition = $play[1] ?? null;
+        self::assertInstanceOf(PickStep::class, $pick);
+        self::assertSame([ItemKind::Character, ['crew']], [$pick->of, $pick->tags]);
+        self::assertInstanceOf(ConditionStep::class, $condition);
+        self::assertSame([ItemKind::Character, ['crew', 'leader']], [$condition->count?->of, $condition->count?->tags]);
+    }
+
+    #[Test]
+    public function itStillRefusesAnUnknownItemKind(): void
+    {
+        $content = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-sheet'), 'sceneTypes.0.setup', [['key' => 'hero', 'kind' => 'prompt', 'title' => 'Hero']]);
+        $content = ReleaseArrays::with($content, 'sceneTypes.0.play.0.of', 'monster');
+
         $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sceneTypes[0].play[0].count.of: item kind "character" is not supported by Play yet.');
+        $this->expectExceptionMessageIsOrContains('sceneTypes[0].play[0].of: unknown item kind "monster".');
 
         $this->translate($content);
     }

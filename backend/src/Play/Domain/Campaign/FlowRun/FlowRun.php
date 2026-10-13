@@ -15,6 +15,7 @@ use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
+use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
@@ -281,18 +282,27 @@ final class FlowRun
             $answer = StepResult::pick($step->of, $picked)->answer;
             $outcome = [] === $picked ? $step->none : $step->found;
             $newlyPicked = [] === $picked ? null : new PickedItems($step->of, array_map(static fn (PickedItem $item): string => $item->id, $picked));
+        } elseif ($step instanceof CharacterStep) {
+            $id = $result->characterId ?? '';
+            // The answer is the Character's name now, so {step:key} and the history read it.
+            $answer = $context->characterName($id) ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
+            $newlyPicked = new PickedItems(ItemKind::Character, [$id]);
         } elseif ($step instanceof PromptStep && '' === $answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
 
         $this->answers[$step->key] = $answer;
-        if ($step instanceof PickStep) {
+        if ($step instanceof CharacterStep) {
+            // Like a one-item pick, but "{picked}" stays as it was.
+            $this->enterHookScene($context);
+            $context->joinSceneCast($newlyPicked, FlowRunStage::Hook === $this->stage);
+        } elseif ($step instanceof PickStep) {
             // A pick in a hook belongs to the hook Scene (it is under way once the step waits; this
             // makes sure of it), so entering it later cannot clear the pick.
             $this->enterHookScene($context);
             $this->picked = $newlyPicked;
             if ($newlyPicked instanceof PickedItems) {
-                $context->joinSceneCast($newlyPicked);
+                $context->joinSceneCast($newlyPicked, FlowRunStage::Hook === $this->stage);
             }
         }
 
@@ -1000,10 +1010,14 @@ final class FlowRun
             return;
         }
 
-        $kind = FactSlotType::Npc === $type ? ItemKind::Npc : ItemKind::Thread;
-        $id = $this->picked instanceof PickedItems && $this->picked->kind === $kind ? ($this->picked->ids[0] ?? null) : null;
+        // A picked Character fits no slot (they hold NPCs and Threads): like any other kind mismatch, nothing is linked.
+        $slotKind = match ($type) {
+            FactSlotType::Npc => ItemKind::Npc,
+            FactSlotType::Thread => ItemKind::Thread,
+        };
+        $id = $this->picked instanceof PickedItems && $this->picked->kind === $slotKind ? ($this->picked->ids[0] ?? null) : null;
         if (null !== $id) {
-            $context->fillFact($effect->slot, null, ItemKind::Npc === $kind ? FactLink::npc(NpcId::fromString($id)) : FactLink::thread(ThreadId::fromString($id)));
+            $context->fillFact($effect->slot, null, FactSlotType::Npc === $type ? FactLink::npc(NpcId::fromString($id)) : FactLink::thread(ThreadId::fromString($id)));
         }
     }
 

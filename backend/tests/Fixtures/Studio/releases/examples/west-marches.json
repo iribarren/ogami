@@ -178,7 +178,7 @@
           "key": "expeditions", "name": "Expeditions", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["town", "travel", "explore-site", "delve", "return"]},
           "sessionOpening": [
             {"key": "expedition", "kind": "pick", "title": "Which rumor do you chase this session?", "of": "thread", "mode": "choose", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "expedition"}, {"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]},
-            {"key": "party", "kind": "prompt", "title": "Who goes on this expedition?"}
+            {"key": "party", "kind": "pick", "title": "Who goes on this expedition?", "of": "character", "mode": "choose", "count": {"min": 1, "max": 6}}
           ],
           "sessionClosing": [
             {"key": "where", "kind": "condition", "title": "Where are you?", "tracker": "away", "bands": [{"upTo": 0, "next": "safe"}, {"next": "stranded"}]},

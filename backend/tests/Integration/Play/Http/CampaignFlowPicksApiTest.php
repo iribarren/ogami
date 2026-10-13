@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Play\Http;
 
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
+use App\Play\Application\AddCharacter;
 use App\Play\Application\AddNpc;
 use App\Play\Application\AddThread;
 use App\Play\Application\Clock;
@@ -20,6 +21,7 @@ use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\PeopleReleases;
+use App\Tests\Support\Studio\ReleaseArrays;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -50,7 +52,7 @@ final class CampaignFlowPicksApiTest extends WebTestCase
         $container = self::getContainer();
         $container->set(Clock::class, new FixedClock('2026-10-10T09:00:00+00:00'));
         $this->commands = $container->get(CommandBus::class);
-        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9311', PeopleReleases::content() + ['sheet' => []], false));
+        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9311', $this->release(), false));
         $this->userId = $container->get(UserIdGenerator::class)->generate()->toString();
         $this->commands->dispatch(new CreateUser($this->userId, 'ada@example.com', self::PASSWORD, ['SOLO_PLAYER']));
         $this->client->jsonRequest('POST', '/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD]);
@@ -151,6 +153,93 @@ final class CampaignFlowPicksApiTest extends WebTestCase
             array_map(static fn (string $key): mixed => self::at($entry, 'content', $key), ['kind', 'of', 'tags', 'picked']),
         );
         self::assertSame('pick', $entry['kind']);
+    }
+
+    #[Test]
+    public function aPickOfCharactersListsThemAndJoinsTheSceneCastNotTheParty(): void
+    {
+        $this->withCharacters([['vi', 'Vi', 'ally'], ['jax', 'Jax', 'rival'], ['oz', 'Oz', 'ally']]);
+        $step = $this->campaign();
+
+        self::assertSame(
+            ['character', [['key' => 'ally', 'label' => 'Ally']], [['id' => 'char-vi', 'name' => 'Vi'], ['id' => 'char-oz', 'name' => 'Oz']]],
+            array_map(static fn (string $key): mixed => self::at($step, 'flowRun', 'step', 'pick', $key), ['of', 'tags', 'candidates']),
+        );
+
+        $this->answer(['stepKey' => 'who', 'pickedIds' => ['char-oz']]);
+
+        self::assertResponseStatusCodeSame(200);
+        $campaign = $this->json();
+        self::assertSame('With Oz', self::at($campaign, 'flowRun', 'step', 'title'));
+        self::assertSame([['id' => 'char-oz', 'name' => 'Oz']], self::at($this->currentScene($campaign), 'characters'));
+        self::assertSame([], self::at($this->currentScene($campaign), 'cast'));
+        $sessions = self::at($campaign, 'sessions');
+        self::assertIsArray($sessions);
+        self::assertSame([], self::at(array_last($sessions), 'party'));
+        $content = self::at($this->journal()[0], 'content');
+        self::assertSame(['pick', 'character', ['ally'], [['id' => 'char-oz', 'name' => 'Oz']]], array_map(static fn (string $key): mixed => self::at($content, $key), ['kind', 'of', 'tags', 'picked']));
+    }
+
+    #[Test]
+    public function aCharacterThatIsNotACandidateIsRefusedAndNothingChanges(): void
+    {
+        $this->withCharacters([['jax', 'Jax', 'rival'], ['oz', 'Oz', 'ally']]);
+        $before = $this->campaign();
+
+        $this->answer(['stepKey' => 'who', 'pickedIds' => ['char-jax']]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('no candidate "char-jax"', $this->error());
+        self::assertSame($before, $this->campaign());
+        self::assertSame([], $this->journal());
+    }
+
+    #[Test]
+    public function aCharacterStepIsShownAndCompletedWithACharacterIdTheJournalNotesItsName(): void
+    {
+        $this->withCharacters([['vi', 'Vi', 'ally']], 'hero');
+
+        $step = $this->campaign();
+        self::assertSame(['character', false, null], array_map(static fn (string $key): mixed => self::at($step, 'flowRun', 'step', $key), ['kind', 'mandatory', 'pick']));
+
+        $this->answer(['stepKey' => 'who', 'characterId' => 'char-vi']);
+
+        self::assertResponseStatusCodeSame(200);
+        $campaign = $this->json();
+        self::assertSame('Hello Vi', self::at($campaign, 'flowRun', 'step', 'title'));
+        self::assertSame([['id' => 'char-vi', 'name' => 'Vi']], self::at($this->currentScene($campaign), 'characters'));
+        self::assertSame(['note', 'Vi'], [$this->journal()[0]['kind'] ?? null, self::at($this->journal()[0], 'content', 'text')]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, int, string}>
+     */
+    public static function refusedCharacterAnswers(): iterable
+    {
+        yield 'an unknown Character' => [['stepKey' => 'who', 'characterId' => 'char-ghost'], 422, 'no Character "char-ghost"'];
+        yield 'no Character' => [['stepKey' => 'who'], 422, 'it needs "characterId"'];
+        yield 'a null Character' => [['stepKey' => 'who', 'characterId' => null], 422, 'it needs "characterId"'];
+        yield 'a text beside it' => [['stepKey' => 'who', 'characterId' => 'char-vi', 'text' => 'Vi'], 422, 'it takes no "text"'];
+        yield 'another step' => [['stepKey' => 'show', 'characterId' => 'char-vi'], 409, 'step "who"'];
+        yield 'a Character id that is not a string' => [['stepKey' => 'who', 'characterId' => 7], 400, 'Send a JSON object'];
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    #[Test]
+    #[DataProvider('refusedCharacterAnswers')]
+    public function aCharacterStepAnswerThatBreaksTheRulesChangesNothing(array $body, int $status, string $message): void
+    {
+        $this->withCharacters([['vi', 'Vi', 'ally']], 'hero');
+        $before = $this->campaign();
+
+        $this->answer($body);
+
+        self::assertResponseStatusCodeSame($status);
+        self::assertStringContainsString($message, $this->error());
+        self::assertSame($before, $this->campaign());
+        self::assertSame([], $this->journal());
     }
 
     #[Test]
@@ -296,6 +385,46 @@ final class CampaignFlowPicksApiTest extends WebTestCase
         self::assertStringNotContainsString('"cast"', $stored);
 
         self::assertSame([], self::at($this->currentScene($this->campaign()), 'cast'));
+    }
+
+    /**
+     * A guided campaign in a scene of this Scene Type ("crew" by default), after these Characters (id, name, Tag) were added: they
+     * are in no party and no cast.
+     *
+     * @param list<array{string, string, string}> $characters
+     */
+    private function withCharacters(array $characters, string $sceneType = 'crew'): void
+    {
+        $this->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The people', 'people', 'tour'));
+        foreach ($characters as [$id, $name, $tag]) {
+            $this->dispatch(new AddCharacter(self::CAMPAIGN, $this->userId, 'char-'.$id, $name, [$tag], [], []));
+        }
+
+        $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
+        $this->dispatch(new PickSceneType(self::CAMPAIGN, $this->userId, $sceneType));
+    }
+
+    /**
+     * Release "people" with the Scene Types "crew" (picks Characters tagged Ally) and "hero" (a character step).
+     *
+     * @return array<mixed>
+     */
+    private function release(): array
+    {
+        $content = PeopleReleases::content() + ['sheet' => []];
+        $sceneTypes = $content['sceneTypes'];
+        self::assertIsArray($sceneTypes);
+        $crew = ['key' => 'crew', 'name' => 'Crew', 'purpose' => 'A crew scene.', 'oracles' => [], 'play' => [], 'closing' => [], 'setup' => [
+            ['key' => 'who', 'kind' => 'pick', 'title' => 'Which Character?', 'of' => 'character', 'tags' => ['ally'], 'mode' => 'choose'],
+            ['key' => 'show', 'kind' => 'prompt', 'title' => 'With {picked}'],
+        ]];
+        $hero = ['key' => 'hero', 'name' => 'Hero', 'purpose' => 'A hero scene.', 'oracles' => [], 'play' => [], 'closing' => [], 'setup' => [
+            ['key' => 'who', 'kind' => 'character', 'title' => 'Who are you?'],
+            ['key' => 'show', 'kind' => 'prompt', 'title' => 'Hello {step:who}'],
+        ]];
+        $content = ReleaseArrays::with($content, 'sceneTypes', [...$sceneTypes, $crew, $hero]);
+
+        return ReleaseArrays::with($content, 'flows.0.phases.0.selection.sceneTypes', ['spawn', 'spawn-thread', 'choose', 'draw', 'quiet', 'crew', 'hero']);
     }
 
     /**

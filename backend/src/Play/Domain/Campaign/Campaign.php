@@ -488,6 +488,45 @@ final class Campaign
     }
 
     /**
+     * Adds Characters to the end of the current scene's Characters, those already in it staying
+     * where they are; with $toParty also to the end of the current session's party (a pick step
+     * of the FlowRun in a hook, or a character step). All or nothing.
+     *
+     * @param list<CharacterId> $ids Characters of the campaign
+     *
+     * @throws NoCurrentScene   when the current session has no scene, or no session is under way
+     * @throws UnknownCharacter when an id is not a Character of the campaign
+     */
+    public function addToCurrentSceneCharacters(array $ids, bool $toParty): void
+    {
+        $session = $this->currentSession();
+        $scene = $session?->currentScene() ?? throw NoCurrentScene::toEditCast();
+        foreach ($ids as $id) {
+            $this->characterIndex($id);
+        }
+
+        $session = $toParty ? $session->withParty($this->withIds($session->party(), $ids)) : $session;
+        $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($scene->withCharacters($this->withIds($scene->characters(), $ids)))];
+    }
+
+    /**
+     * @param list<CharacterId> $held
+     * @param list<CharacterId> $ids
+     *
+     * @return list<CharacterId> the held ones, then the ids not held yet
+     */
+    private function withIds(array $held, array $ids): array
+    {
+        foreach ($ids as $id) {
+            if (!array_any($held, static fn (CharacterId $member): bool => $member->equals($id))) {
+                $held[] = $id;
+            }
+        }
+
+        return $held;
+    }
+
+    /**
      * Sets a Tracker's value by hand, clamped to its range. With a FlowRun the edit is in its history.
      *
      * @param ?\DateTimeImmutable $at when; without it a FlowRun is not told (see startSession())
@@ -1080,36 +1119,44 @@ final class Campaign
     }
 
     /**
-     * The number of open NPCs or Threads carrying all the given release Tag keys (any, when none);
-     * free tags never match. What a count condition counts.
+     * The number of open NPCs or Threads, or of Characters (which are never closed), carrying all
+     * the given release Tag keys (any, when none); free tags never match. What a count condition counts.
      *
      * @param list<string> $tags
      */
     public function openItemCount(ItemKind $of, array $tags): int
     {
-        $items = ItemKind::Npc === $of ? $this->npcs : $this->threads;
+        $items = match ($of) {
+            ItemKind::Npc => $this->npcs,
+            ItemKind::Thread => $this->threads,
+            ItemKind::Character => $this->characters,
+        };
 
-        return \count(array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen() && $item->carries($tags)));
+        return \count(array_filter($items, static fn (Npc|Thread|Character $item): bool => ($item instanceof Character || $item->isOpen()) && $item->carries($tags)));
     }
 
     /**
-     * The candidates of a pick step: the open NPCs or Threads carrying all the given release Tag
-     * keys (any, when none), in list order; free tags never match.
+     * The candidates of a pick step: the open NPCs or Threads, or every Character, carrying all
+     * the given release Tag keys (any, when none), in list order; free tags never match.
      *
      * @param list<string> $tags
      */
     public function pickCandidates(ItemKind $of, array $tags): PickCandidates
     {
-        $items = ItemKind::Npc === $of ? $this->npcs : $this->threads;
+        $items = match ($of) {
+            ItemKind::Npc => $this->npcs,
+            ItemKind::Thread => $this->threads,
+            ItemKind::Character => $this->characters,
+        };
 
         return new PickCandidates(array_values(array_map(
-            static fn (Npc|Thread $item): PickCandidate => new PickCandidate($item->id()->toString(), $item->name(), $item->weight()),
-            array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen() && $item->carries($tags)),
+            static fn (Npc|Thread|Character $item): PickCandidate => new PickCandidate($item->id()->toString(), $item->name(), $item instanceof Character ? 1 : $item->weight()),
+            array_filter($items, static fn (Npc|Thread|Character $item): bool => ($item instanceof Character || $item->isOpen()) && $item->carries($tags)),
         )));
     }
 
     /**
-     * The current names of NPCs or Threads by id, in the order of the ids; an id the campaign does
+     * The current names of NPCs, Threads or Characters by id, in the order of the ids; an id the campaign does
      * not hold has none.
      *
      * @param list<string> $ids
@@ -1118,10 +1165,14 @@ final class Campaign
      */
     public function itemNames(ItemKind $of, array $ids): array
     {
-        $items = ItemKind::Npc === $of ? $this->npcs : $this->threads;
+        $items = match ($of) {
+            ItemKind::Npc => $this->npcs,
+            ItemKind::Thread => $this->threads,
+            ItemKind::Character => $this->characters,
+        };
         $names = [];
         foreach ($ids as $id) {
-            $item = array_find($items, static fn (Npc|Thread $held): bool => $held->id()->toString() === $id);
+            $item = array_find($items, static fn (Npc|Thread|Character $held): bool => $held->id()->toString() === $id);
             if (null !== $item) {
                 $names[] = $item->name();
             }

@@ -21,7 +21,7 @@ final readonly class PickContentResponse
     private function __construct(
         #[OA\Property(enum: [PickContent::KIND])]
         public string $kind,
-        #[OA\Property(description: 'The kind of item picked.', example: 'npc', enum: ['npc', 'thread'])]
+        #[OA\Property(description: 'The kind of item picked.', example: 'npc', enum: ['npc', 'thread', 'character'])]
         public string $of,
         #[OA\Property(
             description: 'The keys of the release Tags the step asked for, as they were stored; empty when it asked for none.',

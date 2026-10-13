@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\GameSystem;
 
+use App\Formula\Domain\Formula;
+use App\Formula\Domain\InvalidFormula;
+use App\Formula\Domain\Reference;
+use App\Formula\Domain\ReferenceKind;
 use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
@@ -40,7 +44,6 @@ use App\Play\Domain\GameSystem\Flow\TableBranch;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
-use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -836,20 +839,39 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * A literal or {"tracker": key}.
+     * A literal, {"tracker": key} (the formula {tracker:key}) or {"formula": string}, which reads
+     * Trackers only.
      */
-    private function value(PublishedReleaseView $view, mixed $value, string $path): int|TrackerReference
+    private function value(PublishedReleaseView $view, mixed $value, string $path): int|Formula
     {
         if (\is_int($value)) {
             return $value;
         }
 
-        $reference = \is_array($value) ? $value['tracker'] ?? null : null;
-        if (!\is_string($reference)) {
-            throw $this->invalid($view, $path, 'must be an integer or {"tracker": key}.');
+        $expected = 'must be an integer, {"tracker": key} or {"formula": string}.';
+        if (!\is_array($value) || 1 !== \count($value)) {
+            throw $this->invalid($view, $path, $expected);
         }
 
-        return new TrackerReference($reference);
+        $tracker = $value['tracker'] ?? null;
+        $formula = $value['formula'] ?? null;
+        if (!\is_string($tracker) && !\is_string($formula)) {
+            throw $this->invalid($view, $path, $expected);
+        }
+
+        try {
+            $parsed = Formula::fromString(\is_string($tracker) ? '{'.Reference::tracker($tracker)->toString().'}' : (string) $formula);
+        } catch (InvalidFormula $exception) {
+            throw $this->invalid($view, $path, $exception->getMessage());
+        }
+
+        foreach ($parsed->references() as $reference) {
+            if (ReferenceKind::Tracker !== $reference->kind) {
+                throw $this->invalid($view, $path, \sprintf('{%s}: a flow formula reads trackers only.', $reference->toString()));
+            }
+        }
+
+        return $parsed;
     }
 
     /**

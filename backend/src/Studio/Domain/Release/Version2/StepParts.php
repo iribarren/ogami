@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Domain\Release\Version2;
 
 use App\Formula\Domain\Formula;
+use App\Formula\Domain\InvalidFormula;
 use App\Formula\Domain\ReferenceKind;
 
 /**
@@ -236,8 +237,14 @@ final class StepParts
             return;
         }
 
-        // The formula passed validation, so it parses.
-        foreach (Formula::fromString(self::string($reference['formula']))->references() as $read) {
+        try {
+            $reads = Formula::fromString(self::string($reference['formula']))->references();
+        } catch (InvalidFormula) {
+            // Formulas reports the syntax error itself; a formula that does not parse reads nothing.
+            return;
+        }
+
+        foreach ($reads as $read) {
             if (ReferenceKind::Tracker === $read->kind) {
                 yield \sprintf('%s.formula[tracker:%s]', $path, $read->key) => $read->key;
             }

@@ -192,6 +192,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-band-formula-empty' => ['sceneTypes[0].play[0].bands[0].upTo.formula: must not be empty', '/sceneTypes/0/play/0/bands/0/upTo/formula'],
         'generated: v2-effect-formula-with-extra-property' => ['sceneTypes[0].play[0].effects[0].value.plus: unknown property', '/sceneTypes/0/play/0/effects/0/value'],
         'generated: v2-effect-formula-too-long' => ['sceneTypes[0].play[0].effects[0].value.formula: must be at most 200 characters', '/sceneTypes/0/play/0/effects/0/value/formula'],
+        'generated: v2-counter-level-formula' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
+        'generated: v2-counter-level-tracker' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
     ];
 
@@ -446,6 +448,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-band-formula-empty' => $upTo(['formula' => '']),
             'v2-effect-formula-with-extra-property' => $value(['formula' => '1', 'plus' => 1]),
             'v2-effect-formula-too-long' => $value(['formula' => str_repeat('1', 201)]),
+            'v2-counter-level-formula' => ['trackers' => [['levels' => [['upTo' => ['formula' => '1'], 'label' => 'Low'], ['label' => 'Rest']]] + $counter]],
+            'v2-counter-level-tracker' => ['trackers' => [['levels' => [['upTo' => ['tracker' => 'edge'], 'label' => 'Low'], ['label' => 'Rest']]] + $counter]],
         ];
         foreach ($generatedV2 as $name => $overrides) {
             $cases['generated: '.$name] = [json_encode([...self::minimalReleaseV2(), ...$overrides], \JSON_THROW_ON_ERROR)];

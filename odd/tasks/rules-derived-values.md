@@ -1,7 +1,7 @@
 # Feature: rules-derived-values
 
 - **Locator:** `odd/tasks/rules-derived-values.md` · Engram topic `odd/rules-derived-values/tasks`
-- **Issue:** #107 · **Branch:** `feat/rules-derived-values-2-contract` · **Status:** slice 2 in progress
+- **Issue:** #107 · **Branch:** `feat/rules-derived-values-3-play-acl` · **Status:** slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-characters` (PRs #97–#106)
@@ -57,8 +57,9 @@ Effect  tracker   value: int (±1000) | {tracker: key} | {formula: string}
 
 ### Play (slices 3–4)
 
-- Translator: `DerivedField` in `SheetTemplate` (formulas re-parsed, references and cycles re-checked); band `upTo` and effect `value` become `int | Formula`, with `{tracker: key}` read as `{tracker:key}`. `TrackerReference` goes away.
+- Translator (slice 3): band `upTo` and effect `value` become `int | Formula`, with `{tracker: key}` read as `{tracker:key}`. `TrackerReference` goes away.
 - `FlowRun::band()` and `FlowRunContext::applyTrackerEffect()` evaluate with a tracker-only resolver; an evaluation failure is a domain error mapped to 422.
+- Translator (slice 4): `DerivedField` in `SheetTemplate` (formulas re-parsed, references, kinds and cycles re-checked); until then Play keeps rejecting `derived` fields.
 - `CharacterSheet` (or similar) in Play's Domain computes a Character's derived values in dependency order from its values (defaults for missing keys) and the Campaign's tracker values; `null` on evaluation failure. `CharacterValues` refuses a value for a derived key (422). `CharacterView.derived: {key: int|null}` in sheet order; `SheetFieldView` gains `formula`. `make api`.
 
 ### UI (slice 5)
@@ -79,11 +80,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `review-d1f7272dab31b356` | `321418e`, `a4c658b` | Approved, acknowledged. Fixed in slice 2: R3 `Formula::fromString` trims with `trim()` defaults (NUL, vertical tab) while the tokenizer accepts only space, tab, CR, LF; R3 ADR 0023 index row sits outside the table; R3 suggestion: pin error precedence (left, right, operator) with mixed-error vectors | [#108](https://github.com/iribarren/ogami/pull/108) |
 | 1 | `feat/rules-derived-values-1-kernel` | `feat(formula): rules-derived-values 1/6 formula kernel` | T1, T2 | ~1,300 |
 | 2 | `feat/rules-derived-values-2-contract` | `feat(studio): rules-derived-values 2/6 formula contract` | T3 | ~1,200 |
-| 3 | `feat/rules-derived-values-3-play-acl` | `feat(play): rules-derived-values 3/6 formulas in play` | T4 | ~1,200 |
-| 4 | `feat/rules-derived-values-4-sheet` | `feat(play): rules-derived-values 4/6 derived values on characters` | T5 | ~1,400 incl. ~400 generated |
+| 3 | `feat/rules-derived-values-3-play-acl` | `feat(play): rules-derived-values 3/6 formulas in play` | T4 | ~1,000 |
+| 4 | `feat/rules-derived-values-4-sheet` | `feat(play): rules-derived-values 4/6 derived values on characters` | T5 | ~1,550 incl. ~400 generated |
 | 5 | `feat/rules-derived-values-5-live` | `feat(play): rules-derived-values 5/6 live sheet` | T6, T7 | ~1,400 |
 | 6 | `feat/rules-derived-values-6-preset` | `feat(play): rules-derived-values 6/6 preset and wrap-up` | T8, T9 | ~600 |
 
@@ -93,9 +93,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0023 (parent); ADR index; status notes on ADR 0022 and ADR 0017 ("amended by 0023"); glossary (Formula, Formula reference, DerivedValue updated); contract line 254 and the evolution note point to ADR 0023; context map lists the Formula kernel | delegated writer (slice 1) | [x] | `321418e` |
 | T2 | 1 | `Formula` kernel: tokenizer, parser, AST, evaluator with `ValueResolver`, `references()`, `DependencyOrder` with cycle detection, `InvalidFormula` / `FormulaEvaluationFailed`; `backend/contracts/formula/conformance.json` run by PHPUnit; PHPat `CONTEXTS` and `SHARED_KERNEL` gain `Formula` | delegated writer (slice 1) | [x] | `a4c658b` |
-| T3 | 2 | Contract: `derived` field type, `{formula}` in band `upTo` and effect `value` in `v2.schema.json` and the Version2 validator (syntax, references, kinds, cycles, flow scope = trackers only); agreement fixtures; canonical form keeps hashes; contract doc section | delegated writer (slice 2) | [x] | |
-| T4 | 3 | Play ACL and flows: `DerivedField` in the snapshot; translator re-checks formulas; `Band.upTo` and `TrackerEffect.value` become `int\|Formula`, `{tracker}` read as a trivial formula, `TrackerReference` removed; `FlowRun::band()` and `applyTrackerEffect()` evaluate; evaluation failure → 422; tests | | [ ] | |
-| T5 | 4 | Derived values on Characters: domain computation in dependency order (defaults, trackers, `null` on failure); `CharacterValues` refuses derived keys; `CharacterView.derived`, `SheetFieldView.formula`; API tests; `make api` | | [ ] | |
+| T3 | 2 | Contract: `derived` field type, `{formula}` in band `upTo` and effect `value` in `v2.schema.json` and the Version2 validator (syntax, references, kinds, cycles, flow scope = trackers only); agreement fixtures; canonical form keeps hashes; contract doc section | delegated writer (slice 2) | [x] | `4bd6567` (slice 1 fixes), `673315b` |
+| T4 | 3 | Play ACL and flows: translator reads `{formula}` (re-parsed, trackers only, declared trackers); `Band.upTo` and `TrackerEffect.value` become `int\|Formula`, `{tracker}` read as a trivial formula, `TrackerReference` removed; `FlowRun::band()` and `applyTrackerEffect()` evaluate; evaluation failure → 422; tests | delegated writer (slice 3) | [x] | |
+| T5 | 4 | Derived values on Characters: `DerivedField` in the snapshot (translator re-checks references, kinds and cycles); domain computation in dependency order (defaults, trackers, `null` on failure); `CharacterValues` refuses derived keys; `CharacterView.derived`, `SheetFieldView.formula`; API tests; `make api` | | [ ] | |
 | T6 | 5 | TS evaluator in `frontend/src/shared/lib/formula/` mirroring the kernel; node container mounts `backend/contracts` read-only; Vitest runs the conformance file | | [ ] | |
 | T7 | 5 | UI: derived fields read-only and live in the Character form, from form state and tracker values; Characters panel shows `derived`; Vitest | | [ ] | |
 | T8 | 6 | Night Job preset gains derived values (one reads a tracker); preset tests; e2e: edit a stat, see the derived value change | | [ ] | |
@@ -108,12 +108,16 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: T2 Formula kernel done. RED: 160 errors and 3 failures, `App\Formula\Domain\*` classes missing; GREEN: all Formula tests pass; `make qa` and `make test` green. Route: delegated writer.
 - 2026-10-13: Slice 1 review fixes done: `Formula::fromString` trims only space, tab, CR, LF; error precedence (left operand, right operand, operator; first failing `min`/`max` argument) pinned with 14 vectors, the evaluator already behaved that way; ADR 0023 index row moved into the table. RED: 4 conformance failures (NUL / vertical tab accepted), precedence vectors green on first run; GREEN: 185 Formula tests pass. Route: delegated writer.
 - 2026-10-13: T3 formula contract done. New `Version2/Formulas`; `derived` field in `SheetFields`; `{formula}` through `Effects::reference` for band `upTo` and effect `value`; `StepParts` feeds formula trackers to the flow tracker check; schema `derivedField`, `formulaRef`. RED (src and schema stashed): 43 failures and 3 errors in `ReleaseContentFormulasTest` and `ReleaseSchemaAgreementTest`; GREEN: both pass, with 1,795 Studio and Play unit tests. Play fails closed, pinned in `GameSystemReleaseTranslatorVersion2Test`. Canonical form has no type-specific hash code, existing hashes unchanged. Route: delegated writer.
+- 2026-10-13: Slice 2 review fixes done: counter level `upTo` rejects `{formula}` and `{tracker}` (pinned in `ReleaseContentFormulasTest` and two agreement fixtures, already rejected, test-only); `StepParts::referencedTrackers` catches `InvalidFormula` and yields nothing (a malformed flow formula already stopped at `Formulas` first, so no RED: the test pins the single syntax error). Route: delegated writer.
+- 2026-10-13: T4 formulas in Play flows done. `Band::$upTo` and `TrackerEffect::$value` are `int|Formula`; `TrackerReference` removed; translator reads `{tracker}` as `{tracker:key}` and `{formula}` (re-parsed, trackers only, exact shape); `FlowRunContext::evaluate()` with the `TrackerValues` resolver serves `FlowRun::band()` and `applyTrackerEffect()`; `FlowFormulaFailed` maps to 422 on every FlowRun endpoint, start/end session and hand scene type switch. RED: translator refused `{formula}` (8 errors in `FlowRunFormulasTest`), API test got 500 without the mapping; GREEN: unit and API tests pass. Route: delegated writer.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-d1f7272dab31b356` | `321418e`, `a4c658b` | Approved, acknowledged. Fixed in slice 2: R3 `Formula::fromString` trims with `trim()` defaults (NUL, vertical tab) while the tokenizer accepts only space, tab, CR, LF; R3 ADR 0023 index row sits outside the table; R3 suggestion: pin error precedence (left, right, operator) with mixed-error vectors | [#108](https://github.com/iribarren/ogami/pull/108) |
+| 2 | `review-6a07a556ed0ef954` | `4bd6567`, `673315b` | Approved, acknowledged. Fixed in slice 3: R3 no test pins that a counter level rejects `{formula}` in `upTo`; R3 suggestion: `StepParts::referencedTrackers` re-parses formulas assuming validated content (map `InvalidFormula` or pin canonical input); R3 suggestion: slice 1 review row sat in the slice plan table (moved here) | [#109](https://github.com/iribarren/ogami/pull/109) |
 
 ## Next step
 
-Slice 2: slice 1 review fixes, then T3 formula contract on `feat/rules-derived-values-2-contract`. Play keeps failing closed on `derived` fields and `{formula}` values until slices 3–4 (pinned by translator tests).
+Slice 3: slice 2 review fixes, then T4 formulas in Play flows on `feat/rules-derived-values-3-play-acl`. `DerivedField` moved to slice 4 (Claude, 2026-10-13): a derived field in the snapshot would reach `CharacterValues` and the Character views before they handle it, so Play keeps rejecting `derived` fields until slice 4 adds the field and its Character handling together.

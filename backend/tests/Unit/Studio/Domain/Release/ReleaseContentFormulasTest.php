@@ -106,6 +106,43 @@ final class ReleaseContentFormulasTest extends TestCase
         self::assertStringContainsString('"value":{"formula":"min({tracker:chaos},3)-{tracker:edge}"}', json_encode($effect->toArray(), \JSON_THROW_ON_ERROR));
     }
 
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function nonLiteralLevelBounds(): iterable
+    {
+        yield 'formula' => [['formula' => '{tracker:edge}']];
+        yield 'tracker' => [['tracker' => 'edge']];
+    }
+
+    /**
+     * @param array<string, mixed> $upTo
+     */
+    #[Test]
+    #[DataProvider('nonLiteralLevelBounds')]
+    public function aCounterLevelBoundIsAlwaysALiteral(array $upTo): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-scene-types'), 'trackers.1.levels', [['upTo' => $upTo, 'label' => 'Low'], ['label' => 'Rest']]);
+
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains('trackers[1].levels[0].upTo: must be an integer');
+        ReleaseContent::fromArray($release);
+    }
+
+    #[Test]
+    public function aMalformedFormulaInTheFlowIsOneSyntaxErrorAndNeverACrash(): void
+    {
+        $release = self::bands([['upTo' => ['formula' => '{tracker:edge}+']], []]);
+
+        try {
+            ReleaseContent::fromArray($release);
+            self::fail('Expected InvalidReleaseContent.');
+        } catch (InvalidReleaseContent $invalidReleaseContent) {
+            self::assertStringStartsWith('sceneTypes[3].closing[0].bands[0].upTo.formula: Unexpected end of the formula', $invalidReleaseContent->getMessage());
+            self::assertSame(1, substr_count($invalidReleaseContent->getMessage(), 'Unexpected end'));
+        }
+    }
+
     #[Test]
     public function aFormulaUpToIsLeftOutOfTheLiteralOrderingButCountsAsAnUpToForTheLastBandRule(): void
     {

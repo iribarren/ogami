@@ -43,7 +43,6 @@ use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
-use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Tag;
@@ -1072,16 +1071,17 @@ final class FlowRun
     }
 
     /**
-     * The Outcome of the first band whose "upTo" (a literal, or a Tracker's current value) the value
-     * does not pass; the band without "upTo" catches the rest.
+     * The Outcome of the first band whose "upTo" (a literal, or a formula over the Trackers' current
+     * values) the value does not pass; the band without "upTo" catches the rest.
      *
      * @param list<Band> $bands
+     *
+     * @throws FlowFormulaFailed when a bound's formula divides by zero or overflows
      */
     private function band(array $bands, int $value, FlowRunContext $context): ?Outcome
     {
         foreach ($bands as $band) {
-            $upTo = $band->upTo instanceof TrackerReference ? $context->trackerValue($band->upTo->tracker) : $band->upTo;
-            if (null === $upTo || $value <= $upTo) {
+            if (null === $band->upTo || $value <= $context->evaluate($band->upTo)) {
                 return $band->outcome;
             }
         }

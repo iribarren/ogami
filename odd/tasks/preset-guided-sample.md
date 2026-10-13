@@ -1,7 +1,7 @@
 # Feature: preset-guided-sample
 
 - **Locator:** `odd/tasks/preset-guided-sample.md` · Engram topic `odd/preset-guided-sample/tasks`
-- **Issue:** #92 · **Branch:** `fix/preset-guided-sample-3-playtest` · **Status:** complete (slice 3, pending review and PR)
+- **Issue:** #92 · **Branch:** `fix/preset-guided-sample-3-playtest` · **Status:** complete (3 slices, PRs #93–#95)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-mythic-flow` (PRs #89–#91)
@@ -89,10 +89,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3a | 2 | Slice 1 review fixes: Play translator enforces the credits length limits (notice 1–2000 trimmed, license ≤ 200, url ≤ 500) and a schema version 1 release never yields credits (tested); `CreditsNotice` falls back to the URL as link text when `license` is empty | delegated writer (slice 2) | [x] | 7892be3 |
 | T4 | 2 | Preset `night-job` v1 per Design; `PresetsTest` and a `NightJobPresetFlowTest` (validates, passes the ACL, briefing fills the facts, the alarm conditions, the Infiltration → Firefight switch, Grab ends the phase, Getaway → Chase with both pick branches, Payday quotes the payout, the FlowRun completes) | delegated writer (slice 2) | [x] | d8fdf2c |
 | T5 | 2 | e2e: create a Night Job campaign, see the disclaimer and introduction, complete the mandatory crew step; `make e2e` | delegated writer (slice 2) | [x] | 890d7ab |
-| T6a | 3 | Slice 2 review fix: `NightJobPresetFlowTest` asserts the Chase `wheel` pick candidates Play computes (`Campaign::pickCandidates`) instead of building them in the test | delegated writer (slice 3) | [x] | |
+| T6a | 3 | Slice 2 review fix: `NightJobPresetFlowTest` asserts the Chase `wheel` pick candidates Play computes (`Campaign::pickCandidates`) instead of building them in the test | delegated writer (slice 3) | [x] | 58998b1 |
 | T6 | 3 | Playtest as a novice in Chrome: every phase, the alarm rising, a switch, the escape, Payday; findings logged below | parent (browser) | [x] | — |
-| T7 | 3 | Fix playtest findings N1–N6 (preset wording, form label and game system description); N8–N13 stay in the findings as backlog | delegated writer (slice 3) | [x] | |
-| T8 | 3 | Wrap-up: roadmap 9b done, M2 complete, flow example 2 notes, feature doc closed | delegated writer (slice 3) | [x] | |
+| T7 | 3 | Fix playtest findings N1–N6 (preset wording, form label and game system description); N8–N13 stay in the findings as backlog | delegated writer (slice 3) | [x] | 7e93a40 |
+| T8 | 3 | Wrap-up: roadmap 9b done, M2 complete, flow example 2 notes, feature doc closed | delegated writer (slice 3) | [x] | f90dda0 |
 
 ## Playtest findings
 
@@ -134,7 +134,8 @@ Played on 2026-10-13 in Chrome by Claude (campaign "Playtest heist", `night-job`
 |---|---|---|---|---|
 | 1 | `review-3ccd1db0276e0321` | 540408c, 8baae56, 3f530df | approved, acknowledged. WARNING: Play translator re-check skips the credits length limits and reads `credits` on a schema version 1 release; SUGGESTION: empty `license` with a `url` renders a link with no text. Fixed in slice 2 (T3a) | #93 (merged) |
 | 2 | `review-5a2ca9c8e26f5867` | 7892be3, d8fdf2c, 890d7ab | approved, acknowledged. WARNING: `NightJobPresetFlowTest` builds the Chase `wheel` pick candidates in test code instead of asserting Play's computed candidates (`Campaign::pickCandidates`, all-of tag semantics). Fixed in slice 3 (T6a) | #94 (merged) |
+| 3 | `review-1fe3938b0ff984e7` | 58998b1, 7e93a40, f90dda0 | approved, acknowledged. SUGGESTION: the N2–N5 wording fixes have no test asserting the new text; SUGGESTION: the new `NewCampaignForm` Vitest case asserts the description's CSS class. Follow-ups, not fixed (last slice) | #95 |
 
 ## Next step
 
-Parent: native review of slice 3, PR closing #92.
+Feature complete once #95 merges (closes #92, completes M2). Follow-ups: the two slice 3 review suggestions and backlog findings N8–N13.

@@ -115,6 +115,236 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/characters": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Add a Character to one of my campaigns",
+                "operationId": "addCharacter",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CharacterRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new Character, its values complete: a field not given has its default.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharacterResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of another JSON type than documented.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already holds 100 Characters, or another request changed it meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, \"values\" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/characters/{characterId}": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Replace the name, Tags, free tags and values of a Character of one of my campaigns",
+                "operationId": "editCharacter",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "characterId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CharacterRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The edited Character; a value not given went back to its default, the NPC it was promoted from stays.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CharacterResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of another JSON type than documented.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no Character with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, \"values\" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns": {
             "get": {
                 "tags": [
@@ -254,7 +484,7 @@
                         }
                     },
                     "422": {
-                        "description": "The name is blank or too long.",
+                        "description": "The name is blank or too long, or Play cannot read the latest release of the GameSystem yet.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3582,6 +3812,181 @@
                 },
                 "type": "object"
             },
+            "CharacterRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "1 to 100 characters once trimmed.",
+                        "type": "string",
+                        "example": "Vi"
+                    },
+                    "tags": {
+                        "description": "Keys of Tags of the campaign's pinned release, at most 10, each once; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "ally"
+                        ],
+                        "nullable": true
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Fixer"
+                        ],
+                        "nullable": true
+                    },
+                    "values": {
+                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
+                        "type": "object",
+                        "example": {
+                            "role": "Solo",
+                            "reflexes": 7,
+                            "hp": {
+                                "current": 30,
+                                "max": 40
+                            },
+                            "gear": [
+                                "Knife"
+                            ]
+                        },
+                        "nullable": true,
+                        "additionalProperties": {
+                            "oneOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "required": [
+                                        "current",
+                                        "max"
+                                    ],
+                                    "properties": {
+                                        "current": {
+                                            "type": "integer"
+                                        },
+                                        "max": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "CharacterResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "tags",
+                    "freeTags",
+                    "values",
+                    "promotedFrom"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Vi"
+                    },
+                    "tags": {
+                        "description": "The keys of the pinned release's Tags the Character carries.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "ally"
+                        ]
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, as typed.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Fixer"
+                        ]
+                    },
+                    "values": {
+                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list) or {current, max} (track). Empty when the release has no sheet.",
+                        "type": "object",
+                        "example": {
+                            "role": "Solo",
+                            "reflexes": 7,
+                            "hp": {
+                                "current": 30,
+                                "max": 40
+                            },
+                            "gear": [
+                                "Knife"
+                            ]
+                        },
+                        "additionalProperties": {
+                            "oneOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "required": [
+                                        "current",
+                                        "max"
+                                    ],
+                                    "properties": {
+                                        "current": {
+                                            "type": "integer"
+                                        },
+                                        "max": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            ]
+                        }
+                    },
+                    "promotedFrom": {
+                        "description": "The id of the NPC this Character was promoted from; null when it was created as a Character.",
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "CampaignSummaryResponse": {
                 "required": [
                     "id",
@@ -3673,13 +4078,104 @@
                 },
                 "type": "object"
             },
+            "SheetFieldResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "hint",
+                    "group",
+                    "type",
+                    "min",
+                    "max",
+                    "default",
+                    "multiline",
+                    "maxLength",
+                    "itemLabel",
+                    "maxItems"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The key Character values are stored under.",
+                        "type": "string",
+                        "example": "reflexes"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Reflexes"
+                    },
+                    "hint": {
+                        "description": "Help shown with the field; null when there is none.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "group": {
+                        "description": "Consecutive fields with the same group are laid out together; null when ungrouped.",
+                        "type": "string",
+                        "example": "Stats",
+                        "nullable": true
+                    },
+                    "type": {
+                        "description": "A number is an integer, a text a string, a list an array of strings and a track {current, max}.",
+                        "type": "string",
+                        "example": "number",
+                        "enum": [
+                            "number",
+                            "text",
+                            "list",
+                            "track"
+                        ]
+                    },
+                    "min": {
+                        "description": "Number: the lowest value (-1000000 when the field sets none). Null for other types.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "Number: the highest value (1000000 when the field sets none). Track: the fixed max; null when each Character sets its own. Null for other types.",
+                        "type": "integer",
+                        "example": 10,
+                        "nullable": true
+                    },
+                    "default": {
+                        "description": "Number: the value of a Character that has none. Null for other types.",
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    },
+                    "multiline": {
+                        "description": "Text: whether it may span lines. Null for other types.",
+                        "type": "boolean",
+                        "nullable": true
+                    },
+                    "maxLength": {
+                        "description": "Text: the most characters (200, or 2000 when multiline, unless the field sets one). Null for other types.",
+                        "type": "integer",
+                        "example": 200,
+                        "nullable": true
+                    },
+                    "itemLabel": {
+                        "description": "List: what one item is called, such as \"Item\". Null when none or for other types.",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "maxItems": {
+                        "description": "List: the most items (50 unless the field sets one). Null for other types.",
+                        "type": "integer",
+                        "example": 50,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "PinnedReleaseResponse": {
                 "required": [
                     "gameSystemKey",
                     "gameSystemName",
                     "version",
                     "theme",
-                    "credits"
+                    "credits",
+                    "sheet"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -3715,6 +4211,13 @@
                         ],
                         "nullable": true,
                         "description": "The notice, license and link the release carries; null when it has none."
+                    },
+                    "sheet": {
+                        "description": "The fields of the release's character sheet in layout order; empty for a release without one. Characters hold a value per field.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetFieldResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -4789,7 +5292,8 @@
                     "npcs",
                     "threads",
                     "factSlots",
-                    "facts"
+                    "facts",
+                    "characters"
                 ],
                 "properties": {
                     "id": {
@@ -4909,6 +5413,13 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/FactResponse"
+                        }
+                    },
+                    "characters": {
+                        "description": "The campaign's Characters in creation order; their values follow the pinned release's sheet.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CharacterResponse"
                         }
                     }
                 },

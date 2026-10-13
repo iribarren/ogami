@@ -91,6 +91,7 @@ export const lostMineCampaign: Campaign = {
     version: 2,
     theme: null,
     credits: null,
+    sheet: [],
   },
   sessions: [
     {
@@ -167,6 +168,7 @@ export const lostMineCampaign: Campaign = {
   threads: [],
   factSlots: [],
   facts: [],
+  characters: [],
 }
 
 /** `lostMineCampaign` right after starting session 3: no scene yet. */
@@ -192,6 +194,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
       version: gameSystem.version,
       theme: null,
       credits: gameSystem.credits,
+      sheet: [],
     },
     sessions: [],
     currentSessionNumber: null,
@@ -208,6 +211,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
     threads: [],
     factSlots: [],
     facts: [],
+    characters: [],
   }
 }
 

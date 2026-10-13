@@ -63,3 +63,33 @@ export function useCharacterActions(campaignId: string) {
 
   return { save }
 }
+
+/**
+ * `POST /api/campaigns/{campaignId}/npcs/{npcId}/promote`: the NPC becomes a Character and is
+ * closed for good. The campaign is refetched on success and on a refusal that says it changed
+ * (409), so the NPC then shows as promoted.
+ */
+export function usePromoteNpc(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+  const refetch = () => queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
+
+  return useMutation({
+    mutationFn: async (npcId: string) => {
+      const { data, error, response } = await api.POST(
+        '/api/campaigns/{campaignId}/npcs/{npcId}/promote',
+        { params: { path: { campaignId, npcId } } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw campaignError(response, error, explainedRefusals, 'Promoting the NPC')
+    },
+    onSuccess: () => refetch(),
+    onError: (error: Error) => {
+      if (error instanceof CampaignError && error.status === 409) {
+        void refetch()
+      }
+    },
+  })
+}

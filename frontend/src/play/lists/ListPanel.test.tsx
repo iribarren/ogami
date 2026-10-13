@@ -490,3 +490,101 @@ describe('the facts linked to an item', () => {
     expect(screen.queryByText(/Facts:/)).not.toBeInTheDocument()
   })
 })
+
+describe('promoting an NPC to a Character', () => {
+  const promotePath = `${path}/npcs/${miraNpc.id}/promote`
+  const promoted = { ...miraNpc, status: 'closed' as const, promotedTo: 'character-1' }
+
+  it('asks to confirm, promotes through the API and shows the NPC as promoted', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    const { server } = renderLists(
+      lostMineWithLists,
+      {
+        [`POST ${promotePath}`]: () => {
+          server.campaign = { ...server.campaign, npcs: [promoted, brannNpc, oldGuardNpc] }
+          return Response.json({ id: 'character-1' }, { status: 201 })
+        },
+      },
+      sent,
+    )
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Promote Mira Vane to Character' }))
+    // Nothing is sent before the confirmation.
+    expect(sent).toEqual([])
+    await user.click(panel.getByRole('button', { name: 'Keep as NPC' }))
+    expect(panel.queryByRole('button', { name: 'Confirm promotion' })).not.toBeInTheDocument()
+
+    await user.click(panel.getByRole('button', { name: 'Promote Mira Vane to Character' }))
+    await user.click(panel.getByRole('button', { name: 'Confirm promotion' }))
+
+    await waitFor(() => {
+      expect(panel.getByText('Closed (2)')).toBeInTheDocument()
+    })
+    expect(sent).toEqual([null])
+    expect(panel.getByText('Promoted')).toBeInTheDocument()
+    expect(panel.queryByRole('button', { name: /Promote Mira Vane/ })).not.toBeInTheDocument()
+    expect(panel.queryByRole('button', { name: 'Reopen Mira Vane' })).not.toBeInTheDocument()
+  })
+
+  it('promotes a closed NPC and offers no promotion on Threads', async () => {
+    const user = userEvent.setup()
+    renderLists(lostMineWithLists, {
+      [`POST ${path}/npcs/${oldGuardNpc.id}/promote`]: () =>
+        Response.json({ id: 'character-1' }, { status: 201 }),
+    })
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Promote The old guard to Character' }))
+    expect(panel.getByRole('button', { name: 'Confirm promotion' })).toBeInTheDocument()
+    expect((await threads()).queryByRole('button', { name: /Promote/ })).not.toBeInTheDocument()
+  })
+
+  it('reads an NPC saved before promotions (no promotedTo) as not promoted', async () => {
+    const legacy: Partial<typeof miraNpc> = { ...miraNpc }
+    delete legacy.promotedTo
+    renderLists({ ...lostMineWithLists, npcs: [legacy as typeof miraNpc] })
+
+    const panel = await npcs()
+    expect(
+      panel.getByRole('button', { name: 'Promote Mira Vane to Character' }),
+    ).toBeInTheDocument()
+    expect(panel.queryByText('Promoted')).not.toBeInTheDocument()
+  })
+
+  it('shows a refusal and refetches the campaign after a conflict', async () => {
+    const user = userEvent.setup()
+    const { server } = renderLists(lostMineWithLists, {
+      [`POST ${promotePath}`]: () => {
+        server.campaign = { ...server.campaign, npcs: [promoted, brannNpc, oldGuardNpc] }
+        return Response.json(
+          { error: `NPC "${miraNpc.id}" was already promoted to a Character.` },
+          { status: 409 },
+        )
+      },
+    })
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Promote Mira Vane to Character' }))
+    await user.click(panel.getByRole('button', { name: 'Confirm promotion' }))
+
+    expect(await panel.findByRole('alert')).toHaveTextContent('already promoted')
+    expect(await panel.findByText('Promoted')).toBeInTheDocument()
+  })
+
+  it('shows an unprocessable promotion as the API words it', async () => {
+    const user = userEvent.setup()
+    renderLists(lostMineWithLists, {
+      [`POST ${promotePath}`]: () =>
+        Response.json({ error: 'Tag "leader" not found in the pinned release.' }, { status: 422 }),
+    })
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Promote Mira Vane to Character' }))
+    await user.click(panel.getByRole('button', { name: 'Confirm promotion' }))
+
+    expect(await panel.findByRole('alert')).toHaveTextContent('Tag "leader" not found')
+    expect(panel.getByRole('button', { name: 'Promote Mira Vane to Character' })).toBeEnabled()
+  })
+})

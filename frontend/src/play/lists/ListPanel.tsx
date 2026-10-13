@@ -7,6 +7,7 @@ import { NativeSelect } from '@/shared/ui/native-select'
 import { Textarea } from '@/shared/ui/textarea'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { usePromoteNpc } from '../characters/useCharacters'
 import { TagChips, TagFields, type ReleaseTag } from './TagFields'
 import { useFreeTags } from './useFreeTags'
 import { useListActions, type ListFields, type ListItem, type ListKind } from './useLists'
@@ -27,6 +28,9 @@ const maxAgenda = 2000
 export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKind }) {
   const { noun } = kinds[kind]
   const { save, setStatus } = useListActions(kind, campaign.id)
+  const promote = usePromoteNpc(campaign.id)
+  // The id of the NPC whose promotion waits for a confirmation.
+  const [confirming, setConfirming] = useState<string | null>(null)
   // The id of the item being edited, 'new' for the add form, none when no form is open.
   const [form, setForm] = useState<string | null>(null)
   const items: ListItem[] = kind === 'npc' ? campaign.npcs : campaign.threads
@@ -69,6 +73,28 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
         facts={linkedFacts(campaign, kind, item)}
         releaseTags={campaign.tags}
         pending={setStatus.isPending}
+        promotion={
+          kind === 'npc'
+            ? {
+                confirming: confirming === item.id,
+                pending: promote.isPending,
+                onAsk: () => {
+                  promote.reset()
+                  setConfirming(item.id)
+                },
+                onConfirm: () => {
+                  promote.mutate(item.id, {
+                    onSettled: () => {
+                      setConfirming(null)
+                    },
+                  })
+                },
+                onCancel: () => {
+                  setConfirming(null)
+                },
+              }
+            : null
+        }
         onEdit={() => {
           openForm(item.id)
         }}
@@ -94,9 +120,9 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
           <ul className="mt-3 space-y-3">{closed.map(renderItem)}</ul>
         </details>
       )}
-      {setStatus.error && (
+      {(setStatus.error ?? promote.error) && (
         <p role="alert" className="text-sm text-destructive">
-          {setStatus.error.message}
+          {(setStatus.error ?? promote.error)?.message}
         </p>
       )}
       {form === 'new' ? (
@@ -152,6 +178,7 @@ function ItemRow({
   facts,
   releaseTags,
   pending,
+  promotion,
   onEdit,
   onToggle,
 }: {
@@ -160,10 +187,20 @@ function ItemRow({
   facts: string[]
   releaseTags: ReleaseTag[]
   pending: boolean
+  /** The NPC promotion, null for a Thread. */
+  promotion: {
+    confirming: boolean
+    pending: boolean
+    onAsk: () => void
+    onConfirm: () => void
+    onCancel: () => void
+  } | null
   onEdit: () => void
   onToggle: () => void
 }) {
   const agenda = 'agenda' in item ? item.agenda : null
+  // A promoted NPC is closed for good: it cannot be reopened or promoted again.
+  const promoted = 'promotedTo' in item && item.promotedTo !== null
   return (
     <li className="space-y-1">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -186,18 +223,50 @@ function ItemRow({
           >
             Edit
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label={`${item.status === 'open' ? 'Close' : 'Reopen'} ${item.name}`}
-            disabled={pending}
-            onClick={onToggle}
-          >
-            {item.status === 'open' ? 'Close' : 'Reopen'}
-          </Button>
+          {!(promoted && item.status === 'closed') && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`${item.status === 'open' ? 'Close' : 'Reopen'} ${item.name}`}
+              disabled={pending}
+              onClick={onToggle}
+            >
+              {item.status === 'open' ? 'Close' : 'Reopen'}
+            </Button>
+          )}
+          {promotion !== null && !promoted && !promotion.confirming && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Promote ${item.name} to Character`}
+              onClick={promotion.onAsk}
+            >
+              Promote to Character
+            </Button>
+          )}
         </span>
       </div>
+      {promoted && <p className="text-xs text-muted-foreground">Promoted</p>}
+      {promotion?.confirming === true && (
+        <div role="group" aria-label={`Promote ${item.name}`} className="space-y-2 text-sm">
+          <p>Promote {item.name} to a Character? The NPC is closed for good.</p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={promotion.pending}
+              onClick={promotion.onConfirm}
+            >
+              Confirm promotion
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={promotion.onCancel}>
+              Keep as NPC
+            </Button>
+          </div>
+        </div>
+      )}
       {agenda !== null && agenda !== '' && (
         <p className="text-sm text-muted-foreground">{agenda}</p>
       )}

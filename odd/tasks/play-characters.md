@@ -1,7 +1,7 @@
 # Feature: play-characters
 
 - **Locator:** `odd/tasks/play-characters.md` · Engram topic `odd/play-characters/tasks`
-- **Issue:** #96 · **Branch:** `feat/play-characters-8-play` · **Status:** slices 1–7 merged (PRs #97–#103); slice 8 in progress
+- **Issue:** #96 · **Branch:** `feat/play-characters-8-play` · **Status:** slices 1–8 complete (slices 1–7 merged, PRs #97–#103); slice 8 awaits review and PR
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-guided-sample` (PRs #93–#95, M2 complete)
@@ -95,7 +95,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | 7 | `character` step kind and `ItemKind::Character` in the ACL and FlowRun: step completion with a Character id, `{step:key}` name, pick candidates and condition counts over Characters, picks join the party in session hooks and the cast in scenes; exhaustive matches; FlowRun view; West Marches example gains its `pick of: character` | delegated writer (slice 7) | [x] | 2240e5e, 5e6e230 (fixes beaffb2, generated e8fa788) |
 | T11 | 8 | UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | delegated writer (slice 8) | [x] | |
 | T12 | 8 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | delegated writer (slice 8) | [x] | |
-| T13 | 8 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | | [ ] | |
+| T13 | 8 | Wrap-up: roadmap 10 done, flow examples notes, feature doc closed | delegated writer (slice 8) | [x] | |
 
 ## Progress
 
@@ -117,6 +117,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-13: T10 done (2/2) `character` step kind. `CharacterStep` (key and common props) read by the translator; `StepKind::Character`; `StepResult::character($id)`; `FlowRun::completeStep` resolves the Character's current name as the answer (`{step:key}`, history; an unknown or blank id is `InvalidStepResult::unknownCharacter`, 422) and joins it like a one-item pick (Scene Characters, plus the party in a hook; `{picked}` is left alone); `CompleteFlowStep.characterId` (command default null) and handler (`characterId` required, no other field, the journal notes the name as a `note`); `CompleteFlowStepRequest.characterId` nullable, `FlowStepResponse.kind` gains `character`, a non-string `characterId` is a 400. Skipping follows `mandatory` as for every kind. Written with the implementation, observed GREEN: `FlowRunCharacterStepTest` 7, translator 182, API 35 (200, 422 unknown, 422 missing, 422 extra field, 409 other step, 400), persistence round trip of a hook character step 194. Route: delegated writer.
 - 2026-10-13: T11 done (closes slice 7 review R3-001). `PartyEditor` + `useEditParty` (party of the current Session: names, "Edit party" checkbox list, order kept for those who stay; hidden without Characters or a current Session; 409 refetches, other refusals show the API message; Save disabled while pending), mounted in `SessionControls`. `SceneCast` shows and edits NPCs and Characters (`Name (Character)` in the add select; every edit sends `npcIds` and `characterIds`); `Journal` passes the campaign's Characters through (one prop, `journal/Journal.tsx`, outside the stated surfaces). `CharacterStepForm` replaces the `character` step placeholder: radio list plus "Choose", "New Character" toggle, `CharacterForm` inline (the only way with no Characters; Cancel only when there is a list to go back to), create then complete with the new id, a failed create leaves the step open with the message. `PickForm` already rendered and submitted `character` candidates: pinned with tests. RED: 23 of 49 failing in the new/changed test files before the implementation (the two pick tests already passed). GREEN: 75 tests in those files, `src/play` 286 tests, `tsc` clean. Route: delegated writer.
 - 2026-10-13: T12 done. Night Job gains an original sheet (`role` text; `nerve`, `hands`, `wits`, `grit`, `charm` numbers 1–8 default 4 in Stats; `hp` max 40 and `humanity` max 50 tracks in Condition; `gear` and `cyberware` lists in Kit) and a mandatory `character` step "Who are you?" first in the Crew scene; the tip no longer says the character already exists. `NightJobPresetFlowTest` creates the Character before the crew steps (new test: step mandatory, Character joins the party); `PresetsTest::nightJobHasAnOriginalSheet`. `play-night-job.spec.ts` creates Vi through the step card and sees it in Characters, the party and the cast. RED: with the preset stashed, 13 errors and 2 failures of 18; GREEN: 18 tests, 246 assertions; e2e `play-night-job` passes. Route: delegated writer.
+- 2026-10-13: T13 done. `docs/roadmap.md` feature 10 marked done; examples README notes where feature 10 is used (West Marches, Night Job). `docs/domain/flow-examples.md` unchanged (outside the slice's edit surfaces; its example 2 still lists Crew without the character step). Docs only: structural readback, no RED/GREEN. Route: delegated writer.
 
 ## Reviews
 
@@ -132,4 +133,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 8 (T11–T13, last slice, `Closes #96`) on `feat/play-characters-8-play`: commit 1 = T11 UI incl. the slice 7 R3-001 step card, commit 2 = T12 Night Job preset, commit 3 = T13 wrap-up; then native review, PR, merge.
+Slice 8 review and PR, then feature closed.

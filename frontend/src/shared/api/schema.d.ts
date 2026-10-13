@@ -2826,6 +2826,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     endSession: {
@@ -2877,6 +2886,15 @@ export interface operations {
             };
             /** @description No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3046,6 +3064,15 @@ export interface operations {
             };
             /** @description The body is not JSON. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4323,7 +4350,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. Or a formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4412,6 +4439,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     pickSceneType: {
@@ -4492,6 +4528,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     pickSceneTypeByOracle: {
@@ -4543,6 +4588,15 @@ export interface operations {
             };
             /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not roll on a table or the entry rolled names no Scene Type, no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4630,6 +4684,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     moveOn: {
@@ -4710,6 +4773,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     pauseGuidance: {
@@ -4768,6 +4840,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     resumeGuidance: {
@@ -4819,6 +4900,15 @@ export interface operations {
             };
             /** @description The campaign plays freely, guidance is not paused or the Flow is complete, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

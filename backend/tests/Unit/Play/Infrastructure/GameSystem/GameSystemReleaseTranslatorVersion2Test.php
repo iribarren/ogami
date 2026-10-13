@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 
+use App\Formula\Domain\Formula;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
@@ -24,7 +25,6 @@ use App\Play\Domain\GameSystem\Flow\TableBranch;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
-use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SceneType;
@@ -168,14 +168,14 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
 
         self::assertSame(['legwork', 'infiltration', 'firefight', 'getaway'], array_map(static fn (SceneType $type): string => $type->key, $snapshot->sceneTypes()));
         self::assertEquals(new SceneType('getaway', 'Getaway', 'Get away clean.', null, ['escape-routes'], new StepList([
-            new PromptStep('how', 'How do you get out?', 'Name your way out.', 'Think of the alarm.', true, 'route', [new TrackerEffect('heat', TrackerOperation::Add, new TrackerReference('alarm'))]),
+            new PromptStep('how', 'How do you get out?', 'Name your way out.', 'Think of the alarm.', true, 'route', [new TrackerEffect('heat', TrackerOperation::Add, Formula::fromString('{tracker:alarm}'))]),
             new PromptStep('skipped', 'Never reached', null, null, false, null, []),
             new TableStep('route', 'Which way?', null, null, false, null, [], 'escape-routes', [
                 new TableBranch('rooftops', new Outcome('chase')),
                 new TableBranch('sewers', new Outcome(effects: [new TrackerEffect('alarm', TrackerOperation::Set, 0)])),
             ], new Outcome(effects: [new EndPhaseEffect()])),
             new RollStep('chase', 'Do they follow?', null, null, false, null, [], '2d6+1', [
-                new Band(new TrackerReference('heat'), new Outcome('end')),
+                new Band(Formula::fromString('{tracker:heat}'), new Outcome('end')),
                 new Band(7, new Outcome(effects: [new TrackerEffect('heat', TrackerOperation::Add, -1)])),
                 new Band(null, new Outcome('end')),
             ]),
@@ -192,7 +192,7 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
             ], null),
         ]), new StepList([
             new ConditionStep('cool', 'How hot is it?', null, null, false, null, [], 'heat', [
-                new Band(new TrackerReference('edge'), new Outcome('end')),
+                new Band(Formula::fromString('{tracker:edge}'), new Outcome('end')),
                 new Band(3, new Outcome()),
                 new Band(null, new Outcome(effects: [new TrackerEffect('heat', TrackerOperation::Set, 0), new EndPhaseEffect()])),
             ]),
@@ -273,7 +273,7 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         yield 'duplicate step key' => ['sceneTypes.3.setup.1.key', 'how', 'sceneTypes[3].setup[1].key: duplicate key "how".'];
         yield 'effect kind' => ['sceneTypes.2.setup.0.effects.1.kind', 'teleport', 'sceneTypes[2].setup[0].effects[1].kind: unknown effect kind "teleport".'];
         yield 'tracker operation' => ['sceneTypes.2.setup.0.effects.0.op', 'mul', 'sceneTypes[2].setup[0].effects[0].op: unknown tracker operation "mul".'];
-        yield 'band upTo' => ['sceneTypes.3.closing.1.bands.0.upTo', 'five', 'sceneTypes[3].closing[1].bands[0].upTo: must be an integer or {"tracker": key}.'];
+        yield 'band upTo' => ['sceneTypes.3.closing.1.bands.0.upTo', 'five', 'sceneTypes[3].closing[1].bands[0].upTo: must be an integer, {"tracker": key} or {"formula": string}.'];
         yield 'entry effects' => ['oracles.tables.0.entries.0.effects', 'none', 'oracles.tables[0].entries[0].effects: must be a list.'];
         yield 'duplicate Scene Type' => ['sceneTypes.1.key', 'legwork', 'sceneTypes[1].key: duplicate key "legwork".'];
         yield 'duplicate tracker' => ['trackers.1.key', 'alarm', 'trackers[1].key: duplicate key "alarm".'];
@@ -303,23 +303,66 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
         new GameSystemReleaseTranslator()->translate(ReleaseViews::of($edited));
     }
 
+    #[Test]
+    public function aDerivedFieldIsRefusedUntilPlayReadsDerivedValues(): void
+    {
+        $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
+        $content['sheet'] = ['fields' => [['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '1']]];
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('sheet.fields[0].type: unknown field type "derived".');
+
+        new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
+    }
+
+    #[Test]
+    public function aFormulaBandBoundAndEffectValueAreReadAsFormulas(): void
+    {
+        $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
+        $content = ReleaseArrays::with($content, 'sceneTypes.3.closing.1.bands.0.upTo', ['formula' => '{tracker:edge} * 2']);
+        /** @var array<string, mixed> $content */
+        $content = ReleaseArrays::with($content, 'sceneTypes.2.setup.0.effects.0.value', ['formula' => 'max({tracker:chaos}, 3)']);
+
+        $snapshot = new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content));
+
+        $lockdown = $snapshot->sceneType('getaway')?->closing->step('lockdown');
+        self::assertInstanceOf(ConditionStep::class, $lockdown);
+        self::assertEquals(Formula::fromString('{tracker:edge} * 2'), $lockdown->bands[0]->upTo);
+        $firstStep = $snapshot->sceneType('firefight')?->setup->steps[0];
+        self::assertInstanceOf(PromptStep::class, $firstStep);
+        self::assertInstanceOf(TrackerEffect::class, $firstStep->effects[0]);
+        self::assertEquals(Formula::fromString('max({tracker:chaos}, 3)'), $firstStep->effects[0]->value);
+    }
+
     /**
      * @return iterable<string, array{string, mixed, string}>
      */
     public static function formulaParts(): iterable
     {
-        yield 'derived field' => ['sheet', ['fields' => [['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '1']]], 'sheet.fields[0].type: unknown field type "derived".'];
-        yield 'formula band upTo' => ['sceneTypes.3.closing.1.bands.0.upTo', ['formula' => '{tracker:edge}'], 'sceneTypes[3].closing[1].bands[0].upTo: must be an integer or {"tracker": key}.'];
-        yield 'formula effect value' => ['sceneTypes.2.setup.0.effects.0.value', ['formula' => '{tracker:edge}'], 'sceneTypes[2].setup[0].effects[0].value: must be an integer or {"tracker": key}.'];
+        $band = 'sceneTypes.3.closing.1.bands.0.upTo';
+        $bandPath = 'sceneTypes[3].closing[1].bands[0].upTo';
+        $value = 'sceneTypes.2.setup.0.effects.0.value';
+        $valuePath = 'sceneTypes[2].setup[0].effects[0].value';
+        $shape = ': must be an integer, {"tracker": key} or {"formula": string}.';
+
+        yield 'band formula syntax' => [$band, ['formula' => '{tracker:edge} +'], $bandPath.': Unexpected end of the formula'];
+        yield 'effect formula syntax' => [$value, ['formula' => '1 2'], $valuePath.': Unexpected "2"'];
+        yield 'band formula reading a field' => [$band, ['formula' => '{str} + 1'], $bandPath.': {str}: a flow formula reads trackers only.'];
+        yield 'effect formula reading a track max' => [$value, ['formula' => '{hp.max}'], $valuePath.': {hp.max}: a flow formula reads trackers only.'];
+        yield 'tracker key breaking the key rule' => [$value, ['tracker' => 'heat} + {tracker:edge'], $valuePath.': '];
+        yield 'both tracker and formula' => [$value, ['tracker' => 'edge', 'formula' => '1'], $valuePath.$shape];
+        yield 'neither tracker nor formula' => [$value, [], $valuePath.$shape];
+        yield 'extra key' => [$band, ['formula' => '1', 'plus' => 1], $bandPath.$shape];
+        yield 'formula not a string' => [$band, ['formula' => 3], $bandPath.$shape];
+        yield 'formula as a bare string' => [$value, '{tracker:edge}', $valuePath.$shape];
     }
 
     /**
-     * Studio validates formulas from rules-derived-values slice 2, Play reads them from slices 3 and 4:
-     * until then a release that uses one is refused, never half read.
+     * Studio validates formulas, but Play re-checks what it reads (the ACL trusts nothing stored).
      */
     #[Test]
     #[DataProvider('formulaParts')]
-    public function aFormulaIsRefusedUntilPlayReadsFormulas(string $path, mixed $value, string $expectedMessage): void
+    public function aMalformedFormulaIsAPlayError(string $path, mixed $value, string $expectedMessage): void
     {
         $content = ReleaseViews::fixtureContent('valid/v2-scene-types');
         $node = &$content;

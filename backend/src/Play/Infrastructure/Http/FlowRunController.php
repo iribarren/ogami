@@ -20,6 +20,7 @@ use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\Facts\FactAlreadyExists;
+use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
@@ -90,7 +91,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no oracle (or not the Tracker its chaos is bound to) with the key of the step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. Or a formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function answer(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the answer as JSON.', self::MALFORMED_ANSWER);
@@ -122,6 +123,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function skip(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the step as JSON.', self::MALFORMED_SKIP);
@@ -147,6 +149,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not offer this Scene Type (or rolls on a table), no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function pick(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the Scene Type as JSON.', self::MALFORMED_PICK);
@@ -169,6 +172,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not roll on a table or the entry rolled names no Scene Type, no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function pickByOracle(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         return $this->run(new PickSceneTypeByOracle($campaignId, $user->id()), $campaignId, $user);
@@ -184,6 +188,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not in open play in that scene, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function endScene(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the scene number as JSON.', self::MALFORMED_END_SCENE);
@@ -209,6 +214,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is in another phase or its guided scene is no longer the current scene, the phase plays once, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function moveOn(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the phase as JSON.', self::MALFORMED_MOVE_ON);
@@ -231,6 +237,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is already paused or the Flow is complete, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function pause(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         return $this->run(new PauseGuidance($campaignId, $user->id()), $campaignId, $user);
@@ -243,6 +250,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is not paused or the Flow is complete, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function resume(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         return $this->run(new ResumeGuidance($campaignId, $user->id()), $campaignId, $user);
@@ -261,7 +269,7 @@ final readonly class FlowRunController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (FlowRunNotActive|FlowRunPositionMismatch|StepCannotBeSkipped|MoveOnNotAllowed|SceneTypeNotOffered|NoCurrentSession|CampaignLimitReached|CampaignModifiedConcurrently|JournalEntryAlreadyExists|NpcAlreadyExists|ThreadAlreadyExists|FactAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidStepResult|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression $exception) {
+        } catch (InvalidStepResult|FlowFormulaFailed|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Formula\Domain\Formula;
+use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\Fact;
@@ -21,7 +23,6 @@ use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
-use App\Play\Domain\GameSystem\Flow\TrackerReference;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Tracker;
@@ -216,13 +217,32 @@ final readonly class FlowRunContext
     }
 
     /**
-     * Applies a tracker Effect: adds or sets a literal or another Tracker's current value, clamped
+     * Applies a tracker Effect: adds or sets a literal or a formula's value, clamped
      * to the Tracker's range. It is no hand edit, so no FlowRun history records it.
+     *
+     * @throws FlowFormulaFailed when the value's formula divides by zero or overflows
      */
     public function applyTrackerEffect(TrackerEffect $effect): void
     {
-        $value = $effect->value instanceof TrackerReference ? $this->trackerValue($effect->value->tracker) : $effect->value;
-        $this->campaign->applyTrackerChange($this->tracker($effect->tracker), $effect->op, $value);
+        $this->campaign->applyTrackerChange($this->tracker($effect->tracker), $effect->op, $this->evaluate($effect->value));
+    }
+
+    /**
+     * A literal as it is, a formula over the campaign's current Tracker values.
+     *
+     * @throws FlowFormulaFailed when the formula divides by zero or overflows
+     */
+    public function evaluate(int|Formula $value): int
+    {
+        if (\is_int($value)) {
+            return $value;
+        }
+
+        try {
+            return $value->evaluate(new TrackerValues($this));
+        } catch (FormulaEvaluationFailed $failure) {
+            throw FlowFormulaFailed::of($value, $failure);
+        }
     }
 
     /**

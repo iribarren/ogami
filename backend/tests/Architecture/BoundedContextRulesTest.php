@@ -20,10 +20,10 @@ final class BoundedContextRulesTest
     private const string ROOT = 'App';
 
     /** @var list<non-empty-string> */
-    private const array CONTEXTS = ['Play', 'Studio', 'Randomness', 'Identity', 'Admin', 'Shared'];
+    private const array CONTEXTS = ['Play', 'Studio', 'Randomness', 'Formula', 'Identity', 'Admin', 'Shared'];
 
     /** @var list<non-empty-string> */
-    private const array SHARED_KERNEL = ['Randomness', 'Shared'];
+    private const array SHARED_KERNEL = ['Randomness', 'Formula', 'Shared'];
 
     /**
      * Layer rule: a Domain depends only on itself and the shared kernel Domain.

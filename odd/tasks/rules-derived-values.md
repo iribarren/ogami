@@ -91,7 +91,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0023 (parent); ADR index; status notes on ADR 0022 and ADR 0017 ("amended by 0023"); glossary (Formula, Formula reference, DerivedValue updated); contract line 254 and the evolution note point to ADR 0023; context map lists the Formula kernel | delegated writer (slice 1) | [x] | |
-| T2 | 1 | `Formula` kernel: tokenizer, parser, AST, evaluator with `ValueResolver`, `references()`, `DependencyOrder` with cycle detection, `InvalidFormula` / `FormulaEvaluationFailed`; `backend/contracts/formula/conformance.json` run by PHPUnit; PHPat `CONTEXTS` and `SHARED_KERNEL` gain `Formula` | | [ ] | |
+| T2 | 1 | `Formula` kernel: tokenizer, parser, AST, evaluator with `ValueResolver`, `references()`, `DependencyOrder` with cycle detection, `InvalidFormula` / `FormulaEvaluationFailed`; `backend/contracts/formula/conformance.json` run by PHPUnit; PHPat `CONTEXTS` and `SHARED_KERNEL` gain `Formula` | delegated writer (slice 1) | [x] | |
 | T3 | 2 | Contract: `derived` field type, `{formula}` in band `upTo` and effect `value` in `v2.schema.json` and the Version2 validator (syntax, references, kinds, cycles, flow scope = trackers only); agreement fixtures; canonical form keeps hashes; contract doc section | | [ ] | |
 | T4 | 3 | Play ACL and flows: `DerivedField` in the snapshot; translator re-checks formulas; `Band.upTo` and `TrackerEffect.value` become `int\|Formula`, `{tracker}` read as a trivial formula, `TrackerReference` removed; `FlowRun::band()` and `applyTrackerEffect()` evaluate; evaluation failure → 422; tests | | [ ] | |
 | T5 | 4 | Derived values on Characters: domain computation in dependency order (defaults, trackers, `null` on failure); `CharacterValues` refuses derived keys; `CharacterView.derived`, `SheetFieldView.formula`; API tests; `make api` | | [ ] | |
@@ -104,6 +104,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-13: Exploration done (Randomness parser, PHPat kernel rules, tracker refs, sheet and Character views). Three decisions taken with the user; ADR 0023 written by the parent. Issue #107.
 - 2026-10-13: T1 docs done (feature doc, ADR 0023, ADR index and status notes, glossary, context map, contract note, CLAUDE.md). Structural readback only, docs task, no RED/GREEN. Route: delegated writer.
+- 2026-10-13: T2 Formula kernel done. RED: 160 errors and 3 failures, `App\Formula\Domain\*` classes missing; GREEN: all Formula tests pass; `make qa` and `make test` green. Route: delegated writer.
 
 ## Reviews
 

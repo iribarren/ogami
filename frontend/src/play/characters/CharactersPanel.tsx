@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/button'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { TagChips } from '../lists/TagFields'
 import { CharacterForm } from './CharacterForm'
-import { summarize } from './sheetValues'
+import { storedFields, summarize } from './sheetValues'
 import { useCharacterActions, type Character, type CharacterFields } from './useCharacters'
 
 /**
@@ -15,7 +15,7 @@ import { useCharacterActions, type Character, type CharacterFields } from './use
  */
 export function CharactersPanel({ campaign }: { campaign: Campaign }) {
   const { save } = useCharacterActions(campaign.id)
-  const sheet = campaign.pinnedRelease.sheet
+  const sheet = storedFields(campaign.pinnedRelease.sheet)
   // The id of the Character being edited, 'new' for the add form, none when no form is open.
   const [form, setForm] = useState<string | null>(null)
 

@@ -4,6 +4,8 @@ The five [flow examples](../../../../../../docs/domain/flow-examples.md) as sche
 
 Feature 8 (tags, `pick`, the NPC and Thread effects, `{picked}`, NPC counts) is in every example. Parts that need a later feature are left out: the step stays as a plain `prompt` (or `table`) so the flow still reads well. Add each part to its fixture when its feature lands.
 
+Feature 10 is in `west-marches.json` (a small sheet and `pick of: character`). The other examples keep a prompt for the player's Character; the shipped `night-job` preset (`backend/presets/night-job.json`, example 2 played) is the first to use a `character` step, in its Crew scene.
+
 Feature 8b (fact slot hints, `fillFact`, `{fact:key}`) is in every example that declares fact slots.
 
 | Feature | Adds |

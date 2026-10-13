@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\PickCandidate;
@@ -38,11 +39,34 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function theCrewSceneStartsWithAMandatoryCharacterStepThatTakesTheCharacterIntoTheParty(): void
+    {
+        $campaign = self::guided($this->release, 'heist');
+        $campaign->startSession(self::at(), $this->release);
+        $campaign->pickSceneType('crew', $this->release, self::at());
+
+        self::assertSame(['setup', 'you'], self::position($campaign));
+        try {
+            $campaign->skipFlowStep('you', $this->release, self::at());
+            self::fail('Your own Character is mandatory.');
+        } catch (StepCannotBeSkipped $exception) {
+            self::assertSame('Step "you" is mandatory: complete it.', $exception->getMessage());
+        }
+
+        $this->createYourCharacter($campaign);
+
+        self::assertSame(['setup', 'first'], self::position($campaign));
+        self::assertSame(['Vi'], array_map(static fn (\App\Play\Domain\Campaign\Characters\Character $character): string => $character->name(), $campaign->characters()));
+        self::assertSame(['vi'], array_map(static fn (CharacterId $id): string => $id->toString(), $campaign->currentSession()?->party() ?? []));
+    }
+
+    #[Test]
     public function theBriefingFillsTheFourFactsAndTheCrewAndPlanAreMandatory(): void
     {
         $campaign = self::guided($this->release, 'heist');
         $campaign->startSession(self::at(), $this->release);
         $campaign->pickSceneType('crew', $this->release, self::at());
+        $this->createYourCharacter($campaign);
 
         try {
             $campaign->skipFlowStep('first', $this->release, self::at());
@@ -268,6 +292,15 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('complication', $this->rolled('complications', 1), $this->release, self::at());
     }
 
+    /**
+     * Creates the Character the player makes in the crew scene, with its sheet defaults, and completes the first step with it.
+     */
+    private function createYourCharacter(Campaign $campaign): void
+    {
+        $campaign->addCharacter(CharacterId::fromString('vi'), 'Vi', [], [], ['role' => 'Netrunner'], $this->release);
+        $campaign->completeFlowStep('you', StepResult::character('vi'), $this->release, self::at());
+    }
+
     private function rolled(string $table, int $total): StepResult
     {
         return StepResult::table($this->release->resolveOracleTable($table, new ScriptedRandomNumberGenerator($total)));
@@ -281,6 +314,7 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         $campaign = self::guided($this->release, 'heist');
         $campaign->startSession(self::at(), $this->release);
         $campaign->pickSceneType('crew', $this->release, self::at());
+        $this->createYourCharacter($campaign);
         $campaign->completeFlowStep('first', self::prompt('Ada, a netrunner'), $this->release, self::at());
         $campaign->skipFlowStep('second', $this->release, self::at());
         if ($driver) {

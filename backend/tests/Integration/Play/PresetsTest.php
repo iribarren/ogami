@@ -7,6 +7,11 @@ namespace App\Tests\Integration\Play;
 use App\Play\Application\GetGameSystemSnapshot;
 use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\ListField;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\TextField;
+use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\LikelihoodAnswer;
 use App\Randomness\Domain\Oracle\LikelihoodLevel;
@@ -153,6 +158,30 @@ final class PresetsTest extends KernelTestCase
         self::assertNotContains('rumors', $flow->oracles ?? []);
         self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
         self::assertSame(['very-unlikely' => 10, 'unlikely' => 30, 'even' => 50, 'likely' => 70, 'very-likely' => 90], $this->targets($snapshot->likelihoodOracle('fate')->oracle()->levels()));
+    }
+
+    #[Test]
+    public function nightJobHasAnOriginalSheet(): void
+    {
+        $this->assertPublishesOnce('night-job');
+        $snapshot = $this->snapshot('night-job');
+
+        $sheet = $snapshot->sheet();
+        self::assertSame(
+            ['role', 'nerve', 'hands', 'wits', 'grit', 'charm', 'hp', 'humanity', 'gear', 'cyberware'],
+            array_map(static fn (Field $field): string => $field->key, $sheet->fields()),
+        );
+        foreach (['role' => TextField::class, 'nerve' => NumberField::class, 'hp' => TrackField::class, 'humanity' => TrackField::class, 'gear' => ListField::class, 'cyberware' => ListField::class] as $key => $type) {
+            self::assertInstanceOf($type, $sheet->field($key), $key);
+        }
+
+        // HP and Humanity are tracks with a fixed maximum, so a new Character starts full.
+        $hp = $sheet->field('hp');
+        $humanity = $sheet->field('humanity');
+        self::assertInstanceOf(TrackField::class, $hp);
+        self::assertInstanceOf(TrackField::class, $humanity);
+        self::assertSame([40, 50], [$hp->max, $humanity->max]);
+        self::assertSame(['Identity', 'Stats', 'Condition', 'Kit'], array_values(array_unique(array_map(static fn (Field $field): ?string => $field->group, $sheet->fields()))));
     }
 
     private function assertPublishesOnce(string $preset): void

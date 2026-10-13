@@ -226,6 +226,8 @@ Start feature `preset-guided-sample` (ODD). Hand-author a Cyberpunk RED heist on
 
 **10. play-characters**
 
+Done: release sheets (number, text, list and resource track fields) added to schema version 2 additively ([ADR 0022](adr/0022-character-sheets-in-schema-version-2.md)), Characters in the Campaign with an editor and NPC promotion, the Session party, Characters in the Scene cast, `pick` and `condition` over Characters, and the `character` step. The `night-job` preset has an original sheet and creates the player's Character in Session Zero.
+
 ```text
 Start feature `play-characters` (ODD). Extend the release schema with SheetTemplate and Field types (number, text, list, resource track). Play: create and edit characters from the campaign's release template; list fields cover e.g. inventory and cyberware. A Campaign has zero or more Characters, and an NPC can be promoted to a Character (ADR 0018). Characters carry tags; the Character part of the Scene cast; the Session party (the Characters picked in a session opening; a Scene's cast starts as the party). Add the `character` flow step kind (ADR 0017): it completes when a Character exists, so Session Zero can create one. Effects on sheet fields arrive in an M3 schema version. Out of scope: derived values, checks.
 ```

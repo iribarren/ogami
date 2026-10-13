@@ -1,5 +1,6 @@
 import type { Campaign } from '../campaigns/useCampaigns'
 import { guidedWithLists, atStep, promptStep } from '../flow/fixtures'
+import { viCharacter } from '../characters/fixtures'
 import { brannNpc, lostMineWithLists, miraNpc } from '../lists/fixtures'
 
 // Shared by the Scene cast tests and stories.
@@ -33,3 +34,16 @@ export const castFocus = withCasts(
   [ref(miraNpc)],
   [ref(brannNpc)],
 )
+
+/** `castCampaign` with Vi (a Character of the campaign) in the cast of the current scene. */
+export const castWithCharacter: Campaign = {
+  ...castCampaign,
+  characters: [viCharacter],
+  sessions: castCampaign.sessions.map((session) => ({
+    ...session,
+    scenes: session.scenes.map((scene) => ({
+      ...scene,
+      characters: session.number === 2 ? [ref(viCharacter)] : [],
+    })),
+  })),
+}

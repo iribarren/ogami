@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { PartyEditor } from './PartyEditor'
 import { useStartScene, useStartSession, useSwitchSceneType, type Campaign } from './useCampaigns'
 
 /** The API's limit on a scene title (`Scene::MAX_TITLE_LENGTH`), after trimming. */
@@ -50,6 +51,7 @@ export function SessionControls({ campaign }: { campaign: Campaign }) {
             {startSession.error.message}
           </p>
         )}
+        <PartyEditor campaign={campaign} />
         <SceneTypeSwitch campaign={campaign} />
       </div>
       <NewSceneForm

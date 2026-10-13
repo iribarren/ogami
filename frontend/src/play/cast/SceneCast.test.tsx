@@ -7,7 +7,8 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { lostMineWithLists, miraNpc, brannNpc, oldGuardNpc } from '../lists/fixtures'
-import { castCampaign, castFocus, withCasts } from './fixtures'
+import { viCharacter } from '../characters/fixtures'
+import { castCampaign, castFocus, castWithCharacter, withCasts } from './fixtures'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
 const castUrl = `${path}/scenes/current/cast`
@@ -85,7 +86,7 @@ describe('the Scene cast in the journal', () => {
     await user.click(editor.getByRole('button', { name: 'Add' }))
 
     await waitFor(() => {
-      expect(sent).toEqual([{ npcIds: [brannNpc.id, oldGuardNpc.id] }])
+      expect(sent).toEqual([{ npcIds: [brannNpc.id, oldGuardNpc.id], characterIds: [] }])
     })
     expect(await (await currentCast()).findByText('The old guard')).toBeInTheDocument()
   })
@@ -98,7 +99,7 @@ describe('the Scene cast in the journal', () => {
     await user.click((await currentCast()).getByRole('button', { name: 'Remove Brann' }))
 
     await waitFor(() => {
-      expect(sent).toEqual([{ npcIds: [] }])
+      expect(sent).toEqual([{ npcIds: [], characterIds: [] }])
     })
     expect(await (await currentCast()).findByText('No cast')).toBeInTheDocument()
   })
@@ -159,6 +160,82 @@ describe('the Scene cast in the journal', () => {
   })
 })
 
+describe('Characters in the Scene cast', () => {
+  const vi = { id: viCharacter.id, name: viCharacter.name }
+
+  it('shows the Characters of the scene next to its NPCs', async () => {
+    renderCast(castWithCharacter)
+
+    const current = await currentCast()
+    expect(current.getByText('Brann')).toBeInTheDocument()
+    expect(current.getByText('Vi')).toBeInTheDocument()
+    expect((await cast('Cast of session 1, scene 1')).queryByText('Vi')).not.toBeInTheDocument()
+  })
+
+  it('shows a scene with only Characters as a cast, and one with none as before', async () => {
+    renderCast(withCasts(castWithCharacter, [], []))
+
+    expect((await currentCast()).getByText('Vi')).toBeInTheDocument()
+    expect((await currentCast()).queryByText('No cast')).not.toBeInTheDocument()
+  })
+
+  it('removes a Character, sending the NPCs and the remaining Characters', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderCast(castWithCharacter, () =>
+      Response.json({ ...castWithCharacter.sessions[1]?.scenes[0], characters: [] }),
+    )
+
+    await user.click((await currentCast()).getByRole('button', { name: 'Edit cast' }))
+    await user.click((await currentCast()).getByRole('button', { name: 'Remove Vi' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ npcIds: [brannNpc.id], characterIds: [] }])
+    })
+    await waitFor(async () => {
+      expect((await currentCast()).queryByText('Vi')).not.toBeInTheDocument()
+    })
+  })
+
+  it('adds a Character of the campaign, sending the whole cast of both', async () => {
+    const user = userEvent.setup()
+    const withoutVi = {
+      ...castWithCharacter,
+      sessions: castWithCharacter.sessions.map((session) => ({
+        ...session,
+        scenes: session.scenes.map((scene) => ({ ...scene, characters: [] })),
+      })),
+    }
+    const { sent } = renderCast(withoutVi, () =>
+      Response.json({ ...withoutVi.sessions[1]?.scenes[0], characters: [vi] }),
+    )
+
+    await user.click((await currentCast()).getByRole('button', { name: 'Edit cast' }))
+    const editor = await currentCast()
+    await user.selectOptions(editor.getByLabelText('Add to the cast'), 'Vi (Character)')
+    await user.click(editor.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ npcIds: [brannNpc.id], characterIds: [viCharacter.id] }])
+    })
+    expect(await (await currentCast()).findByText('Vi')).toBeInTheDocument()
+  })
+
+  it('shows the refusal of a Character the campaign does not know', async () => {
+    const user = userEvent.setup()
+    renderCast(castWithCharacter, () =>
+      Response.json({ error: 'Character "x" not found.' }, { status: 404 }),
+    )
+
+    await user.click((await currentCast()).getByRole('button', { name: 'Edit cast' }))
+    await user.click((await currentCast()).getByRole('button', { name: 'Remove Vi' }))
+
+    expect(await (await currentCast()).findByRole('alert')).toHaveTextContent(
+      'Character "x" not found.',
+    )
+    expect((await currentCast()).getByText('Vi')).toBeInTheDocument()
+  })
+})
+
 describe('the Scene cast in focus mode', () => {
   it('shows the cast of the current scene and edits it', async () => {
     const user = userEvent.setup()
@@ -171,7 +248,7 @@ describe('the Scene cast in focus mode', () => {
     await user.click(focus.getByRole('button', { name: 'Remove Brann' }))
 
     await waitFor(() => {
-      expect(sent).toEqual([{ npcIds: [] }])
+      expect(sent).toEqual([{ npcIds: [], characterIds: [] }])
     })
   })
 })

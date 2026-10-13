@@ -32,7 +32,8 @@ export function CharacterForm({
   pending: boolean
   error: string | undefined
   onSubmit: (fields: CharacterFields) => void
-  onCancel: () => void
+  /** Without it the form has no Cancel: the step that shows it has nothing to go back to. */
+  onCancel?: (() => void) | undefined
 }) {
   const id = useId()
   const free = useFreeTags(character?.freeTags ?? [])
@@ -89,9 +90,11 @@ export function CharacterForm({
           <Button type="submit" size="sm">
             Save
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
+          {onCancel !== undefined && (
+            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
         </div>
       </fieldset>
       {error !== undefined && (

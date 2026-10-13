@@ -240,9 +240,10 @@
       "key": "crew",
       "name": "Crew",
       "purpose": "Put the crew together.",
-      "tips": "A crew of two to four is plenty. Give each person a role and a street name, and say what they are good at. Your own character is already part of it.",
+      "tips": "A crew of two to four is plenty. Give each person a role and a street name, and say what they are good at. Start with your own character.",
       "oracles": ["npc-name"],
       "setup": [
+        {"key": "you", "kind": "character", "title": "Who are you?", "tip": "Make your character: a street name, a role, a few stats and your kit. You can edit the sheet any time in the Characters panel.", "mandatory": true},
         {"key": "first", "kind": "prompt", "title": "Who is your first crew member?", "tip": "Someone you trust with your back. Just a street name: it becomes the NPC's name. Write what they are good at in a note.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
         {"key": "second", "kind": "prompt", "title": "Who else is in?", "tip": "Just a street name: it becomes the NPC's name. Write what they are good at in a note.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
         {"key": "wheelman", "kind": "prompt", "title": "Who drives?", "tip": "Skip it if nobody on the crew can drive: you will take the wheel yourself. Otherwise, just a street name: it becomes the NPC's name.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew", "nomad"]}]}
@@ -416,6 +417,19 @@
       ]
     }
   ],
-  "sheet": {},
+  "sheet": {
+    "fields": [
+      {"key": "role", "label": "Role", "hint": "Your trade on a job: what the crew calls you for.", "group": "Identity", "type": "text", "maxLength": 60},
+      {"key": "nerve", "label": "Nerve", "hint": "Staying cool when it goes wrong.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
+      {"key": "hands", "label": "Hands", "hint": "Quick, careful work: locks, wires, triggers.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
+      {"key": "wits", "label": "Wits", "hint": "Reading a room and a plan.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
+      {"key": "grit", "label": "Grit", "hint": "Taking a hit and staying on your feet.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
+      {"key": "charm", "label": "Charm", "hint": "Talking your way past people.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},
+      {"key": "hp", "label": "HP", "hint": "Hit points: at zero you are down.", "group": "Condition", "type": "track", "max": 40},
+      {"key": "humanity", "label": "Humanity", "hint": "What is left of you under the chrome.", "group": "Condition", "type": "track", "max": 50},
+      {"key": "gear", "label": "Gear", "group": "Kit", "type": "list", "itemLabel": "Item", "maxItems": 20},
+      {"key": "cyberware", "label": "Cyberware", "group": "Kit", "type": "list", "itemLabel": "Implant", "maxItems": 10}
+    ]
+  },
   "checks": []
 }

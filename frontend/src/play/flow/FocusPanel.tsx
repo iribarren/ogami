@@ -71,6 +71,7 @@ function CurrentCast({ campaign }: { campaign: Campaign }) {
     <SceneCast
       campaignId={campaign.id}
       npcs={campaign.npcs}
+      characters={campaign.characters}
       sessionNumber={sessionNumber}
       scene={scene}
       editable

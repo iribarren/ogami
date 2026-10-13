@@ -1,5 +1,6 @@
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
+import { nightJobCampaign, viCharacter } from '../characters/fixtures'
 import { allyTag, brannNpc, leaderTag, lostMineWithLists, miraNpc } from '../lists/fixtures'
 import type { FlowRun, FlowStep } from './useFlowRun'
 
@@ -68,6 +69,15 @@ export const choiceStep = step({
   ],
 })
 
+/** A `character` step: the player picks a Character of the campaign, or creates one. */
+export const characterStep = step({
+  key: 'crew',
+  kind: 'character',
+  title: 'Who are you?',
+  prompt: 'Create the Character you play.',
+  mandatory: true,
+})
+
 type PickDetails = NonNullable<FlowStep['pick']>
 
 /** A `pick` step of NPCs; the details default to choosing one of Mira and Brann, tagged Leader. */
@@ -98,6 +108,17 @@ export const randomThreadStep = pickStep('draw-thread', 'What comes up?', {
   of: 'thread',
   mode: 'random',
   tags: [{ key: allyTag.key, label: allyTag.label }],
+})
+/** A `pick` step of Characters: choose one of Vi (the candidates are the campaign's Characters). */
+export const chooseCharacterStep = pickStep('who-plays', 'Who takes the job?', {
+  of: 'character',
+  tags: [],
+  candidates: [{ id: viCharacter.id, name: viCharacter.name }],
+})
+export const noMatchCharacterStep = pickStep('nobody-plays', 'Who is left to play?', {
+  of: 'character',
+  tags: [],
+  candidates: [],
 })
 export const noMatchChooseStep = pickStep('nobody', 'Who is left?', { candidates: [] })
 export const noMatchRandomStep = pickStep('nobody-drawn', 'Who is drawn?', {
@@ -178,4 +199,12 @@ export const guidedWithLists = (
   tags: lostMineWithLists.tags,
   npcs: lostMineWithLists.npcs,
   threads: lostMineWithLists.threads,
+})
+
+/** `guided` in the Night Job campaign: a sheet, release Tags and one Character (Vi). */
+export const guidedWithCharacters = (flowRun: FlowRun) => ({
+  ...guided(flowRun),
+  tags: nightJobCampaign.tags,
+  pinnedRelease: nightJobCampaign.pinnedRelease,
+  characters: nightJobCampaign.characters,
 })

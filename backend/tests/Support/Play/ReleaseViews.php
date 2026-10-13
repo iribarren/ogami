@@ -38,11 +38,14 @@ final class ReleaseViews
     }
 
     /**
-     * @param array<string, mixed> $content the release file; "sheet" becomes a \stdClass as Studio hands it
+     * @param array<string, mixed> $content the release file; an empty "sheet" becomes a \stdClass as Studio hands it, a sheet with fields is kept
      */
     public static function of(array $content, int $version = 1, ?int $schemaVersion = null): PublishedReleaseView
     {
-        $content['sheet'] = new \stdClass();
+        if ([] === ($content['sheet'] ?? [])) {
+            $content['sheet'] = new \stdClass();
+        }
+
         $gameSystem = $content['gameSystem'] ?? null;
         $key = \is_array($gameSystem) && \is_string($gameSystem['key'] ?? null) ? $gameSystem['key'] : 'unknown';
 

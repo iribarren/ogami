@@ -32,8 +32,10 @@ use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Play\Domain\GameSystem\UnknownSceneType;
+use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -103,7 +105,7 @@ final readonly class CampaignController
     #[OA\Response(response: 404, description: 'The GameSystem has no published release, or its latest release has no Flow with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The generated campaign id is already taken.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The name is blank or too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The name is blank or too long, or Play cannot read the latest release of the GameSystem yet.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function create(Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the campaign as JSON.', self::MALFORMED_CAMPAIGN);
@@ -121,7 +123,7 @@ final readonly class CampaignController
         $campaignId = $this->campaignIds->generate()->toString();
         try {
             $this->commandBus->dispatch(new CreateCampaign($campaignId, $user->id(), $name, $gameSystemKey, $flowKey));
-        } catch (InvalidCampaignName $exception) {
+        } catch (InvalidCampaignName|InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnknownFlow $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);

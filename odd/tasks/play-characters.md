@@ -1,7 +1,7 @@
 # Feature: play-characters
 
 - **Locator:** `odd/tasks/play-characters.md` · Engram topic `odd/play-characters/tasks`
-- **Issue:** #96 · **Branch:** `feat/play-characters-1-contract` · **Status:** slice 1 in progress
+- **Issue:** #96 · **Branch:** `feat/play-characters-2-characters` · **Status:** slice 1 merged (PR #97); slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-guided-sample` (PRs #93–#95, M2 complete)
@@ -80,15 +80,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0022 "Character sheets in schema version 2" (additive decision, field types, Characters in the Campaign, party and promotion rules); ADR 0017 status note on M3 step kinds; contract "new capability" rule amended; glossary (SheetTemplate, Field types, Resource track, Character, Party); ADR index | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Contract: `sheet.fields` and the four field types, the `character` step kind, `of: character` in `pick` and `condition` counts in `v2.schema.json` and the Version2 validator; canonical form keeps existing hashes; agreement fixtures (valid + structural + semantic); West Marches example uses `pick of: character` and gains a small sheet; examples README; contract doc section | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Play ACL: `SheetTemplate` and `Field` snapshot classes, translator reads `sheet` with limits re-checked; `character` step and `of: character` fail closed with Play's translator error until slice 4; translator tests | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0022 "Character sheets in schema version 2" (additive decision, field types, Characters in the Campaign, party and promotion rules); ADR 0017 status note on M3 step kinds; contract "new capability" rule amended; glossary (SheetTemplate, Field types, Resource track, Character, Party); ADR index | delegated writer (slice 1) | [x] | 23247cd |
+| T2 | 1 | Contract: `sheet.fields` and the four field types, the `character` step kind, `of: character` in `pick` and `condition` counts in `v2.schema.json` and the Version2 validator; canonical form keeps existing hashes; agreement fixtures (valid + structural + semantic); West Marches example uses `pick of: character` and gains a small sheet; examples README; contract doc section | delegated writer (slice 1) | [x] | 46a5ce0 |
+| T3 | 1 | Play ACL: `SheetTemplate` and `Field` snapshot classes, translator reads `sheet` with limits re-checked; `character` step and `of: character` fail closed with Play's translator error until slice 4; translator tests | delegated writer (slice 1) | [x] | 5089994 |
 | T4 | 2 | Slice 1 review fixes. `Character` value object, `CharacterId`, values validated against the snapshot sheet, `Campaign::addCharacter` / `editCharacter` / `characters()`, `characters` column + Doctrine type + migration, legacy rows read empty | | [ ] | |
 | T5 | 2 | Characters API: create and edit endpoints, Campaign response `characters` and `pinnedRelease.sheet`, error mapping (404/409/422), API tests, Behat `characters.feature`, `make api` | | [ ] | |
-| T6 | 2 | NPC promotion: `Campaign::promoteNpc`, endpoint, NPC `promotedTo`, current Scene cast swap, API tests | | [ ] | |
+| T6 | 2 | NPC promotion: `Campaign::promoteNpc`, endpoint, NPC `promotedTo` (persisted, legacy rows null), promoted NPC cannot be reopened or promoted again (409), API tests. The current Scene cast swap moves to T9, where the cast gains Characters | | [ ] | |
 | T7 | 3 | Slice 2 review fixes. Characters panel: list, create and edit forms for number, text, list and track fields grouped by `group`; release and free tags; Vitest | | [ ] | |
 | T8 | 3 | "Promote to Character" on an NPC; e2e: create and edit a Character, promote an NPC | | [ ] | |
-| T9 | 4 | Slice 3 review fixes. Session party and the Character part of the Scene cast: domain, persistence (legacy rows empty), party endpoint, cast endpoint with Characters, a new Scene's cast starts as the party, creation/promotion joins party and cast; API tests, `make api` | | [ ] | |
+| T9 | 4 | Slice 3 review fixes. Session party and the Character part of the Scene cast: domain, promotion swaps the NPC for its Character in the current Scene's cast, persistence (legacy rows empty), party endpoint, cast endpoint with Characters, a new Scene's cast starts as the party, creation/promotion joins party and cast; API tests, `make api` | | [ ] | |
 | T10 | 4 | `character` step kind and `ItemKind::Character` in the ACL and FlowRun: step completion with a Character id, `{step:key}` name, pick candidates and condition counts over Characters, picks join the party in session hooks and the cast in scenes; exhaustive matches; FlowRun view | | [ ] | |
 | T11 | 5 | Slice 4 review fixes. UI: party editor at session start, Characters in the Scene cast, `character` step card (pick or create inline), Characters as pick candidates; Vitest | | [ ] | |
 | T12 | 5 | Night Job preset: an original sheet (role, stats, HP and Humanity tracks, gear and cyberware lists) and a `character` step in Crew; preset tests; e2e Session Zero creates a Character | | [ ] | |
@@ -104,7 +104,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-1bd08a5815e4b5fe` | 23247cd, 46a5ce0, 5089994 | Approved, acknowledged. Fixed in slice 2: R3-001 Studio accepts a whitespace-only field `label`, `group` or `itemLabel` that Play's translator rejects; R3-002 Studio accepts the `character` step and `of: character` before Play reads them (pin that Play's catalog lists such a release without Flows and campaign creation fails cleanly); R3-003 `SheetTemplate` silently keeps the last of two fields with the same key. Also the T3 note: `ReleaseViews::of()` blanks the sheet | #97 |
 
 ## Next step
 
-Slice 1 (T1–T3) on `feat/play-characters-1-contract`.
+Slice 2 (T4–T6) on `feat/play-characters-2-characters`: slice 1 review fixes, Characters in the Campaign, Characters API, NPC promotion.

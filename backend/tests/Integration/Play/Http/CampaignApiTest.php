@@ -104,6 +104,31 @@ final class CampaignApiTest extends WebTestCase
         );
     }
 
+    /**
+     * Studio publishes the character step and `of: character` before Play plays them (ADR 0022); the
+     * catalog still lists such a release, and a campaign cannot pin it yet.
+     */
+    #[Test]
+    public function aReleaseWithACharacterStepIsListedButNoCampaignPinsItYet(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6014', ReleaseViews::fixtureContent('valid/v2-sheet'), false));
+
+        $this->client->request('GET', '/api/play/game-systems');
+
+        self::assertResponseIsSuccessful();
+        $listed = $this->json()[0] ?? null;
+        self::assertIsArray($listed);
+        self::assertSame([], $listed['flows'] ?? null);
+
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The crew', 'gameSystemKey' => $listed['gameSystemKey'] ?? null]);
+
+        self::assertResponseStatusCodeSame(422);
+        $error = $this->json()['error'] ?? null;
+        self::assertIsString($error);
+        self::assertStringContainsString('step kind "character" is not supported by Play yet', $error);
+    }
+
     #[Test]
     public function aSoloPlayerCreatesACampaignPinnedToTheLatestRelease(): void
     {

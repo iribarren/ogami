@@ -107,7 +107,7 @@ final class FlowRunCheckStepTest extends FlowRunTestCase
 
         $check = $campaign->flowRunView($release)?->step?->check;
 
-        self::assertEquals(new CheckView($expected, [new PickedItem('ada', 'Ada')]), $check);
+        self::assertEquals(new CheckView($expected, null !== $fixed, [new PickedItem('ada', 'Ada')]), $check);
     }
 
     /**

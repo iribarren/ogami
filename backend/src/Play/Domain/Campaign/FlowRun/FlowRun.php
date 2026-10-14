@@ -616,7 +616,7 @@ final class FlowRun
             $difficulty = null;
         }
 
-        return new CheckView($difficulty, $charactersOf(null !== $this->sceneNumber));
+        return new CheckView($difficulty, null !== $step->difficulty, $charactersOf(null !== $this->sceneNumber));
     }
 
     public function status(): FlowRunStatus

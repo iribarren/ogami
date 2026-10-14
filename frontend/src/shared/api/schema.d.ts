@@ -1323,6 +1323,8 @@ export interface components {
              * @example 7
              */
             difficulty: number | null;
+            /** @description Whether the check step fixes the Check difficulty (a literal, a Tracker or a Formula), even when it cannot be evaluated now (difficulty is then null and answering the step is refused); false when the player sets it and for the other kinds. */
+            difficultyFixed: boolean;
             /** @description The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds. */
             characters: components["schemas"]["ItemRefResponse"][];
         };

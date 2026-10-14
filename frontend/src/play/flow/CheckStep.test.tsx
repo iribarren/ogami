@@ -72,7 +72,7 @@ describe('a check step', () => {
   })
 
   it('shows a difficulty the step fixes as read-only text and does not send it', async () => {
-    const sent = renderStep({ ...checkStep, difficulty: 15 })
+    const sent = renderStep({ ...checkStep, difficulty: 15, difficultyFixed: true })
     const user = userEvent.setup()
 
     const step = await card()
@@ -83,6 +83,40 @@ describe('a check step', () => {
     await waitFor(() => {
       expect(sent).toEqual([{ stepKey: 'sneak', characterId: vi.id }])
     })
+  })
+
+  it('says so, and offers no roll, when the difficulty the step fixes cannot be worked out', async () => {
+    renderStep({ ...checkStep, difficulty: null, difficultyFixed: true })
+
+    const step = await card()
+    expect(step.getByRole('alert')).toHaveTextContent(
+      "The difficulty can't be worked out right now.",
+    )
+    expect(step.queryByLabelText('Difficulty Value')).not.toBeInTheDocument()
+    expect(step.queryByRole('button', { name: 'Roll' })).not.toBeInTheDocument()
+  })
+
+  it('starts each of two consecutive check steps from its own values', async () => {
+    const second = { ...checkStep, key: 'sneak-again', title: 'Slip past the second guard' }
+    const campaign = guidedWithChecks(atStep(checkStep))
+    renderAppAt(`/play/campaigns/${lostMineCampaign.id}`, {
+      'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+      [`GET ${path}`]: () => Response.json(campaign),
+      [`GET ${path}/journal`]: () => Response.json([]),
+      [`POST ${path}/flow-run/answer`]: () => Response.json(guidedWithChecks(atStep(second))),
+    })
+    const user = userEvent.setup()
+
+    const first = await card()
+    await user.clear(first.getByLabelText('Difficulty Value'))
+    await user.type(first.getByLabelText('Difficulty Value'), '21')
+    await user.clear(first.getByLabelText('Situational modifier'))
+    await user.type(first.getByLabelText('Situational modifier'), '3')
+    await user.click(first.getByRole('button', { name: 'Roll' }))
+
+    const next = await card(second.title)
+    expect(next.getByLabelText('Difficulty Value')).toHaveValue(13)
+    expect(next.getByLabelText('Situational modifier')).toHaveValue(0)
   })
 
   it('asks no difficulty for a check that declares none', async () => {

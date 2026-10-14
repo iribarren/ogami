@@ -1,7 +1,7 @@
 # Feature: play-checks
 
 - **Locator:** `odd/tasks/play-checks.md` · Engram topic `odd/play-checks/tasks`
-- **Issue:** #114 · **Branch:** `feat/play-checks-6-ui` · **Status:** in progress (slice 6)
+- **Issue:** #114 · **Branch:** `feat/play-checks-7-preset` · **Status:** in progress (slice 7)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `rules-derived-values` (PRs #108–#113)
@@ -91,7 +91,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 3 | Play ACL and domain: translator reads `checks` (re-checks every rule; `check` steps still refused); `Check` snapshot; public sheet resolver extracted from `DerivedValues`; check performance (dice, modifier, situational, difficulty, band) with evaluation failure as a domain error; doc example release gains a check (user, 2026-10-14); unit tests | delegated writer (slice 3) | [x] | 8ad5766, 7f84f68 |
 | T5 | 4 | Sheet checks: `check` journal content; `POST /api/campaigns/{id}/journal/checks`; Campaign response exposes checks; 404/422 mapping and API tests; `make api` | delegated writer (slice 4) | [x] | dbe7e39, 5f23c6f, 1409e02 |
 | T6 | 5 | Check step: translator reads `check` steps (step `check` exists, `difficulty` only for a check with one, `outcomes[].band` exists and unique; doc example gains a check step), `StepKind::Check`, `StepResult::check`, FlowRun branching by band key and effects, Character eligibility (Scene characters, else party), fixed step difficulty; handler, request and response; API tests; `make api` | delegated writer (slice 5) | [x] | 5ed07d1, 32aec22, 8f4f16a |
-| T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | delegated writer (slice 6) | [x] | |
+| T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | delegated writer (slice 6) | [x] | 398d550, 8f159d3, 8e7c4fe, af88989 |
 | T8 | 7 | Night Job checks (stats vs DV, original wording) and check steps in the heist flow; preset tests; e2e: roll a check from the sheet and from a step | | [ ] | |
 | T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | | [ ] | |
 
@@ -109,6 +109,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-14: T7 commit 1 (Characters panel dialog). No RED observed: tests written after the code; Vitest caught one bug first (the Roll button stayed disabled without a Character picker), fixed. New `shared/ui/dialog.tsx` on the `radix-ui` umbrella (no new dependency), `play/checks/` (`CheckForm`, `RollCheckDialog`, `usePerformCheck` on `useRecordEntry`, which appends the entry to the cached journal). The form sends the difficulty when the check declares one (default prefilled) and the situational modifier only when not 0. Route: delegated writer (slice 6).
 - 2026-10-14: T7 commit 2 (journal). No RED observed: tests written after the code. A `check` entry renders the Character and check, the band (prominent), dice, modifier and situational when not 0, and the total with "vs <difficulty>" when one applied; the flow-step snapshot is shown by `Journal` as for other kinds, so `JournalEntryView` needed nothing. Route: delegated writer (slice 6).
 - 2026-10-14: T7 commit 3 (check step card) and T7 done. No RED observed: tests written after the code. `CheckStepForm` in `StepForm` (`case 'check'`) reuses `CheckForm`: Character select from `step.characters` (preselected with one, chosen with several, a message and no Roll with none), a fixed difficulty shown read-only and not sent, the check taken from `campaign.checks` (unknown key: alert, no form). Answer body `{characterId, difficulty?, situational?}`. `make qa` and `make test` green (Vitest 37 files, Behat 70 scenarios); `make api` changes nothing (no endpoint change). Route: delegated writer (slice 6).
+- 2026-10-14: Slice 6 review fixes. R3-001: `difficultyFixed` on `FlowStepResponse` (true when the step fixes the difficulty, even when it cannot be evaluated; carried by the domain `CheckView`); the card shows a fixed difficulty read-only, and an alert with no Roll when fixed but null; API test covers fixed, fixed-unevaluable (`{tracker:alarm} / 0`) and player-set; `make api` regenerated. No RED observed (tests written with the code); GREEN: `CampaignFlowChecksApiTest` + `FlowRunCheckStepTest` 49, `CheckStep.test.tsx` 10. R3-002: `CheckForm` keyed by the step key; the two-step Vitest also passes without the key, because `StepCard` is already keyed by scene/part/step key (`GuidedParts.tsx:64`), so the key is defensive and the test a regression guard. Route: delegated writer (slice 7).
 
 ## Reviews
 
@@ -119,7 +120,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `review-32c07dedbf5699fb` | 8ad5766, 7f84f68 | approved, acknowledged; R3-001: the translator's `try/catch (\InvalidArgumentException)` wraps the whole `Check` construction instead of only the constructor, and malformed-check tests don't assert exact messages; R3-002: `total` overflow near `PHP_INT_MAX` gives a `TypeError` instead of `CheckEvaluationFailed` (`Check.php:99`) (both fixed in slice 4) | [#117](https://github.com/iribarren/ogami/pull/117) |
 | 4 | `review-1b59ccf60563bb73` | dbe7e39, 5f23c6f (generated 1409e02 not reviewed, declined by the user) | approved, acknowledged; R3-001: frontend fixtures need the regenerated types, resolved by 1409e02 in the same PR (no fix needed) | [#118](https://github.com/iribarren/ogami/pull/118) |
 | 5 | `review-d6fc456db1fb3a12` | 5ed07d1, 32aec22, 8f4f16a | approved, acknowledged; R3-001: a `{tracker}` or `{formula}` step difficulty can fall outside the check's min..max at play time (the translator only checks literals, `GameSystemReleaseTranslator.php:302-308`); the 422 is untested (fixed in slice 6) | [#119](https://github.com/iribarren/ogami/pull/119) |
+| 6 | `review-a0cf732b224eb7ee` | 398d550, 8f159d3, 8e7c4fe, af88989 | approved, acknowledged; R3-001: `CheckStepForm.tsx:44` treats a null `step.difficulty` as player-set, but the server also sends null for a fixed formula difficulty it cannot evaluate, so the card shows an editable input and every Roll is refused (422); R3-002: `CheckForm.tsx:46-53` sets its state on mount only, so two consecutive check steps keep the first step's values (both fixed in slice 7) | [#120](https://github.com/iribarren/ogami/pull/120) |
+
+## Slice 7 decisions (parent, 2026-10-14)
+
+- R3-001: `FlowStepResponse` gains a required `difficultyFixed` (true when the step fixes the difficulty, even when its formula cannot be evaluated now). The card shows a fixed difficulty read-only; fixed but null shows an alert and no Roll.
+- R3-002: `CheckStepForm` keys `CheckForm` by the step key, so each check step starts from its own values.
+- Night Job checks, one per stat: `nerve`, `hands`, `wits`, `grit`, `charm`, `cool` (derived). `1d10` + the stat; difficulty `{label: "Difficulty", default: 13, min: 9, max: 29}`; bands `botch` (upTo difficulty − 6), `fail` (upTo difficulty − 1), `success`. Original wording.
+- Heist flow: infiltration `slip-past` becomes a `hands` check step, difficulty `{formula: "13 + {tracker:alarm}"}` (13..19), outcomes `botch` → the old exceptional-no effects (firefight), `fail` → alarm +1. Chase `lose-them` becomes a `cool` check step, difficulty set by the player, no outcomes.
 
 ## Next step
 
-Slice 6 is written: native review (assess, consent, capture, acknowledge), then push and PR. Then slice 7 (T8, T9).
+Slice 7 (T8, T9): writer, then native review, push and PR, then one doc-only commit recording the slice 7 review and PR on the same branch. Then the feature is closed.

@@ -5191,6 +5191,7 @@
                     "fills",
                     "check",
                     "difficulty",
+                    "difficultyFixed",
                     "characters"
                 ],
                 "properties": {
@@ -5291,6 +5292,10 @@
                         "type": "integer",
                         "example": 7,
                         "nullable": true
+                    },
+                    "difficultyFixed": {
+                        "description": "Whether the check step fixes the Check difficulty (a literal, a Tracker or a Formula), even when it cannot be evaluated now (difficulty is then null and answering the step is refused); false when the player sets it and for the other kinds.",
+                        "type": "boolean"
                     },
                     "characters": {
                         "description": "The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds.",

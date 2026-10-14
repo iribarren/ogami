@@ -37,7 +37,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * sheet field and the check "broken") and its Flow "tour". Every Scene Type has a check step
  * "roll-it" followed by the prompt "after": "open" (skill, the player sets the difficulty), "fixed"
  * (skill at 10: "fail" adds an alarm, "crit" ends the part), "tracked" (skill at the alarm + 9),
- * "plain" (luck, no difficulty), "wild" (skill at the alarm + 30, over the check's max) and "broken" (a modifier that divides by zero). Vi joins before the
+ * "plain" (luck, no difficulty), "wild" (skill at the alarm + 30, over the check's max), "unevaluable" (skill at the alarm / 0) and "broken" (a modifier that divides by zero). Vi joins before the
  * session and is in no scene; Ada joins during the scene (hands 4, so a skill modifier of 6).
  */
 #[CoversClass(FlowRunController::class)]
@@ -71,27 +71,28 @@ final class CampaignFlowChecksApiTest extends WebTestCase
     }
 
     /**
-     * @return iterable<string, array{string, ?string, ?int}> the Scene Type, the check and the difficulty the step fixes
+     * @return iterable<string, array{string, ?string, ?int, bool}> the Scene Type, the check, the difficulty the step fixes and whether it fixes one
      */
     public static function steps(): iterable
     {
-        yield 'the player sets the difficulty' => ['open', 'skill', null];
-        yield 'a literal difficulty' => ['fixed', 'skill', 10];
-        yield 'a difficulty over a Tracker' => ['tracked', 'skill', 9];
-        yield 'a check without a difficulty' => ['plain', 'luck', null];
+        yield 'the player sets the difficulty' => ['open', 'skill', null, false];
+        yield 'a literal difficulty' => ['fixed', 'skill', 10, true];
+        yield 'a difficulty over a Tracker' => ['tracked', 'skill', 9, true];
+        yield 'a formula that cannot be evaluated' => ['unevaluable', 'skill', null, true];
+        yield 'a check without a difficulty' => ['plain', 'luck', null, false];
     }
 
     #[Test]
     #[DataProvider('steps')]
-    public function aCheckStepShowsItsCheckItsFixedDifficultyAndTheCharactersInTheScene(string $sceneType, string $check, ?int $difficulty): void
+    public function aCheckStepShowsItsCheckItsFixedDifficultyAndTheCharactersInTheScene(string $sceneType, string $check, ?int $difficulty, bool $difficultyFixed): void
     {
         $this->inScene($sceneType);
 
         $step = self::at($this->campaign(), 'flowRun', 'step');
 
         self::assertSame(
-            ['roll-it', 'check', $check, $difficulty, [['id' => 'char-ada', 'name' => 'Ada']], null, null],
-            array_map(static fn (string $key): mixed => self::at($step, $key), ['key', 'kind', 'check', 'difficulty', 'characters', 'dice', 'oracle']),
+            ['roll-it', 'check', $check, $difficulty, $difficultyFixed, [['id' => 'char-ada', 'name' => 'Ada']], null, null],
+            array_map(static fn (string $key): mixed => self::at($step, $key), ['key', 'kind', 'check', 'difficulty', 'difficultyFixed', 'characters', 'dice', 'oracle']),
         );
     }
 
@@ -284,7 +285,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
             ['band' => 'fail', 'effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1]]],
             ['band' => 'crit', 'next' => 'end'],
         ]];
-        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'broken' => $step('broken')];
+        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken')];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],
             array_keys($sceneTypes),

@@ -312,3 +312,23 @@ export const lostMineWithTypes: Campaign = {
     },
   ],
 }
+
+/** A check as the API lists it: 1d10 against a Difficulty Value the player sets. */
+type CampaignCheck = Campaign['checks'][number]
+
+export const skillCheck: CampaignCheck = {
+  key: 'skill',
+  label: 'Skill check',
+  hint: 'A stat and 1d10 against a Difficulty Value.',
+  dice: '1d10',
+  difficulty: { label: 'Difficulty Value', default: 13, min: 9, max: 29 },
+}
+
+/** A check that declares no difficulty. */
+export const luckCheck: CampaignCheck = {
+  key: 'luck',
+  label: 'Luck',
+  hint: null,
+  dice: 'd%',
+  difficulty: null,
+}

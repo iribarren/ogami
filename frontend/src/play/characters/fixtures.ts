@@ -1,4 +1,4 @@
-import { lostMineCampaign } from '../campaigns/fixtures'
+import { lostMineCampaign, luckCheck, skillCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { allyTag, leaderTag } from '../lists/fixtures'
 
@@ -115,4 +115,10 @@ export const lostMineWithCharacters: Campaign = {
   ...lostMineCampaign,
   tags: [leaderTag, allyTag],
   characters: [{ ...viCharacter, values: {} }],
+}
+
+/** `nightJobCampaign` whose release has two checks: "Skill check" (with a difficulty) and "Luck". */
+export const nightJobWithChecks: Campaign = {
+  ...nightJobCampaign,
+  checks: [skillCheck, luckCheck],
 }

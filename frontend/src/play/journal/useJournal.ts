@@ -10,6 +10,7 @@ export type NoteContent = components['schemas']['NoteContentResponse']
 export type RollContent = components['schemas']['RollContentResponse']
 export type OracleTableContent = components['schemas']['OracleTableContentResponse']
 export type LikelihoodContent = components['schemas']['LikelihoodContentResponse']
+export type CheckContent = components['schemas']['CheckContentResponse']
 export type PickContent = components['schemas']['PickContentResponse']
 type RecordNoteRequest = components['schemas']['RecordNoteRequest']
 type RecordRollRequest = components['schemas']['RecordRollRequest']
@@ -41,10 +42,10 @@ export function useJournal(campaignId: string) {
 }
 
 /**
- * Shared by the record hooks: posts with `record` and appends the recorded entry to the
- * cached journal, so it appears without reloading the journal.
+ * Shared by the record hooks (and the check hook): posts with `record` and appends the
+ * recorded entry to the cached journal, so it appears without reloading the journal.
  */
-function useRecordEntry<Variables>(
+export function useRecordEntry<Variables>(
   campaignId: string,
   failure: string,
   record: (variables: Variables) => Promise<{

@@ -4,9 +4,11 @@ import {
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
+  luckCheckEntry,
   pickedNothing,
   pickedTwo,
   plainAnswer,
+  skillCheckEntry,
   stormyWeather,
 } from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
@@ -42,3 +44,7 @@ export const PickFound: Story = {
 }
 
 export const PickNoMatch: Story = { args: { entry: pickedNothing } }
+
+export const CheckAgainstDifficulty: Story = { args: { entry: skillCheckEntry } }
+
+export const CheckWithoutModifiersOrDifficulty: Story = { args: { entry: luckCheckEntry } }

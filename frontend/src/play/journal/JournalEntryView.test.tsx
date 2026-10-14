@@ -6,9 +6,11 @@ import {
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
+  luckCheckEntry,
   pickedNothing,
   pickedTwo,
   plainAnswer,
+  skillCheckEntry,
   stormyWeather,
 } from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
@@ -115,5 +117,43 @@ describe('JournalEntryView', () => {
     render(<JournalEntryView entry={lockedDoorAnswer} />)
 
     expect(screen.queryByText('Random event')).not.toBeInTheDocument()
+  })
+})
+
+describe('JournalEntryView check entries', () => {
+  it('renders the band, the dice and how the total adds up against the difficulty', () => {
+    render(<JournalEntryView entry={skillCheckEntry} />)
+
+    const entry = screen.getByRole('article', { name: 'Check Skill check' })
+    expect(within(entry).getByText('Vi · Skill check')).toBeInTheDocument()
+    expect(within(entry).getByText('Success')).toHaveClass('text-2xl')
+    expect(within(entry).getByRole('list', { name: '1d10 dice' })).toHaveTextContent('7')
+    const details = within(entry)
+    expect(details.getByText('Dice').nextElementSibling).toHaveTextContent('1d10 = 7')
+    expect(details.getByText('Modifier').nextElementSibling).toHaveTextContent('+6')
+    expect(details.getByText('Situational').nextElementSibling).toHaveTextContent('+2')
+    expect(details.getByText('Total').nextElementSibling).toHaveTextContent('15 vs 13')
+  })
+
+  it('leaves out a zero modifier, a zero situational modifier and a missing difficulty', () => {
+    render(<JournalEntryView entry={luckCheckEntry} />)
+
+    const entry = screen.getByRole('article', { name: 'Check Luck' })
+    expect(within(entry).getByText('Bad luck')).toBeInTheDocument()
+    expect(within(entry).queryByText('Modifier')).not.toBeInTheDocument()
+    expect(within(entry).queryByText('Situational')).not.toBeInTheDocument()
+    expect(within(entry).getByText('Total').nextElementSibling).toHaveTextContent(/^12$/)
+  })
+
+  it('shows a penalty with its minus sign', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    render(
+      <JournalEntryView entry={{ ...skillCheckEntry, content: { ...content, situational: -3 } }} />,
+    )
+
+    expect(screen.getByText('Situational').nextElementSibling).toHaveTextContent('-3')
   })
 })

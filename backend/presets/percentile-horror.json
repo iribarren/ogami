@@ -1,0 +1,363 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "percentile-horror",
+    "name": "Percentile Horror",
+    "description": "A 1920s investigation of quiet dread for one investigator. Roll a percentile die under your skill, keep your Sanity and follow a letter to a haunted Kingsport. Original content on an open rules base.",
+    "credits": {
+      "notice": "Percentile Horror is original content that adapts rules from Basic Roleplaying: Universal Game Engine, © Chaosium Inc. This product is licensed under the ORC License held in the Library of Congress and available online at various locations including www.chaosium.com/orclicense, www.azoralaw.com/orclicense, www.gencon.com/orclicense and others. All warranties are disclaimed as set forth therein. Percentile Horror is not published, endorsed or approved by Chaosium Inc.",
+      "license": "ORC License",
+      "url": "https://www.chaosium.com/orclicense"
+    }
+  },
+  "theme": "eldritch",
+  "oracles": {
+    "tables": [
+      {
+        "key": "names",
+        "name": "Names of the twenties",
+        "entries": [
+          {"text": "Edmund Hale"},
+          {"text": "Philippa Marsh"},
+          {"text": "Ambrose Quill"},
+          {"text": "Dorothea Vance"},
+          {"text": "Silas Penhallow"},
+          {"text": "Winifred Cobb"},
+          {"text": "Augustus Thorne"},
+          {"text": "Lavinia Grey"},
+          {"text": "Horace Bellweather"},
+          {"text": "Cordelia Finch"},
+          {"text": "Ezra Whitlock"},
+          {"text": "Maud Pritchard"},
+          {"text": "Lucius Ardent"},
+          {"text": "Henrietta Lowe"},
+          {"text": "Barnaby Crane"},
+          {"text": "Ottoline Reeve"}
+        ]
+      },
+      {
+        "key": "locations",
+        "name": "Places in Kingsport",
+        "entries": [
+          {"text": "A shuttered chandler's shop on the wharf"},
+          {"text": "The old customs house, half empty since the war"},
+          {"text": "A boarding house on Lantern Hill"},
+          {"text": "A fishing cannery that stinks of brine"},
+          {"text": "The cemetery behind the harbor chapel"},
+          {"text": "A bookbinder's loft above the market"},
+          {"text": "A lighthouse nobody has lit for years"},
+          {"text": "A doctor's surgery with the blinds drawn"},
+          {"text": "A cottage at the end of a cliff path"},
+          {"text": "A steepled church with a locked crypt"},
+          {"text": "A tea room that closes at dusk"},
+          {"text": "A cellar under the town hall"}
+        ]
+      },
+      {
+        "key": "letter-hooks",
+        "name": "What the letter says",
+        "entries": [
+          {"text": "Come at once: I have found the missing pages and I am afraid of them"},
+          {"text": "Do not trust the harbor master, and burn this after reading"},
+          {"text": "I am leaving the house to you; there is something in the cellar you must see first"},
+          {"text": "The sea has been wrong since the autumn, and so have I"},
+          {"text": "Someone has been copying our family papers by night"},
+          {"text": "I need you to look at a photograph before I say anything more"},
+          {"text": "The doctor says it is nerves; the dogs say otherwise"},
+          {"text": "If I do not meet you at the station, ask for the bookbinder"},
+          {"text": "Our grandfather did not die of a fever, and I can prove it"},
+          {"text": "Bring a lamp, a pistol and a strong stomach"}
+        ]
+      },
+      {
+        "key": "clues",
+        "name": "Clues",
+        "entries": [
+          {"text": "A page torn from a diary, dated the night of the storm"},
+          {"text": "A tide table with one night circled in red"},
+          {"text": "A key too old for any lock in town"},
+          {"text": "A photograph with one face scratched out"},
+          {"text": "Wet footprints that end at a bricked-up wall"},
+          {"text": "A ledger of payments to a name nobody admits to knowing"},
+          {"text": "A sketch of a doorway that does not exist on any plan"},
+          {"text": "A tin box of letters tied with fishing line"},
+          {"text": "A map of the coast with new islands drawn in"},
+          {"text": "A phrase scrawled under the stairs, in a hand that is not human"},
+          {"text": "A bottle of salt water that is still warm"},
+          {"text": "A neighbor who remembers a stranger who never left"}
+        ]
+      },
+      {
+        "key": "strange-events",
+        "name": "Strange events",
+        "entries": [
+          {"key": "bells", "text": "Bells ring under the water", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
+          {"key": "fog", "text": "A fog rolls in against the wind", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
+          {"key": "silence", "text": "Every dog in the street falls silent at once"},
+          {"key": "kindness", "text": "A stranger shows a kindness that feels like a warning"},
+          {"key": "lamp", "text": "Your lamp burns blue for a moment"},
+          {"key": "footsteps", "text": "Footsteps follow yours and stop when you stop", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
+          {"key": "dawn", "text": "A hint of dawn comes early and calms you", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": -1}]},
+          {"key": "mirror", "text": "Your reflection lags a heartbeat behind"},
+          {"key": "gulls", "text": "Gulls gather on the roof and watch the door"},
+          {"key": "whisper", "text": "A whisper says your name from the empty room", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
+          {"key": "ally", "text": "A bystander offers help and asks for nothing"},
+          {"key": "salt", "text": "Salt crusts the windows on the inside"}
+        ]
+      },
+      {
+        "key": "horrors",
+        "name": "The horror beneath",
+        "entries": [
+          {"text": "A drowned congregation that still holds its hymns"},
+          {"text": "Something vast and patient behind the cellar wall"},
+          {"text": "A relative who is no longer entirely a relative"},
+          {"text": "A tide-borne thing that wants to be remembered"},
+          {"text": "A chorus of voices from a sealed well"},
+          {"text": "A door that opens on the wrong decade"},
+          {"text": "A shape in the lighthouse that borrows the lamp's light"},
+          {"text": "A swarm of pale things in the crypt"},
+          {"text": "A gentleman in a good coat who casts no shadow"},
+          {"text": "A hunger that has learned to write letters"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "fate",
+        "name": "Fate question",
+        "sides": 100,
+        "levels": [
+          {"key": "very-unlikely", "label": "Very unlikely", "target": 10},
+          {"key": "unlikely", "label": "Unlikely", "target": 30},
+          {"key": "even", "label": "50/50", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 70},
+          {"key": "very-likely", "label": "Very likely", "target": 90}
+        ],
+        "exceptionalPercent": 10
+      }
+    ]
+  },
+  "tags": [
+    {"key": "kin", "label": "Kin", "hint": "Family who wrote to you"},
+    {"key": "contact", "label": "Contact", "hint": "Someone in Kingsport who talks to you"}
+  ],
+  "trackers": [
+    {"key": "clues", "name": "Clues", "hint": "At 4 you know enough to face what waits", "kind": "counter", "min": 0, "max": 6, "initial": 0},
+    {"key": "dread", "name": "Dread", "hint": "At 6/6 the night closes in and you must act", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [
+    {"key": "relative", "label": "Relative", "type": "npc", "hint": "The one who wrote to you"},
+    {"key": "letter", "label": "The letter", "type": "text"},
+    {"key": "place", "label": "The place", "type": "text", "hint": "Where the answer lies"},
+    {"key": "horror", "label": "The horror", "type": "text"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "letter",
+      "name": "The letter",
+      "purpose": "Make your investigator and read the letter that calls you to Kingsport.",
+      "tips": "Keep it short: a name, a trade and one thing you fear. The facts you fill appear in the Facts panel and come back at the end.",
+      "oracles": ["names", "letter-hooks", "locations"],
+      "setup": [
+        {"key": "you", "kind": "character", "title": "Who are you?", "tip": "Make your investigator: roll or choose the characteristics, set the tracks from the derived values, pick an occupation. You can edit the sheet any time in the Characters panel.", "mandatory": true},
+        {"key": "relative", "kind": "prompt", "title": "Who wrote to you?", "tip": "A relative or old friend in Kingsport. Name them with the Names table if you have no one in mind.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["kin"]}, {"kind": "fillFact", "slot": "relative"}]},
+        {"key": "hook", "kind": "table", "title": "What does the letter say?", "table": "letter-hooks", "effects": [{"kind": "fillFact", "slot": "letter"}]},
+        {"key": "where", "kind": "table", "title": "Where does the trail start?", "table": "locations", "effects": [{"kind": "fillFact", "slot": "place"}]},
+        {"key": "journey", "kind": "prompt", "title": "How do you reach Kingsport?", "tip": "A train, a steamer, a borrowed car. Describe the last mile."}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "archive",
+      "name": "Archive",
+      "purpose": "Dig through records, newspapers and old books.",
+      "tips": "Say what you hope to find and where you look. A good find is a clue; a bad roll costs a night.",
+      "oracles": ["clues", "fate"],
+      "setup": [],
+      "play": [
+        {"key": "look", "kind": "prompt", "title": "What do you look up, and where?"},
+        {"key": "search", "kind": "check", "title": "Do you find it?", "tip": "Roll Library use. Any success finds a clue; a fumble costs you a night of dread.", "check": "library-use", "outcomes": [{"band": "critical", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "extreme", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "hard", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "regular", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
+        {"key": "dead-end", "kind": "prompt", "title": "A dead end", "tip": "Nothing useful turns up. Say what you do with the rest of the day.", "next": "end"},
+        {"key": "found-more", "kind": "table", "title": "What do you find?", "table": "clues"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "interview",
+      "name": "Interview",
+      "purpose": "Talk to a local who knows more than they say.",
+      "tips": "Decide what you want from them before you ask. Persuade opens people up; Psychology tells you what they hide.",
+      "oracles": ["names", "fate"],
+      "setup": [],
+      "play": [
+        {"key": "who", "kind": "prompt", "title": "Who do you talk to, and what do you want to know?", "tip": "Just a name: it becomes the NPC's name. Use the Names table if you have no one in mind.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["contact"]}]},
+        {"key": "ask", "kind": "check", "title": "Do they open up?", "tip": "Roll Persuade. Any success gets you an answer; a failure lets you read them instead.", "check": "persuade", "outcomes": [{"band": "critical", "next": "learn"}, {"band": "extreme", "next": "learn"}, {"band": "hard", "next": "learn"}, {"band": "regular", "next": "learn"}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
+        {"key": "read", "kind": "check", "title": "Can you read what they hide?", "tip": "Roll Psychology. A success shows you where the truth sits; a failure and they clam up.", "check": "psychology", "outcomes": [{"band": "critical", "next": "learn"}, {"band": "extreme", "next": "learn"}, {"band": "hard", "next": "learn"}, {"band": "regular", "next": "learn"}, {"band": "failure", "next": "end"}, {"band": "fumble", "next": "end", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
+        {"key": "learn", "kind": "prompt", "title": "What do they tell you?", "tip": "One clear fact, even if it raises more questions.", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "site",
+      "name": "Site",
+      "purpose": "Search a place where something happened.",
+      "tips": "Describe one room, one detail at a time. The finds are hard to see: only a hard success turns up a clue, and what you find can break your nerve.",
+      "oracles": ["clues", "horrors", "fate"],
+      "setup": [],
+      "play": [
+        {"key": "enter", "kind": "prompt", "title": "Where do you go, and how do you get in?"},
+        {"key": "alone", "kind": "oracle", "title": "Is anyone else here?", "tip": "Ask it as 50/50 unless the place is clearly watched.", "oracle": "fate", "likelihood": "even"},
+        {"key": "spot", "kind": "check", "title": "Do you notice what is wrong?", "tip": "Roll Spot hidden. It needs a hard success: a regular one sees only the obvious.", "check": "spot-hidden", "outcomes": [{"band": "critical", "next": "find", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "extreme", "next": "find", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "hard", "next": "find", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "fumble", "next": "end", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
+        {"key": "missed", "kind": "prompt", "title": "You see nothing you can use", "tip": "The place keeps its secret for now.", "next": "end"},
+        {"key": "find", "kind": "table", "title": "What do you find?", "table": "clues"},
+        {"key": "reveal", "kind": "table", "title": "What does it hint at?", "tip": "Only when the find is truly disturbing.", "table": "horrors"},
+        {"key": "shock", "kind": "check", "title": "Does it break your nerve?", "tip": "Roll Sanity. On a success lose 1 Sanity; on a failure lose 1d6 Sanity: adjust the sheet.", "check": "sanity", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "night",
+      "name": "Night",
+      "purpose": "Endure a night in Kingsport.",
+      "tips": "Dusk changes the town. Something strange happens, and you decide how you keep your head.",
+      "oracles": ["strange-events", "horrors", "fate"],
+      "setup": [],
+      "play": [
+        {"key": "event", "kind": "table", "title": "What happens in the dark?", "tip": "Some entries move the dread for you.", "table": "strange-events"},
+        {"key": "hide", "kind": "check", "title": "Do you slip away unseen?", "tip": "Roll Stealth. A failure raises the dread by one.", "check": "stealth", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]},
+        {"key": "glimpse", "kind": "table", "title": "What do you glimpse?", "table": "horrors"},
+        {"key": "nerve", "kind": "check", "title": "Do you keep your head?", "tip": "Roll Sanity. On a success lose 1 Sanity; on a failure lose 1d6 Sanity: adjust the sheet.", "check": "sanity", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "confrontation",
+      "name": "Confrontation",
+      "purpose": "Face what waits at the end of the trail.",
+      "tips": "Be brave on the page and honest in the dice. Win by willpower, not by shooting: the horror is not something a pistol solves.",
+      "oracles": ["horrors", "fate"],
+      "setup": [
+        {"key": "arrive", "kind": "prompt", "title": "You reach the place", "prompt": "You stand before {fact:place}. What is the first thing you notice?"}
+      ],
+      "play": [
+        {"key": "horror", "kind": "table", "title": "What waits for you?", "table": "horrors", "effects": [{"kind": "fillFact", "slot": "horror"}]},
+        {"key": "will", "kind": "check", "title": "Do you hold your ground?", "tip": "Roll Power. It needs a hard success: a regular one is not enough against this.", "check": "pow", "outcomes": [{"band": "critical", "next": "banish"}, {"band": "extreme", "next": "banish"}, {"band": "hard", "next": "banish"}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]},
+        {"key": "cost", "kind": "prompt", "title": "It slips your grasp", "prompt": "{fact:horror} is still there. What does it cost you to get away?", "next": "final-shock"},
+        {"key": "banish", "kind": "prompt", "title": "You drive it back", "prompt": "Say how you end it, and what you leave behind in {fact:place}."},
+        {"key": "final-shock", "kind": "check", "title": "Does the truth break you?", "tip": "Roll Sanity. On a success lose 1 Sanity; on a failure lose 1d6 Sanity: adjust the sheet.", "check": "sanity"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "epilogue",
+      "name": "Epilogue",
+      "purpose": "Settle what the night leaves you.",
+      "tips": "Look back over the dread you carried and the clues you won.",
+      "oracles": [],
+      "setup": [
+        {"key": "tally", "kind": "condition", "title": "How shaken are you?", "tip": "Decided by the dread: above 2 and the nights follow you home.", "tracker": "dread", "bands": [{"upTo": 2, "next": "calm"}, {"next": "scarred"}]},
+        {"key": "calm", "kind": "prompt", "title": "You sleep again", "prompt": "You write the letter home about {fact:letter}. What do you tell {step:relative}?", "next": "end"},
+        {"key": "scarred", "kind": "prompt", "title": "The nights follow you", "prompt": "You leave Kingsport but not the dream. What do you still hear?"}
+      ],
+      "play": [],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "kingsport-letter",
+      "name": "The Kingsport Letter",
+      "description": "A one-shot investigation: a letter calls you to Kingsport, you dig for the truth, and you face what waits.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play one investigator. A letter calls you to Kingsport; you search archives, talk to locals, visit a place where something happened and endure the nights. Each step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them.\n\nTo check a skill, roll a percentile die. Equal to or under your skill is a success; a fifth of it is extreme and half of it is hard. A roll of 1 is critical, and 96 or more is a fumble (100 only, if your skill is 50 or more). Watch your Sanity and the Dread clock: when the clock fills, the night closes in.\n\nIn the investigation you choose which scene to play next. When you know enough, or the dread is full, the investigation ends and you face what waits.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["fate", "names", "locations", "letter-hooks", "clues", "strange-events", "horrors"],
+      "trackers": ["clues", "dread"],
+      "phases": [
+        {"key": "the-letter", "name": "The letter", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["letter"]}},
+        {
+          "key": "investigation",
+          "name": "Investigation",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["archive", "interview", "site", "night"]},
+          "sceneClosing": [
+            {"key": "enough-clues", "kind": "condition", "title": "Do you know enough?", "tip": "With 4 clues you can face what waits.", "tracker": "clues", "bands": [{"upTo": 3}, {"effects": [{"kind": "endPhase"}]}]},
+            {"key": "dread-full", "kind": "condition", "title": "Is the dread full?", "tip": "At 6/6 the night closes in and you must act.", "tracker": "dread", "bands": [{"upTo": 5}, {"effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "dusk", "kind": "roll", "title": "Does the town press closer?", "tip": "Roll 1d6. On 1 or 2 the dread rises by one.", "dice": "1d6", "bands": [{"upTo": 2, "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {}]}
+          ]
+        },
+        {"key": "confrontation", "name": "Confrontation", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["confrontation"]}},
+        {"key": "epilogue", "name": "Epilogue", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["epilogue"]}}
+      ]
+    }
+  ],
+  "sheet": {
+    "fields": [
+      {"key": "occupation", "label": "Occupation", "hint": "What you do for a living: a clerk, a nurse, a reporter.", "group": "Investigator", "type": "text", "maxLength": 60},
+      {"key": "age", "label": "Age", "group": "Investigator", "type": "number", "min": 15, "max": 90, "default": 30},
+      {"key": "backstory", "label": "Backstory", "hint": "Who you are, what you fear, who you would not abandon.", "group": "Investigator", "type": "text", "multiline": true, "maxLength": 1000},
+      {"key": "str", "label": "Strength", "hint": "Muscle: lifting, pushing, forcing.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "con", "label": "Constitution", "hint": "Health and stamina.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "siz", "label": "Size", "hint": "Height and bulk.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "dex", "label": "Dexterity", "hint": "Speed and nimbleness.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "app", "label": "Appearance", "hint": "Looks and presence.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "int", "label": "Intelligence", "hint": "Quick thinking and learning.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "pow", "label": "Power", "hint": "Willpower and strength of spirit.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "edu", "label": "Education", "hint": "Schooling and formal knowledge.", "group": "Characteristics", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "hp-max", "label": "Hit points", "hint": "Constitution plus Size, divided by ten: set your Hit points track to it.", "group": "Derived", "type": "derived", "formula": "({con} + {siz}) / 10"},
+      {"key": "mp-max", "label": "Magic points", "hint": "Power divided by five: set your Magic points track to it.", "group": "Derived", "type": "derived", "formula": "{pow} / 5"},
+      {"key": "starting-sanity", "label": "Starting Sanity", "hint": "Equal to Power: set your Sanity track to it.", "group": "Derived", "type": "derived", "formula": "{pow}"},
+      {"key": "hp", "label": "Hit points", "hint": "Zero means you are down and dying.", "group": "Tracks", "type": "track"},
+      {"key": "mp", "label": "Magic points", "hint": "Spent on rites and strange powers.", "group": "Tracks", "type": "track"},
+      {"key": "sanity", "label": "Sanity", "hint": "Your grip on the world as it seems to be. It starts at Power.", "group": "Tracks", "type": "track", "max": 99},
+      {"key": "luck", "label": "Luck", "hint": "Fortune that turns a close call your way.", "group": "Tracks", "type": "track", "max": 99},
+      {"key": "accounting", "label": "Accounting", "hint": "Read ledgers, spot a cooked book, make the money add up.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 5},
+      {"key": "charm", "label": "Charm", "hint": "Win someone over with warmth, looks or wit.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 15},
+      {"key": "climb", "label": "Climb", "hint": "Scale a wall, a tree or a sheer drop.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 20},
+      {"key": "forbidden-lore", "label": "Forbidden lore", "hint": "What you know of things that should not be known.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 0},
+      {"key": "dodge", "label": "Dodge", "hint": "Get out of the way of a blow, a bullet or a falling beam.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 25},
+      {"key": "fast-talk", "label": "Fast talk", "hint": "Bluster, mislead or confuse someone for a moment.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 5},
+      {"key": "fighting-brawl", "label": "Fighting (brawl)", "hint": "Fists, kicks, bottles and chair legs.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 25},
+      {"key": "firearms-handgun", "label": "Firearms (handgun)", "hint": "Aim and fire a revolver or a pistol.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 20},
+      {"key": "first-aid", "label": "First aid", "hint": "Patch a wound and keep someone alive until a doctor comes.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 30},
+      {"key": "history", "label": "History", "hint": "Recall the past of a place, a family or an event.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 5},
+      {"key": "library-use", "label": "Library use", "hint": "Find the right book, record or newspaper in an archive.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 20},
+      {"key": "listen", "label": "Listen", "hint": "Catch a whisper, a footstep or a lie in a voice.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 20},
+      {"key": "occult", "label": "Occult", "hint": "Recognize the signs, rites and folklore of hidden cults.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 5},
+      {"key": "persuade", "label": "Persuade", "hint": "Reason, plead or bargain someone into agreeing.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 10},
+      {"key": "psychology", "label": "Psychology", "hint": "Read a person's mood, motives and what they hide.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 10},
+      {"key": "spot-hidden", "label": "Spot hidden", "hint": "Notice a concealed door, a stain, a detail others miss.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 25},
+      {"key": "stealth", "label": "Stealth", "hint": "Move unseen and unheard.", "group": "Skills", "type": "number", "min": 0, "max": 99, "default": 20},
+      {"key": "gear", "label": "Gear", "hint": "What you carry. Gear is narrative: no prices or weights.", "group": "Gear", "type": "list", "itemLabel": "Item", "maxItems": 20}
+    ]
+  },
+  "checks": [
+    {"key": "accounting", "label": "Accounting check", "hint": "Read ledgers, spot a cooked book, make the money add up.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{accounting} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{accounting} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{accounting}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {accounting} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "charm", "label": "Charm check", "hint": "Win someone over with warmth, looks or wit.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{charm} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{charm} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{charm}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {charm} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "climb", "label": "Climb check", "hint": "Scale a wall, a tree or a sheer drop.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{climb} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{climb} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{climb}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {climb} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "forbidden-lore", "label": "Forbidden lore check", "hint": "What you know of things that should not be known.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{forbidden-lore} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{forbidden-lore} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{forbidden-lore}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {forbidden-lore} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "dodge", "label": "Dodge check", "hint": "Get out of the way of a blow, a bullet or a falling beam.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{dodge} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{dodge} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{dodge}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {dodge} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "fast-talk", "label": "Fast talk check", "hint": "Bluster, mislead or confuse someone for a moment.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{fast-talk} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{fast-talk} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{fast-talk}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {fast-talk} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "fighting-brawl", "label": "Fighting (brawl) check", "hint": "Fists, kicks, bottles and chair legs.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{fighting-brawl} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{fighting-brawl} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{fighting-brawl}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {fighting-brawl} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "firearms-handgun", "label": "Firearms (handgun) check", "hint": "Aim and fire a revolver or a pistol.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{firearms-handgun} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{firearms-handgun} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{firearms-handgun}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {firearms-handgun} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "first-aid", "label": "First aid check", "hint": "Patch a wound and keep someone alive until a doctor comes.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{first-aid} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{first-aid} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{first-aid}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {first-aid} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "history", "label": "History check", "hint": "Recall the past of a place, a family or an event.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{history} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{history} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{history}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {history} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "library-use", "label": "Library use check", "hint": "Find the right book, record or newspaper in an archive.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{library-use} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{library-use} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{library-use}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {library-use} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "listen", "label": "Listen check", "hint": "Catch a whisper, a footstep or a lie in a voice.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{listen} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{listen} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{listen}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {listen} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "occult", "label": "Occult check", "hint": "Recognize the signs, rites and folklore of hidden cults.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{occult} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{occult} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{occult}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {occult} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "persuade", "label": "Persuade check", "hint": "Reason, plead or bargain someone into agreeing.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{persuade} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{persuade} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{persuade}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {persuade} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "psychology", "label": "Psychology check", "hint": "Read a person's mood, motives and what they hide.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{psychology} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{psychology} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{psychology}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {psychology} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "spot-hidden", "label": "Spot hidden check", "hint": "Notice a concealed door, a stain, a detail others miss.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{spot-hidden} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{spot-hidden} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{spot-hidden}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {spot-hidden} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "stealth", "label": "Stealth check", "hint": "Move unseen and unheard.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{stealth} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{stealth} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{stealth}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {stealth} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "str", "label": "Strength check", "hint": "Force a door, lift a beam, hold on.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{str} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{str} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{str}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {str} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "con", "label": "Constitution check", "hint": "Shrug off a poison, a chill or a long night.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{con} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{con} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{con}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {con} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "dex", "label": "Dexterity check", "hint": "Balance, catch, leap or slip through a gap.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{dex} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{dex} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{dex}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {dex} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "pow", "label": "Power check", "hint": "Hold your will against something that pushes back.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{pow} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{pow} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{pow}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {pow} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "luck", "label": "Luck check", "hint": "Roll under your current Luck when fortune decides.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{luck} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{luck} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{luck}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {luck} / 50)"}}, {"key": "fumble", "label": "Fumble"}]},
+    {"key": "sanity", "label": "Sanity check", "hint": "Roll under your current Sanity to keep your mind whole.", "dice": "d%", "bands": [{"key": "critical", "label": "Critical success", "upTo": 1}, {"key": "extreme", "label": "Extreme success", "upTo": {"formula": "{sanity} / 5"}}, {"key": "hard", "label": "Hard success", "upTo": {"formula": "{sanity} / 2"}}, {"key": "regular", "label": "Regular success", "upTo": {"formula": "{sanity}"}}, {"key": "failure", "label": "Failure", "upTo": {"formula": "95 + 4 * min(1, {sanity} / 50)"}}, {"key": "fumble", "label": "Fumble"}]}
+  ]
+}

@@ -76,7 +76,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0025 (items, inventory and `shop` move post-M3) and ADR index row; ADR 0018 status note and its two open-question rows; vision open question resolved; ADR 0021 consequence note (open-license presets carry their license notice); roadmap: feature 13 in progress, backlog rows `play-items-economy`, `preset-vaesen`, `preset-pbta`, revised `preset-vtm-chronicle` and `preset-west-marches` (D&D 5e SRD 5.2), with starter prompts | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Preset `backend/presets/percentile-horror.json` (sheet, derived, checks, flow, oracles, credits) in original wording; `PresetsTest`; flow unit test; check band edge tests | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Preset `backend/presets/percentile-horror.json` (sheet, derived, checks, flow, oracles, credits) in original wording; `PresetsTest`; flow unit test; check band edge tests | delegated writer (slice 1) | [x] | |
 | T3 | 2 | ADR 0026 sheet effects (amends ADR 0022 and ADR 0017); glossary; contract doc section | | [ ] | |
 | T4 | 2 | Contract: `sheet` effect and `{dice}` value in `v2.schema.json` and the Version2 validator; agreement fixtures; Play translator still refuses `sheet` effects | | [ ] | |
 | T5 | 3 | Play: translator reads `sheet` effects; applying them on a check outcome (clamp, dice, all-or-nothing); journal records sheet changes; API and `make api` | | [ ] | |
@@ -89,6 +89,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-14: Exploration done (release contract, sheet v2, Formula kernel, checks, step kinds, effects, presets and their tests). Licenses checked: D&D SRD 5.2 CC BY 4.0; Chaosium Fan Material Policy excludes apps; BRP ORC fully open; Dark Pack non-commercial; Year Zero SRD under Free League's free license. Three decisions taken with the user. Issue #122.
 - 2026-10-15: T1 done (docs only, no RED: structural readback of ADR 0025, the ADR 0018/0021 edits, vision and roadmap links).
+- 2026-10-15: T2 done. RED: the two new `PresetsTest` cases failed ("Cannot read the file" percentile-horror.json) and the check and flow tests errored on the missing file. GREEN: 39 `PercentileHorror` tests pass; `make presets` publishes `percentile-horror` with no validator error or warning (the existing night-job warning is unchanged). `make qa` clean; `make test`: PHPUnit 3,824 tests, Behat 70 scenarios, Vitest 701 tests, all green.
 
 ## Playtest findings
 

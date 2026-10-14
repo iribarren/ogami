@@ -50,7 +50,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 | 10 | `play-characters` | M3 | 5 | — |
 | 11 | `rules-derived-values` | M3 | 10 | Where formula evaluation lives |
 | 12 | `play-checks` | M3 | 11 | How far checks go before scripting |
-| 13 | `preset-real-system` | M3 | 12 | Items, inventory and a `shop` step kind, or moves them post-M3 (MVP complete) |
+| 13 | `preset-real-system` (in progress) | M3 | 12 | Items, inventory and a `shop` step kind: moved post-M3 to `play-items-economy` ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). MVP complete |
 | 14 | `studio-gamesystem-drafts` | M4 | 4 | — |
 | 15 | `studio-oracle-editor` | M4 | 14 | — |
 | 18 | `studio-flow-editor` | M4 | 15, 9b | — |
@@ -68,9 +68,12 @@ Items here come after every feature defined above. Their priority and order are 
 |---|---|---|
 | `play-journal-attachments` | Play | Write a note and attach hand-picked roll and oracle results from the current scene. `play-campaign-journal` records each result as its own entry |
 | `play-campaign-transfer` | Play | Start a new campaign with another flow of the same GameSystem, carrying over Campaign facts, NPCs and Threads (e.g. a one-shot that grows into a campaign). After every roadmap feature: until then a campaign's flow is fixed, with only guidance pause and resume ([ADR 0017](adr/0017-narrativeflow-model.md)) |
-| `preset-vtm-chronicle` | Preset | A Vampire: the Masquerade night-court sandbox fan preset ([example 1](domain/flow-examples.md#1-vtm-chronicle-sandbox)). After 8b |
-| `preset-cpr-campaign` | Preset | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)). After M3 and the items and economy question |
-| `preset-west-marches` | Preset | A West Marches fan preset on the 5e SRD or Knave ([example 5](domain/flow-examples.md#5-west-marches)). After 10 and the Places question |
+| `play-items-economy` | Play | Structured items with quantity, cost and slots, a currency and a `shop` step kind. Until then gear is a flat sheet `list` and money a tracker or a `number` field ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). After M3 |
+| `preset-vtm-chronicle` | Preset | A Vampire: the Masquerade night-court sandbox fan preset ([example 1](domain/flow-examples.md#1-vtm-chronicle-sandbox)). After 8b and M3. Closes the dice pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md): stat-sized d10 pools, success counting, critical pairs and Hunger dice. The Dark Pack license is non-commercial: check it fits before shipping |
+| `preset-vaesen` | Preset | A Vaesen preset on the Year Zero SRD, under Free League's free license. Closes d6 pool checks with success counting, pushed rolls and conditions as sheet effects. After M3 |
+| `preset-pbta` | Preset | A Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording, or Ironsworn (CC BY 4.0). Exercises 2d6 + stat moves; Ironsworn adds challenge dice (an action score against two d10), momentum below zero and vow progress tracks. After M3 |
+| `preset-cpr-campaign` | Preset | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)). After M3 and `play-items-economy` |
+| `preset-west-marches` | Preset | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)). Gaps: HP and spell slots as sheet effects, select fields for class, conditions. Items and shops come after `play-items-economy`. After 10 and the Places question |
 
 ## Starter prompts
 
@@ -320,22 +323,40 @@ Start feature `play-journal-attachments` (ODD). Play: write a journal note and a
 Start feature `play-campaign-transfer` (ODD). Play: start a new campaign from an existing one with another flow of the same GameSystem (e.g. a one-shot that grows into a campaign), carrying over Campaign facts, NPCs and Threads; the source campaign stays unchanged. Out of scope: moving between GameSystems.
 ```
 
+**play-items-economy**
+
+```text
+Start feature `play-items-economy` (ODD). Play and Studio contract: structured items with quantity, cost and slots on a Character, a currency, and a `shop` step kind that buys and sells against it, replacing the flat sheet `list` for gear (ADR 0025). Start with the preset that needs it first (e.g. Cyberpunk RED rent and lifestyle). Out of scope: crafting, encumbrance rules beyond slots, Studio editors.
+```
+
 **preset-vtm-chronicle**
 
 ```text
-Start feature `preset-vtm-chronicle` (ODD). Hand-author a Vampire: the Masquerade night-court sandbox fan preset, following example 1 of docs/domain/flow-examples.md: a Session Zero that fills city, era, tone, ruling sect, prince and faction facts with tagged leader NPCs; ambition and desire Threads in fact slots, driven by session hooks; a chronicle loop with a night counter, a masquerade tracker and a hunters clock; world turns with night events. Fan-content rule (ADR 0018): no verbatim book text, page references, the publisher's fan-content disclaimer. After 8b.
+Start feature `preset-vtm-chronicle` (ODD). Hand-author a Vampire: the Masquerade night-court sandbox fan preset, following example 1 of docs/domain/flow-examples.md: a Session Zero that fills city, era, tone, ruling sect, prince and faction facts with tagged leader NPCs; ambition and desire Threads in fact slots, driven by session hooks; a chronicle loop with a night counter, a masquerade tracker and a hunters clock; world turns with night events. Name the check gaps it hits (ADR 0024): d10 pools sized by a stat, success counting, critical pairs and Hunger dice; decide which to close in the contract. Fan-content rule (ADR 0018): no verbatim book text or page references; the Dark Pack license is non-commercial, so check it fits first, and show the publisher's disclaimer. After 8b and M3.
+```
+
+**preset-vaesen**
+
+```text
+Start feature `preset-vaesen` (ODD). Hand-author a Vaesen preset on the Year Zero SRD under Free League's free license, in original wording: attributes and skills, d6 dice pools, conditions, a mystery investigation flow. Close the pool gaps of ADR 0024: pool checks with success counting (sixes), pushed rolls, and conditions as sheet effects. Credits carry the license notice (ADR 0021). After M3.
+```
+
+**preset-pbta**
+
+```text
+Start feature `preset-pbta` (ODD). Hand-author a Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording, or Ironsworn under CC BY 4.0. Exercise 2d6 + stat moves with three outcome bands (miss, partial, full). For Ironsworn also close challenge dice (an action score against two d10), momentum that goes below zero and vow progress tracks. Credits carry the license notice (ADR 0021). After M3.
 ```
 
 **preset-cpr-campaign**
 
 ```text
-Start feature `preset-cpr-campaign` (ODD). Hand-author a Cyberpunk RED campaign-in-acts fan preset, following example 4 of docs/domain/flow-examples.md: Act 1 making a name (gigs as nextScene chains, rep and heat, recruiting a crew), Act 2 the big job, Act 3 the twist and conclusion; acts as phases with an `act` label; a survival economy (lifestyle and housing levels, Downtime, Night Market, Month's end). Fan-content rule (ADR 0018). After M3 and the items, inventory and `shop` question.
+Start feature `preset-cpr-campaign` (ODD). Hand-author a Cyberpunk RED campaign-in-acts fan preset, following example 4 of docs/domain/flow-examples.md: Act 1 making a name (gigs as nextScene chains, rep and heat, recruiting a crew), Act 2 the big job, Act 3 the twist and conclusion; acts as phases with an `act` label; a survival economy (lifestyle and housing levels, Downtime, Night Market, Month's end). Fan-content rule (ADR 0018). After M3 and `play-items-economy`.
 ```
 
 **preset-west-marches**
 
 ```text
-Start feature `preset-west-marches` (ODD). Hand-author a West Marches fan preset on the 5e SRD or Knave, following example 5 of docs/domain/flow-examples.md: a founding phase with a town and a roster of adventurers; an expeditions loop where each session picks a rumor and a party, travels, explores and returns to town before the session ends; encounter tables by distance. Fan-content or open-license rule (ADR 0018). After 10 and the Places question.
+Start feature `preset-west-marches` (ODD). Hand-author a West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0), following example 5 of docs/domain/flow-examples.md: a founding phase with a town and a roster of adventurers; an expeditions loop where each session picks a rumor and a party, travels, explores and returns to town before the session ends; encounter tables by distance. Name the gaps it hits: HP and spell slots as sheet effects, select fields for class, conditions. Items and shops come after `play-items-economy`. Open-license rule: credits carry the CC BY 4.0 attribution (ADR 0021). After 10 and the Places question.
 ```
 
 ## Related

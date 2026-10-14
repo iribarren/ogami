@@ -194,6 +194,67 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['cool' => 'max(0, {nerve} - {tracker:alarm} / 2)', 'wounded' => '{hp.max} / 2'], $formulas);
     }
 
+    #[Test]
+    public function percentileHorrorPublishesOnceWithItsOpenLicenseCreditsAndTheEldritchTheme(): void
+    {
+        $this->assertPublishesOnce('percentile-horror');
+
+        $snapshot = $this->snapshot('percentile-horror');
+        self::assertSame('Percentile Horror', $snapshot->name());
+        self::assertSame(1, $snapshot->releaseVersion());
+        self::assertSame('eldritch', $snapshot->theme());
+
+        // The ORC License notice (ADR 0021) names the base rules and disclaims the publisher, and carries no trademark.
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringContainsString('Basic Roleplaying: Universal Game Engine', $credits->notice);
+        self::assertStringContainsString('Chaosium Inc.', $credits->notice);
+        self::assertStringContainsString('www.chaosium.com/orclicense', $credits->notice);
+        self::assertStringContainsString('not published, endorsed or approved by Chaosium Inc.', $credits->notice);
+        self::assertSame(['ORC License', 'https://www.chaosium.com/orclicense'], [$credits->license, $credits->url]);
+        self::assertStringNotContainsString('Call of Cthulhu', json_encode($snapshot->name().$credits->notice, \JSON_THROW_ON_ERROR));
+
+        $flow = $snapshot->defaultFlow();
+        self::assertSame(['kingsport-letter', ['the-letter', 'investigation', 'confrontation', 'epilogue']], [$flow?->key, array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? [])]);
+        self::assertSame(['clues', 'dread'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
+    }
+
+    #[Test]
+    public function percentileHorrorHasAnInvestigatorSheetWithDerivedValuesAndOneCheckPerSkill(): void
+    {
+        $this->assertPublishesOnce('percentile-horror');
+        $snapshot = $this->snapshot('percentile-horror');
+
+        $sheet = $snapshot->sheet();
+        self::assertSame(['Investigator', 'Characteristics', 'Derived', 'Tracks', 'Skills', 'Gear'], array_values(array_unique(array_map(static fn (Field $field): ?string => $field->group, $sheet->fields()))));
+        foreach (['occupation' => TextField::class, 'str' => NumberField::class, 'library-use' => NumberField::class, 'hp' => TrackField::class, 'sanity' => TrackField::class, 'luck' => TrackField::class, 'gear' => ListField::class] as $key => $type) {
+            self::assertInstanceOf($type, $sheet->field($key), $key);
+        }
+
+        // Sanity and Luck are tracks with a fixed maximum; hit points and magic points are sized per Character from the derived values.
+        $sanity = $sheet->field('sanity');
+        $hp = $sheet->field('hp');
+        self::assertInstanceOf(TrackField::class, $sanity);
+        self::assertInstanceOf(TrackField::class, $hp);
+        self::assertSame([99, null], [$sanity->max, $hp->max]);
+
+        $formulas = [];
+        foreach (['hp-max', 'mp-max', 'starting-sanity'] as $key) {
+            $derived = $sheet->field($key);
+            self::assertInstanceOf(DerivedField::class, $derived, $key);
+            $formulas[$key] = $derived->formula->toString();
+        }
+        self::assertSame(['hp-max' => '({con} + {siz}) / 10', 'mp-max' => '{pow} / 5', 'starting-sanity' => '{pow}'], $formulas);
+
+        // One check per skill (17), one per characteristic that is rolled directly (4), and Luck and Sanity.
+        $checks = array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks());
+        self::assertCount(23, $checks);
+        foreach (['library-use', 'spot-hidden', 'persuade', 'psychology', 'pow', 'luck', 'sanity'] as $key) {
+            self::assertContains($key, $checks);
+        }
+    }
+
     private function assertPublishesOnce(string $preset): void
     {
         $file = self::PRESETS.'/'.$preset.'.json';

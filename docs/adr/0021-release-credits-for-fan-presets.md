@@ -23,4 +23,5 @@ A release may carry optional credits: `gameSystem.credits`.
 - Existing releases and presets have no credits and behave as before. Releases stored before this change read as no credits.
 - The field is optional: Ogami does not check that a fan preset carries a disclaimer. The author and the reviewer of a preset own that rule.
 - Studio authoring can edit the fields later without a contract change.
+- A preset on an open license (for example the ORC License) puts that license's required notice in `notice`, the license name in `license` and its page in `url`. A publisher fan policy that excludes apps is not used: Percentile Horror builds on the ORC-licensed Basic Roleplaying base instead of Chaosium's Fan Material Policy.
 - A dedicated credits page, or credits on other release parts (a Scene Type or table borrowed from another source), would be new additive fields.

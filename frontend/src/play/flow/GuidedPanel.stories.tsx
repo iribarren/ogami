@@ -9,8 +9,10 @@ import { CampaignPage } from '../campaigns/CampaignPage'
 import {
   atStep,
   atTheScenePick,
+  checkStep,
   chooseUpToTwoStep,
   choiceStep,
+  guidedWithChecks,
   guidedWithLists,
   inOpenPlay,
   noMatchChooseStep,
@@ -27,10 +29,14 @@ const json =
     Response.json(body, { status })
 
 /** The Play screen of the lost mine along the Flow "tour", the FlowRun being `flowRun`. */
-function guidedApi(flowRun: FlowRun, defaultView: 'journal' | 'focus' = 'journal') {
+function guidedApi(
+  flowRun: FlowRun,
+  defaultView: 'journal' | 'focus' = 'journal',
+  build: typeof guidedWithLists = guidedWithLists,
+) {
   const path = `/api/campaigns/${lostMineCampaign.id}`
   return {
-    [`GET ${path}`]: json(guidedWithLists(flowRun, defaultView)),
+    [`GET ${path}`]: json(build(flowRun, defaultView)),
     [`GET ${path}/journal`]: json([chosenWay]),
   }
 }
@@ -72,6 +78,18 @@ export const PickStepChoose: Story = { parameters: { api: guidedApi(atStep(choos
 export const PickStepNoMatch: Story = { parameters: { api: guidedApi(atStep(noMatchChooseStep)) } }
 
 export const RollStep: Story = { parameters: { api: guidedApi(atStep(rollStep)) } }
+
+/** A check step: Vi is preselected and the player sets the difficulty. */
+export const CheckStep: Story = {
+  parameters: { api: guidedApi(atStep(checkStep), 'journal', guidedWithChecks) },
+}
+
+/** The step fixes the difficulty: it is shown, not asked. */
+export const CheckStepFixedDifficulty: Story = {
+  parameters: {
+    api: guidedApi(atStep({ ...checkStep, difficulty: 15 }), 'journal', guidedWithChecks),
+  },
+}
 
 export const MandatoryStep: Story = {
   parameters: { api: guidedApi(atStep({ ...promptStep, mandatory: true })) },

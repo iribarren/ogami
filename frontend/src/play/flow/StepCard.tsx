@@ -7,6 +7,7 @@ import { Textarea } from '@/shared/ui/textarea'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import { CharacterStepForm } from './CharacterStepForm'
+import { CheckStepForm } from './CheckStepForm'
 import { PickForm } from './PickForm'
 import type { FlowRunCommand, FlowStep } from './useFlowRun'
 
@@ -173,6 +174,8 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
           }}
         />
       )
+    case 'check':
+      return <CheckStepForm campaign={campaign} step={step} pending={pending} onRoll={answer} />
   }
 }
 

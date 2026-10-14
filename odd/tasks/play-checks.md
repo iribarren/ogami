@@ -91,7 +91,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 3 | Play ACL and domain: translator reads `checks` (re-checks every rule; `check` steps still refused); `Check` snapshot; public sheet resolver extracted from `DerivedValues`; check performance (dice, modifier, situational, difficulty, band) with evaluation failure as a domain error; doc example release gains a check (user, 2026-10-14); unit tests | delegated writer (slice 3) | [x] | 8ad5766, 7f84f68 |
 | T5 | 4 | Sheet checks: `check` journal content; `POST /api/campaigns/{id}/journal/checks`; Campaign response exposes checks; 404/422 mapping and API tests; `make api` | delegated writer (slice 4) | [x] | dbe7e39, 5f23c6f, 1409e02 |
 | T6 | 5 | Check step: translator reads `check` steps (step `check` exists, `difficulty` only for a check with one, `outcomes[].band` exists and unique; doc example gains a check step), `StepKind::Check`, `StepResult::check`, FlowRun branching by band key and effects, Character eligibility (Scene characters, else party), fixed step difficulty; handler, request and response; API tests; `make api` | delegated writer (slice 5) | [x] | 5ed07d1, 32aec22, 8f4f16a |
-| T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | | [ ] | |
+| T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | delegated writer (slice 6) | [x] | |
 | T8 | 7 | Night Job checks (stats vs DV, original wording) and check steps in the heist flow; preset tests; e2e: roll a check from the sheet and from a step | | [ ] | |
 | T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | | [ ] | |
 
@@ -108,6 +108,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-14: Slice 5 review fix R3-001: a `{tracker}` or `{formula}` step difficulty that resolves outside the check's min..max already failed closed (422 `CheckDifficultyOutOfRange` before any die is rolled, nothing logged, step still current); added two handler cases and one API case (`wild` Scene Type). Tests only; no RED observed, behaviour already correct. `FlowStepResponse` still exposes the resolved difficulty as is. Route: delegated writer (slice 6).
 - 2026-10-14: T7 commit 1 (Characters panel dialog). No RED observed: tests written after the code; Vitest caught one bug first (the Roll button stayed disabled without a Character picker), fixed. New `shared/ui/dialog.tsx` on the `radix-ui` umbrella (no new dependency), `play/checks/` (`CheckForm`, `RollCheckDialog`, `usePerformCheck` on `useRecordEntry`, which appends the entry to the cached journal). The form sends the difficulty when the check declares one (default prefilled) and the situational modifier only when not 0. Route: delegated writer (slice 6).
 - 2026-10-14: T7 commit 2 (journal). No RED observed: tests written after the code. A `check` entry renders the Character and check, the band (prominent), dice, modifier and situational when not 0, and the total with "vs <difficulty>" when one applied; the flow-step snapshot is shown by `Journal` as for other kinds, so `JournalEntryView` needed nothing. Route: delegated writer (slice 6).
+- 2026-10-14: T7 commit 3 (check step card) and T7 done. No RED observed: tests written after the code. `CheckStepForm` in `StepForm` (`case 'check'`) reuses `CheckForm`: Character select from `step.characters` (preselected with one, chosen with several, a message and no Roll with none), a fixed difficulty shown read-only and not sent, the check taken from `campaign.checks` (unknown key: alert, no form). Answer body `{characterId, difficulty?, situational?}`. `make qa` and `make test` green (Vitest 37 files, Behat 70 scenarios); `make api` changes nothing (no endpoint change). Route: delegated writer (slice 6).
 
 ## Reviews
 
@@ -121,4 +122,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 6 (T7) on `feat/play-checks-6-ui`: slice 5 review fix (R3-001), then the UI (check dialog in the Characters panel, journal `check` entry, `check` step card). Then slice 7 (T8, T9).
+Slice 6 is written: native review (assess, consent, capture, acknowledge), then push and PR. Then slice 7 (T8, T9).

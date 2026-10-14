@@ -37,7 +37,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * sheet field and the check "broken") and its Flow "tour". Every Scene Type has a check step
  * "roll-it" followed by the prompt "after": "open" (skill, the player sets the difficulty), "fixed"
  * (skill at 10: "fail" adds an alarm, "crit" ends the part), "tracked" (skill at the alarm + 9),
- * "plain" (luck, no difficulty) and "broken" (a modifier that divides by zero). Vi joins before the
+ * "plain" (luck, no difficulty), "wild" (skill at the alarm + 30, over the check's max) and "broken" (a modifier that divides by zero). Vi joins before the
  * session and is in no scene; Ada joins during the scene (hands 4, so a skill modifier of 6).
  */
 #[CoversClass(FlowRunController::class)]
@@ -167,6 +167,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         yield 'a field of another kind' => ['open', $ada + ['text' => 'Sneaky'], 'Step "roll-it" is a check step: it takes no "text".'];
         yield 'a difficulty when the step fixes one' => ['fixed', $ada + ['difficulty' => 12], 'Step "roll-it" fixes the check difficulty at 10: it takes no other.'];
         yield 'a difficulty when the step fixes one over a Tracker' => ['tracked', $ada + ['difficulty' => 12], 'Step "roll-it" fixes the check difficulty at 9: it takes no other.'];
+        yield 'a step difficulty over a Tracker that resolves over the max' => ['wild', $ada, 'Difficulty 30 is outside 9 to 29 of check "skill".'];
         yield 'a difficulty for a check without one' => ['plain', $ada + ['difficulty' => 5], 'Check "luck" declares no difficulty.'];
         yield 'a difficulty under the min' => ['open', $ada + ['difficulty' => 8], 'Difficulty 8 is outside 9 to 29 of check "skill".'];
         yield 'a difficulty over the max' => ['open', $ada + ['difficulty' => 30], 'Difficulty 30 is outside 9 to 29 of check "skill".'];
@@ -283,7 +284,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
             ['band' => 'fail', 'effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1]]],
             ['band' => 'crit', 'next' => 'end'],
         ]];
-        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'broken' => $step('broken')];
+        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'broken' => $step('broken')];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],
             array_keys($sceneTypes),

@@ -242,6 +242,8 @@ Start feature `rules-derived-values` (ODD). Formula language for DerivedValue ov
 
 **12. play-checks**
 
+Done: Check definitions in the release (dice expression, formula modifier, optional roll-time difficulty and outcome bands, with `{check:difficulty}` in band formulas), additive in schema version 2, and the `check` step kind with outcomes by band ([ADR 0024](adr/0024-structured-checks-without-scripting.md): no scripting, known gaps listed); checks rolled from the Characters panel and from flow steps for a Character in the Scene cast, logged to the journal. The `night-job` preset gains six stat checks and uses them in `slip-past` and `lose-them`. See [odd/tasks/play-checks.md](../odd/tasks/play-checks.md). The prompt is kept for reference.
+
 ```text
 Start feature `play-checks` (ODD). Check definitions in the release (dice expression + formula modifiers + outcome bands). Run checks from the sheet and from flow steps (a `check` step kind, ADR 0017), for a Character in the Scene cast (ADR 0018); log results to the journal. Settle the vision question "How far do structured checks go?" as an ADR (dice + formulas + outcome bands; scripting only on a real gap).
 ```

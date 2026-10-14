@@ -1,7 +1,7 @@
 # Feature: play-checks
 
 - **Locator:** `odd/tasks/play-checks.md` · Engram topic `odd/play-checks/tasks`
-- **Issue:** #114 · **Branch:** `feat/play-checks-7-preset` · **Status:** in progress (slice 7)
+- **Issue:** #114 · **Branch:** `feat/play-checks-7-preset` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `rules-derived-values` (PRs #108–#113)
@@ -93,7 +93,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 5 | Check step: translator reads `check` steps (step `check` exists, `difficulty` only for a check with one, `outcomes[].band` exists and unique; doc example gains a check step), `StepKind::Check`, `StepResult::check`, FlowRun branching by band key and effects, Character eligibility (Scene characters, else party), fixed step difficulty; handler, request and response; API tests; `make api` | delegated writer (slice 5) | [x] | 5ed07d1, 32aec22, 8f4f16a |
 | T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | delegated writer (slice 6) | [x] | 398d550, 8f159d3, 8e7c4fe, af88989 |
 | T8 | 7 | Night Job checks (stats vs DV, original wording) and check steps in the heist flow; preset tests; e2e: roll a check from the sheet and from a step | delegated writer (slice 7) | [x] | |
-| T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | | [ ] | |
+| T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | delegated writer (slice 7) | [x] | |
 
 ## Progress
 
@@ -111,6 +111,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-14: T7 commit 3 (check step card) and T7 done. No RED observed: tests written after the code. `CheckStepForm` in `StepForm` (`case 'check'`) reuses `CheckForm`: Character select from `step.characters` (preselected with one, chosen with several, a message and no Roll with none), a fixed difficulty shown read-only and not sent, the check taken from `campaign.checks` (unknown key: alert, no form). Answer body `{characterId, difficulty?, situational?}`. `make qa` and `make test` green (Vitest 37 files, Behat 70 scenarios); `make api` changes nothing (no endpoint change). Route: delegated writer (slice 6).
 - 2026-10-14: Slice 6 review fixes. R3-001: `difficultyFixed` on `FlowStepResponse` (true when the step fixes the difficulty, even when it cannot be evaluated; carried by the domain `CheckView`); the card shows a fixed difficulty read-only, and an alert with no Roll when fixed but null; API test covers fixed, fixed-unevaluable (`{tracker:alarm} / 0`) and player-set; `make api` regenerated. No RED observed (tests written with the code); GREEN: `CampaignFlowChecksApiTest` + `FlowRunCheckStepTest` 49, `CheckStep.test.tsx` 10. R3-002: `CheckForm` keyed by the step key; the two-step Vitest also passes without the key, because `StepCard` is already keyed by scene/part/step key (`GuidedParts.tsx:64`), so the key is defensive and the test a regression guard. Route: delegated writer (slice 7).
 - 2026-10-14: T8 done. RED: `NightJobPresetFlowTest` 8 errors and 1 failure against the oracle steps; GREEN: 21 passed once `night-job.json` has six checks (`nerve`, `hands`, `wits`, `grit`, `charm`, `cool`: 1d10 + the stat, difficulty 9..29 default 13, bands botch/fail/success) and the check steps `slip-past` (hands, difficulty `13 + {tracker:alarm}`, botch to the firefight, fail adds an alarm) and `lose-them` (cool, player-set difficulty). The published preset passes `PresetsTest` unchanged. E2E `play-checks.spec.ts` rolls a Hands check from the sheet and finds it in the journal; the step path is not driven through the UI (the heist phase is ~20 steps away) and is covered by `NightJobPresetFlowTest` and `CampaignFlowChecksApiTest`. Route: delegated writer (slice 7).
+- 2026-10-14: T9 done (docs only; structural readback, no RED/GREEN). Roadmap row 12 closed with a Done paragraph as for `rules-derived-values`; feature Status done, pending the slice 7 review and PR rows. Route: delegated writer (slice 7).
 
 ## Reviews
 
@@ -132,4 +133,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 7 (T8, T9): writer, then native review, push and PR, then one doc-only commit recording the slice 7 review and PR on the same branch. Then the feature is closed.
+Review slice 7, PR, then record its review and PR.

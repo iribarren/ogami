@@ -6,7 +6,7 @@ import type { CompleteFlowStepRequest, FlowStep } from './useFlowRun'
  * The control of a `check` step: the player picks the Character who rolls (one of those the
  * server lists, preselected when there is just one), the Check difficulty unless the step fixes
  * it, and a Situational modifier. The step fails closed when the check is not in the campaign's
- * release or no Character can roll it. A refusal comes back as the answer's error.
+ * release, no Character can roll it, or the difficulty it fixes cannot be worked out right now. A refusal comes back as the answer's error.
  */
 export function CheckStepForm({
   campaign,
@@ -37,8 +37,18 @@ export function CheckStepForm({
     )
   }
 
+  if (step.difficultyFixed && step.difficulty === null) {
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        The difficulty can't be worked out right now.
+      </p>
+    )
+  }
+
   return (
     <CheckForm
+      // Each check step starts from its own values, not the previous step's edits.
+      key={step.key}
       checks={[check]}
       characters={step.characters}
       fixedDifficulty={step.difficulty}

@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\PickCandidate;
@@ -15,7 +16,6 @@ use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
-use App\Randomness\Domain\Oracle\YesNoAnswer;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -130,30 +130,87 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         }
     }
 
-    #[Test]
-    public function aFailedInfiltrationRaisesTheAlarm(): void
+    /**
+     * @return iterable<string, array{int, int, string}> the die, the Alarm and the band: Vi adds 4 (hands) to the die, against 13 + the Alarm
+     */
+    public static function slipPasts(): iterable
     {
-        $campaign = $this->inTheHeist();
-        $campaign->pickSceneType('infiltration', $this->release, self::at());
-        $campaign->skipFlowStep('approach', $this->release, self::at());
+        yield 'a clean success' => [9, 0, 'Success'];
+        yield 'a fail at the lowest difficulty' => [5, 0, 'Failed'];
+        yield 'a botch' => [2, 0, 'Botched'];
+        yield 'the same total fails once the alarm rose' => [9, 2, 'Failed'];
+    }
 
-        $campaign->completeFlowStep('slip-past', self::oracle(YesNoAnswer::No), $this->release, self::at());
+    #[Test]
+    #[DataProvider('slipPasts')]
+    public function slippingPastIsAHandsCheckAgainstTheAlarm(int $die, int $alarm, string $band): void
+    {
+        $campaign = $this->inInfiltration();
+        $campaign->setTrackerValue($this->alarm(), $alarm, self::at());
+
+        $campaign->completeFlowStep('slip-past', $this->checked($campaign, 'slip-past', 'hands', $die), $this->release, self::at());
+
+        self::assertSame($band, self::flowRunOf($campaign)->answers()['slip-past']);
+    }
+
+    #[Test]
+    public function theSlipPastDifficultyFollowsTheAlarm(): void
+    {
+        $campaign = $this->inInfiltration();
+        $difficulty = fn (): ?int => $campaign->flowRunView($this->release)?->step?->check?->difficulty;
+
+        $quiet = $difficulty();
+        $campaign->setTrackerValue($this->alarm(), 5, self::at());
+
+        self::assertSame([13, 18], [$quiet, $difficulty()]);
+        self::assertTrue($campaign->flowRunView($this->release)?->step?->check?->difficultyFixed);
+    }
+
+    #[Test]
+    public function aSuccessfulSlipPastContinuesWithoutRaisingTheAlarm(): void
+    {
+        $campaign = $this->inInfiltration();
+
+        $campaign->completeFlowStep('slip-past', $this->checked($campaign, 'slip-past', 'hands', 9), $this->release, self::at());
+
+        self::assertSame([0, 'infiltration'], [$campaign->trackerValue($this->alarm()), $campaign->currentScene()?->sceneType()]);
+    }
+
+    #[Test]
+    public function aFailedSlipPastRaisesTheAlarm(): void
+    {
+        $campaign = $this->inInfiltration();
+
+        $campaign->completeFlowStep('slip-past', $this->checked($campaign, 'slip-past', 'hands', 5), $this->release, self::at());
 
         self::assertSame([1, 'infiltration'], [$campaign->trackerValue($this->alarm()), $campaign->currentScene()?->sceneType()]);
     }
 
     #[Test]
-    public function anExceptionalNoSwitchesTheInfiltrationIntoAFirefight(): void
+    public function aBotchedSlipPastSwitchesTheInfiltrationIntoAFirefight(): void
     {
-        $campaign = $this->inTheHeist();
-        $campaign->pickSceneType('infiltration', $this->release, self::at());
-        $campaign->skipFlowStep('approach', $this->release, self::at());
+        $campaign = $this->inInfiltration();
 
-        $campaign->completeFlowStep('slip-past', self::oracle(YesNoAnswer::ExceptionalNo), $this->release, self::at());
+        $campaign->completeFlowStep('slip-past', $this->checked($campaign, 'slip-past', 'hands', 2), $this->release, self::at());
 
         self::assertSame(['setup', 'who-shoots', 'firefight'], [...self::position($campaign), $campaign->currentScene()?->sceneType()]);
         $campaign->completeFlowStep('who-shoots', self::prompt('Ada'), $this->release, self::at());
         self::assertSame('Firefight: Ada', $campaign->currentScene()?->title());
+    }
+
+    #[Test]
+    public function losingThemIsACoolCheckWhoseDifficultyThePlayerSets(): void
+    {
+        $campaign = $this->inTheHeist();
+        $this->grabIt($campaign);
+        $campaign->completeFlowStep('wheel', StepResult::pick(ItemKind::Npc, []), $this->release, self::at());
+        $campaign->skipFlowStep('you-drive', $this->release, self::at());
+        $view = $campaign->flowRunView($this->release)?->step?->check;
+
+        // Vi's Cool is under 4 once the alarm is up: 9 + Cool stays under the difficulty 15, a fail.
+        $campaign->completeFlowStep('lose-them', $this->checked($campaign, 'lose-them', 'cool', 9, 15), $this->release, self::at());
+
+        self::assertSame([null, false, 'Failed'], [$view?->difficulty, $view->difficultyFixed ?? true, self::flowRunOf($campaign)->answers()['lose-them']]);
     }
 
     #[Test]
@@ -270,6 +327,28 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('double-cross', self::roll('1d6', 1), $this->release, self::at());
 
         self::assertSame(['setup', 'betrayed'], self::position($campaign));
+    }
+
+    /**
+     * The result of the Character Vi rolling the check with the die scripted: the difficulty is the
+     * step's when it fixes one, else the one the player gives.
+     */
+    private function checked(Campaign $campaign, string $stepKey, string $check, int $die, ?int $given = null): StepResult
+    {
+        $difficulty = $campaign->flowCheckDifficulty($stepKey, 'vi', $given, $this->release, self::at());
+        $vi = $campaign->character(CharacterId::fromString('vi')) ?? self::fail('No Vi.');
+        $values = SheetValues::of($this->release->sheet(), $vi->values(), $campaign->trackerValuesOf($this->release));
+
+        return StepResult::check('vi', ($this->release->check($check) ?? self::fail('No check.'))->perform(new ScriptedRandomNumberGenerator($die), $values, $difficulty, 0));
+    }
+
+    private function inInfiltration(): Campaign
+    {
+        $campaign = $this->inTheHeist();
+        $campaign->pickSceneType('infiltration', $this->release, self::at());
+        $campaign->skipFlowStep('approach', $this->release, self::at());
+
+        return $campaign;
     }
 
     private function alarm(): \App\Play\Domain\GameSystem\Tracker

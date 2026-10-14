@@ -24,7 +24,7 @@ use OpenApi\Attributes as OA;
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
  * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
-#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'difficulty', 'characters'])]
+#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'difficulty', 'difficultyFixed', 'characters'])]
 final readonly class FlowStepResponse
 {
     /**
@@ -71,6 +71,8 @@ final readonly class FlowStepResponse
         public ?string $check,
         #[OA\Property(description: 'The Check difficulty the check step fixes, as it stands now; null when the player sets it, for the other kinds, and when the step\'s formula cannot be evaluated (answering the step is then refused).', example: 7, nullable: true)]
         public ?int $difficulty,
+        #[OA\Property(description: 'Whether the check step fixes the Check difficulty (a literal, a Tracker or a Formula), even when it cannot be evaluated now (difficulty is then null and answering the step is refused); false when the player sets it and for the other kinds.')]
+        public bool $difficultyFixed,
         #[OA\Property(
             description: 'The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds.',
             type: 'array',
@@ -108,6 +110,6 @@ final readonly class FlowStepResponse
         $step = $view->step;
         $checkView = $view->check;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checkView?->difficulty, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []));
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []));
     }
 }

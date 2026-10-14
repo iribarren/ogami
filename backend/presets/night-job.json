@@ -290,7 +290,7 @@
       "setup": [],
       "play": [
         {"key": "approach", "kind": "prompt", "title": "How do you try to get in?"},
-        {"key": "slip-past", "kind": "oracle", "title": "Do you slip past?", "tip": "A no raises the alarm by one. An exceptional no starts a firefight.", "oracle": "fate", "likelihood": "even", "branches": {"no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}}}
+        {"key": "slip-past", "kind": "check", "title": "Do you slip past?", "tip": "Roll Hands against a difficulty that grows with the alarm. A fail raises the alarm by one. A botch starts a firefight.", "check": "hands", "difficulty": {"formula": "13 + {tracker:alarm}"}, "outcomes": [{"band": "botch", "effects": [{"kind": "switchSceneType", "sceneType": "firefight"}]}, {"band": "fail", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}]}
       ],
       "closing": []
     },
@@ -347,7 +347,7 @@
         {"key": "you-drive", "kind": "prompt", "title": "Nobody else can drive", "prompt": "You take the wheel."}
       ],
       "play": [
-        {"key": "lose-them", "kind": "oracle", "title": "Do you lose them?", "oracle": "fate", "likelihood": "unlikely"}
+        {"key": "lose-them", "kind": "check", "title": "Do you lose them?", "tip": "Roll Cool and set the difficulty from how good the pursuers are.", "check": "cool"}
       ],
       "closing": []
     },
@@ -433,5 +433,12 @@
       {"key": "cyberware", "label": "Cyberware", "group": "Kit", "type": "list", "itemLabel": "Implant", "maxItems": 10}
     ]
   },
-  "checks": []
+  "checks": [
+    {"key": "nerve", "label": "Nerve check", "hint": "Stay steady when the job goes wrong.", "dice": "1d10", "modifier": "{nerve}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
+    {"key": "hands", "label": "Hands check", "hint": "Quick, careful work: a lock, a wire, a trigger.", "dice": "1d10", "modifier": "{hands}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
+    {"key": "wits", "label": "Wits check", "hint": "Read the room, spot the flaw in the plan.", "dice": "1d10", "modifier": "{wits}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
+    {"key": "grit", "label": "Grit check", "hint": "Take the hit and stay on your feet.", "dice": "1d10", "modifier": "{grit}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
+    {"key": "charm", "label": "Charm check", "hint": "Talk your way past someone.", "dice": "1d10", "modifier": "{charm}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
+    {"key": "cool", "label": "Cool check", "hint": "Keep your head while security closes in.", "dice": "1d10", "modifier": "{cool}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]}
+  ]
 }

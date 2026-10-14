@@ -3,15 +3,17 @@ import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { RollCheckDialog } from '../checks/RollCheckDialog'
 import { TagChips } from '../lists/TagFields'
 import { CharacterForm } from './CharacterForm'
 import { summarize } from './sheetValues'
 import { useCharacterActions, type Character, type CharacterFields } from './useCharacters'
 
 /**
- * The Characters of a campaign, each with its Tags and a summary of its sheet, and an inline
- * form to add and edit. There is no deleting a Character. Only the Characters list is shown
- * here; a release without sheet fields gives name and Tags only.
+ * The Characters of a campaign, each with its Tags and a summary of its sheet, an inline form to
+ * add and edit, and a dialog to roll a check when the release has any. There is no deleting a
+ * Character. Only the Characters list is shown here; a release without sheet fields gives name
+ * and Tags only.
  */
 export function CharactersPanel({ campaign }: { campaign: Campaign }) {
   const { save } = useCharacterActions(campaign.id)
@@ -63,17 +65,22 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
               <li key={character.id} className="space-y-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">{character.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Edit ${character.name}`}
-                    onClick={() => {
-                      openForm(character.id)
-                    }}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex gap-1">
+                    {campaign.checks.length > 0 && (
+                      <RollCheckDialog campaign={campaign} character={character} />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Edit ${character.name}`}
+                      onClick={() => {
+                        openForm(character.id)
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {sheet

@@ -127,6 +127,8 @@ final class CompleteFlowStepCheckHandlerTest extends TestCase
         yield 'a field of another kind' => [CheckStepReleases::step(), $command(text: 'sneak'), InvalidStepResult::class];
         yield 'a difficulty when the step fixes one' => [CheckStepReleases::step(difficulty: 15), $command(difficulty: 12), InvalidStepResult::class];
         yield 'a difficulty for a check without one' => [CheckStepReleases::step('flat'), $command(difficulty: 5), CheckDifficultyNotDeclared::class];
+        yield 'a Tracker-based difficulty that resolves over the max' => [CheckStepReleases::step(difficulty: Formula::fromString('{tracker:heat} + 25')), $command(), CheckDifficultyOutOfRange::class];
+        yield 'a Tracker-based difficulty that resolves under the min' => [CheckStepReleases::step(difficulty: Formula::fromString('{tracker:heat} - 5')), $command(), CheckDifficultyOutOfRange::class];
         yield 'a difficulty out of range' => [CheckStepReleases::step(), $command(difficulty: 30), CheckDifficultyOutOfRange::class];
         yield 'a situational modifier out of range' => [CheckStepReleases::step(), $command(situational: 101), SituationalModifierOutOfRange::class];
         yield 'a modifier that cannot be evaluated' => [CheckStepReleases::step('broken'), $command(), CheckEvaluationFailed::class];

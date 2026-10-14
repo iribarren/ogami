@@ -1,6 +1,6 @@
-import { lostMineCampaign } from '../campaigns/fixtures'
+import { lostMineCampaign, skillCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { nightJobCampaign, viCharacter } from '../characters/fixtures'
+import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
 import { allyTag, brannNpc, leaderTag, lostMineWithLists, miraNpc } from '../lists/fixtures'
 import type { FlowRun, FlowStep } from './useFlowRun'
 
@@ -79,6 +79,16 @@ export const characterStep = step({
   title: 'Who are you?',
   prompt: 'Create the Character you play.',
   mandatory: true,
+})
+
+/** A `check` step: Vi rolls the "Skill check", the player sets the difficulty. */
+export const checkStep = step({
+  key: 'sneak',
+  kind: 'check',
+  title: 'Slip past the guard',
+  prompt: 'Roll to get by unseen.',
+  check: skillCheck.key,
+  characters: [{ id: viCharacter.id, name: viCharacter.name }],
 })
 
 type PickDetails = NonNullable<FlowStep['pick']>
@@ -210,4 +220,10 @@ export const guidedWithCharacters = (flowRun: FlowRun) => ({
   tags: nightJobCampaign.tags,
   pinnedRelease: nightJobCampaign.pinnedRelease,
   characters: nightJobCampaign.characters,
+})
+
+/** `guidedWithCharacters` whose release has the checks "Skill check" and "Luck". */
+export const guidedWithChecks = (flowRun: FlowRun) => ({
+  ...guidedWithCharacters(flowRun),
+  checks: nightJobWithChecks.checks,
 })

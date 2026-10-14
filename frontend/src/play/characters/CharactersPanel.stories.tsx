@@ -7,6 +7,7 @@ import {
   initiativeField,
   lostMineWithCharacters,
   nightJobCampaign,
+  nightJobWithChecks,
   oldCharacter,
   sheet,
   viCharacter,
@@ -78,5 +79,16 @@ export const EditRefused: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('must be 1 to 8')
     await expect(canvas.getByLabelText('Name')).toHaveValue('Vi')
+  },
+}
+
+/** A release with checks: each Character can roll one from a dialog. */
+export const RollACheck: Story = {
+  args: { campaign: { ...nightJobWithChecks, characters: [viCharacter, oldCharacter] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Roll a check for Vi' }))
+    const dialog = within(await within(document.body).findByRole('dialog'))
+    await expect(dialog.getByLabelText('Difficulty Value')).toHaveValue(13)
   },
 }

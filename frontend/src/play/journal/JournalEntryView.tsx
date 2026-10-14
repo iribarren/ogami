@@ -4,6 +4,7 @@ import { Badge } from '@/shared/ui/badge'
 
 import { DiceGroups } from '../dice/DiceGroups'
 import type {
+  CheckContent,
   JournalEntry,
   LikelihoodContent,
   NoteContent,
@@ -46,6 +47,8 @@ function entryLabel(content: JournalEntry['content']) {
       return `Choice ${content.question}`
     case 'pick':
       return `Pick ${kindLabels[content.of]}`
+    case 'check':
+      return `Check ${content.checkLabel}`
   }
 }
 
@@ -85,7 +88,43 @@ function EntryContent({ content, tags }: { content: JournalEntry['content']; tag
       return <ChoiceView content={content} />
     case 'pick':
       return <PickView content={content} tags={tags} />
+    case 'check':
+      return <CheckView content={content} />
   }
+}
+
+/** A check: who rolled which check, the band it landed in, then the dice and how the total adds up. */
+function CheckView({ content }: { content: CheckContent }) {
+  return (
+    <>
+      <p className="font-medium">
+        {content.characterName} · {content.checkLabel}
+      </p>
+      <p className="flex flex-wrap items-baseline gap-2">
+        <span className="sr-only">Outcome:</span>
+        <span className="text-2xl font-bold">{content.bandLabel}</span>
+      </p>
+      <DiceGroups groups={content.groups} />
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <Detail term="Dice">
+          <span className="font-mono">{content.expression}</span> = {content.diceTotal}
+        </Detail>
+        {content.modifier !== 0 && <Detail term="Modifier">{signed(content.modifier)}</Detail>}
+        {content.situational !== 0 && (
+          <Detail term="Situational">{signed(content.situational)}</Detail>
+        )}
+        <Detail term="Total">
+          <strong>{content.total}</strong>
+          {content.difficulty !== null && <> vs {content.difficulty}</>}
+        </Detail>
+      </dl>
+    </>
+  )
+}
+
+/** A modifier with its sign, so a bonus and a penalty read alike. */
+function signed(value: number) {
+  return value > 0 ? `+${String(value)}` : String(value)
 }
 
 function PickView({ content, tags }: { content: PickContent; tags: TagLabels }) {

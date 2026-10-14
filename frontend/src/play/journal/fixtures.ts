@@ -144,6 +144,55 @@ export const fateDouble: JournalEntry = {
   },
 }
 
+/** A "Skill check" by Vi against a difficulty, from a sheet roll: 7 + 6 + 2 = 15 is a success. */
+export const skillCheckEntry: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7007',
+  sessionNumber: 2,
+  sceneNumber: 1,
+  recordedAt: '2026-10-06T12:10:00+00:00',
+  kind: 'check',
+  flowStep: null,
+  content: {
+    kind: 'check',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    checkKey: 'skill',
+    checkLabel: 'Skill check',
+    expression: '1d10',
+    groups: [{ notation: '1d10', sides: 10, dice: [{ value: 7, kept: true }], subtotal: 7 }],
+    diceTotal: 7,
+    modifier: 6,
+    situational: 2,
+    difficulty: 13,
+    total: 15,
+    bandKey: 'success',
+    bandLabel: 'Success',
+  },
+}
+
+/** A "Luck" check from a flow step: no modifiers and no difficulty. */
+export const luckCheckEntry: JournalEntry = {
+  ...skillCheckEntry,
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7008',
+  flowStep: { key: 'tempt-fate', title: 'Tempt fate', prompt: null },
+  content: {
+    kind: 'check',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    checkKey: 'luck',
+    checkLabel: 'Luck',
+    expression: 'd%',
+    groups: [{ notation: '1d100', sides: 100, dice: [{ value: 12, kept: true }], subtotal: 12 }],
+    diceTotal: 12,
+    modifier: 0,
+    situational: 0,
+    difficulty: null,
+    total: 12,
+    bandKey: 'bad',
+    bandLabel: 'Bad luck',
+  },
+}
+
 /** The journal of `lostMineCampaign`: every kind, in recorded order. */
 export const lostMineJournal: JournalEntry[] = [
   gateNote,

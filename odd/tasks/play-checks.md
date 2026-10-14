@@ -92,8 +92,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 4 | Sheet checks: `check` journal content; `POST /api/campaigns/{id}/journal/checks`; Campaign response exposes checks; 404/422 mapping and API tests; `make api` | delegated writer (slice 4) | [x] | dbe7e39, 5f23c6f, 1409e02 |
 | T6 | 5 | Check step: translator reads `check` steps (step `check` exists, `difficulty` only for a check with one, `outcomes[].band` exists and unique; doc example gains a check step), `StepKind::Check`, `StepResult::check`, FlowRun branching by band key and effects, Character eligibility (Scene characters, else party), fixed step difficulty; handler, request and response; API tests; `make api` | delegated writer (slice 5) | [x] | 5ed07d1, 32aec22, 8f4f16a |
 | T7 | 6 | UI: check dialog in the Characters panel, journal `check` entry, `check` step card; fixtures; Vitest | delegated writer (slice 6) | [x] | 398d550, 8f159d3, 8e7c4fe, af88989 |
-| T8 | 7 | Night Job checks (stats vs DV, original wording) and check steps in the heist flow; preset tests; e2e: roll a check from the sheet and from a step | delegated writer (slice 7) | [x] | |
-| T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | delegated writer (slice 7) | [x] | |
+| T8 | 7 | Night Job checks (stats vs DV, original wording) and check steps in the heist flow; preset tests; e2e: roll a check from the sheet and from a step | delegated writer (slice 7) | [x] | 0687b3d, 64307d9 |
+| T9 | 7 | Wrap-up: roadmap 12 done, feature doc closed | delegated writer (slice 7) | [x] | f453b9a |
 
 ## Progress
 
@@ -123,6 +123,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `review-1b59ccf60563bb73` | dbe7e39, 5f23c6f (generated 1409e02 not reviewed, declined by the user) | approved, acknowledged; R3-001: frontend fixtures need the regenerated types, resolved by 1409e02 in the same PR (no fix needed) | [#118](https://github.com/iribarren/ogami/pull/118) |
 | 5 | `review-d6fc456db1fb3a12` | 5ed07d1, 32aec22, 8f4f16a | approved, acknowledged; R3-001: a `{tracker}` or `{formula}` step difficulty can fall outside the check's min..max at play time (the translator only checks literals, `GameSystemReleaseTranslator.php:302-308`); the 422 is untested (fixed in slice 6) | [#119](https://github.com/iribarren/ogami/pull/119) |
 | 6 | `review-a0cf732b224eb7ee` | 398d550, 8f159d3, 8e7c4fe, af88989 | approved, acknowledged; R3-001: `CheckStepForm.tsx:44` treats a null `step.difficulty` as player-set, but the server also sends null for a fixed formula difficulty it cannot evaluate, so the card shows an editable input and every Roll is refused (422); R3-002: `CheckForm.tsx:46-53` sets its state on mount only, so two consecutive check steps keep the first step's values (both fixed in slice 7) | [#120](https://github.com/iribarren/ogami/pull/120) |
+| 7 | `review-7a389d9856ceed6e` | 0687b3d, 64307d9, f453b9a | approved, acknowledged; R3-001 (suggestion): no test proves the `CheckForm` key in `CheckStepForm.tsx:50-51`, because `StepCard` is already keyed by step; left as a follow-up (the key is harmless) | [#121](https://github.com/iribarren/ogami/pull/121) |
 
 ## Slice 7 decisions (parent, 2026-10-14)
 
@@ -133,4 +134,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Review slice 7, PR, then record its review and PR.
+None: the feature is done once #121 is merged (it closes #114). Next roadmap feature: 13 `preset-real-system`.

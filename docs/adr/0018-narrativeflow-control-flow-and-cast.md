@@ -1,6 +1,6 @@
 # 0018. NarrativeFlow control flow and cast
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0025](0025-items-and-shops-after-the-mvp.md)
 - **Date:** 2026-10-09
 
 ## Context
@@ -97,7 +97,7 @@ This ADR amends ADR 0017. Decision numbers match the [feature doc](../../odd/tas
 25. **Survival economies** (e.g. Cyberpunk RED's rent and lifestyle) use what exists:
     - M2: trackers and release-level Scene Types (Downtime, Night Market, Month's end) with tables and effects.
     - M3: sheet list fields (inventory, cyberware) and effects on sheet fields.
-    - Items, inventory and a `shop` step kind are an open question.
+    - Items, inventory and a `shop` step kind move to the post-M3 feature `play-items-economy` ([ADR 0025](0025-items-and-shops-after-the-mvp.md)); until then gear is a flat sheet `list`.
 
 ### Presets and content
 
@@ -161,7 +161,7 @@ Feature 7 also ships, in schema version 2, the `condition` step kind, table and 
 | 9b `preset-guided-sample` | Now a Cyberpunk RED heist one-shot fan preset (27, 29); the release credits or license field |
 | 10 `play-characters` | Several Characters per Campaign, NPC promotion (24); the Character part of the Scene cast (22); the Session party (23); tags on Characters (15); sheet list fields (25) |
 | 12 `play-checks` | Checks roll for a Character in the cast (24) |
-| 13 `preset-real-system` or later | Items, inventory and a `shop` step kind (25); effects on sheet fields arrive in an M3 schema version |
+| 13 `preset-real-system` | Effects on sheet fields arrive in an M3 schema version. Items, inventory and a `shop` step kind (25) move to `play-items-economy` after M3 ([ADR 0025](0025-items-and-shops-after-the-mvp.md)) |
 | Backlog | Three fan presets: VtM chronicle, Cyberpunk RED campaign in acts, West Marches (28) |
 
 ### Accepted limits
@@ -181,7 +181,7 @@ Feature 7 also ships, in schema version 2, the `condition` step kind, table and 
 | Reusable procedures (named step lists run from a step or the oracle panel) | When a preset repeats a step list |
 | Player-added trackers linked to NPCs, Threads or facts (thread progress, faction power, disposition) | When a preset needs them |
 | Places (map, regions, sites) | When a map-focused preset needs them (West Marches) |
-| Items, inventory and a `shop` step kind | Feature 13 or a post-M3 feature |
+| Items, inventory and a `shop` step kind | Settled: post-M3 `play-items-economy` ([ADR 0025](0025-items-and-shops-after-the-mvp.md)) |
 | Random events from fate-question doubles | Feature 9 `preset-mythic-flow` |
 | Release credits / license field for fan presets | Feature 9b `preset-guided-sample` |
 

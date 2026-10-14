@@ -28,6 +28,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0022 | [Character sheets in schema version 2](0022-character-sheets-in-schema-version-2.md) | Accepted, amended by 0023 and 0024 |
 | 0023 | [Formula kernel and derived values](0023-formula-kernel-and-derived-values.md) | Accepted, amended by 0024 |
 | 0024 | [Structured checks without scripting](0024-structured-checks-without-scripting.md) | Accepted |
+| 0025 | [Items and shops after the MVP](0025-items-and-shops-after-the-mvp.md) | Accepted |
 
 ## Template
 

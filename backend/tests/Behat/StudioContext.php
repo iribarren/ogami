@@ -10,23 +10,37 @@ use App\Studio\Application\DiscardGameSystem;
 use App\Studio\Application\DiscardGameSystemHandler;
 use App\Studio\Application\EditGameSystemMetadata;
 use App\Studio\Application\EditGameSystemMetadataHandler;
+use App\Studio\Application\GameSystemReleaseSummary;
+use App\Studio\Application\GameSystemReleaseView;
 use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemHandler;
+use App\Studio\Application\GetGameSystemRelease;
+use App\Studio\Application\GetGameSystemReleaseHandler;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\GetPublishedReleaseHandler;
+use App\Studio\Application\ListGameSystemReleases;
+use App\Studio\Application\ListGameSystemReleasesHandler;
 use App\Studio\Application\ListMyGameSystems;
 use App\Studio\Application\ListMyGameSystemsHandler;
 use App\Studio\Application\OwnedGameSystems;
 use App\Studio\Application\PublishedReleaseView;
+use App\Studio\Application\PublishGameSystemDraft;
+use App\Studio\Application\PublishGameSystemDraftHandler;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Application\PublishGameSystemReleaseHandler;
+use App\Studio\Application\ReleasePublisher;
+use App\Studio\Application\RestoreGameSystemRelease;
+use App\Studio\Application\RestoreGameSystemReleaseHandler;
 use App\Studio\Application\ValidateGameSystemDraft;
 use App\Studio\Application\ValidateGameSystemDraftHandler;
 use App\Studio\Domain\GameSystem\GameSystemHasReleases;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
+use App\Studio\Domain\Release\GameSystemDraftUnchanged;
+use App\Studio\Domain\Release\GameSystemReleaseNotFound;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
@@ -64,8 +78,8 @@ final class StudioContext implements Context
         $this->releases = new InMemoryGameSystemReleaseRepository();
         $this->ids = new SequentialReleaseIdGenerator();
         $this->clock = new FixedClock();
-        $this->publish = new PublishGameSystemReleaseHandler($this->releases, $this->clock);
         $this->drafts = new InMemoryGameSystemRepository();
+        $this->publish = new PublishGameSystemReleaseHandler(new ReleasePublisher($this->releases, $this->clock), $this->drafts);
         $this->draftIds = new SequentialGameSystemIdGenerator();
         $this->owned = new OwnedGameSystems($this->drafts);
         $this->getRelease = new GetPublishedReleaseHandler($this->releases);
@@ -233,13 +247,87 @@ final class StudioContext implements Context
     #[Given('/^(?P<user>\w+)\'s draft "(?P<key>[^"]+)" was published$/')]
     public function theDraftWasPublished(string $user, string $key): void
     {
-        ($this->publish)(new PublishGameSystemRelease($this->ids->generate()->toString(), $this->owned->get($user, $key)->document(), false));
+        new ReleasePublisher($this->releases, $this->clock)->publish($this->ids->generate(), ReleaseContent::fromArray($this->owned->get($user, $key)->document()), null, false);
     }
 
     #[When('/^(?P<user>\w+) discards the GameSystem "(?P<key>[^"]+)"$/')]
     public function discards(string $user, string $key): void
     {
         $this->attempt(fn () => (new DiscardGameSystemHandler($this->owned, $this->drafts, $this->releases))(new DiscardGameSystem($user, $key)));
+    }
+
+    #[Given('/^(?P<user>\w+) published the GameSystem "(?P<key>[^"]+)"(?: with the notes "(?P<notes>[^"]+)")?$/')]
+    #[When('/^(?P<user>\w+) publishes the GameSystem "(?P<key>[^"]+)"(?: with the notes "(?P<notes>[^"]+)")?$/')]
+    public function publishes(string $user, string $key, ?string $notes = null): void
+    {
+        $this->attempt(fn () => (new PublishGameSystemDraftHandler($this->owned, new ReleasePublisher($this->releases, $this->clock), $this->releases))(
+            new PublishGameSystemDraft($user, $key, $this->ids->generate()->toString(), '' === $notes ? null : $notes),
+        ));
+    }
+
+    #[When('/^(?P<user>\w+) restores release (?P<version>\d+) of "(?P<key>[^"]+)"$/')]
+    public function restores(string $user, int $version, string $key): void
+    {
+        $this->attempt(fn () => (new RestoreGameSystemReleaseHandler($this->owned, $this->drafts, $this->releases, $this->clock))(new RestoreGameSystemRelease($user, $key, $version)));
+    }
+
+    #[Then('ann sees release :version of :key with the notes :notes')]
+    public function seesTheReleaseNotes(int $version, string $key, string $notes): void
+    {
+        Assert::assertSame($notes, $this->releaseOf($key, $version)->summary->notes);
+    }
+
+    #[Then('ann sees release :version of :key named :name with :count flows')]
+    public function seesTheReleaseNamed(int $version, string $key, string $name, int $count): void
+    {
+        $view = $this->releaseOf($key, $version);
+        Assert::assertSame([$name, $count], [$view->name, $view->sectionCounts['flows']]);
+    }
+
+    #[Then('ann sees the history of :key with the versions :versions')]
+    public function seesTheHistory(string $key, string $versions): void
+    {
+        $history = (new ListGameSystemReleasesHandler($this->owned, $this->releases))(new ListGameSystemReleases('ann', $key));
+        Assert::assertSame($versions, implode(', ', array_map(static fn (GameSystemReleaseSummary $line): int => $line->version, $history)));
+    }
+
+    #[Then('ann sees the GameSystem :key at release :version without unpublished changes')]
+    public function seesTheDraftAtRelease(string $key, int $version): void
+    {
+        $view = $this->draft('ann', $key);
+        Assert::assertSame([$version, false], [$view->latestReleaseVersion, $view->hasUnpublishedChanges]);
+    }
+
+    #[Then('ann sees the GameSystem :key named :name at release :version without unpublished changes')]
+    public function seesTheNamedDraftAtRelease(string $key, string $name, int $version): void
+    {
+        Assert::assertSame($name, $this->draft('ann', $key)->name);
+        $this->seesTheDraftAtRelease($key, $version);
+    }
+
+    #[Then('the publish is refused at :path')]
+    public function publishRefusedAt(string $path): void
+    {
+        Assert::assertInstanceOf(InvalidReleaseContent::class, $this->draftRefusal);
+        Assert::assertStringStartsWith($path.': ', $this->draftRefusal->getMessage());
+    }
+
+    #[Then('the publish is refused because there are no changes')]
+    public function publishRefusedUnchanged(): void
+    {
+        Assert::assertInstanceOf(GameSystemDraftUnchanged::class, $this->draftRefusal);
+    }
+
+    #[Then('the publish is refused because the release does not exist')]
+    public function refusedUnknownRelease(): void
+    {
+        Assert::assertInstanceOf(GameSystemReleaseNotFound::class, $this->draftRefusal);
+    }
+
+    #[Then('the GameSystem is not found')]
+    public function refusedNotFound(): void
+    {
+        Assert::assertInstanceOf(GameSystemNotFound::class, $this->draftRefusal);
     }
 
     #[Then('ann sees the GameSystem :key named :name with no release and unpublished changes')]
@@ -322,7 +410,7 @@ final class StudioContext implements Context
 
         try {
             $action();
-        } catch (GameSystemKeyTaken|GameSystemHasReleases|InvalidGameSystemMetadata $refusal) {
+        } catch (GameSystemKeyTaken|GameSystemHasReleases|InvalidGameSystemMetadata|InvalidReleaseContent|GameSystemDraftUnchanged|GameSystemReleaseNotFound|GameSystemNotFound $refusal) {
             $this->draftRefusal = $refusal;
         }
     }
@@ -335,6 +423,11 @@ final class StudioContext implements Context
         } catch (GameSystemNotFound) {
             // Another owner's GameSystem is "not found".
         }
+    }
+
+    private function releaseOf(string $key, int $version): GameSystemReleaseView
+    {
+        return (new GetGameSystemReleaseHandler($this->owned, $this->releases))(new GetGameSystemRelease('ann', $key, $version));
     }
 
     private function draft(string $user, string $key): \App\Studio\Application\GameSystemView

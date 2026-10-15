@@ -8,7 +8,10 @@ use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
+use App\Studio\Application\ReleasePublisher;
 use App\Studio\Domain\GameSystem\GameSystemRepository;
+use App\Studio\Domain\Release\ReleaseContent;
+use App\Studio\Domain\Release\ReleaseId;
 use App\Studio\Infrastructure\Http\CreateGameSystemRequest;
 use App\Studio\Infrastructure\Http\EditGameSystemMetadataRequest;
 use App\Studio\Infrastructure\Http\GameSystemController;
@@ -518,7 +521,8 @@ final class GameSystemDraftApiTest extends WebTestCase
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
         $this->createDraft('minimal');
-        $this->publishRelease(ReleaseArrays::fixture('valid/v2-minimal'));
+        // The console publisher refuses a Studio key, so this release is written as publishing the draft would.
+        self::getContainer()->get(ReleasePublisher::class)->publish(ReleaseId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9999'), ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-minimal')), null, false);
 
         $this->client->request('DELETE', self::BASE.'/minimal');
 

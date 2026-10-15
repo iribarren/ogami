@@ -6,6 +6,10 @@ namespace App\Tests\Unit\Studio\Application;
 
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Application\PublishGameSystemReleaseHandler;
+use App\Studio\Application\ReleasePublisher;
+use App\Studio\Domain\GameSystem\GameSystem;
+use App\Studio\Domain\GameSystem\GameSystemId;
+use App\Studio\Domain\GameSystem\GameSystemManagedInStudio;
 use App\Studio\Domain\Release\GameSystemRelease;
 use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
@@ -14,6 +18,7 @@ use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
+use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\InterleavingGameSystemReleaseRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -21,17 +26,20 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PublishGameSystemRelease::class)]
 #[CoversClass(PublishGameSystemReleaseHandler::class)]
+#[CoversClass(ReleasePublisher::class)]
 final class PublishGameSystemReleaseHandlerTest extends TestCase
 {
     private InMemoryGameSystemReleaseRepository $releases;
     private FixedClock $clock;
+    private InMemoryGameSystemRepository $gameSystems;
     private PublishGameSystemReleaseHandler $handler;
 
     protected function setUp(): void
     {
         $this->releases = new InMemoryGameSystemReleaseRepository();
         $this->clock = new FixedClock('2026-10-05T10:00:00+00:00');
-        $this->handler = new PublishGameSystemReleaseHandler($this->releases, $this->clock);
+        $this->gameSystems = new InMemoryGameSystemRepository();
+        $this->handler = new PublishGameSystemReleaseHandler(new ReleasePublisher($this->releases, $this->clock), $this->gameSystems);
     }
 
     #[Test]
@@ -132,7 +140,7 @@ final class PublishGameSystemReleaseHandlerTest extends TestCase
                 $releases->add(GameSystemRelease::publish(ReleaseId::fromString('other'), $release->content(), $release->version(), $release->publishedAt()));
             },
         );
-        $handler = new PublishGameSystemReleaseHandler($racing, $this->clock);
+        $handler = new PublishGameSystemReleaseHandler(new ReleasePublisher($racing, $this->clock), $this->gameSystems);
 
         try {
             $handler(new PublishGameSystemRelease('r-1', $this->content(), false));
@@ -144,6 +152,23 @@ final class PublishGameSystemReleaseHandlerTest extends TestCase
 
         self::assertSame(1, $this->releases->count());
         self::assertNull($this->releases->ofId(ReleaseId::fromString('r-1')));
+    }
+
+    #[Test]
+    public function aKeyOfAStudioGameSystemIsRefusedAndNothingIsStored(): void
+    {
+        $this->gameSystems->add(GameSystem::createBlank(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a51'), 'free-journal', 'Mine', null, 'ann', $this->clock->now()));
+
+        foreach ([false, true] as $onlyIfChanged) {
+            try {
+                ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), $onlyIfChanged));
+                self::fail('A Studio GameSystem line was published to.');
+            } catch (GameSystemManagedInStudio $refusal) {
+                self::assertStringContainsString('free-journal', $refusal->getMessage());
+            }
+        }
+
+        self::assertSame(0, $this->releases->count());
     }
 
     /**

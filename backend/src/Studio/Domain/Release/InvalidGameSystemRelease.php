@@ -10,4 +10,9 @@ final class InvalidGameSystemRelease extends \DomainException
     {
         return new self(\sprintf('A release version starts at 1, %d given.', $version));
     }
+
+    public static function notes(string $reason): self
+    {
+        return new self(\sprintf('Release notes %s.', $reason));
+    }
 }

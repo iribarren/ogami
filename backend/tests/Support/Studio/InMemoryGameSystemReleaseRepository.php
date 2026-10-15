@@ -43,6 +43,14 @@ final class InMemoryGameSystemReleaseRepository implements GameSystemReleaseRepo
         return $latest;
     }
 
+    public function allFor(string $gameSystemKey): array
+    {
+        $all = array_values(array_filter($this->releases, static fn (GameSystemRelease $release): bool => $release->gameSystemKey() === $gameSystemKey));
+        usort($all, static fn (GameSystemRelease $a, GameSystemRelease $b): int => $b->version() <=> $a->version());
+
+        return $all;
+    }
+
     public function latestOfEachKey(): array
     {
         $latest = [];

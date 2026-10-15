@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
@@ -28,13 +29,20 @@ use PHPUnit\Framework\Attributes\Test;
  * The shipped `percentile-horror` preset played through the Campaign: the prologue, the four
  * investigation scenes with their branching checks, the loop that ends on clues or dread, the
  * confrontation and the epilogue. The investigator has Library use, Persuade, Psychology, Spot hidden,
- * Stealth and Power at 50, and a Sanity of 99 (the track starts full).
+ * Stealth and Power at 50 (unless a test says otherwise) and 12 Hit points; choosing them at the
+ * character step sets their Sanity to their Power.
  */
 #[CoversClass(FlowRun::class)]
 #[CoversClass(Campaign::class)]
 final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
 {
     private GameSystemSnapshot $release;
+
+    /** The investigator's Power, which the character step turns into Sanity. */
+    private int $pow = 50;
+
+    /** The investigator's Hit points, current and max. */
+    private int $hp = 12;
 
     protected function setUp(): void
     {
@@ -107,6 +115,147 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         self::assertSame(1, self::flowRunOf($campaign)->phaseIndex());
         $campaign->pickSceneType('archive', $this->release, self::at());
         self::assertSame('archive', $campaign->currentScene()?->sceneType());
+    }
+
+    #[Test]
+    public function choosingTheInvestigatorSetsTheirSanityToTheirPower(): void
+    {
+        $this->pow = 65;
+        $campaign = self::guided($this->release, 'kingsport-mystery');
+        $campaign->startSession(self::at(), $this->release);
+
+        // A new Character's Sanity track starts full (99); the character step sets it to Power.
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['pow' => $this->pow], $this->release);
+        self::assertSame(99, $this->current($campaign, 'sanity'));
+        $changes = $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at());
+
+        self::assertEquals([new SheetChange('sanity', 99, 65)], $changes);
+        self::assertSame(65, $this->current($campaign, 'sanity'));
+    }
+
+    /**
+     * @return iterable<string, array{string, int, ?int, int, int}> the Sanity step, the d100 against Sanity 65, the die of the loss rolled (none on a success), the Sanity lost and the dread raised
+     */
+    public static function sanityChecks(): iterable
+    {
+        foreach (['shock' => ['1d6', 6], 'nerve' => ['1d6', 6], 'final-shock' => ['1d10', 10]] as $step => [$dice, $fumbleLoss]) {
+            $failureLoss = 4;
+            yield $step.': a critical success costs 1' => [$step, 1, null, 1, 0];
+            yield $step.': an extreme success costs 1' => [$step, 13, null, 1, 0];
+            yield $step.': a hard success costs 1' => [$step, 32, null, 1, 0];
+            yield $step.': a regular success costs 1' => [$step, 65, null, 1, 0];
+            yield $step.': a failure costs '.$dice => [$step, 66, $failureLoss, $failureLoss, 'final-shock' === $step ? 0 : 1];
+            yield $step.': a fumble costs '.$fumbleLoss => [$step, 100, null, $fumbleLoss, 'final-shock' === $step ? 0 : 2];
+        }
+    }
+
+    #[Test]
+    #[DataProvider('sanityChecks')]
+    public function aSanityCheckCostsSanityByItsBand(string $step, int $die, ?int $rolled, int $lost, int $dread): void
+    {
+        $this->pow = 65;
+        $campaign = $this->atTheSanityStep($step);
+        $before = $campaign->trackerValue($this->tracker('dread'));
+
+        $changes = $campaign->completeFlowStep($step, $this->checked($campaign, $step, 'sanity', $die), $this->release, self::at(), null === $rolled ? new ScriptedRandomNumberGenerator() : new ScriptedRandomNumberGenerator($rolled));
+
+        self::assertSame([65 - $lost, $before + $dread], [$this->current($campaign, 'sanity'), $campaign->trackerValue($this->tracker('dread'))]);
+        self::assertSame([['sanity', 65, 65 - $lost]], array_map(static fn (SheetChange $change): array => [$change->field, $change->before, $change->after], $changes));
+    }
+
+    /**
+     * @return iterable<string, array{string, int}> the Sanity step and the die of the loss
+     */
+    public static function sanitySteps(): iterable
+    {
+        yield 'a failure at the site' => ['shock', 6];
+        yield 'a failure at night' => ['nerve', 6];
+        yield 'a failure at the end' => ['final-shock', 10];
+    }
+
+    #[Test]
+    #[DataProvider('sanitySteps')]
+    public function sanityDoesNotFallUnderZero(string $step, int $rolled): void
+    {
+        $this->pow = 3;
+        $campaign = $this->atTheSanityStep($step);
+
+        // A 50 fails at Sanity 3 and loses the whole die; a fumble would lose more than is left.
+        $campaign->completeFlowStep($step, $this->checked($campaign, $step, 'sanity', 50), $this->release, self::at(), new ScriptedRandomNumberGenerator($rolled));
+
+        self::assertSame(0, $this->current($campaign, 'sanity'));
+    }
+
+    #[Test]
+    public function aFumbledSanityCheckAtLowSanityStopsAtZero(): void
+    {
+        $this->pow = 3;
+        $campaign = $this->atTheSanityStep('nerve');
+
+        $campaign->completeFlowStep('nerve', $this->checked($campaign, 'nerve', 'sanity', 100), $this->release, self::at());
+
+        self::assertSame(0, $this->current($campaign, 'sanity'));
+    }
+
+    /**
+     * @return iterable<string, array{int, ?int, int, int}> the d100 against Stealth 50, the die of the wound, the Hit points lost and the dread raised
+     */
+    public static function hides(): iterable
+    {
+        yield 'a success costs nothing' => [50, null, 0, 0];
+        yield 'a failure raises the dread only' => [60, null, 0, 1];
+        yield 'a fumble raises the dread by 2 and wounds' => [100, 5, 5, 2];
+    }
+
+    #[Test]
+    #[DataProvider('hides')]
+    public function slippingAwayUnseenMayCostDreadAndAWound(int $die, ?int $rolled, int $lost, int $dread): void
+    {
+        $campaign = $this->inTheInvestigation();
+        $campaign->pickSceneType('night', $this->release, self::at());
+        $campaign->completeFlowStep('event', self::prompt('Bells ring under the water'), $this->release, self::at());
+
+        $campaign->completeFlowStep('hide', $this->checked($campaign, 'hide', 'stealth', $die), $this->release, self::at(), null === $rolled ? new ScriptedRandomNumberGenerator() : new ScriptedRandomNumberGenerator($rolled));
+
+        self::assertSame([12 - $lost, $dread, 'glimpse'], [$this->current($campaign, 'hp'), $campaign->trackerValue($this->tracker('dread')), self::position($campaign)[1]]);
+    }
+
+    /**
+     * @return iterable<string, array{int, string, ?int, int, int}> the d100 against Power 50, the step after, the die of the wound, the Hit points lost and the dread raised
+     */
+    public static function wills(): iterable
+    {
+        yield 'a hard success drives it back unhurt' => [25, 'banish', null, 0, 0];
+        yield 'a regular success is not enough and wounds' => [26, 'cost', 3, 3, 0];
+        yield 'a failure wounds' => [60, 'cost', 6, 6, 0];
+        yield 'a fumble wounds and raises the dread by 2' => [100, 'cost', 2, 2, 2];
+    }
+
+    #[Test]
+    #[DataProvider('wills')]
+    public function holdingYourGroundCostsHitPointsUnlessItIsAHardSuccess(int $die, string $step, ?int $rolled, int $lost, int $dread): void
+    {
+        $campaign = $this->atTheConfrontation();
+        $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
+        $campaign->skipFlowStep('horror', $this->release, self::at());
+
+        $campaign->completeFlowStep('will', $this->checked($campaign, 'will', 'pow', $die), $this->release, self::at(), null === $rolled ? new ScriptedRandomNumberGenerator() : new ScriptedRandomNumberGenerator($rolled));
+
+        self::assertSame([$step, 12 - $lost, $dread], [self::position($campaign)[1], $this->current($campaign, 'hp'), $campaign->trackerValue($this->tracker('dread'))]);
+    }
+
+    #[Test]
+    public function hitPointsDoNotFallUnderZero(): void
+    {
+        $this->hp = 4;
+        $campaign = $this->atTheConfrontation();
+        $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
+        $campaign->skipFlowStep('horror', $this->release, self::at());
+
+        // The d6 shows 6 on a character with 4 Hit points.
+        $campaign->completeFlowStep('will', $this->checked($campaign, 'will', 'pow', 60), $this->release, self::at(), new ScriptedRandomNumberGenerator(6));
+
+        self::assertSame(0, $this->current($campaign, 'hp'));
     }
 
     /**
@@ -188,7 +337,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('find', self::prompt('A tide table with one night circled'), $this->release, self::at());
         $campaign->completeFlowStep('reveal', self::prompt('Something waits below the tide line'), $this->release, self::at());
 
-        // Sanity 99: a 99 still passes, and a fumble raises the dread by 2.
+        // Sanity 50 (its Power): a fumble raises the dread by 2.
         $campaign->completeFlowStep('shock', $this->checked($campaign, 'shock', 'sanity', 100), $this->release, self::at());
         self::assertSame(2, $campaign->trackerValue($this->tracker('dread')));
     }
@@ -203,7 +352,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $dread = $campaign->trackerValue($this->tracker('dread'));
 
         // At Sanity 40 a 55 is a plain failure (above 40, under the fumble line): the dread rises by 1, not 2.
-        $campaign->completeFlowStep('shock', $this->checkedWith($campaign, 'shock', 'sanity', 55, ['sanity' => ['current' => 40, 'max' => 99]]), $this->release, self::at());
+        $campaign->completeFlowStep('shock', $this->checkedWith($campaign, 'shock', 'sanity', 55, ['sanity' => ['current' => 40, 'max' => 99]]), $this->release, self::at(), new ScriptedRandomNumberGenerator(3));
 
         self::assertSame($dread + 1, $campaign->trackerValue($this->tracker('dread')));
     }
@@ -220,7 +369,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
 
         $campaign->completeFlowStep('hide', $this->checked($campaign, 'hide', 'stealth', 50), $this->release, self::at());
         $campaign->completeFlowStep('glimpse', self::prompt('A pale hand on the glass'), $this->release, self::at());
-        $campaign->completeFlowStep('nerve', $this->checked($campaign, 'nerve', 'sanity', 99), $this->release, self::at());
+        $campaign->completeFlowStep('nerve', $this->checked($campaign, 'nerve', 'sanity', 50), $this->release, self::at());
         self::assertSame(0, $campaign->trackerValue($this->tracker('dread')));
     }
 
@@ -289,7 +438,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
         $campaign->completeFlowStep('horror', self::prompt('Something vast behind the cellar wall'), $this->release, self::at());
 
-        $campaign->completeFlowStep('will', $this->checked($campaign, 'will', 'pow', $die), $this->release, self::at());
+        $campaign->completeFlowStep('will', $this->checked($campaign, 'will', 'pow', $die), $this->release, self::at(), new ScriptedRandomNumberGenerator(4));
 
         self::assertSame($step, self::position($campaign)[1]);
         $campaign->skipFlowStep($step, $this->release, self::at());
@@ -399,6 +548,45 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         return $campaign->threads()[0] ?? self::fail('The mystery has no Thread.');
     }
 
+    /**
+     * The investigator at the Sanity check step, with 12 Hit points and the Power set on the test.
+     */
+    private function atTheSanityStep(string $step): Campaign
+    {
+        if ('shock' === $step) {
+            $campaign = $this->inTheSite();
+            $campaign->completeFlowStep('spot', $this->checked($campaign, 'spot', 'spot-hidden', 25), $this->release, self::at());
+            $campaign->completeFlowStep('find', self::prompt('A tide table with one night circled'), $this->release, self::at());
+            $campaign->completeFlowStep('reveal', self::prompt('Something waits below the tide line'), $this->release, self::at());
+        } elseif ('nerve' === $step) {
+            $campaign = $this->inTheInvestigation();
+            $campaign->pickSceneType('night', $this->release, self::at());
+            $campaign->completeFlowStep('event', self::prompt('Bells ring under the water'), $this->release, self::at());
+            $campaign->skipFlowStep('hide', $this->release, self::at());
+            $campaign->completeFlowStep('glimpse', self::prompt('A pale hand on the glass'), $this->release, self::at());
+        } else {
+            $campaign = $this->atTheConfrontation();
+            $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
+            foreach (['horror', 'will', 'cost'] as $key) {
+                $campaign->skipFlowStep($key, $this->release, self::at());
+            }
+        }
+
+        self::assertSame($step, self::position($campaign)[1]);
+
+        return $campaign;
+    }
+
+    /**
+     * The current value of the investigator's track.
+     */
+    private function current(Campaign $campaign, string $field): mixed
+    {
+        $value = $campaign->character(CharacterId::fromString('inv'))?->values()[$field] ?? null;
+
+        return \is_array($value) ? $value['current'] : $value;
+    }
+
     private function tracker(string $key): Tracker
     {
         return $this->release->tracker($key) ?? self::fail(\sprintf('No tracker "%s".', $key));
@@ -432,7 +620,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
 
     private function createInvestigator(Campaign $campaign): void
     {
-        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['occupation' => 'Reporter', 'library-use' => 50, 'persuade' => 50, 'psychology' => 50, 'spot-hidden' => 50, 'stealth' => 50, 'pow' => 50], $this->release);
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['occupation' => 'Reporter', 'library-use' => 50, 'persuade' => 50, 'psychology' => 50, 'spot-hidden' => 50, 'stealth' => 50, 'pow' => $this->pow, 'hp' => ['current' => $this->hp, 'max' => $this->hp]], $this->release);
         $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at());
     }
 

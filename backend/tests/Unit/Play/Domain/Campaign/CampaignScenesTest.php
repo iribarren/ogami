@@ -20,7 +20,9 @@ use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\StepList;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Tests\Support\Play\Snapshots;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -166,6 +168,58 @@ final class CampaignScenesTest extends TestCase
         // The next Firefight counts the switched scene; the next Legwork does not.
         self::assertSame('Firefight 2', $campaign->startScene(null, new \DateTimeImmutable(), $this->sceneType('firefight', 'Firefight'))->title());
         self::assertSame('Legwork 1', $campaign->startScene(null, new \DateTimeImmutable(), $this->sceneType('legwork', 'Legwork'))->title());
+    }
+
+    #[Test]
+    public function aSceneStillNamedAfterItsOldSceneTypeIsRenamedAfterTheNewOne(): void
+    {
+        $release = Snapshots::withSceneTypes('heist', 'Heist', 1);
+        $campaign = $this->campaignInASession();
+        $campaign->startScene(null, new \DateTimeImmutable(), $release->sceneType('firefight'));
+        $campaign->startScene(null, new \DateTimeImmutable(), $release->sceneType('legwork'));
+        $legwork = $campaign->startScene(null, new \DateTimeImmutable(), $release->sceneType('legwork'));
+        self::assertSame('Legwork 2', $legwork->title());
+
+        // Numbered like a new Firefight scene: the first Firefight scene counts, this scene does not.
+        $switched = $campaign->switchSceneType($release->sceneType('firefight') ?? throw new \LogicException(), $release, new \DateTimeImmutable());
+
+        self::assertSame(['Firefight 2', 'firefight', 3], [$switched->title(), $switched->sceneType(), $switched->number()]);
+        self::assertSame(['Firefight 1', 'Legwork 1', 'Firefight 2'], $this->titles($campaign->sessions()[0]));
+        self::assertSame('Legwork 2', $campaign->startScene(null, new \DateTimeImmutable(), $release->sceneType('legwork'))->title());
+    }
+
+    #[Test]
+    public function aSceneKeepsATitleThePlayerGaveWhenItsSceneTypeSwitches(): void
+    {
+        $release = Snapshots::withSceneTypes('heist', 'Heist', 1);
+        $campaign = $this->campaignInASession();
+        $campaign->startScene('Legwork 2 at the docks', new \DateTimeImmutable(), $release->sceneType('legwork'));
+        $firefight = $release->sceneType('firefight') ?? throw new \LogicException();
+
+        $campaign->switchSceneType($firefight, $release, new \DateTimeImmutable());
+        self::assertSame('Legwork 2 at the docks', $campaign->currentScene()?->title());
+
+        // A title that only looks like a default (no number, or a padded one) is not one.
+        $campaign->renameCurrentScene('Firefight');
+        $campaign->switchSceneType($release->sceneType('legwork') ?? throw new \LogicException(), $release, new \DateTimeImmutable());
+        self::assertSame('Firefight', $campaign->currentScene()->title());
+        $campaign->renameCurrentScene('Legwork 02');
+        $campaign->switchSceneType($firefight, $release, new \DateTimeImmutable());
+        self::assertSame('Legwork 02', $campaign->currentScene()->title());
+    }
+
+    #[Test]
+    public function aDefaultTitleCutToFitTheNumberIsRenamedToo(): void
+    {
+        $long = new SceneType('long', str_repeat('é', 100), 'A purpose.', null, [], new StepList(), new StepList(), new StepList());
+        $release = new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], sceneTypes: [$long, ...Snapshots::withSceneTypes('heist', 'Heist', 1)->sceneTypes()]);
+        $campaign = $this->campaignInASession();
+        $started = $campaign->startScene(null, new \DateTimeImmutable(), $long);
+        self::assertSame(str_repeat('é', 98).' 1', $started->title());
+
+        $campaign->switchSceneType($release->sceneType('legwork') ?? throw new \LogicException(), $release, new \DateTimeImmutable());
+
+        self::assertSame('Legwork 1', $campaign->currentScene()?->title());
     }
 
     #[Test]

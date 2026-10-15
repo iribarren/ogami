@@ -31,6 +31,7 @@ final class PlayRequestSchemasTest extends WebTestCase
         yield 'record roll' => ['RecordRollRequest', ['expression'], []];
         yield 'complete FlowRun step' => ['CompleteFlowStepRequest', ['stepKey'], ['text', 'optionKey', 'likelihood', 'chaosFactor', 'pickedIds', 'characterId', 'difficulty', 'situational']];
         yield 'edit scene cast' => ['EditSceneCastRequest', ['npcIds'], ['characterIds']];
+        yield 'rename scene' => ['RenameSceneRequest', ['title'], []];
         yield 'edit session party' => ['EditSessionPartyRequest', ['characterIds'], []];
         yield 'skip FlowRun step' => ['SkipFlowStepRequest', ['stepKey'], []];
         yield 'pick Scene Type' => ['PickSceneTypeRequest', ['sceneType'], []];

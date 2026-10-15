@@ -9,6 +9,7 @@ import { titleAddsToType } from '../journal/sceneLabels'
 import { PartyEditor } from './PartyEditor'
 import {
   useEndSession,
+  useRenameScene,
   useStartScene,
   useStartSession,
   useSwitchSceneType,
@@ -58,12 +59,16 @@ export function SessionControls({ campaign }: { campaign: Campaign }) {
           ))}
         <PartyEditor campaign={campaign} />
         <SceneTypeSwitch campaign={campaign} />
+        <RenameScene campaign={campaign} />
       </div>
-      <NewSceneForm
-        campaignId={campaign.id}
-        hasSession={hasSession}
-        sceneTypes={campaign.sceneTypes}
-      />
+      {/* While the Flow guides, the scenes come from it: no scene by hand. */}
+      {!guided && (
+        <NewSceneForm
+          campaignId={campaign.id}
+          hasSession={hasSession}
+          sceneTypes={campaign.sceneTypes}
+        />
+      )}
     </section>
   )
 }
@@ -115,6 +120,96 @@ function EndSessionButton({ campaignId }: { campaignId: string }) {
         </p>
       )}
     </>
+  )
+}
+
+/**
+ * Renames the current scene (the player's own name for it), in a small inline form. Any scene
+ * can be renamed, a hook Scene too.
+ */
+function RenameScene({ campaign }: { campaign: Campaign }) {
+  const scene = campaign.sessions
+    .find(({ number }) => number === campaign.currentSessionNumber)
+    ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
+  if (scene === undefined) {
+    return null
+  }
+
+  // Keyed by the scene, so the form closes when the scene changes under it.
+  return (
+    <RenameSceneForm
+      key={`${String(campaign.currentSessionNumber)}-${String(scene.number)}`}
+      campaignId={campaign.id}
+      title={scene.title}
+    />
+  )
+}
+
+function RenameSceneForm({ campaignId, title }: { campaignId: string; title: string }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(title)
+  const renameScene = useRenameScene(campaignId)
+  const inputId = useId()
+
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    renameScene.mutate(draft, {
+      onSuccess: () => {
+        setEditing(false)
+      },
+    })
+  }
+
+  if (!editing) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setDraft(title)
+          renameScene.reset()
+          setEditing(true)
+        }}
+      >
+        Rename scene
+      </Button>
+    )
+  }
+
+  return (
+    <form aria-label="Rename scene" className="space-y-1" onSubmit={handleSubmit}>
+      <Label htmlFor={inputId}>Scene name</Label>
+      <div className="flex gap-2">
+        <Input
+          id={inputId}
+          value={draft}
+          className="min-w-0"
+          maxLength={MAX_SCENE_TITLE_LENGTH}
+          autoComplete="off"
+          autoFocus
+          onChange={(event) => {
+            setDraft(event.target.value)
+          }}
+        />
+        <Button type="submit" disabled={draft.trim() === '' || renameScene.isPending}>
+          Save
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setEditing(false)
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+      {renameScene.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {renameScene.error.message}
+        </p>
+      )}
+    </form>
   )
 }
 

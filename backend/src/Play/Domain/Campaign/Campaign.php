@@ -377,13 +377,17 @@ final class Campaign
     }
 
     /**
-     * Switches the current scene to another Scene Type by hand (free play). Its number, title and
-     * journal entries stay, a default numbered title included. With a FlowRun the switch is in its
-     * history, and while guidance is active a guided scene goes on at the new type's setup.
+     * Switches the current scene to another Scene Type by hand (free play). Its number and journal
+     * entries stay. A title that is still the old Scene Type's default ("Legwork 2") becomes the
+     * new type's default, numbered as for a new scene of that type ("Firefight 1"); a title the
+     * player or an Effect gave stays. With a FlowRun the switch is in its history, and while
+     * guidance is active a guided scene goes on at the new type's setup (a sceneTitle Effect
+     * there wins over the new default).
      *
      * @param SceneType           $sceneType a Scene Type of the pinned release
-     * @param ?GameSystemSnapshot $release   the pinned release, with the time of the switch; without
-     *                                       them a FlowRun is not told (see startSession())
+     * @param ?GameSystemSnapshot $release   the pinned release, which names the old Scene Type, with
+     *                                       the time of the switch; without them a default title
+     *                                       stays and a FlowRun is not told (see startSession())
      *
      * @throws NoCurrentScene          when the current session has no scene, or no session is under way
      * @throws HookSceneHasNoSceneType when the current scene is a hook Scene
@@ -393,6 +397,12 @@ final class Campaign
         $session = $this->currentSession();
         $scene = $session?->currentScene() ?? throw NoCurrentScene::toSwitchSceneType();
         $switched = $scene->withSceneType($sceneType->key);
+        $previous = null === $scene->sceneType() ? null : $release?->sceneType($scene->sceneType());
+        if ($previous instanceof SceneType && $previous->key !== $sceneType->key && $this->isDefaultSceneTitle($scene->title(), $previous)) {
+            // The scene still has the old type here, so the count of the new type leaves it out.
+            $switched = $switched->withTitle($this->defaultSceneTitle($sceneType));
+        }
+
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($switched)];
         if ($release instanceof GameSystemSnapshot && $at instanceof \DateTimeImmutable) {
             $this->changedFlowRun()?->followSceneTypeSwitch($scene->sceneType(), $sceneType, $this->flowContext($release, $at));
@@ -402,7 +412,7 @@ final class Campaign
     }
 
     /**
-     * Renames the current scene (a sceneTitle Effect of the FlowRun).
+     * Renames the current scene (a sceneTitle Effect of the FlowRun, or the player).
      *
      * @throws NoCurrentScene    when the current session has no scene, or no session is under way
      * @throws InvalidSceneTitle when the trimmed title is blank or longer than 100 characters
@@ -1773,6 +1783,19 @@ final class Campaign
         $number = ' '.($count + 1);
 
         return mb_substr($sceneType->name, 0, Scene::MAX_TITLE_LENGTH - \strlen($number)).$number;
+    }
+
+    /**
+     * Whether the title is what defaultSceneTitle() gives some scene of this Scene Type: the name,
+     * cut to fit, and a space and a number without leading zeros.
+     */
+    private function isDefaultSceneTitle(string $title, SceneType $sceneType): bool
+    {
+        if (1 !== preg_match('/^(.*) ([1-9]\d*)$/su', $title, $parts)) {
+            return false;
+        }
+
+        return mb_substr($sceneType->name, 0, Scene::MAX_TITLE_LENGTH - \strlen(' '.$parts[2])) === $parts[1];
     }
 
     /**

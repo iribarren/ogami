@@ -68,3 +68,28 @@ export const published3: GameSystem = {
   name: 'Noir detective',
   latestReleaseVersion: 3,
 }
+
+/** The history of `published3`'s line, newest first; version 2 has notes, version 3 has none. */
+export const releaseHistory = [
+  {
+    version: 3,
+    schemaVersion: 2,
+    publishedAt: '2026-10-14T12:00:00+00:00',
+    notes: null,
+    contentHash: '11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0',
+  },
+  {
+    version: 2,
+    schemaVersion: 2,
+    publishedAt: '2026-10-10T12:00:00+00:00',
+    notes: 'Rebalanced the oracles.',
+    contentHash: '22d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0',
+  },
+]
+
+/** Version 2 of `published3`'s line, as the read-only view shows it. */
+export const releaseTwo = {
+  ...releaseHistory[1],
+  name: 'Noir detective (old name)',
+  sectionCounts: { oracleTables: 1, trackers: 0 },
+}

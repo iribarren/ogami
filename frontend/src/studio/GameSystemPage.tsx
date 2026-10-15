@@ -15,6 +15,8 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 
 import { MetadataForm } from './MetadataForm'
 import { PublishDialog } from './PublishDialog'
+import { ReleasesTab } from './ReleasesTab'
+import { SectionCounts } from './SectionCounts'
 import {
   StudioError,
   useDiscardGameSystem,
@@ -23,23 +25,7 @@ import {
   type GameSystem,
 } from './useGameSystems'
 
-type Tab = 'overview' | 'validation' | 'sections'
-
-/** How the release contract's section names read; an unknown name shows as it is. */
-const sectionLabels: Record<string, string> = {
-  oracleTables: 'Oracle tables',
-  likelihoodOracles: 'Likelihood oracles',
-  trackers: 'Trackers',
-  factSlots: 'Fact slots',
-  tags: 'Tags',
-  sceneTypes: 'Scene Types',
-  flows: 'Flows',
-  sheetFields: 'Sheet fields',
-  checks: 'Checks',
-  // Schema version 1.
-  oracles: 'Oracles',
-  flowSteps: 'Flow steps',
-}
+type Tab = 'overview' | 'validation' | 'releases' | 'sections'
 
 /**
  * `/studio/game-systems/$key`: one of my GameSystem drafts. An unknown key, or someone else's,
@@ -127,6 +113,14 @@ function GameSystemView({
   // while a reload the person asked for remounts it on the latest version.
   const [formStart, setFormStart] = useState({ gameSystem, reloads: 0 })
 
+  function reload() {
+    void onReload().then((latest) => {
+      if (latest) {
+        setFormStart((start) => ({ gameSystem: latest, reloads: start.reloads + 1 }))
+      }
+    })
+  }
+
   return (
     <>
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -162,10 +156,12 @@ function GameSystemView({
         value={tab}
         onValueChange={(value) => {
           setTab(value as Tab)
+          setNotice(null)
         }}
       >
         <SegmentedControlItem value="overview">Overview</SegmentedControlItem>
         <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
+        <SegmentedControlItem value="releases">Releases</SegmentedControlItem>
         <SegmentedControlItem value="sections">Sections</SegmentedControlItem>
       </SegmentedControl>
       {tab === 'overview' && (
@@ -173,18 +169,24 @@ function GameSystemView({
           <MetadataForm
             key={formStart.reloads}
             gameSystem={formStart.gameSystem}
-            onReload={() => {
-              void onReload().then((latest) => {
-                if (latest) {
-                  setFormStart((start) => ({ gameSystem: latest, reloads: start.reloads + 1 }))
-                }
-              })
-            }}
+            onReload={reload}
           />
           {gameSystem.latestReleaseVersion === null && <Discard gameSystemKey={gameSystem.key} />}
         </div>
       )}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
+      {tab === 'releases' && (
+        <ReleasesTab
+          gameSystemKey={gameSystem.key}
+          onReload={reload}
+          onRestored={(restored, version) => {
+            // The restored draft replaces what the form started from, and the form remounts on it.
+            setFormStart((start) => ({ gameSystem: restored, reloads: start.reloads + 1 }))
+            setNotice(`Restored version ${String(version)} into the draft.`)
+            setTab('overview')
+          }}
+        />
+      )}
       {tab === 'sections' && <Sections counts={gameSystem.sectionCounts} />}
     </>
   )
@@ -238,15 +240,7 @@ function Validation({ gameSystemKey }: { gameSystemKey: string }) {
 function Sections({ counts }: { counts: Record<string, number> }) {
   return (
     <Panel title="Sections">
-      <ul className="max-w-md divide-y rounded-xl ring-1 ring-foreground/10">
-        {Object.entries(counts).map(([name, count]) => (
-          <li key={name} className="flex items-baseline gap-3 px-4 py-3">
-            <span className="font-medium">{sectionLabels[name] ?? name}</span>
-            <span className="text-muted-foreground">{count}</span>
-            <span className="ml-auto text-sm text-muted-foreground">Editor coming</span>
-          </li>
-        ))}
-      </ul>
+      <SectionCounts counts={counts} editorComing />
     </Panel>
   )
 }

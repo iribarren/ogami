@@ -8,8 +8,11 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 import { CharactersPanel } from '../characters/CharactersPanel'
 import { DiceRoller } from '../dice/DiceRoller'
 import { FactsPanel } from '../facts/FactsPanel'
+import { FlowIntroduction } from '../flow/FlowIntroduction'
 import { FocusPanel } from '../flow/FocusPanel'
+import { GuidedControls } from '../flow/GuidedParts'
 import { GuidedPanel } from '../flow/GuidedPanel'
+import { useFlowRunCommand } from '../flow/useFlowRun'
 import { useFlowView, type FlowView } from '../flow/useFlowView'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
@@ -91,6 +94,8 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const [view, setView] = useFlowView(campaign)
   const trackers = visibleTrackers(campaign)
   const focused = campaign.flowRun !== null && view === 'focus'
+  // Shared by the step card and the controls below the composer, so one pending state covers both.
+  const command = useFlowRunCommand(campaign.id)
 
   return (
     <>
@@ -101,6 +106,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         </p>
         <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>
+      <FlowIntroduction campaign={campaign} />
       <SessionControls campaign={campaign} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_var(--play-sidebar-width)]">
         <div
@@ -112,12 +118,12 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         >
           {campaign.flowRun !== null && <ViewToggle view={view} onChange={setView} />}
           {campaign.flowRun !== null && focused ? (
-            <FocusPanel campaign={campaign} flowRun={campaign.flowRun} />
+            <FocusPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
           ) : (
             <Section title="Journal">
               <CampaignJournal campaign={campaign} />
               {campaign.flowRun !== null && (
-                <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} />
+                <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
               )}
             </Section>
           )}
@@ -125,6 +131,9 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
             <NoteComposer campaignId={campaign.id} disabled={!hasScene} />
           </div>
+          {campaign.flowRun !== null && (
+            <GuidedControls campaign={campaign} flowRun={campaign.flowRun} command={command} />
+          )}
         </div>
         <aside
           aria-label="Play tools"
@@ -135,23 +144,52 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             <CampaignDice campaignId={campaign.id} disabled={!hasScene} />
           </PlayPanel>
           {trackers.length > 0 && (
-            <PlayPanel id="trackers" title="Trackers" count={trackers.length}>
+            <PlayPanel
+              id="trackers"
+              title="Trackers"
+              count={trackers.length}
+              help="Counters and clocks the flow reads to decide what happens next."
+            >
               <TrackersPanel campaign={campaign} />
             </PlayPanel>
           )}
-          <PlayPanel id="facts" title="Facts" count={campaign.facts.length}>
+          <PlayPanel
+            id="facts"
+            title="Facts"
+            count={campaign.facts.length}
+            help="What the story has settled. The flow asks for some; refill one when play changes it."
+          >
             <FactsPanel campaign={campaign} />
           </PlayPanel>
-          <PlayPanel id="threads" title="Threads" count={campaign.threads.length}>
+          <PlayPanel
+            id="threads"
+            title="Threads"
+            count={campaign.threads.length}
+            help="The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled."
+          >
             <ListPanel campaign={campaign} kind="thread" />
           </PlayPanel>
-          <PlayPanel id="npcs" title="NPCs" count={campaign.npcs.length}>
+          <PlayPanel
+            id="npcs"
+            title="NPCs"
+            count={campaign.npcs.length}
+            help="The people met in play. Add them as they appear; the flow adds some too."
+          >
             <ListPanel campaign={campaign} kind="npc" />
           </PlayPanel>
-          <PlayPanel id="characters" title="Characters" count={campaign.characters.length}>
+          <PlayPanel
+            id="characters"
+            title="Characters"
+            count={campaign.characters.length}
+            help="Your characters and their sheets. Open one to read or edit it."
+          >
             <CharactersPanel campaign={campaign} />
           </PlayPanel>
-          <PlayPanel id="oracles" title="Oracles">
+          <PlayPanel
+            id="oracles"
+            title="Oracles"
+            help="Ask a yes/no question or roll a table when you need ideas. The result is yours to interpret."
+          >
             <OraclePanel
               campaignId={campaign.id}
               tables={campaign.oracleTables}

@@ -1,7 +1,10 @@
 import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { useStartSession } from '../campaigns/useCampaigns'
+import { visibleTrackers } from '../trackers/useTrackers'
 import { Disclosure } from './Disclosure'
+import { EndPhaseDialog } from './EndPhaseDialog'
 import { canEndScene } from './progress'
 import { ScenePickCard } from './ScenePickCard'
 import { StepCard } from './StepCard'
@@ -11,8 +14,14 @@ interface PartProps {
   campaign: Campaign
   flowRun: FlowRun
   command: ReturnType<typeof useFlowRunCommand>
-  onCommand: (command: FlowRunCommand) => void
 }
+
+/** Whether the command answers the step or the scene pick, whose refusal shows with its card. */
+const answersTheCard = (command: FlowRunCommand | undefined) =>
+  command?.type === 'answer' ||
+  command?.type === 'skip' ||
+  command?.type === 'pick' ||
+  command?.type === 'pickByRoll'
 
 /** The Scene Type of the scene under way; undefined before a scene starts. */
 function currentSceneType(campaign: Campaign) {
@@ -24,25 +33,18 @@ function currentSceneType(campaign: Campaign) {
 
 /**
  * What the FlowRun waits on, the same in the journal and in focus mode: how guidance stands,
- * the step or the scene pick to answer, and the next step named.
+ * the step or the scene pick to answer, and the next step named. When the Flow waits for a
+ * session, this is where Start session is offered.
  */
-export function GuidedBody({ campaign, flowRun, command, onCommand }: PartProps) {
+export function GuidedBody({ campaign, flowRun, command }: PartProps) {
   const active = flowRun.status === 'active'
-  const introduction = campaign.flows.find(({ key }) => key === campaign.flowKey)?.introduction
-  const beforeFirstSession = campaign.sessions.length === 0
   const sceneType = currentSceneType(campaign)
+  const startSession = useStartSession(campaign.id)
+  const onCommand = (next: FlowRunCommand) => {
+    command.mutate(next)
+  }
   return (
     <>
-      {introduction && (
-        // Open before the first session; keyed so it folds when that session starts.
-        <Disclosure
-          key={beforeFirstSession ? 'before-first-session' : 'started'}
-          title="How this flow works"
-          defaultOpen={beforeFirstSession}
-        >
-          {introduction}
-        </Disclosure>
-      )}
       {active && sceneType?.tips && (
         <Disclosure key={sceneType.key} title={`Tips for ${sceneType.name}`} defaultOpen={false}>
           {sceneType.tips}
@@ -57,7 +59,22 @@ export function GuidedBody({ campaign, flowRun, command, onCommand }: PartProps)
         </p>
       )}
       {active && flowRun.waitsForSession && (
-        <p className="text-sm text-muted-foreground">Start a session to go on.</p>
+        <div className="space-y-2">
+          <Button
+            type="button"
+            disabled={startSession.isPending}
+            onClick={() => {
+              startSession.mutate()
+            }}
+          >
+            Start session
+          </Button>
+          {startSession.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {startSession.error.message}
+            </p>
+          )}
+        </div>
       )}
       {active && flowRun.step !== null && (
         <StepCard
@@ -76,6 +93,11 @@ export function GuidedBody({ campaign, flowRun, command, onCommand }: PartProps)
           onCommand={onCommand}
         />
       )}
+      {command.error && answersTheCard(command.variables) && (
+        <p role="alert" className="text-sm text-destructive">
+          {command.error.message}
+        </p>
+      )}
       <p>
         <span className="text-muted-foreground">Next: </span>
         <span className="font-medium">{flowRun.next}</span>
@@ -92,11 +114,27 @@ function endPhaseLabel(phase: string): string {
   return `End the ${phase.replace(/^the\s+/i, '')} phase`
 }
 
-/** The controls to end the scene, move on, end the session, and to pause or resume guidance. */
-export function GuidedControls({ campaign, flowRun, command, onCommand }: PartProps) {
+/**
+ * The controls to end the scene, move on, end the session, and to pause or resume guidance,
+ * with a hint when nothing else waits in the scene. They sit below the note composer, where
+ * the player has just written what happened. Nothing once the Flow is complete.
+ */
+export function GuidedControls({ campaign, flowRun, command }: PartProps) {
   const active = flowRun.status === 'active'
+  if (flowRun.status === 'completed') {
+    return null
+  }
+  const send = (next: FlowRunCommand) => {
+    command.mutate(next)
+  }
   return (
-    <>
+    <section aria-label="Guided controls" className="space-y-2">
+      {canEndScene(campaign, flowRun) && (
+        <p className="text-sm text-muted-foreground">
+          Nothing else waits in this scene. Write what happened in a note, then end the scene when
+          you are ready.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {canEndScene(campaign, flowRun) && (
           <Button
@@ -104,23 +142,21 @@ export function GuidedControls({ campaign, flowRun, command, onCommand }: PartPr
             variant="outline"
             disabled={command.isPending}
             onClick={() => {
-              onCommand({ type: 'endScene', sceneNumber: campaign.currentSceneNumber ?? 0 })
+              send({ type: 'endScene', sceneNumber: campaign.currentSceneNumber ?? 0 })
             }}
           >
             End scene
           </Button>
         )}
         {active && flowRun.canMoveOn && flowRun.progress !== null && (
-          <Button
-            type="button"
-            variant="outline"
+          <EndPhaseDialog
+            label={endPhaseLabel(flowRun.progress.phase)}
+            trackers={visibleTrackers(campaign)}
             disabled={command.isPending}
-            onClick={() => {
-              onCommand({ type: 'moveOn', phase: flowRun.progress?.phaseKey ?? '' })
+            onConfirm={() => {
+              send({ type: 'moveOn', phase: flowRun.progress?.phaseKey ?? '' })
             }}
-          >
-            {endPhaseLabel(flowRun.progress.phase)}
-          </Button>
+          />
         )}
         {active && flowRun.canEndSession && (
           <Button
@@ -128,7 +164,7 @@ export function GuidedControls({ campaign, flowRun, command, onCommand }: PartPr
             variant="outline"
             disabled={command.isPending}
             onClick={() => {
-              onCommand({ type: 'endSession' })
+              send({ type: 'endSession' })
             }}
           >
             End session
@@ -140,7 +176,7 @@ export function GuidedControls({ campaign, flowRun, command, onCommand }: PartPr
             variant="ghost"
             disabled={command.isPending}
             onClick={() => {
-              onCommand({ type: 'pause' })
+              send({ type: 'pause' })
             }}
           >
             Pause guidance
@@ -151,18 +187,18 @@ export function GuidedControls({ campaign, flowRun, command, onCommand }: PartPr
             type="button"
             disabled={command.isPending}
             onClick={() => {
-              onCommand({ type: 'resume' })
+              send({ type: 'resume' })
             }}
           >
             Resume guidance
           </Button>
         )}
       </div>
-      {command.error && (
+      {command.error && !answersTheCard(command.variables) && (
         <p role="alert" className="text-sm text-destructive">
           {command.error.message}
         </p>
       )}
-    </>
+    </section>
   )
 }

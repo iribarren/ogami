@@ -7,7 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { lostMineWithLists, miraNpc, brannNpc, oldGuardNpc } from '../lists/fixtures'
-import { viCharacter } from '../characters/fixtures'
+import { sheet, viCharacter } from '../characters/fixtures'
 import { castCampaign, castFocus, castWithCharacter, withCasts } from './fixtures'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
@@ -250,5 +250,30 @@ describe('the Scene cast in focus mode', () => {
     await waitFor(() => {
       expect(sent).toEqual([{ npcIds: [], characterIds: [] }])
     })
+  })
+
+  it('opens the sheet of a party Character from the cast, which the journal view does not offer', async () => {
+    const user = userEvent.setup()
+    const inFocus = {
+      ...castFocus,
+      characters: [viCharacter],
+      pinnedRelease: { ...castFocus.pinnedRelease, sheet },
+      sessions: castWithCharacter.sessions,
+    }
+    renderCast(inFocus)
+
+    const focus = within(await screen.findByRole('region', { name: 'Focus mode' }))
+    await user.click(focus.getByRole('button', { name: 'View sheet of Vi' }))
+
+    const dialog = within(await screen.findByRole('dialog', { name: 'Vi' }))
+    expect(dialog.getByRole('group', { name: 'Stats' })).toHaveTextContent('Reflexes7')
+    expect(focus.queryByRole('button', { name: /View sheet of Brann/ })).not.toBeInTheDocument()
+  })
+
+  it('offers no sheet in the journal view', async () => {
+    renderCast(castWithCharacter)
+
+    await screen.findByRole('group', { name: /^Cast of session 2/ })
+    expect(screen.queryByRole('button', { name: /View sheet/ })).not.toBeInTheDocument()
   })
 })

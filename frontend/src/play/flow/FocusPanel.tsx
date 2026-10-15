@@ -5,25 +5,24 @@ import type { Campaign } from '../campaigns/useCampaigns'
 import { JournalEntryView } from '../journal/JournalEntryView'
 import { RandomEventOffer } from '../journal/RandomEventOffer'
 import { useJournal } from '../journal/useJournal'
-import { GuidedBody, GuidedControls } from './GuidedParts'
+import { GuidedBody } from './GuidedParts'
 import { progressText, stepPercent } from './progress'
-import { useFlowRunCommand, type FlowRun, type FlowRunCommand } from './useFlowRun'
+import type { FlowRun, useFlowRunCommand } from './useFlowRun'
 
 /**
  * Focus mode, in place of the journal: only where the FlowRun stands, with a progress bar, the
- * step or scene pick to answer, the next step named, the same controls as the guided panel, and
- * the current scene's journal entries so far.
+ * step or scene pick to answer, the next step named and the current scene's journal entries so
+ * far. The controls are the guided panel's, below the note composer.
  */
-export function FocusPanel({ campaign, flowRun }: { campaign: Campaign; flowRun: FlowRun }) {
-  const command = useFlowRunCommand(campaign.id)
-  const parts = {
-    campaign,
-    flowRun,
-    command,
-    onCommand: (next: FlowRunCommand) => {
-      command.mutate(next)
-    },
-  }
+export function FocusPanel({
+  campaign,
+  flowRun,
+  command,
+}: {
+  campaign: Campaign
+  flowRun: FlowRun
+  command: ReturnType<typeof useFlowRunCommand>
+}) {
   const percent = flowRun.progress === null ? null : stepPercent(flowRun.progress)
 
   return (
@@ -51,8 +50,7 @@ export function FocusPanel({ campaign, flowRun }: { campaign: Campaign; flowRun:
         </div>
       )}
       <CurrentCast campaign={campaign} />
-      <GuidedBody {...parts} />
-      <GuidedControls {...parts} />
+      <GuidedBody campaign={campaign} flowRun={flowRun} command={command} />
       <SceneSoFar campaign={campaign} />
     </section>
   )
@@ -75,6 +73,7 @@ function CurrentCast({ campaign }: { campaign: Campaign }) {
       sessionNumber={sessionNumber}
       scene={scene}
       editable
+      sheet={campaign.pinnedRelease.sheet}
     />
   )
 }

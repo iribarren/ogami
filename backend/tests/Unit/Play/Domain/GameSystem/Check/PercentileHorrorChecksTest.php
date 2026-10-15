@@ -50,7 +50,7 @@ final class PercentileHorrorChecksTest extends TestCase
         yield '95 fails at skill 49' => [49, 95, 'failure'];
         yield '96 is a fumble at skill 49' => [49, 96, 'fumble'];
         yield '96 is a fumble at skill 1' => [1, 96, 'fumble'];
-        yield '99 fails at skill 99' => [99, 99, 'regular'];
+        yield '99 is a regular success at skill 99' => [99, 99, 'regular'];
         yield '100 is a fumble at skill 99' => [99, 100, 'fumble'];
     }
 

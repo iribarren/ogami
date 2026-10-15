@@ -12,6 +12,13 @@ import {
 
 export type Tracker = Campaign['trackers'][number]
 
+/** "3" for a counter, "3/6" for a clock. */
+export function trackerValueText(tracker: Tracker) {
+  return tracker.kind === 'clock' && tracker.segments !== null
+    ? `${String(tracker.value)}/${String(tracker.segments)}`
+    : String(tracker.value)
+}
+
 /**
  * The Trackers to show: while the campaign's Flow guides it, the Flow's own in its order,
  * otherwise every Tracker of the release.

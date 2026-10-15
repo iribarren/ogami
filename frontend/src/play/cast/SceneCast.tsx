@@ -4,6 +4,8 @@ import { Button } from '@/shared/ui/button'
 import { NativeSelect } from '@/shared/ui/native-select'
 
 import type { Campaign } from '../campaigns/useCampaigns'
+import { CharacterSheetDialog } from '../characters/CharacterSheetDialog'
+import type { SheetField } from '../characters/useCharacters'
 import { useEditSceneCast } from './useSceneCast'
 
 type Scene = Campaign['sessions'][number]['scenes'][number]
@@ -18,6 +20,24 @@ interface SceneCastProps {
   scene: Pick<Scene, 'number' | 'cast' | 'characters'>
   /** Only the current scene's cast is edited; a past scene's is read-only. */
   editable: boolean
+  /** The release's sheet: with it, each Character in the cast has a "View sheet" button. */
+  sheet?: SheetField[]
+}
+
+/** "View sheet" for a member that is a Character of the campaign; nothing for an NPC. */
+function MemberSheet({
+  value,
+  characters,
+  sheet,
+}: {
+  value: string
+  characters: Campaign['characters']
+  sheet: SheetField[]
+}) {
+  const character = characters.find(({ id }) => `character:${id}` === value)
+  return character === undefined ? null : (
+    <CharacterSheetDialog character={character} sheet={sheet} />
+  )
 }
 
 /**
@@ -32,6 +52,7 @@ export function SceneCast({
   sessionNumber,
   scene,
   editable,
+  sheet,
 }: SceneCastProps) {
   const [editing, setEditing] = useState(false)
   const edit = useEditSceneCast(campaignId)
@@ -92,6 +113,9 @@ export function SceneCast({
             {members.map(({ value, name }) => (
               <li key={value} className="flex items-center gap-1">
                 <span className="font-medium">{name}</span>
+                {sheet !== undefined && (
+                  <MemberSheet value={value} characters={characters} sheet={sheet} />
+                )}
                 {editing && (
                   <Button
                     type="button"

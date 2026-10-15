@@ -138,3 +138,26 @@ describe('PlayPanel', () => {
     expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
 })
+
+describe('PlayPanel help', () => {
+  it('shows one muted line at the top of the body, and none without help', () => {
+    const { rerender } = render(
+      <PlayPanel id="threads" title="Threads" help="What the story follows.">
+        <p>Find the keeper</p>
+      </PlayPanel>,
+    )
+
+    const help = screen.getByText('What the story follows.')
+    const body = screen.getByText('Find the keeper')
+    expect(help.className).toContain('text-muted-foreground')
+    expect(help.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    rerender(
+      <PlayPanel id="threads" title="Threads">
+        <p>Find the keeper</p>
+      </PlayPanel>,
+    )
+
+    expect(screen.queryByText('What the story follows.')).not.toBeInTheDocument()
+  })
+})

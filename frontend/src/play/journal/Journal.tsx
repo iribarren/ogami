@@ -8,6 +8,7 @@ import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
 import { RandomEventOffer } from './RandomEventOffer'
+import { titleAddsToType } from './sceneLabels'
 import { recordEntryKey, type JournalEntry } from './useJournal'
 
 /** Brings an entry just recorded into view, without moving focus (jsdom cannot scroll). */
@@ -199,13 +200,16 @@ const hookLabels: Record<NonNullable<ListedScene['hook']>, string> = {
   worldTurn: 'World turn',
 }
 
-/** "Scene 2 · Tour — Who walks in", or "Session opening — Session 1 begins" for a hook Scene. */
+/** "Scene 2 · Tour — Who walks in" (the title left out when it only repeats "Tour"), or "Session opening — Session 1 begins" for a hook Scene. */
 function sceneHeading(scene: { number: number; title: string | null }, listedScene?: ListedScene) {
-  const title = scene.title === null ? '' : ` — ${scene.title}`
+  const typeName = listedScene?.sceneTypeName ?? null
+  // A title that only repeats the Scene Type (its numbered default) adds nothing.
+  const title =
+    scene.title === null || !titleAddsToType(scene.title, typeName) ? '' : ` — ${scene.title}`
   if (listedScene?.hook) {
     return `${hookLabels[listedScene.hook]}${title}`
   }
-  const type = listedScene?.sceneTypeName ? ` · ${listedScene.sceneTypeName}` : ''
+  const type = typeName ? ` · ${typeName}` : ''
   return `Scene ${String(scene.number)}${type}${title}`
 }
 

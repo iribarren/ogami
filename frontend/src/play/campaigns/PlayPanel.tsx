@@ -11,6 +11,8 @@ interface PlayPanelProps {
   title: string
   /** Shown next to the title when the number is cheap to know. */
   count?: number
+  /** One line under the title saying what the tool is for. */
+  help?: string
   children: ReactNode
 }
 
@@ -18,7 +20,7 @@ interface PlayPanelProps {
  * One tool of the Play sidebar: a titled card whose body the player can collapse. Open by
  * default; the choice is remembered per section in this browser.
  */
-export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
+export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) {
   const headingId = useId()
   const bodyId = useId()
   const [open, setOpen] = useState(() => readPanelOpen(id))
@@ -65,7 +67,13 @@ export function PlayPanel({ id, title, count, children }: PlayPanelProps) {
           would lose the tools' local state (drafts, dice expression, last roll or oracle result).
           `hidden` keeps the body out of the accessibility tree and the tab order.
         */}
-        <div id={bodyId} hidden={!open} data-state={open ? 'open' : 'closed'} className="pt-3">
+        <div
+          id={bodyId}
+          hidden={!open}
+          data-state={open ? 'open' : 'closed'}
+          className="space-y-3 pt-3"
+        >
+          {help !== undefined && <p className="text-sm text-muted-foreground">{help}</p>}
           {children}
         </div>
       </section>

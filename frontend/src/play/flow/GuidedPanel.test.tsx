@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { lostMineCampaign } from '../campaigns/fixtures'
+import { alarmTracker, heatTracker, lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { chosenWay } from '../journal/fixtures'
 import {
@@ -56,6 +56,11 @@ const answering =
 
 async function panel() {
   return within(await screen.findByRole('region', { name: 'Guided play' }))
+}
+
+/** The scene, phase and session controls, which sit below the note composer. */
+async function controls() {
+  return within(await screen.findByRole('region', { name: 'Guided controls' }))
 }
 
 describe('the guided panel', () => {
@@ -304,7 +309,7 @@ describe('the guided panel', () => {
       const guide = await panel()
       const pick = within(await guide.findByRole('region', { name: 'Scene pick' }))
       expect(pick.getByText('Choose the next Scene Type')).toBeInTheDocument()
-      expect(guide.getByRole('button', { name: 'End session' })).toBeInTheDocument()
+      expect((await controls()).getByRole('button', { name: 'End session' })).toBeInTheDocument()
       await user.click(pick.getByRole('button', { name: 'Play Tour' }))
 
       await waitFor(() => {
@@ -332,10 +337,10 @@ describe('the guided panel', () => {
   describe('the controls', () => {
     const visible = async (flowRun: FlowRun) => {
       renderGuided(guided(flowRun))
-      const guide = await panel()
+      const bar = await controls()
       const names = ['End scene', 'End the start phase', 'End session', 'Pause guidance']
       return [...names, 'Resume guidance'].filter(
-        (name) => guide.queryByRole('button', { name }) !== null,
+        (name) => bar.queryByRole('button', { name }) !== null,
       )
     }
 
@@ -360,11 +365,92 @@ describe('the guided panel', () => {
           Response.json({ error: 'Phase "start" plays once.' }, { status: 409 }),
       })
 
-      const guide = await panel()
-      await user.click(await guide.findByRole('button', { name: 'End the start phase' }))
+      await user.click(
+        await (await controls()).findByRole('button', { name: 'End the start phase' }),
+      )
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'End the phase' }),
+      )
 
-      expect(await guide.findByRole('alert')).toHaveTextContent('Phase "start" plays once.')
+      expect(await (await controls()).findByRole('alert')).toHaveTextContent(
+        'Phase "start" plays once.',
+      )
       expect(sent['flow-run/move-on']).toEqual({ phase: 'start' })
+    })
+
+    describe('ending a phase', () => {
+      const trackers = [alarmTracker, heatTracker]
+      const endable = () => {
+        const campaign = guided({ ...atTheScenePick(), canMoveOn: true })
+        return {
+          ...campaign,
+          trackers,
+          flows: campaign.flows.map((flow) => ({ ...flow, trackers: ['alarm', 'heat'] })),
+        }
+      }
+
+      it('asks first, naming the phase and what to check', async () => {
+        const user = userEvent.setup()
+        const { sent } = renderGuided(endable(), { 'flow-run/move-on': answering(endable()) })
+
+        await user.click(
+          await (await controls()).findByRole('button', { name: 'End the start phase' }),
+        )
+
+        const dialog = within(await screen.findByRole('dialog', { name: 'End the start phase?' }))
+        expect(dialog.getByText(/You will not come back to this phase\./)).toBeInTheDocument()
+        expect(dialog.getByText(/Check your clues, facts and threads/)).toBeInTheDocument()
+        expect(dialog.getByText('Alarm')).toBeInTheDocument()
+        expect(dialog.getByText('2/6')).toBeInTheDocument()
+        expect(dialog.getByText('Heat')).toBeInTheDocument()
+        expect(dialog.getByText('Warm')).toBeInTheDocument()
+        expect(sent).toEqual({})
+      })
+
+      it('sends nothing when cancelled with Keep playing', async () => {
+        const user = userEvent.setup()
+        const { sent } = renderGuided(endable(), { 'flow-run/move-on': answering(endable()) })
+
+        await user.click(
+          await (await controls()).findByRole('button', { name: 'End the start phase' }),
+        )
+        await user.click(
+          within(await screen.findByRole('dialog')).getByRole('button', { name: 'Keep playing' }),
+        )
+
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        })
+        expect(sent).toEqual({})
+      })
+
+      it('sends nothing when closed with Escape', async () => {
+        const user = userEvent.setup()
+        const { sent } = renderGuided(endable(), { 'flow-run/move-on': answering(endable()) })
+
+        await user.click(
+          await (await controls()).findByRole('button', { name: 'End the start phase' }),
+        )
+        await screen.findByRole('dialog')
+        await user.keyboard('{Escape}')
+
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        })
+        expect(sent).toEqual({})
+      })
+
+      it('shows no trackers when the campaign has none', async () => {
+        const user = userEvent.setup()
+        renderGuided(guided({ ...atTheScenePick(), canMoveOn: true }))
+
+        await user.click(
+          await (await controls()).findByRole('button', { name: 'End the start phase' }),
+        )
+
+        const dialog = within(await screen.findByRole('dialog'))
+        expect(dialog.queryByRole('list')).not.toBeInTheDocument()
+      })
     })
 
     it.each([
@@ -375,7 +461,7 @@ describe('the guided panel', () => {
       const progress = flowRun.progress === null ? null : { ...flowRun.progress, phase }
       renderGuided(guided({ ...flowRun, progress, canMoveOn: true }))
 
-      expect(await (await panel()).findByRole('button', { name: label })).toBeInTheDocument()
+      expect(await (await controls()).findByRole('button', { name: label })).toBeInTheDocument()
     })
 
     it('end the scene by its number, then show the campaign it answers with', async () => {
@@ -384,7 +470,7 @@ describe('the guided panel', () => {
         'flow-run/end-scene': answering(guided(atTheScenePick())),
       })
 
-      await user.click(await (await panel()).findByRole('button', { name: 'End scene' }))
+      await user.click(await (await controls()).findByRole('button', { name: 'End scene' }))
 
       expect(await screen.findByRole('region', { name: 'Scene pick' })).toBeInTheDocument()
       expect(sent['flow-run/end-scene']).toEqual({ sceneNumber: 1 })
@@ -404,9 +490,9 @@ describe('the guided panel', () => {
         },
       })
 
-      await user.click(await (await panel()).findByRole('button', { name: 'End session' }))
+      await user.click(await (await controls()).findByRole('button', { name: 'End session' }))
 
-      expect(await screen.findByText('Start a session to go on.')).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Start session' })).toBeInTheDocument()
       expect(sent).toHaveProperty(['sessions/current/end'])
     })
 
@@ -419,11 +505,11 @@ describe('the guided panel', () => {
       })
 
       const guide = await panel()
-      await user.click(await guide.findByRole('button', { name: 'Pause guidance' }))
+      await user.click(await (await controls()).findByRole('button', { name: 'Pause guidance' }))
       expect(await guide.findByText(/Guidance is paused/)).toBeInTheDocument()
       expect(guide.queryByRole('region', { name: /Current step/ })).not.toBeInTheDocument()
       expect(guide.getByText('Setup: Who walks in?')).toBeInTheDocument()
-      await user.click(guide.getByRole('button', { name: 'Resume guidance' }))
+      await user.click(screen.getByRole('button', { name: 'Resume guidance' }))
 
       expect(
         await guide.findByRole('region', { name: 'Current step: Who walks in?' }),
@@ -431,10 +517,84 @@ describe('the guided panel', () => {
       expect(Object.keys(sent)).toEqual(['flow-run/pause', 'flow-run/resume'])
     })
 
-    it('hint at starting a session when none is under way', async () => {
-      renderGuided(guided(atStep(promptStep, { step: null, waitsForSession: true })))
+    it('offer Start session in the guide, and only there, when the flow waits for one', async () => {
+      const user = userEvent.setup()
+      const waiting = guided(atStep(promptStep, { step: null, waitsForSession: true }))
+      const { sent } = renderGuided(waiting, { sessions: answering(guided(atStep(promptStep))) })
 
-      expect(await (await panel()).findByText('Start a session to go on.')).toBeInTheDocument()
+      const guide = await panel()
+      expect(guide.queryByText('Start a session to go on.')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Start session' })).toHaveLength(1)
+      expect(
+        within(screen.getByRole('region', { name: 'Where play stands' })).queryByRole('button', {
+          name: 'Start session',
+        }),
+      ).not.toBeInTheDocument()
+      await user.click(guide.getByRole('button', { name: 'Start session' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveProperty('sessions')
+      })
+    })
+
+    it('keep Start session where play stands while the flow does not wait for one', async () => {
+      renderGuided(guided(atStep(promptStep)))
+
+      await panel()
+      const buttons = screen.getAllByRole('button', { name: 'Start session' })
+      expect(buttons).toHaveLength(1)
+      expect(
+        within(screen.getByRole('region', { name: 'Where play stands' })).getByRole('button', {
+          name: 'Start session',
+        }),
+      ).toBe(buttons[0])
+    })
+
+    it('show why a session could not start, next to the guide button', async () => {
+      const user = userEvent.setup()
+      renderGuided(guided(atStep(promptStep, { step: null, waitsForSession: true })), {
+        sessions: () => Response.json({ error: 'No session today.' }, { status: 409 }),
+      })
+
+      const guide = await panel()
+      await user.click(await guide.findByRole('button', { name: 'Start session' }))
+
+      expect(await guide.findByRole('alert')).toHaveTextContent('No session today.')
+    })
+
+    it('hint at ending the scene when nothing else waits in it', async () => {
+      renderGuided(guided(inOpenPlay))
+
+      const bar = await controls()
+      expect(
+        bar.getByText(
+          'Nothing else waits in this scene. Write what happened in a note, then end the scene when you are ready.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('give no scene hint while a step waits', async () => {
+      renderGuided(guided(atStep(promptStep)))
+
+      expect((await controls()).queryByText(/Nothing else waits/)).not.toBeInTheDocument()
+    })
+
+    it('sit once below the note composer, not in the guide', async () => {
+      renderGuided(guided(inOpenPlay))
+
+      const bar = await screen.findByRole('region', { name: 'Guided controls' })
+      const composer = screen.getByLabelText('New note')
+      expect(composer.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getAllByRole('button', { name: 'Pause guidance' })).toHaveLength(1)
+      expect((await panel()).queryByRole('button', { name: 'End scene' })).not.toBeInTheDocument()
+    })
+
+    it('say the paused flow can resume, with the hint absent', async () => {
+      renderGuided(guided({ ...inOpenPlay, status: 'paused' }))
+
+      const bar = await controls()
+      expect(bar.getByRole('button', { name: 'Resume guidance' })).toBeInTheDocument()
+      expect(bar.queryByText(/Nothing else waits/)).not.toBeInTheDocument()
     })
 
     it('say the Flow is complete', async () => {
@@ -452,6 +612,7 @@ describe('the guided panel', () => {
       const guide = await panel()
       expect(await guide.findByText('Flow complete. Play on freely.')).toBeInTheDocument()
       expect(guide.queryByRole('button')).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Guided controls' })).not.toBeInTheDocument()
     })
   })
 
@@ -489,6 +650,13 @@ describe('the guided panel', () => {
                 sceneTypeName: 'Tour',
                 title: 'Went Go right',
               },
+              {
+                ...scene,
+                number: 3,
+                sceneType: 'tour',
+                sceneTypeName: 'Tour',
+                title: 'Tour 2',
+              },
             ],
           },
         ],
@@ -505,5 +673,7 @@ describe('the guided panel', () => {
       name: 'Scene 2 · Tour — Went Go right',
     })
     expect(within(sceneRegion).getByText('Flow step · Which way?')).toBeInTheDocument()
+    // A title that only repeats the Scene Type (its default, numbered) is not shown twice.
+    expect(within(journal).getByRole('region', { name: 'Scene 3 · Tour' })).toBeInTheDocument()
   })
 })

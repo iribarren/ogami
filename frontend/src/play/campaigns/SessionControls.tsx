@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { titleAddsToType } from '../journal/sceneLabels'
 import { PartyEditor } from './PartyEditor'
 import { useStartScene, useStartSession, useSwitchSceneType, type Campaign } from './useCampaigns'
 
@@ -19,15 +20,22 @@ function playPosition(campaign: Campaign) {
   }
   const scene = session.scenes.find(({ number }) => number === campaign.currentSceneNumber)
   const sessionLabel = `Session ${String(session.number)}`
-  return scene === undefined
-    ? `${sessionLabel} · No scene yet`
-    : `${sessionLabel} · Scene ${String(scene.number)}: ${scene.title}`
+  if (scene === undefined) {
+    return `${sessionLabel} · No scene yet`
+  }
+  // A title that only repeats the Scene Type ("Legwork 1") reads as the type alone.
+  const title = titleAddsToType(scene.title, scene.sceneTypeName)
+    ? scene.title
+    : (scene.sceneTypeName ?? scene.title)
+  return `${sessionLabel} · Scene ${String(scene.number)}: ${title}`
 }
 
 /** Where play stands, with the controls to start the next session or scene. */
 export function SessionControls({ campaign }: { campaign: Campaign }) {
   const startSession = useStartSession(campaign.id)
   const hasSession = campaign.currentSessionNumber !== null
+  // While the Flow waits for a session, the guide offers Start session: one place for it.
+  const guideStarts = campaign.flowRun?.status === 'active' && campaign.flowRun.waitsForSession
 
   return (
     <section
@@ -36,20 +44,24 @@ export function SessionControls({ campaign }: { campaign: Campaign }) {
     >
       <div className="min-w-0 space-y-2">
         <p className="font-medium break-words">{playPosition(campaign)}</p>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={startSession.isPending}
-          onClick={() => {
-            startSession.mutate()
-          }}
-        >
-          Start session
-        </Button>
-        {startSession.error && (
-          <p role="alert" className="text-sm text-destructive">
-            {startSession.error.message}
-          </p>
+        {!guideStarts && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={startSession.isPending}
+              onClick={() => {
+                startSession.mutate()
+              }}
+            >
+              Start session
+            </Button>
+            {startSession.error && (
+              <p role="alert" className="text-sm text-destructive">
+                {startSession.error.message}
+              </p>
+            )}
+          </>
         )}
         <PartyEditor campaign={campaign} />
         <SceneTypeSwitch campaign={campaign} />

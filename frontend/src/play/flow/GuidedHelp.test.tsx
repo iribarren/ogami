@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
+import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { atStep, atTheScenePick, guided, promptStep, quiet, tour } from './fixtures'
 
@@ -45,42 +46,68 @@ async function guide() {
   return within(await screen.findByRole('region', { name: 'Guided play' }))
 }
 
+/** The introduction's toggle, which sits at the top of the play area. */
+const introductionToggle = () => screen.findByRole('button', { name: 'How this flow works' })
+
 describe('the Flow introduction in guided play', () => {
   it('is open before the first session, with its paragraphs', async () => {
     renderCampaign(
       beforeTheFirstSession(withIntroduction(guided(atStep(promptStep)), introduction)),
     )
 
-    const help = await guide()
-    expect(help.getByRole('button', { name: 'How this flow works' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    )
-    expect(help.getByText(/You play alone/)).toHaveTextContent(
+    expect(await introductionToggle()).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText(/You play alone/)).toHaveTextContent(
       'You play alone. The guide asks one thing at a time. Mandatory steps come first.',
     )
-    expect(help.getByText(/You play alone/).className).toContain('whitespace-pre-line')
+    expect(screen.getByText(/You play alone/).className).toContain('whitespace-pre-line')
+  })
+
+  it('sits above where play stands, once, and not in the guide', async () => {
+    renderCampaign(
+      beforeTheFirstSession(withIntroduction(guided(atStep(promptStep)), introduction)),
+    )
+
+    const toggle = await introductionToggle()
+    const standing = screen.getByRole('region', { name: 'Where play stands' })
+    expect(toggle.compareDocumentPosition(standing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'How this flow works' })).toHaveLength(1)
+    expect(
+      (await guide()).queryByRole('button', { name: 'How this flow works' }),
+    ).not.toBeInTheDocument()
   })
 
   it('is closed once a session has started, and opens on request', async () => {
     const user = userEvent.setup()
     renderCampaign(withIntroduction(guided(atStep(promptStep)), introduction))
 
-    const help = await guide()
-    const toggle = help.getByRole('button', { name: 'How this flow works' })
+    const toggle = await introductionToggle()
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(help.queryByText(/You play alone/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/You play alone/)).not.toBeInTheDocument()
 
     await user.click(toggle)
 
-    expect(help.getByText(/You play alone/)).toBeInTheDocument()
+    expect(screen.getByText(/You play alone/)).toBeInTheDocument()
   })
 
   it('is absent when the Flow has no introduction', async () => {
     renderCampaign(withIntroduction(guided(atStep(promptStep)), null))
 
-    const help = await guide()
-    expect(help.queryByRole('button', { name: 'How this flow works' })).not.toBeInTheDocument()
+    await guide()
+    expect(screen.queryByRole('button', { name: 'How this flow works' })).not.toBeInTheDocument()
+  })
+
+  it('is absent for a campaign played freely', async () => {
+    renderCampaign(lostMineCampaign)
+
+    await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
+    expect(screen.queryByRole('button', { name: 'How this flow works' })).not.toBeInTheDocument()
+  })
+
+  it('shows once in focus mode too', async () => {
+    renderCampaign(withIntroduction(guided(atStep(promptStep), 'focus'), introduction))
+
+    await introductionToggle()
+    expect(screen.getAllByRole('button', { name: 'How this flow works' })).toHaveLength(1)
   })
 })
 

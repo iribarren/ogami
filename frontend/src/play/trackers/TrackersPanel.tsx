@@ -5,14 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
 import type { Campaign } from '../campaigns/useCampaigns'
-import { useSetTrackerValue, visibleTrackers, type Tracker } from './useTrackers'
-
-/** "3" for a counter, "3/6" for a clock. */
-function valueText(tracker: Tracker) {
-  return tracker.kind === 'clock' && tracker.segments !== null
-    ? `${String(tracker.value)}/${String(tracker.segments)}`
-    : String(tracker.value)
-}
+import { trackerValueText, useSetTrackerValue, visibleTrackers, type Tracker } from './useTrackers'
 
 /**
  * The Trackers of a campaign with their values, which the player edits by hand: one row per
@@ -79,7 +72,7 @@ function TrackerRow({
         <span className="font-medium">{tracker.name}</span>
         <span className="tabular-nums">
           <span className="sr-only">Value: </span>
-          {valueText(tracker)}
+          {trackerValueText(tracker)}
           {tracker.levelLabel !== null && (
             <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               {tracker.levelLabel}

@@ -11,6 +11,7 @@ import {
   freeJournal,
   lostMine,
   lostMineCampaign,
+  lostMineWithTypes,
   lostMineInNewSession,
   newCampaign,
 } from './fixtures'
@@ -289,6 +290,49 @@ describe('the Play screen', () => {
     expect(
       await within(screen.getByRole('form', { name: 'New scene' })).findByRole('alert'),
     ).toHaveTextContent('The scene title must be at most 100 characters.')
+  })
+
+  it('explains each tool panel in one line', async () => {
+    renderPlayScreen(lostMineWithTypes)
+
+    const helps: [string, string][] = [
+      ['Trackers', 'Counters and clocks the flow reads to decide what happens next.'],
+      [
+        'Facts',
+        'What the story has settled. The flow asks for some; refill one when play changes it.',
+      ],
+      [
+        'Threads',
+        'The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled.',
+      ],
+      ['NPCs', 'The people met in play. Add them as they appear; the flow adds some too.'],
+      ['Characters', 'Your characters and their sheets. Open one to read or edit it.'],
+      [
+        'Oracles',
+        'Ask a yes/no question or roll a table when you need ideas. The result is yours to interpret.',
+      ],
+    ]
+    for (const [panel, help] of helps) {
+      expect(
+        within(await screen.findByRole('region', { name: panel })).getByText(help),
+      ).toBeInTheDocument()
+    }
+  })
+
+  it('names the scene once where play stands when its title only repeats the Scene Type', async () => {
+    const campaign = {
+      ...lostMineWithTypes,
+      sessions: lostMineWithTypes.sessions.map((session) => ({
+        ...session,
+        scenes: session.scenes.map((scene) =>
+          session.number === 2 ? { ...scene, title: 'Legwork 1' } : scene,
+        ),
+      })),
+    }
+    renderPlayScreen(campaign)
+
+    await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
+    expect(playPosition()).toHaveTextContent(/Session 2 · Scene 1: Legwork(?! 1)/)
   })
 
   it('writes a note in the current scene, which appears in the journal', async () => {

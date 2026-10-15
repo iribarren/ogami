@@ -87,6 +87,32 @@ final class GameSystemDraftHandlersTest extends TestCase
     }
 
     #[Test]
+    public function aGivenDescriptionReplacesTheSourceOneOnACopyAndNullKeepsIt(): void
+    {
+        $this->publish(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-minimal'), 'gameSystem.description', 'Source text'));
+
+        $this->create('kept', 'Kept', 'ann', 'minimal');
+        $this->create('replaced', 'Replaced', 'ann', 'minimal', null, 'My text');
+
+        self::assertSame('Source text', $this->get('ann', 'kept')->description);
+        self::assertSame('My text', $this->get('ann', 'replaced')->description);
+    }
+
+    #[Test]
+    public function aCopyWithAnInvalidDescriptionIsRefusedAndCreatesNothing(): void
+    {
+        $this->publish(ReleaseArrays::fixture('valid/v2-minimal'));
+
+        try {
+            $this->create('copy', 'Copy', 'ann', 'minimal', null, str_repeat('x', 100000));
+            self::fail('The draft was created.');
+        } catch (InvalidGameSystemMetadata $refusal) {
+            self::assertSame('description', $refusal->field);
+            self::assertSame([], $this->list('ann'));
+        }
+    }
+
+    #[Test]
     public function aCopyOfASchemaVersion1ReleaseCountsOraclesAndFlowSteps(): void
     {
         $this->publish(ReleaseArrays::fixture('valid/contract-doc-example'));
@@ -216,9 +242,12 @@ final class GameSystemDraftHandlersTest extends TestCase
         $this->create('my-system', 'My system', 'ann');
         $this->publish($this->draftDocument('ann', 'my-system'));
 
-        $this->expectException(GameSystemHasReleases::class);
-
-        $this->discard('ann', 'my-system');
+        try {
+            $this->discard('ann', 'my-system');
+            self::fail('The draft was discarded.');
+        } catch (GameSystemHasReleases) {
+            self::assertSame('My system', $this->get('ann', 'my-system')->name);
+        }
     }
 
     #[Test]
@@ -287,9 +316,9 @@ final class GameSystemDraftHandlersTest extends TestCase
         return new OwnedGameSystems($this->gameSystems);
     }
 
-    private function create(string $key, string $name, string $owner, ?string $sourceKey = null, ?int $sourceVersion = null): void
+    private function create(string $key, string $name, string $owner, ?string $sourceKey = null, ?int $sourceVersion = null, ?string $description = null): void
     {
-        (new CreateGameSystemHandler($this->gameSystems, $this->releases, $this->clock))(new CreateGameSystem($this->ids->generate()->toString(), $owner, $key, $name, null, $sourceKey, $sourceVersion));
+        (new CreateGameSystemHandler($this->gameSystems, $this->releases, $this->clock))(new CreateGameSystem($this->ids->generate()->toString(), $owner, $key, $name, $description, $sourceKey, $sourceVersion));
     }
 
     /**

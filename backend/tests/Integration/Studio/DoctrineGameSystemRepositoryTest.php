@@ -39,7 +39,7 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     public function itRoundTripsTheWholeAggregate(): void
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-every-part'))->toArray();
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::FIRST_ID), 'my-copy', 'My copy', self::OWNER, $source, new \DateTimeImmutable('2026-10-15T10:00:00'));
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::FIRST_ID), 'my-copy', 'My copy', null, self::OWNER, $source, new \DateTimeImmutable('2026-10-15T10:00:00'));
         $gameSystem->editMetadata(GameSystemMetadata::of('My copy', 'Text', ['notice' => 'By me', 'license' => 'CC-BY'], 'noir'), new \DateTimeImmutable('2026-10-15T11:00:00'));
         $this->gameSystems->add($gameSystem);
         $this->entityManager->clear();

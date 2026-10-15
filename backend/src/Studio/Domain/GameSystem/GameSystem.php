@@ -71,18 +71,20 @@ final class GameSystem
 
     /**
      * A draft that copies a release document as published (its schema version, description,
-     * credits, theme and sections) under a new key and name.
+     * credits, theme and sections) under a new key and name. A given description replaces the
+     * source's; null keeps it.
      *
      * @param array<mixed> $sourceDocument a release document, e.g. ReleaseContent::toArray()
      *
-     * @throws InvalidGameSystemMetadata when the key, owner or name is invalid, or the source is not a release document
+     * @throws InvalidGameSystemMetadata when the key, owner, name or description is invalid, or the source is not a release document
      */
-    public static function createFromRelease(GameSystemId $id, string $key, string $name, string $ownerId, array $sourceDocument, \DateTimeImmutable $now): self
+    public static function createFromRelease(GameSystemId $id, string $key, string $name, ?string $description, string $ownerId, array $sourceDocument, \DateTimeImmutable $now): self
     {
         $key = self::validKey($key);
         $name = GameSystemMetadata::name($name);
+        $description = GameSystemMetadata::description($description);
 
-        return new self($id->toString(), $key, self::validOwner($ownerId), self::withKey(self::plain($sourceDocument), $key, $name), $now, $now);
+        return new self($id->toString(), $key, self::validOwner($ownerId), self::withKey(self::plain($sourceDocument), $key, $name, $description), $now, $now);
     }
 
     /**
@@ -241,11 +243,11 @@ final class GameSystem
     /**
      * @param array<string, mixed> $document
      *
-     * @return array<string, mixed> the document with its GameSystem key (and name, when given) set; the rest is kept as given
+     * @return array<string, mixed> the document with its GameSystem key (and name and description, when given) set; the rest is kept as given
      *
      * @throws InvalidGameSystemMetadata when it has no supported schema version or no gameSystem object
      */
-    private static function withKey(array $document, string $key, ?string $name = null): array
+    private static function withKey(array $document, string $key, ?string $name = null, ?string $description = null): array
     {
         if (!\in_array($document['schemaVersion'] ?? null, ReleaseContent::SUPPORTED_SCHEMA_VERSIONS, true)) {
             throw InvalidGameSystemMetadata::at('schemaVersion', 'must be a supported schema version');
@@ -256,7 +258,7 @@ final class GameSystem
             throw InvalidGameSystemMetadata::at('gameSystem', 'must be an object with a name');
         }
 
-        $document['gameSystem'] = ['key' => $key, ...array_diff_key($gameSystem, ['key' => true]), ...null === $name ? [] : ['name' => $name]];
+        $document['gameSystem'] = ['key' => $key, ...array_diff_key($gameSystem, ['key' => true]), ...null === $name ? [] : ['name' => $name], ...null === $description ? [] : ['description' => $description]];
 
         return $document;
     }

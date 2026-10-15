@@ -84,7 +84,7 @@ final class GameSystem
         $name = GameSystemMetadata::name($name);
         $description = GameSystemMetadata::description($description);
 
-        return new self($id->toString(), $key, self::validOwner($ownerId), self::withKey(self::plain($sourceDocument), $key, $name, $description), $now, $now);
+        return new self($id->toString(), $key, self::validOwner($ownerId), self::withNameAndDescription(self::withKey(self::plain($sourceDocument), $key), $name, $description), $now, $now);
     }
 
     /**
@@ -243,11 +243,11 @@ final class GameSystem
     /**
      * @param array<string, mixed> $document
      *
-     * @return array<string, mixed> the document with its GameSystem key (and name and description, when given) set; the rest is kept as given
+     * @return array<string, mixed> the document with its GameSystem key set; the rest is kept as given
      *
      * @throws InvalidGameSystemMetadata when it has no supported schema version or no gameSystem object
      */
-    private static function withKey(array $document, string $key, ?string $name = null, ?string $description = null): array
+    private static function withKey(array $document, string $key): array
     {
         if (!\in_array($document['schemaVersion'] ?? null, ReleaseContent::SUPPORTED_SCHEMA_VERSIONS, true)) {
             throw InvalidGameSystemMetadata::at('schemaVersion', 'must be a supported schema version');
@@ -258,7 +258,21 @@ final class GameSystem
             throw InvalidGameSystemMetadata::at('gameSystem', 'must be an object with a name');
         }
 
-        $document['gameSystem'] = ['key' => $key, ...array_diff_key($gameSystem, ['key' => true]), ...null === $name ? [] : ['name' => $name], ...null === $description ? [] : ['description' => $description]];
+        $document['gameSystem'] = ['key' => $key, ...array_diff_key($gameSystem, ['key' => true])];
+
+        return $document;
+    }
+
+    /**
+     * @param array<string, mixed> $document a document checked by withKey()
+     *
+     * @return array<string, mixed> the document with this name, and this description when given (null keeps the document's)
+     */
+    private static function withNameAndDescription(array $document, string $name, ?string $description): array
+    {
+        /** @var array<string, mixed> $gameSystem */
+        $gameSystem = $document['gameSystem'];
+        $document['gameSystem'] = [...$gameSystem, 'name' => $name, ...null === $description ? [] : ['description' => $description]];
 
         return $document;
     }

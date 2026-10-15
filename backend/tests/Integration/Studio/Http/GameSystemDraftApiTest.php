@@ -212,7 +212,7 @@ final class GameSystemDraftApiTest extends WebTestCase
         yield 'bad key' => [['key' => 'Bad Key', 'name' => 'Mine'], 'key'];
         yield 'blank key' => [['key' => '', 'name' => 'Mine'], 'key'];
         yield 'blank name' => [['key' => 'mine', 'name' => '  '], 'name'];
-        yield 'long description' => [['key' => 'mine', 'name' => 'Mine', 'description' => 'x'], 'description'];
+        yield 'long description' => [['key' => 'mine', 'name' => 'Mine', 'description' => str_repeat('x', 100000)], 'description'];
         yield 'unknown source' => [['key' => 'mine', 'name' => 'Mine', 'source' => ['key' => 'nothing']], 'nothing'];
         yield 'unknown source version' => [['key' => 'mine', 'name' => 'Mine', 'source' => ['key' => 'minimal', 'version' => 7]], 'v7'];
     }
@@ -226,9 +226,6 @@ final class GameSystemDraftApiTest extends WebTestCase
     {
         $this->publishRelease(ReleaseArrays::fixture('valid/v2-minimal'));
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
-        if ('description' === $mentions) {
-            $body['description'] = str_repeat('x', 100000);
-        }
 
         $this->client->jsonRequest('POST', self::BASE, $body);
 
@@ -420,6 +417,11 @@ final class GameSystemDraftApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(422);
         self::assertStringContainsString('theme', $this->error());
 
+        $this->client->jsonRequest('PUT', self::BASE.'/v1-copy/metadata', ['name' => 'V1 copy', 'credits' => ['notice' => 'Fan content.']]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('credits', $this->error());
+
         $this->client->jsonRequest('PUT', self::BASE.'/v1-copy/metadata', ['name' => 'Renamed']);
         self::assertResponseIsSuccessful();
         self::assertSame('Renamed', $this->json()['name']);
@@ -456,6 +458,45 @@ final class GameSystemDraftApiTest extends WebTestCase
         $entityManager->clear();
         $this->client->request('GET', self::BASE.'/mine');
         self::assertSame('mine', $this->json()['name']);
+    }
+
+    #[Test]
+    public function aKeyTakenByAConcurrentCreateIsAConflict(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+
+        // Another request creates the same key after this one checked it, right before it flushes.
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $concurrentCreate = new class($entityManager->getConnection()) {
+            private bool $done = false;
+
+            public function __construct(private readonly Connection $connection)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                if ($this->done) {
+                    return;
+                }
+
+                $this->done = true;
+                $this->connection->executeStatement(
+                    'INSERT INTO studio_gamesystem (id, game_system_key, owner_id, document, created_at, updated_at, version) VALUES (:id, :key, :owner, :document, NOW(), NOW(), 1)',
+                    ['id' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', 'key' => 'mine', 'owner' => 'someone-else', 'document' => '{}'],
+                );
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentCreate);
+
+        try {
+            $this->client->jsonRequest('POST', self::BASE, ['key' => 'mine', 'name' => 'Mine']);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentCreate);
+        }
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('The GameSystem key "mine" is already taken.', $this->error());
     }
 
     #[Test]

@@ -14,6 +14,7 @@ import {
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { MetadataForm } from './MetadataForm'
+import { PublishDialog } from './PublishDialog'
 import {
   StudioError,
   useDiscardGameSystem,
@@ -121,25 +122,41 @@ function GameSystemView({
   onReload: () => Promise<GameSystem | undefined>
 }) {
   const [tab, setTab] = useState<Tab>('overview')
+  const [notice, setNotice] = useState<string | null>(null)
   // The form owns what is typed and only starts from this GameSystem: a save does not reset it,
   // while a reload the person asked for remounts it on the latest version.
   const [formStart, setFormStart] = useState({ gameSystem, reloads: 0 })
 
   return (
     <>
-      <header className="space-y-2">
-        <h1 className="font-heading text-page-title break-words">{gameSystem.name}</h1>
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
-          <span className="font-mono break-all">{gameSystem.key}</span>
-          <span>Schema version {gameSystem.schemaVersion}</span>
-          <span>
-            {gameSystem.latestReleaseVersion === null
-              ? 'Never published'
-              : `Latest release v${String(gameSystem.latestReleaseVersion)}`}
-          </span>
-          {gameSystem.hasUnpublishedChanges && <Badge variant="warning">Unpublished changes</Badge>}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="font-heading text-page-title break-words">{gameSystem.name}</h1>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+            <span className="font-mono break-all">{gameSystem.key}</span>
+            <span>Schema version {gameSystem.schemaVersion}</span>
+            <span>
+              {gameSystem.latestReleaseVersion === null
+                ? 'Never published'
+                : `Latest release v${String(gameSystem.latestReleaseVersion)}`}
+            </span>
+            {gameSystem.hasUnpublishedChanges && (
+              <Badge variant="warning">Unpublished changes</Badge>
+            )}
+          </p>
+        </div>
+        <PublishDialog
+          gameSystem={gameSystem}
+          onPublished={(version) => {
+            setNotice(`Published version ${String(version)}.`)
+          }}
+        />
       </header>
+      {notice && (
+        <p role="status" className="text-sm">
+          {notice}
+        </p>
+      )}
       <SegmentedControl
         aria-label="GameSystem page"
         value={tab}

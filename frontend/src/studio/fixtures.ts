@@ -60,3 +60,11 @@ export const legacy: GameSystem = {
 }
 
 export const validDraft = { valid: true, error: null, warnings: [] }
+
+/** A published, changed GameSystem: the next publish creates version 4. */
+export const published3: GameSystem = {
+  ...draft,
+  key: 'noir-detective',
+  name: 'Noir detective',
+  latestReleaseVersion: 3,
+}

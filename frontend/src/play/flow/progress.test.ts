@@ -11,6 +11,7 @@ const progress: Progress = {
   part: 'open',
   stepNumber: null,
   stepCount: null,
+  phaseDescription: null,
 }
 
 describe('progressText', () => {

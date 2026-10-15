@@ -219,6 +219,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-check-step-outcome-unknown-property' => ['sceneTypes[0].play[0].outcomes[0].prompt: unknown property', '/sceneTypes/0/play/0/outcomes/0'],
         'generated: v2-check-step-too-many-outcomes' => ['sceneTypes[0].play[0].outcomes: at most 10 outcomes', '/sceneTypes/0/play/0/outcomes'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
+        'generated: v2-too-long-phase-description' => ['flows[0].phases[0].description: must be at most 2000 characters', '/flows/0/phases/0/description'],
+        'v2-inspiration-too-many' => ['sceneTypes[0].play[0].inspiration: at most 5 inspiration tables, 6 given', '/sceneTypes/0/play/0/inspiration'],
+        'v2-inspiration-empty' => ['sceneTypes[0].play[0].inspiration: at least 1 inspiration tables, 0 given', '/sceneTypes/0/play/0/inspiration'],
+        'v2-inspiration-duplicate' => ['sceneTypes[0].play[0].inspiration[1]: duplicate inspiration table "nouns"', '/sceneTypes/0/play/0/inspiration'],
     ];
 
     /**
@@ -285,6 +289,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'v2-duplicate-scene-type-key' => 'sceneTypes[1].key: duplicate Scene Type key "scene"',
         'v2-duplicate-step-key' => 'sceneTypes[0].play[1].key: duplicate step key "begin"',
         'v2-duplicate-tracker-key' => 'trackers[1].key: duplicate tracker key "alarm"',
+        'v2-inspiration-unknown-table' => 'sceneTypes[0].play[0].inspiration[1]: unknown oracle table "ghost"',
+        'v2-inspiration-likelihood-oracle' => 'sceneTypes[0].play[0].inspiration[0]: unknown oracle table "fate"',
         'v2-initial-out-of-range' => 'trackers[0].initial: must be within min..max (0..3), 4 given',
         'v2-invalid-roll-dice' => 'sceneTypes[0].play[1].dice: invalid dice notation',
         'v2-last-band-with-up-to' => 'sceneTypes[0].play[1].bands[1].upTo: the last band catches the rest and must omit upTo',
@@ -492,6 +498,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-too-long-credits-license' => ['gameSystem' => ['key' => 'minimal', 'name' => 'Minimal', 'credits' => ['notice' => 'Fan.', 'license' => str_repeat('l', 201)]]],
             'v2-too-long-credits-url' => ['gameSystem' => ['key' => 'minimal', 'name' => 'Minimal', 'credits' => ['notice' => 'Fan.', 'url' => 'https://example.com/'.str_repeat('u', 481)]]],
             'v2-too-long-introduction' => ['sceneTypes' => $sceneType([]), 'flows' => [['introduction' => str_repeat('i', 5001)] + $flow(1)]],
+            'v2-too-long-phase-description' => ['sceneTypes' => $sceneType([]), 'flows' => [['phases' => [['description' => str_repeat('d', 2001)] + $flow(1)['phases'][0]]] + $flow(1)]],
         ];
 
         $alarm = ['key' => 'alarm', 'name' => 'Alarm', 'kind' => 'clock', 'segments' => 6];

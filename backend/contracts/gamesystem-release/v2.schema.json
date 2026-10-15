@@ -461,6 +461,10 @@
         "key": { "$ref": "#/$defs/key" },
         "name": { "$ref": "#/$defs/label" },
         "act": { "type": ["string", "null"], "minLength": 1, "maxLength": 100 },
+        "description": {
+          "description": "What the phase is for and when it is done; Play shows it under the phase and when the player ends it.",
+          "$ref": "#/$defs/optionalText2000"
+        },
         "mode": { "enum": ["once", "loop"] },
         "selection": { "$ref": "#/$defs/selection" },
         "sessionOpening": { "$ref": "#/$defs/optionalSteps" },
@@ -651,7 +655,15 @@
         "tip": { "$ref": "#/$defs/optionalText2000" },
         "mandatory": { "$ref": "#/$defs/optionalFlag" },
         "next": { "$ref": "#/$defs/next" },
-        "effects": { "$ref": "#/$defs/optionalEffects" }
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "inspiration": {
+          "description": "Oracle tables (keys) the player may roll for ideas while answering. Suggestions only: they have no effects and are not rolled by the step.",
+          "type": ["array", "null"],
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/key" }
+        }
       }
     },
     "oracleStep": {

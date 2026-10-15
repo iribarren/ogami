@@ -8,6 +8,7 @@ import { Textarea } from '@/shared/ui/textarea'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { CharacterStepForm } from './CharacterStepForm'
 import { CheckStepForm } from './CheckStepForm'
+import { InspirationRolls } from './InspirationRolls'
 import { PickForm } from './PickForm'
 import type { FlowRunCommand, FlowStep } from './useFlowRun'
 
@@ -66,6 +67,9 @@ export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
           </div>
         )}
       </div>
+      {step.kind === 'prompt' && step.inspiration.length > 0 && (
+        <InspirationRolls campaign={campaign} keys={step.inspiration} />
+      )}
       <StepForm campaign={campaign} step={step} pending={pending} onCommand={onCommand} />
       {!step.mandatory && (
         <Button

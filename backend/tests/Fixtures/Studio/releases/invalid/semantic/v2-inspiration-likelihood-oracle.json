@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": [{"key": "fate", "name": "Fate", "sides": 6, "levels": [{"key": "even", "label": "Even", "target": 3}]}]},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "who", "kind": "prompt", "title": "Who walks in?", "inspiration": ["fate"]}], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

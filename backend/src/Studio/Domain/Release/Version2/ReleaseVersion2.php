@@ -71,7 +71,7 @@ final class ReleaseVersion2
         'oracles' => true, 'trackers' => true, 'phases' => true,
     ];
     private const array PHASE = [
-        'key' => true, 'name' => true, 'act' => false, 'mode' => true, 'selection' => true,
+        'key' => true, 'name' => true, 'act' => false, 'description' => false, 'mode' => true, 'selection' => true,
         'sessionOpening' => false, 'sessionClosing' => false, 'phaseOpening' => false, 'phaseClosing' => false,
         'sceneOpening' => false, 'sceneClosing' => false, 'worldTurn' => false,
     ];
@@ -470,6 +470,10 @@ final class ReleaseVersion2
         ReleaseFields::text($phase['name'], $path.'.name', 1, self::MAX_NAME_LENGTH);
         if (isset($phase['act'])) {
             ReleaseFields::text($phase['act'], $path.'.act', 1, self::MAX_NAME_LENGTH);
+        }
+
+        if (isset($phase['description'])) {
+            ReleaseFields::text($phase['description'], $path.'.description', 0, self::MAX_TEXT_LENGTH);
         }
 
         ReleaseFields::oneOf($phase['mode'], $path.'.mode', ['once', 'loop']);

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {
+    "tables": [
+      {"key": "nouns", "name": "Nouns", "entries": [{"text": "key"}, {"text": "letter"}]},
+      {"key": "verbs", "name": "Verbs", "entries": [{"text": "hide"}, {"text": "steal"}]},
+      {"key": "adjectives", "name": "Adjectives", "entries": [{"text": "old"}, {"text": "cold"}]}
+    ],
+    "likelihood": []
+  },
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "who", "kind": "prompt", "title": "Who walks in?", "prompt": "Describe the first person.", "inspiration": ["nouns", "verbs", "adjectives"]}, {"key": "why", "kind": "prompt", "title": "Why now?", "inspiration": ["verbs"]}], "closing": []}
+  ],
+  "flows": [
+    {"key": "main", "name": "Main", "defaultView": "focus", "oracles": [], "trackers": [], "phases": [{"key": "only", "name": "Only", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["scene"]}, "description": "Set the scene: who is there and what they want."}]}
+  ],
+  "sheet": {},
+  "checks": []
+}

@@ -45,6 +45,11 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
   }
   return (
     <>
+      {active && flowRun.progress?.phaseDescription != null && (
+        <p aria-label="Phase description" className="text-sm whitespace-pre-wrap">
+          {flowRun.progress.phaseDescription}
+        </p>
+      )}
       {active && sceneType?.tips && (
         <Disclosure key={sceneType.key} title={`Tips for ${sceneType.name}`} defaultOpen={false}>
           {sceneType.tips}
@@ -151,6 +156,7 @@ export function GuidedControls({ campaign, flowRun, command }: PartProps) {
         {active && flowRun.canMoveOn && flowRun.progress !== null && (
           <EndPhaseDialog
             label={endPhaseLabel(flowRun.progress.phase)}
+            description={flowRun.progress.phaseDescription}
             trackers={visibleTrackers(campaign)}
             disabled={command.isPending}
             onConfirm={() => {

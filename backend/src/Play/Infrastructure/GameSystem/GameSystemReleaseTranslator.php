@@ -425,6 +425,7 @@ final readonly class GameSystemReleaseTranslator
                 ?? throw $this->invalid($view, $path.'.mode', \sprintf('unknown phase mode "%s".', $mode)),
             $this->selection($view, $phase['selection'] ?? null, $path.'.selection'),
             ...$hooks,
+            description: $this->optionalString($view, $phase['description'] ?? null, $path.'.description'),
         );
     }
 
@@ -568,7 +569,7 @@ final readonly class GameSystemReleaseTranslator
                 'effects' => $this->effects($view, $step['effects'] ?? [], $stepPath.'.effects'),
             ];
             $snapshots[] = match ($kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind')) {
-                'prompt' => new PromptStep(...$common),
+                'prompt' => new PromptStep(...$common, inspiration: $this->keys($view, $step['inspiration'] ?? [], $stepPath.'.inspiration')),
                 'oracle' => new OracleStep(
                     ...$common,
                     oracle: $this->string($view, $step['oracle'] ?? null, $stepPath.'.oracle'),

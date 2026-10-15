@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [
+    {"key": "a", "name": "a", "entries": [{"text": "x"}]},
+    {"key": "b", "name": "b", "entries": [{"text": "x"}]},
+    {"key": "c", "name": "c", "entries": [{"text": "x"}]},
+    {"key": "d", "name": "d", "entries": [{"text": "x"}]}, {"key": "e", "name": "e", "entries": [{"text": "x"}]}, {"key": "f", "name": "f", "entries": [{"text": "x"}]}
+  ], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "who", "kind": "prompt", "title": "Who walks in?", "inspiration": ["a", "b", "c", "d", "e", "f"]}], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

@@ -1223,6 +1223,11 @@ export interface components {
              * @example 2
              */
             stepCount: number | null;
+            /**
+             * @description What the phase is for and when it is done; null when the release gives none.
+             * @example Plan the job and gather your crew.
+             */
+            phaseDescription: string | null;
         };
         FlowStepOptionResponse: {
             /** @example yes */
@@ -1344,6 +1349,8 @@ export interface components {
             difficultyFixed: boolean;
             /** @description The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds. */
             characters: components["schemas"]["ItemRefResponse"][];
+            /** @description The keys of the oracle tables the prompt step offers as inspiration, in order; empty for the other kinds and for a prompt that offers none. The player may roll them; they never change the step. */
+            inspiration: string[];
         };
         SceneTypeSummaryResponse: {
             /** @example legwork */

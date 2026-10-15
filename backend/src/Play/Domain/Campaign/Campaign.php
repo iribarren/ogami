@@ -358,9 +358,10 @@ final class Campaign
      */
     public function startScene(?string $title, \DateTimeImmutable $startedAt, ?SceneType $sceneType = null): Scene
     {
+        $isDefault = null === $title;
         $title ??= $sceneType instanceof SceneType ? $this->defaultSceneTitle($sceneType) : throw InvalidSceneTitle::missing();
 
-        return $this->addScene(static fn (Session $session): Session => $session->withNewScene($title, $startedAt, $sceneType?->key));
+        return $this->addScene(static fn (Session $session): Session => $session->withNewScene($title, $startedAt, $sceneType?->key, $isDefault));
     }
 
     /**
@@ -378,7 +379,8 @@ final class Campaign
 
     /**
      * Switches the current scene to another Scene Type by hand (free play). Its number and journal
-     * entries stay. A title that is still the old Scene Type's default ("Legwork 2") becomes the
+     * entries stay. A title that is still the old Scene Type's default ("Legwork 2", as the scene
+     * records; a scene stored without the record is judged by the title's shape) becomes the
      * new type's default, numbered as for a new scene of that type ("Firefight 1"); a title the
      * player or an Effect gave stays. With a FlowRun the switch is in its history, and while
      * guidance is active a guided scene goes on at the new type's setup (a sceneTitle Effect
@@ -398,9 +400,9 @@ final class Campaign
         $scene = $session?->currentScene() ?? throw NoCurrentScene::toSwitchSceneType();
         $switched = $scene->withSceneType($sceneType->key);
         $previous = null === $scene->sceneType() ? null : $release?->sceneType($scene->sceneType());
-        if ($previous instanceof SceneType && $previous->key !== $sceneType->key && $this->isDefaultSceneTitle($scene->title(), $previous)) {
+        if ($previous instanceof SceneType && $previous->key !== $sceneType->key && ($scene->hasDefaultTitle() ?? $this->isDefaultSceneTitle($scene->title(), $previous))) {
             // The scene still has the old type here, so the count of the new type leaves it out.
-            $switched = $switched->withTitle($this->defaultSceneTitle($sceneType));
+            $switched = $switched->withDefaultTitle($this->defaultSceneTitle($sceneType));
         }
 
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($switched)];

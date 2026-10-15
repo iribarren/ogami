@@ -286,6 +286,24 @@ final class ReleaseContentVersion2Test extends TestCase
         self::assertSame(['key', 'name', 'act', 'mode', 'selection', 'sceneOpening', 'sceneClosing', 'worldTurn'], array_keys($this->canonicalPhase(self::example(), 1)));
     }
 
+    #[Test]
+    public function itKeepsInspirationAndPhaseDescriptionsInCanonicalFormAndDropsAbsentOnes(): void
+    {
+        $release = ReleaseArrays::fixture('valid/v2-inspiration');
+        $content = ReleaseContent::fromArray(ReleaseArrays::reverseKeys($release));
+        /** @var list<array<string, mixed>> $sceneTypes */
+        $sceneTypes = $content->toArray()['sceneTypes'];
+        /** @var list<array<string, mixed>> $play */
+        $play = $sceneTypes[0]['play'];
+        // Absent, null and the field left out hash alike, so a release without the fields keeps its hash.
+        $without = ReleaseArrays::with(ReleaseArrays::with($release, 'sceneTypes.0.play.1.inspiration', null), 'flows.0.phases.0.description', null);
+
+        self::assertSame(ReleaseContent::fromArray($release)->hash(), $content->hash());
+        self::assertSame(['key', 'name', 'description', 'mode', 'selection'], array_keys($this->canonicalPhase(ReleaseArrays::reverseKeys($release), 0)));
+        self::assertSame(['key', 'kind', 'title', 'prompt', 'inspiration'], array_keys($play[0]));
+        self::assertSame(ReleaseContent::fromArray(self::unset('sceneTypes.0.play.1.inspiration', self::unset('flows.0.phases.0.description', $release)))->hash(), ReleaseContent::fromArray($without)->hash());
+    }
+
     /**
      * @return iterable<string, array{array<mixed>}>
      */
@@ -293,6 +311,7 @@ final class ReleaseContentVersion2Test extends TestCase
     {
         yield 'version 2 with flows, empty bands, oracle branches and an empty sheet' => [ReleaseArrays::fixture('valid/v2-every-part')];
         yield 'version 2 Scene Types' => [self::scenes()];
+        yield 'version 2 inspiration tables and phase descriptions' => [ReleaseArrays::fixture('valid/v2-inspiration')];
         yield 'version 2 tags, pick steps, count conditions and the NPC and Thread effects' => [ReleaseArrays::fixture('valid/v2-threads-npcs')];
         yield 'version 1' => [ReleaseArrays::fixture('valid/contract-doc-example')];
     }

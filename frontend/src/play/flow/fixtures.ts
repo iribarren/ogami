@@ -38,6 +38,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     difficulty: null,
     difficultyFixed: false,
     characters: [],
+    inspiration: [],
     ...fields,
   }
 }
@@ -48,6 +49,13 @@ export const promptStep = step({
   title: 'Who walks in?',
   prompt: 'Describe the first person.',
   tip: 'Keep it short.',
+})
+/** A `prompt` step offering the tables Weather and Action as inspiration, and one the campaign lacks. */
+export const inspirationStep = step({
+  key: 'notice',
+  kind: 'prompt',
+  title: 'What do you notice?',
+  inspiration: ['weather', 'action', 'ghost'],
 })
 export const oracleStep = step({
   key: 'ask',
@@ -148,6 +156,7 @@ const progress: FlowRun['progress'] = {
   part: 'setup',
   stepNumber: 1,
   stepCount: 3,
+  phaseDescription: null,
 }
 
 /** A FlowRun waiting on `current`, in the scene "Into the dark" (the Scene Type Tour). */
@@ -164,6 +173,15 @@ export function atStep(current: FlowStep, overrides: Partial<FlowRun> = {}): Flo
     ...overrides,
   }
 }
+
+/** What the phase of the FlowRuns above says it is for. */
+export const phaseDescription = 'Find out what the gate hides, then decide how to get in.'
+
+/** The FlowRun with the description of its phase set. */
+export const describing = (flowRun: FlowRun): FlowRun => ({
+  ...flowRun,
+  progress: flowRun.progress === null ? null : { ...flowRun.progress, phaseDescription },
+})
 
 /** A FlowRun at the scene pick, in `rule`'s words. */
 export const atTheScenePick = (overrides: Partial<NonNullable<FlowRun['pick']>> = {}): FlowRun =>

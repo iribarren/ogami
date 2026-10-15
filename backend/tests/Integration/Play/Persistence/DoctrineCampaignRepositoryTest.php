@@ -32,7 +32,9 @@ use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
+use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -413,7 +415,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         );
         self::assertIsString($sessions);
         self::assertEquals(
-            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null, 'cast' => [], 'characters' => []]], 'endedAt' => null, 'party' => []]],
+            [['number' => 1, 'startedAt' => '2026-10-06T10:05:00.000000+02:00', 'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T10:06:00.000000+02:00', 'kind' => 'scene', 'sceneType' => null, 'hook' => null, 'cast' => [], 'characters' => [], 'defaultTitle' => false]], 'endedAt' => null, 'party' => []]],
             json_decode($sessions, true, flags: \JSON_THROW_ON_ERROR),
         );
     }
@@ -429,6 +431,25 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         self::assertNotNull($scene);
         self::assertSame(['At the gate', SceneKind::Scene, null, null, []], [$scene->title(), $scene->kind(), $scene->sceneType(), $scene->hook(), $scene->cast()]);
+    }
+
+    #[Test]
+    public function aSceneStoredBeforeTheDefaultTitleRecordHasNoneAndTheRecordRoundTrips(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $this->storeSessions($id, '[{"number": 1, "startedAt": "2026-10-06T10:05:00.000000+02:00", "scenes": [{"number": 1, "title": "Legwork 2", "startedAt": "2026-10-06T10:06:00.000000+02:00", "sceneType": "legwork"}]}]');
+        $legacy = $this->repository->ofId($id) ?? self::fail('The campaign was not stored.');
+        self::assertNull($legacy->currentScene()?->hasDefaultTitle());
+
+        $legacy->startScene(null, new \DateTimeImmutable('2026-10-06T10:07:00+02:00'), new SceneType('firefight', 'Firefight', 'A purpose.', null, [], new StepList(), new StepList(), new StepList()));
+        $legacy->startScene('Given', new \DateTimeImmutable('2026-10-06T10:08:00+02:00'));
+        $this->repository->save($legacy);
+        $this->entityManager->clear();
+
+        $loaded = $this->repository->ofId($id) ?? self::fail('The campaign was not stored.');
+        self::assertEquals($legacy->sessions(), $loaded->sessions());
+        self::assertSame([null, true, false], array_map(static fn (Scene $scene): ?bool => $scene->hasDefaultTitle(), $loaded->sessions()[0]->scenes()));
     }
 
     #[Test]
@@ -468,6 +489,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'non-string Scene Type' => ['"sceneType": 7', 'Stored campaign sessions: "sceneType" must be a string.'];
         yield 'hook kind without a hook' => ['"kind": "hook", "hook": null', 'Stored campaign sessions: "hook" must be set on a hook scene.'];
         yield 'hook name on a scene of play' => ['"kind": "scene", "hook": "worldTurn"', 'Stored campaign sessions: "hook" must be null on a scene of play.'];
+        yield 'default title record that is not a boolean' => ['"defaultTitle": "yes"', 'Stored campaign sessions: "defaultTitle" must be a boolean or null.'];
         yield 'cast that is not a list' => ['"cast": "npc-1"', 'Stored campaign sessions: "cast" must be a list.'];
         yield 'cast of an object' => ['"cast": {"first": "npc-1"}', 'Stored campaign sessions: "cast" must be a list.'];
         yield 'cast with a non-string id' => ['"cast": ["npc-1", 7]', 'Stored campaign sessions: "cast" must be a list of NPC id strings.'];

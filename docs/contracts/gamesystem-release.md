@@ -143,7 +143,7 @@ There is no `flow` key. `trackers`, `factSlots`, `sceneTypes` and `flows` are re
 | Tag | `{key, label (1–50), hint? (≤500)}` | At most 50; keys unique (own namespace). One list for NPCs and Threads; `pick`, `count` and the NPC and Thread effects name tags by key |
 | SceneType | `{key, name (1–100), purpose (1–500), tips? (≤2000), oracles: [key], setup: [Step], play: [Step], closing: [Step]}` | At most 100; keys unique; `oracles` (the Scene Type's shortcuts) unique and in the oracle namespace |
 | Flow | `{key, name (1–100), description? (≤2000), introduction? (≤5000), default?, defaultView: focus \| journal, oracles: [key], trackers: [key], phases: [Phase] (1–20)}` | At most 20; keys unique; at most one `default: true`; `oracles` and `trackers` unique and existing |
-| Phase | `{key, name (1–100), act? (1–100), mode: once \| loop, selection, sessionOpening?, sessionClosing?, phaseOpening?, phaseClosing?, sceneOpening?, sceneClosing?, worldTurn?}` | Keys unique in the flow. Each hook is a step list, empty by default |
+| Phase | `{key, name (1–100), act? (1–100), description? (≤2000), mode: once \| loop, selection, sessionOpening?, sessionClosing?, phaseOpening?, phaseClosing?, sceneOpening?, sceneClosing?, worldTurn?}` | Keys unique in the flow. `description` says what the phase is for and when it is done; Play shows it under the phase and in the end-phase confirmation ([ADR 0026](../adr/0026-prompt-inspiration-and-phase-descriptions.md)). Each hook is a step list, empty by default |
 | Selection | `{rule: sequence \| player, sceneTypes: [key] (1–20)}` or `{rule: oracle, table: key}` | Scene Types exist; `sequence` may repeat a type; `player` keys unique; every entry of the `oracle` table names a `sceneType` |
 
 ### Steps
@@ -153,7 +153,7 @@ A step list (`setup`, `play`, `closing` and each hook) holds at most 50 steps.
 | Kind | Fields (beside the common ones) | Rules |
 |---|---|---|
 | common | `{key, kind, title (1–100), prompt? (≤2000), tip? (≤2000), mandatory?, next?, effects?: [Effect]}` | Key unique within its step list; `end` is reserved; `next` is a **later** key of the same list or `end` (forward only) |
-| `prompt` | — | The player writes an answer |
+| `prompt` | `inspiration?: [table key]` (1–5) | The player writes an answer. Each inspiration table exists (a table, not a likelihood oracle) and appears once. They are suggestions: Play offers a roll button for each, but they have no effects and the step does not roll them, so they do not count as rolled tables ([ADR 0026](../adr/0026-prompt-inspiration-and-phase-descriptions.md)) |
 | `oracle` | `oracle` (likelihood key), `likelihood?` (level key), `branches?: {yes?, no?, exceptionalYes?, exceptionalNo?}` | The oracle and level exist. An exceptional answer without its branch uses `yes` / `no` |
 | `table` | `table` (table key), `branches?: [{entry, next?, effects?}]` (≤1000), `otherwise?: {next?, effects?}` | The table exists; `entry` is a key of an entry of the step's own table, unique in the list |
 | `roll` | `dice`, `bands?: [Band]` (≤20) | Valid dice notation |

@@ -106,6 +106,23 @@ final class GameSystemReleaseTranslatorFlowsTest extends TestCase
     }
 
     #[Test]
+    public function itMapsInspirationTablesAndPhaseDescriptionsAndDefaultsThemWhenAbsent(): void
+    {
+        $snapshot = $this->snapshot('valid/v2-inspiration');
+
+        $phase = $snapshot->flow('main')?->phases[0];
+        $steps = $snapshot->sceneType('scene')?->play->steps;
+        self::assertSame('Set the scene: who is there and what they want.', $phase?->description);
+        self::assertEquals([new PromptStep('who', 'Who walks in?', 'Describe the first person.', null, false, null, [], ['nouns', 'verbs', 'adjectives']), new PromptStep('why', 'Why now?', null, null, false, null, [], ['verbs'])], $steps);
+
+        $plain = $this->snapshot();
+        $recap = $plain->flow('heist')?->phases[0]->sessionOpening->steps[0];
+        self::assertNull($plain->flow('heist')?->phases[0]->description);
+        self::assertInstanceOf(PromptStep::class, $recap);
+        self::assertSame([], $recap->inspiration);
+    }
+
+    #[Test]
     public function itMapsEveryHook(): void
     {
         $heist = $this->snapshot()->flow('heist');

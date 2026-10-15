@@ -209,6 +209,48 @@ final class CampaignScenesTest extends TestCase
     }
 
     #[Test]
+    public function aTitleThePlayerRenamedToLookLikeADefaultStaysWhenTheSceneTypeSwitches(): void
+    {
+        $release = Snapshots::withSceneTypes('heist', 'Heist', 1);
+        $campaign = $this->campaignInASession();
+        $started = $campaign->startScene(null, new \DateTimeImmutable(), $release->sceneType('legwork'));
+        self::assertTrue($started->hasDefaultTitle());
+
+        $renamed = $campaign->renameCurrentScene('Legwork 5');
+        $campaign->switchSceneType($release->sceneType('firefight') ?? throw new \LogicException(), $release, new \DateTimeImmutable());
+
+        self::assertFalse($renamed->hasDefaultTitle());
+        self::assertSame(['Legwork 5', false], [$campaign->currentScene()?->title(), $campaign->currentScene()?->hasDefaultTitle()]);
+    }
+
+    #[Test]
+    public function aRetitledDefaultStaysADefaultAndAGivenTitleNever(): void
+    {
+        $release = Snapshots::withSceneTypes('heist', 'Heist', 1);
+        $campaign = $this->campaignInASession();
+        $campaign->startScene(null, new \DateTimeImmutable(), $release->sceneType('legwork'));
+        $firefight = $release->sceneType('firefight') ?? throw new \LogicException();
+
+        $campaign->switchSceneType($firefight, $release, new \DateTimeImmutable());
+        self::assertSame(['Firefight 1', true], [$campaign->currentScene()?->title(), $campaign->currentScene()?->hasDefaultTitle()]);
+        $campaign->switchSceneType($release->sceneType('legwork') ?? throw new \LogicException(), $release, new \DateTimeImmutable());
+        self::assertSame(['Legwork 1', true], [$campaign->currentScene()?->title(), $campaign->currentScene()?->hasDefaultTitle()]);
+
+        self::assertFalse($campaign->startScene('Legwork 3', new \DateTimeImmutable(), $release->sceneType('legwork'))->hasDefaultTitle());
+        self::assertFalse($campaign->startHookScene(Hook::WorldTurn, 'The world moves', new \DateTimeImmutable())->hasDefaultTitle());
+    }
+
+    #[Test]
+    public function aSceneStoredWithoutTheDefaultTitleRecordHasNoneAndKeepsItWhenSwitched(): void
+    {
+        $scene = Scene::reconstitute(1, 'Legwork 2', new \DateTimeImmutable(), SceneKind::Scene, 'legwork');
+
+        self::assertNull($scene->hasDefaultTitle());
+        self::assertNull($scene->withSceneType('firefight')->hasDefaultTitle());
+        self::assertFalse($scene->withTitle('Legwork 2')->hasDefaultTitle());
+    }
+
+    #[Test]
     public function aDefaultTitleCutToFitTheNumberIsRenamedToo(): void
     {
         $long = new SceneType('long', str_repeat('é', 100), 'A purpose.', null, [], new StepList(), new StepList(), new StepList());

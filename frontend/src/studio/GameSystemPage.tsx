@@ -60,33 +60,57 @@ export function GameSystemPage({ gameSystemKey }: { gameSystemKey: string }) {
   )
 }
 
-/** One state at a time: a failed refetch shows the failure instead of data it may not match. */
+/**
+ * Without data yet, one state at a time. Once there is data, a failed refetch keeps the page
+ * (and what was typed in the form) and only adds a non-blocking alert with a retry.
+ */
 function GameSystemState({ gameSystem }: { gameSystem: ReturnType<typeof useStudioGameSystem> }) {
-  switch (gameSystem.status) {
-    case 'pending':
+  if (gameSystem.data === undefined) {
+    if (gameSystem.isPending) {
       return <p className="text-muted-foreground">Loading the GameSystem…</p>
-    case 'error':
-      return gameSystem.error instanceof StudioError && gameSystem.error.status === 404 ? (
-        <section className="space-y-3">
-          <h1 className="font-heading text-page-title">GameSystem not found</h1>
-          <p className="text-muted-foreground">
-            This GameSystem does not exist, or it is not one of yours.
-          </p>
-        </section>
-      ) : (
-        <p role="alert" className="text-sm text-destructive">
-          {gameSystem.error.message}
+    }
+    return gameSystem.error instanceof StudioError && gameSystem.error.status === 404 ? (
+      <section className="space-y-3">
+        <h1 className="font-heading text-page-title">GameSystem not found</h1>
+        <p className="text-muted-foreground">
+          This GameSystem does not exist, or it is not one of yours.
         </p>
-      )
-    case 'success':
-      return (
-        <GameSystemView
-          key={gameSystem.data.key}
-          gameSystem={gameSystem.data}
-          onReload={async () => (await gameSystem.refetch()).data}
-        />
-      )
+      </section>
+    ) : (
+      <p role="alert" className="text-sm text-destructive">
+        {gameSystem.error.message}
+      </p>
+    )
   }
+
+  return (
+    <>
+      {gameSystem.isRefetchError && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+          <p>Couldn&apos;t refresh this GameSystem. {gameSystem.error.message}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void gameSystem.refetch()
+            }}
+          >
+            Try again
+          </Button>
+        </div>
+      )}
+      <GameSystemView
+        key={gameSystem.data.key}
+        gameSystem={gameSystem.data}
+        onReload={async () => {
+          const result = await gameSystem.refetch()
+          // A failed refetch keeps the stale data: do not remount the form on it.
+          return result.isError ? undefined : result.data
+        }}
+      />
+    </>
+  )
 }
 
 function GameSystemView({
@@ -183,8 +207,9 @@ function Validation({ gameSystemKey }: { gameSystemKey: string }) {
         <>
           <h2 className="font-heading font-semibold">Warnings</h2>
           <ul className="list-disc space-y-1 pl-5 text-sm">
-            {warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
+            {warnings.map((warning, index) => (
+              // Warnings can repeat, so the position is part of the key.
+              <li key={`${String(index)}:${warning}`}>{warning}</li>
             ))}
           </ul>
         </>

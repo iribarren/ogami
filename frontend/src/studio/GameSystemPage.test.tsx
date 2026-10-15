@@ -69,6 +69,36 @@ describe('the GameSystem page', () => {
     )
   })
 
+  it('keeps the page and what was typed when a refetch fails, and refreshes on retry', async () => {
+    const user = userEvent.setup()
+    let failing = false
+    renderDraft({
+      'GET /api/studio/game-systems/my-draft': () =>
+        failing ? new Response('Oops', { status: 500 }) : Response.json(draft),
+      'PUT /api/studio/game-systems/my-draft/metadata': json({ error: 'Changed elsewhere.' }, 409),
+    })
+
+    const form = within(await metadataForm())
+    await user.type(form.getByLabelText('Name'), '!')
+    await user.click(form.getByRole('button', { name: 'Save' }))
+    await form.findByRole('button', { name: 'Reload the latest version' })
+    failing = true
+    await user.click(form.getByRole('button', { name: 'Reload the latest version' }))
+
+    expect(
+      await screen.findByText(/Couldn't refresh this GameSystem/, {}, { timeout: 3000 }),
+    ).toBeVisible()
+    expect(screen.getByLabelText('Name')).toHaveValue('My draft!')
+    expect(screen.getByRole('heading', { level: 1, name: 'My draft' })).toBeInTheDocument()
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => {
+      expect(screen.queryByText(/Couldn't refresh this GameSystem/)).not.toBeInTheDocument()
+    })
+    expect(screen.getByLabelText('Name')).toHaveValue('My draft!')
+  })
+
   it('lists the section counts with their editors still to come', async () => {
     const user = userEvent.setup()
     renderDraft()
@@ -111,6 +141,18 @@ describe('the metadata form', () => {
       },
     ])
     expect(await screen.findByRole('heading', { level: 1, name: 'Renamed' })).toBeInTheDocument()
+  })
+
+  it('hides the saved state again once the form is edited', async () => {
+    const user = userEvent.setup()
+    renderDraft({ 'PUT /api/studio/game-systems/my-draft/metadata': json(draft) })
+
+    const form = within(await metadataForm())
+    await user.click(form.getByRole('button', { name: 'Save' }))
+    expect(await form.findByRole('status')).toHaveTextContent('Saved.')
+    await user.type(form.getByLabelText('Name'), '!')
+
+    expect(form.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('sends none for cleared optional fields', async () => {
@@ -221,6 +263,16 @@ describe('the validation tab', () => {
 
     expect(await screen.findByText(/The draft is valid/)).toBeInTheDocument()
     expect(screen.queryByText('Warnings')).not.toBeInTheDocument()
+  })
+
+  it('lists repeated warnings once each', async () => {
+    await openValidation({
+      valid: true,
+      error: null,
+      warnings: ['flows[1]: has no steps', 'flows[1]: has no steps'],
+    })
+
+    expect(await screen.findAllByRole('listitem')).toHaveLength(2)
   })
 
   it('shows the first error with its path', async () => {

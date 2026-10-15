@@ -97,7 +97,7 @@ final class DoctrineGameSystemReleaseRepositoryTest extends KernelTestCase
     #[Test]
     public function theDatabaseRefusesBlankOrTooLongNotesLikeTheDomain(): void
     {
-        foreach (['', "  \n", str_repeat('é', 2001)] as $notes) {
+        foreach (['', "  \n", " \t\f\v", str_repeat('é', 2001)] as $notes) {
             $this->entityManager->getConnection()->executeStatement('SAVEPOINT notes');
 
             try {
@@ -117,6 +117,17 @@ final class DoctrineGameSystemReleaseRepositoryTest extends KernelTestCase
             ['id' => self::FIRST_ID, 'key' => 'example-journal', 'content' => '{}', 'hash' => str_repeat('a', 64), 'notes' => str_repeat('é', 2000)],
         );
         self::assertSame(2000, mb_strlen((string) $this->releases->get('example-journal', 1)?->notes()));
+    }
+
+    #[Test]
+    public function notesWithFormFeedsAndUnicodeSpacesRoundTrip(): void
+    {
+        foreach (["Fixed\fthings", "Fixed\u{00A0}the\u{2003}things", "\u{00A0}x\u{3000}"] as $version => $notes) {
+            $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(\sprintf('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a6%d', $version)), $this->contractDocExample(), $version + 1, new \DateTimeImmutable(), $notes));
+            $this->entityManager->clear();
+
+            self::assertSame($notes, $this->releases->get('example-journal', $version + 1)?->notes());
+        }
     }
 
     #[Test]

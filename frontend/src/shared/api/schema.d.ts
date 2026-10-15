@@ -857,6 +857,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the releases of one of my GameSystems, the newest first */
+        get: operations["listGameSystemReleases"];
+        put?: never;
+        /** Publish my GameSystem draft as its next release */
+        post: operations["publishGameSystem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/releases/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one release of one of my GameSystems */
+        get: operations["getGameSystemRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace my GameSystem draft with the content of one of its releases */
+        post: operations["restoreGameSystemRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2791,6 +2843,77 @@ export interface components {
              *     ]
              */
             warnings: string[];
+        };
+        GameSystemReleaseSummaryResponse: {
+            /** @example 3 */
+            version: number;
+            /**
+             * @description The release contract's schema version of the release.
+             * @example 2
+             */
+            schemaVersion: number;
+            /** Format: date-time */
+            publishedAt: string;
+            /**
+             * @description The release notes written when it was published from Studio; null for a release published from a file.
+             * @example Rebalanced the oracles.
+             */
+            notes: string | null;
+            /**
+             * @description The full sha256 of the canonical content; a UI shows a short form.
+             * @example 11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0
+             */
+            contentHash: string;
+        };
+        PublishGameSystemRequest: {
+            /**
+             * @description Release notes: not blank, at most 2,000 characters; absent or null for none.
+             * @example Rebalanced the oracles.
+             */
+            notes?: string | null;
+        };
+        GameSystemReleaseResponse: {
+            /** @example 3 */
+            version: number;
+            /**
+             * @description The release contract's schema version of the release.
+             * @example 2
+             */
+            schemaVersion: number;
+            /** Format: date-time */
+            publishedAt: string;
+            /**
+             * @description The release notes written when it was published from Studio; null for a release published from a file.
+             * @example Rebalanced the oracles.
+             */
+            notes: string | null;
+            /**
+             * @description The full sha256 of the canonical content; a UI shows a short form.
+             * @example 11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0
+             */
+            contentHash: string;
+            /**
+             * @description The name the release was published under.
+             * @example My system
+             */
+            name: string;
+            /**
+             * @description How many items each section holds, by section name, as for a draft: oracleTables, likelihoodOracles, trackers, factSlots, tags, sceneTypes, flows, sheetFields and checks (schema version 1: oracles and flowSteps).
+             * @example {
+             *       "oracleTables": 2,
+             *       "flows": 1
+             *     }
+             */
+            sectionCounts: {
+                [key: string]: number;
+            };
+        };
+        RestoreGameSystemRequest: {
+            /**
+             * @description The release version whose content replaces the draft.
+             * @example 2
+             */
+            version: number;
         };
     };
     responses: never;
@@ -6553,6 +6676,285 @@ export interface operations {
             };
             /** @description The user has no GameSystem with this key. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGameSystemReleases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The release history; empty when it was never published. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemReleaseSummaryResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishGameSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishGameSystemRequest"];
+            };
+        };
+        responses: {
+            /** @description The new release; the Location header is its URL. */
+            201: {
+                headers: {
+                    /** @description The URL of the new release. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemReleaseResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has "notes" that is not a string. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The draft has no changes since the latest release, or another publish took the version first; nothing was published. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A body was sent and it is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The draft breaks the release contract (the message names the path of the first error) or the notes are blank or longer than 2,000 characters; nothing was published. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGameSystemRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The release. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemReleaseResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no such release. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restoreGameSystemRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreGameSystemRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft with the release's content. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no integer "version". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The GameSystem has no release with that version; the draft is unchanged. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

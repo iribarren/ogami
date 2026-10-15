@@ -4703,6 +4703,368 @@
                     }
                 }
             }
+        },
+        "/api/studio/game-systems/{key}/releases": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "List the releases of one of my GameSystems, the newest first",
+                "operationId": "listGameSystemReleases",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The release history; empty when it was never published.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/GameSystemReleaseSummaryResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Publish my GameSystem draft as its next release",
+                "operationId": "publishGameSystem",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PublishGameSystemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new release; the Location header is its URL.",
+                        "headers": {
+                            "Location": {
+                                "description": "The URL of the new release.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemReleaseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has \"notes\" that is not a string.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The draft has no changes since the latest release, or another publish took the version first; nothing was published.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "A body was sent and it is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The draft breaks the release contract (the message names the path of the first error) or the notes are blank or longer than 2,000 characters; nothing was published.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/releases/{version}": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read one release of one of my GameSystems",
+                "operationId": "getGameSystemRelease",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "\\d{1,9}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemReleaseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no such release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/restore": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace my GameSystem draft with the content of one of its releases",
+                "operationId": "restoreGameSystemRelease",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RestoreGameSystemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft with the release's content.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no integer \"version\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The GameSystem has no release with that version; the draft is unchanged.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -8551,6 +8913,120 @@
                         "example": [
                             "oracles.tables[0]: has no entries"
                         ]
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemReleaseSummaryResponse": {
+                "required": [
+                    "version",
+                    "schemaVersion",
+                    "publishedAt",
+                    "notes",
+                    "contentHash"
+                ],
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "schemaVersion": {
+                        "description": "The release contract's schema version of the release.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "notes": {
+                        "description": "The release notes written when it was published from Studio; null for a release published from a file.",
+                        "type": "string",
+                        "example": "Rebalanced the oracles.",
+                        "nullable": true
+                    },
+                    "contentHash": {
+                        "description": "The full sha256 of the canonical content; a UI shows a short form.",
+                        "type": "string",
+                        "example": "11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0"
+                    }
+                },
+                "type": "object"
+            },
+            "PublishGameSystemRequest": {
+                "properties": {
+                    "notes": {
+                        "description": "Release notes: not blank, at most 2,000 characters; absent or null for none.",
+                        "type": "string",
+                        "example": "Rebalanced the oracles.",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemReleaseResponse": {
+                "required": [
+                    "version",
+                    "schemaVersion",
+                    "publishedAt",
+                    "notes",
+                    "contentHash",
+                    "name",
+                    "sectionCounts"
+                ],
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "schemaVersion": {
+                        "description": "The release contract's schema version of the release.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "notes": {
+                        "description": "The release notes written when it was published from Studio; null for a release published from a file.",
+                        "type": "string",
+                        "example": "Rebalanced the oracles.",
+                        "nullable": true
+                    },
+                    "contentHash": {
+                        "description": "The full sha256 of the canonical content; a UI shows a short form.",
+                        "type": "string",
+                        "example": "11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0"
+                    },
+                    "name": {
+                        "description": "The name the release was published under.",
+                        "type": "string",
+                        "example": "My system"
+                    },
+                    "sectionCounts": {
+                        "description": "How many items each section holds, by section name, as for a draft: oracleTables, likelihoodOracles, trackers, factSlots, tags, sceneTypes, flows, sheetFields and checks (schema version 1: oracles and flowSteps).",
+                        "type": "object",
+                        "example": {
+                            "oracleTables": 2,
+                            "flows": 1
+                        },
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "RestoreGameSystemRequest": {
+                "required": [
+                    "version"
+                ],
+                "properties": {
+                    "version": {
+                        "description": "The release version whose content replaces the draft.",
+                        "type": "integer",
+                        "example": 2
                     }
                 },
                 "type": "object"

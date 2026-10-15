@@ -6,6 +6,10 @@ namespace App\Tests\Integration\Studio;
 
 use App\Studio\Application\Clock;
 use App\Studio\Application\PublishGameSystemReleaseHandler;
+use App\Studio\Application\ReleasePublisher;
+use App\Studio\Domain\GameSystem\GameSystem;
+use App\Studio\Domain\GameSystem\GameSystemId;
+use App\Studio\Domain\GameSystem\GameSystemRepository;
 use App\Studio\Domain\Release\GameSystemRelease;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
 use App\Studio\Domain\Release\ReleaseId;
@@ -180,6 +184,22 @@ final class PublishGameSystemReleaseConsoleCommandTest extends KernelTestCase
         self::assertSame(2, $this->releases()->latestFor('example-journal')?->version());
     }
 
+    #[Test]
+    public function itRefusesAKeyOfAStudioGameSystemAlsoWhenPublishingOnlyIfChanged(): void
+    {
+        $gameSystems = self::getContainer()->get(GameSystemRepository::class);
+        $gameSystems->add(GameSystem::createBlank(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5a'), 'example-journal', 'Mine', null, 'ann', new \DateTimeImmutable()));
+
+        foreach ([[], ['--if-changed' => true]] as $options) {
+            $exitCode = $this->tester->execute(['file' => self::EXAMPLE] + $options);
+
+            self::assertSame(Command::FAILURE, $exitCode, $this->tester->getDisplay());
+            self::assertStringContainsString('belongs to a GameSystem authored in Studio; publish it from Studio.', $this->display());
+        }
+
+        self::assertNotInstanceOf(GameSystemRelease::class, $this->releases()->latestFor('example-journal'));
+    }
+
     /**
      * Publishes through a repository where another publish happens around the console's own.
      *
@@ -190,7 +210,7 @@ final class PublishGameSystemReleaseConsoleCommandTest extends KernelTestCase
     {
         $container = self::getContainer();
         $racing = new InterleavingGameSystemReleaseRepository($container->get(DoctrineGameSystemReleaseRepository::class), $beforeAdd, $afterAdd);
-        $container->set(PublishGameSystemReleaseHandler::class, new PublishGameSystemReleaseHandler($racing, $container->get(Clock::class)));
+        $container->set(PublishGameSystemReleaseHandler::class, new PublishGameSystemReleaseHandler(new ReleasePublisher($racing, $container->get(Clock::class)), $container->get(GameSystemRepository::class)));
     }
 
     /**

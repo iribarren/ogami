@@ -20,14 +20,15 @@ use App\Studio\Application\ListMyGameSystems;
 use App\Studio\Application\ListMyGameSystemsHandler;
 use App\Studio\Application\OwnedGameSystems;
 use App\Studio\Application\PublishedReleaseNotFound;
-use App\Studio\Application\PublishGameSystemRelease;
-use App\Studio\Application\PublishGameSystemReleaseHandler;
+use App\Studio\Application\ReleasePublisher;
 use App\Studio\Application\ValidateGameSystemDraft;
 use App\Studio\Application\ValidateGameSystemDraftHandler;
 use App\Studio\Domain\GameSystem\GameSystemHasReleases;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
+use App\Studio\Domain\Release\ReleaseContent;
+use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
@@ -357,7 +358,7 @@ final class GameSystemDraftHandlersTest extends TestCase
      */
     private function publish(array $document): void
     {
-        (new PublishGameSystemReleaseHandler($this->releases, $this->clock))(new PublishGameSystemRelease('release-'.$this->releases->count(), $document, false));
+        new ReleasePublisher($this->releases, $this->clock)->publish(ReleaseId::fromString('release-'.$this->releases->count()), ReleaseContent::fromArray($document), null, false);
     }
 
     /**

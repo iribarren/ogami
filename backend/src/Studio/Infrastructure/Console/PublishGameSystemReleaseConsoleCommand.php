@@ -12,6 +12,7 @@ use App\Studio\Application\GetPublishedReleaseById;
 use App\Studio\Application\PublishedReleaseView;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Application\ReleaseIdGenerator;
+use App\Studio\Domain\GameSystem\GameSystemManagedInStudio;
 use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -62,6 +63,10 @@ final class PublishGameSystemReleaseConsoleCommand extends Command
             $this->commandBus->dispatch(new PublishGameSystemRelease($id, $content, true === $input->getOption('if-changed')));
         } catch (InvalidReleaseContent $exception) {
             $io->error(\sprintf('%s is not a valid GameSystem release. %s', $file, $exception->getMessage()));
+
+            return Command::FAILURE;
+        } catch (GameSystemManagedInStudio $exception) {
+            $io->error($exception->getMessage());
 
             return Command::FAILURE;
         } catch (GameSystemReleaseAlreadyExists $exception) {

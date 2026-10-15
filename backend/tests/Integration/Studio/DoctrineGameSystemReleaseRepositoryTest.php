@@ -9,6 +9,7 @@ use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Studio\Infrastructure\Persistence\Doctrine\DoctrineGameSystemReleaseRepository;
+use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -52,6 +53,82 @@ final class DoctrineGameSystemReleaseRepositoryTest extends KernelTestCase
             json_encode($release->content()->toArray(), \JSON_THROW_ON_ERROR),
         );
         self::assertEquals(new \DateTimeImmutable('2026-10-05T10:00:00'), $release->publishedAt());
+    }
+
+    #[Test]
+    public function itRoundTripsTheWholeReleaseWithAndWithoutNotes(): void
+    {
+        $at = new \DateTimeImmutable('2026-10-16T09:30:00');
+        $plain = GameSystemRelease::publish(ReleaseId::fromString(self::FIRST_ID), $this->contractDocExample(), 1, $at);
+        $noted = GameSystemRelease::publish(ReleaseId::fromString(self::SECOND_ID), $this->contractDocExample(), 2, $at, "Fixed the oracles.\nÉ ñ 日本語");
+        $this->releases->add($plain);
+        $this->releases->add($noted);
+        $this->entityManager->clear();
+
+        foreach ([$plain, $noted] as $expected) {
+            $actual = $this->releases->get('example-journal', $expected->version());
+            self::assertNotNull($actual);
+            self::assertSame(
+                [$expected->id()->toString(), $expected->gameSystemKey(), $expected->schemaVersion(), $expected->contentHash(), $expected->notes()],
+                [$actual->id()->toString(), $actual->gameSystemKey(), $actual->schemaVersion(), $actual->contentHash(), $actual->notes()],
+            );
+            self::assertEquals($expected->publishedAt(), $actual->publishedAt());
+            self::assertSame(json_encode($expected->content()->toArray(), \JSON_THROW_ON_ERROR), json_encode($actual->content()->toArray(), \JSON_THROW_ON_ERROR));
+        }
+
+        self::assertSame("Fixed the oracles.\nÉ ñ 日本語", $this->releases->get('example-journal', 2)?->notes());
+    }
+
+    #[Test]
+    public function aReleaseStoredBeforeNotesExistedReadsWithoutNotes(): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO studio_gamesystem_release (id, game_system_key, version, schema_version, content, content_hash, published_at) VALUES (:id, :key, 1, 1, :content, :hash, NOW())',
+            ['id' => self::FIRST_ID, 'key' => 'example-journal', 'content' => json_encode($this->contractDocExample()->toArray(), \JSON_THROW_ON_ERROR), 'hash' => $this->contractDocExample()->hash()],
+        );
+
+        $release = $this->releases->get('example-journal', 1);
+
+        self::assertNotNull($release);
+        self::assertNull($release->notes());
+        self::assertSame($this->contractDocExample()->hash(), $release->contentHash());
+    }
+
+    #[Test]
+    public function theDatabaseRefusesBlankOrTooLongNotesLikeTheDomain(): void
+    {
+        foreach (['', "  \n", str_repeat('é', 2001)] as $notes) {
+            $this->entityManager->getConnection()->executeStatement('SAVEPOINT notes');
+
+            try {
+                $this->entityManager->getConnection()->executeStatement(
+                    'INSERT INTO studio_gamesystem_release (id, game_system_key, version, schema_version, content, content_hash, published_at, notes) VALUES (:id, :key, 1, 1, :content, :hash, NOW(), :notes)',
+                    ['id' => self::FIRST_ID, 'key' => 'example-journal', 'content' => '{}', 'hash' => str_repeat('a', 64), 'notes' => $notes],
+                );
+                self::fail('The notes were stored.');
+            } catch (DriverException $refusal) {
+                self::assertStringContainsString('chk_studio_gamesystem_release_notes', $refusal->getMessage());
+                $this->entityManager->getConnection()->executeStatement('ROLLBACK TO SAVEPOINT notes');
+            }
+        }
+
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO studio_gamesystem_release (id, game_system_key, version, schema_version, content, content_hash, published_at, notes) VALUES (:id, :key, 1, 1, :content, :hash, NOW(), :notes)',
+            ['id' => self::FIRST_ID, 'key' => 'example-journal', 'content' => '{}', 'hash' => str_repeat('a', 64), 'notes' => str_repeat('é', 2000)],
+        );
+        self::assertSame(2000, mb_strlen((string) $this->releases->get('example-journal', 1)?->notes()));
+    }
+
+    #[Test]
+    public function itListsEveryReleaseOfAKeyNewestFirst(): void
+    {
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::FIRST_ID), $this->contractDocExample(), 1, new \DateTimeImmutable()));
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::OTHER_ID), $this->minimal('other-journal'), 5, new \DateTimeImmutable()));
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::SECOND_ID), $this->contractDocExample(), 2, new \DateTimeImmutable()));
+        $this->entityManager->clear();
+
+        self::assertSame([self::SECOND_ID, self::FIRST_ID], array_map(static fn (GameSystemRelease $release): string => $release->id()->toString(), $this->releases->allFor('example-journal')));
+        self::assertSame([], $this->releases->allFor('nothing'));
     }
 
     #[Test]

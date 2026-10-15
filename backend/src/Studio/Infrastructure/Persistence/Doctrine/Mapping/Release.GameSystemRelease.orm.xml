@@ -30,5 +30,8 @@
             </options>
         </field>
         <field name="publishedAt" type="datetime_immutable" column="published_at"/>
+        <!-- Release notes written in Studio; null for releases published from a file. The migration adds
+             a check constraint (not blank, at most 2,000 characters) that the mapping cannot express. -->
+        <field name="notes" type="text" column="notes" nullable="true"/>
     </entity>
 </doctrine-mapping>

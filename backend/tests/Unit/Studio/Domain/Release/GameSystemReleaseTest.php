@@ -95,4 +95,30 @@ final class GameSystemReleaseTest extends TestCase
 
         $repository->add(GameSystemRelease::publish(ReleaseId::fromString('r-2'), self::content(name: 'Free journal 2'), 1, new \DateTimeImmutable()));
     }
+
+    #[Test]
+    public function releaseNotesAreOptionalAndKeptAsGiven(): void
+    {
+        $plain = GameSystemRelease::publish(ReleaseId::fromString('r-1'), $this->content(), 1, new \DateTimeImmutable());
+        $noted = GameSystemRelease::publish(ReleaseId::fromString('r-2'), $this->content(), 2, new \DateTimeImmutable(), "Fixed the oracles.\nAdded a check.");
+        $longest = GameSystemRelease::publish(ReleaseId::fromString('r-3'), $this->content(), 3, new \DateTimeImmutable(), str_repeat('é', 2000));
+
+        self::assertNull($plain->notes());
+        self::assertSame("Fixed the oracles.\nAdded a check.", $noted->notes());
+        self::assertSame(2000, mb_strlen((string) $longest->notes()));
+        self::assertSame($plain->contentHash(), $noted->contentHash(), 'Notes are not part of the content hash.');
+    }
+
+    #[Test]
+    public function blankOrTooLongNotesAreRefused(): void
+    {
+        foreach (['' => 'blank', " \n\t" => 'blank', str_repeat('é', 2001) => 'at most 2000 characters'] as $notes => $reason) {
+            try {
+                GameSystemRelease::publish(ReleaseId::fromString('r-1'), $this->content(), 1, new \DateTimeImmutable(), $notes);
+                self::fail('The notes were accepted.');
+            } catch (InvalidGameSystemRelease $refusal) {
+                self::assertStringContainsString($reason, $refusal->getMessage());
+            }
+        }
+    }
 }

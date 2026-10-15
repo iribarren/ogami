@@ -2867,7 +2867,7 @@ export interface components {
         };
         PublishGameSystemRequest: {
             /**
-             * @description Release notes: not blank, at most 2,000 characters; absent or null for none.
+             * @description Release notes: not blank, no NUL character, valid UTF-8, at most 2,000 characters; absent or null for none.
              * @example Rebalanced the oracles.
              */
             notes?: string | null;
@@ -6814,7 +6814,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The draft breaks the release contract (the message names the path of the first error) or the notes are blank or longer than 2,000 characters; nothing was published. */
+            /** @description The draft breaks the release contract (the message names the path of the first error) or the notes are blank, contain NUL or invalid UTF-8, or are longer than 2,000 characters; nothing was published. */
             422: {
                 headers: {
                     [name: string]: unknown;

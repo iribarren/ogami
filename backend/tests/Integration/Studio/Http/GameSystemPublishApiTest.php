@@ -188,7 +188,7 @@ final class GameSystemPublishApiTest extends WebTestCase
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
         $this->createDraft('mine');
 
-        foreach (['  ' => 'blank', "\u{00A0}\f" => 'blank', "a\0b" => 'NUL', str_repeat('é', 2001) => '2000 characters'] as $notes => $mentions) {
+        foreach (['  ' => 'blank', "\u{00A0}\f" => 'blank', "\u{200B}\u{FEFF}" => 'blank', "a\0b" => 'NUL', str_repeat('é', 2001) => '2000 characters'] as $notes => $mentions) {
             $this->client->jsonRequest('POST', self::BASE.'/mine/releases', ['notes' => $notes]);
 
             self::assertResponseStatusCodeSame(422);

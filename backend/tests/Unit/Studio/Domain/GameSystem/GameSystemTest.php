@@ -21,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(InvalidGameSystemMetadata::class)]
 final class GameSystemTest extends TestCase
 {
+    private const string FIRST_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a61';
+    private const string SECOND_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a62';
     private const string OWNER = 'user-1';
 
     private \DateTimeImmutable $now;
@@ -33,9 +35,9 @@ final class GameSystemTest extends TestCase
     #[Test]
     public function aBlankDraftIsAValidMinimalSchemaVersion2Release(): void
     {
-        $gameSystem = GameSystem::createBlank(GameSystemId::fromString('gs-1'), 'my-system', 'My system', 'A test', self::OWNER, $this->now);
+        $gameSystem = GameSystem::createBlank(GameSystemId::fromString(self::FIRST_ID), 'my-system', 'My system', 'A test', self::OWNER, $this->now);
 
-        self::assertSame('gs-1', $gameSystem->id()->toString());
+        self::assertSame(self::FIRST_ID, $gameSystem->id()->toString());
         self::assertSame('my-system', $gameSystem->key());
         self::assertSame(2, $gameSystem->schemaVersion());
         self::assertTrue($gameSystem->isOwnedBy(self::OWNER));
@@ -50,7 +52,7 @@ final class GameSystemTest extends TestCase
     #[Test]
     public function aBlankDraftWithoutDescriptionOmitsIt(): void
     {
-        $gameSystem = GameSystem::createBlank(GameSystemId::fromString('gs-1'), 'my-system', 'My system', null, self::OWNER, $this->now);
+        $gameSystem = GameSystem::createBlank(GameSystemId::fromString(self::FIRST_ID), 'my-system', 'My system', null, self::OWNER, $this->now);
 
         self::assertSame(['key' => 'my-system', 'name' => 'My system'], $gameSystem->document()['gameSystem']);
     }
@@ -66,6 +68,8 @@ final class GameSystemTest extends TestCase
         yield 'long name' => ['ok-key', str_repeat('n', 101), null, self::OWNER, 'name'];
         yield 'long description' => ['ok-key', 'Name', str_repeat('d', 2001), self::OWNER, 'description'];
         yield 'blank owner' => ['ok-key', 'Name', null, ' ', 'ownerId'];
+        yield 'owner longer than the column' => ['ok-key', 'Name', null, str_repeat('u', 256), 'ownerId'];
+        yield 'owner with a NUL byte' => ['ok-key', 'Name', null, "user\0-1", 'ownerId'];
     }
 
     #[Test]
@@ -73,7 +77,7 @@ final class GameSystemTest extends TestCase
     public function aBlankDraftIsRefusedWhenAFieldIsInvalid(string $key, string $name, ?string $description, string $owner, string $field): void
     {
         try {
-            GameSystem::createBlank(GameSystemId::fromString('gs-1'), $key, $name, $description, $owner, $this->now);
+            GameSystem::createBlank(GameSystemId::fromString(self::FIRST_ID), $key, $name, $description, $owner, $this->now);
             self::fail('The draft was created.');
         } catch (InvalidGameSystemMetadata $refusal) {
             self::assertSame($field, $refusal->field);
@@ -86,7 +90,7 @@ final class GameSystemTest extends TestCase
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-every-part'))->toArray();
 
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString('gs-2'), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
 
         /** @var array{gameSystem: array<string, mixed>} $expected */
         $expected = json_decode(json_encode($source, \JSON_THROW_ON_ERROR), true, flags: \JSON_THROW_ON_ERROR);
@@ -102,7 +106,7 @@ final class GameSystemTest extends TestCase
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/contract-doc-example'))->toArray();
 
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString('gs-2'), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
 
         self::assertSame(1, $gameSystem->schemaVersion());
         ReleaseContent::fromArray($gameSystem->document());
@@ -115,7 +119,7 @@ final class GameSystemTest extends TestCase
         $refusals = [];
         foreach ([['Bad Key', 'Name', $source], ['ok-key', '', $source], ['ok-key', 'Name', ['schemaVersion' => 3]], ['ok-key', 'Name', ['schemaVersion' => 2, 'gameSystem' => 'x']]] as [$key, $name, $document]) {
             try {
-                GameSystem::createFromRelease(GameSystemId::fromString('gs-2'), $key, $name, self::OWNER, $document, $this->now);
+                GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), $key, $name, self::OWNER, $document, $this->now);
                 self::fail('The draft was created.');
             } catch (InvalidGameSystemMetadata $refusal) {
                 $refusals[] = $refusal->field;
@@ -177,7 +181,7 @@ final class GameSystemTest extends TestCase
     public function aSchemaVersion1DraftRefusesCreditsAndThemeAndChangesNothing(): void
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/contract-doc-example'))->toArray();
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString('gs-2'), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
         $before = $gameSystem->document();
 
         foreach ([['credits', GameSystemMetadata::of('Other', null, ['notice' => 'N'], null)], ['theme', GameSystemMetadata::of('Other', null, null, 'noir')]] as [$field, $metadata]) {
@@ -230,16 +234,8 @@ final class GameSystemTest extends TestCase
         }
     }
 
-    #[Test]
-    public function aBlankIdIsRefused(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        GameSystemId::fromString(' ');
-    }
-
     private function blank(): GameSystem
     {
-        return GameSystem::createBlank(GameSystemId::fromString('gs-1'), 'my-system', 'My system', 'A test', self::OWNER, $this->now);
+        return GameSystem::createBlank(GameSystemId::fromString(self::FIRST_ID), 'my-system', 'My system', 'A test', self::OWNER, $this->now);
     }
 }

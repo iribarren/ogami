@@ -8,7 +8,7 @@ use App\Studio\Application\GameSystemIdGenerator;
 use App\Studio\Domain\GameSystem\GameSystemId;
 
 /**
- * Hands out "gamesystem-1", "gamesystem-2"… so tests can name the drafts they expect.
+ * Hands out UUIDs ending in 1, 2… so tests can name the drafts they expect.
  */
 final class SequentialGameSystemIdGenerator implements GameSystemIdGenerator
 {
@@ -16,6 +16,6 @@ final class SequentialGameSystemIdGenerator implements GameSystemIdGenerator
 
     public function generate(): GameSystemId
     {
-        return GameSystemId::fromString(\sprintf('gamesystem-%d', $this->next++));
+        return GameSystemId::fromString(\sprintf('00000000-0000-7000-8000-%012d', $this->next++));
     }
 }

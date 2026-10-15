@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Domain\GameSystem;
 
 /**
- * Identifies a GameSystem draft. Opaque string (a UUID in production).
+ * Identifies a GameSystem draft. A UUID, the type of the id column, kept in lower case.
  */
 final readonly class GameSystemId
 {
@@ -15,15 +15,15 @@ final readonly class GameSystemId
     }
 
     /**
-     * @throws \InvalidArgumentException when the id is blank
+     * @throws InvalidGameSystemId when the value is not a UUID
      */
     public static function fromString(string $value): self
     {
-        if ('' === trim($value)) {
-            throw new \InvalidArgumentException('A GameSystem id must not be blank.');
+        if (1 !== preg_match('/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i', $value)) {
+            throw InvalidGameSystemId::notAUuid();
         }
 
-        return new self($value);
+        return new self(strtolower($value));
     }
 
     public function toString(): string

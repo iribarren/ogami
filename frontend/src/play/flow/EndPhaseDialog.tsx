@@ -19,12 +19,15 @@ import { trackerValueText, type Tracker } from '../trackers/useTrackers'
  */
 export function EndPhaseDialog({
   label,
+  description,
   trackers,
   disabled,
   onConfirm,
 }: {
   /** "End the start phase": the button's name, and the question without its question mark. */
   label: string
+  /** What the phase is for and when it is done, to judge by; nothing when the release gives none. */
+  description?: string | null
   trackers: Tracker[]
   disabled: boolean
   onConfirm: () => void
@@ -46,6 +49,11 @@ export function EndPhaseDialog({
             facts and threads before you go on.
           </DialogDescription>
         </DialogHeader>
+        {description != null && (
+          <p aria-label="Phase description" className="text-sm whitespace-pre-wrap">
+            {description}
+          </p>
+        )}
         {trackers.length > 0 && (
           <ul aria-label="Trackers" className="space-y-1">
             {trackers.map((tracker) => (

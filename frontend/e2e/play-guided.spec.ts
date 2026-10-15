@@ -23,7 +23,8 @@ test('a solo player plays the premise and the first scene check of a guided camp
   await expect(page).toHaveURL(/\/play\/campaigns\/[0-9a-f-]{36}$/)
 
   const guide = page.getByRole('region', { name: 'Guided play' })
-  await expect(guide).toContainText('Start a session to go on.')
+  // The guide offers Start session while the flow waits for one, and "Where play stands" does not.
+  await expect(guide.getByRole('button', { name: 'Start session' })).toBeVisible()
   await page.getByRole('button', { name: 'Start session' }).click()
 
   // The premise phase offers its one Scene Type itself: the first step waits at once.

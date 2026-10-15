@@ -223,9 +223,25 @@ describe('focus mode', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'End the start phase' }))
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'End the phase' }),
+    )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Phase "start" plays once.')
     expect(sent['flow-run/move-on']).toEqual({ phase: 'start' })
+  })
+
+  it('shows the controls once, below the note composer', async () => {
+    renderPlay(guided(inOpenPlay, 'focus'))
+
+    const bar = await screen.findByRole('region', { name: 'Guided controls' })
+    const focus = await focusRegion()
+    expect(within(focus).queryByRole('button', { name: 'End scene' })).not.toBeInTheDocument()
+    expect(
+      screen.getByLabelText('New note').compareDocumentPosition(bar) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'End scene' })).toHaveLength(1)
   })
 
   it('shows why a command was refused', async () => {

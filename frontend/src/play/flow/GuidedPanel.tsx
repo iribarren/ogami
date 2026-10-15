@@ -1,24 +1,22 @@
 import type { Campaign } from '../campaigns/useCampaigns'
-import { GuidedBody, GuidedControls } from './GuidedParts'
+import { GuidedBody } from './GuidedParts'
 import { progressText } from './progress'
-import { useFlowRunCommand, type FlowRun, type FlowRunCommand } from './useFlowRun'
+import type { FlowRun, useFlowRunCommand } from './useFlowRun'
 
 /**
  * What the campaign's FlowRun waits on, in the journal: where it stands, the step or the scene
- * pick to answer, the next step named, and the controls to end the scene or session and to pause
- * or resume guidance. Paused, the free-play tools stay as they are.
+ * pick to answer and the next step named. The controls to end the scene or session and to pause
+ * or resume guidance sit below the note composer. Paused, the free-play tools stay as they are.
  */
-export function GuidedPanel({ campaign, flowRun }: { campaign: Campaign; flowRun: FlowRun }) {
-  const command = useFlowRunCommand(campaign.id)
-  const parts = {
-    campaign,
-    flowRun,
-    command,
-    onCommand: (next: FlowRunCommand) => {
-      command.mutate(next)
-    },
-  }
-
+export function GuidedPanel({
+  campaign,
+  flowRun,
+  command,
+}: {
+  campaign: Campaign
+  flowRun: FlowRun
+  command: ReturnType<typeof useFlowRunCommand>
+}) {
   return (
     <section
       aria-label="Guided play"
@@ -32,8 +30,7 @@ export function GuidedPanel({ campaign, flowRun }: { campaign: Campaign; flowRun
           </p>
         )}
       </div>
-      <GuidedBody {...parts} />
-      <GuidedControls {...parts} />
+      <GuidedBody campaign={campaign} flowRun={flowRun} command={command} />
     </section>
   )
 }

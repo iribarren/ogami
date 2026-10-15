@@ -8,8 +8,11 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 import { CharactersPanel } from '../characters/CharactersPanel'
 import { DiceRoller } from '../dice/DiceRoller'
 import { FactsPanel } from '../facts/FactsPanel'
+import { FlowIntroduction } from '../flow/FlowIntroduction'
 import { FocusPanel } from '../flow/FocusPanel'
+import { GuidedControls } from '../flow/GuidedParts'
 import { GuidedPanel } from '../flow/GuidedPanel'
+import { useFlowRunCommand } from '../flow/useFlowRun'
 import { useFlowView, type FlowView } from '../flow/useFlowView'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
@@ -91,6 +94,8 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const [view, setView] = useFlowView(campaign)
   const trackers = visibleTrackers(campaign)
   const focused = campaign.flowRun !== null && view === 'focus'
+  // Shared by the step card and the controls below the composer, so one pending state covers both.
+  const command = useFlowRunCommand(campaign.id)
 
   return (
     <>
@@ -101,6 +106,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         </p>
         <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>
+      <FlowIntroduction campaign={campaign} />
       <SessionControls campaign={campaign} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_var(--play-sidebar-width)]">
         <div
@@ -112,12 +118,12 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         >
           {campaign.flowRun !== null && <ViewToggle view={view} onChange={setView} />}
           {campaign.flowRun !== null && focused ? (
-            <FocusPanel campaign={campaign} flowRun={campaign.flowRun} />
+            <FocusPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
           ) : (
             <Section title="Journal">
               <CampaignJournal campaign={campaign} />
               {campaign.flowRun !== null && (
-                <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} />
+                <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
               )}
             </Section>
           )}
@@ -125,6 +131,9 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
             <NoteComposer campaignId={campaign.id} disabled={!hasScene} />
           </div>
+          {campaign.flowRun !== null && (
+            <GuidedControls campaign={campaign} flowRun={campaign.flowRun} command={command} />
+          )}
         </div>
         <aside
           aria-label="Play tools"

@@ -28,6 +28,8 @@ function playPosition(campaign: Campaign) {
 export function SessionControls({ campaign }: { campaign: Campaign }) {
   const startSession = useStartSession(campaign.id)
   const hasSession = campaign.currentSessionNumber !== null
+  // While the Flow waits for a session, the guide offers Start session: one place for it.
+  const guideStarts = campaign.flowRun?.status === 'active' && campaign.flowRun.waitsForSession
 
   return (
     <section
@@ -36,20 +38,24 @@ export function SessionControls({ campaign }: { campaign: Campaign }) {
     >
       <div className="min-w-0 space-y-2">
         <p className="font-medium break-words">{playPosition(campaign)}</p>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={startSession.isPending}
-          onClick={() => {
-            startSession.mutate()
-          }}
-        >
-          Start session
-        </Button>
-        {startSession.error && (
-          <p role="alert" className="text-sm text-destructive">
-            {startSession.error.message}
-          </p>
+        {!guideStarts && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={startSession.isPending}
+              onClick={() => {
+                startSession.mutate()
+              }}
+            >
+              Start session
+            </Button>
+            {startSession.error && (
+              <p role="alert" className="text-sm text-destructive">
+                {startSession.error.message}
+              </p>
+            )}
+          </>
         )}
         <PartyEditor campaign={campaign} />
         <SceneTypeSwitch campaign={campaign} />

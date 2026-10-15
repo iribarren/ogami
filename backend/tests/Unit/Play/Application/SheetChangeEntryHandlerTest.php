@@ -128,6 +128,9 @@ final class SheetChangeEntryHandlerTest extends FlowRunTestCase
             ['key' => 'prologue', 'name' => 'Prologue', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['setup']]],
         ]]]);
 
-        return self::translate(ReleaseArrays::with($content, 'sceneTypes.0.setup.0.mandatory', $mandatory));
+        /** @var array<string, mixed> $translated */
+        $translated = ReleaseArrays::with($content, 'sceneTypes.0.setup.0.mandatory', $mandatory);
+
+        return self::translate($translated);
     }
 }

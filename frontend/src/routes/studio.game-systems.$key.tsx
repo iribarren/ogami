@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { GameSystemPage } from '@/studio/GameSystemPage'
+
 export const Route = createFileRoute('/studio/game-systems/$key')({
   staticData: { layout: 'wide' },
   component: GameSystemRoute,
@@ -7,5 +9,5 @@ export const Route = createFileRoute('/studio/game-systems/$key')({
 
 function GameSystemRoute() {
   const { key } = Route.useParams()
-  return <p>{key}</p>
+  return <GameSystemPage gameSystemKey={key} />
 }

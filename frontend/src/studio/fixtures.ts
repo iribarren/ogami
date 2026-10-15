@@ -58,3 +58,5 @@ export const legacy: GameSystem = {
   createdAt: '2026-09-01T09:00:00+00:00',
   updatedAt: '2026-09-02T09:00:00+00:00',
 }
+
+export const validDraft = { valid: true, error: null, warnings: [] }

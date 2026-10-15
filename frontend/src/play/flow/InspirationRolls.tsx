@@ -8,7 +8,8 @@ import { useRecordOracleTableResult } from '../journal/useJournal'
 /**
  * The oracle tables a prompt step offers as inspiration: one button each, named after the table of
  * the campaign (a key it does not have is skipped). A roll is recorded in the journal like the
- * Oracle panel's, and the latest result of each table shows under the buttons. The player still
+ * Oracle panel's, and the latest result of each table shows under the buttons. The results belong
+ * to the step: key the component by the step so a reused card starts empty. The player still
  * writes the answer.
  */
 export function InspirationRolls({ campaign, keys }: { campaign: Campaign; keys: string[] }) {

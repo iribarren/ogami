@@ -1,7 +1,10 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { FakeHandler } from '@/test/fakeApi'
+import { createQueryClient } from '@/app/queryClient'
+import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
+import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
@@ -15,6 +18,7 @@ import {
   phaseDescription,
   promptStep,
 } from './fixtures'
+import { StepCard } from './StepCard'
 import type { FlowRun } from './useFlowRun'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
@@ -115,6 +119,36 @@ describe('inspiration tables of a prompt step', () => {
 
     const step = within(await screen.findByRole('region', { name: 'Current step: Who walks in?' }))
     expect(step.queryByRole('group', { name: 'Inspiration' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the card reused between two prompt steps', () => {
+  afterEach(cleanup)
+
+  it('shows no result of the previous step for a table both offer', async () => {
+    const user = userEvent.setup()
+    const { api } = createFakeApiClient({
+      [`POST ${path}/journal/oracle-tables/weather`]: () => Response.json(stormyWeather),
+    })
+    const next = { ...inspirationStep, key: 'notice-again', title: 'What else do you notice?' }
+    const card = (step: typeof inspirationStep) => (
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiClientProvider client={api}>
+          <StepCard campaign={lostMineCampaign} step={step} pending={false} onCommand={vi.fn()} />
+        </ApiClientProvider>
+      </QueryClientProvider>
+    )
+    const { rerender } = render(card(inspirationStep))
+
+    await user.click(screen.getByRole('button', { name: 'Roll on Weather' }))
+    expect(await screen.findByText('A storm › Hail')).toBeInTheDocument()
+
+    rerender(card(next))
+
+    expect(
+      screen.getByRole('region', { name: 'Current step: What else do you notice?' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('A storm › Hail')).not.toBeInTheDocument()
   })
 })
 

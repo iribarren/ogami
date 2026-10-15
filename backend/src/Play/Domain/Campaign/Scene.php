@@ -16,6 +16,10 @@ use App\Play\Domain\Campaign\Lists\NpcId;
  * scene of play, and the cast of either kind, change after it starts, through withTitle(),
  * withSceneType(), withCast() and withCharacters(), which return a new Scene. The cast has two
  * parts, each an ordered list without repeats: the NPCs and the Characters in the scene.
+ *
+ * A scene also records whether its title is still the default it was created with ("Legwork 2"):
+ * a Scene Type switch re-titles only such a title. Any rename clears it. A scene stored before the
+ * record existed has none (null) and its title counts as default by its shape (see Campaign).
  */
 final readonly class Scene
 {
@@ -34,21 +38,23 @@ final readonly class Scene
         private ?Hook $hook,
         private array $cast = [],
         private array $characters = [],
+        private ?bool $defaultTitle = false,
     ) {
     }
 
     /**
      * Starts a scene of play.
      *
-     * @param ?string           $sceneType  the key of a Scene Type of the pinned release, or null
-     * @param list<CharacterId> $characters the Characters it starts with: the session's party
+     * @param ?string           $sceneType    the key of a Scene Type of the pinned release, or null
+     * @param list<CharacterId> $characters   the Characters it starts with: the session's party
+     * @param bool              $defaultTitle whether the title is the generated default of its Scene Type
      *
      * @throws InvalidSceneTitle when the trimmed title is blank or longer than 100 characters
      * @throws InvalidSceneCast  when the Characters list one twice
      */
-    public static function start(int $number, string $title, \DateTimeImmutable $startedAt, ?string $sceneType = null, array $characters = []): self
+    public static function start(int $number, string $title, \DateTimeImmutable $startedAt, ?string $sceneType = null, array $characters = [], bool $defaultTitle = false): self
     {
-        return new self($number, self::checkedTitle($title), $startedAt, SceneKind::Scene, $sceneType, null, [], self::checkedCharacters($characters));
+        return new self($number, self::checkedTitle($title), $startedAt, SceneKind::Scene, $sceneType, null, [], self::checkedCharacters($characters), $defaultTitle);
     }
 
     /**
@@ -68,15 +74,17 @@ final readonly class Scene
      * Rebuilds a stored scene, e.g. from persistence. Only the kind is checked again: a hook Scene
      * names its hook and a scene of play has none, as the sessions reader requires. A scene stored
      * before scenes had a kind is a scene of play without a Scene Type; one stored before scenes had
-     * a cast has an empty one, and so does one stored before it had Characters.
+     * a cast has an empty one, and so does one stored before it had Characters; one stored before the
+     * default-title record has none (null).
      *
-     * @param list<NpcId>       $cast       the NPCs in the scene, without repeats
-     * @param list<CharacterId> $characters the Characters in the scene, without repeats
+     * @param list<NpcId>       $cast         the NPCs in the scene, without repeats
+     * @param list<CharacterId> $characters   the Characters in the scene, without repeats
+     * @param ?bool             $defaultTitle whether the title is still its creation default; null when not recorded
      *
      * @throws InvalidSceneKind when the kind and the hook disagree
      * @throws InvalidSceneCast when the cast lists an NPC or a Character twice
      */
-    public static function reconstitute(int $number, string $title, \DateTimeImmutable $startedAt, SceneKind $kind = SceneKind::Scene, ?string $sceneType = null, ?Hook $hook = null, array $cast = [], array $characters = []): self
+    public static function reconstitute(int $number, string $title, \DateTimeImmutable $startedAt, SceneKind $kind = SceneKind::Scene, ?string $sceneType = null, ?Hook $hook = null, array $cast = [], array $characters = [], ?bool $defaultTitle = null): self
     {
         if (SceneKind::Hook === $kind && !$hook instanceof Hook) {
             throw InvalidSceneKind::hookSceneWithoutHook();
@@ -86,7 +94,7 @@ final readonly class Scene
             throw InvalidSceneKind::sceneOfPlayWithHook($hook);
         }
 
-        return new self($number, $title, $startedAt, $kind, $sceneType, $hook, self::checkedCast($cast), self::checkedCharacters($characters));
+        return new self($number, $title, $startedAt, $kind, $sceneType, $hook, self::checkedCast($cast), self::checkedCharacters($characters), $defaultTitle);
     }
 
     /**
@@ -100,17 +108,18 @@ final readonly class Scene
             throw HookSceneHasNoSceneType::toSwitch($this->hook);
         }
 
-        return new self($this->number, $this->title, $this->startedAt, $this->kind, $sceneType, null, $this->cast, $this->characters);
+        return new self($this->number, $this->title, $this->startedAt, $this->kind, $sceneType, null, $this->cast, $this->characters, $this->defaultTitle);
     }
 
     /**
-     * The same scene with another title; its number, kind, Scene Type and start stay.
+     * The same scene with another title; its number, kind, Scene Type and start stay. The title is
+     * then a given one, not the default, whether the player or an Effect renamed the scene.
      *
      * @throws InvalidSceneTitle when the trimmed title is blank or longer than 100 characters
      */
     public function withTitle(string $title): self
     {
-        return new self($this->number, self::checkedTitle($title), $this->startedAt, $this->kind, $this->sceneType, $this->hook, $this->cast, $this->characters);
+        return new self($this->number, self::checkedTitle($title), $this->startedAt, $this->kind, $this->sceneType, $this->hook, $this->cast, $this->characters, false);
     }
 
     /**
@@ -122,7 +131,7 @@ final readonly class Scene
      */
     public function withCharacters(array $characters): self
     {
-        return new self($this->number, $this->title, $this->startedAt, $this->kind, $this->sceneType, $this->hook, $this->cast, self::checkedCharacters($characters));
+        return new self($this->number, $this->title, $this->startedAt, $this->kind, $this->sceneType, $this->hook, $this->cast, self::checkedCharacters($characters), $this->defaultTitle);
     }
 
     /**
@@ -134,7 +143,7 @@ final readonly class Scene
      */
     public function withCast(array $cast): self
     {
-        return new self($this->number, $this->title, $this->startedAt, $this->kind, $this->sceneType, $this->hook, self::checkedCast($cast), $this->characters);
+        return new self($this->number, $this->title, $this->startedAt, $this->kind, $this->sceneType, $this->hook, self::checkedCast($cast), $this->characters, $this->defaultTitle);
     }
 
     public function number(): int
@@ -145,6 +154,25 @@ final readonly class Scene
     public function title(): string
     {
         return $this->title;
+    }
+
+    /**
+     * The same scene with a newly generated default title (a Scene Type switch of a default title).
+     *
+     * @throws InvalidSceneTitle when the trimmed title is blank or longer than 100 characters
+     */
+    public function withDefaultTitle(string $title): self
+    {
+        return new self($this->number, self::checkedTitle($title), $this->startedAt, $this->kind, $this->sceneType, $this->hook, $this->cast, $this->characters, true);
+    }
+
+    /**
+     * Whether the title is still the default the scene was created with; null for a scene stored
+     * before that was recorded, whose title only the shape can tell.
+     */
+    public function hasDefaultTitle(): ?bool
+    {
+        return $this->defaultTitle;
     }
 
     public function startedAt(): \DateTimeImmutable

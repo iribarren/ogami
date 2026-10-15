@@ -70,14 +70,15 @@ final readonly class Session
     /**
      * Adds scene m + 1, a scene of play.
      *
-     * @param ?string $sceneType the key of a Scene Type of the pinned release, or null
+     * @param ?string $sceneType    the key of a Scene Type of the pinned release, or null
+     * @param bool    $defaultTitle whether the title is the generated default of the Scene Type
      *
      * @throws CampaignLimitReached when the session already holds 200 scenes
      * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters
      */
-    public function withNewScene(string $title, \DateTimeImmutable $startedAt, ?string $sceneType = null): self
+    public function withNewScene(string $title, \DateTimeImmutable $startedAt, ?string $sceneType = null, bool $defaultTitle = false): self
     {
-        return $this->withScene(static fn (int $number, array $party): Scene => Scene::start($number, $title, $startedAt, $sceneType, $party));
+        return $this->withScene(static fn (int $number, array $party): Scene => Scene::start($number, $title, $startedAt, $sceneType, $party, $defaultTitle));
     }
 
     /**

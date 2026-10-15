@@ -72,6 +72,7 @@ final class CampaignSessionsType extends JsonType
                         'hook' => $scene->hook()?->value,
                         'cast' => array_map(static fn (NpcId $id): string => $id->toString(), $scene->cast()),
                         'characters' => array_map(static fn (CharacterId $id): string => $id->toString(), $scene->characters()),
+                        'defaultTitle' => $scene->hasDefaultTitle(),
                     ],
                     $session->scenes(),
                 ),
@@ -134,6 +135,7 @@ final class CampaignSessionsType extends JsonType
                 $this->enum(Hook::class, $scene, 'hook'),
                 $this->cast($scene),
                 $this->characterIds($scene, 'characters'),
+                $this->optionalBool($scene, 'defaultTitle'),
             );
         } catch (InvalidSceneKind) {
             throw self::malformed('hook', SceneKind::Hook === $kind ? 'set on a hook scene' : 'null on a scene of play');
@@ -228,6 +230,19 @@ final class CampaignSessionsType extends JsonType
     private function optionalString(mixed $data, string $field): ?string
     {
         return null === $this->field($data, $field) ? null : $this->string($data, $field);
+    }
+
+    /**
+     * A scene stored before it recorded whether its title is the default has none.
+     */
+    private function optionalBool(mixed $data, string $field): ?bool
+    {
+        $value = $this->field($data, $field);
+        if (null !== $value && !\is_bool($value)) {
+            throw self::malformed($field, 'a boolean or null');
+        }
+
+        return $value;
     }
 
     /**

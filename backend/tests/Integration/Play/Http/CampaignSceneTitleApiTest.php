@@ -8,6 +8,7 @@ use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
 use App\Play\Application\Clock;
 use App\Play\Application\CreateCampaign;
+use App\Play\Application\PickSceneType;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
 use App\Play\Infrastructure\Http\CampaignController;
@@ -15,6 +16,7 @@ use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\FixedClock;
+use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\PeopleReleases;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,7 +29,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * `PUT /api/campaigns/{campaignId}/scenes/current/title` on a campaign played freely, in a scene:
- * the player renames the current scene, and every refusal leaves the title as it was.
+ * the player renames the current scene (a free scene or one a Flow started), and every refusal
+ * leaves the title as it was.
  */
 #[CoversClass(CampaignController::class)]
 final class CampaignSceneTitleApiTest extends WebTestCase
@@ -65,6 +68,23 @@ final class CampaignSceneTitleApiTest extends WebTestCase
         $scene = $this->json();
         self::assertSame([1, 'The letter'], [$scene['number'], $scene['title']]);
         self::assertSame($scene, $this->currentScene());
+    }
+
+    #[Test]
+    public function theSceneAFlowStartedIsRenamedAndTheNextReadShowsIt(): void
+    {
+        $this->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9302', GuidedReleases::content() + ['sheet' => []], false));
+        $this->dispatch(new CreateCampaign(self::CAMPAIGN, $this->userId, 'The tour', 'guided', 'tour'));
+        $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
+        $this->dispatch(new PickSceneType(self::CAMPAIGN, $this->userId, 'tour'));
+        self::assertSame('Tour 1', $this->currentScene()['title']);
+
+        $this->put(['title' => 'The gate at night']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([1, 'The gate at night'], [$this->json()['number'], $this->json()['title']]);
+        self::assertSame($this->json(), $this->currentScene());
+        self::assertSame('The gate at night', $this->currentScene()['title']);
     }
 
     /**

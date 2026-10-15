@@ -458,6 +458,21 @@ final class FlowRunTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aSceneTitleEffectOfTheNewSetupWinsOverTheRetitleOfASceneTypeSwitch(): void
+    {
+        $release = self::translate($this->content(heatBands: [['effects' => [['kind' => 'sceneTitle', 'title' => 'Showdown']]]]));
+        $campaign = self::guided($release, 'test');
+        $campaign->startSession(self::at(), $release);
+        $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $release, self::at());
+        $before = $campaign->currentScene()?->title();
+
+        $campaign->switchSceneType($release->sceneType('fight') ?? self::fail('No fight.'), $release, self::at());
+
+        // The switch re-titled the default "Talk 1", then the setup's Effect renamed it: the Effect wins.
+        self::assertSame(['Talk 1', 'Showdown', false], [$before, $campaign->currentScene()?->title(), $campaign->currentScene()?->hasDefaultTitle()]);
+    }
+
+    #[Test]
     public function aHandSwitchWhilePausedIsRecordedButLeavesThePositionWhereResumeGoesOn(): void
     {
         $campaign = $this->inASession();
@@ -676,11 +691,12 @@ final class FlowRunTest extends FlowRunTestCase
     }
 
     /**
-     * @param ?list<array<string, mixed>> $phases the Flow's phases instead of the four described above
+     * @param ?list<array<string, mixed>> $phases    the Flow's phases instead of the four described above
+     * @param list<array<string, mixed>>  $heatBands the bands of Fight's condition step
      *
      * @return array<string, mixed>
      */
-    private function content(?array $phases = null): array
+    private function content(?array $phases = null, array $heatBands = [[]]): array
     {
         $prompt = static fn (string $key, string $title, bool $mandatory = false): array => ['key' => $key, 'kind' => 'prompt', 'title' => $title, 'mandatory' => $mandatory];
         $sceneType = static fn (string $key, string $name, array $setup, array $play, array $closing): array => ['key' => $key, 'name' => $name, 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => $setup, 'play' => $play, 'closing' => $closing];
@@ -701,7 +717,7 @@ final class FlowRunTest extends FlowRunTestCase
                     ['key' => 'luck', 'kind' => 'roll', 'title' => 'Push your luck', 'dice' => '1d6'],
                 ], [$prompt('wrap', 'What changed?')]),
                 $sceneType('fight', 'Fight', [
-                    ['key' => 'heat-check', 'kind' => 'condition', 'title' => 'How hot is it?', 'tracker' => 'heat', 'bands' => [[]]],
+                    ['key' => 'heat-check', 'kind' => 'condition', 'title' => 'How hot is it?', 'tracker' => 'heat', 'bands' => $heatBands],
                     $prompt('opener', 'Who strikes first?', true),
                 ], [['key' => 'response', 'kind' => 'table', 'title' => 'Who comes?', 'table' => 'scene-kinds']], []),
                 $sceneType('legwork', 'Legwork', [], [], []),

@@ -45,7 +45,7 @@ final readonly class CreateGameSystemHandler implements CommandHandler
                 throw PublishedReleaseNotFound::for($command->sourceKey, $command->sourceVersion);
             }
 
-            $gameSystem = GameSystem::createFromRelease($id, $command->key, $command->name, $command->ownerId, $source->content()->toArray(), $now);
+            $gameSystem = GameSystem::createFromRelease($id, $command->key, $command->name, $command->description, $command->ownerId, $source->content()->toArray(), $now);
         }
 
         if ($this->releases->latestFor($command->key) instanceof GameSystemRelease) {

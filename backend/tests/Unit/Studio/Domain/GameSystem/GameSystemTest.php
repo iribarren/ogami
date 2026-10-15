@@ -90,7 +90,7 @@ final class GameSystemTest extends TestCase
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-every-part'))->toArray();
 
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', null, self::OWNER, $source, $this->now);
 
         /** @var array{gameSystem: array<string, mixed>} $expected */
         $expected = json_decode(json_encode($source, \JSON_THROW_ON_ERROR), true, flags: \JSON_THROW_ON_ERROR);
@@ -102,11 +102,40 @@ final class GameSystemTest extends TestCase
     }
 
     #[Test]
+    public function aCopyTakesAGivenDescriptionOverTheSourceOneAndKeepsItOtherwise(): void
+    {
+        $source = ReleaseContent::fromArray(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-minimal'), 'gameSystem.description', 'Source text'))->toArray();
+
+        $kept = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', null, self::OWNER, $source, $this->now);
+        $replaced = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', 'My text', self::OWNER, $source, $this->now);
+
+        /** @var array{gameSystem: array{description: string}} $keptDocument */
+        $keptDocument = $kept->document();
+        /** @var array{gameSystem: array{description: string}} $replacedDocument */
+        $replacedDocument = $replaced->document();
+        self::assertSame('Source text', $keptDocument['gameSystem']['description']);
+        self::assertSame('My text', $replacedDocument['gameSystem']['description']);
+    }
+
+    #[Test]
+    public function aCopyIsRefusedForAnInvalidDescription(): void
+    {
+        $source = ReleaseArrays::fixture('valid/v2-minimal');
+
+        try {
+            GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', str_repeat('x', 100000), self::OWNER, $source, $this->now);
+            self::fail('The draft was created.');
+        } catch (InvalidGameSystemMetadata $refusal) {
+            self::assertSame('description', $refusal->field);
+        }
+    }
+
+    #[Test]
     public function aCopyOfASchemaVersion1ReleaseStaysVersion1(): void
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/contract-doc-example'))->toArray();
 
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', null, self::OWNER, $source, $this->now);
 
         self::assertSame(1, $gameSystem->schemaVersion());
         ReleaseContent::fromArray($gameSystem->document());
@@ -119,7 +148,7 @@ final class GameSystemTest extends TestCase
         $refusals = [];
         foreach ([['Bad Key', 'Name', $source], ['ok-key', '', $source], ['ok-key', 'Name', ['schemaVersion' => 3]], ['ok-key', 'Name', ['schemaVersion' => 2, 'gameSystem' => 'x']]] as [$key, $name, $document]) {
             try {
-                GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), $key, $name, self::OWNER, $document, $this->now);
+                GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), $key, $name, null, self::OWNER, $document, $this->now);
                 self::fail('The draft was created.');
             } catch (InvalidGameSystemMetadata $refusal) {
                 $refusals[] = $refusal->field;
@@ -181,7 +210,7 @@ final class GameSystemTest extends TestCase
     public function aSchemaVersion1DraftRefusesCreditsAndThemeAndChangesNothing(): void
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/contract-doc-example'))->toArray();
-        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', self::OWNER, $source, $this->now);
+        $gameSystem = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', null, self::OWNER, $source, $this->now);
         $before = $gameSystem->document();
 
         foreach ([['credits', GameSystemMetadata::of('Other', null, ['notice' => 'N'], null)], ['theme', GameSystemMetadata::of('Other', null, null, 'noir')]] as [$field, $metadata]) {

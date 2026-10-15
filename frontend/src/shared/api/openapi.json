@@ -4267,6 +4267,442 @@
                     }
                 }
             }
+        },
+        "/api/studio/game-systems": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "List my GameSystem drafts",
+                "operationId": "listMyGameSystems",
+                "responses": {
+                    "200": {
+                        "description": "The signed-in game manager's GameSystems, the most recently updated first.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/GameSystemSummaryResponse2"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Create a GameSystem draft, blank or as a copy of a published release",
+                "operationId": "createGameSystem",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateGameSystemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new draft; the Location header is its URL.",
+                        "headers": {
+                            "Location": {
+                                "description": "The URL of the new GameSystem.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"key\" or \"name\", or a \"description\", \"source\" or \"source.version\" of the wrong type.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another GameSystem or a release (a preset's included) already has the key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The key, name or description breaks the release contract's rules (the message names the field), or the source release does not exist.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read one of my GameSystem drafts",
+                "operationId": "getGameSystem",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete one of my GameSystem drafts that was never published",
+                "operationId": "discardGameSystem",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "The draft is gone."
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The GameSystem has releases, which campaigns may play.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/metadata": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace the name, description, credits and theme of one of my GameSystem drafts",
+                "operationId": "editGameSystemMetadata",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EditGameSystemMetadataRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft with its new metadata.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of the wrong type (a \"credits\" that is not an object or has no string \"notice\" included).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A field breaks the release contract's rules (the message names it), or credits or a theme are given for a schema version 1 draft; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/validation": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Check whether one of my GameSystem drafts would be accepted as a release",
+                "operationId": "validateGameSystem",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The verdict: the first error with its path when invalid, the authoring warnings when valid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemValidationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -7818,6 +8254,306 @@
                     }
                 },
                 "type": "object"
+            },
+            "GameSystemSummaryResponse2": {
+                "required": [
+                    "key",
+                    "name",
+                    "schemaVersion",
+                    "latestReleaseVersion",
+                    "hasUnpublishedChanges",
+                    "updatedAt"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "my-system"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "My system"
+                    },
+                    "schemaVersion": {
+                        "description": "The release contract's schema version of the draft.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "latestReleaseVersion": {
+                        "description": "The version of its latest release; null when it was never published.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "hasUnpublishedChanges": {
+                        "description": "True when it has no release, the draft is invalid, or the draft differs from the latest release.",
+                        "type": "boolean"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemSourceRequest": {
+                "required": [
+                    "key"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The key of any published GameSystem, a preset's included.",
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "version": {
+                        "description": "The release version to copy; absent or null for the latest.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CreateGameSystemRequest": {
+                "required": [
+                    "key",
+                    "name"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Names the GameSystem's release line and never changes: lower case letters, digits and hyphens. Not used by another GameSystem or by any release (presets included).",
+                        "type": "string",
+                        "example": "my-system"
+                    },
+                    "name": {
+                        "description": "The GameSystem's name, at most 100 characters.",
+                        "type": "string",
+                        "example": "My system"
+                    },
+                    "description": {
+                        "description": "On a copy, replaces the source release's description; absent or null keeps it. Blank drafts start without one when it is absent.",
+                        "type": "string",
+                        "example": "A game of my own.",
+                        "nullable": true
+                    },
+                    "source": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemSourceRequest"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Copy a published release instead of starting blank; absent or null for a blank draft."
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemCreditsResponse": {
+                "required": [
+                    "notice",
+                    "license",
+                    "url"
+                ],
+                "properties": {
+                    "notice": {
+                        "type": "string",
+                        "example": "Unofficial fan content."
+                    },
+                    "license": {
+                        "type": "string",
+                        "example": "CC BY 4.0",
+                        "nullable": true
+                    },
+                    "url": {
+                        "type": "string",
+                        "example": "https://example.com/license",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "credits",
+                    "theme",
+                    "schemaVersion",
+                    "sectionCounts",
+                    "latestReleaseVersion",
+                    "hasUnpublishedChanges",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "my-system"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "My system"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "A game of my own.",
+                        "nullable": true
+                    },
+                    "credits": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemCreditsResponse"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "theme": {
+                        "description": "One of the release contract's themes; null for none.",
+                        "type": "string",
+                        "example": "noir",
+                        "nullable": true
+                    },
+                    "schemaVersion": {
+                        "description": "The release contract's schema version of the draft; 1 has no credits or theme.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "sectionCounts": {
+                        "description": "How many items each section holds, by section name: oracleTables, likelihoodOracles, trackers, factSlots, tags, sceneTypes, flows, sheetFields and checks (schema version 1: oracles and flowSteps).",
+                        "type": "object",
+                        "example": {
+                            "oracleTables": 2,
+                            "flows": 1
+                        },
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    },
+                    "latestReleaseVersion": {
+                        "description": "The version of its latest release; null when it was never published.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "hasUnpublishedChanges": {
+                        "description": "True when it has no release, the draft is invalid, or the draft differs from the latest release.",
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemCreditsRequest": {
+                "required": [
+                    "notice"
+                ],
+                "properties": {
+                    "notice": {
+                        "description": "The text Play shows, such as a publisher disclaimer.",
+                        "type": "string",
+                        "example": "Unofficial fan content."
+                    },
+                    "license": {
+                        "description": "The name of the license or policy.",
+                        "type": "string",
+                        "example": "CC BY 4.0",
+                        "nullable": true
+                    },
+                    "url": {
+                        "description": "An absolute https:// URL of the license or policy.",
+                        "type": "string",
+                        "example": "https://example.com/license",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "EditGameSystemMetadataRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "The GameSystem's name, at most 100 characters.",
+                        "type": "string",
+                        "example": "My system"
+                    },
+                    "description": {
+                        "description": "Absent or null for none.",
+                        "type": "string",
+                        "example": "A game of my own.",
+                        "nullable": true
+                    },
+                    "credits": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemCreditsRequest"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Absent or null for none. Refused (422) on a schema version 1 draft."
+                    },
+                    "theme": {
+                        "description": "One of the release contract's themes; absent or null for none. Refused (422) on a schema version 1 draft.",
+                        "type": "string",
+                        "example": "noir",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemValidationErrorResponse": {
+                "required": [
+                    "message"
+                ],
+                "properties": {
+                    "message": {
+                        "description": "Starts with the path of the offending part of the draft.",
+                        "type": "string",
+                        "example": "oracles: must be an object"
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemValidationResponse": {
+                "required": [
+                    "valid",
+                    "error",
+                    "warnings"
+                ],
+                "properties": {
+                    "valid": {
+                        "type": "boolean"
+                    },
+                    "error": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemValidationErrorResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The first error when the draft is invalid; null when it is valid."
+                    },
+                    "warnings": {
+                        "description": "Authoring warnings, each starting with the path it is about; empty when the draft is invalid.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "oracles.tables[0]: has no entries"
+                        ]
+                    }
+                },
+                "type": "object"
             }
         }
     },
@@ -7836,6 +8572,9 @@
         },
         {
             "name": "Health"
+        },
+        {
+            "name": "Studio"
         }
     ]
 }

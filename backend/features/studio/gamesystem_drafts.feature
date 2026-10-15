@@ -17,6 +17,11 @@ Feature: GameSystem drafts
     Then ann sees the GameSystem "my-journal" named "My journal" with no release and unpublished changes
     And ann's draft "my-journal" is valid
 
+  Scenario: A copy takes the description given instead of the source's
+    Given a published GameSystem release "free-journal" named "Free journal"
+    When ann creates the GameSystem "my-journal" named "My journal" as a copy of "free-journal" described as "My own words"
+    Then ann sees the GameSystem "my-journal" described as "My own words"
+
   Scenario: A key used by a release is taken
     Given a published GameSystem release "free-journal" named "Free journal"
     When ann creates the blank GameSystem "free-journal" named "Mine"
@@ -49,6 +54,7 @@ Feature: GameSystem drafts
     And ann's draft "my-system" was published
     When ann discards the GameSystem "my-system"
     Then the GameSystem is refused because it has releases
+    And ann sees the GameSystem "my-system" named "My system"
 
   Scenario: Another game manager cannot see the draft
     Given ann created the blank GameSystem "my-system" named "My system"

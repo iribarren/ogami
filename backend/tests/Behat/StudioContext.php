@@ -207,6 +207,14 @@ final class StudioContext implements Context
         ));
     }
 
+    #[When('/^(?P<user>\w+) creates the GameSystem "(?P<key>[^"]+)" named "(?P<name>[^"]+)" as a copy of "(?P<source>[^"]+)" described as "(?P<description>[^"]+)"$/')]
+    public function createsACopyDescribed(string $user, string $key, string $name, string $source, string $description): void
+    {
+        $this->attempt(fn () => (new CreateGameSystemHandler($this->drafts, $this->releases, $this->clock))(
+            new CreateGameSystem($this->draftIds->generate()->toString(), $user, $key, $name, $description, $source, null),
+        ));
+    }
+
     #[When('/^(?P<user>\w+) renames the GameSystem "(?P<key>[^"]+)" to "(?P<name>[^"]+)" with the theme "(?P<theme>[^"]+)"$/')]
     public function renames(string $user, string $key, string $name, string $theme): void
     {
@@ -241,6 +249,18 @@ final class StudioContext implements Context
         Assert::assertSame($name, $view->name);
         Assert::assertNull($view->latestReleaseVersion);
         Assert::assertTrue($view->hasUnpublishedChanges);
+    }
+
+    #[Then('ann sees the GameSystem :key named :name')]
+    public function seesTheDraftNamed(string $key, string $name): void
+    {
+        Assert::assertSame($name, $this->draft('ann', $key)->name);
+    }
+
+    #[Then('ann sees the GameSystem :key described as :description')]
+    public function seesTheDraftDescribed(string $key, string $description): void
+    {
+        Assert::assertSame($description, $this->draft('ann', $key)->description);
     }
 
     #[Then('ann sees the GameSystem :key named :name with the theme :theme')]

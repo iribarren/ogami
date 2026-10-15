@@ -220,6 +220,13 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-check-step-too-many-outcomes' => ['sceneTypes[0].play[0].outcomes: at most 10 outcomes', '/sceneTypes/0/play/0/outcomes'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
         'generated: v2-too-long-phase-description' => ['flows[0].phases[0].description: must be at most 2000 characters', '/flows/0/phases/0/description'],
+        'generated: v2-sheet-effect-bad-op' => ['sceneTypes[0].play[0].outcomes[0].effects[0].op: ', '/sceneTypes/0/play/0/outcomes/0/effects/0'],
+        'generated: v2-sheet-effect-unknown-property' => ['sceneTypes[0].play[0].outcomes[0].effects[0].tracker: unknown property', '/sceneTypes/0/play/0/outcomes/0/effects/0'],
+        'generated: v2-sheet-effect-missing-field' => ['sceneTypes[0].play[0].outcomes[0].effects[0].field: required', '/sceneTypes/0/play/0/outcomes/0/effects/0'],
+        'generated: v2-sheet-effect-value-out-of-range' => ['sceneTypes[0].play[0].outcomes[0].effects[0].value: ', '/sceneTypes/0/play/0/outcomes/0/effects/0/value'],
+        'generated: v2-sheet-effect-dice-too-long' => ['sceneTypes[0].play[0].outcomes[0].effects[0].value.dice: must be at most 100 characters', '/sceneTypes/0/play/0/outcomes/0/effects/0/value/dice'],
+        'generated: v2-sheet-effect-dice-not-a-string' => ['sceneTypes[0].play[0].outcomes[0].effects[0].value.dice: must be a string', '/sceneTypes/0/play/0/outcomes/0/effects/0/value/dice'],
+        'generated: v2-sheet-effect-value-formula-and-dice' => ['sceneTypes[0].play[0].outcomes[0].effects[0].value.dice: unknown property', '/sceneTypes/0/play/0/outcomes/0/effects/0/value'],
         'v2-inspiration-too-many' => ['sceneTypes[0].play[0].inspiration: at most 5 inspiration tables, 6 given', '/sceneTypes/0/play/0/inspiration'],
         'v2-inspiration-empty' => ['sceneTypes[0].play[0].inspiration: at least 1 inspiration tables, 0 given', '/sceneTypes/0/play/0/inspiration'],
         'v2-inspiration-duplicate' => ['sceneTypes[0].play[0].inspiration[1]: duplicate inspiration table "nouns"', '/sceneTypes/0/play/0/inspiration'],
@@ -254,6 +261,21 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-check-step-duplicate-outcome-band' => 'sceneTypes[0].play[0].outcomes[1].band: duplicate outcome band "miss"',
         'generated: v2-check-step-outcome-next-backward' => 'sceneTypes[0].play[0].outcomes[0].next: must name a later step of the same list or "end", "try" given',
         'generated: v2-check-step-outcome-unknown-tracker-effect' => 'sceneTypes[0].play[0].outcomes[0].effects[0].tracker: unknown tracker "ghost"',
+        'generated: v2-sheet-effect-unknown-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: unknown sheet field "ghost"',
+        'generated: v2-sheet-effect-derived-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "bonus" is a derived field, a sheet effect changes number and track fields only',
+        'generated: v2-sheet-effect-text-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "name" is a text field, a sheet effect changes number and track fields only',
+        'generated: v2-sheet-effect-list-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "gear" is a list field, a sheet effect changes number and track fields only',
+        'generated: v2-sheet-effect-in-prompt-step' => 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-check-step-effects' => 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-roll-band' => 'sceneTypes[0].play[0].bands[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-choice-option' => 'sceneTypes[0].play[0].options[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-table-entry' => 'oracles.tables[0].entries[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-bad-dice' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.dice: invalid dice notation: ',
+        'generated: v2-sheet-effect-formula-syntax' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: ',
+        'generated: v2-sheet-effect-formula-unknown-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {nope}: unknown field "nope"',
+        'generated: v2-sheet-effect-formula-reads-check' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {check:difficulty}: a check reference is read only by the bands of a check',
+        'generated: v2-sheet-effect-formula-unknown-tracker' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {tracker:ghost}: unknown tracker "ghost"',
+        'generated: v2-sheet-effect-formula-reads-text-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {name}: field "name" is a text field',
         'chaos-not-ordered' => 'oracles.likelihood[0]: ',
         'duplicate-flow-step-key' => 'flow.steps[1].key: duplicate step key "begin"',
         'duplicate-key-across-tables-and-likelihood' => 'oracles.likelihood[0].key: duplicate oracle key "mood"',
@@ -378,7 +400,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield $name => [$name, $json];
         }
 
-        foreach (self::generatedCheckCases()['structural'] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['structural'], ...self::generatedSheetEffectCases()['structural']] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -392,7 +414,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield $name => [$name, $json];
         }
 
-        foreach (self::generatedCheckCases()['semantic'] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['semantic'], ...self::generatedSheetEffectCases()['semantic']] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -618,6 +640,65 @@ final class ReleaseSchemaAgreementTest extends TestCase
         ];
 
         return ['valid' => self::generated($valid), 'structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
+    }
+
+    /**
+     * Sheet effects (ADR 0027): the shape of the effect and its value forms, and where it may sit.
+     *
+     * @return array{structural: array<string, string>, semantic: array<string, string>}
+     */
+    private static function generatedSheetEffectCases(): array
+    {
+        // A null override leaves the property out.
+        $effect = static fn (array $override = []): array => array_filter(['kind' => 'sheet', 'field' => 'sanity', 'op' => 'subtract', 'value' => 1, ...$override], static fn (mixed $property): bool => null !== $property);
+        $check = ['key' => 'sanity', 'label' => 'Sanity check', 'dice' => 'd%', 'bands' => [['key' => 'fail', 'label' => 'Fail']]];
+        $stepOf = static fn (array $step): array => ['key' => 'try', 'kind' => 'prompt', 'title' => 'Try', ...$step];
+        $build = static fn (array $play, array $tables = []): string => json_encode([
+            ...self::minimalReleaseV2(),
+            'oracles' => ['tables' => $tables, 'likelihood' => []],
+            'trackers' => [['key' => 'dread', 'name' => 'Dread', 'kind' => 'clock', 'segments' => 6]],
+            'sheet' => ['fields' => [
+                ['key' => 'pow', 'label' => 'Power', 'type' => 'number'],
+                ['key' => 'sanity', 'label' => 'Sanity', 'type' => 'track', 'max' => 99],
+                ['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '{pow}/10'],
+                ['key' => 'name', 'label' => 'Name', 'type' => 'text'],
+                ['key' => 'gear', 'label' => 'Gear', 'type' => 'list'],
+            ]],
+            'sceneTypes' => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []]],
+            'checks' => [$check],
+        ], \JSON_THROW_ON_ERROR);
+        // The effect sits in the first outcome of a check step, a place where it is allowed.
+        $inOutcome = static fn (array $override = []): string => $build([$stepOf(['kind' => 'check', 'check' => 'sanity', 'outcomes' => [['band' => 'fail', 'effects' => [$effect($override)]]]])]);
+
+        $structural = [
+            'v2-sheet-effect-bad-op' => $inOutcome(['op' => 'multiply']),
+            'v2-sheet-effect-unknown-property' => $inOutcome(['tracker' => 'dread']),
+            'v2-sheet-effect-missing-field' => $inOutcome(['field' => null]),
+            'v2-sheet-effect-value-out-of-range' => $inOutcome(['value' => 1001]),
+            'v2-sheet-effect-dice-too-long' => $inOutcome(['value' => ['dice' => str_repeat('1', 101)]]),
+            'v2-sheet-effect-dice-not-a-string' => $inOutcome(['value' => ['dice' => 6]]),
+            'v2-sheet-effect-value-formula-and-dice' => $inOutcome(['value' => ['formula' => '1', 'dice' => '1d6']]),
+        ];
+
+        $semantic = [
+            'v2-sheet-effect-unknown-field' => $inOutcome(['field' => 'ghost']),
+            'v2-sheet-effect-derived-field' => $inOutcome(['field' => 'bonus']),
+            'v2-sheet-effect-text-field' => $inOutcome(['field' => 'name']),
+            'v2-sheet-effect-list-field' => $inOutcome(['field' => 'gear']),
+            'v2-sheet-effect-in-prompt-step' => $build([$stepOf(['effects' => [$effect()]])]),
+            'v2-sheet-effect-in-check-step-effects' => $build([$stepOf(['kind' => 'check', 'check' => 'sanity', 'effects' => [$effect()]])]),
+            'v2-sheet-effect-in-roll-band' => $build([$stepOf(['kind' => 'roll', 'dice' => '1d6', 'bands' => [['effects' => [$effect()]]]])]),
+            'v2-sheet-effect-in-choice-option' => $build([$stepOf(['kind' => 'choice', 'mandatory' => true, 'options' => [['key' => 'a', 'label' => 'A', 'effects' => [$effect()]], ['key' => 'b', 'label' => 'B']]])]),
+            'v2-sheet-effect-in-table-entry' => $build([], [['key' => 'omens', 'name' => 'Omens', 'entries' => [['text' => 'A crow', 'effects' => [$effect()]]]]]),
+            'v2-sheet-effect-bad-dice' => $inOutcome(['value' => ['dice' => 'banana']]),
+            'v2-sheet-effect-formula-syntax' => $inOutcome(['value' => ['formula' => '1 +']]),
+            'v2-sheet-effect-formula-unknown-field' => $inOutcome(['value' => ['formula' => '{nope}']]),
+            'v2-sheet-effect-formula-reads-check' => $inOutcome(['value' => ['formula' => '{check:difficulty}']]),
+            'v2-sheet-effect-formula-unknown-tracker' => $inOutcome(['value' => ['formula' => '{tracker:ghost}']]),
+            'v2-sheet-effect-formula-reads-text-field' => $inOutcome(['value' => ['formula' => '{name}']]),
+        ];
+
+        return ['structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
     }
 
     /**

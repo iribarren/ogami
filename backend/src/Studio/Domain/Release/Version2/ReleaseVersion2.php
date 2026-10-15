@@ -95,12 +95,12 @@ final class ReleaseVersion2
         [$tags, $tagKeys] = self::tags($release['tags'] ?? null);
 
         [$sceneTypes, $sceneTypeKeys] = self::sceneTypes($release['sceneTypes'], $oracles);
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys, $factSlotTypes);
 
-        // Checks read the sheet, and flow steps read the checks, so both come before the steps.
+        // Checks and sheet effects read the sheet, and flow steps read the checks, so both come before the steps.
         $sheet = SheetFields::validate($release['sheet'], array_keys($trackerRanges));
         /** @var array<string, string> $fieldTypes */
         $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys, $factSlotTypes, fieldTypes: $fieldTypes);
         [$checks, $checkShapes] = Checks::validate($release['checks'], $fieldTypes, $catalog);
         $catalog = $catalog->withChecks($checkShapes);
 

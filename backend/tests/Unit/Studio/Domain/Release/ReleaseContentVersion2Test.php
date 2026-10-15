@@ -573,7 +573,7 @@ final class ReleaseContentVersion2Test extends TestCase
         // Effects.
         yield 'too many effects' => [self::scenes('sceneTypes.2.setup.0.effects', array_fill(0, 11, ['kind' => 'endPhase'])), 'sceneTypes[2].setup[0].effects: at most 10 effects, 11 given'];
         yield 'effect without kind' => [$effect(['tracker' => 'alarm']), 'sceneTypes[2].setup[0].effects[0].kind: required'];
-        yield 'unknown effect kind' => [$effect(['kind' => 'summonNpc']), 'sceneTypes[2].setup[0].effects[0].kind: must be one of "tracker", "nextScene", "switchSceneType", "endPhase", "sceneTitle", "createNpc", "createThread", "closeThread", "fillFact", \'summonNpc\' given'];
+        yield 'unknown effect kind' => [$effect(['kind' => 'summonNpc']), 'sceneTypes[2].setup[0].effects[0].kind: must be one of "tracker", "nextScene", "switchSceneType", "endPhase", "sceneTitle", "createNpc", "createThread", "closeThread", "fillFact", "sheet", \'summonNpc\' given'];
         yield 'unknown effect tracker' => [$effect(['kind' => 'tracker', 'tracker' => 'noise', 'op' => 'add', 'value' => 1]), 'sceneTypes[2].setup[0].effects[0].tracker: unknown tracker "noise"'];
         yield 'unknown effect op' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'multiply', 'value' => 2]), 'sceneTypes[2].setup[0].effects[0].op: must be one of "add", "set", \'multiply\' given'];
         yield 'effect value too high' => [$effect(['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1001]), 'sceneTypes[2].setup[0].effects[0].value: must be at most 1000, 1001 given'];

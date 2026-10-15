@@ -24,6 +24,7 @@ final readonly class Catalog
      * @param array<string, true>                                    $tags             the tag keys of the release
      * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc or thread)
      * @param array<string, CheckShape>                              $checks           what steps may name of each check, by check key
+     * @param array<string, string>                                  $fieldTypes       the type of every sheet field by key (number, text, list, track or derived)
      */
     public function __construct(
         public array $trackers,
@@ -33,6 +34,7 @@ final readonly class Catalog
         public array $tags = [],
         public array $factSlots = [],
         public array $checks = [],
+        public array $fieldTypes = [],
     ) {
     }
 
@@ -41,7 +43,7 @@ final readonly class Catalog
      */
     public function withChecks(array $checks): self
     {
-        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks);
+        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes);
     }
 
     /**
@@ -50,6 +52,14 @@ final readonly class Catalog
     public function check(string $key): ?array
     {
         return $this->checks[$key] ?? null;
+    }
+
+    /**
+     * The type of a sheet field of the release, or null when there is none by that key.
+     */
+    public function fieldType(string $key): ?string
+    {
+        return $this->fieldTypes[$key] ?? null;
     }
 
     public function hasTracker(string $key): bool

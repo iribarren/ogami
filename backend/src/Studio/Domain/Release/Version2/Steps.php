@@ -110,7 +110,8 @@ final class Steps
             throw InvalidReleaseContent::at($path.'.mandatory', 'a condition step is never mandatory');
         }
 
-        $step = [...$step, ...self::outcome($step, $path, $catalog)];
+        // A character step completes with a Character, so its own effects may change the sheet.
+        $step = [...$step, ...self::outcome($step, $path, $catalog, 'character' === $kind)];
         $step = match ($kind) {
             'prompt' => self::prompt($step, $path, $catalog),
             'character' => $step,
@@ -130,17 +131,18 @@ final class Steps
      * Checks "next" and "effects" of anything that has them and returns both (effects canonical).
      *
      * @param array<string, mixed> $outcome
+     * @param bool                 $sheet   whether the effects may change the sheet (see Effects::list())
      *
      * @return array{next?: string, effects: list<array<string, mixed>>}
      */
-    private static function outcome(array $outcome, string $path, Catalog $catalog): array
+    private static function outcome(array $outcome, string $path, Catalog $catalog, bool $sheet = false): array
     {
         $checked = [];
         if (isset($outcome['next'])) {
             $checked['next'] = ReleaseFields::key($outcome['next'], $path.'.next');
         }
 
-        $checked['effects'] = Effects::list($outcome['effects'] ?? null, $path.'.effects', $catalog);
+        $checked['effects'] = Effects::list($outcome['effects'] ?? null, $path.'.effects', $catalog, $sheet);
 
         return $checked;
     }
@@ -326,7 +328,7 @@ final class Steps
                     throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('duplicate outcome band "%s"', $band));
                 }
 
-                $outcomes[$band] = array_filter([...$outcome, ...self::outcome($outcome, $outcomePath, $catalog)], static fn (mixed $field): bool => [] !== $field);
+                $outcomes[$band] = array_filter([...$outcome, ...self::outcome($outcome, $outcomePath, $catalog, true)], static fn (mixed $field): bool => [] !== $field);
             }
 
             $step['outcomes'] = array_values($outcomes);

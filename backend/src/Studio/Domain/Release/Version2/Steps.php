@@ -25,6 +25,7 @@ final class Steps
     public const int MAX_OPTIONS = 10;
     public const int MAX_TABLE_BRANCHES = 1000;
     public const int MAX_PICK_COUNT = 10;
+    public const int MAX_INSPIRATION = 5;
     public const string END = 'end';
 
     /** What a pick or a condition count ranges over. */
@@ -34,7 +35,7 @@ final class Steps
 
     /** The fields each kind adds to COMMON, in schema order: name => required. */
     private const array KINDS = [
-        'prompt' => [],
+        'prompt' => ['inspiration' => false],
         'oracle' => ['oracle' => true, 'likelihood' => false, 'branches' => false],
         'table' => ['table' => true, 'branches' => false, 'otherwise' => false],
         'roll' => ['dice' => true, 'bands' => false],
@@ -111,7 +112,8 @@ final class Steps
 
         $step = [...$step, ...self::outcome($step, $path, $catalog)];
         $step = match ($kind) {
-            'prompt', 'character' => $step,
+            'prompt' => self::prompt($step, $path, $catalog),
+            'character' => $step,
             'oracle' => self::oracle($step, $path, $catalog),
             'table' => self::table($step, $path, $catalog),
             'roll' => self::roll($step, $path, $catalog),
@@ -182,6 +184,38 @@ final class Steps
             }
 
             $step['branches'] = array_filter($branches, static fn (array $branch): bool => [] !== $branch);
+        }
+
+        return $step;
+    }
+
+    /**
+     * The inspiration tables are suggestions: each is an oracle table of the catalog, once, and
+     * none counts as rolled by the step.
+     *
+     * @param array<string, mixed> $step
+     *
+     * @return array<string, mixed>
+     */
+    private static function prompt(array $step, string $path, Catalog $catalog): array
+    {
+        if (!isset($step['inspiration'])) {
+            return $step;
+        }
+
+        $seen = [];
+        foreach (ReleaseFields::sizedList($step['inspiration'], $path.'.inspiration', 1, self::MAX_INSPIRATION, 'inspiration tables') as $index => $key) {
+            $keyPath = \sprintf('%s.inspiration[%d]', $path, $index);
+            $key = ReleaseFields::key($key, $keyPath);
+            if (!$catalog->hasTable($key)) {
+                throw InvalidReleaseContent::at($keyPath, \sprintf('unknown oracle table "%s"', $key));
+            }
+
+            if (isset($seen[$key])) {
+                throw InvalidReleaseContent::at($keyPath, \sprintf('duplicate inspiration table "%s"', $key));
+            }
+
+            $seen[$key] = true;
         }
 
         return $step;

@@ -44,6 +44,18 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function skippingACharacterStepAppliesNoneOfItsEffects(): void
+    {
+        $release = $this->sheetRelease(mandatory: false);
+        $campaign = $this->campaign($release);
+
+        $campaign->skipFlowStep('you', $release, self::at());
+
+        // No Character completed the step, so no sheet changes and nothing throws.
+        self::assertSame([['play', 'shock'], [['current' => 99, 'max' => 99], ['current' => 99, 'max' => 99]]], [self::position($campaign), [$this->value($campaign, 'ida', 'sanity'), $this->value($campaign, 'bo', 'sanity')]]);
+    }
+
+    #[Test]
     public function aCheckOutcomeChangesTheCheckedCharacterInListOrderAndRollsItsDice(): void
     {
         $release = $this->sheetRelease();
@@ -150,10 +162,11 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
     }
 
     /**
-     * @param ?list<array<string, mixed>> $fail the effects of the "fail" outcome, null for the fixture's
-     * @param ?list<array<string, mixed>> $pass the effects of the "pass" outcome, null for the fixture's
+     * @param ?list<array<string, mixed>> $fail      the effects of the "fail" outcome, null for the fixture's
+     * @param ?list<array<string, mixed>> $pass      the effects of the "pass" outcome, null for the fixture's
+     * @param bool                        $mandatory whether the character step "you" is mandatory
      */
-    private function sheetRelease(?array $fail = null, ?array $pass = null): GameSystemSnapshot
+    private function sheetRelease(?array $fail = null, ?array $pass = null, bool $mandatory = true): GameSystemSnapshot
     {
         /** @var array{sheet: array{fields: list<array<string, mixed>>}} $content */
         $content = ReleaseViews::fixtureContent('valid/v2-sheet-effects');
@@ -161,6 +174,7 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
         $content = ReleaseArrays::with($content, 'flows', [['key' => 'play', 'name' => 'Play', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['dread'], 'phases' => [
             ['key' => 'prologue', 'name' => 'Prologue', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['setup']]],
         ]]]);
+        $content = ReleaseArrays::with($content, 'sceneTypes.0.setup.0.mandatory', $mandatory);
         foreach (['0' => $fail, '1' => $pass] as $index => $effects) {
             if (null !== $effects) {
                 $content = ReleaseArrays::with($content, 'sceneTypes.0.play.0.outcomes.'.$index.'.effects', $effects);

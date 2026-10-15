@@ -44,7 +44,10 @@ describe('AppShell', () => {
 
   it('opens an area and marks its link as the current page', async () => {
     const user = userEvent.setup()
-    renderAppAt('/', { 'GET /api/auth/me': signedInAs('SOLO_PLAYER', 'GAME_MANAGER') })
+    renderAppAt('/', {
+      'GET /api/auth/me': signedInAs('SOLO_PLAYER', 'GAME_MANAGER'),
+      'GET /api/studio/game-systems': () => Response.json([]),
+    })
 
     const nav = await screen.findByRole('navigation', { name: 'Main' })
     await user.click(await within(nav).findByRole('link', { name: 'Studio' }))

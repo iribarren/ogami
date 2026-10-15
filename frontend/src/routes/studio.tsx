@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 import { requireRole } from '@/shared/auth/requireRole'
-import { StudioHomePage } from '@/studio/StudioHomePage'
 
+// Layout of every Studio page: the guard runs before any child route loads.
 export const Route = createFileRoute('/studio')({
   beforeLoad: (options) => requireRole(options, 'GAME_MANAGER'),
-  component: StudioHomePage,
+  component: Outlet,
 })

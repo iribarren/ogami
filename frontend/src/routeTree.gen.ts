@@ -15,7 +15,9 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlayRouteImport } from './routes/play'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as PlayIndexRouteImport } from './routes/play.index'
+import { Route as StudioIndexRouteImport } from './routes/studio.index'
 import { Route as PlayCampaignsCampaignIdRouteImport } from './routes/play.campaigns.$campaignId'
+import { Route as StudioGameSystemsKeyRouteImport } from './routes/studio.game-systems.$key'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -47,10 +49,20 @@ const PlayIndexRoute = PlayIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PlayRoute,
 } as any)
+const StudioIndexRoute = StudioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StudioRoute,
+} as any)
 const PlayCampaignsCampaignIdRoute = PlayCampaignsCampaignIdRouteImport.update({
   id: '/campaigns/$campaignId',
   path: '/campaigns/$campaignId',
   getParentRoute: () => PlayRoute,
+} as any)
+const StudioGameSystemsKeyRoute = StudioGameSystemsKeyRouteImport.update({
+  id: '/game-systems/$key',
+  path: '/game-systems/$key',
+  getParentRoute: () => StudioRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -58,17 +70,20 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/play': typeof PlayRouteWithChildren
-  '/studio': typeof StudioRoute
+  '/studio': typeof StudioRouteWithChildren
   '/play/': typeof PlayIndexRoute
+  '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
+  '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
-  '/studio': typeof StudioRoute
   '/play': typeof PlayIndexRoute
+  '/studio': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
+  '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -76,9 +91,11 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/play': typeof PlayRouteWithChildren
-  '/studio': typeof StudioRoute
+  '/studio': typeof StudioRouteWithChildren
   '/play/': typeof PlayIndexRoute
+  '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
+  '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,15 +106,18 @@ export interface FileRouteTypes {
     | '/play'
     | '/studio'
     | '/play/'
+    | '/studio/'
     | '/play/campaigns/$campaignId'
+    | '/studio/game-systems/$key'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/login'
-    | '/studio'
     | '/play'
+    | '/studio'
     | '/play/campaigns/$campaignId'
+    | '/studio/game-systems/$key'
   id:
     | '__root__'
     | '/'
@@ -106,7 +126,9 @@ export interface FileRouteTypes {
     | '/play'
     | '/studio'
     | '/play/'
+    | '/studio/'
     | '/play/campaigns/$campaignId'
+    | '/studio/game-systems/$key'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -114,7 +136,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
   PlayRoute: typeof PlayRouteWithChildren
-  StudioRoute: typeof StudioRoute
+  StudioRoute: typeof StudioRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -161,12 +183,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayIndexRouteImport
       parentRoute: typeof PlayRoute
     }
+    '/studio/': {
+      id: '/studio/'
+      path: '/'
+      fullPath: '/studio/'
+      preLoaderRoute: typeof StudioIndexRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/play/campaigns/$campaignId': {
       id: '/play/campaigns/$campaignId'
       path: '/campaigns/$campaignId'
       fullPath: '/play/campaigns/$campaignId'
       preLoaderRoute: typeof PlayCampaignsCampaignIdRouteImport
       parentRoute: typeof PlayRoute
+    }
+    '/studio/game-systems/$key': {
+      id: '/studio/game-systems/$key'
+      path: '/game-systems/$key'
+      fullPath: '/studio/game-systems/$key'
+      preLoaderRoute: typeof StudioGameSystemsKeyRouteImport
+      parentRoute: typeof StudioRoute
     }
   }
 }
@@ -183,12 +219,25 @@ const PlayRouteChildren: PlayRouteChildren = {
 
 const PlayRouteWithChildren = PlayRoute._addFileChildren(PlayRouteChildren)
 
+interface StudioRouteChildren {
+  StudioIndexRoute: typeof StudioIndexRoute
+  StudioGameSystemsKeyRoute: typeof StudioGameSystemsKeyRoute
+}
+
+const StudioRouteChildren: StudioRouteChildren = {
+  StudioIndexRoute: StudioIndexRoute,
+  StudioGameSystemsKeyRoute: StudioGameSystemsKeyRoute,
+}
+
+const StudioRouteWithChildren =
+  StudioRoute._addFileChildren(StudioRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
   PlayRoute: PlayRouteWithChildren,
-  StudioRoute: StudioRoute,
+  StudioRoute: StudioRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

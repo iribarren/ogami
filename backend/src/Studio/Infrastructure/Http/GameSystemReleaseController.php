@@ -86,7 +86,7 @@ final readonly class GameSystemReleaseController
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The draft has no changes since the latest release, or another publish took the version first; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'A body was sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The draft breaks the release contract (the message names the path of the first error) or the notes are blank or longer than 2,000 characters; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The draft breaks the release contract (the message names the path of the first error) or the notes are blank, contain NUL or invalid UTF-8, or are longer than 2,000 characters; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function publish(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = '' === $request->getContent() ? [] : $this->jsonBody($request, 'Send the release notes as JSON.', self::MALFORMED_PUBLISH);
@@ -114,7 +114,7 @@ final readonly class GameSystemReleaseController
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
-        $response->headers->set('Location', \sprintf('/api/studio/game-systems/%s/releases/%d', $key, $published->version));
+        $response->headers->set('Location', \sprintf('/api/studio/game-systems/%s/releases/%d', rawurlencode($key), $published->version));
 
         return $response;
     }

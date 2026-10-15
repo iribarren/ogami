@@ -133,6 +133,10 @@ final class GameSystemReleaseTest extends TestCase
         yield 'no-break space only' => ["\u{00A0}", 'blank'];
         yield 'em space only' => ["\u{2003}", 'blank'];
         yield 'ideographic space only' => ["\u{3000}\u{3000}", 'blank'];
+        yield 'zero-width space only' => ["\u{200B}", 'blank'];
+        yield 'word joiner only' => ["\u{2060}", 'blank'];
+        yield 'byte order mark only' => ["\u{FEFF}", 'blank'];
+        yield 'zero-width characters mixed with spaces' => [" \u{200B}\u{2060} \u{FEFF}\n", 'blank'];
         yield 'a NUL inside text' => ["Fixed\0things", 'NUL'];
         yield 'invalid UTF-8' => ["Fixed \xC3\x28 things", 'UTF-8'];
     }

@@ -118,7 +118,7 @@ final readonly class GameSystemController
         }
 
         $response = $this->gameSystem($user, $key, Response::HTTP_CREATED);
-        $response->headers->set('Location', '/api/studio/game-systems/'.$key);
+        $response->headers->set('Location', '/api/studio/game-systems/'.rawurlencode($key));
 
         return $response;
     }

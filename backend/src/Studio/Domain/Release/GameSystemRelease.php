@@ -76,8 +76,8 @@ final readonly class GameSystemRelease
             throw InvalidGameSystemRelease::notes('must not contain a NUL character');
         }
 
-        // Blank is whitespace and Unicode separators only; \s alone misses NBSP and the like.
-        if (1 === preg_match('/^[\s\p{Z}]*$/u', $notes)) {
+        // Blank is whitespace, Unicode separators and invisible format characters (zero-width space and the like); \s alone misses NBSP.
+        if (1 === preg_match('/^[\s\p{Z}\p{Cf}]*$/u', $notes)) {
             throw InvalidGameSystemRelease::notes('must not be blank');
         }
 

@@ -16,7 +16,7 @@ use OpenApi\Attributes as OA;
 final readonly class PublishGameSystemRequest
 {
     public function __construct(
-        #[OA\Property(description: 'Release notes: not blank, at most 2,000 characters; absent or null for none.', example: 'Rebalanced the oracles.', nullable: true)]
+        #[OA\Property(description: 'Release notes: not blank, no NUL character, valid UTF-8, at most 2,000 characters; absent or null for none.', example: 'Rebalanced the oracles.', nullable: true)]
         public ?string $notes,
     ) {
     }

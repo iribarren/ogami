@@ -9,9 +9,12 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\Thread;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
@@ -20,7 +23,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
- * The shipped `percentile-horror` preset played through the Campaign: the letter, the four
+ * The shipped `percentile-horror` preset played through the Campaign: the prologue, the four
  * investigation scenes with their branching checks, the loop that ends on clues or dread, the
  * confrontation and the epilogue. The investigator has Library use, Persuade, Psychology, Spot hidden,
  * Stealth and Power at 50, and a Sanity of 99 (the track starts full).
@@ -39,40 +42,61 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function theLetterNeedsYourInvestigatorAndARelativeAndFillsTheFacts(): void
+    public function thePrologueNeedsYourInvestigatorAContactAHookAndTheMysteryAndFillsTheFacts(): void
     {
-        $campaign = self::guided($this->release, 'kingsport-letter');
+        $campaign = self::guided($this->release, 'kingsport-mystery');
         $campaign->startSession(self::at(), $this->release);
 
-        foreach (['you', 'relative'] as $mandatory) {
+        foreach (['you', 'contact', 'hook', 'mystery'] as $mandatory) {
+            if ('mystery' === $mandatory) {
+                $campaign->completeFlowStep('where', self::prompt('The old customs house'), $this->release, self::at());
+            }
             try {
                 $campaign->skipFlowStep($mandatory, $this->release, self::at());
                 self::fail(\sprintf('"%s" is mandatory.', $mandatory));
             } catch (StepCannotBeSkipped $exception) {
                 self::assertSame(\sprintf('Step "%s" is mandatory: complete it.', $mandatory), $exception->getMessage());
             }
-            if ('you' === $mandatory) {
-                $this->createInvestigator($campaign);
-            }
+            match ($mandatory) {
+                'you' => $this->createInvestigator($campaign),
+                'contact' => $campaign->completeFlowStep('contact', self::prompt('Philippa Marsh'), $this->release, self::at()),
+                'hook' => $campaign->completeFlowStep('hook', self::prompt('My aunt writes that the house is not safe'), $this->release, self::at()),
+                default => null,
+            };
         }
 
-        $campaign->completeFlowStep('relative', self::prompt('Philippa Marsh'), $this->release, self::at());
-        $campaign->completeFlowStep('hook', $this->rolled('letter-hooks', 1), $this->release, self::at());
-        $campaign->completeFlowStep('where', $this->rolled('locations', 2), $this->release, self::at());
+        $campaign->completeFlowStep('mystery', self::prompt('Who emptied my aunt\'s cellar?'), $this->release, self::at());
         $campaign->skipFlowStep('journey', $this->release, self::at());
 
         self::assertSame([
-            'relative' => 'Philippa Marsh',
-            'letter' => 'Come at once: I have found the missing pages and I am afraid of them',
-            'place' => 'The old customs house, half empty since the war',
+            'contact' => 'Philippa Marsh',
+            'hook' => 'My aunt writes that the house is not safe',
+            'place' => 'The old customs house',
+            'lair' => '',
             'horror' => '',
         ], $campaign->factValues($this->release));
-        self::assertSame([['Philippa Marsh', ['kin']]], array_map(static fn (Npc $npc): array => [$npc->name(), $npc->tags()], $campaign->npcs()));
+        self::assertSame([['Philippa Marsh', ['contact']]], array_map(static fn (Npc $npc): array => [$npc->name(), $npc->tags()], $campaign->npcs()));
+        self::assertSame([['Who emptied my aunt\'s cellar?', ['mystery'], true]], array_map(static fn (Thread $thread): array => [$thread->name(), $thread->tags(), $thread->isOpen()], $campaign->threads()));
         self::assertSame(['inv'], array_map(static fn (CharacterId $id): string => $id->toString(), $campaign->currentSession()?->party() ?? []));
     }
 
     #[Test]
-    public function afterTheLetterThePlayerChoosesInvestigationScenes(): void
+    public function theWhereAndTheJourneyAreSuggestedAndCanBeSkipped(): void
+    {
+        $campaign = self::guided($this->release, 'kingsport-mystery');
+        $campaign->startSession(self::at(), $this->release);
+        $this->createInvestigator($campaign);
+        $campaign->completeFlowStep('contact', self::prompt('Philippa Marsh'), $this->release, self::at());
+        $campaign->completeFlowStep('hook', self::prompt('A telegram'), $this->release, self::at());
+
+        $campaign->skipFlowStep('where', $this->release, self::at());
+
+        self::assertSame('mystery', self::position($campaign)[1]);
+        self::assertSame('', $campaign->factValues($this->release)['place']);
+    }
+
+    #[Test]
+    public function afterThePrologueThePlayerChoosesInvestigationScenes(): void
     {
         $campaign = $this->inTheInvestigation();
 
@@ -157,8 +181,8 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign = $this->inTheSite();
         $campaign->completeFlowStep('spot', $this->checked($campaign, 'spot', 'spot-hidden', 25), $this->release, self::at());
         self::assertSame(['find', 1], [self::position($campaign)[1], $campaign->trackerValue($this->tracker('clues'))]);
-        $campaign->completeFlowStep('find', $this->rolled('clues', 1), $this->release, self::at());
-        $campaign->completeFlowStep('reveal', $this->rolled('horrors', 1), $this->release, self::at());
+        $campaign->completeFlowStep('find', self::prompt('A tide table with one night circled'), $this->release, self::at());
+        $campaign->completeFlowStep('reveal', self::prompt('Something waits below the tide line'), $this->release, self::at());
 
         // Sanity 99: a 99 still passes, and a fumble raises the dread by 2.
         $campaign->completeFlowStep('shock', $this->checked($campaign, 'shock', 'sanity', 100), $this->release, self::at());
@@ -170,8 +194,8 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->inTheSite();
         $campaign->completeFlowStep('spot', $this->checked($campaign, 'spot', 'spot-hidden', 25), $this->release, self::at());
-        $campaign->completeFlowStep('find', $this->rolled('clues', 1), $this->release, self::at());
-        $campaign->completeFlowStep('reveal', $this->rolled('horrors', 1), $this->release, self::at());
+        $campaign->completeFlowStep('find', self::prompt('A key too old for any lock'), $this->release, self::at());
+        $campaign->completeFlowStep('reveal', self::prompt('A door that opens on the wrong decade'), $this->release, self::at());
         $dread = $campaign->trackerValue($this->tracker('dread'));
 
         // At Sanity 40 a 55 is a plain failure (above 40, under the fumble line): the dread rises by 1, not 2.
@@ -181,19 +205,19 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function aStrangeNightEventMovesTheDread(): void
+    public function aNightEventIsWrittenByThePlayerAndLeavesTheDreadToTheChecks(): void
     {
         $campaign = $this->inTheInvestigation();
         $campaign->pickSceneType('night', $this->release, self::at());
 
-        // The first strange event is bells under the water: the dread rises.
-        $campaign->completeFlowStep('event', $this->rolled('strange-events', 1), $this->release, self::at());
-        self::assertSame(1, $campaign->trackerValue($this->tracker('dread')));
+        // The strange events are inspiration now: writing the event moves nothing by itself.
+        $campaign->completeFlowStep('event', self::prompt('Bells ring under the water'), $this->release, self::at());
+        self::assertSame(0, $campaign->trackerValue($this->tracker('dread')));
 
         $campaign->completeFlowStep('hide', $this->checked($campaign, 'hide', 'stealth', 50), $this->release, self::at());
-        $campaign->completeFlowStep('glimpse', $this->rolled('horrors', 3), $this->release, self::at());
+        $campaign->completeFlowStep('glimpse', self::prompt('A pale hand on the glass'), $this->release, self::at());
         $campaign->completeFlowStep('nerve', $this->checked($campaign, 'nerve', 'sanity', 99), $this->release, self::at());
-        self::assertSame(1, $campaign->trackerValue($this->tracker('dread')));
+        self::assertSame(0, $campaign->trackerValue($this->tracker('dread')));
     }
 
     #[Test]
@@ -258,15 +282,15 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     public function theConfrontationNeedsAHardPowerSuccessAndEndsOnASanityCheck(int $die, string $step): void
     {
         $campaign = $this->atTheConfrontation();
-        $campaign->skipFlowStep('arrive', $this->release, self::at());
-        $campaign->completeFlowStep('horror', $this->rolled('horrors', 2), $this->release, self::at());
+        $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
+        $campaign->completeFlowStep('horror', self::prompt('Something vast behind the cellar wall'), $this->release, self::at());
 
         $campaign->completeFlowStep('will', $this->checked($campaign, 'will', 'pow', $die), $this->release, self::at());
 
         self::assertSame($step, self::position($campaign)[1]);
         $campaign->skipFlowStep($step, $this->release, self::at());
         self::assertSame('final-shock', self::position($campaign)[1]);
-        self::assertSame('Something vast and patient behind the cellar wall', $campaign->factValues($this->release)['horror']);
+        self::assertSame(['A cellar under the town hall', 'Something vast behind the cellar wall'], [$campaign->factValues($this->release)['lair'], $campaign->factValues($this->release)['horror']]);
     }
 
     /**
@@ -274,8 +298,24 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
      */
     public static function endings(): iterable
     {
-        yield 'a calm night' => [2, 'calm', 'You write the letter home about Come at once: I have found the missing pages and I am afraid of them. What do you tell Philippa Marsh?'];
+        yield 'a calm night' => [2, 'calm', 'You write home about what drew you here: My aunt writes that the house is not safe. What do you tell Philippa Marsh?'];
         yield 'the nights follow you home' => [3, 'scarred', 'You leave Kingsport but not the dream. What do you still hear?'];
+    }
+
+    #[Test]
+    public function aMysteryLeftOpenKeepsItsThread(): void
+    {
+        $campaign = $this->atTheConfrontation();
+        foreach (['arrive', 'horror', 'will', 'cost', 'final-shock'] as $key) {
+            $campaign->skipFlowStep($key, $this->release, self::at());
+        }
+        $campaign->endFlowScene(3, $this->release, self::at());
+
+        $campaign->completeFlowStep('thread', StepResult::pick(ItemKind::Thread, [new PickedItem($this->mysteryThread($campaign)->id()->toString(), 'The mystery')]), $this->release, self::at());
+        $campaign->completeFlowStep('solved', StepResult::choice('no'), $this->release, self::at());
+
+        self::assertTrue($this->mysteryThread($campaign)->isOpen());
+        self::assertSame('calm', self::position($campaign)[1], 'The tally decides the ending as before.');
     }
 
     #[Test]
@@ -291,11 +331,21 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->skipFlowStep('final-shock', $this->release, self::at());
         $campaign->endFlowScene(3, $this->release, self::at());
 
-        self::assertSame(['epilogue', 'setup', $step, $prompt], [$campaign->currentScene()?->sceneType(), ...self::position($campaign), $campaign->flowRunView($this->release)?->step?->prompt]);
+        self::assertSame(['epilogue', 'setup', 'thread'], [$campaign->currentScene()?->sceneType(), ...self::position($campaign)]);
+        $campaign->completeFlowStep('thread', StepResult::pick(ItemKind::Thread, [new PickedItem($this->mysteryThread($campaign)->id()->toString(), 'The mystery')]), $this->release, self::at());
+        $campaign->completeFlowStep('solved', StepResult::choice('yes'), $this->release, self::at());
+
+        self::assertFalse($this->mysteryThread($campaign)->isOpen(), 'Solving the mystery closes its Thread.');
+        self::assertSame(['setup', $step, $prompt], [...self::position($campaign), $campaign->flowRunView($this->release)?->step?->prompt]);
         $campaign->skipFlowStep($step, $this->release, self::at());
         $campaign->endFlowScene(4, $this->release, self::at());
 
         self::assertSame(FlowRunStatus::Completed, self::flowRunOf($campaign)->status());
+    }
+
+    private function mysteryThread(Campaign $campaign): Thread
+    {
+        return $campaign->threads()[0] ?? self::fail('The mystery has no Thread.');
     }
 
     private function tracker(string $key): Tracker
@@ -329,11 +379,6 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         return StepResult::check('inv', ($this->release->check($check) ?? self::fail('No check.'))->perform(new ScriptedRandomNumberGenerator($die), $values, null, 0));
     }
 
-    private function rolled(string $table, int $total): StepResult
-    {
-        return StepResult::table($this->release->resolveOracleTable($table, new ScriptedRandomNumberGenerator($total)));
-    }
-
     private function createInvestigator(Campaign $campaign): void
     {
         $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['occupation' => 'Reporter', 'library-use' => 50, 'persuade' => 50, 'psychology' => 50, 'spot-hidden' => 50, 'stealth' => 50, 'pow' => 50], $this->release);
@@ -341,16 +386,17 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     /**
-     * A campaign past the letter scene, at the investigation phase's scene pick.
+     * A campaign past the Setup scene, at the investigation phase's scene pick.
      */
     private function inTheInvestigation(): Campaign
     {
-        $campaign = self::guided($this->release, 'kingsport-letter');
+        $campaign = self::guided($this->release, 'kingsport-mystery');
         $campaign->startSession(self::at(), $this->release);
         $this->createInvestigator($campaign);
-        $campaign->completeFlowStep('relative', self::prompt('Philippa Marsh'), $this->release, self::at());
-        $campaign->completeFlowStep('hook', $this->rolled('letter-hooks', 1), $this->release, self::at());
-        $campaign->completeFlowStep('where', $this->rolled('locations', 2), $this->release, self::at());
+        $campaign->completeFlowStep('contact', self::prompt('Philippa Marsh'), $this->release, self::at());
+        $campaign->completeFlowStep('hook', self::prompt('My aunt writes that the house is not safe'), $this->release, self::at());
+        $campaign->completeFlowStep('where', self::prompt('The old customs house'), $this->release, self::at());
+        $campaign->completeFlowStep('mystery', self::prompt('Who emptied my aunt\'s cellar?'), $this->release, self::at());
         $campaign->skipFlowStep('journey', $this->release, self::at());
         $campaign->endFlowScene(1, $this->release, self::at());
 

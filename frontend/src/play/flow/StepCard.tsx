@@ -68,7 +68,7 @@ export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
         )}
       </div>
       {step.kind === 'prompt' && step.inspiration.length > 0 && (
-        <InspirationRolls campaign={campaign} keys={step.inspiration} />
+        <InspirationRolls key={step.key} campaign={campaign} keys={step.inspiration} />
       )}
       <StepForm campaign={campaign} step={step} pending={pending} onCommand={onCommand} />
       {!step.mandatory && (

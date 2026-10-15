@@ -215,9 +215,46 @@ final class PresetsTest extends KernelTestCase
         self::assertStringNotContainsString('Call of Cthulhu', json_encode($snapshot->name().$credits->notice, \JSON_THROW_ON_ERROR));
 
         $flow = $snapshot->defaultFlow();
-        self::assertSame(['kingsport-letter', ['the-letter', 'investigation', 'confrontation', 'epilogue']], [$flow?->key, array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? [])]);
+        self::assertSame(['kingsport-mystery', ['prologue', 'investigation', 'confrontation', 'epilogue']], [$flow?->key, array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? [])]);
+        foreach ($flow->phases ?? [] as $phase) {
+            self::assertNotEmpty($phase->description, \sprintf('Phase "%s" explains itself.', $phase->key));
+        }
+        self::assertSame(['contact', 'hook', 'place', 'lair', 'horror'], array_map(static fn (\App\Play\Domain\GameSystem\FactSlot $slot): string => $slot->key, $snapshot->factSlots()));
+        self::assertSame(['names', 'locations', 'hooks', 'clues', 'strange-events', 'horrors', 'nouns', 'verbs', 'adjectives'], $snapshot->oracleTableKeys());
         self::assertSame(['clues', 'dread'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
         self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
+    }
+
+    #[Test]
+    public function percentileHorrorPromptsOfferExistingTablesAsInspirationAndUseEveryFactSlot(): void
+    {
+        $this->assertPublishesOnce('percentile-horror');
+        $snapshot = $this->snapshot('percentile-horror');
+
+        $inspired = [];
+        $filled = [];
+        foreach ($snapshot->sceneTypes() as $sceneType) {
+            foreach ([$sceneType->setup, $sceneType->play, $sceneType->closing] as $part) {
+                foreach ($part->steps as $step) {
+                    foreach ($step->effects as $effect) {
+                        if ($effect instanceof \App\Play\Domain\GameSystem\Flow\FillFactEffect) {
+                            $filled[] = $effect->slot;
+                        }
+                    }
+                    if ($step instanceof \App\Play\Domain\GameSystem\Flow\PromptStep) {
+                        foreach ($step->inspiration as $table) {
+                            self::assertContains($table, $snapshot->oracleTableKeys(), \sprintf('Step "%s" offers an unknown table.', $step->key));
+                            $inspired[] = $table;
+                        }
+                    }
+                    self::assertNotInstanceOf(\App\Play\Domain\GameSystem\Flow\TableStep::class, $step, \sprintf('Step "%s": tables are inspiration, not rolled for facts.', $step->key));
+                }
+            }
+        }
+
+        // No orphan table and no unfilled fact slot.
+        self::assertEqualsCanonicalizing($snapshot->oracleTableKeys(), array_values(array_unique($inspired)));
+        self::assertEqualsCanonicalizing(array_map(static fn (\App\Play\Domain\GameSystem\FactSlot $slot): string => $slot->key, $snapshot->factSlots()), array_values(array_unique($filled)));
     }
 
     #[Test]

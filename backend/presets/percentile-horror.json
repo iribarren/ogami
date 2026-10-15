@@ -3,7 +3,7 @@
   "gameSystem": {
     "key": "percentile-horror",
     "name": "Percentile Horror",
-    "description": "A 1920s investigation of quiet dread for one investigator. Roll a percentile die under your skill, keep your Sanity and follow a letter to a haunted Kingsport. Original content on an open rules base.",
+    "description": "A 1920s investigation of quiet dread for one investigator. Roll a percentile die under your skill, keep your Sanity and follow a trail of your own choosing to a haunted Kingsport. Original content on an open rules base.",
     "credits": {
       "notice": "Percentile Horror is original content that adapts rules from Basic Roleplaying: Universal Game Engine, © Chaosium Inc. This product is licensed under the ORC License held in the Library of Congress and available online at various locations including www.chaosium.com/orclicense, www.azoralaw.com/orclicense, www.gencon.com/orclicense and others. All warranties are disclaimed as set forth therein. Percentile Horror is not published, endorsed or approved by Chaosium Inc.",
       "license": "ORC License",
@@ -54,19 +54,21 @@
         ]
       },
       {
-        "key": "letter-hooks",
-        "name": "What the letter says",
+        "key": "hooks",
+        "name": "What draws you to Kingsport",
         "entries": [
-          {"text": "Come at once: I have found the missing pages and I am afraid of them"},
-          {"text": "Do not trust the harbor master, and burn this after reading"},
-          {"text": "I am leaving the house to you; there is something in the cellar you must see first"},
-          {"text": "The sea has been wrong since the autumn, and so have I"},
-          {"text": "Someone has been copying our family papers by night"},
-          {"text": "I need you to look at a photograph before I say anything more"},
-          {"text": "The doctor says it is nerves; the dogs say otherwise"},
-          {"text": "If I do not meet you at the station, ask for the bookbinder"},
-          {"text": "Our grandfather did not die of a fever, and I can prove it"},
-          {"text": "Bring a lamp, a pistol and a strong stomach"}
+          {"text": "A letter from a relative in Kingsport asks you to come at once"},
+          {"text": "An invitation to a party at a house you have never heard of"},
+          {"text": "A newspaper clipping arrives in the mail with no note"},
+          {"text": "A telegram from an old acquaintance: only your name and the word please"},
+          {"text": "Your old professor asks a favor and will not say what it is"},
+          {"text": "An estate in Kingsport has been left to you and must be settled"},
+          {"text": "A notice in the papers lists someone you know as missing"},
+          {"text": "A photograph of your own front door, mailed from Kingsport"},
+          {"text": "A client hires you to find a ledger last seen in the harbor"},
+          {"text": "A dying friend's last letter names a place and a night"},
+          {"text": "Your doctor prescribes sea air, and a particular boarding house"},
+          {"text": "A book you once lent comes back with pages added"}
         ]
       },
       {
@@ -91,16 +93,16 @@
         "key": "strange-events",
         "name": "Strange events",
         "entries": [
-          {"key": "bells", "text": "Bells ring under the water", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
-          {"key": "fog", "text": "A fog rolls in against the wind", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
+          {"key": "bells", "text": "Bells ring under the water"},
+          {"key": "fog", "text": "A fog rolls in against the wind"},
           {"key": "silence", "text": "Every dog in the street falls silent at once"},
           {"key": "kindness", "text": "A stranger shows a kindness that feels like a warning"},
           {"key": "lamp", "text": "Your lamp burns blue for a moment"},
-          {"key": "footsteps", "text": "Footsteps follow yours and stop when you stop", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
-          {"key": "dawn", "text": "A hint of dawn comes early and calms you", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": -1}]},
+          {"key": "footsteps", "text": "Footsteps follow yours and stop when you stop"},
+          {"key": "dawn", "text": "A hint of dawn comes early and calms you"},
           {"key": "mirror", "text": "Your reflection lags a heartbeat behind"},
           {"key": "gulls", "text": "Gulls gather on the roof and watch the door"},
-          {"key": "whisper", "text": "A whisper says your name from the empty room", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]},
+          {"key": "whisper", "text": "A whisper says your name from the empty room"},
           {"key": "ally", "text": "A bystander offers help and asks for nothing"},
           {"key": "salt", "text": "Salt crusts the windows on the inside"}
         ]
@@ -119,6 +121,84 @@
           {"text": "A swarm of pale things in the crypt"},
           {"text": "A gentleman in a good coat who casts no shadow"},
           {"text": "A hunger that has learned to write letters"}
+        ]
+      },
+      {
+        "key": "nouns",
+        "name": "Nouns",
+        "entries": [
+          {"text": "A lantern"},
+          {"text": "A ledger"},
+          {"text": "The tide"},
+          {"text": "A brass key"},
+          {"text": "A hymn"},
+          {"text": "A mirror"},
+          {"text": "A well"},
+          {"text": "A shadow"},
+          {"text": "A bell"},
+          {"text": "A locket"},
+          {"text": "A cellar door"},
+          {"text": "A sea chest"},
+          {"text": "A staircase"},
+          {"text": "A candle stub"},
+          {"text": "A fishing net"},
+          {"text": "An oar"},
+          {"text": "A portrait"},
+          {"text": "The mist"},
+          {"text": "A handful of salt"},
+          {"text": "A cabinet"}
+        ]
+      },
+      {
+        "key": "verbs",
+        "name": "Verbs",
+        "entries": [
+          {"text": "whispers"},
+          {"text": "drowns"},
+          {"text": "circles"},
+          {"text": "unlocks"},
+          {"text": "follows"},
+          {"text": "sinks"},
+          {"text": "watches"},
+          {"text": "gnaws"},
+          {"text": "burns"},
+          {"text": "scrapes"},
+          {"text": "waits"},
+          {"text": "calls"},
+          {"text": "unravels"},
+          {"text": "hides"},
+          {"text": "drags"},
+          {"text": "repeats"},
+          {"text": "kneels"},
+          {"text": "rots"},
+          {"text": "binds"},
+          {"text": "trembles"}
+        ]
+      },
+      {
+        "key": "adjectives",
+        "name": "Adjectives",
+        "entries": [
+          {"text": "salt-stained"},
+          {"text": "hollow"},
+          {"text": "waterlogged"},
+          {"text": "moth-eaten"},
+          {"text": "hushed"},
+          {"text": "crooked"},
+          {"text": "pale"},
+          {"text": "rusted"},
+          {"text": "forgotten"},
+          {"text": "sunken"},
+          {"text": "damp"},
+          {"text": "feverish"},
+          {"text": "brittle"},
+          {"text": "half-remembered"},
+          {"text": "unlit"},
+          {"text": "tarnished"},
+          {"text": "barnacled"},
+          {"text": "restless"},
+          {"text": "borrowed"},
+          {"text": "cold"}
         ]
       }
     ],
@@ -139,31 +219,33 @@
     ]
   },
   "tags": [
-    {"key": "kin", "label": "Kin", "hint": "Family who wrote to you"},
-    {"key": "contact", "label": "Contact", "hint": "Someone in Kingsport who talks to you"}
+    {"key": "contact", "label": "Contact", "hint": "Someone who calls you or talks to you"},
+    {"key": "mystery", "label": "Mystery", "hint": "The question your investigation is after"}
   ],
   "trackers": [
     {"key": "clues", "name": "Clues", "hint": "At 4 you know enough to face what waits", "kind": "counter", "min": 0, "max": 6, "initial": 0},
     {"key": "dread", "name": "Dread", "hint": "At 6/6 the night closes in and you must act", "kind": "clock", "segments": 6}
   ],
   "factSlots": [
-    {"key": "relative", "label": "Relative", "type": "npc", "hint": "The one who wrote to you"},
-    {"key": "letter", "label": "The letter", "type": "text"},
-    {"key": "place", "label": "The place", "type": "text", "hint": "Where the answer lies"},
+    {"key": "contact", "label": "Contact", "type": "npc", "hint": "The one who calls you"},
+    {"key": "hook", "label": "The hook", "type": "text", "hint": "What draws you"},
+    {"key": "place", "label": "The place", "type": "text", "hint": "Where the trail starts"},
+    {"key": "lair", "label": "The lair", "type": "text", "hint": "Where it waits"},
     {"key": "horror", "label": "The horror", "type": "text"}
   ],
   "sceneTypes": [
     {
-      "key": "letter",
-      "name": "The letter",
-      "purpose": "Make your investigator and read the letter that calls you to Kingsport.",
-      "tips": "Keep it short: a name, a trade and one thing you fear. The facts you fill appear in the Facts panel and come back at the end.",
-      "oracles": ["names", "letter-hooks", "locations"],
+      "key": "setup",
+      "name": "Setup",
+      "purpose": "Set up your investigator and what draws them to Kingsport.",
+      "tips": "Keep it short: a name, a trade and one thing you fear. Roll the tables for ideas, then write each answer in your own words. The facts you fill appear in the Facts panel and come back at the end.",
+      "oracles": ["names", "hooks", "locations", "fate"],
       "setup": [
-        {"key": "you", "kind": "character", "title": "Who are you?", "tip": "Make your investigator: roll or choose the characteristics, set the tracks from the derived values, pick an occupation. You can edit the sheet any time in the Characters panel.", "mandatory": true},
-        {"key": "relative", "kind": "prompt", "title": "Who wrote to you?", "tip": "A relative or old friend in Kingsport. Name them with the Names table if you have no one in mind.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["kin"]}, {"kind": "fillFact", "slot": "relative"}]},
-        {"key": "hook", "kind": "table", "title": "What does the letter say?", "table": "letter-hooks", "effects": [{"kind": "fillFact", "slot": "letter"}]},
-        {"key": "where", "kind": "table", "title": "Where does the trail start?", "table": "locations", "effects": [{"kind": "fillFact", "slot": "place"}]},
+        {"key": "you", "kind": "character", "title": "Who are you?", "tip": "Make your investigator, then edit the sheet in the Characters panel. Either roll with the dice roller: 3d6 x 5 for Strength, Constitution, Dexterity, Appearance and Power; (2d6 + 6) x 5 for Size, Intelligence and Education; 3d6 x 5 for Luck. Or spend points: about 460 across the eight characteristics, each from 15 to 90. Set Hit points and Magic points from the derived values and Sanity to Power. Then spread skill points over the skills your trade would use.", "mandatory": true},
+        {"key": "contact", "kind": "prompt", "title": "Who calls you to Kingsport?", "tip": "Just a name: it becomes an NPC. Roll the Names table if you have no one in mind.", "mandatory": true, "inspiration": ["names"], "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["contact"]}, {"kind": "fillFact", "slot": "contact"}]},
+        {"key": "hook", "kind": "prompt", "title": "What draws you there?", "tip": "A letter, an invitation, a debt, a rumor. Write it in your own words.", "mandatory": true, "inspiration": ["hooks"], "effects": [{"kind": "fillFact", "slot": "hook"}]},
+        {"key": "where", "kind": "prompt", "title": "Where does the trail start?", "tip": "A street, a building, a person's door.", "inspiration": ["locations"], "effects": [{"kind": "fillFact", "slot": "place"}]},
+        {"key": "mystery", "kind": "prompt", "title": "What is the mystery?", "tip": "One line you can track, a question to answer before the end. It becomes a Thread.", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}", "tags": ["mystery"]}]},
         {"key": "journey", "kind": "prompt", "title": "How do you reach Kingsport?", "tip": "A train, a steamer, a borrowed car. Describe the last mile."}
       ],
       "play": [],
@@ -174,13 +256,13 @@
       "name": "Archive",
       "purpose": "Dig through records, newspapers and old books.",
       "tips": "Say what you hope to find and where you look. A good find is a clue; a bad roll costs a night.",
-      "oracles": ["clues", "fate"],
+      "oracles": ["clues", "nouns", "adjectives", "fate"],
       "setup": [],
       "play": [
         {"key": "look", "kind": "prompt", "title": "What do you look up, and where?"},
         {"key": "search", "kind": "check", "title": "Do you find it?", "tip": "Roll Library use. Any success finds a clue; a fumble costs you a night of dread.", "check": "library-use", "outcomes": [{"band": "critical", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "extreme", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "hard", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "regular", "next": "found-more", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
         {"key": "dead-end", "kind": "prompt", "title": "A dead end", "tip": "Nothing useful turns up. Say what you do with the rest of the day.", "next": "end"},
-        {"key": "found-more", "kind": "table", "title": "What do you find?", "table": "clues"}
+        {"key": "found-more", "kind": "prompt", "title": "What do you find?", "tip": "Roll for ideas, then write the find in your own words.", "inspiration": ["clues", "nouns", "adjectives"]}
       ],
       "closing": []
     },
@@ -189,13 +271,13 @@
       "name": "Interview",
       "purpose": "Talk to a local who knows more than they say.",
       "tips": "Decide what you want from them before you ask. Persuade opens people up; Psychology tells you what they hide.",
-      "oracles": ["names", "fate"],
+      "oracles": ["names", "clues", "nouns", "fate"],
       "setup": [],
       "play": [
-        {"key": "who", "kind": "prompt", "title": "Who do you talk to, and what do you want to know?", "tip": "Just a name: it becomes the NPC's name. Use the Names table if you have no one in mind.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["contact"]}]},
+        {"key": "who", "kind": "prompt", "title": "Who do you talk to, and what do you want to know?", "tip": "Just a name: it becomes the NPC's name. Use the Names table if you have no one in mind.", "inspiration": ["names"], "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["contact"]}]},
         {"key": "ask", "kind": "check", "title": "Do they open up?", "tip": "Roll Persuade. Any success gets you an answer; a failure lets you read them instead.", "check": "persuade", "outcomes": [{"band": "critical", "next": "learn"}, {"band": "extreme", "next": "learn"}, {"band": "hard", "next": "learn"}, {"band": "regular", "next": "learn"}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
         {"key": "read", "kind": "check", "title": "Can you read what they hide?", "tip": "Roll Psychology. A success shows you where the truth sits; a failure and they clam up.", "check": "psychology", "outcomes": [{"band": "critical", "next": "learn"}, {"band": "extreme", "next": "learn"}, {"band": "hard", "next": "learn"}, {"band": "regular", "next": "learn"}, {"band": "failure", "next": "end"}, {"band": "fumble", "next": "end", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
-        {"key": "learn", "kind": "prompt", "title": "What do they tell you?", "tip": "One clear fact, even if it raises more questions.", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}
+        {"key": "learn", "kind": "prompt", "title": "What do they tell you?", "tip": "One clear fact, even if it raises more questions.", "inspiration": ["clues", "nouns"], "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}
       ],
       "closing": []
     },
@@ -204,15 +286,15 @@
       "name": "Site",
       "purpose": "Search a place where something happened.",
       "tips": "Describe one room, one detail at a time. The finds are hard to see: only a hard success turns up a clue, and what you find can break your nerve.",
-      "oracles": ["clues", "horrors", "fate"],
+      "oracles": ["locations", "clues", "horrors", "nouns", "adjectives", "fate"],
       "setup": [],
       "play": [
-        {"key": "enter", "kind": "prompt", "title": "Where do you go, and how do you get in?"},
+        {"key": "enter", "kind": "prompt", "title": "Where do you go, and how do you get in?", "inspiration": ["locations"]},
         {"key": "alone", "kind": "oracle", "title": "Is anyone else here?", "tip": "Ask it as 50/50 unless the place is clearly watched.", "oracle": "fate", "likelihood": "even"},
         {"key": "spot", "kind": "check", "title": "Do you notice what is wrong?", "tip": "Roll Spot hidden. It needs a hard success: a regular one sees only the obvious.", "check": "spot-hidden", "outcomes": [{"band": "critical", "next": "find", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "extreme", "next": "find", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "hard", "next": "find", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "fumble", "next": "end", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}]},
         {"key": "missed", "kind": "prompt", "title": "You see nothing you can use", "tip": "The place keeps its secret for now.", "next": "end"},
-        {"key": "find", "kind": "table", "title": "What do you find?", "table": "clues"},
-        {"key": "reveal", "kind": "table", "title": "What does it hint at?", "tip": "Only when the find is truly disturbing.", "table": "horrors"},
+        {"key": "find", "kind": "prompt", "title": "What do you find?", "tip": "Roll for ideas, then write the find in your own words.", "inspiration": ["clues", "nouns", "adjectives"]},
+        {"key": "reveal", "kind": "prompt", "title": "What does it hint at?", "tip": "Only when the find is truly disturbing.", "inspiration": ["horrors", "adjectives"]},
         {"key": "shock", "kind": "check", "title": "Does it break your nerve?", "tip": "Roll Sanity. On a success lose 1 Sanity; on a failure lose 1d6 Sanity: adjust the sheet.", "check": "sanity", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]}
       ],
       "closing": []
@@ -222,12 +304,12 @@
       "name": "Night",
       "purpose": "Endure a night in Kingsport.",
       "tips": "Dusk changes the town. Something strange happens, and you decide how you keep your head.",
-      "oracles": ["strange-events", "horrors", "fate"],
+      "oracles": ["strange-events", "verbs", "horrors", "adjectives", "fate"],
       "setup": [],
       "play": [
-        {"key": "event", "kind": "table", "title": "What happens in the dark?", "tip": "Some entries move the dread for you.", "table": "strange-events"},
+        {"key": "event", "kind": "prompt", "title": "What happens in the dark?", "tip": "Roll for ideas, then write what happens. If it should shake you, raise the Dread clock yourself.", "inspiration": ["strange-events", "verbs"]},
         {"key": "hide", "kind": "check", "title": "Do you slip away unseen?", "tip": "Roll Stealth. A failure raises the dread by one.", "check": "stealth", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]},
-        {"key": "glimpse", "kind": "table", "title": "What do you glimpse?", "table": "horrors"},
+        {"key": "glimpse", "kind": "prompt", "title": "What do you glimpse?", "inspiration": ["horrors", "adjectives"]},
         {"key": "nerve", "kind": "check", "title": "Do you keep your head?", "tip": "Roll Sanity. On a success lose 1 Sanity; on a failure lose 1d6 Sanity: adjust the sheet.", "check": "sanity", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]}
       ],
       "closing": []
@@ -237,15 +319,15 @@
       "name": "Confrontation",
       "purpose": "Face what waits at the end of the trail.",
       "tips": "Be brave on the page and honest in the dice. Win by willpower, not by shooting: the horror is not something a pistol solves.",
-      "oracles": ["horrors", "fate"],
+      "oracles": ["locations", "horrors", "adjectives", "fate"],
       "setup": [
-        {"key": "arrive", "kind": "prompt", "title": "You reach the place", "prompt": "You stand before {fact:place}. What is the first thing you notice?"}
+        {"key": "arrive", "kind": "prompt", "title": "Where does it wait?", "prompt": "The trail began at {fact:place}. Where does it end? Describe the place and the first thing you notice.", "inspiration": ["locations"], "effects": [{"kind": "fillFact", "slot": "lair"}]}
       ],
       "play": [
-        {"key": "horror", "kind": "table", "title": "What waits for you?", "table": "horrors", "effects": [{"kind": "fillFact", "slot": "horror"}]},
+        {"key": "horror", "kind": "prompt", "title": "What waits for you?", "tip": "Decide what the clues point to, in your own words.", "inspiration": ["horrors", "adjectives"], "effects": [{"kind": "fillFact", "slot": "horror"}]},
         {"key": "will", "kind": "check", "title": "Do you hold your ground?", "tip": "Roll Power. It needs a hard success: a regular one is not enough against this.", "check": "pow", "outcomes": [{"band": "critical", "next": "banish"}, {"band": "extreme", "next": "banish"}, {"band": "hard", "next": "banish"}, {"band": "fumble", "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 2}]}]},
         {"key": "cost", "kind": "prompt", "title": "It slips your grasp", "prompt": "{fact:horror} is still there. What does it cost you to get away?", "next": "final-shock"},
-        {"key": "banish", "kind": "prompt", "title": "You drive it back", "prompt": "Say how you end it, and what you leave behind in {fact:place}."},
+        {"key": "banish", "kind": "prompt", "title": "You drive it back", "prompt": "Say how you end it, and what you leave behind in {fact:lair}."},
         {"key": "final-shock", "kind": "check", "title": "Does the truth break you?", "tip": "Roll Sanity. On a success lose 1 Sanity; on a failure lose 1d6 Sanity: adjust the sheet.", "check": "sanity"}
       ],
       "closing": []
@@ -257,8 +339,10 @@
       "tips": "Look back over the dread you carried and the clues you won.",
       "oracles": [],
       "setup": [
+        {"key": "thread", "kind": "pick", "title": "Which mystery have you followed?", "of": "thread", "tags": ["mystery"], "mode": "choose", "branches": {"found": {"next": "solved"}, "none": {"next": "tally"}}},
+        {"key": "solved", "kind": "choice", "title": "Is the mystery solved?", "mandatory": true, "tip": "Close it if you know the truth, even a terrible one. Leave it open if it still haunts you.", "options": [{"key": "yes", "label": "Yes", "next": "tally", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No", "next": "tally"}]},
         {"key": "tally", "kind": "condition", "title": "How shaken are you?", "tip": "Decided by the dread: above 2 and the nights follow you home.", "tracker": "dread", "bands": [{"upTo": 2, "next": "calm"}, {"next": "scarred"}]},
-        {"key": "calm", "kind": "prompt", "title": "You sleep again", "prompt": "You write the letter home about {fact:letter}. What do you tell {step:relative}?", "next": "end"},
+        {"key": "calm", "kind": "prompt", "title": "You sleep again", "prompt": "You write home about what drew you here: {fact:hook}. What do you tell {fact:contact}?", "next": "end"},
         {"key": "scarred", "kind": "prompt", "title": "The nights follow you", "prompt": "You leave Kingsport but not the dream. What do you still hear?"}
       ],
       "play": [],
@@ -267,20 +351,21 @@
   ],
   "flows": [
     {
-      "key": "kingsport-letter",
-      "name": "The Kingsport Letter",
-      "description": "A one-shot investigation: a letter calls you to Kingsport, you dig for the truth, and you face what waits.",
-      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play one investigator. A letter calls you to Kingsport; you search archives, talk to locals, visit a place where something happened and endure the nights. Each step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them.\n\nTo check a skill, roll a percentile die. Equal to or under your skill is a success; a fifth of it is extreme and half of it is hard. A roll of 1 is critical, and 96 or more is a fumble (100 only, if your skill is 50 or more). Watch your Sanity and the Dread clock: when the clock fills, the night closes in.\n\nIn the investigation you choose which scene to play next. When you know enough, or the dread is full, the investigation ends and you face what waits.",
+      "key": "kingsport-mystery",
+      "name": "The Kingsport Mystery",
+      "description": "A one-shot investigation: something calls you to Kingsport, you dig for the truth, and you face what waits.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play one investigator. Something calls you to Kingsport, and you choose what: a letter, an invitation, a debt, a rumor. You search archives, talk to locals, visit a place where something happened and endure the nights. Each step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them. Tables offer inspiration only: roll them for ideas, then write the facts in your own words.\n\nThe mystery you name in the prologue becomes a Thread. Threads are the open questions of your story: keep them in view and close them when you have the answer.\n\nTo check a skill, roll a percentile die. Equal to or under your skill is a success; a fifth of it is extreme and half of it is hard. A roll of 1 is critical, and 96 or more is a fumble (100 only, if your skill is 50 or more). Watch your Sanity and the Dread clock: when the clock fills, the night closes in.\n\nIn the investigation you choose which scene to play next. When you know enough, or the dread is full, the investigation ends and you face what waits.",
       "default": true,
       "defaultView": "focus",
-      "oracles": ["fate", "names", "locations", "letter-hooks", "clues", "strange-events", "horrors"],
+      "oracles": ["fate", "names", "locations", "hooks", "clues", "strange-events", "horrors", "nouns", "verbs", "adjectives"],
       "trackers": ["clues", "dread"],
       "phases": [
-        {"key": "the-letter", "name": "The letter", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["letter"]}},
+        {"key": "prologue", "name": "Prologue", "mode": "once", "description": "Create your investigator, name who or what calls you to Kingsport and the mystery you will follow. It is done when you have played the Setup scene.", "selection": {"rule": "sequence", "sceneTypes": ["setup"]}},
         {
           "key": "investigation",
           "name": "Investigation",
           "mode": "loop",
+          "description": "Dig for the truth in archives, interviews, sites and nights. It ends when you hold 4 clues or the Dread clock is full.",
           "selection": {"rule": "player", "sceneTypes": ["archive", "interview", "site", "night"]},
           "sceneClosing": [
             {"key": "enough-clues", "kind": "condition", "title": "Do you know enough?", "tip": "With 4 clues you can face what waits.", "tracker": "clues", "bands": [{"upTo": 3}, {"effects": [{"kind": "endPhase"}]}]},
@@ -290,8 +375,8 @@
             {"key": "dusk", "kind": "roll", "title": "Does the town press closer?", "tip": "Roll 1d6. On 1 or 2 the dread rises by one.", "dice": "1d6", "bands": [{"upTo": 2, "effects": [{"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}]}, {}]}
           ]
         },
-        {"key": "confrontation", "name": "Confrontation", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["confrontation"]}},
-        {"key": "epilogue", "name": "Epilogue", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["epilogue"]}}
+        {"key": "confrontation", "name": "Confrontation", "mode": "once", "description": "Reach the place where it waits, decide what you face, and hold your ground. It is done when the final Sanity check is made.", "selection": {"rule": "sequence", "sceneTypes": ["confrontation"]}},
+        {"key": "epilogue", "name": "Epilogue", "mode": "once", "description": "Close the mystery and settle what the night leaves you. It is done when you have written how you carry it home.", "selection": {"rule": "sequence", "sceneTypes": ["epilogue"]}}
       ]
     }
   ],

@@ -13,6 +13,7 @@ use App\Play\Application\EditCurrentSessionParty;
 use App\Play\Application\EndSession;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\ListMyCampaigns;
+use App\Play\Application\RenameCurrentScene;
 use App\Play\Application\SessionView;
 use App\Play\Application\SetTrackerValue;
 use App\Play\Application\StartScene;
@@ -35,6 +36,7 @@ use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -68,6 +70,7 @@ final readonly class CampaignController
     private const string MALFORMED_CAMPAIGN = 'Send a JSON object with a string "name", a string "gameSystemKey" and, to play a Flow, a string "flowKey", such as {"name": "The lost mine", "gameSystemKey": "ironsworn"}.';
     private const string MALFORMED_SCENE = 'Send a JSON object with a string "title", a string "sceneType" or both, such as {"title": "At the gate"} or {"sceneType": "legwork"}.';
     private const string MALFORMED_SCENE_TYPE = 'Send a JSON object with a string "sceneType", such as {"sceneType": "firefight"}.';
+    private const string MALFORMED_TITLE = 'Send a JSON object with a string "title", such as {"title": "The letter"}.';
     private const string MALFORMED_CAST = 'Send a JSON object with a list of strings "npcIds" and, to change the Characters in the cast, a list of strings "characterIds", such as {"npcIds": ["0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"]}.';
     private const string MALFORMED_PARTY = 'Send a JSON object with a list of strings "characterIds", such as {"characterIds": ["0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"]}.';
     private const string MALFORMED_TRACKER = 'Send a JSON object with an integer "value", such as {"value": 3}.';
@@ -164,7 +167,7 @@ final readonly class CampaignController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign already holds the most sessions it can, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'A session is still under way (end it first), the campaign already holds the most sessions it can, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function startSession(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -172,7 +175,7 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new StartSession($campaignId, $user->id()));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (CampaignLimitReached|CampaignModifiedConcurrently $exception) {
+        } catch (SessionAlreadyUnderWay|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (FlowFormulaFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -282,6 +285,45 @@ final readonly class CampaignController
 
         $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
         $scene = array_last(array_last($sessions)->scenes ?? []) ?? throw new \LogicException('The current scene was just switched.');
+
+        return new JsonResponse(SceneResponse::fromView($scene));
+    }
+
+    #[Route('/api/campaigns/{campaignId}/scenes/current/title', name: 'api_campaigns_scenes_current_title', methods: ['PUT'])]
+    #[OA\Put(operationId: 'renameScene', summary: 'Rename the current scene of one of my campaigns')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RenameSceneRequest::class)))]
+    #[OA\Response(response: 200, description: 'The current scene with its new title; its number, Scene Type, cast and journal entries stay.', content: new OA\JsonContent(ref: new Model(type: SceneResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or has no string "title".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign has no current scene, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The title is blank or longer than 100 characters.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function renameScene(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the title as JSON.', self::MALFORMED_TITLE);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $title = $body['title'] ?? null;
+        if (!\is_string($title)) {
+            return $this->error(self::MALFORMED_TITLE, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $this->commandBus->dispatch(new RenameCurrentScene($campaignId, $user->id(), $title));
+        } catch (CampaignNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (NoCurrentScene|CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (InvalidSceneTitle $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $sessions = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->sessions;
+        $scene = array_last(array_last($sessions)->scenes ?? []) ?? throw new \LogicException('The current scene was just renamed.');
 
         return new JsonResponse(SceneResponse::fromView($scene));
     }

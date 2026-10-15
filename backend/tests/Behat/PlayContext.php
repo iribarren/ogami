@@ -105,6 +105,7 @@ use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -348,6 +349,12 @@ final class PlayContext implements Context
     public function iStartASession(): void
     {
         ($this->startSession)(new StartSession($this->campaignId(), self::ME));
+    }
+
+    #[When('I try to start a session')]
+    public function iTryToStartASession(): void
+    {
+        $this->attempt(fn () => ($this->startSession)(new StartSession($this->campaignId(), self::ME)));
     }
 
     #[When('I end the session')]
@@ -982,6 +989,12 @@ final class PlayContext implements Context
         Assert::assertInstanceOf(NoCurrentSession::class, $this->failure);
     }
 
+    #[Then('I am told to end the session first')]
+    public function iAmToldToEndTheSessionFirst(): void
+    {
+        Assert::assertInstanceOf(SessionAlreadyUnderWay::class, $this->failure);
+    }
+
     #[Then('the campaign is not found')]
     public function theCampaignIsNotFound(): void
     {
@@ -1125,7 +1138,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter $failure) {
             $this->failure = $failure;
         }
     }

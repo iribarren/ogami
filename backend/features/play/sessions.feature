@@ -17,3 +17,11 @@ Feature: Play a campaign along a Flow, one session at a time
     And I start the scene "The vault"
     Then the current session is 2 and the current scene is 1
     And session 1 has the scenes "Casing the bank"
+
+  Scenario: A session cannot start while another is under way
+    Given release version 1 of the GameSystem "heist" named "Heist" is published with Flows
+    And I created the campaign "The job" with the GameSystem "heist"
+    And I started a session
+    When I try to start a session
+    Then I am told to end the session first
+    And my campaign has 1 sessions

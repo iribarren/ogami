@@ -42,6 +42,10 @@ final class StartSessionHandlerTest extends TestCase
     public function itStartsNumberedSessionsAndKeepsThem(): void
     {
         ($this->handler)(new StartSession('campaign-1', 'user-1'));
+        $first = $this->campaigns->ofId(CampaignId::fromString('campaign-1'));
+        self::assertNotNull($first);
+        $first->endSession(new \DateTimeImmutable('2026-10-06T10:00:00+00:00'));
+        $this->campaigns->save($first);
         $this->clock->moveTo('2026-10-07T09:00:00+00:00');
         ($this->handler)(new StartSession('campaign-1', 'user-1'));
 

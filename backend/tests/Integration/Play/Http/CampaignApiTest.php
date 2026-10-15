@@ -262,6 +262,10 @@ final class CampaignApiTest extends WebTestCase
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/scenes', $id), ['title' => '  At the gate ']);
         self::assertResponseStatusCodeSame(201);
 
+        $this->clock->moveTo('2026-10-06T09:15:00+00:00');
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+        self::assertResponseStatusCodeSame(200);
+
         $this->clock->moveTo('2026-10-06T09:20:00+00:00');
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
         self::assertResponseStatusCodeSame(201);
@@ -277,7 +281,7 @@ final class CampaignApiTest extends WebTestCase
                         'number' => 1,
                         'startedAt' => '2026-10-06T09:05:00+00:00',
                         'scenes' => [['number' => 1, 'title' => 'At the gate', 'startedAt' => '2026-10-06T09:10:00+00:00', 'kind' => 'scene', 'sceneType' => null, 'sceneTypeName' => null, 'hook' => null, 'cast' => [], 'characters' => []]],
-                        'endedAt' => null,
+                        'endedAt' => '2026-10-06T09:15:00+00:00',
                         'party' => [],
                     ],
                     ['number' => 2, 'startedAt' => '2026-10-06T09:20:00+00:00', 'scenes' => [], 'endedAt' => null, 'party' => []],
@@ -431,7 +435,7 @@ final class CampaignApiTest extends WebTestCase
             'The long road',
             PinnedRelease::of('example-journal', 1, 'Example journal'),
             $startedAt,
-            array_map(static fn (int $number): Session => Session::reconstitute($number, $startedAt, []), range(1, Campaign::MAX_SESSIONS)),
+            array_map(static fn (int $number): Session => Session::reconstitute($number, $startedAt, [], $startedAt), range(1, Campaign::MAX_SESSIONS)),
         ));
 
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
@@ -441,27 +445,32 @@ final class CampaignApiTest extends WebTestCase
     }
 
     /**
-     * @return iterable<string, array{string, ?array<string, string>}>
+     * @return iterable<string, array{string, ?array<string, string>, bool}>
      */
     public static function campaignChanges(): iterable
     {
-        yield 'start session' => ['/api/campaigns/%s/sessions', null];
-        yield 'start scene' => ['/api/campaigns/%s/scenes', ['title' => 'At the gate']];
-        yield 'end session' => ['/api/campaigns/%s/sessions/current/end', null];
+        yield 'start session' => ['/api/campaigns/%s/sessions', null, true];
+        yield 'start scene' => ['/api/campaigns/%s/scenes', ['title' => 'At the gate'], false];
+        yield 'end session' => ['/api/campaigns/%s/sessions/current/end', null, false];
     }
 
     /**
      * @param ?array<string, string|int> $body
+     * @param bool                       $sessionEnded whether session 1 has ended before the change (a session starts only after one ended)
      */
     #[Test]
     #[DataProvider('campaignChanges')]
-    public function aCampaignSavedByAnotherRequestMeanwhileIsAConflict(string $path, ?array $body): void
+    public function aCampaignSavedByAnotherRequestMeanwhileIsAConflict(string $path, ?array $body, bool $sessionEnded): void
     {
         $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
         $id = $this->createCampaign('The lost mine');
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
         self::assertResponseStatusCodeSame(201);
+        if ($sessionEnded) {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+            self::assertResponseStatusCodeSame(200);
+        }
 
         // Another request saves the campaign after this one loaded it, right before it flushes.
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);

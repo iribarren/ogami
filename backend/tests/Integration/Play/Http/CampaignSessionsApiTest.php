@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Play\Http;
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
 use App\Play\Application\Clock;
+use App\Play\Application\EndSession;
 use App\Play\Application\GetCampaign;
 use App\Play\Application\StartSession;
 use App\Play\Infrastructure\Http\CampaignController;
@@ -181,7 +182,26 @@ final class CampaignSessionsApiTest extends WebTestCase
         self::assertSame(['error' => 'Session 1 is not the session under way.'], $this->json());
         $sessions = $this->campaign($id)['sessions'] ?? null;
         self::assertIsArray($sessions);
-        self::assertSame([null, null], array_map(static fn (mixed $session): mixed => \is_array($session) ? $session['endedAt'] : 'missing', $sessions));
+        self::assertSame(['2026-10-10T09:00:00+00:00', null], array_map(static fn (mixed $session): mixed => \is_array($session) ? $session['endedAt'] : 'missing', $sessions));
+    }
+
+    #[Test]
+    public function aSessionCannotStartWhileAnotherIsUnderWay(): void
+    {
+        $id = $this->campaignInASession();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'Session 1 is still under way; end it before starting another.'], $this->json());
+        $sessions = $this->campaign($id)['sessions'] ?? null;
+        self::assertIsArray($sessions);
+        self::assertCount(1, $sessions);
+        self::assertSame(1, $this->campaign($id)['currentSessionNumber'] ?? null);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
+        self::assertResponseStatusCodeSame(201);
     }
 
     #[Test]
@@ -306,6 +326,8 @@ final class OtherRequestStartingASession implements QueryBus
 
         $answer = $this->queries->ask($query);
         if ($this->reads === $this->afterRead) {
+            // One session is open at a time: the other request ends session 1, then starts session 2.
+            $this->commands->dispatch(new EndSession($this->campaignId, $this->userId, 1));
             $this->commands->dispatch(new StartSession($this->campaignId, $this->userId));
         }
 

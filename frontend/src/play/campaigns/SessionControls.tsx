@@ -7,7 +7,14 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import { titleAddsToType } from '../journal/sceneLabels'
 import { PartyEditor } from './PartyEditor'
-import { useStartScene, useStartSession, useSwitchSceneType, type Campaign } from './useCampaigns'
+import {
+  useEndSession,
+  useRenameScene,
+  useStartScene,
+  useStartSession,
+  useSwitchSceneType,
+  type Campaign,
+} from './useCampaigns'
 
 /** The API's limit on a scene title (`Scene::MAX_TITLE_LENGTH`), after trimming. */
 const MAX_SCENE_TITLE_LENGTH = 100
@@ -32,10 +39,10 @@ function playPosition(campaign: Campaign) {
 
 /** Where play stands, with the controls to start the next session or scene. */
 export function SessionControls({ campaign }: { campaign: Campaign }) {
-  const startSession = useStartSession(campaign.id)
   const hasSession = campaign.currentSessionNumber !== null
-  // While the Flow waits for a session, the guide offers Start session: one place for it.
-  const guideStarts = campaign.flowRun?.status === 'active' && campaign.flowRun.waitsForSession
+  // While the Flow guides, the guide offers Start session (when it waits for one) and End
+  // session (at the scene pick): one place for each.
+  const guided = campaign.flowRun?.status === 'active'
 
   return (
     <section
@@ -44,34 +51,165 @@ export function SessionControls({ campaign }: { campaign: Campaign }) {
     >
       <div className="min-w-0 space-y-2">
         <p className="font-medium break-words">{playPosition(campaign)}</p>
-        {!guideStarts && (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={startSession.isPending}
-              onClick={() => {
-                startSession.mutate()
-              }}
-            >
-              Start session
-            </Button>
-            {startSession.error && (
-              <p role="alert" className="text-sm text-destructive">
-                {startSession.error.message}
-              </p>
-            )}
-          </>
-        )}
+        {!guided &&
+          (hasSession ? (
+            <EndSessionButton campaignId={campaign.id} />
+          ) : (
+            <StartSessionButton campaignId={campaign.id} />
+          ))}
         <PartyEditor campaign={campaign} />
         <SceneTypeSwitch campaign={campaign} />
+        <RenameScene campaign={campaign} />
       </div>
-      <NewSceneForm
-        campaignId={campaign.id}
-        hasSession={hasSession}
-        sceneTypes={campaign.sceneTypes}
-      />
+      {/* While the Flow guides, the scenes come from it: no scene by hand. */}
+      {!guided && (
+        <NewSceneForm
+          campaignId={campaign.id}
+          hasSession={hasSession}
+          sceneTypes={campaign.sceneTypes}
+        />
+      )}
     </section>
+  )
+}
+
+/** Starts the next session; offered only when none is under way (one is open at a time). */
+function StartSessionButton({ campaignId }: { campaignId: string }) {
+  const startSession = useStartSession(campaignId)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={startSession.isPending}
+        onClick={() => {
+          startSession.mutate()
+        }}
+      >
+        Start session
+      </Button>
+      {startSession.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {startSession.error.message}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Ends the session under way, outside guided play (free play, or a paused or completed Flow). */
+function EndSessionButton({ campaignId }: { campaignId: string }) {
+  const endSession = useEndSession(campaignId)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={endSession.isPending}
+        onClick={() => {
+          endSession.mutate()
+        }}
+      >
+        End session
+      </Button>
+      {endSession.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {endSession.error.message}
+        </p>
+      )}
+    </>
+  )
+}
+
+/**
+ * Renames the current scene (the player's own name for it), in a small inline form. Any scene
+ * can be renamed, a hook Scene too.
+ */
+function RenameScene({ campaign }: { campaign: Campaign }) {
+  const scene = campaign.sessions
+    .find(({ number }) => number === campaign.currentSessionNumber)
+    ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
+  if (scene === undefined) {
+    return null
+  }
+
+  // Keyed by the scene, so the form closes when the scene changes under it.
+  return (
+    <RenameSceneForm
+      key={`${String(campaign.currentSessionNumber)}-${String(scene.number)}`}
+      campaignId={campaign.id}
+      title={scene.title}
+    />
+  )
+}
+
+function RenameSceneForm({ campaignId, title }: { campaignId: string; title: string }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(title)
+  const renameScene = useRenameScene(campaignId)
+  const inputId = useId()
+
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    renameScene.mutate(draft, {
+      onSuccess: () => {
+        setEditing(false)
+      },
+    })
+  }
+
+  if (!editing) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setDraft(title)
+          renameScene.reset()
+          setEditing(true)
+        }}
+      >
+        Rename scene
+      </Button>
+    )
+  }
+
+  return (
+    <form aria-label="Rename scene" className="space-y-1" onSubmit={handleSubmit}>
+      <Label htmlFor={inputId}>Scene name</Label>
+      <div className="flex gap-2">
+        <Input
+          id={inputId}
+          value={draft}
+          className="min-w-0"
+          maxLength={MAX_SCENE_TITLE_LENGTH}
+          autoComplete="off"
+          autoFocus
+          onChange={(event) => {
+            setDraft(event.target.value)
+          }}
+        />
+        <Button type="submit" disabled={draft.trim() === '' || renameScene.isPending}>
+          Save
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setEditing(false)
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+      {renameScene.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {renameScene.error.message}
+        </p>
+      )}
+    </form>
   )
 }
 

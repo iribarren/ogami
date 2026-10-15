@@ -192,6 +192,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/scenes/current/title": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Rename the current scene of one of my campaigns */
+        put: operations["renameScene"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/scenes/current/cast": {
         parameters: {
             query?: never;
@@ -1669,6 +1686,13 @@ export interface components {
              */
             sceneType: string;
         };
+        RenameSceneRequest: {
+            /**
+             * @description The new title of the current scene, trimmed: not blank, at most 100 characters.
+             * @example The letter
+             */
+            title: string;
+        };
         EditSceneCastRequest: {
             /** @description The whole new cast of the current scene, in cast order: NPCs of the campaign, closed ones allowed, none twice. An empty list empties the cast. */
             npcIds: string[];
@@ -3006,7 +3030,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign already holds the most sessions it can, or another request changed it meanwhile. */
+            /** @description A session is still under way (end it first), the campaign already holds the most sessions it can, or another request changed it meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3261,6 +3285,95 @@ export interface operations {
                 };
             };
             /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    renameScene: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameSceneRequest"];
+            };
+        };
+        responses: {
+            /** @description The current scene with its new title; its number, Scene Type, cast and journal entries stay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "title". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign has no current scene, or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The title is blank or longer than 100 characters. */
             422: {
                 headers: {
                     [name: string]: unknown;

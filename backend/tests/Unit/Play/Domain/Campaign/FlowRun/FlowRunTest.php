@@ -428,8 +428,9 @@ final class FlowRunTest extends FlowRunTestCase
         self::assertSame([1, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
         self::assertSame(['sceneAbandoned:1', 'phaseEnded:draw'], self::history($campaign));
 
-        // A session started while the last one is under way: the loop phase picks again.
+        // A session started after one that ended in a guided scene: the loop phase picks again.
         $campaign->pickSceneType('fight', $this->release, self::at());
+        $campaign->endSession(self::at());
         $campaign->startSession(self::at(), $this->release);
 
         self::assertSame([1, FlowRunStage::ScenePick, ['session' => 2, 'scene' => 1]], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage(), array_last(self::flowRunOf($campaign)->history())?->details]);

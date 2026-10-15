@@ -27,6 +27,7 @@ Feature: Play a campaign in sessions and scenes
     When I start a session
     And I start the scene "At the gate"
     And I start the scene "In the mine"
+    And I end the session
     And I start a session
     And I start the scene "Back at camp"
     Then my campaign has 2 sessions
@@ -38,7 +39,8 @@ Feature: Play a campaign in sessions and scenes
     Given I created the campaign "The lost mine" with the GameSystem "free-journal"
     And I started a session
     And I started the scene "At the gate"
-    When I start a session
+    When I end the session
+    And I start a session
     Then the current session is 2 and there is no current scene
 
   Scenario: A scene needs a session

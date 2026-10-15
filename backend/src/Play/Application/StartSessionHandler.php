@@ -7,6 +7,7 @@ namespace App\Play\Application;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownFlow;
@@ -25,6 +26,7 @@ final readonly class StartSessionHandler implements CommandHandler
 
     /**
      * @throws CampaignNotFound
+     * @throws SessionAlreadyUnderWay          when a session is under way
      * @throws CampaignLimitReached
      * @throws GameSystemReleaseNotFound       when the campaign plays a Flow and the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion

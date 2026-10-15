@@ -4,6 +4,8 @@ import { useNavigate } from '@tanstack/react-router'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
+import { journalKey } from '../journal/useJournal'
+
 export type CampaignSummary = components['schemas']['CampaignSummaryResponse']
 export type Campaign = components['schemas']['CampaignResponse']
 export type GameSystemSummary = components['schemas']['GameSystemSummaryResponse']
@@ -148,6 +150,38 @@ export function useStartSession(campaignId: string) {
 }
 
 /**
+ * `POST /api/campaigns/{campaignId}/sessions/current/end`: ends the current session. The answer
+ * is the session alone, so the campaign is refetched, and the journal too (a session closing
+ * can add entries). A refusal (409: no session under way) refetches the campaign as well.
+ */
+export function useEndSession(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+  const refetch = () => queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const { data, error, response } = await api.POST(
+        '/api/campaigns/{campaignId}/sessions/current/end',
+        { params: { path: { campaignId } } },
+      )
+      if (data === undefined) {
+        throw campaignError(response, error, explainedRefusals, 'Ending the session')
+      }
+    },
+    onSuccess: async () => {
+      void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+      await refetch()
+    },
+    onError: (error) => {
+      if (error instanceof CampaignError && error.status === 409) {
+        void refetch()
+      }
+    },
+  })
+}
+
+/**
  * `POST /api/campaigns/{campaignId}/scenes`: starts the next scene of the current session,
  * which becomes the current scene. The answer replaces the cached campaign.
  */
@@ -173,9 +207,41 @@ export function useStartScene(campaignId: string) {
 }
 
 /**
+ * `PUT /api/campaigns/{campaignId}/scenes/current/title`: renames the current scene. The answer
+ * is the scene alone, so the campaign is refetched, and the journal too (its scene headings show
+ * the title). A refusal (409: no scene any more) refetches the campaign as well.
+ */
+export function useRenameScene(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+  const refetch = () => queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
+
+  return useMutation({
+    mutationFn: async (title: string): Promise<void> => {
+      const { data, error, response } = await api.PUT(
+        '/api/campaigns/{campaignId}/scenes/current/title',
+        { params: { path: { campaignId } }, body: { title } },
+      )
+      if (data === undefined) {
+        throw campaignError(response, error, explainedRefusals, 'Renaming the scene')
+      }
+    },
+    onSuccess: async () => {
+      void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+      await refetch()
+    },
+    onError: (error) => {
+      if (error instanceof CampaignError && error.status === 409) {
+        void refetch()
+      }
+    },
+  })
+}
+
+/**
  * `POST /api/campaigns/{campaignId}/scenes/current/scene-type`: switches the current scene to
- * another Scene Type; its entries stay. The answer is the scene alone, so the campaign is
- * refetched, which also happens when the switch is refused (409): the screen must not keep a
+ * another Scene Type; its entries stay and a default title follows the new type. The answer is
+ * the scene alone, so the campaign (and the journal) is refetched, which also happens when the switch is refused (409): the screen must not keep a
  * scene the server no longer has.
  */
 export function useSwitchSceneType(campaignId: string) {
@@ -193,7 +259,11 @@ export function useSwitchSceneType(campaignId: string) {
         throw campaignError(response, error, explainedRefusals, 'Switching the Scene Type')
       }
     },
-    onSuccess: refetch,
+    onSuccess: async () => {
+      // A default title follows the new type, and the journal's scene headings show it.
+      void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+      await refetch()
+    },
     onError: (error) => {
       if (error instanceof CampaignError && error.status === 409) {
         void refetch()

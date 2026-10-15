@@ -284,6 +284,7 @@ final class GetCampaignHandlerTest extends TestCase
         $campaign->startSession(new \DateTimeImmutable('2026-10-06T09:00:00+00:00'));
         $campaign->startScene('At the gate', new \DateTimeImmutable('2026-10-06T09:10:00+00:00'));
         $campaign->startScene('In the mine', new \DateTimeImmutable('2026-10-06T09:20:00+00:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06T10:00:00+00:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-07T09:00:00+00:00'));
         $this->campaigns->save($campaign);
 
@@ -293,7 +294,7 @@ final class GetCampaignHandlerTest extends TestCase
             new SessionView(1, new \DateTimeImmutable('2026-10-06T09:00:00+00:00'), [
                 new SceneView(1, 'At the gate', new \DateTimeImmutable('2026-10-06T09:10:00+00:00')),
                 new SceneView(2, 'In the mine', new \DateTimeImmutable('2026-10-06T09:20:00+00:00')),
-            ]),
+            ], new \DateTimeImmutable('2026-10-06T10:00:00+00:00')),
             new SessionView(2, new \DateTimeImmutable('2026-10-07T09:00:00+00:00'), []),
         ], $view->sessions);
         self::assertSame(2, $view->currentSessionNumber);

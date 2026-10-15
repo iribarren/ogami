@@ -217,6 +217,9 @@ final class JournalApiTest extends WebTestCase
         $this->clock->moveTo('2026-10-06T10:10:00+00:00');
         $this->record($id, 'rolls', ['expression' => 'd20']);
 
+        $this->clock->moveTo('2026-10-06T10:20:00+00:00');
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', $id));
+        self::assertResponseStatusCodeSame(200);
         $this->clock->moveTo('2026-10-07T18:00:00+00:00');
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $id));
         self::assertResponseStatusCodeSame(201);

@@ -80,7 +80,7 @@ final class CampaignScenesApiTest extends WebTestCase
     }
 
     #[Test]
-    public function theCurrentSceneSwitchesItsSceneTypeByHandKeepingItsTitle(): void
+    public function theCurrentSceneSwitchesItsSceneTypeByHandAndADefaultTitleFollowsIt(): void
     {
         $id = $this->campaignInASession();
         $this->startScene($id, ['title' => 'At the gate']);
@@ -89,8 +89,20 @@ final class CampaignScenesApiTest extends WebTestCase
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/scenes/current/scene-type', $id), ['sceneType' => 'firefight']);
 
         self::assertResponseStatusCodeSame(200);
-        self::assertSame($this->scene(2, 'Legwork 1', 'firefight', 'Firefight'), $this->json());
-        self::assertSame([$this->scene(1, 'At the gate', null, null), $this->scene(2, 'Legwork 1', 'firefight', 'Firefight')], $this->scenes($id));
+        self::assertSame($this->scene(2, 'Firefight 1', 'firefight', 'Firefight'), $this->json());
+        self::assertSame([$this->scene(1, 'At the gate', null, null), $this->scene(2, 'Firefight 1', 'firefight', 'Firefight')], $this->scenes($id));
+    }
+
+    #[Test]
+    public function aTitleThePlayerGaveStaysWhenTheSceneTypeSwitches(): void
+    {
+        $id = $this->campaignInASession();
+        $this->startScene($id, ['title' => 'Casing the bank', 'sceneType' => 'legwork']);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/scenes/current/scene-type', $id), ['sceneType' => 'firefight']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame($this->scene(1, 'Casing the bank', 'firefight', 'Firefight'), $this->json());
     }
 
     #[Test]

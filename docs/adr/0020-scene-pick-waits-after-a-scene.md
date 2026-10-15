@@ -8,7 +8,7 @@
 
 [ADR 0018](0018-narrativeflow-control-flow-and-cast.md) decision 11 says a phase with one Scene Type picks it automatically. The FlowRun applied it every time it reached the scene pick, after a scene included.
 
-The `preset-mythic-flow` playtest (finding P2, 2026-10-13) showed the cost. The Mythic-style `adventure` phase loops on one Scene Type, so the next scene started the moment the previous one closed. "End session" is offered only at the scene pick, so guided play could never end a session there. The only way out was Pause, Start session, Resume, which left an empty scene in the old session.
+The `preset-mythic-flow` playtest (finding P2, 2026-10-13) showed the cost. The Mythic-style `adventure` phase loops on one Scene Type, so the next scene started the moment the previous one closed. "End session" is offered only at the scene pick, so guided play could never end a session there. The only way out was Pause, Start session, Resume, which left an empty scene in the old session. (Since `preset-real-system`, starting a session over an open one is refused with a 409: End session first.)
 
 ## Decision
 

@@ -266,12 +266,25 @@ describe('the Play screen', () => {
     ).toBeInTheDocument()
   })
 
-  it("shows the API's reason when a session or scene cannot start", async () => {
-    renderPlayScreen(lostMineCampaign, [], {
-      [`POST ${campaignPath(lostMineCampaign)}/sessions`]: json(
+  it("shows the API's reason when a session cannot start", async () => {
+    renderPlayScreen(created, [], {
+      [`POST ${campaignPath(created)}/sessions`]: json(
         { error: 'The campaign has reached its limit of 500 sessions.' },
         409,
       ),
+    })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Start session' }))
+
+    expect(await within(playPosition()).findByText(/limit of 500 sessions/)).toHaveAttribute(
+      'role',
+      'alert',
+    )
+  })
+
+  it("shows the API's reason when a scene cannot start", async () => {
+    renderPlayScreen(lostMineCampaign, [], {
       [`POST ${campaignPath(lostMineCampaign)}/scenes`]: json(
         { error: 'The scene title must be at most 100 characters.' },
         422,
@@ -279,17 +292,73 @@ describe('the Play screen', () => {
     })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Start session' }))
-    expect(await within(playPosition()).findByText(/limit of 500 sessions/)).toHaveAttribute(
-      'role',
-      'alert',
-    )
-
-    await user.type(screen.getByLabelText('Scene title'), 'Too long, says the server')
+    await user.type(await screen.findByLabelText('Scene title'), 'Too long, says the server')
     await user.click(screen.getByRole('button', { name: 'Start scene' }))
+
     expect(
       await within(screen.getByRole('form', { name: 'New scene' })).findByRole('alert'),
     ).toHaveTextContent('The scene title must be at most 100 characters.')
+  })
+
+  it('offers Start session only when no session is under way', async () => {
+    const ended: Campaign = {
+      ...lostMineCampaign,
+      sessions: lostMineCampaign.sessions.map((session) => ({
+        ...session,
+        endedAt: '2026-10-06T14:00:00+00:00',
+      })),
+      currentSessionNumber: null,
+      currentSceneNumber: null,
+    }
+    renderPlayScreen(ended)
+
+    expect(await screen.findByRole('button', { name: 'Start session' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'End session' })).not.toBeInTheDocument()
+  })
+
+  it('offers End session, not Start session, while a session is under way in free play', async () => {
+    const afterEnd: Campaign = {
+      ...lostMineCampaign,
+      sessions: lostMineCampaign.sessions.map((session) => ({
+        ...session,
+        endedAt: '2026-10-06T14:00:00+00:00',
+      })),
+      currentSessionNumber: null,
+      currentSceneNumber: null,
+    }
+    let ended = false
+    renderPlayScreen(lostMineCampaign, [], {
+      [`GET ${campaignPath(lostMineCampaign)}`]: () =>
+        Response.json(ended ? afterEnd : lostMineCampaign),
+      [`POST ${campaignPath(lostMineCampaign)}/sessions/current/end`]: () => {
+        ended = true
+        return Response.json(afterEnd.sessions[1], { status: 200 })
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'End session' }))
+
+    expect(await screen.findByRole('button', { name: 'Start session' })).toBeInTheDocument()
+    expect(playPosition()).toHaveTextContent('No session yet')
+    expect(screen.queryByRole('button', { name: 'End session' })).not.toBeInTheDocument()
+  })
+
+  it('offers End session once the Flow is paused, and shows why a session cannot end', async () => {
+    const paused = guided({ ...atStep(promptStep), status: 'paused' })
+    renderPlayScreen(paused, [], {
+      [`POST ${campaignPath(paused)}/sessions/current/end`]: json(
+        { error: 'No session is under way: start a session before ending one.' },
+        409,
+      ),
+    })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'End session' }))
+
+    expect(await within(playPosition()).findByRole('alert')).toHaveTextContent(
+      'No session is under way',
+    )
   })
 
   it('explains each tool panel in one line', async () => {

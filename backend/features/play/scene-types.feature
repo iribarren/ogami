@@ -8,10 +8,10 @@ Feature: Play scenes of a Scene Type
     And I created the campaign "The job" with the GameSystem "heist"
     And I started a session
 
-  Scenario: A scene with a Scene Type is named after it, and its type switches by hand
+  Scenario: A scene with a Scene Type is named after it, and its type and default title switch by hand
     When I start a scene of the Scene Type "legwork"
     And I start the scene "Casing the bank" of the Scene Type "legwork"
     And I start a scene of the Scene Type "legwork"
     Then session 1 has the scenes "Legwork 1, Casing the bank, Legwork 3"
     When I switch the current scene to the Scene Type "firefight"
-    Then the current scene is "Legwork 3" of the Scene Type "Firefight"
+    Then the current scene is "Firefight 1" of the Scene Type "Firefight"

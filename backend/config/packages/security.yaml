@@ -43,6 +43,8 @@ security:
         - { path: ^/api/doc\.json$, roles: PUBLIC_ACCESS }
         # Play is for solo players only: anyone else signed in gets a 403.
         - { path: ^/api/(campaigns|play)(/|$), roles: ROLE_SOLO_PLAYER }
+        # Studio is for game managers only (roles have no hierarchy, so an OWNER does not get it: ADR 0006).
+        - { path: ^/api/studio(/|$), roles: ROLE_GAME_MANAGER }
         - { path: ^/api(/|$), roles: IS_AUTHENTICATED }
 
 when@test:

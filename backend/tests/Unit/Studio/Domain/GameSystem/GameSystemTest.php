@@ -109,9 +109,12 @@ final class GameSystemTest extends TestCase
         $kept = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', null, self::OWNER, $source, $this->now);
         $replaced = GameSystem::createFromRelease(GameSystemId::fromString(self::SECOND_ID), 'my-copy', 'My copy', 'My text', self::OWNER, $source, $this->now);
 
-        self::assertSame('Source text', $kept->document()['gameSystem']['description']);
-        self::assertSame('My text', $replaced->document()['gameSystem']['description']);
-        ReleaseContent::fromArray($replaced->document());
+        /** @var array{gameSystem: array{description: string}} $keptDocument */
+        $keptDocument = $kept->document();
+        /** @var array{gameSystem: array{description: string}} $replacedDocument */
+        $replacedDocument = $replaced->document();
+        self::assertSame('Source text', $keptDocument['gameSystem']['description']);
+        self::assertSame('My text', $replacedDocument['gameSystem']['description']);
     }
 
     #[Test]

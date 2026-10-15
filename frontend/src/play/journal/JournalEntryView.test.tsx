@@ -10,6 +10,7 @@ import {
   pickedNothing,
   pickedTwo,
   plainAnswer,
+  sanityLossEntry,
   skillCheckEntry,
   stormyWeather,
 } from './fixtures'
@@ -143,6 +144,23 @@ describe('JournalEntryView check entries', () => {
     expect(within(entry).queryByText('Modifier')).not.toBeInTheDocument()
     expect(within(entry).queryByText('Situational')).not.toBeInTheDocument()
     expect(within(entry).getByText('Total').nextElementSibling).toHaveTextContent(/^12$/)
+  })
+
+  it('renders a sheet change one line per field, with the sheet labels and the dice rolled', () => {
+    render(
+      <JournalEntryView entry={sanityLossEntry} sheet={[{ key: 'sanity', label: 'Sanity' }]} />,
+    )
+
+    const entry = screen.getByRole('article', { name: 'Sheet Vi' })
+    expect(
+      within(entry)
+        .getAllByRole('listitem')
+        .map((line) => line.textContent),
+    ).toEqual([
+      'Vi: Sanity 65 → 61 (1d6: 4)',
+      // A field the sheet does not name shows its key.
+      'Vi: hp 12 → 11',
+    ])
   })
 
   it('shows a penalty with its minus sign', () => {

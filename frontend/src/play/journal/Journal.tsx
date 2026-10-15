@@ -24,6 +24,7 @@ export function Journal({
   sessions,
   sceneTypes,
   tags,
+  sheet,
   npcs,
   characters,
   oracleTables,
@@ -35,6 +36,8 @@ export function Journal({
   sceneTypes: Campaign['sceneTypes']
   /** The release Tags, which name the keys of a pick entry. */
   tags: Campaign['tags']
+  /** The release's sheet fields, which name the fields of a sheet change entry. */
+  sheet: Campaign['pinnedRelease']['sheet']
   /** The campaign's NPCs, which the cast of the current scene draws from. */
   npcs: Campaign['npcs']
   /** The campaign's Characters, which the cast of the current scene also draws from. */
@@ -94,12 +97,13 @@ export function Journal({
                         ref={entry.id === latestRecordedId ? reveal : undefined}
                         className="space-y-1"
                       >
-                        {entry.flowStep !== null && (
+                        {/* A sheet change follows its step's entry, which already names the step. */}
+                        {entry.flowStep !== null && entry.kind !== 'sheet-change' && (
                           <p className="text-xs text-muted-foreground">
                             Flow step · {entry.flowStep.title}
                           </p>
                         )}
-                        <JournalEntryView entry={entry} tags={tags} />
+                        <JournalEntryView entry={entry} tags={tags} sheet={sheet} />
                         {current?.session === session.number && current.scene === scene.number && (
                           <>
                             <SceneTypeOffer

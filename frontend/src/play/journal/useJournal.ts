@@ -12,6 +12,7 @@ export type OracleTableContent = components['schemas']['OracleTableContentRespon
 export type LikelihoodContent = components['schemas']['LikelihoodContentResponse']
 export type CheckContent = components['schemas']['CheckContentResponse']
 export type PickContent = components['schemas']['PickContentResponse']
+export type SheetChangeContent = components['schemas']['SheetChangeContentResponse']
 type RecordNoteRequest = components['schemas']['RecordNoteRequest']
 type RecordRollRequest = components['schemas']['RecordRollRequest']
 type RecordLikelihoodAnswerRequest = components['schemas']['RecordLikelihoodAnswerRequest']

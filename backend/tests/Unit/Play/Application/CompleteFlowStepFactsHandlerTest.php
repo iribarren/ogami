@@ -19,6 +19,7 @@ use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryJournalEntryRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\ReleaseViews;
+use App\Tests\Support\Play\SequentialJournalEntryIdGenerator;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -82,7 +83,7 @@ final class CompleteFlowStepFactsHandlerTest extends FlowRunHandlerTestCase
 
     private function complete(string $stepKey, string $text): void
     {
-        $handler = new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(), $this->clock);
+        $handler = new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(), $this->clock, new SequentialJournalEntryIdGenerator());
         $handler(new CompleteFlowStep('campaign-1', 'user-1', 'entry-1', $stepKey, $text, null, null, null, null));
     }
 }

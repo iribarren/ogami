@@ -24,6 +24,7 @@ use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Tests\Support\Play\GuidedReleases;
+use App\Tests\Support\Play\SequentialJournalEntryIdGenerator;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -299,7 +300,7 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
 
     private function complete(CompleteFlowStep $command, int ...$rolls): void
     {
-        $handler = new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(...$rolls), $this->clock);
+        $handler = new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(...$rolls), $this->clock, new SequentialJournalEntryIdGenerator());
         $handler($command);
     }
 

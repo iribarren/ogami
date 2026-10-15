@@ -263,7 +263,7 @@ final class PlayContext implements Context
         $this->recordNote = new RecordNoteHandler($this->journal);
         $this->getJournal = new GetJournalHandler($owned, $entries);
         // Prompt steps only: the dice are never rolled.
-        $this->completeFlowStep = new CompleteFlowStepHandler($this->journal, $campaigns, new ScriptedRandomNumberGenerator(), $clock);
+        $this->completeFlowStep = new CompleteFlowStepHandler($this->journal, $campaigns, new ScriptedRandomNumberGenerator(), $clock, $this->entryIds);
         $this->skipFlowStep = new SkipFlowStepHandler($owned, $campaigns, $this->releases, $clock);
         $this->pickSceneType = new PickSceneTypeHandler($owned, $campaigns, $this->releases, $clock);
         $this->endFlowScene = new EndFlowSceneHandler($owned, $campaigns, $this->releases, $clock);

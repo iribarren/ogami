@@ -47,6 +47,15 @@ final readonly class JournalEntry
     }
 
     /**
+     * Another entry recorded with this one, in the same session and scene, at the same time and by
+     * the same Flow step (what a step's sheet Effects changed, after the step's own entry).
+     */
+    public function followedBy(JournalEntryId $id, JournalEntryContent $content): self
+    {
+        return new self($id->toString(), $this->campaignId, $this->sessionNumber, $this->sceneNumber, $this->recordedAt, $content, $this->flowStep);
+    }
+
+    /**
      * Rebuilds a stored entry, e.g. from persistence. No rule is checked again.
      */
     public static function reconstitute(

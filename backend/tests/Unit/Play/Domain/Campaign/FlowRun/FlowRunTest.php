@@ -342,7 +342,7 @@ final class FlowRunTest extends FlowRunTestCase
     public function aCommandNamesThePositionItActsOn(): void
     {
         $campaign = $this->inASession();
-        $this->assertStale('The FlowRun is at the scene pick, not at step "mood".', fn () => $campaign->completeFlowStep('mood', StepResult::choice('calm'), $this->release, self::at()));
+        $this->assertStale('The FlowRun is at the scene pick, not at step "mood".', fn (): array => $campaign->completeFlowStep('mood', StepResult::choice('calm'), $this->release, self::at()));
         $this->assertStale('The FlowRun is at the scene pick, not at open play in scene 1.', fn () => $campaign->endFlowScene(1, $this->release, self::at()));
         $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
         $this->assertStale('The FlowRun is at step "mood", not at step "luck".', fn () => $campaign->skipFlowStep('luck', $this->release, self::at()));
@@ -375,7 +375,7 @@ final class FlowRunTest extends FlowRunTestCase
 
         self::assertSame(FlowRunStatus::Paused, self::flowRunOf($campaign)->status());
         foreach ([
-            'complete' => fn () => $campaign->completeFlowStep('mood', StepResult::choice('calm'), $this->release, self::at()),
+            'complete' => fn (): array => $campaign->completeFlowStep('mood', StepResult::choice('calm'), $this->release, self::at()),
             'skip' => fn () => $campaign->skipFlowStep('mood', $this->release, self::at()),
             'end the scene' => fn () => $campaign->endFlowScene(1, $this->release, self::at()),
             'pick' => fn () => $campaign->pickSceneType('talk', $this->release, self::at()),
@@ -529,7 +529,9 @@ final class FlowRunTest extends FlowRunTestCase
         yield 'completing a step' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
             self::closeTalk($campaign, $release);
 
-            return static fn () => $campaign->completeFlowStep('wrap', self::prompt('Nothing'), $release, self::at());
+            return static function () use ($campaign, $release): void {
+                $campaign->completeFlowStep('wrap', self::prompt('Nothing'), $release, self::at());
+            };
         }];
         yield 'skipping a step' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
             self::closeTalk($campaign, $release);

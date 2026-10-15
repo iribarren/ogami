@@ -304,15 +304,6 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
     }
 
     #[Test]
-    public function aSheetEffectIsRefusedUntilPlayAppliesIt(): void
-    {
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('GameSystem "sheet-effects" v1 cannot be read by Play: sceneTypes[0].setup[0].effects[0].kind: unknown effect kind "sheet".');
-
-        new GameSystemReleaseTranslator()->translate(ReleaseViews::of(ReleaseViews::fixtureContent('valid/v2-sheet-effects')));
-    }
-
-    #[Test]
     public function aFormulaBandBoundAndEffectValueAreReadAsFormulas(): void
     {
         $content = ReleaseViews::fixtureContent('valid/v2-scene-types');

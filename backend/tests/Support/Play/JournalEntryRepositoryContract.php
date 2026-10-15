@@ -111,6 +111,15 @@ trait JournalEntryRepositoryContract
         yield 'check' => [$check];
         yield 'check without difficulty' => [array_replace($check, ['difficulty' => null])];
         yield 'pick of nothing' => [['kind' => 'pick', 'of' => 'thread', 'tags' => [], 'picked' => []]];
+        yield 'sheet change' => [[
+            'kind' => 'sheet-change',
+            'characterId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001',
+            'characterName' => 'Vi',
+            'changes' => [
+                ['field' => 'sanity', 'before' => 65, 'after' => 61, 'dice' => ['expression' => '1d6', 'total' => 4]],
+                ['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => null],
+            ],
+        ]];
     }
 
     #[Test]

@@ -34,6 +34,7 @@ use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
+use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\GeneratedItemId;
@@ -62,6 +63,7 @@ use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Randomness\Domain\Oracle\OracleTableResult;
+use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
  * A solo player's ongoing game, pinned to one GameSystem release (ADR 0014), played freely or along
@@ -800,6 +802,22 @@ final class Campaign
         return $edited;
     }
 
+    /**
+     * Sets one stored value of a Character, as a sheet Effect changes it (FlowRunContext clamps it to
+     * the field first); the rest of the Character stays.
+     *
+     * @param int|array{current: int, max: int} $value
+     *
+     * @throws UnknownCharacter when the campaign holds no Character with this id
+     * @throws InvalidCharacter when the value breaks a rule
+     */
+    public function changeCharacterValue(CharacterId $id, string $field, int|array $value): void
+    {
+        $index = $this->characterIndex($id);
+        $character = $this->characters[$index];
+        $this->characters = $this->replaced($this->characters, $index, $character->edited($character->name(), $character->tags(), $character->freeTags(), [...$character->values(), $field => $value]));
+    }
+
     public function character(CharacterId $id): ?Character
     {
         return $this->characters[$this->characterIndexOrNull($id) ?? -1] ?? null;
@@ -1205,16 +1223,25 @@ final class Campaign
     /**
      * Completes the FlowRun's current step with a result of its kind.
      *
+     * @param ?RandomNumberGenerator $random the source the step's sheet Effects roll their dice with
+     *
+     * @return list<SheetChange> what the step's sheet Effects changed on the step's Character, in apply order
+     *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws FlowRunPositionMismatch when the current step is another
      * @throws InvalidStepResult       when the result does not complete the step
      * @throws CampaignLimitReached    when the next scene does not fit the session
+     * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated; nothing changes
+     *
+     * @phpstan-impure
      */
-    public function completeFlowStep(string $stepKey, StepResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function completeFlowStep(string $stepKey, StepResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): array
     {
         $draft = clone $this;
-        $draft->guided()->completeStep($stepKey, $result, $draft->flowContext($release, $at));
+        $changes = $draft->guided()->completeStep($stepKey, $result, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
+
+        return $changes;
     }
 
     /**
@@ -1432,7 +1459,7 @@ final class Campaign
      */
     private function adopt(self $draft): void
     {
-        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->facts] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->facts];
+        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->facts, $this->characters] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->facts, $draft->characters];
     }
 
     /**
@@ -1447,9 +1474,9 @@ final class Campaign
         return $this->flowRun;
     }
 
-    private function flowContext(GameSystemSnapshot $release, \DateTimeImmutable $at): FlowRunContext
+    private function flowContext(GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): FlowRunContext
     {
-        return new FlowRunContext($this, $release, $this->playedFlow($release), $at);
+        return new FlowRunContext($this, $release, $this->playedFlow($release), $at, $random);
     }
 
     /**

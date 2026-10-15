@@ -43,6 +43,8 @@ use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
+use App\Play\Domain\GameSystem\Flow\SheetEffect;
+use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
 use App\Play\Domain\GameSystem\Flow\TableBranch;
@@ -115,6 +117,10 @@ final readonly class GameSystemReleaseTranslator
     private const int MAX_CHECK_HINT_LENGTH = 500;
     private const int MAX_DIFFICULTY_LABEL_LENGTH = 60;
     private const int MAX_DIFFICULTY = 1000;
+
+    // The sheet effect limits of the contract (v2.schema.json, ADR 0027).
+    private const int MAX_SHEET_EFFECT_VALUE = 1000;
+    private const int MAX_SHEET_EFFECT_DICE_LENGTH = 100;
 
     private const array PHASE_HOOKS = ['sessionOpening', 'sessionClosing', 'phaseOpening', 'phaseClosing', 'sceneOpening', 'sceneClosing', 'worldTurn'];
 
@@ -241,6 +247,10 @@ final readonly class GameSystemReleaseTranslator
             $this->assertCheckStepMatchesItsCheck($view, $node, $path, $snapshot);
         }
 
+        if ('sheet' === $kind) {
+            $this->assertSheetEffectReadsTheSheet($view, $node, $path, $snapshot);
+        }
+
         $this->assertFormulaTrackersDeclared($view, $node, $path, $snapshot);
 
         foreach ($node as $name => $child) {
@@ -327,6 +337,42 @@ final readonly class GameSystemReleaseTranslator
 
         if (null !== $range->max && $value > $range->max) {
             throw $this->invalid($view, $path, \sprintf('must be at most %d, the difficulty max of check "%s", %d given.', $range->max, $check->key, $value));
+        }
+    }
+
+    /**
+     * A sheet Effect changes a number or track field of the sheet, and its formula reads that
+     * Character's sheet (number, track current and max, derived) and the release's Trackers. Studio
+     * checks this on publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $effect
+     */
+    private function assertSheetEffectReadsTheSheet(PublishedReleaseView $view, array $effect, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $key = $effect['field'] ?? null;
+        $field = \is_string($key) ? $snapshot->sheet()->field($key) : null;
+        if (!$field instanceof Field) {
+            throw $this->invalid($view, $path.'.field', \sprintf('unknown sheet field "%s".', \is_string($key) ? $key : ''));
+        }
+
+        if (!$field instanceof NumberField && !$field instanceof TrackField) {
+            $type = match (true) {
+                $field instanceof DerivedField => 'derived',
+                $field instanceof TextField => 'text',
+                default => 'list',
+            };
+
+            throw $this->invalid($view, $path.'.field', \sprintf('field "%s" is a %s field, a sheet effect changes number and track fields only.', $field->key, $type));
+        }
+
+        $formula = \is_array($effect['value'] ?? null) ? $effect['value']['formula'] ?? null : null;
+        if (null !== $formula) {
+            $fields = [];
+            foreach ($snapshot->sheet()->fields() as $sheetField) {
+                $fields[$sheetField->key] = $sheetField;
+            }
+
+            $this->checkFormula($view, $formula, $path.'.value.formula', $fields, array_map(static fn (Tracker $tracker): string => $tracker->key, $snapshot->trackers()), null);
         }
     }
 
@@ -559,6 +605,7 @@ final readonly class GameSystemReleaseTranslator
             }
 
             $keys[$key] = true;
+            $kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind');
             $common = [
                 'key' => $key,
                 'title' => $this->string($view, $step['title'] ?? null, $stepPath.'.title'),
@@ -566,9 +613,10 @@ final readonly class GameSystemReleaseTranslator
                 'tip' => $this->optionalString($view, $step['tip'] ?? null, $stepPath.'.tip'),
                 'mandatory' => $this->flag($view, $step['mandatory'] ?? null, $stepPath.'.mandatory'),
                 'next' => $this->optionalString($view, $step['next'] ?? null, $stepPath.'.next'),
-                'effects' => $this->effects($view, $step['effects'] ?? [], $stepPath.'.effects'),
+                // A character step completes with a Character, so its own effects may change the sheet.
+                'effects' => $this->effects($view, $step['effects'] ?? [], $stepPath.'.effects', 'character' === $kind),
             ];
-            $snapshots[] = match ($kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind')) {
+            $snapshots[] = match ($kind) {
                 'prompt' => new PromptStep(...$common, inspiration: $this->keys($view, $step['inspiration'] ?? [], $stepPath.'.inspiration')),
                 'oracle' => new OracleStep(
                     ...$common,
@@ -628,7 +676,8 @@ final readonly class GameSystemReleaseTranslator
                 throw $this->invalid($view, $outcomePath.'.band', \sprintf('duplicate outcome band "%s".', $band));
             }
 
-            $outcomes[$band] = $this->outcome($view, $outcome, $outcomePath);
+            // The checked Character is known, so an Outcome may change the sheet.
+            $outcomes[$band] = $this->outcome($view, $outcome, $outcomePath, true);
         }
 
         return new CheckStep(
@@ -1114,13 +1163,16 @@ final readonly class GameSystemReleaseTranslator
         );
     }
 
-    private function outcome(PublishedReleaseView $view, mixed $outcome, string $path): Outcome
+    /**
+     * @param bool $sheet whether the Outcome sits where a Character is known and its effects may change the sheet
+     */
+    private function outcome(PublishedReleaseView $view, mixed $outcome, string $path, bool $sheet = false): Outcome
     {
         $outcome = $this->object($view, $outcome, $path);
 
         return new Outcome(
             $this->optionalString($view, $outcome['next'] ?? null, $path.'.next'),
-            $this->effects($view, $outcome['effects'] ?? [], $path.'.effects'),
+            $this->effects($view, $outcome['effects'] ?? [], $path.'.effects', $sheet),
         );
     }
 
@@ -1185,16 +1237,23 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
+     * @param bool $sheet whether the list sits where a Character is known (a check outcome, a character step) and may hold sheet effects
+     *
      * @return list<Effect>
      */
-    private function effects(PublishedReleaseView $view, mixed $effects, string $path): array
+    private function effects(PublishedReleaseView $view, mixed $effects, string $path, bool $sheet = false): array
     {
         $snapshots = [];
         foreach ($this->list($view, $effects, $path) as $index => $effect) {
             $effectPath = \sprintf('%s[%d]', $path, $index);
             $effect = $this->object($view, $effect, $effectPath);
             $sceneType = fn (): string => $this->string($view, $effect['sceneType'] ?? null, $effectPath.'.sceneType');
-            $snapshots[] = match ($kind = $this->string($view, $effect['kind'] ?? null, $effectPath.'.kind')) {
+            $kind = $this->string($view, $effect['kind'] ?? null, $effectPath.'.kind');
+            if ('sheet' === $kind && !$sheet) {
+                throw $this->invalid($view, $effectPath, 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step.');
+            }
+
+            $snapshots[] = match ($kind) {
                 'tracker' => new TrackerEffect(
                     $this->string($view, $effect['tracker'] ?? null, $effectPath.'.tracker'),
                     TrackerOperation::tryFrom($op = $this->string($view, $effect['op'] ?? null, $effectPath.'.op'))
@@ -1219,11 +1278,46 @@ final readonly class GameSystemReleaseTranslator
                     $this->string($view, $effect['slot'] ?? null, $effectPath.'.slot'),
                     $this->optionalString($view, $effect['text'] ?? null, $effectPath.'.text'),
                 ),
+                'sheet' => new SheetEffect(
+                    $this->string($view, $effect['field'] ?? null, $effectPath.'.field'),
+                    SheetOperation::tryFrom($op = $this->string($view, $effect['op'] ?? null, $effectPath.'.op'))
+                        ?? throw $this->invalid($view, $effectPath.'.op', \sprintf('unknown sheet operation "%s".', $op)),
+                    $this->sheetValue($view, $effect['value'] ?? null, $effectPath.'.value'),
+                ),
                 default => throw $this->invalid($view, $effectPath.'.kind', \sprintf('unknown effect kind "%s".', $kind)),
             };
         }
 
         return $snapshots;
+    }
+
+    /**
+     * The value of a sheet Effect: a literal, {"formula": string} (its references are checked
+     * against the sheet once the release is read) or {"dice": string}.
+     */
+    private function sheetValue(PublishedReleaseView $view, mixed $value, string $path): int|Formula|DiceExpression
+    {
+        if (\is_int($value)) {
+            if (abs($value) > self::MAX_SHEET_EFFECT_VALUE) {
+                throw $this->invalid($view, $path, \sprintf('must be between %d and %d.', -self::MAX_SHEET_EFFECT_VALUE, self::MAX_SHEET_EFFECT_VALUE));
+            }
+
+            return $value;
+        }
+
+        if (!\is_array($value) || 1 !== \count($value) || (!\array_key_exists('formula', $value) && !\array_key_exists('dice', $value))) {
+            throw $this->invalid($view, $path, 'must be an integer, {"formula": string} or {"dice": string}.');
+        }
+
+        if (\array_key_exists('formula', $value)) {
+            return $this->fieldFormula($view, $value['formula'], $path.'.formula');
+        }
+
+        if (\is_string($value['dice']) && mb_strlen($value['dice']) > self::MAX_SHEET_EFFECT_DICE_LENGTH) {
+            throw $this->invalid($view, $path.'.dice', \sprintf('must be at most %d characters.', self::MAX_SHEET_EFFECT_DICE_LENGTH));
+        }
+
+        return $this->dice($view, $value['dice'], $path.'.dice');
     }
 
     /**

@@ -2194,6 +2194,53 @@ export interface components {
              */
             bandLabel: string;
         };
+        SheetChangeDiceResponse: {
+            /**
+             * @description The normalized notation of the dice rolled.
+             * @example 1d6
+             */
+            expression: string;
+            /** @example 4 */
+            total: number;
+        };
+        SheetChangeResponse: {
+            /**
+             * @description The key of the sheet field: a number field, or a track field whose current value changed.
+             * @example sanity
+             */
+            field: string;
+            /**
+             * @description The value before the effect.
+             * @example 65
+             */
+            before: number;
+            /**
+             * @description The value after the effect, clamped to the field.
+             * @example 61
+             */
+            after: number;
+            /** @description The dice the effect rolled; null when its value rolled none. */
+            dice: components["schemas"]["SheetChangeDiceResponse"] | null;
+        };
+        SheetChangeContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "sheet-change";
+            /**
+             * Format: uuid
+             * @description The Character whose sheet changed.
+             */
+            characterId: string;
+            /**
+             * @description The name of the Character when the step completed.
+             * @example Vi
+             */
+            characterName: string;
+            /** @description Every change, in the order the effects applied; at least one. */
+            changes: components["schemas"]["SheetChangeResponse"][];
+        };
         JournalFlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -2218,8 +2265,8 @@ export interface components {
              * @description The same as `content.kind`.
              * @enum {string}
              */
-            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check";
-            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"];
+            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check" | "sheet-change";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"] | components["schemas"]["SheetChangeContentResponse"];
             /** @description The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand. */
             flowStep: components["schemas"]["JournalFlowStepResponse"] | null;
         };
@@ -4659,7 +4706,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker Effect value or a step's difficulty divides by zero or overflows; nothing changed. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

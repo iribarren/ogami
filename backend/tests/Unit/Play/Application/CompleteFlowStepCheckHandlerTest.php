@@ -24,6 +24,7 @@ use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryJournalEntryRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
+use App\Tests\Support\Play\SequentialJournalEntryIdGenerator;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use App\Tests\Unit\Play\Domain\Campaign\FlowRun\CheckStepReleases;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -136,7 +137,7 @@ final class CompleteFlowStepCheckHandlerTest extends TestCase
 
     private function complete(CompleteFlowStep $command, int ...$rolls): void
     {
-        new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(...$rolls), $this->clock)($command);
+        new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(...$rolls), $this->clock, new SequentialJournalEntryIdGenerator())($command);
     }
 
     private function stored(): Campaign

@@ -1,7 +1,7 @@
 # Feature: preset-real-system
 
 - **Locator:** `odd/tasks/preset-real-system.md` · Engram topic `odd/preset-real-system/tasks`
-- **Issue:** #122 · **Branch:** `feat/preset-real-system-8-finish` · **Status:** done (pending slice 8 review and PR)
+- **Issue:** #122 · **Branch:** `feat/preset-real-system-8-finish` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-checks` (PRs #115–#121)
@@ -105,9 +105,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T11 | 6 | Contract: `sheet` effect and `{dice}` value in `v2.schema.json` and the Version2 validator; agreement fixtures; Play translator still refuses `sheet` effects | delegated writer (slice 6) | [x] | 4fe377c |
 | T12 | 7 | Play: translator reads `sheet` effects; applying them on a check outcome and a `character` step (clamp, dice, all-or-nothing); journal records sheet changes; API and `make api` | delegated writer (slice 7) | [x] | 9c4711c |
 | T13 | 7 | UI: check entry and step card show sheet changes; Characters panel refreshes; fixtures; Vitest | delegated writer (slice 7) | [x] | 2fd0956 |
-| T14 | 8 | Preset uses sheet effects (Sanity set to POW at the character step, Sanity and HP loss on checks) | delegated writer (slice 8) | [x] | |
-| T15 | 8 | e2e: a short Percentile Horror run (no playtest 2 findings) | delegated writer (slice 8) | [x] | |
-| T16 | 8 | Wrap-up: roadmap 13 done, MVP complete; feature doc closed | delegated writer (slice 8) | [x] | |
+| T14 | 8 | Preset uses sheet effects (Sanity set to POW at the character step, Sanity and HP loss on checks) | delegated writer (slice 8) | [x] | 03674bb |
+| T15 | 8 | e2e: a short Percentile Horror run (no playtest 2 findings) | delegated writer (slice 8) | [x] | b2d5c0a |
+| T16 | 8 | Wrap-up: roadmap 13 done, MVP complete; feature doc closed | delegated writer (slice 8) | [x] | d869292 |
 
 ## Progress
 
@@ -175,7 +175,8 @@ Playtest 1 (user, 2026-10-15, after slice 1 merged):
 | 5 | `review-04e1936b6a8917c3` | fd230a1, fd63f25 | Approved and acknowledged. Findings: R3-001 the epilogue `thread` pick is skippable and a skip falls through to `solved`, whose "yes" closes no Thread (`none` branch untested); R3-002 `banish` and `arrive` read `{fact:lair}` and `{fact:place}`, filled by skippable steps, so they render "…in ." when skipped. Both fixed in slice 6 | [#127](https://github.com/iribarren/ogami/pull/127) |
 | 6 | `review-d75d70e48065fec6` | 522e6c1, 146b663, 4fe377c | Approved and acknowledged. Findings: R3-001 no semantic placement cases for sheet effects in pick branches, `otherwise`, condition bands and Scene Type setup effects (`ReleaseSchemaAgreementTest.php:683-699`; `Effects::list()` defaults `$sheet=false`); R3-002 `theJourneyIsSuggestedAndCanBeSkipped` (`PercentileHorrorPresetFlowTest.php:94`) never asserts the position after skipping `journey`. Both fixed in slice 7 | [#128](https://github.com/iribarren/ogami/pull/128) |
 | 7 | `review-3d9a7e0c457bf7cc` | 937b2f6, 9c4711c, 2fd0956 | Approved and acknowledged. Findings: R3-001 (warning) `FlowRun::finish` (`FlowRun.php:1009-1013`) throws a `LogicException` on a sheet effect with no Character; skipping a non-mandatory `character` step with sheet effects must not reach it (no test); R3-002 no handler-level unit test of the second journal entry (generated id, a taken id, a `character` step's sheet change, order after the step's entry). Both fixed in slice 8 | [#129](https://github.com/iribarren/ogami/pull/129) |
+| 8 | `review-2e704d4eb14ae41c` | ec4eaf5, 03674bb, b2d5c0a, 13c4837, d869292 | Approved and acknowledged. Finding: R3-001 (warning) no test completes `you` with a Character whose Power was never set (created inline at the step). Checked by the parent: an unset number reads as its default (`SheetValues::value` → `CharacterValues::initial`), so Sanity becomes 50 and the step does not fail. Missing test is a backlog follow-up | [#130](https://github.com/iribarren/ogami/pull/130) |
 
 ## Next step
 
-Parent records the slice 8 review and PR in one doc-only commit; the feature closes.
+None: the feature is closed once PR #130 merges (it closes #122). Follow-up for the backlog: a test of the `you` step with a Character whose Power was never set (slice 8 review R3-001).

@@ -537,17 +537,13 @@ describe('the guided panel', () => {
       })
     })
 
-    it('keep Start session where play stands while the flow does not wait for one', async () => {
+    it('leave Start session and End session out of where play stands while guidance is active', async () => {
       renderGuided(guided(atStep(promptStep)))
 
       await panel()
-      const buttons = screen.getAllByRole('button', { name: 'Start session' })
-      expect(buttons).toHaveLength(1)
-      expect(
-        within(screen.getByRole('region', { name: 'Where play stands' })).getByRole('button', {
-          name: 'Start session',
-        }),
-      ).toBe(buttons[0])
+      const standing = within(screen.getByRole('region', { name: 'Where play stands' }))
+      expect(standing.queryByRole('button', { name: 'Start session' })).not.toBeInTheDocument()
+      expect(standing.queryByRole('button', { name: 'End session' })).not.toBeInTheDocument()
     })
 
     it('show why a session could not start, next to the guide button', async () => {

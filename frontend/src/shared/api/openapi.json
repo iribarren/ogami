@@ -616,7 +616,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign already holds the most sessions it can, or another request changed it meanwhile.",
+                        "description": "A session is still under way (end it first), the campaign already holds the most sessions it can, or another request changed it meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {

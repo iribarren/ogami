@@ -3006,7 +3006,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign already holds the most sessions it can, or another request changed it meanwhile. */
+            /** @description A session is still under way (end it first), the campaign already holds the most sessions it can, or another request changed it meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

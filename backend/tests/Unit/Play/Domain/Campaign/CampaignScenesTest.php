@@ -49,6 +49,7 @@ final class CampaignScenesTest extends TestCase
         $first = $campaign->startScene(null, new \DateTimeImmutable(), $legwork);
         $campaign->startScene(null, new \DateTimeImmutable(), $firefight);
         $campaign->startScene('A quiet drink', new \DateTimeImmutable());
+        $campaign->endSession(new \DateTimeImmutable());
         $campaign->startSession(new \DateTimeImmutable());
         $second = $campaign->startScene(null, new \DateTimeImmutable(), $legwork);
 

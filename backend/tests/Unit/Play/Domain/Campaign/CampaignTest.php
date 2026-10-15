@@ -126,6 +126,7 @@ final class CampaignTest extends TestCase
         $second = new \DateTimeImmutable('2026-10-07 10:00:00');
 
         $campaign->startSession($first);
+        $campaign->endSession($first);
         $campaign->startSession($second);
 
         $sessions = $campaign->sessions();
@@ -185,6 +186,7 @@ final class CampaignTest extends TestCase
         $campaign->startScene('One', new \DateTimeImmutable());
         $campaign->startScene('Two', new \DateTimeImmutable());
 
+        $campaign->endSession(new \DateTimeImmutable());
         $campaign->startSession(new \DateTimeImmutable());
         self::assertNull($campaign->currentScene());
 
@@ -239,11 +241,14 @@ final class CampaignTest extends TestCase
     public function aCampaignHoldsAtMostFiveHundredSessions(): void
     {
         $campaign = $this->campaign();
-        for ($i = 0; $i < 500; ++$i) {
+        for ($i = 0; $i < 499; ++$i) {
             $campaign->startSession(new \DateTimeImmutable());
+            $campaign->endSession(new \DateTimeImmutable());
         }
 
+        $campaign->startSession(new \DateTimeImmutable());
         self::assertSame(500, $campaign->currentSession()?->number());
+        $campaign->endSession(new \DateTimeImmutable());
 
         $this->expectException(CampaignLimitReached::class);
         $this->expectExceptionMessageIsOrContains('A campaign holds at most 500 sessions.');
@@ -268,6 +273,7 @@ final class CampaignTest extends TestCase
             self::assertSame('A session holds at most 200 scenes.', $campaignLimitReached->getMessage());
         }
 
+        $campaign->endSession(new \DateTimeImmutable());
         $campaign->startSession(new \DateTimeImmutable());
         self::assertSame(1, $campaign->startScene('Fresh session', new \DateTimeImmutable())->number());
     }

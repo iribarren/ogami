@@ -10,6 +10,7 @@ use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Session;
+use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\Flow\Phase;
@@ -27,6 +28,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Campaign::class)]
 #[CoversClass(Session::class)]
 #[CoversClass(NoCurrentSession::class)]
+#[CoversClass(SessionAlreadyUnderWay::class)]
 final class CampaignSessionsTest extends TestCase
 {
     #[Test]
@@ -93,6 +95,24 @@ final class CampaignSessionsTest extends TestCase
         self::assertSame(2, $campaign->currentSession()?->number());
         self::assertSame([1, 'Back at it'], [$scene->number(), $campaign->currentScene()?->title()]);
         self::assertTrue($campaign->sessions()[0]->hasEnded());
+    }
+
+    #[Test]
+    public function aSessionCannotStartWhileAnotherIsUnderWayAndNothingChanges(): void
+    {
+        $campaign = $this->campaignInASession();
+        $campaign->startScene('At the gate', new \DateTimeImmutable());
+
+        try {
+            $campaign->startSession(new \DateTimeImmutable('2026-10-11 09:00:00'));
+            self::fail('A second session started over an open one.');
+        } catch (SessionAlreadyUnderWay $exception) {
+            self::assertSame('Session 1 is still under way; end it before starting another.', $exception->getMessage());
+        }
+
+        self::assertCount(1, $campaign->sessions());
+        self::assertSame(1, $campaign->currentSession()?->number());
+        self::assertSame('At the gate', $campaign->currentScene()?->title());
     }
 
     #[Test]

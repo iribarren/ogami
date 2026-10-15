@@ -4,6 +4,8 @@ import { useNavigate } from '@tanstack/react-router'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
+import { journalKey } from '../journal/useJournal'
+
 export type CampaignSummary = components['schemas']['CampaignSummaryResponse']
 export type Campaign = components['schemas']['CampaignResponse']
 export type GameSystemSummary = components['schemas']['GameSystemSummaryResponse']
@@ -143,6 +145,38 @@ export function useStartSession(campaignId: string) {
     },
     onSuccess: (campaign) => {
       queryClient.setQueryData(campaignKey(campaignId), campaign)
+    },
+  })
+}
+
+/**
+ * `POST /api/campaigns/{campaignId}/sessions/current/end`: ends the current session. The answer
+ * is the session alone, so the campaign is refetched, and the journal too (a session closing
+ * can add entries). A refusal (409: no session under way) refetches the campaign as well.
+ */
+export function useEndSession(campaignId: string) {
+  const api = useApiClient()
+  const queryClient = useQueryClient()
+  const refetch = () => queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const { data, error, response } = await api.POST(
+        '/api/campaigns/{campaignId}/sessions/current/end',
+        { params: { path: { campaignId } } },
+      )
+      if (data === undefined) {
+        throw campaignError(response, error, explainedRefusals, 'Ending the session')
+      }
+    },
+    onSuccess: async () => {
+      void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+      await refetch()
+    },
+    onError: (error) => {
+      if (error instanceof CampaignError && error.status === 409) {
+        void refetch()
+      }
     },
   })
 }

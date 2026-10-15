@@ -271,17 +271,24 @@ final class Campaign
 
     /**
      * Starts session n + 1 (the first is 1). It becomes the current session, with no scene yet and
-     * the previous session's party (none for the first); a session still under way stays as it is. A guided FlowRun goes on in it: its session opening
+     * the previous session's party (none for the first). Only one session is open at a time: the one
+     * under way has to end first. A guided FlowRun goes on in it: its session opening
      * runs (in a hook Scene), then a scene pick with one Scene Type starts that scene; a guided
      * scene or hook Scene of an earlier session is abandoned. All or nothing, like the FlowRun
      * commands.
      *
      * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told
      *
-     * @throws CampaignLimitReached when the campaign already holds 500 sessions
+     * @throws SessionAlreadyUnderWay when a session is under way
+     * @throws CampaignLimitReached   when the campaign already holds 500 sessions
      */
     public function startSession(\DateTimeImmutable $startedAt, ?GameSystemSnapshot $release = null): Session
     {
+        $underWay = $this->currentSession();
+        if ($underWay instanceof Session) {
+            throw SessionAlreadyUnderWay::numbered($underWay->number());
+        }
+
         if (\count($this->sessions) >= self::MAX_SESSIONS) {
             throw CampaignLimitReached::sessions(self::MAX_SESSIONS);
         }

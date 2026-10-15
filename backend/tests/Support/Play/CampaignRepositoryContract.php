@@ -55,6 +55,7 @@ trait CampaignRepositoryContract
         $campaign->startSession(new \DateTimeImmutable('2026-10-06T10:05:00.123456+02:00'));
         $campaign->startScene('At the gate', new \DateTimeImmutable('2026-10-06T10:06:00+02:00'));
         $campaign->startScene('In the mine', new \DateTimeImmutable('2026-10-06T10:30:00+00:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06T11:00:00+00:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-07T18:00:00-05:00'));
 
         $this->campaigns()->add($campaign);
@@ -360,13 +361,15 @@ trait CampaignRepositoryContract
         $this->campaigns()->add($campaign);
 
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
+        $this->campaigns()->save($campaign);
+        $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 11:05:00'));
         $loaded = $this->campaigns()->ofId($id);
         self::assertNotNull($loaded);
-        $loaded->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
-        $this->campaigns()->ownedBy(self::OWNER)[0]->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
+        $loaded->startScene('Arrival', new \DateTimeImmutable('2026-10-06 11:05:00'));
+        $this->campaigns()->ownedBy(self::OWNER)[0]->startScene('Arrival', new \DateTimeImmutable('2026-10-06 11:05:00'));
         $this->forgetLoaded();
 
-        self::assertNull($this->campaigns()->ofId($id)?->currentSession());
+        self::assertNull($this->campaigns()->ofId($id)?->currentScene());
     }
 
     #[Test]
@@ -381,6 +384,7 @@ trait CampaignRepositoryContract
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
         $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 11:05:00'));
         $this->campaigns()->save($campaign);
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06 11:30:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 12:00:00'));
         $this->forgetLoaded();
 
@@ -463,6 +467,7 @@ trait CampaignRepositoryContract
 
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 11:00:00'));
         $this->campaigns()->save($campaign);
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06 11:30:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 12:00:00'));
         $this->campaigns()->save($campaign);
         $this->forgetLoaded();
@@ -471,6 +476,7 @@ trait CampaignRepositoryContract
         self::assertSame(2, $loaded?->currentSession()?->number());
 
         // A later load is not stale either: it sees the newest save.
+        $loaded->endSession(new \DateTimeImmutable('2026-10-06 12:30:00'));
         $loaded->startSession(new \DateTimeImmutable('2026-10-06 13:00:00'));
         $this->campaigns()->save($loaded);
         $this->forgetLoaded();

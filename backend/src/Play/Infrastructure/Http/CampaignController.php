@@ -35,6 +35,7 @@ use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
+use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -164,7 +165,7 @@ final readonly class CampaignController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign already holds the most sessions it can, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'A session is still under way (end it first), the campaign already holds the most sessions it can, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function startSession(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -172,7 +173,7 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new StartSession($campaignId, $user->id()));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (CampaignLimitReached|CampaignModifiedConcurrently $exception) {
+        } catch (SessionAlreadyUnderWay|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (FlowFormulaFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);

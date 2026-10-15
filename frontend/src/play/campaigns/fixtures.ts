@@ -111,7 +111,7 @@ export const lostMineCampaign: Campaign = {
           characters: [],
         },
       ],
-      endedAt: null,
+      endedAt: '2026-10-05T14:00:00+00:00',
     },
     {
       number: 2,
@@ -180,7 +180,10 @@ export const lostMineCampaign: Campaign = {
 export const lostMineInNewSession: Campaign = {
   ...lostMineCampaign,
   sessions: [
-    ...lostMineCampaign.sessions,
+    ...lostMineCampaign.sessions.map((session) => ({
+      ...session,
+      endedAt: session.endedAt ?? '2026-10-06T14:00:00+00:00',
+    })),
     { number: 3, startedAt: '2026-10-07T12:00:00+00:00', scenes: [], endedAt: null, party: [] },
   ],
   currentSessionNumber: 3,

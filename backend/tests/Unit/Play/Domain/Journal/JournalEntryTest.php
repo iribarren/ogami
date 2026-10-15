@@ -27,6 +27,7 @@ final class JournalEntryTest extends TestCase
         $campaign = $this->campaign();
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 10:00:00'));
         $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 10:05:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06 10:30:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-07 10:00:00'));
         $campaign->startScene('The gate', new \DateTimeImmutable('2026-10-07 10:05:00'));
         $campaign->startScene('The hall', new \DateTimeImmutable('2026-10-07 10:30:00'));
@@ -71,6 +72,7 @@ final class JournalEntryTest extends TestCase
         $campaign = $this->campaign();
         $campaign->startSession(new \DateTimeImmutable('2026-10-06 10:00:00'));
         $campaign->startScene('Arrival', new \DateTimeImmutable('2026-10-06 10:05:00'));
+        $campaign->endSession(new \DateTimeImmutable('2026-10-06 10:30:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-07 10:00:00'));
 
         $this->expectException(NoCurrentScene::class);

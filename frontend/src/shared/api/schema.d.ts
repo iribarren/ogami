@@ -787,6 +787,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my GameSystem drafts */
+        get: operations["listMyGameSystems"];
+        put?: never;
+        /** Create a GameSystem draft, blank or as a copy of a published release */
+        post: operations["createGameSystem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one of my GameSystem drafts */
+        get: operations["getGameSystem"];
+        put?: never;
+        post?: never;
+        /** Delete one of my GameSystem drafts that was never published */
+        delete: operations["discardGameSystem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the name, description, credits and theme of one of my GameSystem drafts */
+        put: operations["editGameSystemMetadata"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check whether one of my GameSystem drafts would be accepted as a release */
+        get: operations["validateGameSystem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2567,6 +2637,160 @@ export interface components {
              * @enum {string}
              */
             database: "ok" | "down";
+        };
+        GameSystemSummaryResponse2: {
+            /** @example my-system */
+            key: string;
+            /** @example My system */
+            name: string;
+            /**
+             * @description The release contract's schema version of the draft.
+             * @example 2
+             */
+            schemaVersion: number;
+            /**
+             * @description The version of its latest release; null when it was never published.
+             * @example 3
+             */
+            latestReleaseVersion: number | null;
+            /** @description True when it has no release, the draft is invalid, or the draft differs from the latest release. */
+            hasUnpublishedChanges: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        GameSystemSourceRequest: {
+            /**
+             * @description The key of any published GameSystem, a preset's included.
+             * @example ironsworn
+             */
+            key: string;
+            /**
+             * @description The release version to copy; absent or null for the latest.
+             * @example 2
+             */
+            version?: number | null;
+        };
+        CreateGameSystemRequest: {
+            /**
+             * @description Names the GameSystem's release line and never changes: lower case letters, digits and hyphens. Not used by another GameSystem or by any release (presets included).
+             * @example my-system
+             */
+            key: string;
+            /**
+             * @description The GameSystem's name, at most 100 characters.
+             * @example My system
+             */
+            name: string;
+            /**
+             * @description On a copy, replaces the source release's description; absent or null keeps it. Blank drafts start without one when it is absent.
+             * @example A game of my own.
+             */
+            description?: string | null;
+            /** @description Copy a published release instead of starting blank; absent or null for a blank draft. */
+            source?: components["schemas"]["GameSystemSourceRequest"] | null;
+        };
+        GameSystemCreditsResponse: {
+            /** @example Unofficial fan content. */
+            notice: string;
+            /** @example CC BY 4.0 */
+            license: string | null;
+            /** @example https://example.com/license */
+            url: string | null;
+        };
+        GameSystemResponse: {
+            /** @example my-system */
+            key: string;
+            /** @example My system */
+            name: string;
+            /** @example A game of my own. */
+            description: string | null;
+            credits: components["schemas"]["GameSystemCreditsResponse"] | null;
+            /**
+             * @description One of the release contract's themes; null for none.
+             * @example noir
+             */
+            theme: string | null;
+            /**
+             * @description The release contract's schema version of the draft; 1 has no credits or theme.
+             * @example 2
+             */
+            schemaVersion: number;
+            /**
+             * @description How many items each section holds, by section name: oracleTables, likelihoodOracles, trackers, factSlots, tags, sceneTypes, flows, sheetFields and checks (schema version 1: oracles and flowSteps).
+             * @example {
+             *       "oracleTables": 2,
+             *       "flows": 1
+             *     }
+             */
+            sectionCounts: {
+                [key: string]: number;
+            };
+            /**
+             * @description The version of its latest release; null when it was never published.
+             * @example 3
+             */
+            latestReleaseVersion: number | null;
+            /** @description True when it has no release, the draft is invalid, or the draft differs from the latest release. */
+            hasUnpublishedChanges: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        GameSystemCreditsRequest: {
+            /**
+             * @description The text Play shows, such as a publisher disclaimer.
+             * @example Unofficial fan content.
+             */
+            notice: string;
+            /**
+             * @description The name of the license or policy.
+             * @example CC BY 4.0
+             */
+            license?: string | null;
+            /**
+             * @description An absolute https:// URL of the license or policy.
+             * @example https://example.com/license
+             */
+            url?: string | null;
+        };
+        EditGameSystemMetadataRequest: {
+            /**
+             * @description The GameSystem's name, at most 100 characters.
+             * @example My system
+             */
+            name: string;
+            /**
+             * @description Absent or null for none.
+             * @example A game of my own.
+             */
+            description?: string | null;
+            /** @description Absent or null for none. Refused (422) on a schema version 1 draft. */
+            credits?: components["schemas"]["GameSystemCreditsRequest"] | null;
+            /**
+             * @description One of the release contract's themes; absent or null for none. Refused (422) on a schema version 1 draft.
+             * @example noir
+             */
+            theme?: string | null;
+        };
+        GameSystemValidationErrorResponse: {
+            /**
+             * @description Starts with the path of the offending part of the draft.
+             * @example oracles: must be an object
+             */
+            message: string;
+        };
+        GameSystemValidationResponse: {
+            valid: boolean;
+            /** @description The first error when the draft is invalid; null when it is valid. */
+            error: components["schemas"]["GameSystemValidationErrorResponse"] | null;
+            /**
+             * @description Authoring warnings, each starting with the path it is about; empty when the draft is invalid.
+             * @example [
+             *       "oracles.tables[0]: has no entries"
+             *     ]
+             */
+            warnings: string[];
         };
     };
     responses: never;
@@ -5973,6 +6197,367 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    listMyGameSystems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signed-in game manager's GameSystems, the most recently updated first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSummaryResponse2"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createGameSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGameSystemRequest"];
+            };
+        };
+        responses: {
+            /** @description The new draft; the Location header is its URL. */
+            201: {
+                headers: {
+                    /** @description The URL of the new GameSystem. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "key" or "name", or a "description", "source" or "source.version" of the wrong type. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another GameSystem or a release (a preset's included) already has the key. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The key, name or description breaks the release contract's rules (the message names the field), or the source release does not exist. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGameSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    discardGameSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft is gone. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The GameSystem has releases, which campaigns may play. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    editGameSystemMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditGameSystemMetadataRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft with its new metadata. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of the wrong type (a "credits" that is not an object or has no string "notice" included). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A field breaks the release contract's rules (the message names it), or credits or a theme are given for a schema version 1 draft; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    validateGameSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The verdict: the first error with its path when invalid, the authoring warnings when valid. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemValidationResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

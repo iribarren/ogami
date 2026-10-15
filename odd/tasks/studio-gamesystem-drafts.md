@@ -74,7 +74,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0028 (Studio GameSystem drafts: owner-only, starting points, file-managed presets, key rule, validation and publish from a draft, release notes, restore) and ADR index row; glossary (GameSystem draft, release notes, restore); context map Studio section; roadmap feature 14 in progress | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain and persistence: `GameSystem` aggregate (create blank / from a release document, edit metadata, restore document), value objects, errors, repository port, Doctrine mapping and migration, in-memory repository for tests; unit tests and an integration round trip of the whole aggregate (incl. the 409 on a concurrent save) | | [ ] | |
+| T2 | 1 | Domain and persistence: `GameSystem` aggregate (create blank / from a release document, edit metadata, restore document), value objects, errors, repository port, Doctrine mapping and migration, in-memory repository for tests; unit tests and an integration round trip of the whole aggregate (incl. the 409 on a concurrent save) | delegated writer (slice 1) | [x] | |
 | T3 | 1 | Application: `CreateGameSystem` (blank or copy of a release, key taken by a GameSystem or any release → refused), `EditGameSystemMetadata`, `DiscardGameSystem` (refused with releases), `ListMyGameSystems`, `GetGameSystem` (with `hasUnpublishedChanges`), `ValidateGameSystemDraft`; owner scoping; handler unit tests; Behat scenarios | | [ ] | |
 | T4 | 2 | HTTP: Studio controller(s) for list, create, get, metadata, discard, validation; `^/api/studio` → `ROLE_GAME_MANAGER`; every domain error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's key (404) and a SOLO_PLAYER (403); `make api` | | [ ] | |
 | T5 | 3 | Publish from a draft through the release publisher: `PublishGameSystemDraft` (invalid 422, no changes 409, version race 409), release notes column (migration, nullable), console publish refuses a Studio-owned key; history queries `ListGameSystemReleases`, `GetGameSystemRelease`; `RestoreGameSystemRelease`; unit and Behat | | [ ] | |
@@ -89,6 +89,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-15: Exploration done (release publisher and validator, release table, Studio read side and Play ACL, Play HTTP/persistence/frontend patterns, role guards, Studio Behat context). Three decisions taken with the user (owner-only drafts, blank or copy, presets stay file-managed). Issue #131.
 - 2026-10-15: T1 docs written (ADR 0028, index, glossary, context map, roadmap). Doc-only: no tests, structural readback only.
+- 2026-10-15: T2 domain and persistence. RED/GREEN: unit and integration tests were written after the code in one pass, so no RED was observed first; they pass (22 unit, 10 integration). Notes: JSONB reorders object keys, so the round trip compares the aggregate and the canonical content hash.
 
 ## Reviews
 

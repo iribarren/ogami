@@ -18,8 +18,10 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 
 | Term | Definition | Context |
 |---|---|---|
-| GameSystem | A TTRPG system as authored in Studio: its sheet templates, checks, narrative flow and oracles. Mutable draft | Studio |
+| GameSystem | A TTRPG system as authored in Studio: its sheet templates, checks, narrative flow and oracles. Mutable draft, owned by the `GAME_MANAGER` who created it and visible only to them ([ADR 0028](../adr/0028-studio-gamesystem-drafts.md)). Its key is fixed at creation | Studio |
 | GameSystem release | An immutable, versioned snapshot of a GameSystem, published by a game manager. The only form Play consumes. Its release version counts up per GameSystem key (1, 2, …) | Studio (published), Play (snapshot) |
+| Release notes | Optional text (up to 2,000 characters) a game manager writes when publishing a draft. Stored on the release row, outside the Published Language and its content hash ([ADR 0028](../adr/0028-studio-gamesystem-drafts.md)) | Studio |
+| Restore | Replaces a draft's content with a published release of the same GameSystem. The key and owner stay ([ADR 0028](../adr/0028-studio-gamesystem-drafts.md)) | Studio |
 | SheetTemplate | The definition of a character sheet for a GameSystem: its fields, grouped for layout, and derived values ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)) | Studio |
 | Field | One input on a sheet template. Types: `number` (bounded integer), `text`, `list` (strings, e.g. inventory or cyberware) and `track` (a resource track) | Studio |
 | Resource track | A `track` field's value `{current, max}`, e.g. hit points; it starts full | Studio (defined), Play (held) |

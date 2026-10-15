@@ -31,6 +31,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0025 | [Items and shops after the MVP](0025-items-and-shops-after-the-mvp.md) | Accepted |
 | 0026 | [Prompt inspiration tables and phase descriptions](0026-prompt-inspiration-and-phase-descriptions.md) | Accepted |
 | 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted |
+| 0028 | [Studio GameSystem drafts](0028-studio-gamesystem-drafts.md) | Accepted |
 
 ## Template
 

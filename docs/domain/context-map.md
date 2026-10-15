@@ -84,6 +84,7 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 | Aggregates / concepts | GameSystem, GameSystem release, SheetTemplate, Field, DerivedValue, Check, Outcome band, NarrativeFlow, Phase (with hooks and an act label), Scene Type, Flow step, Effect, Tracker, Fact slot, Tag, Oracle definition, Library (M4) |
 | Depends on | Randomness (validate dice expressions and oracle tables), Identity & Access |
 | Roles | `GAME_MANAGER` |
+| Drafts | A GameSystem draft is owner-only: another user gets "not found", and Play never reads drafts, only published releases through its ACL ([ADR 0028](../adr/0028-studio-gamesystem-drafts.md)). The owner is kept as an Identity user id, not an import |
 | Note | Studio is a first-class product surface with rich editors, not an admin panel |
 
 ### Randomness (shared kernel)

@@ -51,7 +51,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 | 11 | `rules-derived-values` | M3 | 10 | Where formula evaluation lives |
 | 12 | `play-checks` | M3 | 11 | How far checks go before scripting |
 | 13 | `preset-real-system` | M3 | 12 | Items, inventory and a `shop` step kind: moved post-M3 to `play-items-economy` ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). MVP complete |
-| 14 | `studio-gamesystem-drafts` | M4 | 4 | — |
+| 14 | `studio-gamesystem-drafts` (in progress) | M4 | 4 | — |
 | 15 | `studio-oracle-editor` | M4 | 14 | — |
 | 18 | `studio-flow-editor` | M4 | 15, 9b | — |
 | 16 | `studio-sheet-builder` | M4 | 14, 11 | — |

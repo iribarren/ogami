@@ -650,6 +650,13 @@ describe('the guided panel', () => {
                 sceneTypeName: 'Tour',
                 title: 'Went Go right',
               },
+              {
+                ...scene,
+                number: 3,
+                sceneType: 'tour',
+                sceneTypeName: 'Tour',
+                title: 'Tour 2',
+              },
             ],
           },
         ],
@@ -666,5 +673,7 @@ describe('the guided panel', () => {
       name: 'Scene 2 · Tour — Went Go right',
     })
     expect(within(sceneRegion).getByText('Flow step · Which way?')).toBeInTheDocument()
+    // A title that only repeats the Scene Type (its default, numbered) is not shown twice.
+    expect(within(journal).getByRole('region', { name: 'Scene 3 · Tour' })).toBeInTheDocument()
   })
 })

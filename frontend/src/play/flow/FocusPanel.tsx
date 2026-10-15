@@ -73,6 +73,7 @@ function CurrentCast({ campaign }: { campaign: Campaign }) {
       sessionNumber={sessionNumber}
       scene={scene}
       editable
+      sheet={campaign.pinnedRelease.sheet}
     />
   )
 }

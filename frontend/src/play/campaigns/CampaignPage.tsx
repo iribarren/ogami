@@ -144,23 +144,52 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             <CampaignDice campaignId={campaign.id} disabled={!hasScene} />
           </PlayPanel>
           {trackers.length > 0 && (
-            <PlayPanel id="trackers" title="Trackers" count={trackers.length}>
+            <PlayPanel
+              id="trackers"
+              title="Trackers"
+              count={trackers.length}
+              help="Counters and clocks the flow reads to decide what happens next."
+            >
               <TrackersPanel campaign={campaign} />
             </PlayPanel>
           )}
-          <PlayPanel id="facts" title="Facts" count={campaign.facts.length}>
+          <PlayPanel
+            id="facts"
+            title="Facts"
+            count={campaign.facts.length}
+            help="What the story has settled. The flow asks for some; refill one when play changes it."
+          >
             <FactsPanel campaign={campaign} />
           </PlayPanel>
-          <PlayPanel id="threads" title="Threads" count={campaign.threads.length}>
+          <PlayPanel
+            id="threads"
+            title="Threads"
+            count={campaign.threads.length}
+            help="The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled."
+          >
             <ListPanel campaign={campaign} kind="thread" />
           </PlayPanel>
-          <PlayPanel id="npcs" title="NPCs" count={campaign.npcs.length}>
+          <PlayPanel
+            id="npcs"
+            title="NPCs"
+            count={campaign.npcs.length}
+            help="The people met in play. Add them as they appear; the flow adds some too."
+          >
             <ListPanel campaign={campaign} kind="npc" />
           </PlayPanel>
-          <PlayPanel id="characters" title="Characters" count={campaign.characters.length}>
+          <PlayPanel
+            id="characters"
+            title="Characters"
+            count={campaign.characters.length}
+            help="Your characters and their sheets. Open one to read or edit it."
+          >
             <CharactersPanel campaign={campaign} />
           </PlayPanel>
-          <PlayPanel id="oracles" title="Oracles">
+          <PlayPanel
+            id="oracles"
+            title="Oracles"
+            help="Ask a yes/no question or roll a table when you need ideas. The result is yours to interpret."
+          >
             <OraclePanel
               campaignId={campaign.id}
               tables={campaign.oracleTables}

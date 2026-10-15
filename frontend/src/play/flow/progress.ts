@@ -23,14 +23,28 @@ const hooks = new Set<string | null>([
   'worldTurn',
 ])
 
-/** "Act 1 › The start › Tour › Setup · step 1 of 3", whatever the Flow tells. */
+/** A name as compared for repeats: case and a leading "The" do not count. */
+const sameName = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/^the\s+/, '')
+
+/**
+ * "Act 1 › The start › Tour › Setup · step 1 of 3", whatever the Flow tells. A name the Flow
+ * repeats ("The letter › The letter") is shown once.
+ */
 export function progressText(progress: NonNullable<FlowRun['progress']>) {
   const place = [
     progress.act,
     progress.phase,
     progress.sceneType,
     progress.part === null ? null : partLabels[progress.part],
-  ].filter((part) => part !== null)
+  ]
+    .filter((part) => part !== null)
+    .filter(
+      (part, index, parts) => index === 0 || sameName(part) !== sameName(parts[index - 1] ?? ''),
+    )
   const step =
     progress.stepNumber === null || progress.stepCount === null
       ? ''

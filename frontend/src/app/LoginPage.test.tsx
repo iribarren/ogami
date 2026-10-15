@@ -33,6 +33,7 @@ describe('LoginPage', () => {
   it('signs in and returns to the page the visitor asked for', async () => {
     const { router } = renderAppAt('/studio', {
       'POST /api/auth/login': loginAs('GAME_MANAGER'),
+      'GET /api/studio/game-systems': () => Response.json([]),
     })
 
     await signIn()

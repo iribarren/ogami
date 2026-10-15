@@ -8,6 +8,9 @@ const areaRequests: Record<string, Record<string, FakeHandler>> = {
     'GET /api/campaigns': () => Response.json([]),
     'GET /api/play/game-systems': () => Response.json([]),
   },
+  '/studio': {
+    'GET /api/studio/game-systems': () => Response.json([]),
+  },
 }
 
 describe('role-guarded areas', () => {

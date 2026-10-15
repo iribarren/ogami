@@ -109,6 +109,15 @@ final class StepParts
      */
     public static function effectTrackers(array $effect, string $path): iterable
     {
+        if ('sheet' === ($effect['kind'] ?? null)) {
+            // A sheet effect reads trackers through a formula value only (an integer or a dice value reads none).
+            if (\is_array($effect['value'] ?? null) && \array_key_exists('formula', $effect['value'])) {
+                yield from self::referencedTrackers($effect['value'], $path.'.value');
+            }
+
+            return;
+        }
+
         if ('tracker' !== ($effect['kind'] ?? null)) {
             return;
         }

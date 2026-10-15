@@ -173,12 +173,21 @@
       "maxLength": 200
     },
     "formulaRef": {
-      "description": "A formula over trackers: {tracker:key} references only.",
+      "description": "A formula. Its scope depends on where it sits: a flow formula reads trackers only, a sheet effect value reads the sheet.",
       "type": "object",
       "required": ["formula"],
       "additionalProperties": false,
       "properties": {
         "formula": { "$ref": "#/$defs/formulaText" }
+      }
+    },
+    "diceRef": {
+      "description": "A dice expression of the Randomness kernel, rolled when the effect is applied.",
+      "type": "object",
+      "required": ["dice"],
+      "additionalProperties": false,
+      "properties": {
+        "dice": { "type": "string", "minLength": 1, "maxLength": 100 }
       }
     },
     "tag": {
@@ -1007,6 +1016,24 @@
             "kind": { "const": "fillFact" },
             "slot": { "$ref": "#/$defs/key" },
             "text": { "type": ["string", "null"], "minLength": 1, "maxLength": 2000 }
+          }
+        },
+        {
+          "description": "Changes a number or track field of a Character. Allowed only in a check step's outcomes and a character step's effects; the validator checks the placement, the field type and the formula scope.",
+          "type": "object",
+          "required": ["kind", "field", "op", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "sheet" },
+            "field": { "$ref": "#/$defs/key" },
+            "op": { "enum": ["add", "subtract", "set"] },
+            "value": {
+              "anyOf": [
+                { "type": "integer", "minimum": -1000, "maximum": 1000 },
+                { "$ref": "#/$defs/formulaRef" },
+                { "$ref": "#/$defs/diceRef" }
+              ]
+            }
           }
         }
       ]

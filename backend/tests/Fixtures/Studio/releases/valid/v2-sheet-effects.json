@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "sheet-effects", "name": "Sheet effects", "description": "Sheet effects on a check outcome and on a character step, the way the contract shows them."},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [
+    {"key": "dread", "name": "Dread", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "setup", "name": "Setup", "purpose": "Make your investigator.", "oracles": [],
+      "setup": [
+        {
+          "key": "you", "kind": "character", "title": "Who are you?", "mandatory": true,
+          "effects": [{"kind": "sheet", "field": "sanity", "op": "set", "value": {"formula": "{pow}"}}]
+        }
+      ],
+      "play": [
+        {
+          "key": "shock", "kind": "check", "title": "Does the sight break you?", "check": "sanity",
+          "outcomes": [
+            {
+              "band": "fail",
+              "effects": [
+                {"kind": "sheet", "field": "sanity", "op": "subtract", "value": {"dice": "1d6"}},
+                {"kind": "sheet", "field": "hp", "op": "subtract", "value": 1},
+                {"kind": "sheet", "field": "pow", "op": "add", "value": {"formula": "{bonus} - {tracker:dread}"}}
+              ]
+            },
+            {"band": "pass", "effects": [{"kind": "sheet", "field": "sanity", "op": "subtract", "value": 1}]}
+          ]
+        }
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "pow", "label": "Power", "type": "number", "min": 1, "max": 99, "default": 50},
+      {"key": "hp", "label": "Hit points", "type": "track", "max": 12},
+      {"key": "sanity", "label": "Sanity", "type": "track", "max": 99},
+      {"key": "bonus", "label": "Bonus", "type": "derived", "formula": "{pow}/10"}
+    ]
+  },
+  "checks": [
+    {
+      "key": "sanity", "label": "Sanity check", "dice": "d%", "modifier": null,
+      "bands": [
+        {"key": "pass", "label": "Pass", "upTo": {"formula": "{sanity}"}},
+        {"key": "fail", "label": "Fail"}
+      ]
+    }
+  ]
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Studio\Domain\Release\Version2;
 
+use App\Formula\Domain\Formula;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseFields;
 
@@ -35,14 +36,20 @@ final class Effects
         'createThread' => ['kind' => true, 'name' => false, 'tags' => false],
         'closeThread' => ['kind' => true],
         'fillFact' => ['kind' => true, 'slot' => true, 'text' => false],
+        'sheet' => ['kind' => true, 'field' => true, 'op' => true, 'value' => true],
     ];
 
     private const array TRACKER_REF = ['tracker' => true];
 
+    /** The sheet field types a sheet effect may change. */
+    private const array CHANGEABLE_FIELDS = ['number', 'track'];
+
     /**
+     * @param bool $sheet whether the list sits where a Character is known (a check outcome, a character step) and may hold sheet effects
+     *
      * @return list<array<string, mixed>> canonical effects; empty when absent
      */
-    public static function list(mixed $value, string $path, Catalog $catalog): array
+    public static function list(mixed $value, string $path, Catalog $catalog, bool $sheet = false): array
     {
         if (null === $value) {
             return [];
@@ -50,7 +57,7 @@ final class Effects
 
         $effects = [];
         foreach (ReleaseFields::sizedList($value, $path, 0, self::MAX_EFFECTS, 'effects') as $index => $effect) {
-            $effects[] = self::effect($effect, \sprintf('%s[%d]', $path, $index), $catalog);
+            $effects[] = self::effect($effect, \sprintf('%s[%d]', $path, $index), $catalog, $sheet);
         }
 
         return $effects;
@@ -130,7 +137,7 @@ final class Effects
     /**
      * @return array<string, mixed>
      */
-    private static function effect(mixed $value, string $path, Catalog $catalog): array
+    private static function effect(mixed $value, string $path, Catalog $catalog, bool $sheet): array
     {
         $kind = ReleaseFields::tag($value, $path, 'kind', array_keys(self::KINDS));
         $effect = ReleaseFields::object($value, $path, self::KINDS[$kind]);
@@ -179,10 +186,62 @@ final class Effects
                 }
 
                 break;
+            case 'sheet':
+                if (!$sheet) {
+                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step');
+                }
+
+                $effect['field'] = self::sheetField($effect['field'], $path.'.field', $catalog);
+                ReleaseFields::oneOf($effect['op'], $path.'.op', ['add', 'subtract', 'set']);
+                $effect['value'] = self::sheetValue($effect['value'], $path.'.value', $catalog);
+                break;
         }
 
         // An empty "tags" list means the same as absent.
         return array_filter($effect, static fn (mixed $field): bool => [] !== $field);
+    }
+
+    /**
+     * The key of a number or track field of the sheet.
+     */
+    private static function sheetField(mixed $value, string $path, Catalog $catalog): string
+    {
+        $key = ReleaseFields::key($value, $path);
+        $type = $catalog->fieldType($key) ?? throw InvalidReleaseContent::at($path, \sprintf('unknown sheet field "%s"', $key));
+        if (!\in_array($type, self::CHANGEABLE_FIELDS, true)) {
+            throw InvalidReleaseContent::at($path, \sprintf('field "%s" is a %s field, a sheet effect changes number and track fields only', $key, $type));
+        }
+
+        return $key;
+    }
+
+    /**
+     * The value of a sheet effect: an integer, a {formula} over the sheet or a {dice} expression.
+     *
+     * @return int|array{formula: string}|array{dice: string}
+     */
+    private static function sheetValue(mixed $value, string $path, Catalog $catalog): int|array
+    {
+        if (\is_int($value)) {
+            return ReleaseFields::integer($value, $path, -self::MAX_VALUE, self::MAX_VALUE);
+        }
+
+        if (!\is_array($value) || [] === $value || array_is_list($value)) {
+            throw InvalidReleaseContent::at($path, 'must be an integer, {formula: string} or {dice: string}');
+        }
+
+        if (\array_key_exists('formula', $value)) {
+            $ref = ReleaseFields::object($value, $path, ['formula' => true]);
+            $formulaPath = $path.'.formula';
+            $text = ReleaseFields::text($ref['formula'], $formulaPath, 1, Formula::MAX_LENGTH);
+            Formulas::check($text, $formulaPath, $catalog->fieldTypes, array_keys($catalog->trackers), null);
+
+            return ['formula' => $text];
+        }
+
+        $ref = ReleaseFields::object($value, $path, ['dice' => true]);
+
+        return ['dice' => Steps::dice($ref['dice'], $path.'.dice')];
     }
 
     /**

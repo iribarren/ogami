@@ -137,10 +137,10 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('read', $this->checked($campaign, 'read', 'psychology', $reading), $this->release, self::at());
 
         if ('learn' === $step) {
-            self::assertSame('learn', self::position($campaign)[1]);
+            self::assertSame(['play', 'learn'], self::position($campaign));
         } else {
-            // "end" leaves the play steps: the Scene waits to be ended and no clue was won.
-            self::assertNotSame('learn', self::position($campaign)[1]);
+            // "end" leaves the play steps: the Scene is open, waiting to be ended, and no clue was won.
+            self::assertSame(['open', null], self::position($campaign));
         }
         self::assertSame($clues, $campaign->trackerValue($this->tracker('clues')));
     }
@@ -160,9 +160,24 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('find', $this->rolled('clues', 1), $this->release, self::at());
         $campaign->completeFlowStep('reveal', $this->rolled('horrors', 1), $this->release, self::at());
 
-        // Sanity 99: a 99 still passes, and a failed Sanity check raises the dread.
+        // Sanity 99: a 99 still passes, and a fumble raises the dread by 2.
         $campaign->completeFlowStep('shock', $this->checked($campaign, 'shock', 'sanity', 100), $this->release, self::at());
         self::assertSame(2, $campaign->trackerValue($this->tracker('dread')));
+    }
+
+    #[Test]
+    public function aShakenInvestigatorFailingTheSanityCheckRaisesTheDreadByOne(): void
+    {
+        $campaign = $this->inTheSite();
+        $campaign->completeFlowStep('spot', $this->checked($campaign, 'spot', 'spot-hidden', 25), $this->release, self::at());
+        $campaign->completeFlowStep('find', $this->rolled('clues', 1), $this->release, self::at());
+        $campaign->completeFlowStep('reveal', $this->rolled('horrors', 1), $this->release, self::at());
+        $dread = $campaign->trackerValue($this->tracker('dread'));
+
+        // At Sanity 40 a 55 is a plain failure (above 40, under the fumble line): the dread rises by 1, not 2.
+        $campaign->completeFlowStep('shock', $this->checkedWith($campaign, 'shock', 'sanity', 55, ['sanity' => ['current' => 40, 'max' => 99]]), $this->release, self::at());
+
+        self::assertSame($dread + 1, $campaign->trackerValue($this->tracker('dread')));
     }
 
     #[Test]
@@ -296,6 +311,20 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->flowCheckDifficulty($stepKey, 'inv', null, $this->release, self::at());
         $investigator = $campaign->character(CharacterId::fromString('inv')) ?? self::fail('No investigator.');
         $values = SheetValues::of($this->release->sheet(), $investigator->values(), $campaign->trackerValuesOf($this->release));
+
+        return StepResult::check('inv', ($this->release->check($check) ?? self::fail('No check.'))->perform(new ScriptedRandomNumberGenerator($die), $values, null, 0));
+    }
+
+    /**
+     * Like checked(), but the investigator's sheet is overridden: a track's current value, for instance.
+     *
+     * @param array<string, mixed> $overrides
+     */
+    private function checkedWith(Campaign $campaign, string $stepKey, string $check, int $die, array $overrides): StepResult
+    {
+        $campaign->flowCheckDifficulty($stepKey, 'inv', null, $this->release, self::at());
+        $investigator = $campaign->character(CharacterId::fromString('inv')) ?? self::fail('No investigator.');
+        $values = SheetValues::of($this->release->sheet(), [...$investigator->values(), ...$overrides], $campaign->trackerValuesOf($this->release));
 
         return StepResult::check('inv', ($this->release->check($check) ?? self::fail('No check.'))->perform(new ScriptedRandomNumberGenerator($die), $values, null, 0));
     }

@@ -40,6 +40,7 @@ use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
 use App\Play\Domain\GameSystem\Flow\SelectionRule;
+use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\Step;
 use App\Play\Domain\GameSystem\Flow\StepEffects;
 use App\Play\Domain\GameSystem\Flow\StepList;
@@ -238,11 +239,16 @@ final class FlowRun
     /**
      * Completes the current step with a result of its kind, records its answer text and advances.
      *
+     * @return list<SheetChange> what its sheet Effects changed, in apply order
+     *
      * @throws FlowRunNotActive        when the Flow is complete
      * @throws FlowRunPositionMismatch when the current step is not this one
      * @throws InvalidStepResult       when the result does not complete the step
+     * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated
+     *
+     * @phpstan-impure
      */
-    public function completeStep(string $stepKey, StepResult $result, FlowRunContext $context): void
+    public function completeStep(string $stepKey, StepResult $result, FlowRunContext $context): array
     {
         $step = $this->expectStep($stepKey, $context);
         $kind = StepKind::of($step);
@@ -318,7 +324,8 @@ final class FlowRun
             }
         }
 
-        $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context);
+        // A character step's Character and a check step's checked Character are the ones sheet Effects change.
+        return $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context, $result->characterId);
     }
 
     /**
@@ -989,12 +996,22 @@ final class FlowRun
      * one switched the scene (the step's target is not followed), else as advance() does.
      *
      * @param list<Effect> $effects
-     * @param ?string      $answer  the step's answer text, which "{answer}" stands for
+     * @param ?string      $answer      the step's answer text, which "{answer}" stands for
+     * @param ?string      $characterId the Character sheet Effects change; only a character or check step names one
+     *
+     * @return list<SheetChange> what the sheet Effects changed, in apply order
      */
-    private function finish(Step $step, ?Outcome $outcome, array $effects, ?string $answer, FlowRunContext $context): void
+    private function finish(Step $step, ?Outcome $outcome, array $effects, ?string $answer, FlowRunContext $context, ?string $characterId = null): array
     {
         $switched = false;
+        $changes = [];
         foreach ($effects as $effect) {
+            if ($effect instanceof SheetEffect) {
+                // The translator keeps sheet Effects where a Character is known.
+                $changes[] = $context->applySheetEffect($effect, $characterId ?? throw new \LogicException(\sprintf('Step "%s" changes the sheet without a Character.', $step->key)));
+                continue;
+            }
+
             $switched = $this->apply($effect, $answer, $context) || $switched;
         }
 
@@ -1003,6 +1020,8 @@ final class FlowRun
         } else {
             $this->advance($step, $outcome, $context);
         }
+
+        return $changes;
     }
 
     /**

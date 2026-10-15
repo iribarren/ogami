@@ -8,6 +8,8 @@ use App\Formula\Domain\Formula;
 use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Characters\CharacterValues;
+use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
@@ -22,15 +24,21 @@ use App\Play\Domain\GameSystem\Flow\ItemCount;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PickStep;
+use App\Play\Domain\GameSystem\Flow\SheetEffect;
+use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tracker;
+use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
  * What a FlowRun command works with, handed over by its Campaign: the pinned release, the Flow
- * played, the command's time, the campaign's sessions and scenes, and its Tracker values, which
- * Effects change.
+ * played, the command's time, the campaign's sessions and scenes, its Tracker values and its
+ * Characters' sheets, which Effects change, and the random source sheet Effects roll their dice with.
  */
 final readonly class FlowRunContext
 {
@@ -39,6 +47,7 @@ final readonly class FlowRunContext
         public GameSystemSnapshot $release,
         public Flow $flow,
         public \DateTimeImmutable $at,
+        private ?RandomNumberGenerator $random = null,
     ) {
     }
 
@@ -245,6 +254,53 @@ final readonly class FlowRunContext
     public function applyTrackerEffect(TrackerEffect $effect): void
     {
         $this->campaign->applyTrackerChange($this->tracker($effect->tracker), $effect->op, $this->evaluate($effect->value));
+    }
+
+    /**
+     * Applies a sheet Effect to a Character (ADR 0027): adds, subtracts or sets a literal, a formula
+     * over the Character's sheet as it is now or a dice roll, clamped to the field (a track's current
+     * value to 0..its max, a number to its min and max, else the contract's limit).
+     *
+     * @throws FlowFormulaFailed when the value's formula divides by zero, overflows or reads a value the sheet lacks
+     */
+    public function applySheetEffect(SheetEffect $effect, string $characterId): SheetChange
+    {
+        $id = CharacterId::fromString($characterId);
+        $character = $this->campaign->character($id) ?? throw new \LogicException(\sprintf('The campaign has no Character "%s".', $characterId));
+        $field = $this->release->sheet()->field($effect->field);
+        if (!$field instanceof NumberField && !$field instanceof TrackField) {
+            throw new \LogicException(\sprintf('The pinned release has no number or track field "%s".', $effect->field));
+        }
+
+        $dice = null;
+        $value = $effect->value;
+        if ($value instanceof DiceExpression) {
+            $dice = $value->roll($this->random ?? throw new \LogicException('A sheet Effect rolls dice without a random source.'));
+            $value = $dice->total();
+        } elseif ($value instanceof Formula) {
+            try {
+                $value = $value->evaluate(SheetValues::of($this->release->sheet(), $character->values(), $this->trackerValues()));
+            } catch (FormulaEvaluationFailed $failure) {
+                throw FlowFormulaFailed::of($value, $failure);
+            }
+        }
+
+        $stored = $character->values()[$field->key] ?? CharacterValues::initial($field);
+        $track = \is_array($stored) && \is_int($stored['current'] ?? null) && \is_int($stored['max'] ?? null) ? ['current' => $stored['current'], 'max' => $stored['max']] : null;
+        $before = $track['current'] ?? (\is_int($stored) ? $stored : 0);
+        $changed = match ($effect->op) {
+            SheetOperation::Add => $before + $value,
+            SheetOperation::Subtract => $before - $value,
+            SheetOperation::Set => $value,
+        };
+        // A sum past the integers is a float; clamping brings it back within the bounds.
+        [$min, $max] = $field instanceof TrackField
+            ? [0, $track['max'] ?? 0]
+            : [$field->min ?? -NumberField::LIMIT, $field->max ?? NumberField::LIMIT];
+        $after = max($min, min($max, $changed));
+        $this->campaign->changeCharacterValue($id, $field->key, $field instanceof TrackField ? ['current' => $after, 'max' => $max] : $after);
+
+        return new SheetChange($field->key, $before, $after, $dice?->expression()->notation(), $dice?->total());
     }
 
     /**

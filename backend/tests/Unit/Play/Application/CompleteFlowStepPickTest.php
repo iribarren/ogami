@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\ReleaseViews;
+use App\Tests\Support\Play\SequentialJournalEntryIdGenerator;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -134,6 +135,6 @@ final class CompleteFlowStepPickTest extends FlowRunHandlerTestCase
 
     private function complete(CompleteFlowStep $command, int ...$rolls): void
     {
-        new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(...$rolls), $this->clock)($command);
+        new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(...$rolls), $this->clock, new SequentialJournalEntryIdGenerator())($command);
     }
 }

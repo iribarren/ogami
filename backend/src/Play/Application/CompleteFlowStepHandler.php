@@ -18,6 +18,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowStepView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\PickDraw;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
+use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
@@ -47,6 +48,7 @@ use App\Play\Domain\Journal\ChoiceContent;
 use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
+use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryContent;
 use App\Play\Domain\Journal\LikelihoodContent;
@@ -54,6 +56,7 @@ use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\PickContent;
 use App\Play\Domain\Journal\RollContent;
+use App\Play\Domain\Journal\SheetChangeContent;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
@@ -67,6 +70,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private RandomNumberGenerator $random,
         private Clock $clock,
+        private JournalEntryIdGenerator $entryIds,
     ) {
     }
 
@@ -74,13 +78,14 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * The entry names the step with its title and prompt as the player saw them (placeholders
      * rendered). It is built before the step completes, so it belongs to the scene the step was in even
      * when completing the step starts the next scene, and it is only added once the FlowRun accepts
-     * the result: a refused step records nothing and leaves the campaign as it was.
+     * the result: a refused step records nothing and leaves the campaign as it was. When the step's
+     * sheet Effects changed its Character, a second entry records the changes right after it.
      *
      * @throws CampaignNotFound
      * @throws FlowRunNotActive                when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
      * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate, the Character is unknown or (check step) not in the scene, or a difficulty is sent for a step that fixes one
-     * @throws FlowFormulaFailed               when a check step's difficulty formula divides by zero or overflows
+     * @throws FlowFormulaFailed               when a check step's difficulty formula, or an Effect's formula, cannot be evaluated
      * @throws CheckDifficultyNotDeclared      when a difficulty is sent for a check that declares none
      * @throws CheckDifficultyOutOfRange       when the difficulty is outside the min..max of the check
      * @throws SituationalModifierOutOfRange   when the Situational modifier is outside -100..100
@@ -114,12 +119,27 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $at = $this->clock->now();
         [$result, $content] = $this->resultOf($command, $step, $campaign, $release, $at);
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
-        $campaign->completeFlowStep($step->key, $result, $release, $at);
+        $changes = $campaign->completeFlowStep($step->key, $result, $release, $at, $this->random);
+        $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($result, $campaign, $changes));
         // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent
-        // save would surface there as a raw lock error instead of CampaignModifiedConcurrently. Both
-        // writes belong to the command bus transaction, so either both persist or neither does.
+        // save would surface there as a raw lock error instead of CampaignModifiedConcurrently. Every
+        // write belongs to the command bus transaction, so either all persist or none does.
         $this->campaigns->save($campaign);
         $this->journal->add($entry);
+        if ($sheetEntry instanceof JournalEntry) {
+            $this->journal->add($sheetEntry);
+        }
+    }
+
+    /**
+     * @param non-empty-list<SheetChange> $changes
+     */
+    private function sheetChangeContent(StepResult $result, Campaign $campaign, array $changes): SheetChangeContent
+    {
+        // Only a character or check step changes the sheet, and both name their Character.
+        $id = $result->characterId ?? throw new \LogicException('A sheet change without a Character.');
+
+        return SheetChangeContent::of($id, $campaign->itemNames(ItemKind::Character, [$id])[0] ?? '', array_map(static fn (SheetChange $change): array => $change->toArray(), $changes));
     }
 
     /**

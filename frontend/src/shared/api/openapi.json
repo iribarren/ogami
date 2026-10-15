@@ -2696,7 +2696,7 @@
                         }
                     },
                     "422": {
-                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker Effect value or a step's difficulty divides by zero or overflows; nothing changed.",
+                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7045,6 +7045,93 @@
                 },
                 "type": "object"
             },
+            "SheetChangeDiceResponse": {
+                "required": [
+                    "expression",
+                    "total"
+                ],
+                "properties": {
+                    "expression": {
+                        "description": "The normalized notation of the dice rolled.",
+                        "type": "string",
+                        "example": "1d6"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 4
+                    }
+                },
+                "type": "object"
+            },
+            "SheetChangeResponse": {
+                "required": [
+                    "field",
+                    "before",
+                    "after",
+                    "dice"
+                ],
+                "properties": {
+                    "field": {
+                        "description": "The key of the sheet field: a number field, or a track field whose current value changed.",
+                        "type": "string",
+                        "example": "sanity"
+                    },
+                    "before": {
+                        "description": "The value before the effect.",
+                        "type": "integer",
+                        "example": 65
+                    },
+                    "after": {
+                        "description": "The value after the effect, clamped to the field.",
+                        "type": "integer",
+                        "example": 61
+                    },
+                    "dice": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SheetChangeDiceResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The dice the effect rolled; null when its value rolled none."
+                    }
+                },
+                "type": "object"
+            },
+            "SheetChangeContentResponse": {
+                "required": [
+                    "kind",
+                    "characterId",
+                    "characterName",
+                    "changes"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "sheet-change"
+                        ]
+                    },
+                    "characterId": {
+                        "description": "The Character whose sheet changed.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "characterName": {
+                        "description": "The name of the Character when the step completed.",
+                        "type": "string",
+                        "example": "Vi"
+                    },
+                    "changes": {
+                        "description": "Every change, in the order the effects applied; at least one.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetChangeResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "JournalFlowStepResponse": {
                 "required": [
                     "key",
@@ -7106,7 +7193,8 @@
                             "likelihood",
                             "choice",
                             "pick",
-                            "check"
+                            "check",
+                            "sheet-change"
                         ]
                     },
                     "content": {
@@ -7119,7 +7207,8 @@
                                 "likelihood": "#/components/schemas/LikelihoodContentResponse",
                                 "choice": "#/components/schemas/ChoiceContentResponse",
                                 "pick": "#/components/schemas/PickContentResponse",
-                                "check": "#/components/schemas/CheckContentResponse"
+                                "check": "#/components/schemas/CheckContentResponse",
+                                "sheet-change": "#/components/schemas/SheetChangeContentResponse"
                             }
                         },
                         "oneOf": [
@@ -7143,6 +7232,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/CheckContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/SheetChangeContentResponse"
                             }
                         ]
                     },

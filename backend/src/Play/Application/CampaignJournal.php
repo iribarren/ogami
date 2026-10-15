@@ -75,6 +75,22 @@ final readonly class CampaignJournal
         return JournalEntry::record($id, $campaign, $content, $recordedAt, $flowStep);
     }
 
+    /**
+     * Builds the entry recorded right after another, in its session and scene (JournalEntry::followedBy()).
+     *
+     * @throws InvalidJournalEntryId
+     * @throws JournalEntryAlreadyExists when the entry id is already taken (checked here, whatever the repository does)
+     */
+    public function following(JournalEntry $entry, string $entryId, JournalEntryContent $content): JournalEntry
+    {
+        $id = JournalEntryId::fromString($entryId);
+        if ($this->entries->ofId($id) instanceof JournalEntry) {
+            throw JournalEntryAlreadyExists::withId($id);
+        }
+
+        return $entry->followedBy($id, $content);
+    }
+
     public function add(JournalEntry $entry): void
     {
         $this->entries->add($entry);

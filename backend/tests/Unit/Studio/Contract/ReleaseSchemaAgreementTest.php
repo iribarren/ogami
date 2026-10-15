@@ -270,6 +270,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-sheet-effect-in-roll-band' => 'sceneTypes[0].play[0].bands[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
         'generated: v2-sheet-effect-in-choice-option' => 'sceneTypes[0].play[0].options[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
         'generated: v2-sheet-effect-in-table-entry' => 'oracles.tables[0].entries[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-pick-branch' => 'sceneTypes[0].play[0].branches.found.effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-table-otherwise' => 'sceneTypes[0].play[0].otherwise.effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-condition-band' => 'sceneTypes[0].play[0].bands[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
+        'generated: v2-sheet-effect-in-scene-type-setup' => 'sceneTypes[0].setup[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step',
         'generated: v2-sheet-effect-bad-dice' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.dice: invalid dice notation: ',
         'generated: v2-sheet-effect-formula-syntax' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: ',
         'generated: v2-sheet-effect-formula-unknown-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {nope}: unknown field "nope"',
@@ -653,7 +657,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         $effect = static fn (array $override = []): array => array_filter(['kind' => 'sheet', 'field' => 'sanity', 'op' => 'subtract', 'value' => 1, ...$override], static fn (mixed $property): bool => null !== $property);
         $check = ['key' => 'sanity', 'label' => 'Sanity check', 'dice' => 'd%', 'bands' => [['key' => 'fail', 'label' => 'Fail']]];
         $stepOf = static fn (array $step): array => ['key' => 'try', 'kind' => 'prompt', 'title' => 'Try', ...$step];
-        $build = static fn (array $play, array $tables = []): string => json_encode([
+        $build = static fn (array $play, array $tables = [], array $setup = []): string => json_encode([
             ...self::minimalReleaseV2(),
             'oracles' => ['tables' => $tables, 'likelihood' => []],
             'trackers' => [['key' => 'dread', 'name' => 'Dread', 'kind' => 'clock', 'segments' => 6]],
@@ -664,7 +668,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
                 ['key' => 'name', 'label' => 'Name', 'type' => 'text'],
                 ['key' => 'gear', 'label' => 'Gear', 'type' => 'list'],
             ]],
-            'sceneTypes' => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []]],
+            'sceneTypes' => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => $setup, 'play' => $play, 'closing' => []]],
             'checks' => [$check],
         ], \JSON_THROW_ON_ERROR);
         // The effect sits in the first outcome of a check step, a place where it is allowed.
@@ -690,6 +694,10 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-sheet-effect-in-roll-band' => $build([$stepOf(['kind' => 'roll', 'dice' => '1d6', 'bands' => [['effects' => [$effect()]]]])]),
             'v2-sheet-effect-in-choice-option' => $build([$stepOf(['kind' => 'choice', 'mandatory' => true, 'options' => [['key' => 'a', 'label' => 'A', 'effects' => [$effect()]], ['key' => 'b', 'label' => 'B']]])]),
             'v2-sheet-effect-in-table-entry' => $build([], [['key' => 'omens', 'name' => 'Omens', 'entries' => [['text' => 'A crow', 'effects' => [$effect()]]]]]),
+            'v2-sheet-effect-in-pick-branch' => $build([$stepOf(['kind' => 'pick', 'of' => 'npc', 'mode' => 'random', 'branches' => ['found' => ['effects' => [$effect()]]]])]),
+            'v2-sheet-effect-in-table-otherwise' => $build([$stepOf(['kind' => 'table', 'table' => 'omens', 'otherwise' => ['effects' => [$effect()]]])], [['key' => 'omens', 'name' => 'Omens', 'entries' => [['text' => 'A crow']]]]),
+            'v2-sheet-effect-in-condition-band' => $build([$stepOf(['kind' => 'condition', 'tracker' => 'dread', 'bands' => [['effects' => [$effect()]]]])]),
+            'v2-sheet-effect-in-scene-type-setup' => $build([], [], [$stepOf(['effects' => [$effect()]])]),
             'v2-sheet-effect-bad-dice' => $inOutcome(['value' => ['dice' => 'banana']]),
             'v2-sheet-effect-formula-syntax' => $inOutcome(['value' => ['formula' => '1 +']]),
             'v2-sheet-effect-formula-unknown-field' => $inOutcome(['value' => ['formula' => '{nope}']]),

@@ -8,8 +8,10 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
+use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
@@ -92,6 +94,9 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->skipFlowStep('journey', $this->release, self::at());
 
         self::assertSame('The old customs house', $campaign->factValues($this->release)['place']);
+        // The setup steps are done: the Setup scene stays open for free play, still in the prologue.
+        $flowRun = self::flowRunOf($campaign);
+        self::assertSame([0, FlowRunStage::Scene, ScenePart::Open, null], [$flowRun->phaseIndex(), $flowRun->stage(), $flowRun->part(), $flowRun->stepKey()]);
     }
 
     #[Test]

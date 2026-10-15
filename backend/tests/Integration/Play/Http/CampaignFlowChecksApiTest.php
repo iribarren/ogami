@@ -39,6 +39,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * (skill at 10: "fail" adds an alarm, "crit" ends the part), "tracked" (skill at the alarm + 9),
  * "plain" (luck, no difficulty), "wild" (skill at the alarm + 30, over the check's max), "unevaluable" (skill at the alarm / 0) and "broken" (a modifier that divides by zero). Vi joins before the
  * session and is in no scene; Ada joins during the scene (hands 4, so a skill modifier of 6).
+ * Sheet effects (ADR 0027) on "fail" at 10: "wounding" takes 1d4 hands and 3 nerve (a track of 10),
+ * "shaken" takes 1 nerve, then sets hands to a formula that divides by zero.
  */
 #[CoversClass(FlowRunController::class)]
 #[CoversClass(FlowStepResponse::class)]
@@ -113,6 +115,47 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         self::assertCount(1, $entries);
         self::assertSame(['check', 'roll-it'], [self::at($entries[0], 'kind'), self::at($entries[0], 'flowStep', 'key')]);
         self::assertSame(['char-ada', 'Ada', 'skill', 6, 10, 9, 'fail', 'Fail'], array_map(static fn (string $key): mixed => self::at($entries[0], 'content', $key), ['characterId', 'characterName', 'checkKey', 'modifier', 'difficulty', 'total', 'bandKey', 'bandLabel']));
+    }
+
+    #[Test]
+    public function theSheetEffectsOfTheBandChangeTheCheckedCharacterAndAreJournaledAfterTheCheck(): void
+    {
+        $this->inScene('wounding');
+        // 1d10 shows 3: 3 + 6 = 9 is a fail at 10; 1d4 shows 2.
+        $this->random->script(3, 2);
+
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+
+        self::assertResponseIsSuccessful();
+        $ada = array_first(array_filter($this->list($this->json(), 'characters'), static fn (mixed $character): bool => 'char-ada' === self::at($character, 'id'))) ?? null;
+        self::assertSame([2, ['current' => 7, 'max' => 10]], [self::at($ada, 'values', 'hands'), self::at($ada, 'values', 'nerve')]);
+        $entries = $this->journal();
+        self::assertSame([['check', 'roll-it'], ['sheet-change', 'roll-it']], array_map(static fn (array $entry): array => [self::at($entry, 'kind'), self::at($entry, 'flowStep', 'key')], $entries));
+        self::assertSame([
+            'kind' => 'sheet-change',
+            'characterId' => 'char-ada',
+            'characterName' => 'Ada',
+            'changes' => [
+                ['field' => 'hands', 'before' => 4, 'after' => 2, 'dice' => ['expression' => '1d4', 'total' => 2]],
+                ['field' => 'nerve', 'before' => 10, 'after' => 7, 'dice' => null],
+            ],
+        ], self::at($entries[1], 'content'));
+        self::assertSame([self::at($entries[0], 'sceneNumber'), self::at($entries[0], 'recordedAt')], [self::at($entries[1], 'sceneNumber'), self::at($entries[1], 'recordedAt')]);
+    }
+
+    #[Test]
+    public function aSheetEffectWhoseFormulaFailsIsUnprocessableAndChangesNothing(): void
+    {
+        $this->inScene('shaken');
+        $before = $this->campaign();
+        $this->random->script(3);
+
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('cannot be evaluated', $this->error());
+        self::assertSame($before, $this->campaign());
+        self::assertSame([], $this->journal());
     }
 
     #[Test]
@@ -272,7 +315,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
     {
         /** @var array{sheet: array{fields: list<array<string, mixed>>}, checks: list<array<string, mixed>>} $base */
         $base = ReleaseViews::fixtureContent('valid/v2-checks');
-        $content = ReleaseArrays::with($base, 'sheet.fields', [...$base['sheet']['fields'], ['key' => 'zero', 'label' => 'Zero', 'type' => 'number', 'default' => 0]]);
+        $content = ReleaseArrays::with($base, 'sheet.fields', [...$base['sheet']['fields'], ['key' => 'zero', 'label' => 'Zero', 'type' => 'number', 'default' => 0], ['key' => 'nerve', 'label' => 'Nerve', 'type' => 'track', 'max' => 10]]);
         $content = ReleaseArrays::with($content, 'checks', [
             ...$base['checks'],
             ['key' => 'broken', 'label' => 'Broken', 'dice' => '1d6', 'modifier' => '{hands} / {zero}', 'bands' => [['key' => 'only', 'label' => 'Only']]],
@@ -285,7 +328,9 @@ final class CampaignFlowChecksApiTest extends WebTestCase
             ['band' => 'fail', 'effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1]]],
             ['band' => 'crit', 'next' => 'end'],
         ]];
-        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken')];
+        $sheet = static fn (string $field, string $op, mixed $value): array => ['kind' => 'sheet', 'field' => $field, 'op' => $op, 'value' => $value];
+        $failing = static fn (array ...$effects): array => ['difficulty' => 10, 'outcomes' => [['band' => 'fail', 'effects' => $effects]]];
+        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken'), 'wounding' => $step('skill', $failing($sheet('hands', 'subtract', ['dice' => '1d4']), $sheet('nerve', 'subtract', 3))), 'shaken' => $step('skill', $failing($sheet('nerve', 'subtract', 1), $sheet('hands', 'set', ['formula' => '{hands} / {zero}'])))];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],
             array_keys($sceneTypes),

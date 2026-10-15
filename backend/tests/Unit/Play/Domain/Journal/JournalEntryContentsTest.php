@@ -16,6 +16,7 @@ use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\PickContent;
 use App\Play\Domain\Journal\RollContent;
+use App\Play\Domain\Journal\SheetChangeContent;
 use App\Randomness\Domain\DiceExpression;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -35,6 +36,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ChoiceContent::class)]
 #[CoversClass(PickContent::class)]
 #[CoversClass(CheckContent::class)]
+#[CoversClass(SheetChangeContent::class)]
 #[CoversClass(InvalidJournalEntryContent::class)]
 final class JournalEntryContentsTest extends TestCase
 {
@@ -63,6 +65,7 @@ final class JournalEntryContentsTest extends TestCase
         yield 'pick' => [PickContent::of(ItemKind::Npc, ['rival'], [['id' => 'a', 'name' => 'Ana']])];
         yield 'check' => [CheckContentTest::edgeCheck()];
         yield 'pick of nothing' => [PickContent::of(ItemKind::Thread, [], [])];
+        yield 'sheet change' => [SheetChangeContent::of('ida', 'Ida', [['field' => 'sanity', 'before' => 65, 'after' => 61, 'dice' => ['expression' => '1d6', 'total' => 4]], ['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => null]])];
     }
 
     /**
@@ -110,6 +113,14 @@ final class JournalEntryContentsTest extends TestCase
         yield 'choice without option key' => [['kind' => 'choice', 'question' => 'Did you?', 'label' => 'Yes']];
         yield 'choice label not a string' => [['kind' => 'choice', 'question' => 'Did you?', 'optionKey' => 'yes', 'label' => 1]];
         yield 'choice blank question' => [['kind' => 'choice', 'question' => '', 'optionKey' => 'yes', 'label' => 'Yes']];
+        $sheetChange = ['kind' => 'sheet-change', 'characterId' => 'ida', 'characterName' => 'Ida', 'changes' => [['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => null]]];
+        yield 'sheet change without changes' => [['changes' => []] + $sheetChange];
+        yield 'sheet change with a blank Character id' => [['characterId' => ' '] + $sheetChange];
+        yield 'sheet change with a blank field' => [['changes' => [['field' => '', 'before' => 12, 'after' => 11, 'dice' => null]]] + $sheetChange];
+        yield 'sheet change before not an int' => [['changes' => [['field' => 'hp', 'before' => '12', 'after' => 11, 'dice' => null]]] + $sheetChange];
+        yield 'sheet change without dice key' => [['changes' => [['field' => 'hp', 'before' => 12, 'after' => 11]]] + $sheetChange];
+        yield 'sheet change dice without total' => [['changes' => [['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => ['expression' => '1d6']]]] + $sheetChange];
+        yield 'sheet change dice not an object' => [['changes' => [['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => '1d6']]] + $sheetChange];
         yield 'oracle table step without nested table key' => [['steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear']]] + $oracleTable];
     }
 }

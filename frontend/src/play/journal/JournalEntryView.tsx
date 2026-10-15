@@ -11,12 +11,16 @@ import type {
   OracleTableContent,
   PickContent,
   RollContent,
+  SheetChangeContent,
 } from './useJournal'
 
 type ChoiceContent = Extract<JournalEntry['content'], { kind: 'choice' }>
 
 /** The release Tags (key and label) that name the keys a pick entry stores. */
 type TagLabels = readonly { key: string; label: string }[]
+
+/** The sheet fields (key and label) that name the fields a sheet change entry stores. */
+type FieldLabels = readonly { key: string; label: string }[]
 
 const recordedTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -49,6 +53,8 @@ function entryLabel(content: JournalEntry['content']) {
       return `Pick ${kindLabels[content.of]}`
     case 'check':
       return `Check ${content.checkLabel}`
+    case 'sheet-change':
+      return `Sheet ${content.characterName}`
   }
 }
 
@@ -56,17 +62,20 @@ function entryLabel(content: JournalEntry['content']) {
 export function JournalEntryView({
   entry,
   tags = [],
+  sheet = [],
 }: {
   entry: JournalEntry
   /** The campaign's release Tags, so a pick shows labels instead of keys. */
   tags?: TagLabels
+  /** The release's sheet fields, so a sheet change shows labels instead of keys. */
+  sheet?: FieldLabels
 }) {
   return (
     <article
       aria-label={entryLabel(entry.content)}
       className="space-y-2 rounded-xl p-3 ring-1 ring-foreground/10"
     >
-      <EntryContent content={entry.content} tags={tags} />
+      <EntryContent content={entry.content} tags={tags} sheet={sheet} />
       <p className="text-xs text-muted-foreground">
         <time dateTime={entry.recordedAt}>{recordedTime.format(new Date(entry.recordedAt))}</time>
       </p>
@@ -74,7 +83,15 @@ export function JournalEntryView({
   )
 }
 
-function EntryContent({ content, tags }: { content: JournalEntry['content']; tags: TagLabels }) {
+function EntryContent({
+  content,
+  tags,
+  sheet,
+}: {
+  content: JournalEntry['content']
+  tags: TagLabels
+  sheet: FieldLabels
+}) {
   switch (content.kind) {
     case 'note':
       return <NoteView content={content} />
@@ -90,7 +107,25 @@ function EntryContent({ content, tags }: { content: JournalEntry['content']; tag
       return <PickView content={content} tags={tags} />
     case 'check':
       return <CheckView content={content} />
+    case 'sheet-change':
+      return <SheetChangeView content={content} sheet={sheet} />
   }
+}
+
+/** What a Flow step's sheet Effects changed: one line per field, with the dice each rolled. */
+function SheetChangeView({ content, sheet }: { content: SheetChangeContent; sheet: FieldLabels }) {
+  return (
+    <ul className="space-y-1 text-sm">
+      {content.changes.map((change, index) => (
+        <li key={index} className="tabular-nums">
+          {content.characterName}:{' '}
+          {sheet.find((field) => field.key === change.field)?.label ?? change.field} {change.before}{' '}
+          → <strong>{change.after}</strong>
+          {change.dice !== null && ` (${change.dice.expression}: ${String(change.dice.total)})`}
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 /** A check: who rolled which check, the band it landed in, then the dice and how the total adds up. */

@@ -286,3 +286,22 @@ export const pickedNothing: JournalEntry = {
   content: { kind: 'pick', of: 'thread', tags: [], picked: [] },
   flowStep: { key: 'draw-thread', title: 'What comes up?', prompt: null },
 }
+
+/** What Vi's failed Sanity check took, recorded after the check: 1d6 Sanity and 1 Hit point. */
+export const sanityLossEntry: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7010',
+  sessionNumber: 2,
+  sceneNumber: 1,
+  recordedAt: '2026-10-06T12:10:00+00:00',
+  kind: 'sheet-change',
+  content: {
+    kind: 'sheet-change',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    changes: [
+      { field: 'sanity', before: 65, after: 61, dice: { expression: '1d6', total: 4 } },
+      { field: 'hp', before: 12, after: 11, dice: null },
+    ],
+  },
+  flowStep: { key: 'shock', title: 'Does the sight break you?', prompt: null },
+}

@@ -14,6 +14,12 @@ namespace App\Studio\Domain\Release;
  * Release notes are what a game manager wrote when publishing from Studio. They are not part of the
  * content, so the Published Language and the content hash do not include them; releases published
  * from a file have none.
+ *
+ * The domain refuses a superset of what the database CHECK refuses (chk_studio_gamesystem_release_notes:
+ * longer than 2,000 characters, or only ASCII whitespace), so a flush never fails on notes the domain
+ * accepted. Beyond the CHECK, the domain also refuses notes that are only Unicode whitespace (NBSP,
+ * U+2003, U+3000...), which are blank to a reader, and notes Postgres TEXT cannot store: invalid UTF-8
+ * and NUL.
  */
 final readonly class GameSystemRelease
 {
@@ -36,7 +42,7 @@ final readonly class GameSystemRelease
     }
 
     /**
-     * @throws InvalidGameSystemRelease when the version is below 1, or the notes are blank or longer than MAX_NOTES_LENGTH
+     * @throws InvalidGameSystemRelease when the version is below 1, or the notes are blank, longer than MAX_NOTES_LENGTH, not valid UTF-8 or contain NUL
      */
     public static function publish(ReleaseId $id, ReleaseContent $content, int $version, \DateTimeImmutable $publishedAt, ?string $notes = null): self
     {
@@ -44,12 +50,8 @@ final readonly class GameSystemRelease
             throw InvalidGameSystemRelease::versionBelowOne($version);
         }
 
-        if (null !== $notes && '' === trim($notes)) {
-            throw InvalidGameSystemRelease::notes('must not be blank');
-        }
-
-        if (null !== $notes && mb_strlen($notes) > self::MAX_NOTES_LENGTH) {
-            throw InvalidGameSystemRelease::notes(\sprintf('must be at most %d characters', self::MAX_NOTES_LENGTH));
+        if (null !== $notes) {
+            self::assertValidNotes($notes);
         }
 
         return new self(
@@ -62,6 +64,26 @@ final readonly class GameSystemRelease
             $publishedAt,
             $notes,
         );
+    }
+
+    private static function assertValidNotes(string $notes): void
+    {
+        if (!mb_check_encoding($notes, 'UTF-8')) {
+            throw InvalidGameSystemRelease::notes('must be valid UTF-8');
+        }
+
+        if (str_contains($notes, "\0")) {
+            throw InvalidGameSystemRelease::notes('must not contain a NUL character');
+        }
+
+        // Blank is whitespace and Unicode separators only; \s alone misses NBSP and the like.
+        if (1 === preg_match('/^[\s\p{Z}]*$/u', $notes)) {
+            throw InvalidGameSystemRelease::notes('must not be blank');
+        }
+
+        if (mb_strlen($notes) > self::MAX_NOTES_LENGTH) {
+            throw InvalidGameSystemRelease::notes(\sprintf('must be at most %d characters', self::MAX_NOTES_LENGTH));
+        }
     }
 
     public function id(): ReleaseId

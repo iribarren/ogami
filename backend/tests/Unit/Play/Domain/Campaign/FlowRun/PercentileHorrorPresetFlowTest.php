@@ -42,15 +42,12 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function thePrologueNeedsYourInvestigatorAContactAHookAndTheMysteryAndFillsTheFacts(): void
+    public function thePrologueNeedsYourInvestigatorAContactAHookThePlaceAndTheMysteryAndFillsTheFacts(): void
     {
         $campaign = self::guided($this->release, 'kingsport-mystery');
         $campaign->startSession(self::at(), $this->release);
 
-        foreach (['you', 'contact', 'hook', 'mystery'] as $mandatory) {
-            if ('mystery' === $mandatory) {
-                $campaign->completeFlowStep('where', self::prompt('The old customs house'), $this->release, self::at());
-            }
+        foreach (['you', 'contact', 'hook', 'where', 'mystery'] as $mandatory) {
             try {
                 $campaign->skipFlowStep($mandatory, $this->release, self::at());
                 self::fail(\sprintf('"%s" is mandatory.', $mandatory));
@@ -61,6 +58,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
                 'you' => $this->createInvestigator($campaign),
                 'contact' => $campaign->completeFlowStep('contact', self::prompt('Philippa Marsh'), $this->release, self::at()),
                 'hook' => $campaign->completeFlowStep('hook', self::prompt('My aunt writes that the house is not safe'), $this->release, self::at()),
+                'where' => $campaign->completeFlowStep('where', self::prompt('The old customs house'), $this->release, self::at()),
                 default => null,
             };
         }
@@ -81,18 +79,19 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function theWhereAndTheJourneyAreSuggestedAndCanBeSkipped(): void
+    public function theJourneyIsSuggestedAndCanBeSkipped(): void
     {
         $campaign = self::guided($this->release, 'kingsport-mystery');
         $campaign->startSession(self::at(), $this->release);
         $this->createInvestigator($campaign);
         $campaign->completeFlowStep('contact', self::prompt('Philippa Marsh'), $this->release, self::at());
         $campaign->completeFlowStep('hook', self::prompt('A telegram'), $this->release, self::at());
+        $campaign->completeFlowStep('where', self::prompt('The old customs house'), $this->release, self::at());
+        $campaign->completeFlowStep('mystery', self::prompt('Who emptied my aunt\'s cellar?'), $this->release, self::at());
 
-        $campaign->skipFlowStep('where', $this->release, self::at());
+        $campaign->skipFlowStep('journey', $this->release, self::at());
 
-        self::assertSame('mystery', self::position($campaign)[1]);
-        self::assertSame('', $campaign->factValues($this->release)['place']);
+        self::assertSame('The old customs house', $campaign->factValues($this->release)['place']);
     }
 
     #[Test]
@@ -306,9 +305,7 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     public function aMysteryLeftOpenKeepsItsThread(): void
     {
         $campaign = $this->atTheConfrontation();
-        foreach (['arrive', 'horror', 'will', 'cost', 'final-shock'] as $key) {
-            $campaign->skipFlowStep($key, $this->release, self::at());
-        }
+        $this->throughTheConfrontation($campaign);
         $campaign->endFlowScene(3, $this->release, self::at());
 
         $campaign->completeFlowStep('thread', StepResult::pick(ItemKind::Thread, [new PickedItem($this->mysteryThread($campaign)->id()->toString(), 'The mystery')]), $this->release, self::at());
@@ -319,16 +316,57 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function skippingTheThreadPickGoesToTheTallyAndLeavesTheMysteryOpen(): void
+    {
+        $campaign = $this->atTheConfrontation();
+        $this->throughTheConfrontation($campaign);
+        $campaign->endFlowScene(3, $this->release, self::at());
+
+        $campaign->skipFlowStep('thread', $this->release, self::at());
+
+        self::assertSame(['setup', 'calm'], self::position($campaign));
+        self::assertTrue($this->mysteryThread($campaign)->isOpen());
+    }
+
+    #[Test]
+    public function withoutAMysteryThreadToPickTheEpilogueGoesToTheTally(): void
+    {
+        $campaign = $this->atTheConfrontation();
+        $campaign->closeThread($this->mysteryThread($campaign)->id());
+        $this->throughTheConfrontation($campaign);
+        $campaign->endFlowScene(3, $this->release, self::at());
+
+        $campaign->completeFlowStep('thread', StepResult::pick(ItemKind::Thread, []), $this->release, self::at());
+
+        self::assertSame(['setup', 'calm'], self::position($campaign));
+    }
+
+    #[Test]
+    public function theLairIsMandatoryAndThePlaceAndTheLairFeedTheClosingPrompts(): void
+    {
+        $campaign = $this->atTheConfrontation();
+        try {
+            $campaign->skipFlowStep('arrive', $this->release, self::at());
+            self::fail('"arrive" is mandatory.');
+        } catch (StepCannotBeSkipped $exception) {
+            self::assertSame('Step "arrive" is mandatory: complete it.', $exception->getMessage());
+        }
+        self::assertSame('The trail began at The old customs house. Where does it end? Describe the place and the first thing you notice.', $campaign->flowRunView($this->release)?->step?->prompt);
+
+        $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
+        $campaign->skipFlowStep('horror', $this->release, self::at());
+        $campaign->completeFlowStep('will', $this->checked($campaign, 'will', 'pow', 25), $this->release, self::at());
+
+        self::assertSame('Say how you end it, and what you leave behind in A cellar under the town hall.', $campaign->flowRunView($this->release)?->step?->prompt);
+    }
+
+    #[Test]
     #[DataProvider('endings')]
     public function theEpilogueDependsOnTheDreadAndTheFlowRunCompletes(int $dread, string $step, string $prompt): void
     {
         $campaign = $this->atTheConfrontation();
         $campaign->setTrackerValue($this->tracker('dread'), $dread, self::at());
-        $campaign->skipFlowStep('arrive', $this->release, self::at());
-        $campaign->skipFlowStep('horror', $this->release, self::at());
-        $campaign->skipFlowStep('will', $this->release, self::at());
-        $campaign->skipFlowStep('cost', $this->release, self::at());
-        $campaign->skipFlowStep('final-shock', $this->release, self::at());
+        $this->throughTheConfrontation($campaign);
         $campaign->endFlowScene(3, $this->release, self::at());
 
         self::assertSame(['epilogue', 'setup', 'thread'], [$campaign->currentScene()?->sceneType(), ...self::position($campaign)]);
@@ -341,6 +379,14 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         $campaign->endFlowScene(4, $this->release, self::at());
 
         self::assertSame(FlowRunStatus::Completed, self::flowRunOf($campaign)->status());
+    }
+
+    private function throughTheConfrontation(Campaign $campaign): void
+    {
+        $campaign->completeFlowStep('arrive', self::prompt('A cellar under the town hall'), $this->release, self::at());
+        foreach (['horror', 'will', 'cost', 'final-shock'] as $key) {
+            $campaign->skipFlowStep($key, $this->release, self::at());
+        }
     }
 
     private function mysteryThread(Campaign $campaign): Thread

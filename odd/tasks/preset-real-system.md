@@ -1,7 +1,7 @@
 # Feature: preset-real-system
 
 - **Locator:** `odd/tasks/preset-real-system.md` · Engram topic `odd/preset-real-system/tasks`
-- **Issue:** #122 · **Branch:** `feat/preset-real-system-5-preset-rework` · **Status:** in progress (slice 5)
+- **Issue:** #122 · **Branch:** `feat/preset-real-system-6-sheet-effects-contract` · **Status:** in progress (slice 6)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-checks` (PRs #115–#121)
@@ -37,6 +37,9 @@ Out of scope: items, inventory, currency and a `shop` step kind (moved to the po
 | Inspiration tables (Claude, 2026-10-15) | A `prompt` step may list `inspiration`: 1–5 keys of the release's oracle tables (not likelihood oracles), unique. They are suggestions, not rolls of the step: no entry effects, not counted by the flow's rolled-table checks. In Play the step card offers one roll button per table; a roll goes through the Oracle panel's table roll (journal entry) and its result shows in the card; the player still writes the answer. Recorded in ADR 0026 |
 | Phase descriptions (Claude, 2026-10-15) | A phase may carry `description` (optional text, up to 2,000 chars). Play shows the current phase's description under the phase in the guided panel and in the end-phase confirmation (so the player can judge whether the phase is done). Recorded in ADR 0026; the sheet effects ADR becomes 0027 |
 | Preset rework (Claude, 2026-10-15, slice 5) | Flow `kingsport-mystery` "The Kingsport Mystery" (was `kingsport-letter`: the hook is now the player's). Phase `prologue` "Prologue", Scene Type `setup` "Setup". Setup: character (creation guidance in the tip), the contact who calls you (NPC, fact `contact`), the hook (prompt, inspiration `hooks`, fact `hook`), where the trail starts (prompt, inspiration `locations`, fact `place`), the mystery (prompt, `createThread`). Every table-to-fact step becomes a prompt with inspiration; `nouns`, `verbs`, `adjectives` tables added. Confrontation: the player records where it waits (fact `lair`, inspiration `locations`) and the horror (fact `horror`, inspiration `horrors`). Facts and the Thread are in the player's words |
+| Slice 5 review fixes (Claude, 2026-10-15) | R3-001: the epilogue `thread` pick gets `next: "tally"`, so a skipped pick goes to the tally like the `none` branch (before, a skip fell through to `solved`, whose "yes" closed nothing). R3-002: `where` and `arrive` become mandatory: the trail start and the lair are the mystery's spine and the `arrive` and `banish` prompts read them. Play's empty rendering of an unfilled `{fact:key}` stays (it also feeds `fillFact` text and scene titles) |
+| Sheet effects (Claude, 2026-10-15, slice 6; ADR 0027) | Schema version 2, additive: amends ADR 0022, which reserved sheet effects for version 3. Effect `{kind: "sheet", field, op: "add" \| "subtract" \| "set", value: integer (±1000) \| {formula} \| {dice}}`. `field` is a sheet `number` field (its value) or `track` field (its current value), never `derived`, `text`, `list`. Allowed only where a Character is known: a `check` step's `outcomes[].effects` (the checked Character) and a `character` step's own `effects` (the Character the step completes with). Anywhere else (other steps, other outcome lists, a check step's own `effects`, oracle table entries) it is a semantic error. `{formula}` uses the sheet scope of that Character (number, track current, `.max`, derived, trackers). `{dice}` is a dice expression of the Randomness kernel (≤100 characters), rolled with the injected RNG when applied. Results clamp: a track to 0..its max, a number to its declared `min`/`max`. Effects apply in list order with the step, all or nothing |
+| Track start value (Claude, 2026-10-15, R3-004) | No new `start` field. A track still starts full; a `character` step's sheet effect sets a start that depends on other fields (Percentile Horror: `{kind: "sheet", field: "sanity", op: "set", value: {formula: "{pow}"}}`, slice 8). Formula maxima for per-Character tracks stay player-entered (backlog with structured creation methods) |
 
 ## Design
 
@@ -50,12 +53,11 @@ Out of scope: items, inventory, currency and a `shop` step kind (moved to the po
 - Oracles: a likelihood oracle (as Mythic-style), tables for 1920s names, locations, clues, strange events, the horror; original wording only.
 - Tests: `PresetsTest` covers the new preset (publish, credits, sheet, checks); a flow unit test like `NightJobPresetFlowTest` walks the whole flow; check band tests at the edges (01 critical, `x/5`, `x/2`, `x`, fumble at 96 for skill 49 and at 100 for skill 50).
 
-### Sheet effects (slices 2–3, draft; final rules in ADR 0027)
+### Sheet effects (slices 6–7; rules in ADR 0027)
 
-- Effect `{kind: "sheet", field, op: "add" | "subtract" | "set", value: int | {formula} | {dice}}`, schema version 2 additive. Allowed in a `check` step's `outcomes[].effects`; the target is the checked Character. Field must be a `number` or `track` (a track changes its current value). Results clamp to the field's bounds.
-- `{dice}` is a new effect value form: rolled with the injected RNG when applied; the roll is logged. Formula scope: the Character's sheet plus trackers.
-- The check's journal entry records each sheet change (field, before, after, dice rolled). All-or-nothing with the step: an evaluation failure is a 422 and nothing is rolled or saved.
-- Open for slice 2: effects in other step kinds (e.g. after a `character` step), and whether a track's starting value can come from a formula (Sanity starts at POW, not full).
+- Contract as decided above (Decisions: Sheet effects, Track start value).
+- Slice 6 is the contract only: `v2.schema.json` (`sheetEffect` in the `effect` union, `diceRef` value form), the Version2 validator (`Effects`, a sheet field type lookup, placement rule), agreement fixtures, docs. Play's translator keeps refusing `sheet` ("unknown effect kind"), so no release using it can be played until slice 7.
+- Slice 7 (Play): the step's journal entry records each sheet change (field, before, after, dice rolled). All-or-nothing with the step: an evaluation failure is a 422 and nothing is rolled or saved.
 
 ### Playtest (after slice 1 merges)
 
@@ -95,12 +97,12 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 3 | Scene state: "Where play stands" follows the FlowRun's scene; manual New scene and Scene Type switch hidden or routed while a Flow guides; the player renames the current scene (endpoint, `make api`) | delegated writer (slice 3) | [x] | 42ce85b |
 | T7 | 4 | ADR 0026: prompt-step inspiration tables and phase descriptions; contract (`v2.schema.json`, Version2 validator, agreement fixtures); glossary | delegated writer (slice 4) | [x] | 8723281 |
 | T8 | 4 | Play: translator, FlowRun view and API carry inspiration tables and phase descriptions; UI rolls inspiration inside the prompt step (the player still writes the fact) and shows the phase description at phase start and in the end-phase confirmation | delegated writer (slice 4) | [x] | ecda6f7, b27ace8 |
-| T9 | 5 | Preset rework: phase "Prologue" / Scene Type "Setup"; player-chosen hook with a hooks suggestion table (letter, party invitation, newspaper clipping, old acquaintance, professor); prompts with inspiration instead of table-to-fact; noun, verb and adjective tables; confrontation place and the horror recorded by the player; the mystery opens a Thread; character creation guidance; flow test updated | delegated writer (slice 5) | [x] | |
-| T10 | 6 | ADR 0027 sheet effects (amends ADR 0022 and ADR 0017); glossary; contract doc section; decides whether a track can start from a formula (R3-004: Sanity starts at POW) | | [ ] | |
+| T9 | 5 | Preset rework: phase "Prologue" / Scene Type "Setup"; player-chosen hook with a hooks suggestion table (letter, party invitation, newspaper clipping, old acquaintance, professor); prompts with inspiration instead of table-to-fact; noun, verb and adjective tables; confrontation place and the horror recorded by the player; the mystery opens a Thread; character creation guidance; flow test updated | delegated writer (slice 5) | [x] | fd63f25 |
+| T10 | 6 | ADR 0027 sheet effects (amends ADR 0022 and ADR 0017); ADR index; glossary; contract doc section (effect table, placement, scope, clamping; "the sheet has no effects" line replaced); track start via a `character` step effect (R3-004) | | [ ] | |
 | T11 | 6 | Contract: `sheet` effect and `{dice}` value in `v2.schema.json` and the Version2 validator; agreement fixtures; Play translator still refuses `sheet` effects | | [ ] | |
 | T12 | 7 | Play: translator reads `sheet` effects; applying them on a check outcome (clamp, dice, all-or-nothing); journal records sheet changes; API and `make api` | | [ ] | |
 | T13 | 7 | UI: check entry and step card show sheet changes; Characters panel refreshes; fixtures; Vitest | | [ ] | |
-| T14 | 8 | Preset uses sheet effects (Sanity, HP loss) | | [ ] | |
+| T14 | 8 | Preset uses sheet effects (Sanity set to POW at the character step, Sanity and HP loss on checks) | | [ ] | |
 | T15 | 8 | Playtest 2 fixes; e2e: a short Percentile Horror run | | [ ] | |
 | T16 | 8 | Wrap-up: roadmap 13 done, MVP complete; feature doc closed | | [ ] | |
 
@@ -122,6 +124,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-15: Slice 4 merged (PR #126). Slice 5 planned: slice 4 review fix R3-001 and T9 (preset rework decided).
 - 2026-10-15: Slice 4 review fix R3-001 (frontend). RED: the new `Inspiration.test.tsx` case (a `StepCard` rerendered with a second prompt step offering the same table) failed, the first step's roll result still showed. GREEN: `StepCard` keys `InspirationRolls` by the step key; `src/play/flow` 118 Vitest pass. `GuidedParts` already keys the card by scene, part and step, so the stale result was only reachable by a reused card; the fix makes the component safe on its own.
 - 2026-10-15: T9 done (preset and tests only; no API or contract change). RED: with the old preset, the two new/updated `PresetsTest` cases failed (flow key, fact slots, tables, phase descriptions, inspiration/orphan check) and the old preset has no `kingsport-mystery`; the flow-test rewrite and the JSON content were written together, so the flow test has no separate RED (the JSON content cannot fail first). GREEN: `PercentileHorrorPresetFlowTest` 22 tests, `PresetsTest` 7 tests; `make presets` publishes `percentile-horror` with no validator warning. Decisions: tag `kin` dropped, tag `mystery` added (the Thread's tag, used by the epilogue pick); the epilogue opens with a `pick` of the `mystery` Thread (choose) and a mandatory choice "Is the mystery solved?" whose yes runs `closeThread`, then the dread tally as before (no contract change needed); the `strange-events` entries lost their dread effects (as inspiration they never apply), so the night `event` tip tells the player to raise the Dread clock if the event should shake them; `where`, `journey` and `arrive` stay skippable, `contact`, `hook`, `mystery` are mandatory; `find`, `reveal`, `glimpse` and `learn` also offer inspiration; the `site` `enter` step offers `locations`; the `alone` oracle step is unchanged.
+
+- 2026-10-15: Slice 5 merged (PR #127). Slice 6 planned: slice 5 review fixes R3-001 (pick `next`) and R3-002 (mandatory `where` / `arrive`), T10, T11. Sheet effects and the track start decided (ADR 0027).
+- 2026-10-15: Slice 5 review fixes R3-001, R3-002 (preset JSON plus tests). RED: 4 `PercentileHorrorPresetFlowTest` cases failed before the JSON edit (skipping the pick landed on `solved`; `where` and `arrive` skippable); the `none` branch case passed already (existing behaviour, now covered). GREEN: 25 tests pass. The validator accepts `next` beside `branches` on a pick. Tests that skipped `where` or `arrive` now answer them.
 
 ## Playtest findings
 
@@ -152,7 +157,8 @@ Playtest 1 (user, 2026-10-15, after slice 1 merged):
 | 2 | `review-456bd1473cb62df0` | 2747c22, 7601211, ab581bb | Approved and acknowledged, no findings | [#124](https://github.com/iribarren/ogami/pull/124) |
 | 3 | `review-3ec63b73505cff1c` | 4ec64a9, 42ce85b | Approved and acknowledged. Findings: R3-001 `isDefaultSceneTitle` (`Campaign.php:1792-1799`) matches by shape, so a player rename to "Legwork 5" is overwritten on the next Scene Type switch; R3-002 no test of a guided Scene Type switch whose new setup has a `sceneTitle` effect (the effect must win, `Campaign.php:380-385`); R3-003 the rename API test covers only a free-play scene. All three fixed in slice 4 | [#125](https://github.com/iribarren/ogami/pull/125) |
 | 4 | `review-c808382add1385ea` | 9ff5896, 8723281, ecda6f7, b27ace8 | Approved and acknowledged. Finding: R3-001 `InspirationRolls` keeps roll results keyed by table only, so a reused step card shows the previous prompt step's result for the same table; key it by step and add a Vitest case. Fixed in slice 5 | [#126](https://github.com/iribarren/ogami/pull/126) |
+| 5 | `review-04e1936b6a8917c3` | fd230a1, fd63f25 | Approved and acknowledged. Findings: R3-001 the epilogue `thread` pick is skippable and a skip falls through to `solved`, whose "yes" closes no Thread (`none` branch untested); R3-002 `banish` and `arrive` read `{fact:lair}` and `{fact:place}`, filled by skippable steps, so they render "…in ." when skipped. Both fixed in slice 6 | [#127](https://github.com/iribarren/ogami/pull/127) |
 
 ## Next step
 
-Slice 5: writer delivers the slice 4 review fix (R3-001) and T9 on `feat/preset-real-system-5-preset-rework`. Playtest 2 after it merges.
+Slice 6: writer delivers the slice 5 review fixes (R3-001, R3-002), T10 and T11 on `feat/preset-real-system-6-sheet-effects-contract`. Playtest 2 (user) can run on `main` meanwhile; its findings go to T15.

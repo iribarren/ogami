@@ -244,7 +244,7 @@
         {"key": "you", "kind": "character", "title": "Who are you?", "tip": "Make your investigator, then edit the sheet in the Characters panel. Either roll with the dice roller: 3d6 x 5 for Strength, Constitution, Dexterity, Appearance and Power; (2d6 + 6) x 5 for Size, Intelligence and Education; 3d6 x 5 for Luck. Or spend points: about 460 across the eight characteristics, each from 15 to 90. Set Hit points and Magic points from the derived values and Sanity to Power. Then spread skill points over the skills your trade would use.", "mandatory": true},
         {"key": "contact", "kind": "prompt", "title": "Who calls you to Kingsport?", "tip": "Just a name: it becomes an NPC. Roll the Names table if you have no one in mind.", "mandatory": true, "inspiration": ["names"], "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["contact"]}, {"kind": "fillFact", "slot": "contact"}]},
         {"key": "hook", "kind": "prompt", "title": "What draws you there?", "tip": "A letter, an invitation, a debt, a rumor. Write it in your own words.", "mandatory": true, "inspiration": ["hooks"], "effects": [{"kind": "fillFact", "slot": "hook"}]},
-        {"key": "where", "kind": "prompt", "title": "Where does the trail start?", "tip": "A street, a building, a person's door.", "inspiration": ["locations"], "effects": [{"kind": "fillFact", "slot": "place"}]},
+        {"key": "where", "kind": "prompt", "title": "Where does the trail start?", "tip": "A street, a building, a person's door.", "mandatory": true, "inspiration": ["locations"], "effects": [{"kind": "fillFact", "slot": "place"}]},
         {"key": "mystery", "kind": "prompt", "title": "What is the mystery?", "tip": "One line you can track, a question to answer before the end. It becomes a Thread.", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}", "tags": ["mystery"]}]},
         {"key": "journey", "kind": "prompt", "title": "How do you reach Kingsport?", "tip": "A train, a steamer, a borrowed car. Describe the last mile."}
       ],
@@ -321,7 +321,7 @@
       "tips": "Be brave on the page and honest in the dice. Win by willpower, not by shooting: the horror is not something a pistol solves.",
       "oracles": ["locations", "horrors", "adjectives", "fate"],
       "setup": [
-        {"key": "arrive", "kind": "prompt", "title": "Where does it wait?", "prompt": "The trail began at {fact:place}. Where does it end? Describe the place and the first thing you notice.", "inspiration": ["locations"], "effects": [{"kind": "fillFact", "slot": "lair"}]}
+        {"key": "arrive", "kind": "prompt", "title": "Where does it wait?", "prompt": "The trail began at {fact:place}. Where does it end? Describe the place and the first thing you notice.", "mandatory": true, "inspiration": ["locations"], "effects": [{"kind": "fillFact", "slot": "lair"}]}
       ],
       "play": [
         {"key": "horror", "kind": "prompt", "title": "What waits for you?", "tip": "Decide what the clues point to, in your own words.", "inspiration": ["horrors", "adjectives"], "effects": [{"kind": "fillFact", "slot": "horror"}]},
@@ -339,7 +339,7 @@
       "tips": "Look back over the dread you carried and the clues you won.",
       "oracles": [],
       "setup": [
-        {"key": "thread", "kind": "pick", "title": "Which mystery have you followed?", "of": "thread", "tags": ["mystery"], "mode": "choose", "branches": {"found": {"next": "solved"}, "none": {"next": "tally"}}},
+        {"key": "thread", "kind": "pick", "title": "Which mystery have you followed?", "of": "thread", "tags": ["mystery"], "mode": "choose", "next": "tally", "branches": {"found": {"next": "solved"}, "none": {"next": "tally"}}},
         {"key": "solved", "kind": "choice", "title": "Is the mystery solved?", "mandatory": true, "tip": "Close it if you know the truth, even a terrible one. Leave it open if it still haunts you.", "options": [{"key": "yes", "label": "Yes", "next": "tally", "effects": [{"kind": "closeThread"}]}, {"key": "no", "label": "No", "next": "tally"}]},
         {"key": "tally", "kind": "condition", "title": "How shaken are you?", "tip": "Decided by the dread: above 2 and the nights follow you home.", "tracker": "dread", "bands": [{"upTo": 2, "next": "calm"}, {"next": "scarred"}]},
         {"key": "calm", "kind": "prompt", "title": "You sleep again", "prompt": "You write home about what drew you here: {fact:hook}. What do you tell {fact:contact}?", "next": "end"},

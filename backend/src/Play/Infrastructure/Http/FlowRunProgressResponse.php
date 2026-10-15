@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
  * Where a FlowRun stands: Act › Phase › Scene Type › part · step n/m. The Scene Type is set only in
  * a scene, the part in a scene or a hook (the hook's name), the step numbers only on a step.
  */
-#[OA\Schema(required: ['act', 'phaseKey', 'phase', 'sceneType', 'part', 'stepNumber', 'stepCount'])]
+#[OA\Schema(required: ['act', 'phaseKey', 'phase', 'sceneType', 'part', 'stepNumber', 'stepCount', 'phaseDescription'])]
 final readonly class FlowRunProgressResponse
 {
     private function __construct(
@@ -29,11 +29,13 @@ final readonly class FlowRunProgressResponse
         public ?int $stepNumber,
         #[OA\Property(description: 'The number of steps in the part; null when no step waits.', example: 2, nullable: true)]
         public ?int $stepCount,
+        #[OA\Property(description: 'What the phase is for and when it is done; null when the release gives none.', example: 'Plan the job and gather your crew.', nullable: true)]
+        public ?string $phaseDescription,
     ) {
     }
 
     public static function fromView(FlowRunProgress $progress): self
     {
-        return new self($progress->act, $progress->phaseKey, $progress->phase, $progress->sceneType, $progress->part?->value, $progress->stepNumber, $progress->stepCount);
+        return new self($progress->act, $progress->phaseKey, $progress->phase, $progress->sceneType, $progress->part?->value, $progress->stepNumber, $progress->stepCount, $progress->phaseDescription);
     }
 }

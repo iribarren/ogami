@@ -5100,7 +5100,8 @@
                     "sceneType",
                     "part",
                     "stepNumber",
-                    "stepCount"
+                    "stepCount",
+                    "phaseDescription"
                 ],
                 "properties": {
                     "act": {
@@ -5155,6 +5156,12 @@
                         "description": "The number of steps in the part; null when no step waits.",
                         "type": "integer",
                         "example": 2,
+                        "nullable": true
+                    },
+                    "phaseDescription": {
+                        "description": "What the phase is for and when it is done; null when the release gives none.",
+                        "type": "string",
+                        "example": "Plan the job and gather your crew.",
                         "nullable": true
                     }
                 },
@@ -5303,7 +5310,8 @@
                     "check",
                     "difficulty",
                     "difficultyFixed",
-                    "characters"
+                    "characters",
+                    "inspiration"
                 ],
                 "properties": {
                     "key": {
@@ -5413,6 +5421,14 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ItemRefResponse"
+                        }
+                    },
+                    "inspiration": {
+                        "description": "The keys of the oracle tables the prompt step offers as inspiration, in order; empty for the other kinds and for a prompt that offers none. The player may roll them; they never change the step.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "nouns"
                         }
                     }
                 },

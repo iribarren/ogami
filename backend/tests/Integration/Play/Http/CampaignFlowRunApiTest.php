@@ -69,7 +69,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
         'forced' => false,
     ];
 
-    private const array NO_PROGRESS = ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => null, 'part' => null, 'stepNumber' => null, 'stepCount' => null];
+    private const array NO_PROGRESS = ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => null, 'part' => null, 'stepNumber' => null, 'stepCount' => null, 'phaseDescription' => 'Walk the tour, scene by scene.'];
 
     private KernelBrowser $client;
     private CommandBus $commands;
@@ -119,9 +119,9 @@ final class CampaignFlowRunApiTest extends WebTestCase
      */
     public static function currentSteps(): iterable
     {
-        $step = static fn (string $key, string $kind, string $title, array $fields = []): array => array_replace(['key' => $key, 'kind' => $kind, 'title' => $title, 'prompt' => null, 'tip' => null, 'mandatory' => false, 'oracle' => null, 'likelihood' => null, 'table' => null, 'dice' => null, 'options' => [], 'pick' => null, 'fills' => [], 'check' => null, 'difficulty' => null, 'difficultyFixed' => false, 'characters' => []], $fields);
+        $step = static fn (string $key, string $kind, string $title, array $fields = []): array => array_replace(['key' => $key, 'kind' => $kind, 'title' => $title, 'prompt' => null, 'tip' => null, 'mandatory' => false, 'oracle' => null, 'likelihood' => null, 'table' => null, 'dice' => null, 'options' => [], 'pick' => null, 'fills' => [], 'check' => null, 'difficulty' => null, 'difficultyFixed' => false, 'characters' => [], 'inspiration' => []], $fields);
 
-        yield 'a prompt' => ['intro', 1, 'Setup: Push your luck', $step('intro', 'prompt', 'Who walks in?', ['prompt' => 'Describe the first person.'])];
+        yield 'a prompt' => ['intro', 1, 'Setup: Push your luck', $step('intro', 'prompt', 'Who walks in?', ['prompt' => 'Describe the first person.', 'inspiration' => ['omens']])];
         yield 'a roll' => ['dice', 2, 'Setup: Read the omen', $step('dice', 'roll', 'Push your luck', ['dice' => '1d6'])];
         yield 'a table' => ['omen', 3, 'Setup: Is the gate open?', $step('omen', 'table', 'Read the omen', ['table' => 'omens', 'prompt' => 'After —, what do the signs say?'])];
         yield 'an oracle the player picks the likelihood of' => ['ask', 4, 'Setup: Is it guarded?', $step('ask', 'oracle', 'Is the gate open?', ['oracle' => 'fate'])];
@@ -143,7 +143,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
         self::assertSame([
             'status' => 'active',
             'waitsForSession' => false,
-            'progress' => ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => 'Tour', 'part' => 'setup', 'stepNumber' => $stepNumber, 'stepCount' => 6],
+            'progress' => ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => 'Tour', 'part' => 'setup', 'stepNumber' => $stepNumber, 'stepCount' => 6, 'phaseDescription' => 'Walk the tour, scene by scene.'],
             'step' => $expectedStep,
             'pick' => null,
             'canMoveOn' => true,

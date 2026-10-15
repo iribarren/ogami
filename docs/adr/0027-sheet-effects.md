@@ -5,7 +5,7 @@
 
 ## Context
 
-Almost every real system loses Hit points and Sanity: a failed Sanity check costs 1d6 Sanity, a wound costs HP. Until now the Percentile Horror preset could only say "lose 1d6 Sanity: adjust the sheet" in a step tip, and the player edited the Character by hand.
+Almost every real system loses Hit points and Sanity: a failed Sanity check costs 1d6 Sanity, a wound costs HP. Before slice 8 the Percentile Horror preset could only say "lose 1d6 Sanity: adjust the sheet" in a step tip, and the player edited the Character by hand; the preset now does it with sheet effects.
 
 [ADR 0022](0022-character-sheets-in-schema-version-2.md) reserved effects on sheet fields for schema version 3. Since then derived values ([ADR 0023](0023-formula-kernel-and-derived-values.md)), checks ([ADR 0024](0024-structured-checks-without-scripting.md)), inspiration tables and phase descriptions ([ADR 0026](0026-prompt-inspiration-and-phase-descriptions.md)) all proved additive in version 2. A sheet effect is additive in the same way: no existing release uses it, so every release valid before stays valid with the same content hash.
 
@@ -26,7 +26,7 @@ Almost every real system loses Hit points and Sanity: a failed Sanity check cost
 ## Consequences
 
 - The release contract gains the `sheet` effect kind and the `diceRef` value form. Schema version 2 is additive: existing releases, presets and content hashes are unchanged.
-- Play's translator keeps refusing the `sheet` kind ("unknown effect kind") until slice 7 of `preset-real-system`, so a release using it can be published but not played. No preset uses it before slice 8.
+- Play's translator keeps refusing the `sheet` kind ("unknown effect kind") until slice 7 of `preset-real-system`, so a release using it can be published but not played. Slice 8 of `preset-real-system` made the `percentile-horror` preset the first to use it.
 - Slice 7 applies the effects in Play and records each change in the step's journal entry (field, before, after, dice rolled). An evaluation failure refuses the step and changes nothing.
 - A step's sheet change is a Character edit made by the Flow, not by the player; the player still edits the sheet by hand.
 - Structured creation methods (dice defaults, point budgets) and per-Character track maxima from formulas stay in the backlog.

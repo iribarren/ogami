@@ -22,7 +22,7 @@ Terms are defined in the [glossary](domain/glossary.md). Contexts are described 
 | M0 Foundation | Docs, monorepo, CI | Done | — |
 | M1 Oracle journal | Free-form solo play: dice, oracles, journal in a campaign | A free-journal session played with only oracles and dice | Yes |
 | M2 Guided flow | A narrative flow drives play step by step | A full Mythic-style session end to end (played 2026-10-13, feature 9), and a guided sample session played as a novice (Session Zero, scenes, world turns); the player always knows the next step. Done: the guided sample session was played 2026-10-13 (feature 9b) | Yes |
-| M3 System rules | Characters, derived values, checks | A real game system played with sheet and checks. **MVP complete** | Yes |
+| M3 System rules | Characters, derived values, checks | A real game system played with sheet and checks. Done: `percentile-horror` (feature 13). **MVP complete** | Yes |
 | M4 Studio | Author game systems without code | A game system built in Studio, published and played | No |
 | M5 Admin and lifecycle | Users, roles, campaign upgrades | The owner manages users; a campaign upgrades to a newer release safely | No |
 | Later | Narrative assist (AI), player-created content, export | Out of scope, per the [vision](vision.md#non-goals-for-now) | No |
@@ -50,7 +50,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 | 10 | `play-characters` | M3 | 5 | — |
 | 11 | `rules-derived-values` | M3 | 10 | Where formula evaluation lives |
 | 12 | `play-checks` | M3 | 11 | How far checks go before scripting |
-| 13 | `preset-real-system` (in progress) | M3 | 12 | Items, inventory and a `shop` step kind: moved post-M3 to `play-items-economy` ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). MVP complete |
+| 13 | `preset-real-system` | M3 | 12 | Items, inventory and a `shop` step kind: moved post-M3 to `play-items-economy` ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). MVP complete |
 | 14 | `studio-gamesystem-drafts` | M4 | 4 | — |
 | 15 | `studio-oracle-editor` | M4 | 14 | — |
 | 18 | `studio-flow-editor` | M4 | 15, 9b | — |
@@ -252,6 +252,8 @@ Start feature `play-checks` (ODD). Check definitions in the release (dice expres
 ```
 
 **13. preset-real-system**
+
+Done: the `percentile-horror` preset (Basic Roleplaying under the ORC License, Kingsport mystery flow) in original wording, with a sheet, derived values, checks and oracles; guidance, scene and inspiration improvements from two playtests; and sheet effects ([ADR 0027](adr/0027-sheet-effects.md)), so the Flow sets Sanity to Power and takes Sanity and Hit points off on the checks. Items, inventory and `shop` moved post-M3 ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). This completes M3 and the MVP. The prompt is kept for reference.
 
 ```text
 Start feature `preset-real-system` (ODD). Hand-author a release for a small, license-safe real game system (sheet, derived values, checks, flow). Play a full session with it and fix the schema gaps it reveals. Settle the open question on items, inventory and a `shop` step kind, or move it to a post-M3 feature (ADR 0018). This completes the MVP.

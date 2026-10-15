@@ -1,7 +1,7 @@
 # Feature: preset-real-system
 
 - **Locator:** `odd/tasks/preset-real-system.md` · Engram topic `odd/preset-real-system/tasks`
-- **Issue:** #122 · **Branch:** `feat/preset-real-system-8-finish` · **Status:** in progress (slice 8)
+- **Issue:** #122 · **Branch:** `feat/preset-real-system-8-finish` · **Status:** done (pending slice 8 review and PR)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-checks` (PRs #115–#121)
@@ -105,9 +105,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T11 | 6 | Contract: `sheet` effect and `{dice}` value in `v2.schema.json` and the Version2 validator; agreement fixtures; Play translator still refuses `sheet` effects | delegated writer (slice 6) | [x] | 4fe377c |
 | T12 | 7 | Play: translator reads `sheet` effects; applying them on a check outcome and a `character` step (clamp, dice, all-or-nothing); journal records sheet changes; API and `make api` | delegated writer (slice 7) | [x] | 9c4711c |
 | T13 | 7 | UI: check entry and step card show sheet changes; Characters panel refreshes; fixtures; Vitest | delegated writer (slice 7) | [x] | 2fd0956 |
-| T14 | 8 | Preset uses sheet effects (Sanity set to POW at the character step, Sanity and HP loss on checks) | | [ ] | |
-| T15 | 8 | e2e: a short Percentile Horror run (no playtest 2 findings) | | [ ] | |
-| T16 | 8 | Wrap-up: roadmap 13 done, MVP complete; feature doc closed | | [ ] | |
+| T14 | 8 | Preset uses sheet effects (Sanity set to POW at the character step, Sanity and HP loss on checks) | delegated writer (slice 8) | [x] | |
+| T15 | 8 | e2e: a short Percentile Horror run (no playtest 2 findings) | delegated writer (slice 8) | [x] | |
+| T16 | 8 | Wrap-up: roadmap 13 done, MVP complete; feature doc closed | delegated writer (slice 8) | [x] | |
 
 ## Progress
 
@@ -138,6 +138,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-15: T12 done. RED: the new translator cases failed ("unknown effect kind"), the FlowRun sheet effect cases failed (no `SheetChange`), the journal round trips failed without the registry entry, and the API journal case failed (no second entry); the API 422 case passed once the domain applied effects (`FlowFormulaFailed` was already mapped and the handler saves nothing before completing the step). GREEN: `tests/Unit/Play` and `tests/Integration/Play` 2,311 tests pass; PHPStan clean. Decisions: kind `sheet-change` (the journal's kebab-case kinds), carrying the step's Flow step snapshot, session, scene and time (`JournalEntry::followedBy()`), its id from the handler's `JournalEntryIdGenerator` (UUID v7, so it sorts after the step's entry); `Campaign::completeFlowStep()` returns the `SheetChange` list and takes the random source as an optional last argument (282 existing calls unchanged); a number without bounds clamps to the contract limit ±1,000,000 (the Character would be invalid past it); a formula reads the sheet through `SheetValues`, so a reference with no value (a failed derived field) is a `FlowFormulaFailed` 422; the translator checks placement (check outcomes, `character` step effects), the field (number or track), the operation, the value (±1000, `{formula}`, `{dice}` ≤100 characters) and the formula's references against the sheet and Trackers.
 - 2026-10-15: T13 done. RED: the new `JournalEntryView` case (no "Sheet Vi" entry) and the `Journal` case (the Flow step named twice) failed. GREEN: `src/play/journal` 41 Vitest pass. Decisions: the journal renders a `sheet-change` entry as "<Name>: <field label> <before> → <after> (<dice>: <total>)", one line per change, the sheet's labels from the pinned release (else the key); the entry carries its step's snapshot but the journal names the Flow step only on the step's own entry; no Characters invalidation was added: a completed step answers the whole campaign, which replaces the cached one (`useFlowRunCommand`), and the Characters panel and sheet dialog read their Characters from it; the step card shows no result after completion (it moves to the next step), so the changes show in the journal only. Verification: `make qa` clean; PHPUnit 3,948 tests, Behat 71 scenarios, Vitest 766 (with `--maxWorkers=4`).
 - 2026-10-15: Slice 7 merged (PR #129). Slice 8 planned: slice 7 review fixes R3-001 (skipped `character` step with sheet effects) and R3-002 (handler test of the `sheet-change` entry), T14–T16. No playtest 2 findings; Sanity start via "sheet first" (user).
+- 2026-10-15: Slice 7 review fixes R3-001, R3-002 (tests only; `FlowRun`, the handlers and `FlowRunSheetEffectsTest` already behaved). No RED: a skipped `character` step applies none of its effects (`skipStep()` passes only a choice's skip option effects and no Character), so the new domain and `SkipFlowStepHandler` tests pass first; the three new `SheetChangeEntryHandlerTest` cases (the `sheet-change` entry after the step's, its generated id, a taken id saving nothing) cover existing behaviour too. The `LogicException` stays. GREEN: 18 tests pass.
+- 2026-10-15: T14 done. RED: with the old JSON, 28 new `PercentileHorrorPresetFlowTest` cases failed (no Sanity set at `you`, no losses on the Sanity checks, `will` and `hide`). GREEN: 56 tests pass; `make presets` publishes `percentile-horror` v5 with no new warning (only the night-job one). Decisions: success bands cost 1 Sanity, `failure` 1d6 (1d10 at `final-shock`), `fumble` 6 (10); `final-shock` still raises no dread; `hide` fumble and `will` regular, failure and fumble cost 1d6 HP; existing tests that ran `nerve` at a 99 or a missed `will` now script the dice, since Sanity is Power (50) after `you`.
+- 2026-10-15: T15 done (e2e only; no RED). `make e2e ARGS="--grep percentile"` passes: create the investigator in the Characters panel with Power 65, choose them at `you`, the sheet dialog reads Sanity 65 / 99. The first run failed on a selector (the View sheet button sits in the focus panel's cast, not the Characters panel).
+- 2026-10-15: T16 done (docs; structural readback). Roadmap: feature 13 done, M3 and the MVP complete; ADR 0027 consequences now say the preset uses sheet effects. Verification: `make qa` clean; PHPUnit 3,983 tests, Behat 71 scenarios, Vitest 766 (with `--maxWorkers=4`); `make presets` and the e2e run above.
 
 ## Playtest findings
 
@@ -174,4 +178,4 @@ Playtest 1 (user, 2026-10-15, after slice 1 merged):
 
 ## Next step
 
-Slice 8: writer delivers the slice 7 review fixes (R3-001, R3-002), T14, T15 and T16 on `feat/preset-real-system-8-finish`. After its review and PR, one doc-only commit records the slice 8 review and PR and closes the feature.
+Parent records the slice 8 review and PR in one doc-only commit; the feature closes.

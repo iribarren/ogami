@@ -170,7 +170,7 @@ Every `next` (of a step, band, branch, option, `otherwise`, `pick` branch or che
 | Part | Shape | Rules |
 |---|---|---|
 | Band | `{upTo?: int \| {tracker: key} \| {formula: string}, next?, effects?}` | Ordered upper bounds: every band but the last has `upTo`; the last omits it and catches the rest; literal `upTo` values strictly increase (`{tracker}` and `{formula}` bounds are not compared). A `{formula}` is a [flow formula](#formulas-adr-0023) |
-| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key} \| {formula: string}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` · `{kind: fillFact, slot, text? (1–2000)}` | At most 10 per list; referenced trackers, Scene Types, tags and fact slots exist; `tags` unique; `name`, `agenda` and `text` are placeholder text; `fillFact` `text` is allowed on a `text` slot only (on an `npc` or `thread` slot the value is the picked item) |
+| Effect | `{kind: tracker, tracker, op: add \| set, value: int (±1000) \| {tracker: key} \| {formula: string}}` · `{kind: nextScene, sceneType}` · `{kind: switchSceneType, sceneType}` · `{kind: endPhase}` · `{kind: sceneTitle, title (1–100)}` · `{kind: createNpc, name? (1–100), agenda? (≤2000), tags?: [key] (≤5)}` · `{kind: createThread, name? (1–200), tags?: [key] (≤5)}` · `{kind: closeThread}` · `{kind: fillFact, slot, text? (1–2000)}` · `{kind: sheet, field, op: add \| subtract \| set, value: int (±1000) \| {formula: string} \| {dice: string}}` ([sheet effect](#sheet-effects-adr-0027)) | At most 10 per list; referenced trackers, Scene Types, tags and fact slots exist; `tags` unique; `name`, `agenda` and `text` are placeholder text; `fillFact` `text` is allowed on a `text` slot only (on an `npc` or `thread` slot the value is the picked item) |
 
 ### References inside a flow
 
@@ -253,9 +253,29 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 | `track` | `max?` (1–999) | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full |
 | `derived` | `formula` (required, 1–200 characters) | A DerivedValue computed from other fields and trackers by a [formula](#formulas-adr-0023); a Character stores no value for it |
 
-Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. The sheet has no effects: they open a later schema version. Checks are described in [Checks](#checks-additive-in-schema-version-2). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
+Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. Sheet fields change through [sheet effects](#sheet-effects-adr-0027), which are also additive in schema version 2. Checks are described in [Checks](#checks-additive-in-schema-version-2). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
 
 The `character` step kind and `of: character` in `pick` and `condition` counts are part of the same additive change (see [Steps](#steps)).
+
+### Sheet effects (ADR 0027)
+
+A **sheet effect** changes a Character's `number` or `track` field. It is additive in schema version 2 ([ADR 0027](../adr/0027-sheet-effects.md)); every release valid before stays valid with the same hash.
+
+| Part | Rules |
+|---|---|
+| `kind` | `sheet` |
+| `field` | The key of a sheet `number` field (its value) or `track` field (its current value). A `derived`, `text` or `list` field, and an unknown key, are rejected with distinct messages |
+| `op` | `add`, `subtract` or `set` |
+| `value` | An integer from −1,000 to 1,000; a `{formula}` (1–200 characters); or a `{dice}` (1–100 characters, no other property). The three forms are exclusive |
+
+- **Placement.** Allowed only where a Character is known: a `check` step's `outcomes[].effects` (the checked Character) and a `character` step's own `effects` (the Character the step completes with). Anywhere else is a semantic error: other step kinds, a check step's own `effects`, bands, options, branches, `otherwise`, oracle table entries and Scene Type setup effects.
+- **Formula scope.** A `{formula}` value uses the sheet scope of that Character (see [Formulas](#formulas-adr-0023)): `number`, `track`, `.max`, `derived` and `{tracker:key}`; `{check:difficulty}` is rejected.
+- **Dice.** A `{dice}` value is a dice expression of the Randomness kernel, validated like a `roll` step's. Play rolls it with the injected random source when the effect is applied.
+- **Clamping.** The result clamps: a track to 0..its max, a number to its declared `min` and `max`.
+- **Order.** Effects apply in list order with the step, all or nothing.
+- **Track start.** A track starts full. A `character` step's effect sets a different start, e.g. `{kind: sheet, field: sanity, op: set, value: {formula: "{pow}"}}`.
+
+Play's translator refuses the `sheet` kind (unknown effect kind) until `preset-real-system` slice 7, so a release using it can be published but not played yet.
 
 ### Checks (additive in schema version 2)
 
@@ -291,14 +311,14 @@ Play's translator reads `checks` into the GameSystem snapshot and re-checks ever
 
 ### Formulas (ADR 0023)
 
-A **formula** is a string of 1–200 characters in five places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a check's `modifier` and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
+A **formula** is a string of 1–200 characters in six places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a sheet effect's `value: {formula}`, a check's `modifier` and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
 
 - Integers from 0 to 1,000,000, `+ - * /` with parentheses and unary minus, `min(a, b, …)` and `max(…)` with 2–10 arguments. Division rounds down. Intermediate results stay within ±1,000,000,000.
 - References are braced: `{key}` reads a field, `{key.max}` a `track` field's max, `{tracker:key}` a tracker's current value and `{check:difficulty}` a check's difficulty. Keys follow the key rule.
 
 | Scope | Where | Rules |
 |---|---|---|
-| Sheet | `derived` field `formula` | `{key}` names a `number`, `track` or `derived` field; `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
+| Sheet | `derived` field `formula`, sheet effect `value` | `{key}` names a `number`, `track` or `derived` field; `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
 | Check | check `modifier`, check band `upTo` | The sheet scope: the references a `derived` formula may read. A band formula may also read `{check:difficulty}`, only when its check declares a `difficulty`; the modifier never reads a `{check:…}` reference, and no other check key exists |
 | Flow | band `upTo`, tracker effect `value`, check step `difficulty` | Only `{tracker:key}` references, to trackers of the release (and, as for `{tracker: key}`, of the flow); `{key}` and `{key.max}` are rejected because a flow formula reads trackers only |
 
@@ -342,8 +362,8 @@ As in version 1: keys in schema order, absent or `null` optionals omitted, integ
 
 | Checked by | Rules |
 |---|---|
-| JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`, `of`); list sizes and lengths above; numeric bounds (incl. `count` 1–10); `end` not a step key; a `condition` never `mandatory`; a `condition` with exactly one of `tracker` and `count`; the shape of a check, its difficulty, bands and `check` step (sizes, lengths, `difficulty` ±1,000); unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
-| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; the `randomEvent` table exists and the oracle has chaos and 100 sides; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation (rolls and checks); placeholders; trimmed lengths; checks: unique check and band keys, modifier and band formulas parse and read only what they may, `{tracker}` bounds exist, band order and `upTo` presence, difficulty `min ≤ default ≤ max`; `check` steps: the check exists, `difficulty` only for a check that declares one and within its range, outcome bands exist and are unique |
+| JSON Schema and domain | The version 1 structural rules; the shape of each kind of tracker, selection, step and effect; enums (`kind`, `op`, `mode`, `rule`, `type`, `defaultView`, `of`); list sizes and lengths above; numeric bounds (incl. `count` 1–10); `end` not a step key; a `condition` never `mandatory`; a `condition` with exactly one of `tracker` and `count`; the shape of a check, its difficulty, bands and `check` step (sizes, lengths, `difficulty` ±1,000); the shape of a sheet effect (`op` enum, `value` an integer within ±1,000, a `{formula}` or a `{dice}` of 1–100 characters, no other property); unique key lists (Scene Type and flow `oracles`, flow `trackers`, `player` Scene Types) |
+| Domain only | The version 1 semantic rules; unique keys (trackers, fact slots, tags, Scene Types, flows, phases, steps, options, entries, table branches); at most one default flow; `min ≤ initial ≤ max`; the chaos tracker; the `randomEvent` table exists and the oracle has chaos and 100 sides; forward-only `next`; band ordering; every reference above; tags named by `pick`, `count` and effects exist and are unique in their list; `pick` `count` `min ≤ max`; the trackers and oracles of each flow; oracle selection tables; suggested choices naming `skip`; dice notation (rolls and checks); placeholders; trimmed lengths; checks: unique check and band keys, modifier and band formulas parse and read only what they may, `{tracker}` bounds exist, band order and `upTo` presence, difficulty `min ≤ default ≤ max`; `check` steps: the check exists, `difficulty` only for a check that declares one and within its range, outcome bands exist and are unique; sheet effects: the placement rule, the `field` exists and is a `number` or `track`, the `{formula}` reads only the sheet scope, the `{dice}` notation parses |
 
 ## Publishing
 

@@ -98,8 +98,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T7 | 4 | ADR 0026: prompt-step inspiration tables and phase descriptions; contract (`v2.schema.json`, Version2 validator, agreement fixtures); glossary | delegated writer (slice 4) | [x] | 8723281 |
 | T8 | 4 | Play: translator, FlowRun view and API carry inspiration tables and phase descriptions; UI rolls inspiration inside the prompt step (the player still writes the fact) and shows the phase description at phase start and in the end-phase confirmation | delegated writer (slice 4) | [x] | ecda6f7, b27ace8 |
 | T9 | 5 | Preset rework: phase "Prologue" / Scene Type "Setup"; player-chosen hook with a hooks suggestion table (letter, party invitation, newspaper clipping, old acquaintance, professor); prompts with inspiration instead of table-to-fact; noun, verb and adjective tables; confrontation place and the horror recorded by the player; the mystery opens a Thread; character creation guidance; flow test updated | delegated writer (slice 5) | [x] | fd63f25 |
-| T10 | 6 | ADR 0027 sheet effects (amends ADR 0022 and ADR 0017); ADR index; glossary; contract doc section (effect table, placement, scope, clamping; "the sheet has no effects" line replaced); track start via a `character` step effect (R3-004) | | [ ] | |
-| T11 | 6 | Contract: `sheet` effect and `{dice}` value in `v2.schema.json` and the Version2 validator; agreement fixtures; Play translator still refuses `sheet` effects | | [ ] | |
+| T10 | 6 | ADR 0027 sheet effects (amends ADR 0022 and ADR 0017); ADR index; glossary; contract doc section (effect table, placement, scope, clamping; "the sheet has no effects" line replaced); track start via a `character` step effect (R3-004) | delegated writer (slice 6) | [x] | |
+| T11 | 6 | Contract: `sheet` effect and `{dice}` value in `v2.schema.json` and the Version2 validator; agreement fixtures; Play translator still refuses `sheet` effects | delegated writer (slice 6) | [ ] | |
 | T12 | 7 | Play: translator reads `sheet` effects; applying them on a check outcome (clamp, dice, all-or-nothing); journal records sheet changes; API and `make api` | | [ ] | |
 | T13 | 7 | UI: check entry and step card show sheet changes; Characters panel refreshes; fixtures; Vitest | | [ ] | |
 | T14 | 8 | Preset uses sheet effects (Sanity set to POW at the character step, Sanity and HP loss on checks) | | [ ] | |
@@ -127,6 +127,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-15: Slice 5 merged (PR #127). Slice 6 planned: slice 5 review fixes R3-001 (pick `next`) and R3-002 (mandatory `where` / `arrive`), T10, T11. Sheet effects and the track start decided (ADR 0027).
 - 2026-10-15: Slice 5 review fixes R3-001, R3-002 (preset JSON plus tests). RED: 4 `PercentileHorrorPresetFlowTest` cases failed before the JSON edit (skipping the pick landed on `solved`; `where` and `arrive` skippable); the `none` branch case passed already (existing behaviour, now covered). GREEN: 25 tests pass. The validator accepts `next` beside `branches` on a pick. Tests that skipped `where` or `arrive` now answer them.
+- 2026-10-15: T10 done (docs only, no RED: structural readback of ADR 0027, the ADR 0017/0022 edits, index rows, glossary and the contract's Sheet effects section, formula scopes and schema/domain split).
 
 ## Playtest findings
 

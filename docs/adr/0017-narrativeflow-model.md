@@ -1,6 +1,6 @@
 # 0017. The NarrativeFlow model
 
-- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party. Amended by [ADR 0022](0022-character-sheets-in-schema-version-2.md): the `character` step kind and sheets arrive additively in schema version 2. Amended by [ADR 0023](0023-formula-kernel-and-derived-values.md): formulas, so a reference is a trivial formula. Amended by [ADR 0024](0024-structured-checks-without-scripting.md): the `check` step kind and the `checks` section arrive additively in schema version 2
+- **Status:** Accepted. Amended by [ADR 0018](0018-narrativeflow-control-flow-and-cast.md): control flow (typed effects, `condition` steps, bands, in-place switches), session and phase hooks with Scene kind `hook`, tags, and the Scene cast and Session party. Amended by [ADR 0022](0022-character-sheets-in-schema-version-2.md): the `character` step kind and sheets arrive additively in schema version 2. Amended by [ADR 0023](0023-formula-kernel-and-derived-values.md): formulas, so a reference is a trivial formula. Amended by [ADR 0024](0024-structured-checks-without-scripting.md): the `check` step kind and the `checks` section arrive additively in schema version 2. Amended by [ADR 0027](0027-sheet-effects.md): the effect kinds gain `sheet`, which changes a Character's sheet field
 - **Date:** 2026-10-08
 
 ## Context
@@ -78,7 +78,7 @@ Flow
   - `counter`: min, max and initial value, e.g. a chaos factor 1–9 starting at 5;
   - `clock`: a number of segments, e.g. "The ritual" 0/6.
 - Each flow lists the trackers it uses. **Values live on the Campaign**, so they survive turning guidance off, and free play still has a chaos factor.
-- Step outcomes (a choice option, a roll band) carry **effects**: `{tracker, add | set, value}`.
+- Step outcomes (a choice option, a roll band) carry **effects**: `{tracker, add | set, value}`. Later ADRs added kinds; [ADR 0027](0027-sheet-effects.md) adds `sheet`, which changes a Character's sheet field.
 - A band bound or an effect value is a **literal or a tracker reference**. There is no formula language in M2.
 - A likelihood oracle's chaos input is bound to a tracker instead of being typed by hand.
 - The player, who is also the GM, can edit a tracker by hand. The edit is recorded in the FlowRun history.

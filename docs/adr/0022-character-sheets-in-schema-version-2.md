@@ -1,6 +1,6 @@
 # 0022. Character sheets in schema version 2
 
-- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md) and [0024](0024-structured-checks-without-scripting.md)
+- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md), [0024](0024-structured-checks-without-scripting.md) and [0027](0027-sheet-effects.md)
 - **Date:** 2026-10-13
 
 ## Context
@@ -12,7 +12,7 @@ A sheet template is the same kind of change: no existing release uses it, `{}` s
 ## Decision
 
 - **Additive in schema version 2** (user decision, 2026-10-13). `sheet` gains an optional `fields` list, the `character` step kind joins the flow steps, and `pick` / `condition` `of` gain `character`. Every release valid before stays valid with the same content hash. `{}` and `{"fields": []}` both canonicalize to `{}`.
-- **Schema version 3 is for what changes meaning:** sheet effects. Derived values ([ADR 0023](0023-formula-kernel-and-derived-values.md)) and checks ([ADR 0024](0024-structured-checks-without-scripting.md)) were later settled as additive in version 2.
+- **Schema version 3 is for what changes meaning.** Sheet effects were first reserved for it; [ADR 0027](0027-sheet-effects.md) later settled them as additive in version 2. Derived values ([ADR 0023](0023-formula-kernel-and-derived-values.md)) and checks ([ADR 0024](0024-structured-checks-without-scripting.md)) were later settled as additive in version 2.
 - **Four field types**, each with its own closed set of properties (unknown ones fail closed):
   - `number`: optional `min`, `max`, `default` (integers, −1,000,000 to 1,000,000; `min ≤ default ≤ max`).
   - `text`: optional `multiline`, `maxLength` (1–2000).
@@ -30,5 +30,5 @@ A sheet template is the same kind of change: no existing release uses it, `{}` s
 - Existing releases and presets keep their canonical form and hash.
 - The contract's "new capability means a new schema version" rule is relaxed: additive extensions are allowed when every valid release stays valid with the same hash (`credits`, `sheet.fields`).
 - Play's translator reads the sheet into the snapshot, re-checking every limit. Until the `character` step lands in Play, it fails closed on the `character` step kind and on `of: character`.
-- Sheet fields cannot be changed by effects yet, and nothing computes from them; both wait for schema version 3.
+- Sheet fields could not be changed by effects at first, and nothing computed from them. Derived values ([ADR 0023](0023-formula-kernel-and-derived-values.md)) and sheet effects ([ADR 0027](0027-sheet-effects.md)) later arrived additively in version 2.
 - Deleting Characters, and migrating Character values when a Campaign moves to a newer release, are out of scope.

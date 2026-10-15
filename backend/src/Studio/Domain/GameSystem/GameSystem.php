@@ -20,6 +20,9 @@ use App\Studio\Domain\Release\ReleaseFields;
  */
 final class GameSystem
 {
+    /** The length of the owner_id column. */
+    private const int OWNER_MAX_LENGTH = 255;
+
     /**
      * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
      * stale copy is refused (GameSystemModifiedConcurrently). The model never changes it.
@@ -46,7 +49,8 @@ final class GameSystem
      */
     public static function createBlank(GameSystemId $id, string $key, string $name, ?string $description, string $ownerId, \DateTimeImmutable $now): self
     {
-        $gameSystem = ['key' => self::validKey($key), 'name' => GameSystemMetadata::name($name)];
+        $key = self::validKey($key);
+        $gameSystem = ['key' => $key, 'name' => GameSystemMetadata::name($name)];
         $description = GameSystemMetadata::description($description);
         if (null !== $description) {
             $gameSystem['description'] = $description;
@@ -210,6 +214,10 @@ final class GameSystem
     {
         if ('' === trim($ownerId)) {
             throw InvalidGameSystemMetadata::at('ownerId', 'must not be blank');
+        }
+
+        if (mb_strlen($ownerId) > self::OWNER_MAX_LENGTH || str_contains($ownerId, "\0")) {
+            throw InvalidGameSystemMetadata::at('ownerId', \sprintf('must be at most %d characters, without NUL bytes', self::OWNER_MAX_LENGTH));
         }
 
         return $ownerId;

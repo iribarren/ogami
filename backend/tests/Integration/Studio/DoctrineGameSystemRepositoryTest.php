@@ -64,6 +64,29 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function timestampsAreStoredWithSecondPrecision(): void
+    {
+        $this->gameSystems->add($this->blank(self::FIRST_ID, 'precise', self::OWNER, '2026-10-15T10:00:00.987654'));
+        $this->entityManager->clear();
+
+        $loaded = $this->gameSystems->ofKey('precise');
+
+        self::assertNotNull($loaded);
+        self::assertSame('2026-10-15T10:00:00.000000', $loaded->createdAt()->format('Y-m-d\\TH:i:s.u'));
+        self::assertSame('2026-10-15T10:00:00.000000', $loaded->updatedAt()->format('Y-m-d\\TH:i:s.u'));
+    }
+
+    #[Test]
+    public function draftsUpdatedInTheSameSecondAreOrderedByKey(): void
+    {
+        $this->gameSystems->add($this->blank(self::FIRST_ID, 'zeta', self::OWNER, '2026-10-15T10:00:00.900'));
+        $this->gameSystems->add($this->blank(self::SECOND_ID, 'alpha', self::OWNER, '2026-10-15T10:00:00.100'));
+        $this->entityManager->clear();
+
+        self::assertSame(['alpha', 'zeta'], array_map(static fn (GameSystem $gameSystem): string => $gameSystem->key(), $this->gameSystems->ofOwner(self::OWNER)));
+    }
+
+    #[Test]
     public function theDocumentIsStoredAsJsonb(): void
     {
         $this->gameSystems->add($this->blank(self::FIRST_ID, 'blank', self::OWNER));
@@ -138,9 +161,16 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
         $this->elsewhere()->save($theirs);
         $mine->editMetadata(GameSystemMetadata::of('Mine', null, null, null), new \DateTimeImmutable('2026-10-16T11:00:00'));
 
-        $this->expectException(GameSystemModifiedConcurrently::class);
+        try {
+            $this->gameSystems->save($mine);
+            self::fail('The stale copy was saved.');
+        } catch (GameSystemModifiedConcurrently) {
+            // expected: the other request's save won
+        }
 
-        $this->gameSystems->save($mine);
+        $stored = $this->entityManager->getConnection()->fetchAssociative("SELECT updated_at, document->'gameSystem'->>'name' AS name FROM studio_gamesystem WHERE game_system_key = 'raced'");
+        self::assertSame('Theirs', $stored['name'] ?? null);
+        self::assertSame('2026-10-16 10:00:00', $stored['updated_at'] ?? null);
     }
 
     #[Test]

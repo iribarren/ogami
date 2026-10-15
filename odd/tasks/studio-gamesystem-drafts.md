@@ -1,7 +1,7 @@
 # Feature: studio-gamesystem-drafts
 
 - **Locator:** `odd/tasks/studio-gamesystem-drafts.md` · Engram topic `odd/studio-gamesystem-drafts/tasks`
-- **Issue:** #131 · **Branch:** `feat/studio-gamesystem-drafts-1-model` · **Status:** in progress
+- **Issue:** #131 · **Branch:** `feat/studio-gamesystem-drafts-2-application` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-real-system` (PRs #123–#130)
@@ -63,27 +63,30 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `feat/studio-gamesystem-drafts-1-model` | `feat(studio): studio-gamesystem-drafts 1/5 draft model` | T1, T2, T3 | ~1,500 |
-| 2 | `feat/studio-gamesystem-drafts-2-draft-api` | `feat(studio): studio-gamesystem-drafts 2/5 draft API` | T4 | ~1,500 incl. ~450 generated |
-| 3 | `feat/studio-gamesystem-drafts-3-publish-api` | `feat(studio): studio-gamesystem-drafts 3/5 publish and history API` | T5, T6 | ~1,500 incl. ~400 generated |
-| 4 | `feat/studio-gamesystem-drafts-4-studio-shell` | `feat(studio): studio-gamesystem-drafts 4/5 studio shell and drafts UI` | T7, T8 | ~1,600 |
-| 5 | `feat/studio-gamesystem-drafts-5-publish-ui` | `feat(studio): studio-gamesystem-drafts 5/5 publish and history UI` | T9, T10, T11 | ~1,400 |
+| 1 | `feat/studio-gamesystem-drafts-1-model` | `feat(studio): studio-gamesystem-drafts 1/6 draft model` | T1, T2 | ~1,500 (done: +1,312 / −2; split, T3 moved to slice 2) |
+| 2 | `feat/studio-gamesystem-drafts-2-application` | `feat(studio): studio-gamesystem-drafts 2/6 draft commands and queries` | T3, slice 1 review fixes | ~1,300 |
+| 3 | `feat/studio-gamesystem-drafts-3-draft-api` | `feat(studio): studio-gamesystem-drafts 3/6 draft API` | T4 | ~1,500 incl. ~450 generated |
+| 4 | `feat/studio-gamesystem-drafts-4-publish-api` | `feat(studio): studio-gamesystem-drafts 4/6 publish and history API` | T5, T6 | ~1,500 incl. ~400 generated |
+| 5 | `feat/studio-gamesystem-drafts-5-studio-shell` | `feat(studio): studio-gamesystem-drafts 5/6 studio shell and drafts UI` | T7, T8 | ~1,600 |
+| 6 | `feat/studio-gamesystem-drafts-6-publish-ui` | `feat(studio): studio-gamesystem-drafts 6/6 publish and history UI` | T9, T10, T11 | ~1,400 |
+
+Replanned 2026-10-15: slice 1 came out at 2,436 lines (a new aggregate with persistence is ~1,200 lines alone), so T3 moved to slice 2 and later slices shifted by one. Watch the forecasts for slices 4–5.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0028 (Studio GameSystem drafts: owner-only, starting points, file-managed presets, key rule, validation and publish from a draft, release notes, restore) and ADR index row; glossary (GameSystem draft, release notes, restore); context map Studio section; roadmap feature 14 in progress | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain and persistence: `GameSystem` aggregate (create blank / from a release document, edit metadata, restore document), value objects, errors, repository port, Doctrine mapping and migration, in-memory repository for tests; unit tests and an integration round trip of the whole aggregate (incl. the 409 on a concurrent save) | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Application: `CreateGameSystem` (blank or copy of a release, key taken by a GameSystem or any release → refused), `EditGameSystemMetadata`, `DiscardGameSystem` (refused with releases), `ListMyGameSystems`, `GetGameSystem` (with `hasUnpublishedChanges`), `ValidateGameSystemDraft`; owner scoping; handler unit tests; Behat scenarios | delegated writer (slice 1) | [x] | |
-| T4 | 2 | HTTP: Studio controller(s) for list, create, get, metadata, discard, validation; `^/api/studio` → `ROLE_GAME_MANAGER`; every domain error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's key (404) and a SOLO_PLAYER (403); `make api` | | [ ] | |
-| T5 | 3 | Publish from a draft through the release publisher: `PublishGameSystemDraft` (invalid 422, no changes 409, version race 409), release notes column (migration, nullable), console publish refuses a Studio-owned key; history queries `ListGameSystemReleases`, `GetGameSystemRelease`; `RestoreGameSystemRelease`; unit and Behat | | [ ] | |
-| T6 | 3 | HTTP for publish, history, release view and restore; API tests; `make api` | | [ ] | |
-| T7 | 4 | Studio shell: `/studio` layout route, Studio home listing my GameSystems (cards, empty state), "New GameSystem" dialog (blank or copy of a published release: key, name, source key and version); hooks; Vitest; stories | | [ ] | |
-| T8 | 4 | GameSystem page: header and status, tabs Overview (metadata form with credits and theme; v1 hides them), Validation (error with path, warnings), section summary with counts; discard for a never-published draft; Vitest; stories | | [ ] | |
-| T9 | 5 | Publish dialog: validation result, warnings, next version, notes; refusals explained (invalid, no changes, race) | | [ ] | |
-| T10 | 5 | Releases tab: history list, read-only release view, restore into the draft with confirmation; Vitest; stories | | [ ] | |
-| T11 | 5 | e2e: a GAME_MANAGER copies a preset, edits metadata, publishes, and a SOLO_PLAYER can start a campaign on it; wrap-up: roadmap 14 done, feature doc closed | | [ ] | |
+| T1 | 1 | Docs: this feature doc; ADR 0028 (Studio GameSystem drafts: owner-only, starting points, file-managed presets, key rule, validation and publish from a draft, release notes, restore) and ADR index row; glossary (GameSystem draft, release notes, restore); context map Studio section; roadmap feature 14 in progress | delegated writer (slice 1) | [x] | 5211f89 |
+| T2 | 1 | Domain and persistence: `GameSystem` aggregate (create blank / from a release document, edit metadata, restore document), value objects, errors, repository port, Doctrine mapping and migration, in-memory repository for tests; unit tests and an integration round trip of the whole aggregate (incl. the 409 on a concurrent save) | delegated writer (slice 1) | [x] | e01fc9e |
+| T3 | 2 | Application: `CreateGameSystem` (blank or copy of a release, key taken by a GameSystem or any release → refused), `EditGameSystemMetadata`, `DiscardGameSystem` (refused with releases), `ListMyGameSystems`, `GetGameSystem` (with `hasUnpublishedChanges`), `ValidateGameSystemDraft`; owner scoping; handler unit tests; Behat scenarios | delegated writer (slice 1) | [x] | 44a75c3 |
+| T4 | 3 | HTTP: Studio controller(s) for list, create, get, metadata, discard, validation; `^/api/studio` → `ROLE_GAME_MANAGER`; every domain error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's key (404) and a SOLO_PLAYER (403); `make api` | | [ ] | |
+| T5 | 4 | Publish from a draft through the release publisher: `PublishGameSystemDraft` (invalid 422, no changes 409, version race 409), release notes column (migration, nullable), console publish refuses a Studio-owned key; history queries `ListGameSystemReleases`, `GetGameSystemRelease`; `RestoreGameSystemRelease`; unit and Behat | | [ ] | |
+| T6 | 4 | HTTP for publish, history, release view and restore; API tests; `make api` | | [ ] | |
+| T7 | 5 | Studio shell: `/studio` layout route, Studio home listing my GameSystems (cards, empty state), "New GameSystem" dialog (blank or copy of a published release: key, name, source key and version); hooks; Vitest; stories | | [ ] | |
+| T8 | 5 | GameSystem page: header and status, tabs Overview (metadata form with credits and theme; v1 hides them), Validation (error with path, warnings), section summary with counts; discard for a never-published draft; Vitest; stories | | [ ] | |
+| T9 | 6 | Publish dialog: validation result, warnings, next version, notes; refusals explained (invalid, no changes, race) | | [ ] | |
+| T10 | 6 | Releases tab: history list, read-only release view, restore into the draft with confirmation; Vitest; stories | | [ ] | |
+| T11 | 6 | e2e: a GAME_MANAGER copies a preset, edits metadata, publishes, and a SOLO_PLAYER can start a campaign on it; wrap-up: roadmap 14 done, feature doc closed | | [ ] | |
 
 ## Progress
 
@@ -91,12 +94,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-15: T1 docs written (ADR 0028, index, glossary, context map, roadmap). Doc-only: no tests, structural readback only.
 - 2026-10-15: T2 domain and persistence. RED/GREEN: unit and integration tests were written after the code in one pass, so no RED was observed first; they pass (22 unit, 10 integration). Notes: JSONB reorders object keys, so the round trip compares the aggregate and the canonical content hash.
 - 2026-10-15: T3 application. RED/GREEN: tests written alongside the code, no RED observed first; GREEN: 15 handler unit tests, 9 Behat scenarios. Warnings come straight from `ReleaseContent::warnings()`, so no shared helper with the Check handler was needed. `GameSystemPublication` and `OwnedGameSystems` are the shared helpers.
+- 2026-10-16: Slice 1 review fixes. RED: 9 unit failures first (non-UUID ids, owner over 255 characters or with a NUL byte accepted); GREEN: `GameSystemId` accepts only a UUID (kept lower case, `InvalidGameSystemId`), `validOwner` checks the column length and NUL bytes, `createBlank` passes the validated key. Tests that passed first, as coverage of existing behaviour: second-precision timestamps (kept, as in the release table), `ofOwner` key tie-break, and the winner's row surviving a refused stale save. The `version` default is not drift: `doctrine:schema:validate` reports the mapping in sync with `Version20261015090000` with and without the option, so the mapping and migration are unchanged.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-f5273b974c4a05ad` | 5211f89, e01fc9e | Approved and acknowledged. Findings: R3 (warning) the domain accepts ids and owner ids the table rejects (`studio_gamesystem.id` is UUID, `owner_id` VARCHAR(255); `GameSystemId::fromString` takes any non-blank string, `validOwner` checks only blank), so a bad value fails at flush with a raw DBAL exception (`Version20261015090000.php:19`); R3 (warning) the migration's `version` DEFAULT 1 is not in the mapping (`GameSystem.GameSystem.orm.xml:32`); suggestions: timestamps stored as TIMESTAMP(0) without time zone lose precision, and no test covers it or the key tie-break of `ofOwner` (`:28-29`); the concurrent-save test does not re-read the winning row (`DoctrineGameSystemRepositoryTest.php:128-144`); `createBlank` passes the raw key to the constructor (`GameSystem.php:55`). Fixed in slice 2 | [#132](https://github.com/iribarren/ogami/pull/132) |
 
 ## Next step
 
-Slice 1: T1–T3 by one delegated writer on `feat/studio-gamesystem-drafts-1-model`.
+Slice 2: T3 (committed as 44a75c3) plus the slice 1 review fixes, then review and PR 2/6.

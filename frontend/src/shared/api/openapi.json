@@ -4704,6 +4704,490 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/oracles": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read the oracle tables and likelihood oracles of one of my GameSystem drafts, with where each is used",
+                "operationId": "getGameSystemOracles",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The oracles as stored, in order, and the draft version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/oracle-tables": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Add an oracle table to one of my GameSystem drafts",
+                "operationId": "createOracleTable",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveOracleTableRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The draft's oracles with the table appended and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"table\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key is already used by another table or likelihood oracle.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The table breaks the release contract's rules (the message starts with the path), or has schema version 2 fields on a version 1 draft; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/oracle-tables/{table}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace an oracle table of one of my GameSystem drafts, renaming it when the body has another key",
+                "operationId": "replaceOracleTable",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveOracleTableRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's oracles with the table replaced in place and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"table\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no table with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key is already used by another table or likelihood oracle.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The table breaks the release contract's rules (the message starts with the path), has schema version 2 fields on a version 1 draft, or a rename or a dropped entry key is used by the draft (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete an oracle table of one of my GameSystem drafts that nothing uses",
+                "operationId": "deleteOracleTable",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's oracles without the table and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no table with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The draft uses the table (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OracleInUseResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/oracle-tables/{table}/test-rolls": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Roll on an oracle table of one of my GameSystem drafts as last saved, following nested tables; never changes the draft",
+                "operationId": "testRollOracleTable",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Every table rolled on, root first, with the dice, total and selected entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OracleTableResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no table with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The saved tables are not valid for Randomness (a nested table is missing, a range is uncovered\u2026) or the roll matches no entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/releases": {
             "get": {
                 "tags": [
@@ -8912,6 +9396,319 @@
                         },
                         "example": [
                             "oracles.tables[0]: has no entries"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemOracleTableEntry": {
+                "description": "Ranged entries have \"min\" and \"max\"; weighted entries may have a \"weight\" (1 by default). An entry needs a \"text\" unless it nests a \"table\". \"key\", \"sceneType\" and \"effects\" are schema version 2 fields: kept as given, refused on a version 1 draft.",
+                "required": [
+                    "effects"
+                ],
+                "properties": {
+                    "min": {
+                        "description": "Lowest total this entry covers, on a ranged table.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "Highest total this entry covers, on a ranged table.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "weight": {
+                        "description": "Relative chance of this entry, on a weighted table; 1 by default.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true,
+                        "minimum": 1
+                    },
+                    "text": {
+                        "type": "string",
+                        "example": "Clear",
+                        "nullable": true,
+                        "maxLength": 500
+                    },
+                    "table": {
+                        "description": "The key of a table of the draft to roll on next when this entry is selected.",
+                        "type": "string",
+                        "example": "storm-kind",
+                        "nullable": true,
+                        "maxLength": 64
+                    },
+                    "key": {
+                        "description": "Unique within the table; a flow's table step can branch on it.",
+                        "type": "string",
+                        "example": "patrol",
+                        "nullable": true,
+                        "maxLength": 64
+                    },
+                    "sceneType": {
+                        "description": "The Scene Type this entry opens. Not edited by the oracle editor.",
+                        "type": "string",
+                        "example": "firefight",
+                        "nullable": true
+                    },
+                    "effects": {
+                        "description": "What selecting this entry does to the campaign: effect objects as the release contract defines them. Not edited by the oracle editor.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemOracleTable": {
+                "description": "A ranged table has \"dice\" and entries with \"min\" and \"max\" that do not overlap; a weighted table has no \"dice\", entries with an optional \"weight\" and rolls 1dW for total weight W.",
+                "required": [
+                    "key",
+                    "name",
+                    "entries"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Unique among the draft's tables and likelihood oracles: a-z, 0-9 and \"-\".",
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]+$",
+                        "example": "weather",
+                        "maxLength": 64
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Weather",
+                        "maxLength": 500
+                    },
+                    "entries": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GameSystemOracleTableEntry"
+                        },
+                        "maxItems": 1000,
+                        "minItems": 1
+                    },
+                    "dice": {
+                        "description": "Dice notation rolled on a ranged table; absent on a weighted table.",
+                        "type": "string",
+                        "example": "1d6",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "OracleTableItemResponse": {
+                "required": [
+                    "definition",
+                    "usedBy"
+                ],
+                "properties": {
+                    "definition": {
+                        "$ref": "#/components/schemas/GameSystemOracleTable"
+                    },
+                    "usedBy": {
+                        "description": "Where the draft references the table (e.g. \"flows[0].phases[1].steps[2]\"); a referenced table cannot be renamed or deleted.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "sceneTypes[1].play[1]"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemLikelihoodChaos": {
+                "description": "The effective target is the level's target + (chaosFactor \u2212 neutral) \u00d7 shiftPerPoint, clamped to 0\u2026sides; min \u2264 neutral \u2264 max.",
+                "required": [
+                    "min",
+                    "max",
+                    "neutral",
+                    "shiftPerPoint"
+                ],
+                "properties": {
+                    "min": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "max": {
+                        "type": "integer",
+                        "example": 9
+                    },
+                    "neutral": {
+                        "description": "The chaos factor used when none is given.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "shiftPerPoint": {
+                        "description": "Target points added per chaos point above neutral; 0 to sides.",
+                        "type": "integer",
+                        "example": 5,
+                        "minimum": 0
+                    },
+                    "tracker": {
+                        "description": "The tracker holding the chaos factor (schema version 2). Not edited by the oracle editor.",
+                        "type": "string",
+                        "example": "chaos",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemLikelihoodOracle": {
+                "description": "Rolls 1d<sides> = R against the effective target T: yes when R \u2264 T. With p = exceptionalPercent, the yes is exceptional when R \u2264 floor(T \u00d7 p / 100), the no when R > sides \u2212 floor((sides \u2212 T) \u00d7 p / 100).",
+                "required": [
+                    "key",
+                    "name",
+                    "sides",
+                    "levels"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Unique among the draft's tables and likelihood oracles: a-z, 0-9 and \"-\".",
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]+$",
+                        "example": "fate",
+                        "maxLength": 64
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fate question"
+                    },
+                    "sides": {
+                        "type": "integer",
+                        "example": 100
+                    },
+                    "levels": {
+                        "description": "The likelihoods a question can be asked with; unique keys.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LikelihoodLevelDefinition"
+                        },
+                        "minItems": 1
+                    },
+                    "chaos": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemLikelihoodChaos"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Absent when the oracle has no chaos factor."
+                    },
+                    "exceptionalPercent": {
+                        "description": "Size of the exceptional bands, in percent; 0 by default.",
+                        "type": "integer",
+                        "example": 20,
+                        "nullable": true,
+                        "minimum": 0
+                    },
+                    "randomEvent": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LikelihoodRandomEventDefinition"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Absent when a double is no random event (schema version 2)."
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodOracleItemResponse": {
+                "required": [
+                    "definition",
+                    "usedBy"
+                ],
+                "properties": {
+                    "definition": {
+                        "$ref": "#/components/schemas/GameSystemLikelihoodOracle"
+                    },
+                    "usedBy": {
+                        "description": "Where the draft references the oracle; a referenced oracle cannot be renamed or deleted.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "sceneTypes[3].play[0]"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemOraclesResponse": {
+                "required": [
+                    "version",
+                    "schemaVersion",
+                    "tables",
+                    "likelihood"
+                ],
+                "properties": {
+                    "version": {
+                        "description": "The draft's version: send it as \"expectedVersion\" with the next oracle write.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "schemaVersion": {
+                        "description": "The draft's schema version: a version 1 draft refuses the schema version 2 fields.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "tables": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OracleTableItemResponse"
+                        }
+                    },
+                    "likelihood": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LikelihoodOracleItemResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "SaveOracleTableRequest": {
+                "required": [
+                    "expectedVersion",
+                    "table"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "table": {
+                        "$ref": "#/components/schemas/GameSystemOracleTable"
+                    }
+                },
+                "type": "object"
+            },
+            "OracleInUseResponse": {
+                "required": [
+                    "error",
+                    "paths"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message naming where it is used.",
+                        "type": "string"
+                    },
+                    "paths": {
+                        "description": "Where the draft references it (e.g. \"flows[0].phases[1].steps[2]\").",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "sceneTypes[1].play[1]"
                         ]
                     }
                 },

@@ -1,21 +1,7 @@
 import { stepPickers } from '../../fixtures'
 
-/** What the effect forms pick from: the step pickers plus Scene Types, fact slots and sheet fields. */
-export const effectPickers = {
-  ...stepPickers,
-  sceneTypes: [
-    { key: 'chase', name: 'Chase' },
-    { key: 'hideout', name: 'Hideout' },
-  ],
-  factSlots: [
-    { key: 'client', name: 'Client', type: 'text' },
-    { key: 'target', name: 'Target', type: 'npc' },
-  ],
-  sheetFields: [
-    { key: 'hands', name: 'Hands' },
-    { key: 'stress', name: 'Stress' },
-  ],
-}
+/** What the effect forms pick from: the step pickers, Scene Types, fact slots and sheet fields included. */
+export const effectPickers = stepPickers
 
 /** One stored effect of every kind, each with its optional fields and a field the editor does not know. */
 export const every = [

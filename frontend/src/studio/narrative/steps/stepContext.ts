@@ -1,8 +1,11 @@
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
 
-/** What the step and effect forms pick from: the draft's own tables, trackers, tags, Scene Types, fact slots and sheet fields. */
+/** What the step and effect forms pick from: the draft's own tables, likelihood oracles, trackers, tags, Scene Types, fact slots and sheet fields. */
 export interface StepContext {
-  tables: { key: string; name: string }[]
+  /** The tables with their entry keys, which a table step branches on. */
+  tables: { key: string; name: string; entries: string[] }[]
+  /** The likelihood oracles with their level keys, which an oracle step may ask at. */
+  likelihood: { key: string; name: string; levels: string[] }[]
   trackers: { key: string; name: string }[]
   tags: { key: string; name: string }[]
   /** For the effect pickers; absent means none to pick yet. */
@@ -20,7 +23,12 @@ export function stepContext(narrative: GameSystemNarrative): StepContext {
       name: typeof definition[field] === 'string' ? definition[field] : key,
     }))
   return {
-    tables: narrative.catalog.tables.map(({ key, name }) => ({ key, name })),
+    tables: narrative.catalog.tables.map(({ key, name, entries }) => ({ key, name, entries })),
+    likelihood: narrative.catalog.likelihood.map(({ key, name, levels }) => ({
+      key,
+      name,
+      levels,
+    })),
     trackers: named(narrative.trackers, 'name'),
     tags: named(narrative.tags, 'label'),
     sceneTypes: named(narrative.sceneTypes, 'name'),

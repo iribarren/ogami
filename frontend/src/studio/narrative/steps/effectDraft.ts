@@ -86,6 +86,10 @@ const required = (source: StoredItem, field: string): string | null =>
 const oneOf = <T extends string>(options: readonly T[], value: unknown): T | null =>
   options.find((option) => option === value) ?? null
 
+/** The optional text and list fields: stored empty, they mean absent but are kept as stored. */
+const optional = ['name', 'agenda', 'tags', 'text']
+const isEmpty = (value: unknown) => value === '' || (Array.isArray(value) && value.length === 0)
+
 /** The effect as form state; one this editor cannot edit is kept as stored. */
 export function effectToDraft(stored: unknown): EffectDraft {
   const unreadable: EffectDraft = { kind: 'stored', stored }
@@ -93,7 +97,13 @@ export function effectToDraft(stored: unknown): EffectDraft {
   if (!isObject(stored) || kind === null) {
     return unreadable
   }
-  const extra = unknownFields(stored, ['kind', ...effectFields[kind]])
+  // An optional field the stored effect carries empty stays as it is until the author fills it.
+  const extra = {
+    ...unknownFields(stored, ['kind', ...effectFields[kind]]),
+    ...Object.fromEntries(
+      optional.filter((field) => isEmpty(stored[field])).map((field) => [field, stored[field]]),
+    ),
+  }
   const name = textOf(stored, 'name')
   const tags = stringsOf(stored, 'tags')
   switch (kind) {
@@ -169,7 +179,7 @@ export function newEffect(kind: EffectKind): EditedEffect {
   }
 }
 
-/** The non-empty ones of the optional fields: an empty text or list means the same as absent. */
+/** The non-empty ones of the optional fields: an empty text or list means the same as absent (`extra` keeps one a stored effect had). */
 const given = (fields: Record<string, string | string[]>) =>
   Object.fromEntries(Object.entries(fields).filter(([, value]) => value.length > 0))
 

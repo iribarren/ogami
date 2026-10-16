@@ -1,6 +1,7 @@
 import { parseInteger } from '../../oracles/tableDraft'
 import type { FieldErrors } from '../narrativeDraft'
 import type { StoredItem } from '../useGameSystemNarrative'
+import type { StepContext } from './stepContext'
 import {
   isObject,
   listOf,
@@ -24,7 +25,15 @@ import { effectsToDrafts, effectsToStored, type EffectDraft } from './effectDraf
 /** The reserved `next` that ends the list. */
 export const END = 'end'
 
-export const stepKinds = ['prompt', 'character', 'roll', 'condition'] as const
+export const stepKinds = [
+  'prompt',
+  'character',
+  'roll',
+  'condition',
+  'oracle',
+  'table',
+  'choice',
+] as const
 export type StepKind = (typeof stepKinds)[number]
 
 export const countTargets = ['npc', 'thread', 'character'] as const
@@ -38,6 +47,33 @@ export interface BandDraft {
   effects: EffectDraft[]
   extra: StoredItem
 }
+
+/** What a branch, an option or `otherwise` does: continue elsewhere and apply effects. */
+export interface OutcomeDraft {
+  /** '' continues with the following step. */
+  next: string
+  effects: EffectDraft[]
+  extra: StoredItem
+}
+
+/** The answers an oracle step may branch on. */
+export const oracleAnswers = ['yes', 'no', 'exceptionalYes', 'exceptionalNo'] as const
+export type OracleAnswer = (typeof oracleAnswers)[number]
+
+/** A table step branch: the entry it is for and what follows it. */
+export interface BranchDraft extends OutcomeDraft {
+  entry: string
+}
+
+/** A choice option (the publisher's own limits, echoed to disable the buttons). */
+export interface OptionDraft extends OutcomeDraft {
+  key: string
+  label: string
+}
+
+export const MAX_BRANCHES = 1000
+export const MIN_OPTIONS = 2
+export const MAX_OPTIONS = 10
 
 interface StepBase {
   key: string
@@ -65,6 +101,17 @@ export type StepDraft =
       countExtra: StoredItem
       bands: BandDraft[]
     })
+  | (StepBase & {
+      kind: 'oracle'
+      oracle: string
+      /** The likelihood level; '' asks at the oracle's default. */
+      level: string
+      branches: Record<OracleAnswer, OutcomeDraft>
+      /** What the stored `branches` carries beyond the four answers. */
+      branchesExtra: StoredItem
+    })
+  | (StepBase & { kind: 'table'; table: string; branches: BranchDraft[]; otherwise: OutcomeDraft })
+  | (StepBase & { kind: 'choice'; options: OptionDraft[]; skip: string })
   | { kind: 'stored'; stored: unknown }
 
 export type EditedStep = Exclude<StepDraft, { kind: 'stored' }>
@@ -74,6 +121,7 @@ export type StepsResult = { steps: StoredItem[] } | { errors: FieldErrors }
 const commonFields = ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'next', 'effects']
 const bandFields = ['upTo', 'next', 'effects']
 const countFields = ['of', 'tags']
+const outcomeFields = ['next', 'effects']
 
 /** The forms a band limit takes. */
 export const bandForms = ['integer', 'tracker', 'formula'] as const satisfies readonly ValueForm[]
@@ -96,6 +144,69 @@ function readBands(stored: StoredItem): BandDraft[] | null {
   const list = listOf(stored, 'bands')
   const bands = (list ?? []).map(readBand)
   return list === null || bands.includes(null) ? null : (bands as BandDraft[])
+}
+
+export const emptyOutcome = (): OutcomeDraft => ({ next: '', effects: [], extra: {} })
+
+const isEmptyOutcome = (outcome: OutcomeDraft) =>
+  outcome.next === '' && outcome.effects.length === 0 && Object.keys(outcome.extra).length === 0
+
+/** An outcome as form state; `own` are the fields of a branch or option around it. */
+function readOutcome(stored: unknown, own: readonly string[] = []): OutcomeDraft | null {
+  if (!isObject(stored)) {
+    return null
+  }
+  const next = textOf(stored, 'next')
+  const effects = listOf(stored, 'effects')
+  return next === null || effects === null
+    ? null
+    : {
+        next,
+        effects: effectsToDrafts(effects),
+        extra: unknownFields(stored, [...outcomeFields, ...own]),
+      }
+}
+
+/** The outcomes under an oracle's `branches`, or null when one of them cannot be read. */
+function readAnswers(stored: StoredItem) {
+  if (stored.branches !== undefined && !isObject(stored.branches)) {
+    return null
+  }
+  const given = stored.branches ?? {}
+  const outcomes = oracleAnswers.map(
+    (answer) =>
+      [answer, given[answer] === undefined ? emptyOutcome() : readOutcome(given[answer])] as const,
+  )
+  return outcomes.some(([, outcome]) => outcome === null)
+    ? null
+    : {
+        branches: Object.fromEntries(outcomes) as Record<OracleAnswer, OutcomeDraft>,
+        branchesExtra: unknownFields(given, oracleAnswers),
+      }
+}
+
+function readBranches(stored: StoredItem): BranchDraft[] | null {
+  const list = listOf(stored, 'branches')
+  const branches = (list ?? []).map((branch) => {
+    const outcome = readOutcome(branch, ['entry'])
+    const entry = isObject(branch) ? branch.entry : undefined
+    return outcome === null || typeof entry !== 'string' ? null : { ...outcome, entry }
+  })
+  return branches.includes(null) ? null : (branches as BranchDraft[])
+}
+
+function readOptions(stored: StoredItem): OptionDraft[] | null {
+  if (!Array.isArray(stored.options)) {
+    return null
+  }
+  const options = (stored.options as unknown[]).map((option) => {
+    const outcome = readOutcome(option, ['key', 'label'])
+    const { key, label } = isObject(option) ? option : { key: undefined, label: undefined }
+    return outcome === null || typeof key !== 'string' || typeof label !== 'string'
+      ? null
+      : { ...outcome, key, label }
+  })
+  return options.includes(null) ? null : (options as OptionDraft[])
 }
 
 function readCondition(stored: StoredItem, base: StepBase): StepDraft | null {
@@ -148,6 +259,9 @@ export function stepToDraft(stored: unknown): StepDraft {
     character: commonFields,
     roll: [...commonFields, 'dice', 'bands'],
     condition: [...commonFields, 'tracker', 'count', 'bands'],
+    oracle: [...commonFields, 'oracle', 'likelihood', 'branches'],
+    table: [...commonFields, 'table', 'branches', 'otherwise'],
+    choice: [...commonFields, 'options', 'skip'],
   }[kind]
   const base: StepBase = {
     key: key ?? '',
@@ -173,6 +287,26 @@ export function stepToDraft(stored: unknown): StepDraft {
     }
     case 'condition':
       return readCondition(stored, base) ?? unreadable
+    case 'oracle': {
+      const answers = readAnswers(stored)
+      const level = textOf(stored, 'likelihood')
+      return answers === null || level === null || typeof stored.oracle !== 'string'
+        ? unreadable
+        : { ...base, kind, oracle: stored.oracle, level, ...answers }
+    }
+    case 'table': {
+      const branches = readBranches(stored)
+      const otherwise =
+        stored.otherwise === undefined ? emptyOutcome() : readOutcome(stored.otherwise)
+      return branches === null || otherwise === null || typeof stored.table !== 'string'
+        ? unreadable
+        : { ...base, kind, table: stored.table, branches, otherwise }
+    }
+    case 'choice': {
+      const options = readOptions(stored)
+      const skip = textOf(stored, 'skip')
+      return options === null || skip === null ? unreadable : { ...base, kind, options, skip }
+    }
   }
 }
 
@@ -190,6 +324,17 @@ function freeKey(kind: StepKind, steps: StepDraft[]): string {
 
 export function newBand(): BandDraft {
   return { upTo: { form: 'integer', text: '' }, next: '', effects: [], extra: {} }
+}
+
+export const newBranch = (): BranchDraft => ({ entry: '', ...emptyOutcome() })
+
+/** An option with the smallest free `option-n` key and no label yet. */
+export function newOption(options: OptionDraft[]): OptionDraft {
+  let n = options.length + 1
+  while (options.some((option) => option.key === `option-${String(n)}`)) {
+    n += 1
+  }
+  return { key: `option-${String(n)}`, label: '', ...emptyOutcome() }
 }
 
 export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
@@ -222,6 +367,26 @@ export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
         countExtra: {},
         bands: [lastBand],
       }
+    case 'oracle':
+      return {
+        ...base,
+        kind,
+        oracle: '',
+        level: '',
+        branches: {
+          yes: emptyOutcome(),
+          no: emptyOutcome(),
+          exceptionalYes: emptyOutcome(),
+          exceptionalNo: emptyOutcome(),
+        },
+        branchesExtra: {},
+      }
+    case 'table':
+      return { ...base, kind, table: '', branches: [], otherwise: emptyOutcome() }
+    case 'choice': {
+      const first = newOption([])
+      return { ...base, kind, options: [first, newOption([first])], skip: '' }
+    }
   }
 }
 
@@ -247,6 +412,16 @@ function bandToStored(band: BandDraft, last: boolean, path: string, errors: Fiel
     ...(band.effects.length === 0
       ? {}
       : { effects: effectsToStored(band.effects, `${path}.effects`, errors) }),
+  }
+}
+
+function outcomeToStored(outcome: OutcomeDraft, path: string, errors: FieldErrors) {
+  return {
+    ...outcome.extra,
+    ...(outcome.next === '' ? {} : { next: outcome.next }),
+    ...(outcome.effects.length === 0
+      ? {}
+      : { effects: effectsToStored(outcome.effects, `${path}.effects`, errors) }),
   }
 }
 
@@ -293,6 +468,49 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
       }
       item.bands = bandsOf(step.bands)
       break
+    case 'oracle': {
+      item.oracle = step.oracle
+      if (step.level !== '') {
+        item.likelihood = step.level
+      }
+      const branches = {
+        ...step.branchesExtra,
+        ...Object.fromEntries(
+          oracleAnswers
+            .filter((answer) => !isEmptyOutcome(step.branches[answer]))
+            .map((answer) => [
+              answer,
+              outcomeToStored(step.branches[answer], `${String(index)}.branches.${answer}`, errors),
+            ]),
+        ),
+      }
+      if (Object.keys(branches).length > 0) {
+        item.branches = branches
+      }
+      break
+    }
+    case 'table':
+      item.table = step.table
+      if (step.branches.length > 0) {
+        item.branches = step.branches.map(({ entry, ...outcome }, position) => ({
+          ...outcomeToStored(outcome, `${String(index)}.branches.${String(position)}`, errors),
+          entry,
+        }))
+      }
+      if (!isEmptyOutcome(step.otherwise)) {
+        item.otherwise = outcomeToStored(step.otherwise, `${String(index)}.otherwise`, errors)
+      }
+      break
+    case 'choice':
+      item.options = step.options.map(({ key, label, ...outcome }, position) => ({
+        ...outcomeToStored(outcome, `${String(index)}.options.${String(position)}`, errors),
+        key,
+        label,
+      }))
+      if (step.skip !== '') {
+        item.skip = step.skip
+      }
+      break
     case 'character':
       break
   }
@@ -315,6 +533,14 @@ export interface StepGuide {
   key?: string
   next?: string
   bands: Record<number, { upTo?: string; next?: string }>
+  /** An oracle step's level the chosen oracle does not have. */
+  level?: string
+  /** A choice's `skip`. */
+  skip?: string
+  /** Per outcome (an answer, `otherwise`, a branch or option position): a `next` that goes backward. */
+  nexts: Record<string, string>
+  /** Per table branch (its entry) or choice option (its key). */
+  items: Record<number, string>
 }
 
 const backward = 'Pick a later step: next only goes forward.'
@@ -322,14 +548,16 @@ const backward = 'Pick a later step: next only goes forward.'
 /**
  * Client guides, nothing more: the publisher checks the same rules and stays the authority, so
  * none of them blocks a save. A `next` that is the same or an earlier key (after a move, say), a
- * repeated or reserved key, literal `upTo` values that do not increase and a limit on the last band.
+ * repeated or reserved key, literal `upTo` values that do not increase and a limit on the last band;
+ * with the pickers' `context`, a level or entry the chosen oracle or table does not have; and for
+ * a choice, repeated option keys, a `skip` naming no option and a suggested choice without `skip`.
  */
-export function stepGuides(steps: StepDraft[]): StepGuide[] {
+export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide[] {
   const keys = steps.map(stepKey)
   const misplaced = (next: string, index: number) =>
     next !== '' && next !== END && keys.includes(next) && keys.indexOf(next) <= index
   return steps.map((step, index) => {
-    const guide: StepGuide = { bands: {} }
+    const guide: StepGuide = { bands: {}, nexts: {}, items: {} }
     const key = keys[index] ?? ''
     if (key === END) {
       guide.key = 'end is reserved for the end of the list.'
@@ -341,6 +569,11 @@ export function stepGuides(steps: StepDraft[]): StepGuide[] {
     }
     if (misplaced(step.next, index)) {
       guide.next = backward
+    }
+    const outcome = (id: string, { next }: OutcomeDraft) => {
+      if (misplaced(next, index)) {
+        guide.nexts[id] = backward
+      }
     }
     if (step.kind === 'roll' || step.kind === 'condition') {
       let previous: number | null = null
@@ -363,6 +596,44 @@ export function stepGuides(steps: StepDraft[]): StepGuide[] {
           guide.bands[position] = flags
         }
       })
+    }
+    if (step.kind === 'oracle') {
+      oracleAnswers.forEach((answer) => {
+        outcome(answer, step.branches[answer])
+      })
+      const levels = context?.likelihood.find((oracle) => oracle.key === step.oracle)?.levels ?? []
+      if (context && step.level !== '' && !levels.includes(step.level)) {
+        guide.level = 'Not a level of this oracle.'
+      }
+    }
+    if (step.kind === 'table') {
+      const entries = context?.tables.find((table) => table.key === step.table)?.entries ?? []
+      step.branches.forEach((branch, position) => {
+        outcome(String(position), branch)
+        if (branch.entry === '') {
+          return
+        }
+        if (step.branches.findIndex((other) => other.entry === branch.entry) !== position) {
+          guide.items[position] = 'Another branch has this entry.'
+        } else if (context && !entries.includes(branch.entry)) {
+          guide.items[position] = 'Not an entry of this table.'
+        }
+      })
+      outcome('otherwise', step.otherwise)
+    }
+    if (step.kind === 'choice') {
+      const optionKeys = step.options.map((option) => option.key)
+      step.options.forEach((option, position) => {
+        outcome(String(position), option)
+        if (optionKeys.indexOf(option.key) !== position) {
+          guide.items[position] = 'Another option has this key.'
+        }
+      })
+      if (step.skip !== '' && !optionKeys.includes(step.skip)) {
+        guide.skip = 'No option has this key.'
+      } else if (step.skip === '' && !step.mandatory) {
+        guide.skip = 'A suggested choice must name the option taken when it is skipped.'
+      }
     }
     return guide
   })

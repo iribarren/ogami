@@ -9,6 +9,7 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 
 import { TextField } from '../TextField'
 import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
+import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
 import { EffectsEditor } from './EffectsEditor'
 import { Area, CheckList } from './fields'
@@ -27,7 +28,7 @@ import {
   type StepGuide,
   type StepKind,
 } from './stepDraft'
-import type { StepError } from './stepError'
+import { aboutEffects, type StepError } from './stepError'
 
 /** The bands' problems: what the guides and the server say about each band's limit and next. */
 function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
@@ -44,9 +45,6 @@ function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
   return problems
 }
 
-/** Messages for the effects editor: an effect, or the list of effects as a whole. */
-const aboutEffects = (error: StepError) => error.effect !== null || error.field === 'effects'
-
 function StepFields({
   step,
   guide,
@@ -55,6 +53,7 @@ function StepFields({
   laterKeys,
   onChange,
   onInnerRestructure,
+  onItems,
 }: {
   step: EditedStep
   guide: StepGuide
@@ -63,23 +62,66 @@ function StepFields({
   laterKeys: string[]
   onChange: (step: StepDraft) => void
   onInnerRestructure: () => void
+  onItems: (count: number, change: (origin: (number | null)[]) => (number | null)[]) => void
 }) {
   const fieldError = (field: string) =>
-    mine.find((error) => error.band === null && error.effect === null && error.field === field)
-      ?.message
+    mine.find(
+      (error) =>
+        error.band === null &&
+        error.effect === null &&
+        error.slot === undefined &&
+        error.item === undefined &&
+        error.field === field,
+    )?.message
   const setBands = (bands: BandDraft[]) => {
     onChange({ ...step, bands } as StepDraft)
   }
   // Everything the form shows next to a field; the rest is listed on the card.
-  const inline = ['key', 'title', 'prompt', 'tip', 'dice', 'next']
-  const loose = mine.filter(
-    (error) =>
-      error.index === null ||
-      (!aboutEffects(error) &&
-        (error.band === null
-          ? !inline.includes(error.field ?? '')
-          : error.field !== 'upTo' && error.field !== 'next')),
-  )
+  const inline = [
+    'key',
+    'title',
+    'prompt',
+    'tip',
+    'dice',
+    'next',
+    'oracle',
+    'likelihood',
+    'table',
+    'skip',
+  ]
+  const bands = 'bands' in step ? step.bands.length : 0
+  const items =
+    'options' in step
+      ? step.options.length
+      : 'branches' in step && Array.isArray(step.branches)
+        ? step.branches.length
+        : 0
+  // A message about a part the step does not have (a band, a branch, an option) is listed here, not lost.
+  const shown = (error: StepError) => {
+    if (error.band !== null) {
+      return (
+        error.band < bands && (aboutEffects(error) || ['upTo', 'next'].includes(error.field ?? ''))
+      )
+    }
+    if (error.slot !== undefined) {
+      return error.slot === 'otherwise' ? step.kind === 'table' : step.kind === 'oracle'
+    }
+    if (error.item !== undefined) {
+      return error.item < items
+    }
+    return aboutEffects(error) || inline.includes(error.field ?? '')
+  }
+  const loose = mine.filter((error) => error.index === null || !shown(error))
+  const kindProps = {
+    context,
+    laterKeys,
+    guide,
+    mine,
+    fieldError,
+    onChange,
+    onRestructure: onInnerRestructure,
+    onItems,
+  }
 
   return (
     <div className="space-y-3 pt-3">
@@ -219,6 +261,9 @@ function StepFields({
           )}
         </>
       )}
+      {step.kind === 'oracle' && <OracleFields step={step} {...kindProps} />}
+      {step.kind === 'table' && <TableFields step={step} {...kindProps} />}
+      {step.kind === 'choice' && <ChoiceFields step={step} {...kindProps} />}
       {(step.kind === 'roll' || step.kind === 'condition') && (
         <BandsEditor
           bands={step.bands}
@@ -236,7 +281,13 @@ function StepFields({
         effects={step.effects}
         context={context}
         allowSheet={step.kind === 'character'}
-        errors={mine.filter((error) => error.band === null && aboutEffects(error))}
+        errors={mine.filter(
+          (error) =>
+            error.band === null &&
+            error.slot === undefined &&
+            error.item === undefined &&
+            aboutEffects(error),
+        )}
         onChange={(effects) => {
           onChange({ ...step, effects })
         }}
@@ -263,6 +314,7 @@ function StepCard({
   onMove,
   onDelete,
   onInnerRestructure,
+  onItems,
 }: {
   step: StepDraft
   index: number
@@ -275,6 +327,7 @@ function StepCard({
   onMove: (by: number) => void
   onDelete: () => void
   onInnerRestructure: () => void
+  onItems: (count: number, change: (origin: (number | null)[]) => (number | null)[]) => void
 }) {
   const number = String(index + 1)
   const stored = step.kind === 'stored' ? step.stored : null
@@ -359,6 +412,7 @@ function StepCard({
               laterKeys={laterKeys}
               onChange={onChange}
               onInnerRestructure={onInnerRestructure}
+              onItems={onItems}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -394,22 +448,33 @@ export function StepListEditor({
   const [answered, setAnswered] = useState(errors)
   const [origin, setOrigin] = useState<(number | null)[]>(() => steps.map((_, at) => at))
   const [stale, setStale] = useState<number[]>([])
+  // Where each step's branches or options (by the step's origin) came from, once any moved or went.
+  const [itemOrigin, setItemOrigin] = useState<Record<number, (number | null)[]>>({})
   if (answered !== errors) {
     setAnswered(errors)
     setOrigin(steps.map((_, at) => at))
     setStale([])
+    setItemOrigin({})
   }
   // A list replaced from outside has no known origins: its server messages are not shown on cards.
   const origins = origin.length === steps.length ? origin : steps.map(() => null)
-  const guides = stepGuides(steps)
+  const guides = stepGuides(steps, context)
   const messagesOf = (index: number) => {
     const from = origins[index]
-    return errors.filter(
-      (error) =>
-        error.index !== null &&
-        error.index === from &&
-        !((error.band !== null || error.effect !== null) && stale.includes(from)),
-    )
+    const moved = from === null || from === undefined ? undefined : itemOrigin[from]
+    return errors
+      .filter(
+        (error) =>
+          error.index !== null &&
+          error.index === from &&
+          !((error.band !== null || error.effect !== null) && stale.includes(from)),
+      )
+      .flatMap((error) => {
+        // A message about a branch or option goes where that one is now, and goes when it does.
+        const at =
+          error.item === undefined || moved === undefined ? error.item : moved.indexOf(error.item)
+        return at === -1 ? [] : [at === error.item ? error : { ...error, item: at }]
+      })
   }
 
   return (
@@ -432,7 +497,7 @@ export function StepListEditor({
               step={step}
               index={index}
               total={steps.length}
-              guide={guides[index] ?? { bands: {} }}
+              guide={guides[index] ?? { bands: {}, nexts: {}, items: {} }}
               mine={messagesOf(index)}
               context={context}
               laterKeys={steps
@@ -449,6 +514,15 @@ export function StepListEditor({
               onDelete={() => {
                 setOrigin(origins.filter((_, at) => at !== index))
                 onChange(steps.filter((_, at) => at !== index))
+              }}
+              onItems={(count, change) => {
+                const from = origins[index]
+                if (from !== null && from !== undefined) {
+                  setItemOrigin((current) => ({
+                    ...current,
+                    [from]: change(current[from] ?? Array.from({ length: count }, (_, at) => at)),
+                  }))
+                }
               }}
               onInnerRestructure={() => {
                 const from = origins[index]

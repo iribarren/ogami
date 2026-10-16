@@ -156,3 +156,19 @@ export function toOracle(
   // The stored oracle has fields the generated type does not list.
   return oracle as unknown as LikelihoodOracle
 }
+
+/**
+ * A new likelihood oracle: the smallest the domain accepts that is usable, two levels on a d100
+ * with no chaos factor, exceptional bands or random event; the editor adds those.
+ */
+export function newLikelihood(key: string, name: string): LikelihoodOracle {
+  return {
+    key,
+    name,
+    sides: 100,
+    levels: [
+      { key: 'unlikely', label: 'Unlikely', target: 35 },
+      { key: 'likely', label: 'Likely', target: 65 },
+    ],
+  }
+}

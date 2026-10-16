@@ -26,6 +26,7 @@ import {
   useTestRollOracleTable,
   type GameSystemOracles,
   type OracleTableItem,
+  type OracleTableResult,
 } from './useGameSystemOracles'
 
 /**
@@ -46,7 +47,7 @@ interface TableEditorProps {
   gameSystemKey: string
   oracles: GameSystemOracles
   item: OracleTableItem
-  history: RollHistory
+  history: RollHistory<OracleTableResult>
   /** Told the key a save renames the table to before it is sent, and null once it settled. */
   onRenaming: (key: string | null) => void
   /** Refetches the oracles and starts the form again from the latest stored table. */
@@ -123,12 +124,17 @@ export function TableEditor({
       return null
     }
     if (renames) {
-      await navigate({
-        to: '/studio/game-systems/$key/oracle-tables/$table',
-        params: { key: gameSystemKey, table: body.key },
-        replace: true,
-      })
-      onRenaming(null)
+      try {
+        await navigate({
+          to: '/studio/game-systems/$key/oracle-tables/$table',
+          params: { key: gameSystemKey, table: body.key },
+          replace: true,
+        })
+      } catch {
+        // The save went through; if the router refuses, the URL decides what the page shows.
+      } finally {
+        onRenaming(null)
+      }
     }
     return body.key
   }

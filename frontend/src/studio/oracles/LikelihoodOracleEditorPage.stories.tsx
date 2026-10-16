@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, within } from 'storybook/test'
+import { expect, userEvent, within } from 'storybook/test'
 
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { oracles, oraclesV1Likelihood, oraclesWithChaos } from '../fixtures'
+import { fateAnswer, oracles, oraclesV1Likelihood, oraclesWithChaos } from '../fixtures'
 import { LikelihoodOracleEditorPage } from './LikelihoodOracleEditorPage'
 
 const json =
@@ -21,6 +21,7 @@ const meta = {
   parameters: {
     api: {
       [`GET ${base}/oracles`]: json(oraclesWithChaos),
+      [`POST ${base}/likelihood-oracles/fate/test-answers`]: json(fateAnswer),
     },
   },
   decorators: [
@@ -44,12 +45,22 @@ export const WithChaos: Story = {
   },
 }
 
+/** Asking at a chaos factor: the answer and, on a double, the random event table roll. */
+export const Asked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Ask' }))
+    await expect(await canvas.findByText('Exceptional yes')).toBeVisible()
+    await expect(canvas.getByText('Hail')).toBeVisible()
+  },
+}
+
 export const WithoutChaos: Story = {
   parameters: { api: { [`GET ${base}/oracles`]: json(oracles) } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByLabelText('Level 2 target')).toHaveValue('65')
-    await expect(canvas.getByLabelText('Has a chaos factor')).not.toBeChecked()
+    await expect(canvas.queryByLabelText('Chaos factor')).not.toBeInTheDocument()
   },
 }
 

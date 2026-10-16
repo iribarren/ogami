@@ -235,6 +235,21 @@ describe('the table editor', () => {
     expect(watch.seen.notFound).toBe(false)
   })
 
+  it('lets go of the renamed key when the navigation is refused, and leaves the URL to decide', async () => {
+    const { user, router } = await openEditor('weather', {
+      [`PUT ${base}/oracle-tables/weather`]: () => Response.json(afterRename),
+    })
+    vi.spyOn(router, 'navigate').mockRejectedValue(new Error('Navigation refused.'))
+
+    await replace(user, 'Key', 'skies')
+    await user.click(save())
+
+    expect(await screen.findByText(/no oracle table/)).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe(
+      '/studio/game-systems/my-draft/oracle-tables/weather',
+    )
+  })
+
   it('renames through a test roll: saves, goes to the new key, rolls it and keeps the result', async () => {
     const rolled: string[] = []
     const { user, router } = await openEditor('weather', {

@@ -9,6 +9,7 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import { StudioError } from '../useGameSystems'
 import {
+  chaosRange,
   draftProblems,
   toDraft,
   toLevelDraft,
@@ -18,11 +19,15 @@ import {
   type LikelihoodDraft,
 } from './likelihoodDraft'
 import { parseInteger } from './tableDraft'
+import { TestAnswerPanel } from './TestAnswerPanel'
+import type { RollHistory } from './useRollHistory'
 import {
   OracleError,
   useSaveLikelihoodOracle,
+  useTestAskLikelihoodOracle,
   type GameSystemOracles,
   type LikelihoodOracleItem,
+  type LikelihoodTest,
 } from './useGameSystemOracles'
 
 /**
@@ -150,6 +155,7 @@ interface LikelihoodOracleEditorProps {
   gameSystemKey: string
   oracles: GameSystemOracles
   item: LikelihoodOracleItem
+  history: RollHistory<LikelihoodTest>
   /** Told the key a save renames the oracle to before it is sent, and null once it settled. */
   onRenaming: (key: string | null) => void
   /** Refetches the oracles and starts the form again from the latest stored oracle. */
@@ -161,6 +167,7 @@ export function LikelihoodOracleEditor({
   gameSystemKey,
   oracles,
   item,
+  history,
   onRenaming,
   onReload,
 }: LikelihoodOracleEditorProps) {
@@ -172,6 +179,7 @@ export function LikelihoodOracleEditor({
   const [draft, setDraft] = useState<LikelihoodDraft>(() => toDraft(stored))
   const nextId = useRef(stored.levels.length)
   const save = useSaveLikelihoodOracle(gameSystemKey)
+  const ask = useTestAskLikelihoodOracle(gameSystemKey)
   const navigate = useNavigate()
   const keyId = useId()
   const nameId = useId()
@@ -216,12 +224,17 @@ export function LikelihoodOracleEditor({
       return null
     }
     if (renames) {
-      await navigate({
-        to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
-        params: { key: gameSystemKey, oracle: body.key },
-        replace: true,
-      })
-      onRenaming(null)
+      try {
+        await navigate({
+          to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
+          params: { key: gameSystemKey, oracle: body.key },
+          replace: true,
+        })
+      } catch {
+        // The save went through; if the router refuses, the URL decides what the page shows.
+      } finally {
+        onRenaming(null)
+      }
     }
     return body.key
   }
@@ -257,7 +270,7 @@ export function LikelihoodOracleEditor({
       : [...tables, draft.randomEvent]
 
   return (
-    <div className="max-w-3xl">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <form aria-label="Likelihood oracle" className="space-y-6" onSubmit={handleSubmit} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -436,6 +449,17 @@ export function LikelihoodOracleEditor({
           </Button>
         )}
       </form>
+      <TestAnswerPanel
+        dirty={dirty}
+        history={history}
+        levels={draft.levels}
+        chaos={chaosRange(draft)}
+        disabled={!valid || save.isPending || conflict}
+        onAsk={async (likelihood, chaosFactor) => {
+          const key = await persist()
+          return key === null ? null : ask.mutateAsync({ oracle: key, likelihood, chaosFactor })
+        }}
+      />
     </div>
   )
 }

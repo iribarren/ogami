@@ -271,6 +271,8 @@ Start feature `studio-gamesystem-drafts` (ODD). Studio: GameSystem drafts (creat
 
 **15. studio-oracle-editor**
 
+Done: an Oracles tab on the GameSystem page and an editor for the oracle tables and likelihood oracles of a draft ([ADR 0029](adr/0029-studio-oracle-editor.md)): create and delete (refused while the draft uses the oracle, with the places listed), rename, ranged tables with live coverage, weighted tables, nested tables and entry keys, likelihood levels, chaos, exceptional percent and random event table, per-item saves with an expected version, and live test rolls and test answers of the saved draft through Randomness. Entry scene types, effects and the chaos tracker are kept and shown read-only until features 16 to 18. The prompt is kept for reference.
+
 ```text
 Start feature `studio-oracle-editor` (ODD). Studio: rich editor for oracle tables and likelihood oracles in a draft, with live test rolls through Randomness.
 ```

@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router'
 import { StudioError } from '../useGameSystems'
 import { TableEditor } from './TableEditor'
 import { useRollHistory } from './useRollHistory'
-import { useGameSystemOracles } from './useGameSystemOracles'
+import { useGameSystemOracles, type OracleTableResult } from './useGameSystemOracles'
 
 /** `/studio/game-systems/$key/oracle-tables/$table`: edits one oracle table of a draft. */
 export function OracleTableEditorPage({
@@ -16,7 +16,7 @@ export function OracleTableEditorPage({
 }) {
   const oracles = useGameSystemOracles(gameSystemKey)
   const [reloads, setReloads] = useState(0)
-  const history = useRollHistory()
+  const history = useRollHistory<OracleTableResult>()
   const [reloadFailed, setReloadFailed] = useState(false)
   // The key a save is renaming the table to: the cache answers with it before the URL does.
   const [renaming, setRenaming] = useState<string | null>(null)

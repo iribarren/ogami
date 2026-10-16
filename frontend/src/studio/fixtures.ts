@@ -217,3 +217,30 @@ export const oraclesV1Likelihood = {
     },
   ],
 }
+
+/** Asking `fate` at chaos factor 7: a yes on a double, which signals the random event table. */
+export const fateAnswer = {
+  answer: {
+    answer: 'exceptional_yes',
+    roll: 33,
+    sides: 100,
+    effectiveTarget: 75,
+    likelihood: 'likely',
+    likelihoodLabel: 'Likely',
+    chaosFactor: 7,
+    randomEvent: 'storm-kind',
+  },
+  randomEvent: {
+    table: 'storm-kind',
+    steps: [
+      {
+        tableKey: 'storm-kind',
+        tableName: 'Storm kind',
+        dice: '1d4',
+        total: 2,
+        text: 'Hail',
+        nestedTableKey: null,
+      },
+    ],
+  },
+}

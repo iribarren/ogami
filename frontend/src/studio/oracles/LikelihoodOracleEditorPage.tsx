@@ -3,7 +3,8 @@ import { Link } from '@tanstack/react-router'
 
 import { StudioError } from '../useGameSystems'
 import { LikelihoodOracleEditor } from './LikelihoodOracleEditor'
-import { useGameSystemOracles } from './useGameSystemOracles'
+import { useRollHistory } from './useRollHistory'
+import { useGameSystemOracles, type LikelihoodTest } from './useGameSystemOracles'
 
 /** `/studio/game-systems/$key/likelihood-oracles/$oracle`: edits one likelihood oracle of a draft. */
 export function LikelihoodOracleEditorPage({
@@ -18,6 +19,7 @@ export function LikelihoodOracleEditorPage({
   const [reloadFailed, setReloadFailed] = useState(false)
   // The key a save is renaming the oracle to: the cache answers with it before the URL does.
   const [renaming, setRenaming] = useState<string | null>(null)
+  const history = useRollHistory<LikelihoodTest>()
 
   const backLink = (
     <Link
@@ -66,6 +68,7 @@ export function LikelihoodOracleEditorPage({
         gameSystemKey={gameSystemKey}
         oracles={oracles.data}
         item={item}
+        history={history}
         onRenaming={setRenaming}
         onReload={() => {
           setReloadFailed(false)

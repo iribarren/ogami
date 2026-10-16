@@ -1,26 +1,24 @@
 import { useRef, useState } from 'react'
 
-import type { OracleTableResult } from './useGameSystemOracles'
-
 /** How many results the panel keeps, the newest first. */
 const KEPT = 5
 
-interface Shown {
+interface Shown<Result> {
   id: number
-  result: OracleTableResult
+  result: Result
 }
 
-export interface RollHistory {
-  results: Shown[]
-  add: (result: OracleTableResult) => void
+export interface RollHistory<Result> {
+  results: Shown<Result>[]
+  add: (result: Result) => void
 }
 
 /**
  * The last results, newest first. The editor page owns it: a rename remounts the editor on the
- * table's new key, and the roll that saved it must still show.
+ * oracle's new key, and the roll or answer that saved it must still show.
  */
-export function useRollHistory(): RollHistory {
-  const [results, setResults] = useState<Shown[]>([])
+export function useRollHistory<Result>(): RollHistory<Result> {
+  const [results, setResults] = useState<Shown<Result>[]>([])
   const nextId = useRef(0)
   return {
     results,

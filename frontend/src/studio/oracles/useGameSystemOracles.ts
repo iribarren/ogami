@@ -11,6 +11,7 @@ export type OracleTableItem = components['schemas']['OracleTableItemResponse']
 export type LikelihoodOracleItem = components['schemas']['LikelihoodOracleItemResponse']
 export type OracleTableResult = components['schemas']['OracleTableResultResponse']
 export type LikelihoodOracle = components['schemas']['GameSystemLikelihoodOracle']
+export type LikelihoodTest = components['schemas']['LikelihoodTestAnswerResponse']
 
 /** A refused oracle write; `paths` says where the draft uses the oracle when that is why. */
 export class OracleError extends StudioError {
@@ -188,6 +189,73 @@ export function useSaveLikelihoodOracle(key: string) {
         return data
       }
       throw oracleError(response, error, 'Saving the likelihood oracle')
+    },
+  )
+}
+
+/** `POST /likelihood-oracles/{oracle}/test-answers`: asks the saved oracle; the draft never changes. */
+export function useTestAskLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useMutation({
+    mutationFn: async ({
+      oracle,
+      likelihood,
+      chaosFactor,
+    }: {
+      oracle: string
+      likelihood: string
+      chaosFactor: number | null
+    }): Promise<LikelihoodTest> => {
+      const { data, error, response } = await api.POST(
+        '/api/studio/game-systems/{key}/likelihood-oracles/{oracle}/test-answers',
+        {
+          params: { path: { key, oracle } },
+          body: chaosFactor === null ? { likelihood } : { likelihood, chaosFactor },
+        },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Asking the oracle')
+    },
+  })
+}
+
+/** `POST /likelihood-oracles`: appends a likelihood oracle to the draft. */
+export function useCreateLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useOracleWrite(
+    key,
+    async ({ expectedVersion, oracle }: { expectedVersion: number; oracle: LikelihoodOracle }) => {
+      const { data, error, response } = await api.POST(
+        '/api/studio/game-systems/{key}/likelihood-oracles',
+        { params: { path: { key } }, body: { expectedVersion, oracle } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Creating the likelihood oracle')
+    },
+  )
+}
+
+/** `DELETE /likelihood-oracles/{oracle}?expectedVersion=N`. */
+export function useDeleteLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useOracleWrite(
+    key,
+    async ({ expectedVersion, oracle }: { expectedVersion: number; oracle: string }) => {
+      const { data, error, response } = await api.DELETE(
+        '/api/studio/game-systems/{key}/likelihood-oracles/{oracle}',
+        { params: { path: { key, oracle }, query: { expectedVersion } } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Deleting the likelihood oracle')
     },
   )
 }

@@ -9,17 +9,22 @@ use App\Studio\Application\CreateGameSystem;
 use App\Studio\Application\CreateGameSystemHandler;
 use App\Studio\Application\DeleteLikelihoodOracle;
 use App\Studio\Application\DeleteLikelihoodOracleHandler;
+use App\Studio\Application\DeleteNarrativeItem;
+use App\Studio\Application\DeleteNarrativeItemHandler;
 use App\Studio\Application\DeleteOracleTable;
 use App\Studio\Application\DeleteOracleTableHandler;
 use App\Studio\Application\DiscardGameSystem;
 use App\Studio\Application\DiscardGameSystemHandler;
 use App\Studio\Application\EditGameSystemMetadata;
 use App\Studio\Application\EditGameSystemMetadataHandler;
+use App\Studio\Application\GameSystemNarrativeView;
 use App\Studio\Application\GameSystemOraclesView;
 use App\Studio\Application\GameSystemReleaseSummary;
 use App\Studio\Application\GameSystemReleaseView;
 use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemHandler;
+use App\Studio\Application\GetGameSystemNarrative;
+use App\Studio\Application\GetGameSystemNarrativeHandler;
 use App\Studio\Application\GetGameSystemOracles;
 use App\Studio\Application\GetGameSystemOraclesHandler;
 use App\Studio\Application\GetGameSystemRelease;
@@ -31,6 +36,7 @@ use App\Studio\Application\ListGameSystemReleases;
 use App\Studio\Application\ListGameSystemReleasesHandler;
 use App\Studio\Application\ListMyGameSystems;
 use App\Studio\Application\ListMyGameSystemsHandler;
+use App\Studio\Application\NarrativeItemView;
 use App\Studio\Application\OracleView;
 use App\Studio\Application\OwnedGameSystems;
 use App\Studio\Application\PublishedReleaseView;
@@ -41,6 +47,8 @@ use App\Studio\Application\PublishGameSystemReleaseHandler;
 use App\Studio\Application\ReleasePublisher;
 use App\Studio\Application\RestoreGameSystemRelease;
 use App\Studio\Application\RestoreGameSystemReleaseHandler;
+use App\Studio\Application\SaveNarrativeItem;
+use App\Studio\Application\SaveNarrativeItemHandler;
 use App\Studio\Application\SaveOracleTable;
 use App\Studio\Application\SaveOracleTableHandler;
 use App\Studio\Application\TestAskLikelihoodOracle;
@@ -54,6 +62,10 @@ use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
+use App\Studio\Domain\GameSystem\NarrativeItemInUse;
+use App\Studio\Domain\GameSystem\NarrativeItemNotFound;
+use App\Studio\Domain\GameSystem\NarrativeKeyTaken;
+use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\GameSystem\OracleInUse;
 use App\Studio\Domain\GameSystem\OracleKeyTaken;
 use App\Studio\Domain\GameSystem\OracleNotFound;
@@ -520,6 +532,80 @@ final class StudioContext implements Context
         Assert::assertInstanceOf(GameSystemModifiedConcurrently::class, $this->draftRefusal);
     }
 
+    #[Then('ann sees the trackers :trackers and the tags :tags in :key')]
+    public function seesTheNarrativeItems(string $trackers, string $tags, string $key): void
+    {
+        $narrative = $this->narrativeOf('ann', $key);
+        Assert::assertSame([$trackers, $tags], [$this->narrativeKeys($narrative->trackers), $this->narrativeKeys($narrative->tags)]);
+    }
+
+    #[Then('the tracker :tracker of :key is used at :path')]
+    public function theTrackerIsUsedAt(string $tracker, string $key, string $path): void
+    {
+        foreach ($this->narrativeOf('ann', $key)->trackers as $view) {
+            if ($view->key === $tracker) {
+                Assert::assertContains($path, $view->usedBy);
+
+                return;
+            }
+        }
+
+        Assert::fail('No such tracker.');
+    }
+
+    #[When('/^(?P<user>\w+) saves the tracker "(?P<tracker>[^"]+)" named "(?P<name>[^"]+)" in "(?P<key>[^"]+)"$/')]
+    public function savesATracker(string $user, string $tracker, string $name, string $key): void
+    {
+        $this->saveNarrativeItem($user, $key, NarrativeSection::Trackers, null, ['key' => $tracker, 'name' => $name, 'kind' => 'counter', 'min' => 0, 'max' => 5, 'initial' => 0]);
+    }
+
+    #[When('/^(?P<user>\w+) saves a counter "(?P<tracker>[^"]+)" from (?P<min>\d+) to (?P<max>\d+) in "(?P<key>[^"]+)"$/')]
+    public function savesACounter(string $user, string $tracker, int $min, int $max, string $key): void
+    {
+        $this->saveNarrativeItem($user, $key, NarrativeSection::Trackers, null, ['key' => $tracker, 'name' => 'Counter', 'kind' => 'counter', 'min' => $min, 'max' => $max, 'initial' => 0]);
+    }
+
+    #[Given('/^(?P<user>\w+) saved the tag "(?P<tag>[^"]+)" labelled "(?P<label>[^"]+)" in "(?P<key>[^"]+)"$/')]
+    #[When('/^(?P<user>\w+) saves the tag "(?P<tag>[^"]+)" labelled "(?P<label>[^"]+)" in "(?P<key>[^"]+)"(?P<stale> on a stale version)?$/')]
+    public function savesATag(string $user, string $tag, string $label, string $key, string $stale = ''): void
+    {
+        $this->saveNarrativeItem($user, $key, NarrativeSection::Tags, null, ['key' => $tag, 'label' => $label], '' === $stale ? 0 : 1);
+    }
+
+    #[When('/^(?P<user>\w+) renames the tag "(?P<tag>[^"]+)" of "(?P<key>[^"]+)" to "(?P<newKey>[^"]+)"$/')]
+    public function renamesATag(string $user, string $tag, string $key, string $newKey): void
+    {
+        $stored = array_first(array_filter($this->narrativeOf($user, $key)->tags, static fn (NarrativeItemView $view): bool => $view->key === $tag));
+        Assert::assertInstanceOf(NarrativeItemView::class, $stored);
+        $this->saveNarrativeItem($user, $key, NarrativeSection::Tags, $tag, [...$stored->definition, 'key' => $newKey]);
+    }
+
+    #[When('/^(?P<user>\w+) deletes the tracker "(?P<tracker>[^"]+)" of "(?P<key>[^"]+)"$/')]
+    public function deletesATracker(string $user, string $tracker, string $key): void
+    {
+        $this->attempt(fn () => (new DeleteNarrativeItemHandler($this->owned, $this->drafts, $this->clock))(new DeleteNarrativeItem($user, $key, $this->narrativeOf('ann', $key)->version, NarrativeSection::Trackers, $tracker)));
+    }
+
+    #[Then('the narrative change is refused because it is in use at :path')]
+    public function narrativeChangeRefusedInUse(string $path): void
+    {
+        Assert::assertInstanceOf(NarrativeItemInUse::class, $this->draftRefusal);
+        Assert::assertContains($path, $this->draftRefusal->paths());
+    }
+
+    #[Then('the narrative change is refused at :path')]
+    public function narrativeChangeRefusedAt(string $path): void
+    {
+        Assert::assertInstanceOf(InvalidReleaseContent::class, $this->draftRefusal);
+        Assert::assertStringStartsWith($path.': ', $this->draftRefusal->getMessage());
+    }
+
+    #[Then('the narrative change is refused because the draft changed meanwhile')]
+    public function narrativeChangeRefusedStale(): void
+    {
+        Assert::assertInstanceOf(GameSystemModifiedConcurrently::class, $this->draftRefusal);
+    }
+
     #[Given('the dice will roll :numbers')]
     public function theDiceWillRoll(string $numbers): void
     {
@@ -590,6 +676,28 @@ final class StudioContext implements Context
         return implode(', ', array_map(static fn (OracleView $view): string => $view->key, $views));
     }
 
+    /**
+     * @param array<mixed> $item
+     */
+    private function saveNarrativeItem(string $user, string $key, NarrativeSection $section, ?string $originalKey, array $item, int $versionOffset = 0): void
+    {
+        $version = $this->narrativeOf('ann', $key)->version + $versionOffset;
+        $this->attempt(fn () => (new SaveNarrativeItemHandler($this->owned, $this->drafts, $this->clock))(new SaveNarrativeItem($user, $key, $version, $section, $originalKey, $item)));
+    }
+
+    /**
+     * @param list<NarrativeItemView> $views
+     */
+    private function narrativeKeys(array $views): string
+    {
+        return implode(', ', array_map(static fn (NarrativeItemView $view): string => $view->key, $views));
+    }
+
+    private function narrativeOf(string $user, string $key): GameSystemNarrativeView
+    {
+        return (new GetGameSystemNarrativeHandler($this->owned))(new GetGameSystemNarrative($user, $key));
+    }
+
     private function oraclesOf(string $user, string $key): GameSystemOraclesView
     {
         return (new GetGameSystemOraclesHandler($this->owned))(new GetGameSystemOracles($user, $key));
@@ -601,7 +709,7 @@ final class StudioContext implements Context
 
         try {
             $action();
-        } catch (GameSystemKeyTaken|GameSystemHasReleases|InvalidGameSystemMetadata|InvalidReleaseContent|GameSystemDraftUnchanged|GameSystemReleaseNotFound|GameSystemNotFound|GameSystemModifiedConcurrently|OracleInUse|OracleKeyTaken|OracleNotFound $refusal) {
+        } catch (GameSystemKeyTaken|GameSystemHasReleases|InvalidGameSystemMetadata|InvalidReleaseContent|GameSystemDraftUnchanged|GameSystemReleaseNotFound|GameSystemNotFound|GameSystemModifiedConcurrently|OracleInUse|OracleKeyTaken|OracleNotFound|NarrativeItemInUse|NarrativeKeyTaken|NarrativeItemNotFound $refusal) {
             $this->draftRefusal = $refusal;
         }
     }

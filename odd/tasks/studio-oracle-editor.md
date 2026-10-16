@@ -1,7 +1,7 @@
 # Feature: studio-oracle-editor
 
 - **Locator:** `odd/tasks/studio-oracle-editor.md` · Engram topic `odd/studio-oracle-editor/tasks`
-- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-8-likelihood-tab-e2e` · **Status:** done (pending slice 8 review and PR)
+- **Issue:** #141 · **Branch:** `docs/studio-oracle-editor-wrap-up` · **Status:** done (PRs #142–#149)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-gamesystem-drafts` (PRs #132–#139)
@@ -85,9 +85,9 @@ Shippable: slices 1–4 add backend unused by the UI; slice 5 makes the Oracles 
 | T7 | 5 | Oracles tab: list of tables and likelihood oracles with counts and "used by", create (key, name; table ranged or weighted), delete with the in-use reason; hooks; Vitest; stories | delegated writer (slice 5) | [x] | `76e944b` |
 | T8 | 6 | Table editor route: entries editor (ranged min/max with live coverage gaps, or weights), text, nested table, entry key, read-only `sceneType`/`effects` badges, rename; 409/422 handling; test-roll panel with nested steps; Vitest; stories | delegated writer (slice 6) | [x] | `852a877` (fixes `96edb97`) |
 | T9 | 7 | Likelihood oracle editor route: sides, levels, chaos, exceptional %, random event table, read-only `chaos.tracker`; rename; 409/422 handling; save hook; tab rows link to the editor; Vitest; stories | delegated writer (slice 7) | [x] | `da4f81c` (fixes `576a2e1`) |
-| T12 | 8 | Likelihood editor test-answer panel: level, chaos factor, answer and random event table roll (shared table result view), history of the last 5 kept across a rename; test-answer hook; Vitest; stories | delegated writer (slice 8) | [x] | |
-| T11 | 8 | Oracles tab: create a likelihood oracle (key, name, a valid default definition) and delete it (disabled with the "Used by" reason; 409 reload), as for tables; Vitest; stories | delegated writer (slice 8) | [x] | |
-| T10 | 8 | e2e: a GAME_MANAGER copies a preset, edits a table entry, test-rolls it, publishes; wrap-up: roadmap 15 done, feature doc closed | delegated writer (slice 8) | [x] | |
+| T12 | 8 | Likelihood editor test-answer panel: level, chaos factor, answer and random event table roll (shared table result view), history of the last 5 kept across a rename; test-answer hook; Vitest; stories | delegated writer (slice 8) | [x] | `cd8b987` |
+| T11 | 8 | Oracles tab: create a likelihood oracle (key, name, a valid default definition) and delete it (disabled with the "Used by" reason; 409 reload), as for tables; Vitest; stories | delegated writer (slice 8) | [x] | `805df38` |
+| T10 | 8 | e2e: a GAME_MANAGER copies a preset, edits a table entry, test-rolls it, publishes; wrap-up: roadmap 15 done, feature doc closed | delegated writer (slice 8) | [x] | `ab60847` (fixes `0af6fd0`) |
 
 ## Progress
 
@@ -124,7 +124,8 @@ Shippable: slices 1–4 add backend unused by the UI; slice 5 makes the Oracles 
 | 5 | `review-105cee2994db155a` | `bd4076c`, `76e944b` | approved, acknowledged. Fixed in slice 6: (warning) a create-table 409 shows only the message, with no "Reload the latest version", so retries keep the stale `expectedVersion`; (suggestion) the create dialog validates key and name trimmed but sends them untrimmed; (suggestion) `useSaveOracleTable`, `useTestRollOracleTable` and the `oraclesV1`/`stormRoll` fixtures are unused and untested until the table editor | [#146](https://github.com/iribarren/ogami/pull/146) |
 | 6 | `review-4854e7ae2fe885f3` | `96edb97`, `852a877` | approved, acknowledged. Fixed in slice 7: (warning) a rename updates the cache before `navigate()`, so the page flashes "The draft has no oracle table" and unmounts the editor, and a rename through Test roll keeps rolling after the unmount; (warning) the rename test does not assert the absence of that transient state, and no test renames through Test roll (history kept across the remount); (warning) the create-table dialog's reload calls `create.reset()` before the refetch resolves, so a quick retry sends the stale version and a failed refetch is silent; (suggestion) a failed reload refetch in the editor gives no feedback | [#147](https://github.com/iribarren/ogami/pull/147) |
 | 7 | `review-58bfb46164fa641e` | `576a2e1`, `da4f81c` | approved, acknowledged. Fixed in slice 8: (warning) the create-table dialog's reload continuation is not tied to the dialog session: closing and reopening the dialog while the refetch is pending lets a late failure show "Couldn't reload" in the fresh dialog and a late success `create.reset()` wipe a newer error; (suggestion) both editors call `onRenaming(null)` only after `navigate()` resolves: clear it in `finally` and handle the rejection | [#148](https://github.com/iribarren/ogami/pull/148) |
+| 8 | `review-dc199154386a59bf` | `0af6fd0`, `cd8b987`, `805df38`, `ab60847` | approved, acknowledged. Follow-up: (suggestion) only the table editor tests a refused navigation after a rename-save; the likelihood editor's copy of that path (`LikelihoodOracleEditor.tsx`, `onRenaming` cleared in `finally`) has no test | [#149](https://github.com/iribarren/ogami/pull/149) |
 
 ## Next step
 
-Feature closed after PR merge (slice 8 is the last; its PR `Closes #141`).
+Feature closed: PR #149 merged and closed #141. Follow-up, for a later Studio feature: a test for the likelihood editor's refused navigation after a rename-save (see the slice 8 review row).

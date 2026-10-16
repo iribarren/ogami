@@ -309,7 +309,7 @@ final class GameSystem
      */
     private function refuseWhenReferenced(string $section, string $key): void
     {
-        $paths = OracleReferences::pathsTo($this->document, $key, 'tables' === $section ? $key : null);
+        $paths = DraftReferences::oraclePathsTo($this->document, $key, 'tables' === $section ? $key : null);
         if ([] !== $paths) {
             throw OracleInUse::at(\sprintf('The oracle "%s"', $key), $paths);
         }
@@ -327,7 +327,7 @@ final class GameSystem
         $dropped = [];
         $paths = [];
         foreach ($this->entryKeys(\is_array($stored) ? $stored : []) as $entryKey) {
-            $entryPaths = \in_array($entryKey, $kept, true) ? [] : OracleReferences::entryPathsTo($this->document, $table, $entryKey);
+            $entryPaths = \in_array($entryKey, $kept, true) ? [] : DraftReferences::entryPathsTo($this->document, $table, $entryKey);
             if ([] !== $entryPaths) {
                 $dropped[] = \sprintf('"%s"', $entryKey);
                 $paths = [...$paths, ...$entryPaths];

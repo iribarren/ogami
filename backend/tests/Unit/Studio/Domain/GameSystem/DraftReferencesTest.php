@@ -256,6 +256,30 @@ final class DraftReferencesTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unparsableFormulas(): iterable
+    {
+        yield 'oversized' => ['{tracker:heat} + '.str_repeat('1 + ', 100).'1'];
+        yield 'deeply nested' => [str_repeat('(', 60).'{tracker:heat}'.str_repeat(')', 60)];
+        yield 'unbalanced' => ['({tracker:heat} + '];
+    }
+
+    /**
+     * A formula the parser refuses (InvalidFormula) reads no tracker: the scan neither throws nor
+     * lists the place, and the publisher's validation reports the formula itself.
+     */
+    #[Test]
+    #[DataProvider('unparsableFormulas')]
+    public function aFormulaTheParserRefusesReadsNothingAndNeverThrows(string $formula): void
+    {
+        $document = self::effect(['kind' => 'tracker', 'tracker' => 'edge', 'op' => 'set', 'value' => ['formula' => $formula]]);
+
+        self::assertSame(['sceneTypes[0].play[0].effects[0]'], DraftReferences::trackerPathsTo($document, 'edge'));
+        self::assertSame([], DraftReferences::trackerPathsTo($document, 'heat'));
+    }
+
+    /**
      * @return iterable<string, array{array<string, mixed>}>
      */
     public static function malformedDocuments(): iterable

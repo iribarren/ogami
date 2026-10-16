@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-1-domain` · **Status:** in progress (slice 1)
+- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-2-commands` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -49,6 +49,7 @@ Validation lives in `backend/src/Studio/Domain/Release/Version2/` (`ReleaseVersi
 | API (Claude) | Under `/api/studio/game-systems/{key}`: `GET /narrative`; `POST /narrative/{section}`, `PUT` and `DELETE /narrative/{section}/{item}` with `section` ∈ `trackers`, `tags`, `fact-slots`, `scene-types`, `flows`. Body `{expectedVersion, item}` (free-form object validated by the publisher, like oracle definitions); DELETE takes `expectedVersion` as a query parameter. Each command returns the refreshed read model. Owner only (404 for others). 404 unknown item, 409 stale version or key taken, 422 invalid (path) or in use (paths) or schema 1. Generic section paths keep the generated client small |
 | UI (Claude) | GameSystem page tabs **Trackers & tags** (trackers with levels, tags, fact slots: list, create/edit dialogs, delete disabled with "Used by"), **Scene Types** and **Flows** (lists with counts and "Used by", create, delete; rows open editor routes `/studio/game-systems/$key/scene-types/$sceneType` and `…/flows/$flow`). The Sections tab keeps the counts of sheet and checks. Validation tab unchanged; the Flows tab shows the draft's validation issue count with a link |
 | Step editor (Claude) | Outline, no graph: a step list is an ordered list of collapsible step cards (key, kind, title, prompt, tip, mandatory/suggested, `next` picker of later steps or `end`, effects, kind fields and branches/bands/options/outcomes, each with `next` and effects). Add, delete, move up/down; a move that leaves a `next` pointing backward is flagged on the card before saving. Unknown fields round-trip. Server 422 paths map to the card and field |
+| Slice 2 shapes (Claude) | Domain `NarrativeSection` enum (values are the document keys `trackers`, `tags`, `factSlots`, `sceneTypes`, `flows`; HTTP slugs map in slice 3) and two generic commands `GameSystem::saveNarrativeItem(section, ?originalKey, item, now)` / `deleteNarrativeItem(section, key, now)`. Errors `NarrativeItemNotFound`, `NarrativeKeyTaken` (key unique within its section) and `NarrativeItemInUse` (paths), alongside the oracle errors, which stay. A schema 1 draft is refused with `InvalidReleaseContent` at `schemaVersion`. An item is stored as given once the new document passes `ReleaseContent::checkItemRules`; a missing section is an empty list. References inside the item itself do not block its rename or delete and are not listed in `usedBy`; for a rename the item rules then check the saved item. `default: true` removes `default` from the other flows |
 | Flow editor (Claude) | Flow fields, oracles and trackers multi-selects, then an outline of phases (add, delete, move): act, key, name, description, mode, selection (rule and its Scene Types or table), and the seven hooks plus world turn as collapsible step lists |
 
 ## Design
@@ -92,8 +93,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0030 (Studio flow editor: per-item commands with expected version, item rules vs flow coherence, refuse rename/delete while referenced, generic narrative section API, outline editor without a graph, oracle extensions now edited — amends ADR 0029 "preserved extensions") and ADR index row; glossary (Item rules, Flow coherence) | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain: split `ReleaseVersion2::validate` into item rules and coherence (publish unchanged, regression tests); `DraftReferences` for oracle, entry, tracker, tag, fact slot and Scene Type keys (defensive, readable paths; `OracleReferences` folded in or delegating); unit tests for every reference kind | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0030 (Studio flow editor: per-item commands with expected version, item rules vs flow coherence, refuse rename/delete while referenced, generic narrative section API, outline editor without a graph, oracle extensions now edited — amends ADR 0029 "preserved extensions") and ADR index row; glossary (Item rules, Flow coherence) | delegated writer (slice 1) | [x] | 59663cc |
+| T2 | 1 | Domain: split `ReleaseVersion2::validate` into item rules and coherence (publish unchanged, regression tests); `DraftReferences` for oracle, entry, tracker, tag, fact slot and Scene Type keys (defensive, readable paths; `OracleReferences` folded in or delegating); unit tests for every reference kind | delegated writer (slice 1) | [x] | a42f2a6, f5a2791 |
 | T3 | 2 | Domain: `GameSystem` narrative commands (save/delete tracker, tag, fact slot, Scene Type, flow; rename; position kept; default flow flag; schema 1 refused; item rules after every command; rename/delete refused while referenced); oracle commands validate entry `sceneType`/`effects` and `chaos.tracker` by the item rules; errors; unit tests | | [ ] | |
 | T4 | 2 | Application: `SaveNarrativeItem`/`DeleteNarrativeItem` handlers with `expectedVersion` (409), `GetGameSystemNarrative` read model (`usedBy`, `catalog`); unit tests; Behat | | [ ] | |
 | T5 | 3 | HTTP: `GameSystemNarrativeController` (`GET /narrative`, `POST /narrative/{section}`, `PUT`/`DELETE /narrative/{section}/{item}`); every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft, a stale `expectedVersion`, an unknown section, an in-use delete and a schema 1 draft; `make api` (generated files in their own commit) | | [ ] | |
@@ -110,12 +111,14 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 - 2026-10-16: Exploration done (schema 2 contract and validators, cross-section references and flow coherence, oracle editor wiring, presets `mythic-style` and `night-job`, GameSystem page tabs). Copying a preset into a draft already works (`GameSystem::createFromRelease`). Three decisions taken with the user (save rule, checks/sheet/formulas edited, oracle extensions edited here). Issue #151; slice plan of 9.
 - 2026-10-16: T1 done: ADR 0030 (Studio flow editor, amends ADR 0029 "preserved extensions"), ADR index row, glossary entries Item rules and Flow coherence.
 - 2026-10-16: T2 done: `ReleaseContent::checkItemRules()` runs the publisher without flow coherence (`ReleaseVersion2::validate($release, $flowCoherence)`; `FlowReferences::releasePlaceholders()` is an item rule, `FlowReferences::check()` the coherence); `OracleReferences` folded into `DraftReferences` (oracle, entry, tracker, Scene Type, tag, fact slot paths). RED observed for both test classes (method/class missing), GREEN after; publish suite unchanged and green.
+- 2026-10-16: Slice 1 review fixes: R3-001 (schema 1 item rules test: valid passes, invalid gives the `fromArray` message) and R3-002 (formulas the parser refuses read nothing in `DraftReferences` and never throw). Tests only: the behaviour already held, so no RED.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-4eb0aa712653dea7` | 59663cc, a42f2a6, f5a2791 | approved, acknowledged; suggestions R3-001 (schema 1 test for `ReleaseContent::checkItemRules`: valid passes, invalid gives the same message as `fromArray`) and R3-002 (prove `Formula::fromString` failure modes, oversized or deeply nested, surface as `InvalidFormula` in `DraftReferences`), fixed in slice 2 | #152 |
 
 ## Next step
 
-Slice 1 (T1, T2) on `feat/studio-flow-editor-1-domain`.
+Slice 2 (slice 1 review fixes, T3, T4) on `feat/studio-flow-editor-2-commands`.

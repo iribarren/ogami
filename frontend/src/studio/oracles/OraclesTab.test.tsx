@@ -213,20 +213,69 @@ describe('the oracles tab', () => {
       expect(screen.getByRole('button', { name: 'Create table' })).toBeDisabled()
     })
 
-    it.each([
-      [422, 'Oracle table key "Bad Key" is invalid.'],
-      [409, 'The draft already has an oracle "weather".'],
-    ])('shows the server message of a %i', async (status, message) => {
+    it('sends the key and the name trimmed', async () => {
+      let body: { table: { key: string; name: string } } | undefined
       const { user } = await openDialog({
-        [`POST ${base}/oracle-tables`]: json({ error: message }, status),
+        [`POST ${base}/oracle-tables`]: async (request) => {
+          body = (await request.json()) as typeof body
+          return Response.json(oracles, { status: 201 })
+        },
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'weather')
-      await user.type(inDialog().getByLabelText('Name'), 'Weather')
+      await user.type(inDialog().getByLabelText('Key'), ' omens ')
+      await user.type(inDialog().getByLabelText('Name'), '  Omens ')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(message)
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(body?.table).toMatchObject({ key: 'omens', name: 'Omens' })
+      })
     })
+
+    it('offers to reload on a 409, and the retry carries the new version', async () => {
+      let reads = 0
+      const versions: number[] = []
+      const { user } = await openDialog({
+        [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : withoutStorm),
+        [`POST ${base}/oracle-tables`]: async (request) => {
+          versions.push(((await request.json()) as { expectedVersion: number }).expectedVersion)
+          return versions.length === 1
+            ? Response.json(
+                { error: 'GameSystem "my-draft" was changed by another request.' },
+                { status: 409 },
+              )
+            : Response.json(withoutStorm, { status: 201 })
+        },
+      })
+
+      await user.type(inDialog().getByLabelText('Key'), 'omens')
+      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await user.click(screen.getByRole('button', { name: 'Create table' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
+      expect(screen.queryByRole('button', { name: 'Create table' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
+
+      expect(await screen.findByRole('button', { name: 'Create table' })).toBeEnabled()
+      expect(reads).toBe(2)
+      await user.click(screen.getByRole('button', { name: 'Create table' }))
+      await waitFor(() => {
+        expect(versions).toEqual([7, 8])
+      })
+    })
+
+    it.each([[422, 'Oracle table key "Bad Key" is invalid.']])(
+      'shows the server message of a %i',
+      async (status, message) => {
+        const { user } = await openDialog({
+          [`POST ${base}/oracle-tables`]: json({ error: message }, status),
+        })
+
+        await user.type(inDialog().getByLabelText('Key'), 'weather')
+        await user.type(inDialog().getByLabelText('Name'), 'Weather')
+        await user.click(screen.getByRole('button', { name: 'Create table' }))
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(message)
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      },
+    )
   })
 })

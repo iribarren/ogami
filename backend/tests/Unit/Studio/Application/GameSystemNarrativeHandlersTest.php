@@ -39,6 +39,7 @@ final class GameSystemNarrativeHandlersTest extends TestCase
     private InMemoryGameSystemRepository $gameSystems;
     private OwnedGameSystems $owned;
     private FixedClock $clock;
+    private int $drafts = 0;
 
     protected function setUp(): void
     {
@@ -273,7 +274,7 @@ final class GameSystemNarrativeHandlersTest extends TestCase
     private function draft(string $key, string $fixture = 'valid/v2-every-part'): GameSystem
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture($fixture))->toArray();
-        $draft = GameSystem::createFromRelease(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a61'), $key, 'Draft', null, 'ann', $source, $this->clock->now());
+        $draft = GameSystem::createFromRelease(GameSystemId::fromString(\sprintf('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f%04x', ++$this->drafts)), $key, 'Draft', null, 'ann', $source, $this->clock->now());
         $this->gameSystems->add($draft);
 
         return $draft;

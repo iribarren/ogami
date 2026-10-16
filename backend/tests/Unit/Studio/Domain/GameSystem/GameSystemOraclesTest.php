@@ -503,4 +503,39 @@ final class GameSystemOraclesTest extends TestCase
         $this->assertUntouched($gameSystem, fn () => $gameSystem->saveOracleTable(null, ['key' => 'a', 'name' => 'A', 'entries' => [['text' => 'x']]], $this->now), InvalidReleaseContent::class);
         $this->assertUntouched($gameSystem, fn () => $gameSystem->deleteOracleTable('a', $this->now), InvalidReleaseContent::class);
     }
+
+    /**
+     * @return iterable<string, array{string, mixed, string}>
+     */
+    public static function legacyBreaks(): iterable
+    {
+        yield 'a Scene Type step names an unknown oracle' => ['sceneTypes.1.play.0.oracle', 'nowhere', 'sceneTypes[1]'];
+        yield 'a tracker has min above max' => ['trackers.1.min', 99, 'trackers[1]'];
+    }
+
+    #[Test]
+    #[DataProvider('legacyBreaks')]
+    public function aLegacyDraftBreakingTheItemRulesElsewhereRefusesOracleCommandsWithThatPath(string $break, mixed $value, string $path): void
+    {
+        $gameSystem = $this->draft();
+        $gameSystem->restore(ReleaseArrays::with($gameSystem->document(), $break, $value), $this->created);
+        $table = ['key' => 'rumours', 'name' => 'Rumours', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'True']]];
+        $fate = $this->likelihood($gameSystem)[0];
+
+        foreach ([
+            fn () => $gameSystem->saveOracleTable(null, $table, $this->now),
+            fn () => $gameSystem->saveLikelihoodOracle('fate', [...$fate, 'name' => 'Fate again'], $this->now),
+        ] as $command) {
+            $before = $gameSystem->document();
+            try {
+                $command();
+                self::fail('Expected InvalidReleaseContent');
+            } catch (InvalidReleaseContent $invalid) {
+                self::assertStringStartsWith($path, $invalid->getMessage());
+            }
+
+            self::assertSame($before, $gameSystem->document());
+            self::assertEquals($this->created, $gameSystem->updatedAt());
+        }
+    }
 }

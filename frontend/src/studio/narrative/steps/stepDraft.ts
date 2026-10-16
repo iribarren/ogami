@@ -1,12 +1,24 @@
 import { parseInteger } from '../../oracles/tableDraft'
 import type { FieldErrors } from '../narrativeDraft'
 import type { StoredItem } from '../useGameSystemNarrative'
+import {
+  isObject,
+  listOf,
+  readValue,
+  stringsOf,
+  textOf,
+  unknownFields,
+  valueToStored,
+  type ValueDraft,
+  type ValueForm,
+} from './draftParts'
+import { effectsToDrafts, effectsToStored, type EffectDraft } from './effectDraft'
 
 // Typed form state for a step list (a Scene Type's `setup`, `play` and `closing`, a flow's hooks).
 // A step is read into strings the inputs can hold and written back. What the editor does not know
 // stays in `extra` and is sent back untouched; a step of a kind this editor does not edit, or of a
 // shape it cannot read, is kept as stored (`kind: 'stored'`), shown read-only, never dropped or
-// guessed. Effects are kept as stored until the effects editor exists. The publisher owns every
+// guessed. Effects are typed drafts of their own (`effectDraft`). The publisher owns every
 // rule: the guides at the bottom only flag what the author is likely to want to fix first.
 
 /** The reserved `next` that ends the list. */
@@ -18,20 +30,12 @@ export type StepKind = (typeof stepKinds)[number]
 export const countTargets = ['npc', 'thread', 'character'] as const
 export type CountTarget = (typeof countTargets)[number]
 
-export type ValueForm = 'integer' | 'tracker' | 'formula'
-
-/** An `upTo`: a whole number, a tracker key or a formula, as text. */
-export interface ValueDraft {
-  form: ValueForm
-  text: string
-}
-
 export interface BandDraft {
   /** Null for the last band, which catches the rest. */
   upTo: ValueDraft | null
   /** '' continues with the following step. */
   next: string
-  effects: unknown[]
+  effects: EffectDraft[]
   extra: StoredItem
 }
 
@@ -43,7 +47,7 @@ interface StepBase {
   mandatory: boolean
   /** A later step key or `end`; '' continues with the following step. */
   next: string
-  effects: unknown[]
+  effects: EffectDraft[]
   extra: StoredItem
 }
 
@@ -67,72 +71,24 @@ export type EditedStep = Exclude<StepDraft, { kind: 'stored' }>
 
 export type StepsResult = { steps: StoredItem[] } | { errors: FieldErrors }
 
-const WHOLE = 'Use a whole number.'
-
-function isObject(value: unknown): value is StoredItem {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/** The text of an optional field: '' when absent, null when it holds something else. */
-function textOf(source: StoredItem, field: string): string | null {
-  const value = source[field]
-  if (value === undefined) {
-    return ''
-  }
-  return typeof value === 'string' ? value : null
-}
-
-/** An optional list of strings: empty when absent, null when it holds something else. */
-function stringsOf(source: StoredItem, field: string): string[] | null {
-  const value = source[field]
-  if (value === undefined) {
-    return []
-  }
-  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : null
-}
-
-function listOf(source: StoredItem, field: string): unknown[] | null {
-  const value = source[field]
-  if (value === undefined) {
-    return []
-  }
-  return Array.isArray(value) ? (value as unknown[]) : null
-}
-
-function unknownFields(source: StoredItem, known: readonly string[]): StoredItem {
-  return Object.fromEntries(Object.entries(source).filter(([field]) => !known.includes(field)))
-}
-
 const commonFields = ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'next', 'effects']
 const bandFields = ['upTo', 'next', 'effects']
 const countFields = ['of', 'tags']
 
-function readValue(value: unknown): ValueDraft | null {
-  if (typeof value === 'number' && Number.isInteger(value)) {
-    return { form: 'integer', text: String(value) }
-  }
-  if (isObject(value) && Object.keys(value).length === 1) {
-    if (typeof value.tracker === 'string') {
-      return { form: 'tracker', text: value.tracker }
-    }
-    if (typeof value.formula === 'string') {
-      return { form: 'formula', text: value.formula }
-    }
-  }
-  return null
-}
+/** The forms a band limit takes. */
+export const bandForms = ['integer', 'tracker', 'formula'] as const satisfies readonly ValueForm[]
 
 function readBand(stored: unknown): BandDraft | null {
   if (!isObject(stored)) {
     return null
   }
-  const upTo = stored.upTo === undefined ? null : readValue(stored.upTo)
+  const upTo = stored.upTo === undefined ? null : readValue(stored.upTo, bandForms)
   const next = textOf(stored, 'next')
   const effects = listOf(stored, 'effects')
   if ((stored.upTo !== undefined && upTo === null) || next === null || effects === null) {
     return null
   }
-  return { upTo, next, effects, extra: unknownFields(stored, bandFields) }
+  return { upTo, next, effects: effectsToDrafts(effects), extra: unknownFields(stored, bandFields) }
 }
 
 /** Every band, or null when one of them cannot be read. */
@@ -200,7 +156,7 @@ export function stepToDraft(stored: unknown): StepDraft {
     tip: tip ?? '',
     mandatory,
     next: next ?? '',
-    effects: effects ?? [],
+    effects: effectsToDrafts(effects ?? []),
     extra: unknownFields(stored, known),
   }
   switch (kind) {
@@ -275,31 +231,6 @@ export function stepKey(step: StepDraft): string {
   return step.kind === 'stored' ? (typeof key === 'string' ? key : '') : step.key
 }
 
-/** What the effects of a step or band are, for a line of text: "2 effects: tracker, nextScene". */
-export function summariseEffects(effects: unknown[]): string {
-  if (effects.length === 0) {
-    return ''
-  }
-  const kinds = effects.map((effect) =>
-    isObject(effect) && typeof effect.kind === 'string' ? effect.kind : 'unknown',
-  )
-  return `${String(effects.length)} ${effects.length === 1 ? 'effect' : 'effects'}: ${kinds.join(', ')}`
-}
-
-function valueToStored(value: ValueDraft, path: string, errors: FieldErrors): unknown {
-  if (value.form === 'tracker') {
-    return { tracker: value.text }
-  }
-  if (value.form === 'formula') {
-    return { formula: value.text }
-  }
-  const whole = parseInteger(value.text.trim())
-  if (whole === null) {
-    errors[path] = WHOLE
-  }
-  return whole ?? 0
-}
-
 /**
  * The limit stays with the band whatever its position: a band that became the last one keeps what
  * it had (the guides flag it, the publisher decides), and a band before the last with none is
@@ -313,7 +244,9 @@ function bandToStored(band: BandDraft, last: boolean, path: string, errors: Fiel
     ...band.extra,
     ...(band.upTo === null ? {} : { upTo: valueToStored(band.upTo, `${path}.upTo`, errors) }),
     ...(band.next === '' ? {} : { next: band.next }),
-    ...(band.effects.length === 0 ? {} : { effects: band.effects }),
+    ...(band.effects.length === 0
+      ? {}
+      : { effects: effectsToStored(band.effects, `${path}.effects`, errors) }),
   }
 }
 
@@ -332,7 +265,9 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
     ...(step.tip === '' ? {} : { tip: step.tip }),
     ...(step.mandatory && step.kind !== 'condition' ? { mandatory: true } : {}),
     ...(step.next === '' ? {} : { next: step.next }),
-    ...(step.effects.length === 0 ? {} : { effects: step.effects }),
+    ...(step.effects.length === 0
+      ? {}
+      : { effects: effectsToStored(step.effects, `${String(index)}.effects`, errors) }),
   }
   switch (step.kind) {
     case 'prompt':

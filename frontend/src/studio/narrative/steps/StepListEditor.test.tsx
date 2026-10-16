@@ -97,7 +97,6 @@ describe('the step list editor', () => {
     expect(band(3).queryByLabelText('Up to')).not.toBeInTheDocument()
     expect(band(1).getByLabelText('Up to')).toHaveValue('2')
     expect(band(2).getByRole('combobox', { name: 'Up to' })).toHaveValue('alarm')
-    expect(card(2).getByText('1 effect: tracker')).toBeInTheDocument()
 
     await user.selectOptions(band(1).getByLabelText('Up to type'), 'formula')
     await user.type(band(1).getByLabelText('Up to'), 'heat + 1')
@@ -152,7 +151,8 @@ describe('the step list editor', () => {
     const errors = [
       'sceneTypes[2].play[0].title: must not be blank',
       'sceneTypes[2].play[1].bands[0].upTo: must be an integer',
-      'sceneTypes[2].play[1].effects[0]: unknown tracker',
+      'sceneTypes[2].play[1].bands[0].effects[0].tracker: unknown tracker',
+      'sceneTypes[2].play[1].effects[3]: no such effect',
       'sceneTypes[2].play: at most 50 steps',
     ].map((text) => mapStepError('sceneTypes[2].play', text))
     render(<Harness stored={stepList} errors={errors} />)
@@ -161,7 +161,13 @@ describe('the step list editor', () => {
     expect(
       within(card(2).getByRole('group', { name: 'Band 1' })).getByText('must be an integer'),
     ).toBeInTheDocument()
-    expect(card(2).getByRole('alert')).toHaveTextContent('effects: unknown tracker')
+    const effect = within(
+      within(card(2).getByRole('group', { name: 'Band 1' })).getByRole('group', {
+        name: 'Effect 1',
+      }),
+    )
+    expect(effect.getByText('unknown tracker')).toBeInTheDocument()
+    expect(card(2).getByText('no such effect')).toBeInTheDocument()
     expect(screen.getByText('sceneTypes[2].play: at most 50 steps')).toBeInTheDocument()
   })
 
@@ -311,10 +317,10 @@ describe('the step list editor', () => {
           },
         ]}
         errors={[
-          { index: null, band: null, field: null, message: 'Twice' },
-          { index: null, band: null, field: null, message: 'Twice' },
-          { index: 4, band: null, field: 'mystery', message: 'Same' },
-          { index: 4, band: null, field: 'mystery', message: 'Same' },
+          { index: null, band: null, effect: null, field: null, message: 'Twice' },
+          { index: null, band: null, effect: null, field: null, message: 'Twice' },
+          { index: 4, band: null, effect: null, field: 'mystery', message: 'Same' },
+          { index: 4, band: null, effect: null, field: 'mystery', message: 'Same' },
         ]}
       />,
     )
@@ -326,5 +332,70 @@ describe('the step list editor', () => {
     expect(screen.getAllByText('Twice')).toHaveLength(2)
     expect(logged).not.toHaveBeenCalled()
     logged.mockRestore()
+  })
+
+  describe('with effects', () => {
+    const effectsOf = (step: number) => within(card(step).getByRole('group', { name: 'Effects' }))
+
+    it('edits the effects of a step and of a band, and saves them', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} />)
+      const band = within(card(2).getByRole('group', { name: 'Band 1' }))
+
+      await user.selectOptions(effectsOf(1).getByLabelText('New effect kind'), 'sceneTitle')
+      await user.click(effectsOf(1).getByRole('button', { name: 'Add effect' }))
+      await user.type(effectsOf(1).getByLabelText('Title'), 'Dawn')
+      await user.clear(band.getByLabelText('Value'))
+      await user.type(band.getByLabelText('Value'), '3')
+
+      expect(saved(0)).toMatchObject({ effects: [{ kind: 'sceneTitle', title: 'Dawn' }] })
+      expect(saved(1)).toMatchObject({
+        bands: [{ effects: [{ kind: 'tracker', tracker: 'heat', op: 'add', value: 3 }] }, {}, {}],
+      })
+    })
+
+    it('allows sheet effects in a character step only', () => {
+      render(<Harness stored={stepList} />)
+      const kinds = (step: number) =>
+        within(effectsOf(step).getByLabelText('New effect kind'))
+          .getAllByRole('option')
+          .map((option) => option.getAttribute('value'))
+
+      expect(kinds(4)).toContain('sheet')
+      expect(kinds(1)).not.toContain('sheet')
+      expect(
+        within(card(2).getByRole('group', { name: 'Band 1 effects' })).getByLabelText(
+          'New effect kind',
+        ),
+      ).not.toHaveTextContent('sheet')
+    })
+
+    it('shows effect errors on their card, and drops them when effects move', async () => {
+      const user = userEvent.setup()
+      const errors = [
+        'sceneTypes[2].play[0].effects[0]: no good',
+        'sceneTypes[2].play[0].effects[1]: also no good',
+      ].map((text) => mapStepError('sceneTypes[2].play', text))
+      render(
+        <Harness
+          stored={[
+            {
+              key: 'a',
+              kind: 'character',
+              title: 'A',
+              effects: [{ kind: 'endPhase' }, { kind: 'closeThread' }],
+            },
+          ]}
+          errors={errors}
+        />,
+      )
+      expect(effectsOf(1).getByText('no good')).toBeInTheDocument()
+      expect(effectsOf(1).getByText('also no good')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Move effect 1 down' }))
+
+      expect(screen.queryByText('no good')).not.toBeInTheDocument()
+      expect(screen.queryByText('also no good')).not.toBeInTheDocument()
+    })
   })
 })

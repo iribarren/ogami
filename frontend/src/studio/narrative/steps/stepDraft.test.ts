@@ -4,7 +4,6 @@ import {
   stepKey,
   stepsToDrafts,
   stepsToItems,
-  summariseEffects,
   type BandDraft,
   type StepDraft,
 } from './stepDraft'
@@ -172,14 +171,6 @@ describe('a step draft', () => {
       bands: [{ upTo: null }],
     })
     expect(stepsToDrafts([{ key: 'k', kind: 'oracle' }]).map(stepKey)).toEqual(['k'])
-  })
-
-  it('summarises effects', () => {
-    expect(summariseEffects([])).toBe('')
-    expect(summariseEffects([{ kind: 'endPhase' }])).toBe('1 effect: endPhase')
-    expect(summariseEffects([{ kind: 'tracker' }, { kind: 'nextScene' }, 5])).toBe(
-      '3 effects: tracker, nextScene, unknown',
-    )
   })
 })
 

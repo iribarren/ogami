@@ -51,7 +51,7 @@ export function OraclesTab({ gameSystemKey }: { gameSystemKey: string }) {
         </p>
       )}
       <TablesList gameSystemKey={gameSystemKey} oracles={oracles.data} />
-      <LikelihoodList oracles={oracles.data} />
+      <LikelihoodList gameSystemKey={gameSystemKey} oracles={oracles.data} />
     </section>
   )
 }
@@ -228,7 +228,13 @@ function DeleteTableDialog({
 }
 
 /** Likelihood oracles are listed here, each linking to its editor. */
-function LikelihoodList({ oracles }: { oracles: GameSystemOracles }) {
+function LikelihoodList({
+  gameSystemKey,
+  oracles,
+}: {
+  gameSystemKey: string
+  oracles: GameSystemOracles
+}) {
   return (
     <section aria-label="Likelihood oracles" className="space-y-3">
       <h2 className="font-heading text-lg font-semibold">Likelihood oracles</h2>
@@ -239,7 +245,13 @@ function LikelihoodList({ oracles }: { oracles: GameSystemOracles }) {
           {oracles.likelihood.map(({ definition, usedBy }) => (
             <li key={definition.key} className="space-y-1 px-4 py-3">
               <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="font-medium">{definition.name}</span>
+                <Link
+                  to="/studio/game-systems/$key/likelihood-oracles/$oracle"
+                  params={{ key: gameSystemKey, oracle: definition.key }}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {definition.name}
+                </Link>
                 <span className="font-mono text-sm break-all text-muted-foreground">
                   {definition.key}
                 </span>

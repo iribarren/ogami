@@ -184,3 +184,36 @@ export const stormRoll = {
     },
   ],
 }
+
+/** `oracles` with `fate` fully set: chaos (and its tracker), exceptional bands and a random event table. */
+export const oraclesWithChaos = {
+  ...oracles,
+  likelihood: [
+    {
+      ...oracles.likelihood[0],
+      definition: {
+        ...oracles.likelihood[0]?.definition,
+        chaos: { min: 1, max: 9, neutral: 5, shiftPerPoint: 5, tracker: 'chaos' },
+        exceptionalPercent: 20,
+        randomEvent: { table: 'storm-kind' },
+      },
+    },
+  ],
+}
+
+/** A schema version 1 draft with a likelihood oracle: no random event, no chaos tracker. */
+export const oraclesV1Likelihood = {
+  ...oraclesV1,
+  likelihood: [
+    {
+      definition: {
+        key: 'fate',
+        name: 'Fate question',
+        sides: 100,
+        levels: [{ key: 'even', label: '50/50', target: 50 }],
+        chaos: { min: 1, max: 9, neutral: 5, shiftPerPoint: 5 },
+      },
+      usedBy: [],
+    },
+  ],
+}

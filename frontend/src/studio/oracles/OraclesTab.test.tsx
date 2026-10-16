@@ -54,6 +54,10 @@ describe('the oracles tab', () => {
     expect(likelihood.getByRole('listitem')).toHaveTextContent(
       'Used by flows[0].phases[0].steps[1]',
     )
+    expect(likelihood.getByRole('link', { name: 'Fate question' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/likelihood-oracles/fate',
+    )
   })
 
   it('has empty states', async () => {

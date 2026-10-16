@@ -6,9 +6,9 @@ export interface StepError {
   band: number | null
   /** The effect (of the step, or of the band when there is one), when the path names one. */
   effect: number | null
-  /** The oracle answer (`yes`, `no`, `exceptionalYes`, `exceptionalNo`) or `otherwise` the path names; absent otherwise. */
+  /** The oracle answer (`yes`, `no`, `exceptionalYes`, `exceptionalNo`), pick outcome (`found`, `none`) or `otherwise` the path names; absent otherwise. */
   slot?: string
-  /** The table branch or choice option the path names (`branches[n]`, `options[n]`); absent otherwise. */
+  /** The table branch, choice option or check outcome the path names (`branches[n]`, `options[n]`, `outcomes[n]`); absent otherwise. */
   item?: number
   /** The field the path ends in (`title`, `upTo`, an effect's `value`, …); null when it is about the step, band or effect itself. */
   field: string | null
@@ -18,7 +18,7 @@ export interface StepError {
 /** Messages for the effects editor: an effect, or the list of effects as a whole. */
 export const aboutEffects = (error: StepError) => error.effect !== null || error.field === 'effects'
 
-const answers = ['yes', 'no', 'exceptionalYes', 'exceptionalNo']
+const answers = ['yes', 'no', 'exceptionalYes', 'exceptionalNo', 'found', 'none']
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -57,12 +57,18 @@ export function mapStepError(base: string, text: string): StepError {
     error.slot = lead
     parts.splice(0, 1)
   } else if (lead === 'branches' && answer !== undefined && answers.includes(answer)) {
-    // An oracle's branches are named by answer; anything else under `branches` is a field of it.
+    // An oracle's or pick's branches are named; anything else under `branches` is a field of it.
     error.slot = answer
     parts.splice(0, 2)
-  } else if ((lead === 'branches' || lead === 'options') && at !== undefined) {
+  } else if (
+    (lead === 'branches' || lead === 'options' || lead === 'outcomes') &&
+    at !== undefined
+  ) {
     error.item = at
     parts.splice(0, 2)
+  } else if (lead === 'count' && (answer === 'min' || answer === 'max')) {
+    // A pick's count is two fields of its own; a condition's count stays one.
+    parts.splice(0, 2, { name: `count.${answer}` })
   }
   const [head, indexed, field] = parts
   if (head && 'name' in head && head.name === 'effects' && indexed && 'at' in indexed) {

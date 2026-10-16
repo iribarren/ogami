@@ -17,6 +17,15 @@ describe('the step pickers', () => {
         ...narrative.catalog,
         tables: [{ key: 'moods', name: 'Moods', entries: ['calm', 'tense'] }],
         likelihood: [{ key: 'fate', name: 'Fate', levels: ['unlikely', 'likely'] }],
+        checks: [
+          {
+            key: 'skill',
+            label: 'Skill check',
+            bands: ['fail', 'success'],
+            difficulty: { default: 13, min: 9, max: null },
+          },
+          { key: 'luck', label: 'Luck', bands: ['win'], difficulty: null },
+        ],
         fields: [{ key: 'hands', label: 'Hands' }],
       },
     })
@@ -24,6 +33,15 @@ describe('the step pickers', () => {
     expect(context.tables).toEqual([{ key: 'moods', name: 'Moods', entries: ['calm', 'tense'] }])
     expect(context.likelihood).toEqual([
       { key: 'fate', name: 'Fate', levels: ['unlikely', 'likely'] },
+    ])
+    expect(context.checks).toEqual([
+      {
+        key: 'skill',
+        name: 'Skill check',
+        bands: ['fail', 'success'],
+        difficulty: { default: 13, min: 9, max: null },
+      },
+      { key: 'luck', name: 'Luck', bands: ['win'], difficulty: null },
     ])
     expect(context.sceneTypes).toEqual([
       { key: 'chase', name: 'Chase' },

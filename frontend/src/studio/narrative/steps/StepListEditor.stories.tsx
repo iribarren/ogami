@@ -6,6 +6,7 @@ import {
   stepList,
   stepListBackward,
   stepListBranching,
+  stepListPickCheck,
   stepListWithOtherKinds,
   stepPickers,
 } from '../../fixtures'
@@ -39,7 +40,7 @@ export const EveryEditableKind: Story = {
   },
 }
 
-/** A `pick` step (not edited yet) and a step with an unreadable shape stay as they are; they can be moved and deleted. */
+/** A `pick` step with a mode it does not know and a step with an unreadable shape stay as they are; they can be moved and deleted. */
 export const OtherKindsAreReadOnly: Story = { args: { stored: stepListWithOtherKinds } }
 
 /** An oracle with answers, a table with entry branches and a choice with options and a skip. */
@@ -49,6 +50,16 @@ export const BranchingKinds: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Add option' }))
     await expect(canvas.getAllByLabelText('Option key')).toHaveLength(3)
+  },
+}
+
+/** A pick of NPCs with a count and found / none outcomes, and a check with a difficulty and an outcome per band (sheet effects allowed). */
+export const PickAndCheck: Story = {
+  args: { stored: stepListPickCheck },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.selectOptions(canvas.getByLabelText('Check'), 'luck')
+    await expect(canvas.getByText('This check declares no difficulty.')).toBeInTheDocument()
   },
 }
 

@@ -23,10 +23,10 @@ import {
 } from './stepDraft'
 import type { StepError } from './stepError'
 
-type Of<K extends EditedStep['kind']> = Extract<EditedStep, { kind: K }>
+export type Of<K extends EditedStep['kind']> = Extract<EditedStep, { kind: K }>
 
 /** What the fields of a branching kind share with the card around them. */
-interface KindProps {
+export interface KindProps {
   context: StepContext
   laterKeys: string[]
   guide: StepGuide

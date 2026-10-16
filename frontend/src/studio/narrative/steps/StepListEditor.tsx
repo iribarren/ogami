@@ -11,6 +11,7 @@ import { TextField } from '../TextField'
 import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
 import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
+import { CheckFields, PickFields } from './PickCheckFields'
 import { EffectsEditor } from './EffectsEditor'
 import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
@@ -18,6 +19,8 @@ import {
   bandForms,
   countTargets,
   newStep,
+  oracleAnswers,
+  pickOutcomes,
   stepGuides,
   stepKey,
   stepKinds,
@@ -88,14 +91,22 @@ function StepFields({
     'likelihood',
     'table',
     'skip',
+    'of',
+    'mode',
+    'check',
+    'difficulty',
+    'count.min',
+    'count.max',
   ]
   const bands = 'bands' in step ? step.bands.length : 0
   const items =
     'options' in step
       ? step.options.length
-      : 'branches' in step && Array.isArray(step.branches)
-        ? step.branches.length
-        : 0
+      : 'outcomes' in step
+        ? step.outcomes.length
+        : 'branches' in step && Array.isArray(step.branches)
+          ? step.branches.length
+          : 0
   // A message about a part the step does not have (a band, a branch, an option) is listed here, not lost.
   const shown = (error: StepError) => {
     if (error.band !== null) {
@@ -104,7 +115,12 @@ function StepFields({
       )
     }
     if (error.slot !== undefined) {
-      return error.slot === 'otherwise' ? step.kind === 'table' : step.kind === 'oracle'
+      const slots = { table: ['otherwise'], pick: pickOutcomes, oracle: oracleAnswers }
+      return (
+        (slots[step.kind as keyof typeof slots] as readonly string[] | undefined)?.includes(
+          error.slot,
+        ) ?? false
+      )
     }
     if (error.item !== undefined) {
       return error.item < items
@@ -264,6 +280,8 @@ function StepFields({
       {step.kind === 'oracle' && <OracleFields step={step} {...kindProps} />}
       {step.kind === 'table' && <TableFields step={step} {...kindProps} />}
       {step.kind === 'choice' && <ChoiceFields step={step} {...kindProps} />}
+      {step.kind === 'pick' && <PickFields step={step} {...kindProps} />}
+      {step.kind === 'check' && <CheckFields step={step} {...kindProps} />}
       {(step.kind === 'roll' || step.kind === 'condition') && (
         <BandsEditor
           bands={step.bands}

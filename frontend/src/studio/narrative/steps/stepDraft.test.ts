@@ -1,5 +1,6 @@
 import {
   newStep,
+  setBandOutcome,
   stepGuides,
   stepKey,
   stepsToDrafts,
@@ -78,6 +79,32 @@ const choice = {
   skip: 'left',
 }
 
+const pick = {
+  key: 'who',
+  kind: 'pick',
+  title: 'Who turns up?',
+  of: 'npc',
+  mode: 'choose',
+  tags: ['gang'],
+  count: { min: 1, max: 3, spare: true },
+  branches: {
+    found: { next: 'end', effects: [{ kind: 'endPhase' }], mood: 'grim' },
+    none: { effects: [{ kind: 'sceneTitle', title: 'Nobody' }] },
+    maybe: { next: 'end' },
+  },
+}
+const check = {
+  key: 'lock',
+  kind: 'check',
+  title: 'Pick the lock',
+  check: 'skill',
+  difficulty: { tracker: 'heat' },
+  outcomes: [
+    { band: 'fail', next: 'end', note: 'x' },
+    { band: 'success', effects: [{ kind: 'sheet', field: 'stress', op: 'add', value: 1 }] },
+  ],
+}
+
 function draftOf<K extends EditedStep['kind']>(stored: unknown, kind: K) {
   const [draft] = stepsToDrafts([stored])
   if (draft?.kind !== kind) {
@@ -99,6 +126,10 @@ describe('a step draft', () => {
     oracle,
     table,
     choice,
+    pick,
+    check,
+    { ...check, difficulty: 12 },
+    { ...check, difficulty: { formula: 'heat + 1' } },
   ])('gives a $kind step back as it was stored, unknown fields included', (stored) => {
     expect(round(stored)).toEqual({ steps: [stored] })
   })
@@ -173,6 +204,33 @@ describe('a step draft', () => {
   it('keeps a step of another kind exactly as stored, and so a step it cannot read', () => {
     const others = [
       { key: 'ask', kind: 'pick', title: 'Ask', of: 'npc', unknown: true },
+      { key: 'p1', kind: 'pick', title: 'P', of: 'monster', mode: 'random' },
+      { key: 'p2', kind: 'pick', title: 'P', of: 'npc', mode: 'one' },
+      { key: 'p3', kind: 'pick', title: 'P', of: 'npc', mode: 'random', tags: 'gang' },
+      { key: 'p4', kind: 'pick', title: 'P', of: 'npc', mode: 'random', count: 2 },
+      { key: 'p5', kind: 'pick', title: 'P', of: 'npc', mode: 'random', count: { min: 2 } },
+      {
+        key: 'p6',
+        kind: 'pick',
+        title: 'P',
+        of: 'npc',
+        mode: 'random',
+        count: { min: 1, max: 'x' },
+      },
+      { key: 'p7', kind: 'pick', title: 'P', of: 'npc', mode: 'random', branches: [] },
+      { key: 'p8', kind: 'pick', title: 'P', of: 'npc', mode: 'random', branches: { found: 3 } },
+      { key: 'k1', kind: 'check', title: 'K' },
+      { key: 'k2', kind: 'check', title: 'K', check: 'skill', difficulty: 1.5 },
+      { key: 'k3', kind: 'check', title: 'K', check: 'skill', difficulty: { dice: '1d6' } },
+      { key: 'k4', kind: 'check', title: 'K', check: 'skill', outcomes: 'none' },
+      { key: 'k5', kind: 'check', title: 'K', check: 'skill', outcomes: [{ next: 'end' }] },
+      {
+        key: 'k6',
+        kind: 'check',
+        title: 'K',
+        check: 'skill',
+        outcomes: [{ band: 'fail', next: 3 }],
+      },
       { key: 'x', kind: 'mystery', title: 'X' },
       { key: 'o1', kind: 'oracle', title: 'O' },
       { key: 'o2', kind: 'oracle', title: 'O', oracle: 'fate', branches: 'none' },
@@ -206,6 +264,85 @@ describe('a step draft', () => {
     expect(stepsToItems(drafts)).toEqual({ steps: others })
   })
 
+  it('reads a pick count as the default when absent or empty, and omits the default on save', () => {
+    const base = { key: 'who', kind: 'pick', title: 'Who?', of: 'thread', mode: 'random' }
+
+    expect(draftOf(base, 'pick')).toMatchObject({ min: '1', max: '1' })
+    expect(draftOf({ ...base, count: {} }, 'pick')).toMatchObject({ min: '1', max: '1' })
+    expect(round({ ...base, count: {} })).toEqual({ steps: [base] })
+    expect(round({ ...base, count: { min: 1, max: 1 } })).toEqual({ steps: [base] })
+    expect(round({ ...base, count: { min: 2, max: 2 } })).toEqual({
+      steps: [{ ...base, count: { min: 2, max: 2 } }],
+    })
+    expect(round({ ...base, count: { spare: 1 } })).toEqual({
+      steps: [{ ...base, count: { spare: 1 } }],
+    })
+  })
+
+  it('omits empty tags and empty found and none outcomes of a pick', () => {
+    const emptied = { ...pick, tags: [], count: undefined, branches: { found: {}, none: {} } }
+
+    expect(round(emptied)).toEqual({
+      steps: [{ key: 'who', kind: 'pick', title: 'Who turns up?', of: 'npc', mode: 'choose' }],
+    })
+  })
+
+  it('says which pick counts are not whole numbers and sends nothing', () => {
+    const [draft] = stepsToDrafts([pick])
+    if (draft?.kind !== 'pick') {
+      throw new Error('Expected a pick step.')
+    }
+
+    expect(stepsToItems([{ ...draft, min: '1.5', max: '' }])).toEqual({
+      errors: { '0.count.min': 'Use a whole number.', '0.count.max': 'Use a whole number.' },
+    })
+  })
+
+  it('keeps an outcome for a band of no check, and a repeated one, and omits empty outcomes and difficulty', () => {
+    const stray = [{ band: 'ghost', next: 'end' }, { band: 'fail' }, { band: 'fail', next: 'end' }]
+    const stored = { ...check, outcomes: stray }
+
+    expect(draftOf(stored, 'check').outcomes.map((outcome) => outcome.band)).toEqual([
+      'ghost',
+      'fail',
+      'fail',
+    ])
+    expect(round(stored)).toEqual({
+      steps: [{ ...stored, outcomes: [stray[0], stray[2]] }],
+    })
+    expect(round({ ...check, difficulty: undefined, outcomes: [{ band: 'fail' }] })).toEqual({
+      steps: [{ key: 'lock', kind: 'check', title: 'Pick the lock', check: 'skill' }],
+    })
+  })
+
+  it('says which difficulty is not a whole number and sends nothing', () => {
+    const [draft] = stepsToDrafts([check])
+    if (draft?.kind !== 'check') {
+      throw new Error('Expected a check step.')
+    }
+
+    expect(stepsToItems([{ ...draft, difficulty: { form: 'integer', text: '1.5' } }])).toEqual({
+      errors: { '0.difficulty': 'Use a whole number.' },
+    })
+  })
+
+  it('writes the outcome of a band in the check band order, keeping where each had been', () => {
+    const bands = ['fail', 'partial', 'success']
+    const { outcomes } = draftOf(check, 'check')
+    const edited = { next: 'end', effects: [], extra: {} }
+
+    const inserted = setBandOutcome(outcomes, bands, 'partial', edited)
+    expect(inserted.outcomes.map((outcome) => outcome.band)).toEqual(['fail', 'partial', 'success'])
+    expect(inserted.origin).toEqual([0, null, 1])
+
+    const reordered = setBandOutcome([...outcomes].reverse(), bands, 'fail', edited)
+    expect(reordered.outcomes.map((outcome) => outcome.band)).toEqual(['fail', 'success'])
+    expect(reordered.origin).toEqual([1, 0])
+
+    const stray = setBandOutcome([{ ...edited, band: 'ghost' }, ...outcomes], bands, 'fail', edited)
+    expect(stray.outcomes.map((outcome) => outcome.band)).toEqual(['fail', 'success', 'ghost'])
+  })
+
   it('says which limits are not whole numbers and sends nothing', () => {
     const [draft] = stepsToDrafts([roll])
     if (draft?.kind !== 'roll') {
@@ -234,6 +371,11 @@ describe('a step draft', () => {
       bands: [{ upTo: null }],
     })
     expect(stepsToDrafts([{ key: 'k', kind: 'oracle' }]).map(stepKey)).toEqual(['k'])
+  })
+
+  it('starts a new pick and check step with the defaults', () => {
+    expect(newStep('pick', [])).toMatchObject({ of: 'npc', mode: 'random', min: '1', max: '1' })
+    expect(newStep('check', [])).toMatchObject({ check: '', outcomes: [] })
   })
 
   it('starts a new oracle, table and choice step empty, the choice with two options', () => {
@@ -432,6 +574,68 @@ describe('the guides', () => {
       expect(guides[1]?.nexts).toEqual({ yes: back, exceptionalNo: back })
       expect(guides[2]?.nexts).toEqual({ 0: back, otherwise: back })
       expect(guides[3]?.nexts).toEqual({ 0: back })
+    })
+  })
+
+  describe('of pick and check', () => {
+    const guidesOf = (...stored: Record<string, unknown>[]) =>
+      stepGuides(stepsToDrafts(stored), stepPickers)
+
+    it('flags a pick count whose max is below its min, and keeps it', () => {
+      const low = { ...pick, count: { min: 3, max: 2 } }
+      const [fine, flagged] = guidesOf(pick, low)
+
+      expect(fine?.count).toBeUndefined()
+      expect(flagged?.count).toBe('Max must be at least min.')
+      expect(round(low)).toEqual({ steps: [low] })
+    })
+
+    it('flags a check the game system does not have, and keeps it', () => {
+      const gone = { ...check, check: 'gone', outcomes: [{ band: 'fail', next: 'end' }] }
+      const [fine, flagged] = guidesOf(check, gone)
+
+      expect(fine?.check).toBeUndefined()
+      expect(flagged?.check).toBe('Not a check of this game system.')
+      expect(round(gone)).toEqual({ steps: [gone] })
+    })
+
+    it('flags a difficulty outside the range of its check, or of a check with none', () => {
+      const [inside, outside, tracker, none] = guidesOf(
+        { ...check, difficulty: 12 },
+        { ...check, difficulty: 40 },
+        check,
+        { ...check, check: 'luck', difficulty: 5 },
+      )
+
+      expect(inside?.difficulty).toBeUndefined()
+      expect(outside?.difficulty).toBe('Outside the range of this check: 9 to 29.')
+      expect(tracker?.difficulty).toBeUndefined()
+      expect(none?.difficulty).toBe('This check declares no difficulty.')
+    })
+
+    it('flags outcomes for a band the check lacks and a band given twice', () => {
+      const [guide] = guidesOf({
+        ...check,
+        outcomes: [{ band: 'fail' }, { band: 'ghost' }, { band: 'fail' }],
+      })
+
+      expect(guide?.items).toEqual({
+        1: 'Not a band of this check.',
+        2: 'Another outcome has this band.',
+      })
+    })
+
+    it('flags a next that goes backward in a pick branch and a check outcome', () => {
+      const back = 'Pick a later step: next only goes forward.'
+      const guides = guidesOf(
+        { key: 'a', kind: 'character', title: 'A' },
+        { ...pick, key: 'p', branches: { found: { next: 'a' }, none: { next: 'z' } } },
+        { ...check, key: 'k', outcomes: [{ band: 'fail', next: 'a' }, { band: 'success' }] },
+        { key: 'z', kind: 'character', title: 'Z' },
+      )
+
+      expect(guides[1]?.nexts).toEqual({ found: back })
+      expect(guides[2]?.nexts).toEqual({ 0: back })
     })
   })
 })

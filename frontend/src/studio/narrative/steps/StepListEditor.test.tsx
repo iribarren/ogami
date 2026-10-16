@@ -6,6 +6,7 @@ import {
   stepList,
   stepListBackward,
   stepListBranching,
+  stepListPickCheck,
   stepListWithOtherKinds,
   stepPickers,
 } from '../../fixtures'
@@ -819,6 +820,273 @@ describe('the step list editor', () => {
       await user.click(card(3).getByRole('button', { name: 'Add option' }))
       await user.click(screen.getByRole('button', { name: 'Delete option 2' }))
       expect(screen.queryByText('right label')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('with pick and check steps', () => {
+    const inside = (cardNumber: number, name: string) =>
+      within(card(cardNumber).getByRole('group', { name }))
+    const errors = (...paths: string[]) =>
+      paths.map((text) => mapStepError('sceneTypes[2].play', text))
+
+    it('gives the fixture steps back as stored', () => {
+      render(<Harness stored={stepListPickCheck} />)
+
+      expect(latest.written).toEqual({ steps: stepListPickCheck })
+    })
+
+    it('edits what a pick is of, its mode, tags and count, and omits the default count', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+
+      await user.selectOptions(card(1).getByLabelText('Pick of'), 'thread')
+      await user.selectOptions(card(1).getByLabelText('Mode'), 'choose')
+      await user.click(card(1).getByRole('checkbox', { name: 'Gang' }))
+      await user.clear(card(1).getByLabelText('Count max'))
+      await user.type(card(1).getByLabelText('Count max'), '2')
+
+      expect(saved(0)).toMatchObject({
+        of: 'thread',
+        mode: 'choose',
+        count: { min: 1, max: 2 },
+      })
+      expect(saved(0)).not.toHaveProperty('tags')
+
+      await user.clear(card(1).getByLabelText('Count max'))
+      await user.type(card(1).getByLabelText('Count max'), '1')
+
+      expect(saved(0)).not.toHaveProperty('count')
+    })
+
+    it('guides a count whose max is below its min, and edits the found and none outcomes without sheet effects', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+
+      await user.clear(card(1).getByLabelText('Count min'))
+      await user.type(card(1).getByLabelText('Count min'), '5')
+      await user.selectOptions(inside(1, 'None').getByLabelText('Next'), 'end')
+
+      expect(card(1).getByText('Max must be at least min.')).toBeInTheDocument()
+      expect(saved(0)).toMatchObject({
+        count: { min: 5, max: 3 },
+        branches: { none: { next: 'end' } },
+      })
+      const kinds = within(inside(1, 'Found').getByLabelText('New effect kind'))
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value'))
+      expect(kinds).not.toContain('sheet')
+    })
+
+    it('shows a check count that is not whole next to it and sends nothing', async () => {
+      const user = userEvent.setup()
+      render(<Saver stored={stepListPickCheck} />)
+
+      await user.clear(card(1).getByLabelText('Count min'))
+      await user.type(card(1).getByLabelText('Count min'), 'x')
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(card(1).getByText('Use a whole number.')).toBeInTheDocument()
+      expect(sent.steps).toBeNull()
+    })
+
+    it('lists the bands of the chosen check in its order and re-renders them when the check changes', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+      const triggers = () =>
+        within(card(2).getByRole('group', { name: 'Outcomes' }))
+          .getAllByRole('button', { name: /^(fail|partial|success|lose|win)$/ })
+          .map((button) => button.textContent)
+
+      expect(triggers()).toEqual(['fail', 'partial', 'success'])
+
+      await user.selectOptions(card(2).getByLabelText('Check'), 'luck')
+
+      expect(triggers()).toEqual(['lose', 'win'])
+      expect(card(2).getByText('This check declares no difficulty.')).toBeInTheDocument()
+      await user.clear(card(2).getByLabelText('Difficulty'))
+      expect(card(2).queryByLabelText('Difficulty')).not.toBeInTheDocument()
+      expect(card(2).getAllByText('Not a band of this check.')).toHaveLength(2)
+    })
+
+    it('shows the difficulty only for a check that declares one, with its range, and guides a value outside it', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+
+      expect(card(2).getByText(/Default 13, from 9 to 29/)).toBeInTheDocument()
+      await user.clear(card(2).getByLabelText('Difficulty'))
+      await user.type(card(2).getByLabelText('Difficulty'), '40')
+      expect(card(2).getByText('Outside the range of this check: 9 to 29.')).toBeInTheDocument()
+      expect(saved(1)).toMatchObject({ difficulty: 40 })
+
+      await user.clear(card(2).getByLabelText('Difficulty'))
+      expect(saved(1)).not.toHaveProperty('difficulty')
+
+      await user.selectOptions(card(2).getByLabelText('Difficulty type'), 'tracker')
+      await user.selectOptions(card(2).getByLabelText('Difficulty'), 'heat')
+      expect(saved(1)).toMatchObject({ difficulty: { tracker: 'heat' } })
+    })
+
+    it('writes an outcome per band in band order and offers sheet effects in check outcomes only', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+
+      await user.click(
+        within(card(2).getByRole('group', { name: 'Outcomes' })).getByText('partial'),
+      )
+      await user.selectOptions(inside(2, 'Outcome partial').getByLabelText('Next'), 'end')
+
+      expect(saved(1)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'end' },
+          { band: 'partial', next: 'end' },
+          { band: 'success' },
+        ],
+      })
+      const kinds = within(inside(2, 'Outcome partial').getByLabelText('New effect kind'))
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value'))
+      expect(kinds).toContain('sheet')
+    })
+
+    it('keeps an outcome of a band the check lacks, flagged, until it is removed', async () => {
+      const user = userEvent.setup()
+      const stored = [
+        {
+          ...stepListPickCheck[1],
+          outcomes: [
+            { band: 'ghost', next: 'end' },
+            { band: 'fail' },
+            { band: 'fail', next: 'end' },
+          ],
+        },
+      ]
+      render(<Harness stored={stored} />)
+
+      expect(card(1).getByText('Not a band of this check.')).toBeInTheDocument()
+      expect(card(1).getByText('Another outcome has this band.')).toBeInTheDocument()
+      expect(saved(0)).toMatchObject({ outcomes: [{ band: 'ghost' }, { band: 'fail' }] })
+
+      await user.click(card(1).getByRole('button', { name: 'Remove outcome 1' }))
+
+      expect(card(1).queryByText('Not a band of this check.')).not.toBeInTheDocument()
+      expect(saved(0)).toMatchObject({ outcomes: [{ band: 'fail', next: 'end' }] })
+    })
+
+    it('flags a check the game system does not have, and keeps the step editable', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[{ ...stepListPickCheck[1], check: 'gone' }]} />)
+
+      expect(card(1).getByText('Not a check of this game system.')).toBeInTheDocument()
+      await user.type(card(1).getByLabelText('Title'), '!')
+      expect(saved(0)).toMatchObject({ check: 'gone', title: 'Pick the lock!' })
+    })
+
+    it('keeps a pick or check of an unreadable shape read-only and sends it unchanged', async () => {
+      const user = userEvent.setup()
+      const unreadable = [
+        { key: 'p', kind: 'pick', title: 'P', of: 'npc', mode: 'random', count: { min: 2 } },
+        { key: 'k', kind: 'check', title: 'K', check: 'skill', outcomes: 'none' },
+      ]
+      render(<Saver stored={unreadable} />)
+
+      expect(card(1).getByText(/cannot edit yet/)).toBeInTheDocument()
+      expect(card(2).getByText(/cannot edit yet/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(sent.steps).toEqual(unreadable)
+    })
+
+    it('shows each server message on its field, outcome row or the card', () => {
+      render(
+        <Harness
+          stored={stepListPickCheck}
+          errors={errors(
+            'sceneTypes[2].play[0].of: bad of',
+            'sceneTypes[2].play[0].count.max: bad max',
+            'sceneTypes[2].play[0].branches.found.next: bad found next',
+            'sceneTypes[2].play[0].branches.none.effects[0].title: bad none title',
+            'sceneTypes[2].play[0].tags[0]: bad tag',
+            'sceneTypes[2].play[1].check: bad check',
+            'sceneTypes[2].play[1].difficulty: bad difficulty',
+            'sceneTypes[2].play[1].outcomes[0].next: bad fail next',
+            'sceneTypes[2].play[1].outcomes[1].effects[0].field: bad stress',
+            'sceneTypes[2].play[1].outcomes[1].band: bad band',
+            'sceneTypes[2].play[1].outcomes[7].next: no such outcome',
+            'sceneTypes[2].play[1].outcomes: at most 10',
+          )}
+        />,
+      )
+
+      expect(card(1).getByText('bad of')).toBeInTheDocument()
+      expect(card(1).getByText('bad max')).toBeInTheDocument()
+      expect(inside(1, 'Found').getByText('bad found next')).toBeInTheDocument()
+      expect(inside(1, 'None').getByText('bad none title')).toBeInTheDocument()
+      expect(card(1).getByText('tags: bad tag')).toBeInTheDocument()
+      expect(card(2).getByText('bad check')).toBeInTheDocument()
+      expect(card(2).getByText('bad difficulty')).toBeInTheDocument()
+      expect(inside(2, 'Outcome fail').getByText('bad fail next')).toBeInTheDocument()
+      expect(inside(2, 'Outcome success').getByText('bad stress')).toBeVisible()
+      expect(inside(2, 'Outcome success').getByText('band: bad band')).toBeVisible()
+      expect(card(2).getByText('next: no such outcome')).toBeInTheDocument()
+      expect(card(2).getByText('outcomes: at most 10')).toBeInTheDocument()
+    })
+
+    it('follows an outcome through the removal of another, and goes when it is removed', async () => {
+      const user = userEvent.setup()
+      const stored = [
+        {
+          ...stepListPickCheck[1],
+          outcomes: [
+            { band: 'ghost', next: 'end' },
+            { band: 'fail' },
+            { band: 'success', next: 'end' },
+          ],
+        },
+      ]
+      render(
+        <Harness
+          stored={stored}
+          errors={errors(
+            'sceneTypes[2].play[0].outcomes[0].next: ghost problem',
+            'sceneTypes[2].play[0].outcomes[2].next: success problem',
+          )}
+        />,
+      )
+      expect(inside(1, 'Outcome success').getByText('success problem')).toBeInTheDocument()
+
+      await user.click(card(1).getByRole('button', { name: 'Remove outcome 1' }))
+
+      expect(screen.queryByText('ghost problem')).not.toBeInTheDocument()
+      expect(inside(1, 'Outcome success').getByText('success problem')).toBeInTheDocument()
+    })
+
+    it('flags a next that goes backward in a pick branch and a check outcome', () => {
+      const back = 'Pick a later step: next only goes forward.'
+      render(
+        <Harness
+          stored={[
+            { key: 'a', kind: 'character', title: 'A' },
+            { ...stepListPickCheck[0], branches: { found: { next: 'a' } } },
+            { ...stepListPickCheck[1], outcomes: [{ band: 'fail', next: 'a' }] },
+          ]}
+        />,
+      )
+
+      expect(inside(2, 'Found').getByText(back)).toBeInTheDocument()
+      expect(inside(3, 'Outcome fail').getByText(back)).toBeInTheDocument()
+    })
+
+    it('adds a pick and a check step', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[]} />)
+
+      for (const kind of ['pick', 'check']) {
+        await user.selectOptions(screen.getByLabelText('New step kind'), kind)
+        await user.click(screen.getByRole('button', { name: 'Add step' }))
+      }
+
+      expect(saved(0)).toMatchObject({ key: 'pick-1', kind: 'pick', of: 'npc', mode: 'random' })
+      expect(saved(1)).toMatchObject({ key: 'check-1', kind: 'check', check: '' })
     })
   })
 })

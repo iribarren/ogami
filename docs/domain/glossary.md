@@ -59,6 +59,7 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Preset | A hand-authored GameSystem release file shipped with Ogami (e.g. Free journal, Mythic-style) and published by `make presets`. A preset is a whole release: oracles, Scene Types, trackers, flows, sheet and checks | Studio |
 | Schema version | The version of the GameSystem release contract a release file follows (`schemaVersion`). Distinct from the release version | Studio → Play |
 | Oracle | Anything that answers a question with uncertainty: an oracle table or a likelihood oracle | Studio (defined), Randomness (resolved) |
+| Test roll | A roll of an oracle table, or a question put to a likelihood oracle, of a GameSystem draft in Studio, to try it before publishing. It rolls the saved draft, resolves nested tables like Play does, and is recorded nowhere ([ADR 0029](../adr/0029-studio-oracle-editor.md)) | Studio (defined), Randomness (resolves) |
 
 ## Play
 

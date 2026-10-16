@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Domain\Release\Version2;
 
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use App\Studio\Domain\Release\OraclesSection;
 use App\Studio\Domain\Release\ReleaseFields;
 use App\Studio\Domain\Release\ReleaseOracles;
 
@@ -56,9 +57,9 @@ final class ReleaseVersion2
         'sceneTypes' => true, 'flows' => true, 'sheet' => true, 'checks' => true,
     ];
 
-    private const array ENTRY = [...ReleaseOracles::ENTRY, 'key' => false, 'sceneType' => false, 'effects' => false];
-    private const array CHAOS = [...ReleaseOracles::CHAOS, 'tracker' => false];
-    private const array LIKELIHOOD = [...ReleaseOracles::LIKELIHOOD, 'randomEvent' => false];
+    public const array ENTRY = [...ReleaseOracles::ENTRY, 'key' => false, 'sceneType' => false, 'effects' => false];
+    public const array CHAOS = [...ReleaseOracles::CHAOS, 'tracker' => false];
+    public const array LIKELIHOOD = [...ReleaseOracles::LIKELIHOOD, 'randomEvent' => false];
     private const array TRACKERS = [
         'counter' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'min' => true, 'max' => true, 'initial' => true, 'levels' => false],
         'clock' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'segments' => true],
@@ -89,7 +90,7 @@ final class ReleaseVersion2
     public static function validate(array $release): array
     {
         [$trackers, $trackerRanges] = self::trackers($release['trackers']);
-        $oracles = ReleaseOracles::validate($release['oracles'], self::ENTRY, self::CHAOS, self::LIKELIHOOD);
+        $oracles = OraclesSection::validate($release['oracles'], 2);
         self::chaosTrackers($oracles['likelihood'], $trackerRanges);
         [$factSlots, $factSlotTypes] = self::factSlots($release['factSlots']);
         [$tags, $tagKeys] = self::tags($release['tags'] ?? null);
@@ -345,7 +346,7 @@ final class ReleaseVersion2
     }
 
     /**
-     * Entry keys by table; they are unique within their table.
+     * Entry keys by table; the oracles section checked that they are unique within their table.
      *
      * @param list<array<string, mixed>> $tables
      *
@@ -354,25 +355,14 @@ final class ReleaseVersion2
     private static function tableEntryKeys(array $tables): array
     {
         $tableEntryKeys = [];
-        foreach ($tables as $tableIndex => $table) {
+        foreach ($tables as $table) {
             /** @var string $tableKey */
             $tableKey = $table['key'];
-            $tableEntryKeys[$tableKey] = [];
             /** @var list<array<string, mixed>> $entries */
             $entries = $table['entries'];
-            foreach ($entries as $entryIndex => $entry) {
-                if (!isset($entry['key'])) {
-                    continue;
-                }
-
-                $path = \sprintf('oracles.tables[%d].entries[%d].key', $tableIndex, $entryIndex);
-                $key = ReleaseFields::key($entry['key'], $path);
-                if (isset($tableEntryKeys[$tableKey][$key])) {
-                    throw InvalidReleaseContent::at($path, \sprintf('duplicate entry key "%s"', $key));
-                }
-
-                $tableEntryKeys[$tableKey][$key] = true;
-            }
+            /** @var list<string> $keys */
+            $keys = array_column($entries, 'key');
+            $tableEntryKeys[$tableKey] = array_fill_keys($keys, true);
         }
 
         return $tableEntryKeys;

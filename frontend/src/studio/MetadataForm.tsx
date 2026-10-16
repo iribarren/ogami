@@ -41,6 +41,8 @@ export function MetadataForm({
   const [url, setUrl] = useState(gameSystem.credits?.url ?? '')
   const [theme, setTheme] = useState(gameSystem.theme ?? '')
   const save = useEditMetadata(gameSystem.key)
+  // "Saved." describes the last save only: any later edit hides it.
+  const [edited, setEdited] = useState(false)
   const nameId = useId()
   const descriptionId = useId()
   const noticeId = useId()
@@ -64,11 +66,19 @@ export function MetadataForm({
         notice.trim() === '' ? null : { notice, license: orNull(license), url: orNull(url) }
       body.theme = orNull(theme)
     }
+    setEdited(false)
     save.mutate(body)
   }
 
   return (
-    <form aria-label="Metadata" className="max-w-xl space-y-4" onSubmit={handleSubmit}>
+    <form
+      aria-label="Metadata"
+      className="max-w-xl space-y-4"
+      onChange={() => {
+        setEdited(true)
+      }}
+      onSubmit={handleSubmit}
+    >
       <div className="space-y-2">
         <Label htmlFor={nameId}>Name</Label>
         <Input
@@ -164,7 +174,7 @@ export function MetadataForm({
           )}
         </div>
       )}
-      {save.isSuccess && (
+      {save.isSuccess && !edited && (
         <p role="status" className="text-sm text-muted-foreground">
           Saved.
         </p>

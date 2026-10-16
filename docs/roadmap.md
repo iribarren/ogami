@@ -51,7 +51,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 | 11 | `rules-derived-values` | M3 | 10 | Where formula evaluation lives |
 | 12 | `play-checks` | M3 | 11 | How far checks go before scripting |
 | 13 | `preset-real-system` | M3 | 12 | Items, inventory and a `shop` step kind: moved post-M3 to `play-items-economy` ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). MVP complete |
-| 14 | `studio-gamesystem-drafts` (in progress) | M4 | 4 | — |
+| 14 | `studio-gamesystem-drafts` | M4 | 4 | — |
 | 15 | `studio-oracle-editor` | M4 | 14 | — |
 | 18 | `studio-flow-editor` | M4 | 15, 9b | — |
 | 16 | `studio-sheet-builder` | M4 | 14, 11 | — |
@@ -262,6 +262,8 @@ Start feature `preset-real-system` (ODD). Hand-author a release for a small, lic
 ### M4 Studio
 
 **14. studio-gamesystem-drafts**
+
+Done: GameSystem drafts for a GAME_MANAGER (blank or copied from a published release; only the creator sees one, [ADR 0028](adr/0028-studio-gamesystem-drafts.md)), metadata editing, validation, publishing a draft as a new release with optional release notes through the existing release publisher, a version history with a read-only release view and restore into the draft, and the Studio shell (home, GameSystem page, publish dialog, Releases tab). The section editors are features 15 to 18b. The prompt is kept for reference.
 
 ```text
 Start feature `studio-gamesystem-drafts` (ODD). Studio: GameSystem drafts (create, edit metadata, validate), publish as a new immutable release reusing the release-contract publisher, version history. Studio shell UX at Play quality.

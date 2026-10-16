@@ -42,9 +42,9 @@ export function studioError(
   )
 }
 
-const gameSystemsKey = ['studio', 'game-systems'] as const
+export const gameSystemsKey = ['studio', 'game-systems'] as const
 export const gameSystemKey = (key: string) => [...gameSystemsKey, key] as const
-const validationKey = (key: string) => [...gameSystemKey(key), 'validation'] as const
+export const validationKey = (key: string) => [...gameSystemKey(key), 'validation'] as const
 
 /** A 404 (unknown key, or someone else's) will not change by asking again. */
 const retryUnlessNotFound = (failureCount: number, error: Error) =>

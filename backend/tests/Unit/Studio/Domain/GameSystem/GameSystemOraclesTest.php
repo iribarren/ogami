@@ -255,6 +255,24 @@ final class GameSystemOraclesTest extends TestCase
     }
 
     #[Test]
+    public function everyReferencedEntryKeyDroppedByASaveIsListed(): void
+    {
+        $gameSystem = $this->draft();
+        $gameSystem->restore(ReleaseArrays::with($gameSystem->document(), 'sceneTypes.1.play.1.branches.1', ['entry' => 'run']), $this->created);
+        $complications = $this->tables($gameSystem)[1];
+        /** @var list<array<string, mixed>> $entries */
+        $entries = $complications['entries'];
+        $dropped = [...ReleaseArrays::with($complications, 'entries.2.key', 'seen'), 'entries' => [$entries[0], $entries[1], [...$entries[2], 'key' => 'seen']]];
+
+        try {
+            $gameSystem->saveOracleTable('complications', $dropped, $this->now);
+            self::fail('Expected OracleInUse');
+        } catch (OracleInUse $inUse) {
+            self::assertSame(['sceneTypes[1].play[1].branches[0].entry', 'sceneTypes[1].play[1].branches[1].entry'], $inUse->paths());
+        }
+    }
+
+    #[Test]
     public function anUnreferencedTableCanBeDeleted(): void
     {
         $gameSystem = $this->draft();

@@ -1,7 +1,7 @@
 # Feature: studio-oracle-editor
 
 - **Locator:** `odd/tasks/studio-oracle-editor.md` · Engram topic `odd/studio-oracle-editor/tasks`
-- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-1-domain` · **Status:** in progress (slice 1)
+- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-2-application` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-gamesystem-drafts` (PRs #132–#139)
@@ -73,8 +73,8 @@ Shippable: slices 1–3 add backend unused by the UI; slice 4 makes the Oracles 
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0029 (Studio oracle editor: per-item commands with expected version, section invariant, refuse rename/delete while referenced, test rolls of the saved draft, v2 extensions preserved) and ADR index row; glossary (Test roll); context map if Studio → Randomness is not yet drawn | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain: `OracleReferences`; shared oracles-section validator extracted from the publisher's checks; `GameSystem` oracle commands (save/delete table, save/delete likelihood oracle; rename; position kept; v1 field rules; extensions preserved); errors; unit tests incl. every reference kind and a publish regression | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0029 (Studio oracle editor: per-item commands with expected version, section invariant, refuse rename/delete while referenced, test rolls of the saved draft, v2 extensions preserved) and ADR index row; glossary (Test roll); context map if Studio → Randomness is not yet drawn | delegated writer (slice 1) | [x] | `e0af8eb` |
+| T2 | 1 | Domain: `OracleReferences`; shared oracles-section validator extracted from the publisher's checks; `GameSystem` oracle commands (save/delete table, save/delete likelihood oracle; rename; position kept; v1 field rules; extensions preserved); errors; unit tests incl. every reference kind and a publish regression | delegated writer (slice 1) | [x] | `7719525` |
 | T3 | 2 | Application: four oracle command handlers with `expectedVersion` (409), `GetGameSystemOracles` read model with `version` and `usedBy`; unit tests; Behat scenarios | | [ ] | |
 | T4 | 2 | Application: `TestRollOracleTable`, `TestAskLikelihoodOracle` (random event table rolled on a signalled random event); unit tests with a fixed randomness source; Behat | | [ ] | |
 | T5 | 3 | HTTP: `GameSystemOracleController` for the API above; every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft and a stale `expectedVersion`; `make api` (generated files in their own commit) | | [ ] | |
@@ -88,12 +88,14 @@ Shippable: slices 1–3 add backend unused by the UI; slice 4 makes the Oracles 
 - 2026-10-16: Exploration done (release contract oracle shape and validators, every oracle reference kind, Randomness queries and stateless endpoints, Studio draft aggregate and concurrency, GameSystem page and hooks, presets: 4–9 tables, ≤ ~30 entries each, one likelihood oracle). Three decisions taken with the user (rename/delete, test rolls, v2 scope); slice plan of 5.
 - 2026-10-16: T1 done: ADR 0029, ADR index row, glossary Test roll; context map unchanged (Studio — Randomness already drawn). Docs only, no RED/GREEN applicable; structural readback.
 - 2026-10-16: T2 done: `OracleReferences`, `OraclesSection` (one validator; `ReleaseContent` and `ReleaseVersion2` call it; entry-key checks moved into `ReleaseOracles`), `GameSystem` oracle commands, errors. RED observed for the command tests (methods missing); `OracleReferences` and the section extraction were written before their tests (GREEN on first run, one test fixed); publish regression in `OraclesSectionTest`. Commands take `$now` like `editMetadata`; entry-key duplicate errors now surface before tracker/Scene Type errors in a document with several faults.
+- 2026-10-16: Slice 1 review fixes (slice 2, commit 1): publish-level test for a `table` step branch on an entry key no table has (passed first time, code was right); `OracleInUse` now lists the paths of every dropped referenced entry key (RED observed: only the first path came back).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-b6727da40a526672` | `e0af8eb`, `7719525` | approved, acknowledged. Suggestions, fixed in slice 2: publish-level test for a `table` step branch naming an unknown entry key (`ReleaseVersion2` `tableEntryKeys` now indexes raw keys); `OracleInUse` for entry keys collects the paths of every dropped referenced entry key, not just the first | [#142](https://github.com/iribarren/ogami/pull/142) |
 
 ## Next step
 
-Slice 1 (T1, T2) on `feat/studio-oracle-editor-1-domain`.
+Slice 2 (slice 1 review fixes, T3, T4) on `feat/studio-oracle-editor-2-application`.

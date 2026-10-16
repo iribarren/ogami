@@ -319,16 +319,23 @@ final class GameSystem
      * @param mixed                   $stored the table as stored
      * @param array<array-key, mixed> $saved  the table as given
      *
-     * @throws OracleInUse when a table step branch names an entry key the saved table no longer has
+     * @throws OracleInUse when a table step branch names an entry key the saved table no longer has; lists every such branch
      */
     private function refuseWhenEntryKeysAreReferenced(string $table, mixed $stored, array $saved): void
     {
         $kept = $this->entryKeys($saved);
+        $dropped = [];
+        $paths = [];
         foreach ($this->entryKeys(\is_array($stored) ? $stored : []) as $entryKey) {
-            $paths = \in_array($entryKey, $kept, true) ? [] : OracleReferences::entryPathsTo($this->document, $table, $entryKey);
-            if ([] !== $paths) {
-                throw OracleInUse::at(\sprintf('The entry "%s" of table "%s"', $entryKey, $table), $paths);
+            $entryPaths = \in_array($entryKey, $kept, true) ? [] : OracleReferences::entryPathsTo($this->document, $table, $entryKey);
+            if ([] !== $entryPaths) {
+                $dropped[] = \sprintf('"%s"', $entryKey);
+                $paths = [...$paths, ...$entryPaths];
             }
+        }
+
+        if ([] !== $paths) {
+            throw OracleInUse::at(\sprintf('The %s of table "%s"', 1 === \count($dropped) ? 'entry '.$dropped[0] : 'entries '.implode(', ', $dropped), $table), $paths);
         }
     }
 

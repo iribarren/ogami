@@ -13,9 +13,18 @@ describe('the step pickers', () => {
         ...narrative.factSlots,
         { key: 'odd', definition: { key: 'odd', label: 5 }, usedBy: [] },
       ],
-      catalog: { ...narrative.catalog, fields: [{ key: 'hands', label: 'Hands' }] },
+      catalog: {
+        ...narrative.catalog,
+        tables: [{ key: 'moods', name: 'Moods', entries: ['calm', 'tense'] }],
+        likelihood: [{ key: 'fate', name: 'Fate', levels: ['unlikely', 'likely'] }],
+        fields: [{ key: 'hands', label: 'Hands' }],
+      },
     })
 
+    expect(context.tables).toEqual([{ key: 'moods', name: 'Moods', entries: ['calm', 'tense'] }])
+    expect(context.likelihood).toEqual([
+      { key: 'fate', name: 'Fate', levels: ['unlikely', 'likely'] },
+    ])
     expect(context.sceneTypes).toEqual([
       { key: 'chase', name: 'Chase' },
       { key: 'plain', name: 'plain' },

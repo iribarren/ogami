@@ -314,12 +314,14 @@ export const narrativeV1 = {
   factSlots: [],
 }
 
-/** What the step forms pick from: the draft's tables, trackers, tags, Scene Types, fact slots and sheet fields. */
+/** What the step forms pick from: the draft's tables (with entries), likelihood oracles (with levels), trackers, tags, Scene Types, fact slots and sheet fields. */
 export const stepPickers = {
   tables: [
-    { key: 'places', name: 'Places' },
-    { key: 'moods', name: 'Moods' },
+    { key: 'places', name: 'Places', entries: ['market', 'docks'] },
+    { key: 'moods', name: 'Moods', entries: ['calm', 'tense'] },
+    { key: 'complications', name: 'Complications', entries: ['patrol', 'lucky-break'] },
   ],
+  likelihood: [{ key: 'fate', name: 'Fate', levels: ['unlikely', 'even', 'likely'] }],
   trackers: [
     { key: 'heat', name: 'Heat' },
     { key: 'alarm', name: 'Alarm' },
@@ -370,16 +372,47 @@ const crowd = {
 /** Stored steps of every kind the step editor edits. */
 export const stepList = [intro, heatRoll, crowd, who]
 
+const ask = {
+  key: 'ask',
+  kind: 'oracle',
+  title: 'Does it go wrong?',
+  oracle: 'fate',
+  likelihood: 'likely',
+  branches: {
+    yes: { next: 'event' },
+    exceptionalNo: { effects: [{ kind: 'sceneTitle', title: 'Luck' }] },
+  },
+}
+const event = {
+  key: 'event',
+  kind: 'table',
+  title: 'What happens?',
+  table: 'complications',
+  branches: [
+    { entry: 'patrol', next: 'which' },
+    { entry: 'lucky-break', effects: [{ kind: 'sceneTitle', title: 'Luck' }] },
+  ],
+  otherwise: { next: 'end' },
+}
+const which = {
+  key: 'which',
+  kind: 'choice',
+  title: 'Which way?',
+  mandatory: true,
+  options: [
+    { key: 'left', label: 'Left', next: 'end' },
+    { key: 'right', label: 'Right' },
+  ],
+  skip: 'left',
+}
+
+/** One step each of the kinds with branches: an oracle, a table and a choice. */
+export const stepListBranching = [ask, event, which]
+
 /** A step list with a kind the editor does not edit yet and a step it cannot read. */
 export const stepListWithOtherKinds = [
   intro,
-  {
-    key: 'ask',
-    kind: 'oracle',
-    title: 'Does it go wrong?',
-    oracle: 'likelihood',
-    likelihood: 'likely',
-  },
+  { key: 'ask', kind: 'pick', title: 'Who is in?', of: 'npc', mode: 'one' },
   { key: 'odd', kind: 'prompt', title: 'Odd', inspiration: 'places' },
 ]
 

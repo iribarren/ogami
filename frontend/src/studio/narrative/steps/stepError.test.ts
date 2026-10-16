@@ -98,6 +98,36 @@ describe('mapping a server error to a step', () => {
   })
 })
 
+describe('mapping a server error about branches and options', () => {
+  const map = (path: string) => mapStepError(base, `${base}[1]${path}: no good`)
+
+  it.each([
+    ['.branches.yes.next', { slot: 'yes', field: 'next', effect: null }],
+    [
+      '.branches.exceptionalNo.effects[2].field',
+      { slot: 'exceptionalNo', field: 'field', effect: 2 },
+    ],
+    ['.branches.no', { slot: 'no', field: null, effect: null }],
+    ['.otherwise.effects[0]', { slot: 'otherwise', field: null, effect: 0 }],
+    ['.otherwise', { slot: 'otherwise', field: null, effect: null }],
+    ['.branches[3].entry', { item: 3, field: 'entry', effect: null }],
+    ['.branches[3].effects[1].tracker', { item: 3, field: 'tracker', effect: 1 }],
+    ['.options[0].label', { item: 0, field: 'label', effect: null }],
+    ['.options[4].next', { item: 4, field: 'next', effect: null }],
+  ])('reads %s', (path, expected) => {
+    expect(map(path)).toMatchObject({ index: 1, band: null, ...expected })
+  })
+
+  it('leaves the step fields on the step and the list-level ones as fields', () => {
+    for (const field of ['oracle', 'likelihood', 'table', 'skip', 'options', 'branches']) {
+      const error = map(`.${field}`)
+      expect(error).toMatchObject({ index: 1, field })
+      expect(error.slot).toBeUndefined()
+      expect(error.item).toBeUndefined()
+    }
+  })
+})
+
 describe('mapping the whole numbers a step list refuses to a step', () => {
   it('reads the keys stepsToItems gives, on a step, a band and an effect of either', () => {
     expect(

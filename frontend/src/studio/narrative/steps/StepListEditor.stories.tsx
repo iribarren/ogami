@@ -2,7 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { expect, userEvent, within } from 'storybook/test'
 
-import { stepList, stepListBackward, stepListWithOtherKinds, stepPickers } from '../../fixtures'
+import {
+  stepList,
+  stepListBackward,
+  stepListBranching,
+  stepListWithOtherKinds,
+  stepPickers,
+} from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts } from './stepDraft'
 import { mapStepError } from './stepError'
@@ -33,8 +39,18 @@ export const EveryEditableKind: Story = {
   },
 }
 
-/** An `oracle` step and a step with an unreadable shape stay as they are; they can be moved and deleted. */
+/** A `pick` step (not edited yet) and a step with an unreadable shape stay as they are; they can be moved and deleted. */
 export const OtherKindsAreReadOnly: Story = { args: { stored: stepListWithOtherKinds } }
+
+/** An oracle with answers, a table with entry branches and a choice with options and a skip. */
+export const BranchingKinds: Story = {
+  args: { stored: stepListBranching },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Add option' }))
+    await expect(canvas.getAllByLabelText('Option key')).toHaveLength(3)
+  },
+}
 
 /** A step and a band whose next goes to the same or an earlier step. */
 export const BackwardNext: Story = { args: { stored: stepListBackward } }

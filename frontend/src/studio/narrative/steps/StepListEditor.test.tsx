@@ -2,7 +2,13 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 
-import { stepList, stepListBackward, stepListWithOtherKinds, stepPickers } from '../../fixtures'
+import {
+  stepList,
+  stepListBackward,
+  stepListBranching,
+  stepListWithOtherKinds,
+  stepPickers,
+} from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts, stepsToItems } from './stepDraft'
 import { clientStepErrors, mapStepError, type StepError } from './stepError'
@@ -158,7 +164,7 @@ describe('the step list editor', () => {
     const user = userEvent.setup()
     render(<Harness stored={stepListWithOtherKinds} />)
 
-    expect(card(2).getByText('oracle')).toBeInTheDocument()
+    expect(card(2).getByText('pick')).toBeInTheDocument()
     expect(card(2).queryByLabelText('Key')).not.toBeInTheDocument()
     expect(card(3).getByText(/cannot edit yet/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Move step 2 up' }))
@@ -461,6 +467,313 @@ describe('the step list editor', () => {
 
       expect(screen.queryByText('no good')).not.toBeInTheDocument()
       expect(screen.queryByText('also no good')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('the oracle step', () => {
+    const answer = (name: string) => within(card(1).getByRole('group', { name }))
+
+    it('picks the oracle and a level of it, and writes the answers that have branches', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListBranching} />)
+      expect(latest.written).toEqual({ steps: stepListBranching })
+
+      expect(
+        within(card(1).getByLabelText('Likelihood level'))
+          .getAllByRole('option')
+          .map((option) => option.getAttribute('value')),
+      ).toEqual(['', 'unlikely', 'even', 'likely'])
+      await user.selectOptions(card(1).getByLabelText('Likelihood level'), 'even')
+      await user.selectOptions(answer('No').getByLabelText('Next'), 'which')
+      await user.selectOptions(answer('Yes').getByLabelText('Next'), '')
+      await user.selectOptions(answer('Yes').getByLabelText('New effect kind'), 'endPhase')
+      await user.click(answer('Yes').getByRole('button', { name: 'Add effect' }))
+
+      expect(saved(0)).toEqual({
+        ...stepListBranching[0],
+        likelihood: 'even',
+        branches: {
+          yes: { effects: [{ kind: 'endPhase' }] },
+          no: { next: 'which' },
+          exceptionalNo: { effects: [{ kind: 'sceneTitle', title: 'Luck' }] },
+        },
+      })
+    })
+
+    it('keeps the exceptional answers collapsed until needed, with a hint, and omits empty answers', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={[
+            {
+              key: 'o',
+              kind: 'oracle',
+              title: 'O',
+              oracle: 'fate',
+              branches: { no: { next: 'end' } },
+            },
+          ]}
+        />,
+      )
+
+      expect(card(1).getByText(/uses yes \/ no/)).toBeVisible()
+      expect(card(1).queryByRole('group', { name: 'Exceptional yes' })).not.toBeInTheDocument()
+      await user.click(card(1).getByRole('button', { name: 'Exceptional answers' }))
+      await user.selectOptions(answer('Exceptional yes').getByLabelText('Next'), 'end')
+      await user.selectOptions(answer('Exceptional yes').getByLabelText('Next'), '')
+      await user.selectOptions(answer('No').getByLabelText('Next'), '')
+
+      expect(saved(0)).toEqual({ key: 'o', kind: 'oracle', title: 'O', oracle: 'fate' })
+    })
+
+    it('keeps a level the oracle does not have, flagged, and clears it on request', async () => {
+      const user = userEvent.setup()
+      const stored = [
+        { key: 'o', kind: 'oracle', title: 'O', oracle: 'fate', likelihood: 'certain' },
+      ]
+      render(<Harness stored={stored} />)
+
+      expect(card(1).getByLabelText('Likelihood level')).toHaveValue('certain')
+      expect(card(1).getByText('Not a level of this oracle.')).toBeInTheDocument()
+      expect(saved(0)).toEqual(stored[0])
+      await user.selectOptions(card(1).getByLabelText('Likelihood level'), '')
+
+      expect(saved(0)).not.toHaveProperty('likelihood')
+    })
+  })
+
+  describe('the table step', () => {
+    const branch = (number: number) =>
+      within(card(2).getByRole('group', { name: `Branch ${String(number)}` }))
+
+    it('edits the entry branches and otherwise, and writes them in their order', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListBranching} />)
+
+      await user.click(card(2).getByRole('button', { name: 'Add branch' }))
+      await user.selectOptions(branch(3).getByLabelText('Entry'), 'patrol')
+      expect(branch(3).getByText('Another branch has this entry.')).toBeInTheDocument()
+      await user.selectOptions(branch(1).getByLabelText('Next'), 'end')
+      await user.click(screen.getByRole('button', { name: 'Move branch 2 up' }))
+      await user.click(screen.getByRole('button', { name: 'Delete branch 3' }))
+      await user.selectOptions(
+        within(card(2).getByRole('group', { name: 'Otherwise' })).getByLabelText('Next'),
+        '',
+      )
+
+      expect(saved(1)).toEqual({
+        key: 'event',
+        kind: 'table',
+        title: 'What happens?',
+        table: 'complications',
+        branches: [
+          { entry: 'lucky-break', effects: [{ kind: 'sceneTitle', title: 'Luck' }] },
+          { entry: 'patrol', next: 'end' },
+        ],
+      })
+    })
+
+    it('keeps an entry the table does not have, flagged, and omits an empty branch list', async () => {
+      const user = userEvent.setup()
+      const stored = [
+        {
+          key: 't',
+          kind: 'table',
+          title: 'T',
+          table: 'complications',
+          branches: [{ entry: 'ghost' }],
+        },
+      ]
+      render(<Harness stored={stored} />)
+
+      expect(card(1).getByText('Not an entry of this table.')).toBeInTheDocument()
+      expect(saved(0)).toEqual(stored[0])
+      await user.click(card(1).getByRole('button', { name: 'Delete branch 1' }))
+
+      expect(saved(0)).toEqual({ key: 't', kind: 'table', title: 'T', table: 'complications' })
+    })
+
+    it('picks the table, which gives the entries to pick from', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[{ key: 't', kind: 'table', title: 'T', table: 'places' }]} />)
+
+      await user.click(card(1).getByRole('button', { name: 'Add branch' }))
+
+      expect(
+        within(card(1).getByLabelText('Entry'))
+          .getAllByRole('option')
+          .map((option) => option.getAttribute('value')),
+      ).toEqual(['', 'market', 'docks'])
+      await user.selectOptions(card(1).getByLabelText('Table'), 'moods')
+      expect(saved(0)).toMatchObject({ table: 'moods', branches: [{ entry: '' }] })
+    })
+  })
+
+  describe('the choice step', () => {
+    const option = (number: number) =>
+      within(card(3).getByRole('group', { name: `Option ${String(number)}` }))
+
+    it('starts with two options and holds the count between two and ten', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[]} />)
+
+      await user.selectOptions(screen.getByLabelText('New step kind'), 'choice')
+      await user.click(screen.getByRole('button', { name: 'Add step' }))
+      expect(card(1).getByLabelText('Skip')).toHaveValue('')
+      expect(
+        card(1)
+          .getAllByLabelText('Option key')
+          .map((input) => (input as HTMLInputElement).value),
+      ).toEqual(['option-1', 'option-2'])
+      expect(card(1).getByRole('button', { name: 'Delete option 1' })).toBeDisabled()
+      expect(card(1).getByText('A choice needs at least 2 options.')).toBeInTheDocument()
+
+      for (let at = 0; at < 8; at += 1) {
+        await user.click(card(1).getByRole('button', { name: 'Add option' }))
+      }
+      expect(card(1).getByRole('button', { name: 'Add option' })).toBeDisabled()
+      expect(card(1).getByText('At most 10 options.')).toBeInTheDocument()
+      expect(card(1).getAllByLabelText('Option key')).toHaveLength(10)
+      expect(card(1).getByRole('button', { name: 'Delete option 1' })).toBeEnabled()
+    })
+
+    it('renames the skipped option with its key, flags a skip that names nothing, and saves', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListBranching} />)
+
+      await user.clear(option(1).getByLabelText('Option key'))
+      await user.type(option(1).getByLabelText('Option key'), 'west')
+      expect(card(3).getByLabelText('Skip')).toHaveValue('west')
+      await user.click(card(3).getByRole('button', { name: 'Move option 2 up' }))
+      await user.selectOptions(option(2).getByLabelText('Next'), '')
+      await user.type(option(1).getByLabelText('Label'), '!')
+
+      expect(saved(2)).toEqual({
+        ...stepListBranching[2],
+        options: [
+          { key: 'right', label: 'Right!' },
+          { key: 'west', label: 'Left' },
+        ],
+        skip: 'west',
+      })
+
+      await user.click(card(3).getByRole('button', { name: 'Add option' }))
+      await user.click(card(3).getByRole('button', { name: 'Delete option 2' }))
+      expect(card(3).getByLabelText('Skip')).toHaveValue('west')
+      expect(card(3).getByText('No option has this key.')).toBeInTheDocument()
+    })
+
+    it('flags repeated keys and a suggested choice without skip', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListBranching} />)
+
+      await user.type(
+        option(2).getByLabelText('Option key'),
+        '{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}left',
+      )
+      expect(option(2).getByText('Another option has this key.')).toBeInTheDocument()
+      await user.click(card(3).getByRole('radio', { name: 'Suggested' }))
+      await user.selectOptions(card(3).getByLabelText('Skip'), '')
+
+      expect(
+        card(3).getByText('A suggested choice must name the option taken when it is skipped.'),
+      ).toBeInTheDocument()
+      expect(saved(2)).not.toHaveProperty('skip')
+    })
+  })
+
+  describe('a server error about branches and options', () => {
+    const errors = (...paths: string[]) =>
+      paths.map((text) => mapStepError('sceneTypes[2].play', text))
+
+    it('shows each message on its answer, entry, option and field', () => {
+      render(
+        <Harness
+          stored={stepListBranching}
+          errors={errors(
+            'sceneTypes[2].play[0].oracle: unknown oracle',
+            'sceneTypes[2].play[0].likelihood: unknown level',
+            'sceneTypes[2].play[0].branches.yes.next: backward',
+            'sceneTypes[2].play[0].branches.exceptionalNo.effects[0].title: blank title',
+            'sceneTypes[2].play[1].table: unknown table',
+            'sceneTypes[2].play[1].branches[1].entry: unknown entry',
+            'sceneTypes[2].play[1].branches[0].effects[0]: no effect',
+            'sceneTypes[2].play[1].otherwise.effects[0]: none here',
+            'sceneTypes[2].play[2].options[1].label: blank label',
+            'sceneTypes[2].play[2].options[0].next: not later',
+            'sceneTypes[2].play[2].skip: unknown option',
+          )}
+        />,
+      )
+      const within1 = (card: number, name: string) =>
+        within(
+          within(screen.getByRole('group', { name: `Step ${String(card)}` })).getByRole('group', {
+            name,
+          }),
+        )
+
+      expect(card(1).getByText('unknown oracle')).toBeInTheDocument()
+      expect(card(1).getByText('unknown level')).toBeInTheDocument()
+      expect(within1(1, 'Yes').getByText('backward')).toBeInTheDocument()
+      expect(within1(1, 'Exceptional no').getByText('blank title')).toBeVisible()
+      expect(card(2).getByText('unknown table')).toBeInTheDocument()
+      expect(within1(2, 'Branch 2').getByText('unknown entry')).toBeInTheDocument()
+      expect(within1(2, 'Branch 1 outcome').getByText('no effect')).toBeInTheDocument()
+      expect(within1(2, 'Otherwise').getByText('none here')).toBeInTheDocument()
+      expect(within1(3, 'Option 2').getByText('blank label')).toBeInTheDocument()
+      expect(within1(3, 'Option 1 outcome').getByText('not later')).toBeInTheDocument()
+      expect(card(3).getByText('unknown option')).toBeInTheDocument()
+    })
+
+    it('lists a message about a part the step does not have on the card', () => {
+      render(
+        <Harness
+          stored={stepListBranching}
+          errors={errors(
+            'sceneTypes[2].play[1].branches[9].entry: no such branch',
+            'sceneTypes[2].play[2].options[7].label: no such option',
+            'sceneTypes[2].play[2].otherwise.next: no otherwise here',
+            'sceneTypes[2].play[0].branches.yes.next: fine',
+            'sceneTypes[2].play[1].branches: at most 1000',
+          )}
+        />,
+      )
+
+      expect(card(2).getByText('entry: no such branch')).toBeInTheDocument()
+      expect(card(3).getByText('label: no such option')).toBeInTheDocument()
+      expect(card(3).getByText('next: no otherwise here')).toBeInTheDocument()
+      expect(card(2).getByText('branches: at most 1000')).toBeInTheDocument()
+    })
+
+    it('follows its branch or option through moves, and goes when that one is deleted', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={stepListBranching}
+          errors={errors(
+            'sceneTypes[2].play[1].branches[0].entry: first entry',
+            'sceneTypes[2].play[1].branches[1].effects[0]: second effect',
+            'sceneTypes[2].play[2].options[1].label: right label',
+          )}
+        />,
+      )
+      const branch = (number: number) =>
+        within(card(2).getByRole('group', { name: `Branch ${String(number)}` }))
+
+      await user.click(screen.getByRole('button', { name: 'Move branch 1 down' }))
+      expect(branch(2).getByText('first entry')).toBeInTheDocument()
+      expect(branch(1).queryByText('first entry')).not.toBeInTheDocument()
+
+      await user.click(card(2).getByRole('button', { name: 'Add branch' }))
+      await user.click(screen.getByRole('button', { name: 'Move branch 3 up' }))
+      expect(branch(2).queryByText('first entry')).not.toBeInTheDocument()
+      expect(branch(3).getByText('first entry')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Delete branch 3' }))
+      expect(screen.queryByText('first entry')).not.toBeInTheDocument()
+      await user.click(card(3).getByRole('button', { name: 'Add option' }))
+      await user.click(screen.getByRole('button', { name: 'Delete option 2' }))
+      expect(screen.queryByText('right label')).not.toBeInTheDocument()
     })
   })
 })

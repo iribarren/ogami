@@ -513,6 +513,9 @@ final class GameSystemOraclesTest extends TestCase
         yield 'a tracker has min above max' => ['trackers.1.min', 99, 'trackers[1]'];
     }
 
+    /**
+     * @param non-empty-string $path
+     */
     #[Test]
     #[DataProvider('legacyBreaks')]
     public function aLegacyDraftBreakingTheItemRulesElsewhereRefusesOracleCommandsWithThatPath(string $break, mixed $value, string $path): void

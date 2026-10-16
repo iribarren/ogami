@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Studio\Infrastructure\Http;
 
+use App\Studio\Domain\GameSystem\NarrativeItemInUse;
 use App\Studio\Domain\GameSystem\OracleInUse;
 use OpenApi\Attributes as OA;
 
 /**
- * An oracle, or an entry key of one, is referenced by the draft, so it cannot be renamed, removed
- * or deleted.
+ * An oracle, an entry key of one, or a tracker, tag, fact slot or Scene Type is referenced by the
+ * draft, so it cannot be renamed, removed or deleted.
  */
 #[OA\Schema(required: ['error', 'paths'])]
 final readonly class OracleInUseResponse
@@ -25,7 +26,7 @@ final readonly class OracleInUseResponse
     ) {
     }
 
-    public static function fromException(OracleInUse $exception): self
+    public static function fromException(OracleInUse|NarrativeItemInUse $exception): self
     {
         return new self($exception->getMessage(), $exception->paths());
     }

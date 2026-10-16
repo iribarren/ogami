@@ -17,6 +17,7 @@ import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
 import {
   bandForms,
+  checkDifficulty,
   countTargets,
   newStep,
   oracleAnswers,
@@ -79,25 +80,19 @@ function StepFields({
   const setBands = (bands: BandDraft[]) => {
     onChange({ ...step, bands } as StepDraft)
   }
-  // Everything the form shows next to a field; the rest is listed on the card.
-  const inline = [
-    'key',
-    'title',
-    'prompt',
-    'tip',
-    'dice',
-    'next',
-    'oracle',
-    'likelihood',
-    'table',
-    'skip',
-    'of',
-    'mode',
-    'check',
-    'difficulty',
-    'count.min',
-    'count.max',
-  ]
+  // Everything the form shows next to a field for this kind of step; the rest is listed on the card.
+  const ownFields: Partial<Record<StepKind, string[]>> = {
+    roll: ['dice'],
+    oracle: ['oracle', 'likelihood'],
+    table: ['table'],
+    choice: ['skip'],
+    pick: ['of', 'mode', 'count.min', 'count.max'],
+    check:
+      step.kind === 'check'
+        ? ['check', ...(checkDifficulty(step, context).show ? ['difficulty'] : [])]
+        : [],
+  }
+  const inline = ['key', 'title', 'prompt', 'tip', 'next', ...(ownFields[step.kind] ?? [])]
   const bands = 'bands' in step ? step.bands.length : 0
   const items =
     'options' in step

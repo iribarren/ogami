@@ -10,6 +10,7 @@ import { CheckList, PickField, SelectField } from './fields'
 import { OutcomeEditor } from './OutcomeEditor'
 import {
   bandForms,
+  checkDifficulty,
   countTargets,
   pickModes,
   pickOutcomes,
@@ -130,9 +131,7 @@ function BandRow({
 export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
   const chosen = p.context.checks.find((check) => check.key === step.check)
   const bands = chosen?.bands ?? []
-  const range = chosen?.difficulty ?? null
-  // A difficulty the check does not take stays visible, to be seen and cleared.
-  const showDifficulty = range !== null || step.difficulty.text.trim() !== ''
+  const { range, show: showDifficulty } = checkDifficulty(step, p.context)
   const at = (band: string) => step.outcomes.findIndex((outcome) => outcome.band === band)
   const strays = step.outcomes.flatMap((outcome, position) =>
     bands.includes(outcome.band) && at(outcome.band) === position ? [] : [position],

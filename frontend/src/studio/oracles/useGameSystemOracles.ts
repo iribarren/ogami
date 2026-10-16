@@ -11,6 +11,7 @@ export type OracleTableItem = components['schemas']['OracleTableItemResponse']
 export type LikelihoodOracleItem = components['schemas']['LikelihoodOracleItemResponse']
 export type OracleTableResult = components['schemas']['OracleTableResultResponse']
 export type LikelihoodOracle = components['schemas']['GameSystemLikelihoodOracle']
+export type LikelihoodTest = components['schemas']['LikelihoodTestAnswerResponse']
 
 /** A refused oracle write; `paths` says where the draft uses the oracle when that is why. */
 export class OracleError extends StudioError {
@@ -190,4 +191,33 @@ export function useSaveLikelihoodOracle(key: string) {
       throw oracleError(response, error, 'Saving the likelihood oracle')
     },
   )
+}
+
+/** `POST /likelihood-oracles/{oracle}/test-answers`: asks the saved oracle; the draft never changes. */
+export function useTestAskLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useMutation({
+    mutationFn: async ({
+      oracle,
+      likelihood,
+      chaosFactor,
+    }: {
+      oracle: string
+      likelihood: string
+      chaosFactor: number | null
+    }): Promise<LikelihoodTest> => {
+      const { data, error, response } = await api.POST(
+        '/api/studio/game-systems/{key}/likelihood-oracles/{oracle}/test-answers',
+        {
+          params: { path: { key, oracle } },
+          body: chaosFactor === null ? { likelihood } : { likelihood, chaosFactor },
+        },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Asking the oracle')
+    },
+  })
 }

@@ -2,37 +2,9 @@ import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
 
+import { TableResultView } from './TableResultView'
 import type { RollHistory } from './useRollHistory'
 import type { OracleTableResult } from './useGameSystemOracles'
-
-/** One result: a step per table rolled, each nested one indented under the roll that led to it. */
-function ResultView({ result }: { result: OracleTableResult }) {
-  return (
-    <ol className="space-y-1" aria-label="Steps">
-      {result.steps.map((step, depth) => (
-        <li
-          key={depth}
-          className="flex flex-wrap items-baseline gap-x-2 text-sm"
-          style={{ paddingLeft: `${String(depth * 1.25)}rem` }}
-        >
-          {depth > 0 && (
-            <>
-              <span aria-hidden="true" className="text-muted-foreground">
-                ↳
-              </span>
-              <span className="sr-only">Nested roll:</span>
-            </>
-          )}
-          <span className="font-medium">{step.tableName}</span>
-          <span className="font-mono text-xs break-all text-muted-foreground">{step.tableKey}</span>
-          <span className="font-mono text-muted-foreground">{step.dice}</span>
-          <span className="text-muted-foreground tabular-nums">= {step.total}</span>
-          {step.text !== '' && <span className="font-semibold">{step.text}</span>}
-        </li>
-      ))}
-    </ol>
-  )
-}
 
 /**
  * Rolls the saved table. `onRoll` saves the edits first when there are any and answers null when
@@ -46,7 +18,7 @@ export function TestRollPanel({
 }: {
   dirty: boolean
   disabled: boolean
-  history: RollHistory
+  history: RollHistory<OracleTableResult>
   onRoll: () => Promise<OracleTableResult | null>
 }) {
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +64,7 @@ export function TestRollPanel({
         <ul aria-label="Test roll results" className="divide-y">
           {history.results.map(({ id, result }) => (
             <li key={id} className="py-2">
-              <ResultView result={result} />
+              <TableResultView result={result} />
             </li>
           ))}
         </ul>

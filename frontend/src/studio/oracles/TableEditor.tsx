@@ -26,6 +26,7 @@ import {
   useTestRollOracleTable,
   type GameSystemOracles,
   type OracleTableItem,
+  type OracleTableResult,
 } from './useGameSystemOracles'
 
 /**
@@ -46,7 +47,7 @@ interface TableEditorProps {
   gameSystemKey: string
   oracles: GameSystemOracles
   item: OracleTableItem
-  history: RollHistory
+  history: RollHistory<OracleTableResult>
   /** Told the key a save renames the table to before it is sent, and null once it settled. */
   onRenaming: (key: string | null) => void
   /** Refetches the oracles and starts the form again from the latest stored table. */

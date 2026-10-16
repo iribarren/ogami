@@ -15,6 +15,7 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 
 import { MetadataForm } from './MetadataForm'
 import { NarrativeTab } from './narrative/NarrativeTab'
+import { SceneTypesTab } from './narrative/sceneTypes/SceneTypesTab'
 import { OraclesTab } from './oracles/OraclesTab'
 import { PublishDialog } from './PublishDialog'
 import { ReleasesTab } from './ReleasesTab'
@@ -27,7 +28,8 @@ import {
   type GameSystem,
 } from './useGameSystems'
 
-type Tab = 'overview' | 'oracles' | 'narrative' | 'validation' | 'releases' | 'sections'
+type Tab =
+  'overview' | 'oracles' | 'narrative' | 'sceneTypes' | 'validation' | 'releases' | 'sections'
 
 /**
  * `/studio/game-systems/$key`: one of my GameSystem drafts. An unknown key, or someone else's,
@@ -164,6 +166,7 @@ function GameSystemView({
         <SegmentedControlItem value="overview">Overview</SegmentedControlItem>
         <SegmentedControlItem value="oracles">Oracles</SegmentedControlItem>
         <SegmentedControlItem value="narrative">Trackers &amp; tags</SegmentedControlItem>
+        <SegmentedControlItem value="sceneTypes">Scene Types</SegmentedControlItem>
         <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
         <SegmentedControlItem value="releases">Releases</SegmentedControlItem>
         <SegmentedControlItem value="sections">Sections</SegmentedControlItem>
@@ -175,6 +178,7 @@ function GameSystemView({
       </div>
       {tab === 'oracles' && <OraclesTab gameSystemKey={gameSystem.key} />}
       {tab === 'narrative' && <NarrativeTab gameSystemKey={gameSystem.key} />}
+      {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
       {tab === 'releases' && (
         <ReleasesTab

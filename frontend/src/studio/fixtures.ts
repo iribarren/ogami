@@ -314,6 +314,74 @@ export const narrativeV1 = {
   factSlots: [],
 }
 
+/** A Scene Type with steps in all three lists, an oracle shortcut, tips and a field the editor does not know. */
+export const ambush = {
+  key: 'ambush',
+  name: 'Ambush',
+  purpose: 'Something goes wrong on the street.',
+  tips: 'Keep it short.',
+  oracles: ['fate', 'complications'],
+  setup: [{ key: 'arrive', kind: 'prompt', title: 'Arrive', prompt: 'Where are you?' }],
+  play: [
+    {
+      key: 'ask',
+      kind: 'oracle',
+      title: 'Is it a trap?',
+      oracle: 'fate',
+      likelihood: 'likely',
+      branches: { yes: { next: 'react' } },
+    },
+    { key: 'react', kind: 'prompt', title: 'React' },
+  ],
+  closing: [{ key: 'aftermath', kind: 'prompt', title: 'Aftermath' }],
+  futureField: { nested: true },
+}
+
+/**
+ * The narrative with three Scene Types: `ambush` (used by a flow), a legacy one with no tips and
+ * no steps, and one of a shape the editor cannot read; and the catalog its pickers need.
+ */
+export const narrativeScenes = {
+  ...narrative,
+  sceneTypes: [
+    { key: 'ambush', definition: ambush, usedBy: ['flows[0].phases[0].selection.sceneTypes[0]'] },
+    {
+      key: 'quiet',
+      definition: {
+        key: 'quiet',
+        name: 'Quiet',
+        purpose: 'Catch a breath.',
+        oracles: [],
+        setup: [],
+        play: [],
+        closing: [],
+      },
+      usedBy: [],
+    },
+    {
+      key: 'odd',
+      definition: {
+        key: 'odd',
+        name: 'Odd',
+        purpose: 42,
+        oracles: [],
+        setup: [],
+        play: [],
+        closing: [],
+      },
+      usedBy: [],
+    },
+  ],
+  catalog: {
+    ...noCatalog,
+    tables: [
+      { key: 'places', name: 'Places', entries: ['market', 'docks'] },
+      { key: 'complications', name: 'Complications', entries: ['patrol', 'lucky-break'] },
+    ],
+    likelihood: [{ key: 'fate', name: 'Fate', levels: ['unlikely', 'even', 'likely'] }],
+  },
+}
+
 /** What the step forms pick from: the draft's tables (with entries), likelihood oracles (with levels), checks (with bands and difficulty range), trackers, tags, Scene Types, fact slots and sheet fields. */
 export const stepPickers = {
   tables: [

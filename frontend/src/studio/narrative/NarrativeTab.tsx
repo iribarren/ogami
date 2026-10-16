@@ -13,6 +13,7 @@ import {
 
 import { StudioError } from '../useGameSystems'
 import { ItemDialog, type ItemForm } from './ItemDialog'
+import { NarrativeGate } from './NarrativeGate'
 import { factSlotForm, tagForm, trackerForm } from './itemForms'
 import type { LabelledDraft, TrackerDraft } from './narrativeDraft'
 import {
@@ -27,36 +28,22 @@ import {
 export function NarrativeTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
 
-  if (narrative.data === undefined) {
-    if (narrative.isPending) {
-      return <p className="text-muted-foreground">Loading the narrative…</p>
-    }
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {narrative.error instanceof StudioError && narrative.error.status === 404
-          ? 'This GameSystem does not exist, or it is not one of yours.'
-          : narrative.error.message}
-      </p>
-    )
-  }
+  return (
+    <NarrativeGate narrative={narrative}>
+      {(data) => <NarrativeSections gameSystemKey={gameSystemKey} data={data} />}
+    </NarrativeGate>
+  )
+}
 
-  if (narrative.data.schemaVersion < 2) {
-    return (
-      <p className="text-muted-foreground">
-        Schema version 1 drafts have no narrative sections: trackers, tags and fact slots exist only
-        in schema version 2 drafts.
-      </p>
-    )
-  }
-
-  const { data } = narrative
+function NarrativeSections({
+  gameSystemKey,
+  data,
+}: {
+  gameSystemKey: string
+  data: GameSystemNarrative
+}) {
   return (
     <section aria-label="Trackers & tags" className="space-y-8">
-      {narrative.isRefetchError && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t refresh the narrative. {narrative.error.message}
-        </p>
-      )}
       <ItemSection
         gameSystemKey={gameSystemKey}
         narrative={data}
@@ -158,7 +145,7 @@ function ItemSection<Draft>({
   )
 }
 
-function UsedBy({ paths }: { paths: string[] }) {
+export function UsedBy({ paths }: { paths: string[] }) {
   return paths.length === 0 ? (
     <span className="text-muted-foreground">Not used</span>
   ) : (
@@ -240,7 +227,7 @@ function ItemRow<Draft>({
 }
 
 /** Delete is refused while the draft uses the item; the button says so instead of failing. */
-function DeleteItemDialog({
+export function DeleteItemDialog({
   gameSystemKey,
   section,
   noun,

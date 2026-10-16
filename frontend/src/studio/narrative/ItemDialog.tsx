@@ -58,6 +58,7 @@ export function ItemDialog<Draft>({
   original,
   initial,
   trigger,
+  onSaved,
 }: {
   gameSystemKey: string
   form: ItemForm<Draft>
@@ -65,6 +66,8 @@ export function ItemDialog<Draft>({
   original: string | null
   initial: Draft
   trigger: ReactNode
+  /** Told the item as it was saved, once the API has accepted it. */
+  onSaved?: (item: StoredItem) => void
 }) {
   const [open, setOpen] = useState(false)
   const save = useSaveNarrativeItem(gameSystemKey)
@@ -93,8 +96,9 @@ export function ItemDialog<Draft>({
           original={original}
           initial={initial}
           save={save}
-          onSaved={() => {
+          onSaved={(item) => {
             setOpen(false)
+            onSaved?.(item)
           }}
         />
       </DialogContent>
@@ -117,7 +121,7 @@ function ItemFormBody<Draft>({
   original: string | null
   initial: Draft
   save: ReturnType<typeof useSaveNarrativeItem>
-  onSaved: () => void
+  onSaved: (item: StoredItem) => void
 }) {
   const [draft, setDraft] = useState(initial)
   // The form is filled once, when the dialog opens, so the version it was read at is kept with
@@ -138,7 +142,11 @@ function ItemFormBody<Draft>({
     setErrors({})
     save.mutate(
       { expectedVersion: readAt, section: form.section, original, item: result.item },
-      { onSuccess: onSaved },
+      {
+        onSuccess: () => {
+          onSaved(result.item)
+        },
+      },
     )
   }
 

@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { Area } from './steps/fields'
 import { TextField } from './TextField'
 import {
   factSlotTypes,
@@ -13,6 +14,7 @@ import {
   type TrackerDraft,
   type TrackerKind,
 } from './narrativeDraft'
+import type { NewSceneTypeDraft } from './sceneTypes/sceneTypeDraft'
 
 interface FieldsProps<Draft> {
   draft: Draft
@@ -284,4 +286,33 @@ export function TagFields({ draft, onChange }: FieldsProps<LabelledDraft>) {
 
 export function FactSlotFields({ draft, onChange }: FieldsProps<LabelledDraft>) {
   return <LabelledFields draft={draft} onChange={onChange} withType />
+}
+
+export function SceneTypeFields({ draft, onChange }: FieldsProps<NewSceneTypeDraft>) {
+  return (
+    <>
+      <TextField
+        label="Key"
+        value={draft.key}
+        help={keyHelp}
+        onChange={(key) => {
+          onChange({ ...draft, key })
+        }}
+      />
+      <TextField
+        label="Name"
+        value={draft.name}
+        onChange={(name) => {
+          onChange({ ...draft, name })
+        }}
+      />
+      <Area
+        label="Purpose"
+        value={draft.purpose}
+        onChange={(purpose) => {
+          onChange({ ...draft, purpose })
+        }}
+      />
+    </>
+  )
 }

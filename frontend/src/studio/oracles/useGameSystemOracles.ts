@@ -221,3 +221,41 @@ export function useTestAskLikelihoodOracle(key: string) {
     },
   })
 }
+
+/** `POST /likelihood-oracles`: appends a likelihood oracle to the draft. */
+export function useCreateLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useOracleWrite(
+    key,
+    async ({ expectedVersion, oracle }: { expectedVersion: number; oracle: LikelihoodOracle }) => {
+      const { data, error, response } = await api.POST(
+        '/api/studio/game-systems/{key}/likelihood-oracles',
+        { params: { path: { key } }, body: { expectedVersion, oracle } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Creating the likelihood oracle')
+    },
+  )
+}
+
+/** `DELETE /likelihood-oracles/{oracle}?expectedVersion=N`. */
+export function useDeleteLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useOracleWrite(
+    key,
+    async ({ expectedVersion, oracle }: { expectedVersion: number; oracle: string }) => {
+      const { data, error, response } = await api.DELETE(
+        '/api/studio/game-systems/{key}/likelihood-oracles/{oracle}',
+        { params: { path: { key, oracle }, query: { expectedVersion } } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Deleting the likelihood oracle')
+    },
+  )
+}

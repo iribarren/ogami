@@ -58,3 +58,11 @@ export const NewTableDialog: Story = {
     await expect(within(document.body).getByRole('dialog')).toBeInTheDocument()
   },
 }
+
+export const NewLikelihoodDialog: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'New likelihood oracle' }))
+    await expect(within(document.body).getByRole('dialog')).toBeInTheDocument()
+  },
+}

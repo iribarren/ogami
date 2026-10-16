@@ -393,4 +393,171 @@ describe('the oracles tab', () => {
       },
     )
   })
+  describe('likelihood oracles', () => {
+    const fate = oracles.likelihood[0]
+    const omens = {
+      definition: {
+        key: 'omens',
+        name: 'Omens',
+        sides: 100,
+        levels: [{ key: 'even', label: '50/50', target: 50 }],
+      },
+      usedBy: [],
+    }
+    const withOmens = { ...oracles, likelihood: [fate, omens] }
+
+    async function openDialog(handlers: Record<string, FakeHandler> = {}) {
+      const opened = await openOracles(handlers)
+      await opened.user.click(await screen.findByRole('button', { name: 'New likelihood oracle' }))
+      return opened
+    }
+
+    async function fill(user: ReturnType<typeof userEvent.setup>, key: string, name: string) {
+      await user.type(inDialog().getByLabelText('Key'), key)
+      await user.type(inDialog().getByLabelText('Name'), name)
+    }
+
+    it('posts a likelihood oracle with two levels on a d100, key and name trimmed, and lists it', async () => {
+      let body: unknown
+      const { user } = await openDialog({
+        [`POST ${base}/likelihood-oracles`]: async (request) => {
+          body = await request.json()
+          return Response.json({ ...withOmens, version: 8 }, { status: 201 })
+        },
+      })
+
+      await fill(user, ' omens ', ' Omens ')
+      await user.click(screen.getByRole('button', { name: 'Create likelihood oracle' }))
+
+      expect(await screen.findByText('Omens')).toBeInTheDocument()
+      expect(body).toEqual({
+        expectedVersion: 7,
+        oracle: {
+          key: 'omens',
+          name: 'Omens',
+          sides: 100,
+          levels: [
+            { key: 'unlikely', label: 'Unlikely', target: 35 },
+            { key: 'likely', label: 'Likely', target: 65 },
+          ],
+        },
+      })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('needs a key and a name', async () => {
+      const { user } = await openDialog()
+
+      const create = screen.getByRole('button', { name: 'Create likelihood oracle' })
+      expect(create).toBeDisabled()
+      await fill(user, 'omens', ' ')
+      expect(create).toBeDisabled()
+    })
+
+    it('shows the server message of a 422', async () => {
+      const { user } = await openDialog({
+        [`POST ${base}/likelihood-oracles`]: json(
+          { error: 'Oracle key "Bad Key" is invalid.' },
+          422,
+        ),
+      })
+
+      await fill(user, 'fate', 'Fate')
+      await user.click(screen.getByRole('button', { name: 'Create likelihood oracle' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Oracle key "Bad Key" is invalid.')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    it('offers to reload on a 409, and the retry carries the new version', async () => {
+      let reads = 0
+      const versions: number[] = []
+      const { user } = await openDialog({
+        [`GET ${base}/oracles`]: () =>
+          Response.json(++reads === 1 ? oracles : { ...oracles, version: 8 }),
+        [`POST ${base}/likelihood-oracles`]: async (request) => {
+          versions.push(((await request.json()) as { expectedVersion: number }).expectedVersion)
+          return versions.length === 1
+            ? Response.json({ error: 'Changed by another request.' }, { status: 409 })
+            : Response.json({ ...withOmens, version: 9 }, { status: 201 })
+        },
+      })
+
+      await fill(user, 'omens', 'Omens')
+      await user.click(screen.getByRole('button', { name: 'Create likelihood oracle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Changed by another request.')
+      await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
+
+      await user.click(await screen.findByRole('button', { name: 'Create likelihood oracle' }))
+      await waitFor(() => {
+        expect(versions).toEqual([7, 8])
+      })
+    })
+
+    it('disables deleting an oracle the draft uses, and says why', async () => {
+      await openOracles({ [`GET ${base}/oracles`]: json(withOmens) })
+
+      const button = await screen.findByRole('button', { name: 'Delete fate' })
+      expect(button).toBeDisabled()
+      expect(button).toHaveAccessibleDescription('Used by flows[0].phases[0].steps[1]')
+      expect(screen.getByRole('button', { name: 'Delete omens' })).toBeEnabled()
+    })
+
+    it('deletes an unused oracle with the version it read, and shows the answer', async () => {
+      let deleted: URL | undefined
+      const { user } = await openOracles({
+        [`GET ${base}/oracles`]: json(withOmens),
+        [`DELETE ${base}/likelihood-oracles/omens`]: (request) => {
+          deleted = new URL(request.url)
+          return Response.json({ ...oracles, version: 8 })
+        },
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Delete omens' }))
+      await user.click(screen.getByRole('button', { name: 'Delete the likelihood oracle' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('omens')).not.toBeInTheDocument()
+      })
+      expect(deleted?.searchParams.get('expectedVersion')).toBe('7')
+    })
+
+    it('shows where an oracle is used when the server refuses to delete it', async () => {
+      const { user } = await openOracles({
+        [`GET ${base}/oracles`]: json(withOmens),
+        [`DELETE ${base}/likelihood-oracles/omens`]: json(
+          { error: 'Oracle "omens" is used.', paths: ['flows[0].phases[1].steps[2]'] },
+          422,
+        ),
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Delete omens' }))
+      await user.click(screen.getByRole('button', { name: 'Delete the likelihood oracle' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Oracle "omens" is used. Used by flows[0].phases[1].steps[2].',
+      )
+    })
+
+    it('offers to reload when the draft changed since it was read', async () => {
+      let reads = 0
+      const { user } = await openOracles({
+        [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? withOmens : oracles),
+        [`DELETE ${base}/likelihood-oracles/omens`]: json(
+          { error: 'Changed by another request.' },
+          409,
+        ),
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Delete omens' }))
+      await user.click(screen.getByRole('button', { name: 'Delete the likelihood oracle' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Changed by another request.')
+      await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('omens')).not.toBeInTheDocument()
+      })
+      expect(reads).toBe(2)
+    })
+  })
 })

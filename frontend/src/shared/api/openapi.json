@@ -4704,6 +4704,469 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/narrative": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read the trackers, tags, fact slots, Scene Types and flows of one of my GameSystem drafts, with where each is used and what the pickers offer",
+                "operationId": "getGameSystemNarrative",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The narrative sections as stored, in order, the catalog and the draft version. A schema version 1 draft has empty sections.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemNarrativeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/narrative/{section}": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Add a tracker, tag, fact slot, Scene Type or flow to one of my GameSystem drafts",
+                "operationId": "createNarrativeItem",
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "description": "Which narrative section: trackers, tags, fact slots, Scene Types or flows.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "trackers|tags|fact-slots|scene-types|flows",
+                            "enum": [
+                                "trackers",
+                                "tags",
+                                "fact-slots",
+                                "scene-types",
+                                "flows"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveNarrativeItemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The draft's narrative with the item appended and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemNarrativeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"item\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or the section is not one of those listed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The item breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no narrative sections); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/narrative/{section}/{item}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace a tracker, tag, fact slot, Scene Type or flow of one of my GameSystem drafts, renaming it when the body has another key",
+                "operationId": "replaceNarrativeItem",
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "description": "Which narrative section: trackers, tags, fact slots, Scene Types or flows.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "trackers|tags|fact-slots|scene-types|flows",
+                            "enum": [
+                                "trackers",
+                                "tags",
+                                "fact-slots",
+                                "scene-types",
+                                "flows"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveNarrativeItemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's narrative with the item replaced in place and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemNarrativeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"item\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, the section is not one of those listed, or it has no item with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The item breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a rename is used by the draft (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete a tracker, tag, fact slot, Scene Type or flow of one of my GameSystem drafts that nothing uses",
+                "operationId": "deleteNarrativeItem",
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "description": "Which narrative section: trackers, tags, fact slots, Scene Types or flows.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "trackers|tags|fact-slots|scene-types|flows",
+                            "enum": [
+                                "trackers",
+                                "tags",
+                                "fact-slots",
+                                "scene-types",
+                                "flows"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's narrative without the item and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemNarrativeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, the section is not one of those listed, or it has no item with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The draft uses the item (the paths say where), or has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/oracles": {
             "get": {
                 "tags": [
@@ -9854,6 +10317,324 @@
                 },
                 "type": "object"
             },
+            "NarrativeItemResponse": {
+                "required": [
+                    "key",
+                    "definition",
+                    "usedBy"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The item's key, the one in the path of a replace or delete.",
+                        "type": "string",
+                        "example": "alarm"
+                    },
+                    "definition": {
+                        "description": "The item as in a release document (the release contract describes each section's fields).",
+                        "type": "object",
+                        "example": {
+                            "key": "alarm",
+                            "name": "Alarm",
+                            "kind": "clock",
+                            "segments": 6
+                        },
+                        "additionalProperties": true
+                    },
+                    "usedBy": {
+                        "description": "Where the draft references the item outside itself (e.g. \"flows[0].phases[1].selection\"); a referenced tracker, tag, fact slot or Scene Type cannot be renamed or deleted.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "flows[0].trackers"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeCatalogTableResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "entries"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "complications"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Complications"
+                    },
+                    "entries": {
+                        "description": "The keys of its entries, which a table step can branch on.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "patrol",
+                            "lucky-break"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeCatalogLikelihoodResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "levels"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "fate"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fate question"
+                    },
+                    "levels": {
+                        "description": "The keys of its levels, which an oracle step may ask at.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "unlikely",
+                            "even",
+                            "likely"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeCatalogDifficultyResponse": {
+                "required": [
+                    "default",
+                    "min",
+                    "max"
+                ],
+                "properties": {
+                    "default": {
+                        "type": "integer",
+                        "example": 13
+                    },
+                    "min": {
+                        "description": "Lowest difficulty the player may set; null when unbounded.",
+                        "type": "integer",
+                        "example": 9,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "Highest difficulty the player may set; null when unbounded.",
+                        "type": "integer",
+                        "example": 29,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeCatalogCheckResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "bands",
+                    "difficulty"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "skill"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Skill check"
+                    },
+                    "bands": {
+                        "description": "The keys of its bands, which a check step's outcomes name.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "fail",
+                            "success"
+                        ]
+                    },
+                    "difficulty": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/NarrativeCatalogDifficultyResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Null when the check has no difficulty the player sets."
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeCatalogFieldResponse": {
+                "required": [
+                    "key",
+                    "label"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "hands"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Hands"
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeCatalogResponse": {
+                "required": [
+                    "tables",
+                    "likelihood",
+                    "checks",
+                    "fields"
+                ],
+                "properties": {
+                    "tables": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeCatalogTableResponse"
+                        }
+                    },
+                    "likelihood": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeCatalogLikelihoodResponse"
+                        }
+                    },
+                    "checks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeCatalogCheckResponse"
+                        }
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeCatalogFieldResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemNarrativeResponse": {
+                "required": [
+                    "version",
+                    "schemaVersion",
+                    "trackers",
+                    "tags",
+                    "factSlots",
+                    "sceneTypes",
+                    "flows",
+                    "catalog"
+                ],
+                "properties": {
+                    "version": {
+                        "description": "The draft's version: send it as \"expectedVersion\" with the next narrative write.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "schemaVersion": {
+                        "description": "The draft's schema version: a version 1 draft has no narrative sections and refuses every command.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "trackers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeItemResponse"
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeItemResponse"
+                        }
+                    },
+                    "factSlots": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeItemResponse"
+                        }
+                    },
+                    "sceneTypes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeItemResponse"
+                        }
+                    },
+                    "flows": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NarrativeItemResponse"
+                        }
+                    },
+                    "catalog": {
+                        "$ref": "#/components/schemas/NarrativeCatalogResponse"
+                    }
+                },
+                "type": "object"
+            },
+            "NarrativeItemRequest": {
+                "type": "object",
+                "example": {
+                    "key": "gang",
+                    "label": "Gang"
+                },
+                "additionalProperties": true
+            },
+            "SaveNarrativeItemRequest": {
+                "required": [
+                    "expectedVersion",
+                    "item"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "item": {
+                        "$ref": "#/components/schemas/NarrativeItemRequest"
+                    }
+                },
+                "type": "object"
+            },
+            "OracleInUseResponse": {
+                "required": [
+                    "error",
+                    "paths"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message naming where it is used.",
+                        "type": "string"
+                    },
+                    "paths": {
+                        "description": "Where the draft references it (e.g. \"flows[0].phases[1].steps[2]\").",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "sceneTypes[1].play[1]"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemOracleTableEntry": {
                 "description": "Ranged entries have \"min\" and \"max\"; weighted entries may have a \"weight\" (1 by default). An entry needs a \"text\" unless it nests a \"table\". \"key\", \"sceneType\" and \"effects\" are schema version 2 fields: kept as given, refused on a version 1 draft.",
                 "required": [
@@ -10140,29 +10921,6 @@
                     },
                     "table": {
                         "$ref": "#/components/schemas/GameSystemOracleTable"
-                    }
-                },
-                "type": "object"
-            },
-            "OracleInUseResponse": {
-                "required": [
-                    "error",
-                    "paths"
-                ],
-                "properties": {
-                    "error": {
-                        "description": "A human-readable message naming where it is used.",
-                        "type": "string"
-                    },
-                    "paths": {
-                        "description": "Where the draft references it (e.g. \"flows[0].phases[1].steps[2]\").",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "example": [
-                            "sceneTypes[1].play[1]"
-                        ]
                     }
                 },
                 "type": "object"

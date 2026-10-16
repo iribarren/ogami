@@ -15,10 +15,20 @@ import type { FieldErrors, ItemResult } from './narrativeDraft'
 import {
   NarrativeError,
   useGameSystemNarrative,
+  type GameSystemNarrative,
   useSaveNarrativeItem,
   type NarrativeSection,
   type StoredItem,
 } from './useGameSystemNarrative'
+
+/** The property of the narrative view that holds the items of a section. */
+const sectionProperty = {
+  trackers: 'trackers',
+  tags: 'tags',
+  'fact-slots': 'factSlots',
+  'scene-types': 'sceneTypes',
+  flows: 'flows',
+} as const satisfies Record<NarrativeSection, keyof GameSystemNarrative>
 
 /** What the dialog needs to know about one kind of item. */
 export interface ItemForm<Draft> {
@@ -110,6 +120,9 @@ function ItemFormBody<Draft>({
   onSaved: () => void
 }) {
   const [draft, setDraft] = useState(initial)
+  // The form is filled once, when the dialog opens, so the version it was read at is kept with
+  // it: a refetch while the dialog is open must not make a stale draft look current.
+  const [readAt, setReadAt] = useState(version)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [reloadFailed, setReloadFailed] = useState(false)
   const latest = useGameSystemNarrative(gameSystemKey)
@@ -123,7 +136,7 @@ function ItemFormBody<Draft>({
     }
     setErrors({})
     save.mutate(
-      { expectedVersion: version, section: form.section, original, item: result.item },
+      { expectedVersion: readAt, section: form.section, original, item: result.item },
       { onSuccess: onSaved },
     )
   }
@@ -160,10 +173,23 @@ function ItemFormBody<Draft>({
             variant="outline"
             onClick={() => {
               void latest.refetch().then((result) => {
-                setReloadFailed(result.isError)
-                if (!result.isError) {
-                  save.reset()
+                setReloadFailed(result.isError || result.data === undefined)
+                if (result.isError || result.data === undefined) {
+                  return
                 }
+                // The item and its version come from the same read; a new item keeps its draft.
+                const stored =
+                  original === null
+                    ? undefined
+                    : result.data[sectionProperty[form.section]].find(
+                        (item) => item.key === original,
+                      )
+                const reloaded = stored === undefined ? null : form.read(stored.definition)
+                if (reloaded !== null) {
+                  setDraft(reloaded)
+                }
+                setReadAt(result.data.version)
+                save.reset()
               })
             }}
           >

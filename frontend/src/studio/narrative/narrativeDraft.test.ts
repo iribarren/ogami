@@ -84,6 +84,35 @@ describe('a tracker draft', () => {
     })
   })
 
+  it('keeps the levels a stored clock carries, and the segments a stored counter carries, on an unchanged save', () => {
+    const clock = {
+      key: 'alarm',
+      name: 'Alarm',
+      kind: 'clock',
+      segments: 6,
+      levels: [{ label: 'Calm' }],
+    }
+    const withSegments = { ...counter, segments: 4 }
+
+    expect(trackerToItem(draftOf(clock))).toEqual({ item: clock })
+    expect(trackerToItem(draftOf(withSegments))).toEqual({ item: withSegments })
+  })
+
+  it('drops them once the kind changes, and brings them back if it changes back', () => {
+    const clock = {
+      key: 'alarm',
+      name: 'Alarm',
+      kind: 'clock',
+      segments: 6,
+      levels: [{ label: 'Calm' }],
+    }
+    const draft = draftOf(clock)
+
+    expect(trackerToItem({ ...draft, kind: 'counter' })).not.toHaveProperty('item.segments')
+    expect(trackerToItem({ ...draft, kind: 'counter' })).not.toHaveProperty('item.levels')
+    expect(trackerToItem({ ...draft, kind: 'clock' })).toEqual({ item: clock })
+  })
+
   it('says which numbers are not whole numbers and sends nothing', () => {
     const draft: TrackerDraft = {
       ...draftOf(counter),

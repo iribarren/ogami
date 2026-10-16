@@ -35,6 +35,13 @@ export interface TrackerDraft {
   levels: LevelDraft[]
   /** Fields this editor does not know. */
   extra: StoredItem
+  /** The kind the tracker was read with. */
+  origin: TrackerKind
+  /**
+   * Fields of the other kind (a clock's `levels`, a counter's `segments`), as stored. They are
+   * sent back while the kind is unchanged and dropped when the user changes it.
+   */
+  foreign: StoredItem
 }
 
 /** A tag, or a fact slot (which adds `type`). */
@@ -76,6 +83,8 @@ function unknownFields(source: StoredItem, known: readonly string[]): StoredItem
 }
 
 const trackerFields = ['key', 'name', 'hint', 'kind', 'min', 'max', 'initial', 'segments', 'levels']
+const counterFields = ['min', 'max', 'initial', 'levels']
+const clockFields = ['segments']
 const levelFields = ['upTo', 'label']
 
 export function newTracker(): TrackerDraft {
@@ -90,6 +99,8 @@ export function newTracker(): TrackerDraft {
     segments: '4',
     levels: [],
     extra: {},
+    origin: 'counter',
+    foreign: {},
   }
 }
 
@@ -113,32 +124,42 @@ export function trackerToDraft(definition: StoredItem): TrackerDraft | null {
   const key = textOf(definition, 'key')
   const name = textOf(definition, 'name')
   const hint = textOf(definition, 'hint')
-  const min = numberOf(definition, 'min')
-  const max = numberOf(definition, 'max')
-  const initial = numberOf(definition, 'initial')
-  const segments = numberOf(definition, 'segments')
+  // Only the kind's own fields are read; the other kind's are kept as they are stored.
+  const own = kind === 'counter' ? definition : {}
+  const min = numberOf(own, 'min')
+  const max = numberOf(own, 'max')
+  const initial = numberOf(own, 'initial')
+  const segments = numberOf(kind === 'clock' ? definition : {}, 'segments')
   if ([key, name, hint, min, max, initial, segments].includes(null)) {
     return null
   }
-  if (levels !== undefined && !Array.isArray(levels)) {
+  if (kind === 'counter' && levels !== undefined && !Array.isArray(levels)) {
     return null
   }
-  const drafts = (levels ?? []).map(levelToDraft)
+  const drafts = (kind === 'counter' ? ((levels as unknown[] | undefined) ?? []) : []).map(
+    levelToDraft,
+  )
   if (drafts.includes(null)) {
     return null
   }
+  const blank = newTracker()
+  const foreignFields = kind === 'counter' ? clockFields : counterFields
   return {
-    ...newTracker(),
+    ...blank,
     kind,
     key: key ?? '',
     name: name ?? '',
     hint: hint ?? '',
-    min: min ?? '',
-    max: max ?? '',
-    initial: initial ?? '',
-    segments: segments ?? '',
+    min: kind === 'counter' ? (min ?? '') : blank.min,
+    max: kind === 'counter' ? (max ?? '') : blank.max,
+    initial: kind === 'counter' ? (initial ?? '') : blank.initial,
+    segments: kind === 'clock' ? (segments ?? '') : blank.segments,
     levels: drafts.filter((level) => level !== null),
     extra: unknownFields(definition, trackerFields),
+    origin: kind,
+    foreign: Object.fromEntries(
+      Object.entries(definition).filter(([field]) => foreignFields.includes(field)),
+    ),
   }
 }
 
@@ -155,6 +176,7 @@ export function trackerToItem(draft: TrackerDraft): ItemResult {
 
   const item: StoredItem = {
     ...draft.extra,
+    ...(draft.kind === draft.origin ? draft.foreign : {}),
     key: draft.key.trim(),
     name: draft.name.trim(),
     ...(draft.hint.trim() === '' ? {} : { hint: draft.hint.trim() }),

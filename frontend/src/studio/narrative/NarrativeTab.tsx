@@ -260,6 +260,7 @@ function DeleteItemDialog({
   const [open, setOpen] = useState(false)
   const remove = useDeleteNarrativeItem(gameSystemKey)
   const narrative = useGameSystemNarrative(gameSystemKey)
+  const [reloadFailed, setReloadFailed] = useState(false)
 
   return (
     <Dialog
@@ -267,6 +268,7 @@ function DeleteItemDialog({
       onOpenChange={(next) => {
         setOpen(next)
         remove.reset()
+        setReloadFailed(false)
       }}
     >
       <DialogTrigger asChild>
@@ -293,11 +295,20 @@ function DeleteItemDialog({
               : ''}
           </p>
         )}
+        {reloadFailed && (
+          <p role="alert" className="text-sm text-destructive">
+            Couldn&apos;t reload the latest version. Try again.
+          </p>
+        )}
         {remove.error instanceof StudioError && remove.error.status === 409 ? (
           <Button
             onClick={() => {
-              void narrative.refetch()
-              setOpen(false)
+              void narrative.refetch().then((result) => {
+                setReloadFailed(result.isError)
+                if (!result.isError) {
+                  setOpen(false)
+                }
+              })
             }}
           >
             Reload the latest version

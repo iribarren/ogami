@@ -215,6 +215,23 @@ describe('deleting', () => {
     })
     expect(reads).toBe(2)
   })
+  it('keeps the delete dialog open with the error when the reload after a conflict fails', async () => {
+    let reads = 0
+    const { user } = await openNarrative({
+      [`GET ${base}/narrative`]: () =>
+        ++reads === 1
+          ? Response.json(narrative)
+          : Response.json({ error: 'Gone' }, { status: 404 }),
+      [`DELETE ${base}/narrative/trackers/alarm`]: json(changed, 409),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Delete alarm' }))
+    await user.click(screen.getByRole('button', { name: 'Delete the tracker' }))
+    await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(await screen.findByText(/Couldn.t reload the latest version/)).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
 })
 
 describe('creating', () => {
@@ -425,6 +442,86 @@ describe('editing', () => {
         item: { key: 'siren', name: 'Alarm', kind: 'clock', segments: 6, theme: 'red' },
       },
     ])
+  })
+
+  it('saves with the version the dialog was opened at, so a change made meanwhile still gets a 409', async () => {
+    let reads = 0
+    const saved = recorder(Response.json(changed, { status: 409 }))
+    const { user, queryClient } = await openNarrative({
+      [`GET ${base}/narrative`]: () =>
+        Response.json(++reads === 1 ? narrative : { ...narrative, version: 6 }),
+      [`PUT ${base}/narrative/tags/informer`]: saved.handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
+    await user.type(inDialog().getByLabelText('Hint'), 'Knows the docks')
+    await queryClient.refetchQueries({
+      queryKey: ['studio', 'game-systems', 'my-draft', 'narrative'],
+    })
+    await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
+
+    expect(await inDialog().findByRole('alert')).toHaveTextContent('was changed by another request')
+    expect(reads).toBe(2)
+    expect(saved.sent.map((request) => request.expectedVersion)).toEqual([5])
+  })
+
+  it('takes the reloaded item and its version together after a conflict', async () => {
+    let reads = 0
+    let attempts = 0
+    const reloaded = {
+      ...narrative,
+      version: 7,
+      tags: [
+        narrative.tags[0],
+        {
+          key: 'informer',
+          definition: { key: 'informer', label: 'Snitch', hint: 'Changed elsewhere' },
+          usedBy: [],
+        },
+      ],
+    }
+    const saved = recorder(() =>
+      ++attempts === 1 ? Response.json(changed, { status: 409 }) : Response.json(reloaded),
+    )
+    const { user } = await openNarrative({
+      [`GET ${base}/narrative`]: () => Response.json(++reads === 1 ? narrative : reloaded),
+      [`PUT ${base}/narrative/tags/informer`]: saved.handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
+    await user.type(inDialog().getByLabelText('Hint'), 'Mine')
+    await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
+    await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
+
+    await waitFor(() => {
+      expect(inDialog().getByLabelText('Label')).toHaveValue('Snitch')
+    })
+    expect(inDialog().getByLabelText('Hint')).toHaveValue('Changed elsewhere')
+    await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(2)
+    })
+    expect(saved.sent.map((request) => request.expectedVersion)).toEqual([5, 7])
+  })
+
+  it('says so when the reload after a conflict fails, and keeps the typed form', async () => {
+    let reads = 0
+    const saved = recorder(Response.json(changed, { status: 409 }))
+    const { user } = await openNarrative({
+      [`GET ${base}/narrative`]: () =>
+        ++reads === 1
+          ? Response.json(narrative)
+          : Response.json({ error: 'Gone' }, { status: 404 }),
+      [`PUT ${base}/narrative/tags/informer`]: saved.handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
+    await user.type(inDialog().getByLabelText('Hint'), 'Mine')
+    await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
+    await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(await inDialog().findByText(/Couldn.t reload the latest version/)).toBeInTheDocument()
+    expect(inDialog().getByLabelText('Hint')).toHaveValue('Mine')
   })
 
   it('adds, moves and deletes levels', async () => {

@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-4-trackers-tab` · **Status:** in progress (slice 4)
+- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-5-step-editor` · **Status:** in progress (slice 5)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -61,7 +61,7 @@ Validation lives in `backend/src/Studio/Domain/Release/Version2/` (`ReleaseVersi
 - `Studio/Application`: `SaveNarrativeItem`, `DeleteNarrativeItem` (section enum, `expectedVersion`), `GetGameSystemNarrative` read model with `usedBy` and `catalog`; Behat.
 - `Studio/Infrastructure/Http`: `GameSystemNarrativeController`; error mapping as `GameSystemOracleController`; API tests; `make api` (generated files in their own commit).
 
-### Frontend (slices 4–9)
+### Frontend (slices 4–10)
 
 - `frontend/src/studio/narrative/`: hooks (`useGameSystemNarrative`, save/delete mutations writing the returned read model into the cache), typed drafts that keep unknown fields, Trackers & tags tab, effects editor and value inputs, step list editor and kind forms, Scene Types tab and editor, Flows tab and flow editor with the phase outline. The oracle editors gain the entry Scene Type and effects fields and the chaos tracker picker.
 
@@ -81,13 +81,16 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `feat/studio-flow-editor-2-commands` | `feat(studio): studio-flow-editor 2/9 narrative item commands and read model` | T3, T4 | ~1,600 |
 | 3 | `feat/studio-flow-editor-3-api` | `feat(studio): studio-flow-editor 3/9 narrative API` | T5 | ~1,600 incl. ~800 generated |
 | 4 | `feat/studio-flow-editor-4-trackers-tab` | `feat(studio): studio-flow-editor 4/9 trackers, tags and fact slots tab` | T6 | ~1,600 |
-| 5 | `feat/studio-flow-editor-5-step-editor` | `feat(studio): studio-flow-editor 5/9 step list and effects editor` | T7 | ~1,700 |
-| 6 | `feat/studio-flow-editor-6-step-kinds` | `feat(studio): studio-flow-editor 6/9 branching step kinds` | T8 | ~1,500 |
-| 7 | `feat/studio-flow-editor-7-scene-types` | `feat(studio): studio-flow-editor 7/9 Scene Types tab and editor` | T9 | ~1,400 |
-| 8 | `feat/studio-flow-editor-8-flows` | `feat(studio): studio-flow-editor 8/9 Flows tab and flow editor` | T10 | ~1,700 |
-| 9 | `feat/studio-flow-editor-9-oracle-fields-e2e` | `feat(studio): studio-flow-editor 9/9 oracle entry fields, chaos tracker and e2e` | T11, T12 | ~1,100 |
+| 5 | `feat/studio-flow-editor-5-step-editor` | `feat(studio): studio-flow-editor 5/10 step list editor` | T7 | ~1,600 |
+| 6 | `feat/studio-flow-editor-6-effects` | `feat(studio): studio-flow-editor 6/10 effects editor and value inputs` | T7b | ~1,500 |
+| 7 | `feat/studio-flow-editor-7-step-kinds` | `feat(studio): studio-flow-editor 7/10 branching step kinds` | T8 | ~1,500 |
+| 8 | `feat/studio-flow-editor-8-scene-types` | `feat(studio): studio-flow-editor 8/10 Scene Types tab and editor` | T9 | ~1,400 |
+| 9 | `feat/studio-flow-editor-9-flows` | `feat(studio): studio-flow-editor 9/10 Flows tab and flow editor` | T10 | ~1,700 |
+| 10 | `feat/studio-flow-editor-10-oracle-fields-e2e` | `feat(studio): studio-flow-editor 10/10 oracle entry fields, chaos tracker and e2e` | T11, T12 | ~1,100 |
 
-Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept edited entry fields only through the API); slice 4 makes the Trackers & tags tab usable; slices 5–6 add editors not yet linked (stories only); slice 7 makes Scene Types editable; slice 8 flows; slice 9 completes the oracle fields and adds the e2e.
+Slice 5 replanned (2026-10-16): T7 as first planned (step cards, effects editor with 10 kinds, value inputs, four kinds, tests, stories) forecast ~2,000 with the slice 4 fixes, over the reviewer ceiling; the effects editor moved to slice 6 (T7b) and the plan grew to 10 slices. PRs #152–#155 keep their `n/9` titles.
+
+Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept edited entry fields only through the API); slice 4 makes the Trackers & tags tab usable; slices 5–7 add editors not yet linked (stories only); slice 8 makes Scene Types editable; slice 9 flows; slice 10 completes the oracle fields and adds the e2e.
 
 ## Tasks
 
@@ -98,13 +101,14 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | T3 | 2 | Domain: `GameSystem` narrative commands (save/delete tracker, tag, fact slot, Scene Type, flow; rename; position kept; default flow flag; schema 1 refused; item rules after every command; rename/delete refused while referenced); oracle commands validate entry `sceneType`/`effects` and `chaos.tracker` by the item rules; errors; unit tests | delegated writer (slice 2) | [x] | 52dbbcc |
 | T4 | 2 | Application: `SaveNarrativeItem`/`DeleteNarrativeItem` handlers with `expectedVersion` (409), `GetGameSystemNarrative` read model (`usedBy`, `catalog`); unit tests; Behat | delegated writer (slice 2) | [x] | 2bcb4c9 |
 | T5 | 3 | HTTP: `GameSystemNarrativeController` (`GET /narrative`, `POST /narrative/{section}`, `PUT`/`DELETE /narrative/{section}/{item}`); every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft, a stale `expectedVersion`, an unknown section, an in-use delete and a schema 1 draft; `make api` (generated files in their own commit) | delegated writer (slice 3) | [x] | 0b9a57a, 4c3fded |
-| T6 | 4 | Trackers & tags tab: hooks, typed drafts, trackers (counter with hint and levels, clock), tags, fact slots: list with "Used by", create/edit dialogs, delete disabled with the reason; 409 reload; Vitest; stories | delegated writer (slice 4) | [x] | |
-| T7 | 5 | Step list editor: step cards (common fields, mandatory/suggested, `next` picker, add/delete/move, backward-`next` flag), effects editor (10 kinds) and value inputs (integer, `{tracker}`, `{formula}`, `{dice}`), kinds `prompt`, `character`, `roll` and `condition` with bands; unknown fields round-trip; 422 path mapping; Vitest; stories | | [ ] | |
-| T8 | 6 | Step kinds `oracle` (branches), `table` (entry branches, otherwise), `choice` (options, skip), `pick` (branches), `check` (difficulty, outcomes); Vitest; stories | | [ ] | |
-| T9 | 7 | Scene Types tab (list, counts, "Used by", create, delete) and editor route (name, purpose, tips, oracle shortcuts, setup/play/closing step lists, rename, 409/422); Vitest; stories | | [ ] | |
-| T10 | 8 | Flows tab (list, default flag, validation issue count, create, delete) and flow editor route (fields, oracles/trackers selects, phase outline: act, mode, selection, hooks, world turn; rename; 409/422); Vitest; stories | | [ ] | |
-| T11 | 9 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | | [ ] | |
-| T12 | 9 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | | [ ] | |
+| T6 | 4 | Trackers & tags tab: hooks, typed drafts, trackers (counter with hint and levels, clock), tags, fact slots: list with "Used by", create/edit dialogs, delete disabled with the reason; 409 reload; Vitest; stories | delegated writer (slice 4) | [x] | 0f3fbed, 02795e7 |
+| T7 | 5 | Step list editor: typed step drafts (unknown fields and kinds round-trip), step cards (common fields, mandatory/suggested, `next` picker, add/delete/move, backward-`next` flag), kinds `prompt` (inspiration tables), `character`, `roll` (dice, bands) and `condition` (tracker or count, bands); bands editor with `upTo` value input (integer, `{tracker}`, `{formula}`); effects kept and summarised, not edited; 422 path mapping; Vitest; stories | | [ ] | |
+| T7b | 6 | Effects editor (10 kinds, at most 10, sheet effects only where allowed) and value inputs (integer, `{tracker}`, `{formula}`, `{dice}`), wired into step cards and bands; Vitest; stories | | [ ] | |
+| T8 | 7 | Step kinds `oracle` (branches), `table` (entry branches, otherwise), `choice` (options, skip), `pick` (branches), `check` (difficulty, outcomes); Vitest; stories | | [ ] | |
+| T9 | 8 | Scene Types tab (list, counts, "Used by", create, delete) and editor route (name, purpose, tips, oracle shortcuts, setup/play/closing step lists, rename, 409/422); Vitest; stories | | [ ] | |
+| T10 | 9 | Flows tab (list, default flag, validation issue count, create, delete) and flow editor route (fields, oracles/trackers selects, phase outline: act, mode, selection, hooks, world turn; rename; 409/422); Vitest; stories | | [ ] | |
+| T11 | 10 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | | [ ] | |
+| T12 | 10 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | | [ ] | |
 
 ## Progress
 
@@ -119,6 +123,7 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 - 2026-10-16: Slice 3 review fix R3-001 (the catalog serialises a check difficulty with a null `min` and/or `max` as JSON null, no error). Tests only: the behaviour already held, so no RED.
 - 2026-10-16: T6 data layer: `useGameSystemNarrative` (query, `useSaveNarrativeItem` POST/PUT with the original key, `useDeleteNarrativeItem`, `NarrativeError` with `paths`; typed for all five section slugs), typed drafts in `narrativeDraft` (tracker counter/clock with levels, tag, fact slot; unknown fields round-trip, an item of an unknown shape reads as null) and the narrative fixtures. The user accepted ~2,160 lines for this slice, reviewed per commit range. RED: draft module missing; GREEN after.
 - 2026-10-16: T6 done: `NarrativeTab` ("Trackers & tags": lists with "Used by", create/edit dialogs with a levels editor, delete disabled with the reason, 422/404/409 messages, schema 1 message), unknown-shape items listed read-only, the page tab after Oracles, tab tests and stories. RED: no tab (26 tests failed); GREEN after. A 409 shows the server message (stale version or key taken) with a reload action next to Save.
+- 2026-10-16: Slice 4 review fixes: range 1 R3-001 (Vitest for `useGameSystemNarrative`: `paths` of an in-use delete, no retry on 404, PUT with the original key, cache replaced so the next write sends the new version; tests only, no RED), R3-002 (a clock's `levels` and a counter's `segments` are kept in `foreign` and sent back while the kind is unchanged, dropped when it changes; RED: two new tests failed), R3-003 (the raw JSON assertion is the anchored fragment `"difficulty":{"default":13,"min":null,"max":null}`; test only); range 2 WARNING R3-001 (`ItemDialog` keeps the version the form was filled at; a 409 reload takes the reloaded item and its version together; RED: 2 tests failed), R3-002 (reload failure after a 409 tested in the edit dialog, no RED; the delete dialog now stays open with the error when the refetch fails, RED).
 
 ## Reviews
 
@@ -127,7 +132,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | 1 | `review-4eb0aa712653dea7` | 59663cc, a42f2a6, f5a2791 | approved, acknowledged; suggestions R3-001 (schema 1 test for `ReleaseContent::checkItemRules`: valid passes, invalid gives the same message as `fromArray`) and R3-002 (prove `Formula::fromString` failure modes, oversized or deeply nested, surface as `InvalidFormula` in `DraftReferences`), fixed in slice 2 | #152 |
 | 2 | `review-d5da3cd5944270e9` | 6f28572, 52dbbcc, 2bcb4c9 | approved, acknowledged; suggestions R3-001 (oracle commands now run the item rules on the whole draft: test that a legacy draft breaking them elsewhere refuses an oracle save with that path and stays unchanged) and R3-002 (`GameSystemNarrativeHandlersTest::draft()` reuses one `GameSystemId`: give distinct ids), fixed in slice 3 | #153 |
 | 3 | `review-046e34c0f9feeb47` | 2b18647, 0b9a57a (generated 4c3fded not reviewed, covered by `api-check`; user accepted 3,275 lines) | approved, acknowledged; suggestion R3-001 (API test for a check whose difficulty has a null `min`/`max` bound in the catalog, `NarrativeCatalogResponse.php:44`), fixed in slice 4 | #154 |
+| 4 | `review-8d05bac723824581` (main..0f3fbed), `review-0d835c11ba1f4189` (0f3fbed..02795e7) | 9c8d4a5, 0f3fbed, 02795e7 (user accepted 2,138 lines, reviewed per range) | both approved, acknowledged; range 1: R3-001 (no Vitest for `useGameSystemNarrative`: `paths` of an in-use delete, no retry on 404, PUT with the original key on rename, cache replaced so the next write sends the new version), R3-002 (a clock carrying `levels` or a counter carrying `segments` loses them on an unchanged save), R3-003 (raw JSON `"min":null,"max":null` assertion not anchored to the difficulty, `GameSystemNarrativeApiTest.php:158`); range 2: WARNING R3-001 (`ItemDialog` reads `expectedVersion` live while the form is filled once: a refetch while the dialog is open saves a stale draft with no 409), R3-002 (reload failure after a 409 untested; the delete dialog closes without checking the refetch); fixed in slice 5 | #155 |
 
 ## Next step
 
-Slice 4 (slice 3 review fix R3-001, T6) on `feat/studio-flow-editor-4-trackers-tab`.
+Slice 5 (slice 4 review fixes, T7) on `feat/studio-flow-editor-5-step-editor`.

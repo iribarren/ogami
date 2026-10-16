@@ -314,6 +314,69 @@ describe('the oracles tab', () => {
       expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeEnabled()
     })
 
+    /** Starts a reload that stays pending, closes the dialog and opens a fresh one. */
+    async function reloadThenReopen(answer: Response, newerError: string) {
+      let reads = 0
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const posts: string[] = ['Changed by another request.', newerError]
+      const { user } = await openDialog({
+        [`GET ${base}/oracles`]: async () => {
+          if (++reads === 1) {
+            return Response.json(oracles)
+          }
+          await gate
+          return answer
+        },
+        [`POST ${base}/oracle-tables`]: () =>
+          Response.json({ error: posts.shift() }, { status: 409 }),
+      })
+
+      await user.type(inDialog().getByLabelText('Key'), 'omens')
+      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await user.click(screen.getByRole('button', { name: 'Create table' }))
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: 'New table' }))
+      return { user, release }
+    }
+
+    it('ignores a reload that fails after the dialog was reopened', async () => {
+      const { release } = await reloadThenReopen(
+        Response.json({ error: 'Gone.' }, { status: 404 }),
+        'Changed again.',
+      )
+
+      release()
+      expect(await screen.findByText(/Couldn.t refresh the oracles/)).toBeInTheDocument()
+      expect(screen.queryByText(/Couldn.t reload the latest version/)).not.toBeInTheDocument()
+      expect(inDialog().getByRole('button', { name: 'Create table' })).toBeDisabled()
+    })
+
+    it('keeps a newer conflict when an old reload succeeds after the dialog was reopened', async () => {
+      const { user, release } = await reloadThenReopen(
+        Response.json(withoutStorm),
+        'Changed again.',
+      )
+
+      await user.type(inDialog().getByLabelText('Key'), 'omens')
+      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await user.click(screen.getByRole('button', { name: 'Create table' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Changed again.')
+      release()
+
+      await waitFor(() => {
+        expect(screen.queryByText('storm-kind')).not.toBeInTheDocument()
+      })
+      expect(screen.getByRole('alert')).toHaveTextContent('Changed again.')
+      expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeEnabled()
+    })
+
     it.each([[422, 'Oracle table key "Bad Key" is invalid.']])(
       'shows the server message of a %i',
       async (status, message) => {

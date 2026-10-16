@@ -123,12 +123,17 @@ export function TableEditor({
       return null
     }
     if (renames) {
-      await navigate({
-        to: '/studio/game-systems/$key/oracle-tables/$table',
-        params: { key: gameSystemKey, table: body.key },
-        replace: true,
-      })
-      onRenaming(null)
+      try {
+        await navigate({
+          to: '/studio/game-systems/$key/oracle-tables/$table',
+          params: { key: gameSystemKey, table: body.key },
+          replace: true,
+        })
+      } catch {
+        // The save went through; if the router refuses, the URL decides what the page shows.
+      } finally {
+        onRenaming(null)
+      }
     }
     return body.key
   }

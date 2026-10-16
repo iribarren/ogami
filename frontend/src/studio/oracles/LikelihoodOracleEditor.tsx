@@ -216,12 +216,17 @@ export function LikelihoodOracleEditor({
       return null
     }
     if (renames) {
-      await navigate({
-        to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
-        params: { key: gameSystemKey, oracle: body.key },
-        replace: true,
-      })
-      onRenaming(null)
+      try {
+        await navigate({
+          to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
+          params: { key: gameSystemKey, oracle: body.key },
+          replace: true,
+        })
+      } catch {
+        // The save went through; if the router refuses, the URL decides what the page shows.
+      } finally {
+        onRenaming(null)
+      }
     }
     return body.key
   }

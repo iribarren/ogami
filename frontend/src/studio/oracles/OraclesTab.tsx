@@ -1,4 +1,4 @@
-import { useId, useState, type SubmitEvent } from 'react'
+import { useId, useRef, useState, type SubmitEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
@@ -272,6 +272,43 @@ function LikelihoodList({
   )
 }
 
+type ReloadState = 'idle' | 'pending' | 'failed'
+
+/**
+ * "Reload the latest version" for a dialog that creates something. The typed values stay; the
+ * conflict is cleared only once the latest version is in, because until then a retry would carry
+ * the stale one. A reload belongs to the dialog session it started in: closing or reopening the
+ * dialog ends the session, and a late answer is ignored.
+ */
+function useReloadLatest(gameSystemKey: string, clearConflict: () => void) {
+  const latest = useGameSystemOracles(gameSystemKey)
+  const [state, setState] = useState<ReloadState>('idle')
+  const session = useRef(0)
+
+  return {
+    state,
+    endSession: () => {
+      session.current += 1
+      setState('idle')
+    },
+    reload: () => {
+      const started = session.current
+      setState('pending')
+      void latest.refetch().then((result) => {
+        if (started !== session.current) {
+          return
+        }
+        if (result.isError) {
+          setState('failed')
+        } else {
+          clearConflict()
+          setState('idle')
+        }
+      })
+    },
+  }
+}
+
 function CreateTableDialog({
   gameSystemKey,
   oracles,
@@ -281,15 +318,14 @@ function CreateTableDialog({
 }) {
   const [open, setOpen] = useState(false)
   const create = useCreateOracleTable(gameSystemKey)
-  const latest = useGameSystemOracles(gameSystemKey)
-  const [reload, setReload] = useState<'idle' | 'pending' | 'failed'>('idle')
+  const latest = useReloadLatest(gameSystemKey, create.reset)
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        setReload('idle')
+        latest.endSession()
         create.reset()
       }}
     >
@@ -304,20 +340,8 @@ function CreateTableDialog({
         <CreateTableForm
           create={create}
           version={oracles.version}
-          reload={reload}
-          onReload={() => {
-            // The typed values stay. The conflict is cleared only once the latest version is in:
-            // until then a retry would carry the stale one.
-            setReload('pending')
-            void latest.refetch().then((result) => {
-              if (result.isError) {
-                setReload('failed')
-              } else {
-                create.reset()
-                setReload('idle')
-              }
-            })
-          }}
+          reload={latest.state}
+          onReload={latest.reload}
           onCreated={() => {
             setOpen(false)
           }}
@@ -336,7 +360,7 @@ function CreateTableForm({
 }: {
   create: ReturnType<typeof useCreateOracleTable>
   version: number
-  reload: 'idle' | 'pending' | 'failed'
+  reload: ReloadState
   onReload: () => void
   onCreated: () => void
 }) {

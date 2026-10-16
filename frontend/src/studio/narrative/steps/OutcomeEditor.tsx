@@ -7,8 +7,9 @@ import type { OutcomeDraft } from './stepDraft'
 import { aboutEffects, type StepError } from './stepError'
 
 /**
- * What follows an oracle answer, a table entry, `otherwise` or a choice option: a `next` and
- * effects, never sheet effects (no Character is known there). `errors` are the server's messages
+ * What follows an oracle answer, a table entry, `otherwise`, a choice option, a pick outcome or a
+ * check band: a `next` and effects, sheet effects only where `allowSheet` (a check outcome: the
+ * Character is known there). `errors` are the server's messages
  * about this outcome, `nextGuide` the client's note on a backward `next`. `onRestructure` tells the
  * owner of the messages that effects moved or went.
  */
@@ -19,6 +20,7 @@ export function OutcomeEditor({
   laterKeys,
   nextGuide,
   errors,
+  allowSheet = false,
   onChange,
   onRestructure,
 }: {
@@ -28,6 +30,7 @@ export function OutcomeEditor({
   laterKeys: string[]
   nextGuide?: string
   errors: StepError[]
+  allowSheet?: boolean
   onChange: (outcome: OutcomeDraft) => void
   onRestructure?: () => void
 }) {
@@ -55,7 +58,7 @@ export function OutcomeEditor({
         label={`${label} effects`}
         effects={outcome.effects}
         context={context}
-        allowSheet={false}
+        allowSheet={allowSheet}
         errors={errors.filter(aboutEffects)}
         onChange={(effects) => {
           onChange({ ...outcome, effects })

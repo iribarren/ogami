@@ -314,7 +314,7 @@ export const narrativeV1 = {
   factSlots: [],
 }
 
-/** What the step forms pick from: the draft's tables (with entries), likelihood oracles (with levels), trackers, tags, Scene Types, fact slots and sheet fields. */
+/** What the step forms pick from: the draft's tables (with entries), likelihood oracles (with levels), checks (with bands and difficulty range), trackers, tags, Scene Types, fact slots and sheet fields. */
 export const stepPickers = {
   tables: [
     { key: 'places', name: 'Places', entries: ['market', 'docks'] },
@@ -322,6 +322,15 @@ export const stepPickers = {
     { key: 'complications', name: 'Complications', entries: ['patrol', 'lucky-break'] },
   ],
   likelihood: [{ key: 'fate', name: 'Fate', levels: ['unlikely', 'even', 'likely'] }],
+  checks: [
+    {
+      key: 'skill',
+      name: 'Skill check',
+      bands: ['fail', 'partial', 'success'],
+      difficulty: { default: 13, min: 9, max: 29 },
+    },
+    { key: 'luck', name: 'Luck', bands: ['lose', 'win'], difficulty: null },
+  ],
   trackers: [
     { key: 'heat', name: 'Heat' },
     { key: 'alarm', name: 'Alarm' },
@@ -408,6 +417,34 @@ const which = {
 
 /** One step each of the kinds with branches: an oracle, a table and a choice. */
 export const stepListBranching = [ask, event, which]
+
+const find = {
+  key: 'find',
+  kind: 'pick',
+  title: 'Who turns up?',
+  of: 'npc',
+  mode: 'random',
+  tags: ['gang'],
+  count: { min: 1, max: 3 },
+  branches: {
+    found: { next: 'end' },
+    none: { effects: [{ kind: 'sceneTitle', title: 'Nobody' }] },
+  },
+}
+const lock = {
+  key: 'lock',
+  kind: 'check',
+  title: 'Pick the lock',
+  check: 'skill',
+  difficulty: 15,
+  outcomes: [
+    { band: 'fail', next: 'end' },
+    { band: 'success', effects: [{ kind: 'sheet', field: 'stress', op: 'add', value: 1 }] },
+  ],
+}
+
+/** A pick step and a check step. */
+export const stepListPickCheck = [find, lock]
 
 /** A step list with a kind the editor does not edit yet and a step it cannot read. */
 export const stepListWithOtherKinds = [

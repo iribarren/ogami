@@ -117,3 +117,41 @@ export function PickField({
     </div>
   )
 }
+
+/** A labelled picker over a fixed set of `options`: always one of them, never empty. */
+export function SelectField({
+  label,
+  value,
+  options,
+  error,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { key: string; name: string }[]
+  error?: string
+  onChange: (value: string) => void
+}) {
+  const id = useId()
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <NativeSelect
+        id={id}
+        value={value}
+        aria-invalid={error !== undefined}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
+      >
+        {options.map((option) => (
+          <option key={option.key} value={option.key}>
+            {option.name}
+          </option>
+        ))}
+      </NativeSelect>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  )
+}

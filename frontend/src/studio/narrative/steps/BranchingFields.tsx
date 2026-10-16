@@ -23,10 +23,10 @@ import {
 } from './stepDraft'
 import type { StepError } from './stepError'
 
-type Of<K extends EditedStep['kind']> = Extract<EditedStep, { kind: K }>
+export type Of<K extends EditedStep['kind']> = Extract<EditedStep, { kind: K }>
 
 /** What the fields of a branching kind share with the card around them. */
-interface KindProps {
+export interface KindProps {
   context: StepContext
   laterKeys: string[]
   guide: StepGuide
@@ -48,9 +48,21 @@ const answerLabels: Record<OracleAnswer, string> = {
   exceptionalNo: 'Exceptional no',
 }
 
-/** The row's own fields are shown next to their inputs; the rest of its messages go to its outcome. */
-const aboutRow = (error: StepError) =>
-  error.effect === null && ['entry', 'key', 'label'].includes(error.field ?? '')
+/**
+ * The first message about each field the row really has (`fields`) is shown next to its input;
+ * every other message of the row (a second one on the field, one about a field this kind of row
+ * lacks) goes to its outcome, listed, never hidden or shown under another field.
+ */
+function splitRow(mine: StepError[], fields: string[]) {
+  const onFields: Record<string, StepError> = {}
+  for (const error of mine) {
+    const { field } = error
+    if (error.effect === null && field !== null && fields.includes(field) && !(field in onFields)) {
+      onFields[field] = error
+    }
+  }
+  return { onFields, rest: mine.filter((error) => !Object.values(onFields).includes(error)) }
+}
 
 const keysOf = (keys: string[]) =>
   [...new Set(keys.filter((key) => key !== ''))].map((key) => ({ key, name: key }))
@@ -140,7 +152,10 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
         <legend className="text-sm font-medium">Branches</legend>
         {step.branches.map((branch, at) => {
           const number = String(at + 1)
-          const mine = p.mine.filter((error) => error.item === at)
+          const { onFields, rest } = splitRow(
+            p.mine.filter((error) => error.item === at),
+            ['entry'],
+          )
           return (
             // The list is edited in place and has no ids: the position is the identity.
             <div
@@ -154,7 +169,7 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
                 value={branch.entry}
                 options={keysOf(entries)}
                 placeholder="Pick an entry"
-                error={mine.find(aboutRow)?.message ?? p.guide.items[at]}
+                error={onFields.entry?.message ?? p.guide.items[at]}
                 onChange={(entry) => {
                   setBranches(
                     step.branches.map((current, to) =>
@@ -169,7 +184,7 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
                 context={p.context}
                 laterKeys={p.laterKeys}
                 nextGuide={p.guide.nexts[at]}
-                errors={mine.filter((error) => !aboutRow(error))}
+                errors={rest}
                 onChange={(outcome) => {
                   setBranches(
                     step.branches.map((current, to) =>
@@ -239,7 +254,10 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
         <legend className="text-sm font-medium">Options</legend>
         {step.options.map((option, at) => {
           const number = String(at + 1)
-          const mine = p.mine.filter((error) => error.item === at)
+          const { onFields, rest } = splitRow(
+            p.mine.filter((error) => error.item === at),
+            ['key', 'label'],
+          )
           const replace = (patch: Partial<typeof option>, skip = step.skip) => {
             setOptions(
               step.options.map((current, to) => (to === at ? { ...current, ...patch } : current)),
@@ -257,10 +275,7 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
               <TextField
                 label="Option key"
                 value={option.key}
-                error={
-                  mine.find((error) => aboutRow(error) && error.field === 'key')?.message ??
-                  p.guide.items[at]
-                }
+                error={onFields.key?.message ?? p.guide.items[at]}
                 onChange={(key) => {
                   // The option that is skipped keeps being the skipped one when it is renamed.
                   replace({ key }, step.skip === option.key ? key : step.skip)
@@ -269,7 +284,7 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
               <TextField
                 label="Label"
                 value={option.label}
-                error={mine.find((error) => aboutRow(error) && error.field === 'label')?.message}
+                error={onFields.label?.message}
                 onChange={(label) => {
                   replace({ label })
                 }}
@@ -280,7 +295,7 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
                 context={p.context}
                 laterKeys={p.laterKeys}
                 nextGuide={p.guide.nexts[at]}
-                errors={mine.filter((error) => !aboutRow(error))}
+                errors={rest}
                 onChange={(outcome) => {
                   replace(outcome)
                 }}

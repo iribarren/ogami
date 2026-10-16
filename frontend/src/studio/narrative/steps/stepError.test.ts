@@ -114,12 +114,33 @@ describe('mapping a server error about branches and options', () => {
     ['.branches[3].effects[1].tracker', { item: 3, field: 'tracker', effect: 1 }],
     ['.options[0].label', { item: 0, field: 'label', effect: null }],
     ['.options[4].next', { item: 4, field: 'next', effect: null }],
+    ['.branches.found.next', { slot: 'found', field: 'next', effect: null }],
+    ['.branches.none.effects[1].value', { slot: 'none', field: 'value', effect: 1 }],
+    ['.outcomes[2].band', { item: 2, field: 'band', effect: null }],
+    ['.outcomes[0].next', { item: 0, field: 'next', effect: null }],
+    ['.outcomes[1].effects[0].field', { item: 1, field: 'field', effect: 0 }],
+    ['.outcomes[3]', { item: 3, field: null, effect: null }],
+    ['.count.min', { field: 'count.min', effect: null }],
+    ['.count.max', { field: 'count.max', effect: null }],
+    ['.difficulty', { field: 'difficulty', effect: null }],
+    ['.difficulty.tracker', { field: 'difficulty', effect: null }],
   ])('reads %s', (path, expected) => {
     expect(map(path)).toMatchObject({ index: 1, band: null, ...expected })
   })
 
   it('leaves the step fields on the step and the list-level ones as fields', () => {
-    for (const field of ['oracle', 'likelihood', 'table', 'skip', 'options', 'branches']) {
+    for (const field of [
+      'oracle',
+      'likelihood',
+      'table',
+      'skip',
+      'options',
+      'branches',
+      'outcomes',
+      'check',
+      'of',
+      'mode',
+    ]) {
       const error = map(`.${field}`)
       expect(error).toMatchObject({ index: 1, field })
       expect(error.slot).toBeUndefined()
@@ -135,11 +156,24 @@ describe('mapping the whole numbers a step list refuses to a step', () => {
         '1.bands.0.upTo': 'Use a whole number.',
         '0.effects.2.value': 'Use a whole number.',
         '1.bands.1.effects.0.value': 'Use a whole number.',
+        '2.count.max': 'Use a whole number.',
+        '3.difficulty': 'Use a whole number.',
+        '3.outcomes.1.effects.0.value': 'Use a whole number.',
       }),
     ).toEqual([
       { index: 1, band: 0, effect: null, field: 'upTo', message: 'Use a whole number.' },
       { index: 0, band: null, effect: 2, field: 'value', message: 'Use a whole number.' },
       { index: 1, band: 1, effect: 0, field: 'value', message: 'Use a whole number.' },
+      { index: 2, band: null, effect: null, field: 'count.max', message: 'Use a whole number.' },
+      { index: 3, band: null, effect: null, field: 'difficulty', message: 'Use a whole number.' },
+      {
+        index: 3,
+        band: null,
+        effect: 0,
+        item: 1,
+        field: 'value',
+        message: 'Use a whole number.',
+      },
     ])
   })
 })

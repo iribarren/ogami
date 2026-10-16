@@ -524,6 +524,33 @@ describe('editing', () => {
     expect(inDialog().getByLabelText('Hint')).toHaveValue('Mine')
   })
 
+  it('keeps the old version and the form when the reloaded item cannot be read, so a later save still conflicts', async () => {
+    let reads = 0
+    const saved = recorder(Response.json(changed, { status: 409 }))
+    const unreadable = [
+      narrative.tags[0],
+      { key: 'informer', definition: { key: 'informer', label: 7 }, usedBy: [] },
+    ]
+    const { user } = await openNarrative({
+      [`GET ${base}/narrative`]: () =>
+        Response.json(++reads === 1 ? narrative : { ...narrative, version: 8, tags: unreadable }),
+      [`PUT ${base}/narrative/tags/informer`]: saved.handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
+    await user.type(inDialog().getByLabelText('Hint'), 'Mine')
+    await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
+    await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(await inDialog().findByText(/cannot read/)).toBeInTheDocument()
+    expect(inDialog().getByLabelText('Hint')).toHaveValue('Mine')
+    await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(2)
+    })
+    expect(saved.sent.map((request) => request.expectedVersion)).toEqual([5, 5])
+  })
+
   it('adds, moves and deletes levels', async () => {
     const saved = recorder(Response.json(narrative))
     const { user } = await openNarrative({ [`PUT ${base}/narrative/trackers/heat`]: saved.handler })

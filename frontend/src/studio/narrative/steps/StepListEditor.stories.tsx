@@ -10,14 +10,9 @@ import { mapStepError } from './stepError'
 /** The editor holding its own drafts, as a Scene Type or flow editor will. */
 function Editable({ stored, errors = [] }: { stored: unknown[]; errors?: string[] }) {
   const [steps, setSteps] = useState(() => stepsToDrafts(stored))
-  return (
-    <StepListEditor
-      steps={steps}
-      context={stepPickers}
-      errors={errors.map((text) => mapStepError('sceneTypes[0].play', text))}
-      onChange={setSteps}
-    />
-  )
+  // One answer from the server: the editor follows its positions through moves and deletes.
+  const [mapped] = useState(() => errors.map((text) => mapStepError('sceneTypes[0].play', text)))
+  return <StepListEditor steps={steps} context={stepPickers} errors={mapped} onChange={setSteps} />
 }
 
 const meta = {

@@ -300,12 +300,18 @@ function valueToStored(value: ValueDraft, path: string, errors: FieldErrors): un
   return whole ?? 0
 }
 
+/**
+ * The limit stays with the band whatever its position: a band that became the last one keeps what
+ * it had (the guides flag it, the publisher decides), and a band before the last with none is
+ * refused here instead of being saved without a limit.
+ */
 function bandToStored(band: BandDraft, last: boolean, path: string, errors: FieldErrors) {
+  if (band.upTo === null && !last) {
+    errors[`${path}.upTo`] = 'Set a limit: only the last band catches the rest.'
+  }
   return {
     ...band.extra,
-    ...(last || band.upTo === null
-      ? {}
-      : { upTo: valueToStored(band.upTo, `${path}.upTo`, errors) }),
+    ...(band.upTo === null ? {} : { upTo: valueToStored(band.upTo, `${path}.upTo`, errors) }),
     ...(band.next === '' ? {} : { next: band.next }),
     ...(band.effects.length === 0 ? {} : { effects: band.effects }),
   }
@@ -381,7 +387,7 @@ const backward = 'Pick a later step: next only goes forward.'
 /**
  * Client guides, nothing more: the publisher checks the same rules and stays the authority, so
  * none of them blocks a save. A `next` that is the same or an earlier key (after a move, say), a
- * repeated or reserved key, and literal `upTo` values that do not increase.
+ * repeated or reserved key, literal `upTo` values that do not increase and a limit on the last band.
  */
 export function stepGuides(steps: StepDraft[]): StepGuide[] {
   const keys = steps.map(stepKey)
@@ -408,6 +414,9 @@ export function stepGuides(steps: StepDraft[]): StepGuide[] {
         const flags: { upTo?: string; next?: string } = {}
         if (literal !== null && previous !== null && literal <= previous) {
           flags.upTo = 'Must be above the previous limit.'
+        }
+        if (band.upTo !== null && position === step.bands.length - 1) {
+          flags.upTo = 'The last band catches the rest: remove its limit.'
         }
         if (literal !== null) {
           previous = literal

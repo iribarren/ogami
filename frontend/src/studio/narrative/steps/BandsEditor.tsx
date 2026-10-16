@@ -36,7 +36,9 @@ export function NextPicker({
 }) {
   const id = useId()
   // A value the list no longer offers (after a move) stays visible, so it can be seen and fixed.
-  const options = [...laterKeys, END].includes(value) || value === '' ? [] : [value]
+  // Repeated keys (or a step keyed `end`) must not repeat an option: they are one choice.
+  const offered = [...new Set([...laterKeys.filter((key) => key !== END), END])]
+  const options = offered.includes(value) || value === '' ? [] : [value]
 
   return (
     <div className="space-y-2">
@@ -50,7 +52,7 @@ export function NextPicker({
         }}
       >
         <option value="">The following step</option>
-        {[...options, ...laterKeys, END].map((key) => (
+        {[...options, ...offered].map((key) => (
           <option key={key} value={key}>
             {key === END ? 'End of the list' : key}
           </option>
@@ -151,6 +153,7 @@ export function BandsEditor({
   laterKeys,
   problems,
   onChange,
+  onRestructure,
 }: {
   bands: BandDraft[]
   forms: readonly ValueForm[]
@@ -158,6 +161,8 @@ export function BandsEditor({
   laterKeys: string[]
   problems: BandProblems
   onChange: (bands: BandDraft[]) => void
+  /** Called when bands move or go, so messages keyed by position can be dropped. */
+  onRestructure?: () => void
 }) {
   const replace = (index: number, band: BandDraft) => {
     onChange(bands.map((current, at) => (at === index ? band : current)))
@@ -168,6 +173,7 @@ export function BandsEditor({
     if (band) {
       next.splice(index + by, 0, band)
     }
+    onRestructure?.()
     onChange(next)
   }
 
@@ -186,7 +192,7 @@ export function BandsEditor({
             aria-label={`Band ${number}`}
             className="space-y-2 rounded-lg p-3 ring-1 ring-foreground/10"
           >
-            {last ? (
+            {last && band.upTo === null ? (
               <p className="text-sm text-muted-foreground">Otherwise: the rest.</p>
             ) : (
               <ValueInput
@@ -199,6 +205,18 @@ export function BandsEditor({
                   replace(index, { ...band, upTo })
                 }}
               />
+            )}
+            {last && band.upTo !== null && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  replace(index, { ...band, upTo: null })
+                }}
+              >
+                Remove the limit of band {number}
+              </Button>
             )}
             <NextPicker
               label="Next"
@@ -241,6 +259,7 @@ export function BandsEditor({
                 size="sm"
                 aria-label={`Delete band ${number}`}
                 onClick={() => {
+                  onRestructure?.()
                   onChange(bands.filter((_, at) => at !== index))
                 }}
               >

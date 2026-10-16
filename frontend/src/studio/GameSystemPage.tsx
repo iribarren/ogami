@@ -164,16 +164,11 @@ function GameSystemView({
         <SegmentedControlItem value="releases">Releases</SegmentedControlItem>
         <SegmentedControlItem value="sections">Sections</SegmentedControlItem>
       </SegmentedControl>
-      {tab === 'overview' && (
-        <div className="space-y-8">
-          <MetadataForm
-            key={formStart.reloads}
-            gameSystem={formStart.gameSystem}
-            onReload={reload}
-          />
-          {gameSystem.latestReleaseVersion === null && <Discard gameSystemKey={gameSystem.key} />}
-        </div>
-      )}
+      {/* Stays mounted while another tab shows, so typed and saved values survive tab switches. */}
+      <div hidden={tab !== 'overview'} className="space-y-8">
+        <MetadataForm key={formStart.reloads} gameSystem={formStart.gameSystem} onReload={reload} />
+        {gameSystem.latestReleaseVersion === null && <Discard gameSystemKey={gameSystem.key} />}
+      </div>
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
       {tab === 'releases' && (
         <ReleasesTab

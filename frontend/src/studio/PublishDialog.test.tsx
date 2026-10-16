@@ -159,6 +159,38 @@ describe('the publish dialog', () => {
     expect(screen.queryByText(/^Published version/)).not.toBeInTheDocument()
   })
 
+  it('refreshes the next version after a race 409 and reloads on request', async () => {
+    const user = userEvent.setup()
+    let latest = published3
+    const { fakeApi } = renderPublishable(published3, {
+      'GET /api/studio/game-systems/noir-detective': () => Response.json(latest),
+      'POST /api/studio/game-systems/noir-detective/releases': json(
+        { error: 'Another release of noir-detective v4 was published.' },
+        409,
+      ),
+    })
+
+    const dialog = await openDialog(user)
+    await dialog.findByText('This creates version 4.')
+    latest = { ...published3, latestReleaseVersion: 4 }
+    await user.click(dialog.getByRole('button', { name: 'Publish version 4' }))
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(conflictMessage)
+    expect(await dialog.findByRole('button', { name: 'Publish version 5' })).toBeEnabled()
+    const before = fakeApi.requests.filter(
+      (r) => r === 'GET /api/studio/game-systems/noir-detective',
+    ).length
+    await user.click(dialog.getByRole('button', { name: 'Reload' }))
+
+    await waitFor(() => {
+      expect(dialog.queryByRole('alert')).not.toBeInTheDocument()
+    })
+    expect(
+      fakeApi.requests.filter((r) => r === 'GET /api/studio/game-systems/noir-detective').length,
+    ).toBeGreaterThan(before)
+    expect(dialog.getByText('This creates version 5.')).toBeInTheDocument()
+  })
+
   it('shows a generic message for any other failure', async () => {
     const user = userEvent.setup()
     renderPublishable(draft, {

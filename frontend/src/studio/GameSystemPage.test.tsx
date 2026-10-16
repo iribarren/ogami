@@ -155,6 +155,33 @@ describe('the metadata form', () => {
     expect(form.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  async function savedThenEdited(edit: 'description' | 'theme') {
+    const user = userEvent.setup()
+    renderDraft({ 'PUT /api/studio/game-systems/my-draft/metadata': json(draft) })
+
+    const form = within(await metadataForm())
+    await user.click(form.getByRole('button', { name: 'Save' }))
+    expect(await form.findByRole('status')).toHaveTextContent('Saved.')
+    if (edit === 'description') {
+      await user.type(form.getByLabelText('Description'), '!')
+    } else {
+      await user.selectOptions(form.getByLabelText('Theme'), 'neon')
+    }
+    return form
+  }
+
+  it('hides the saved state once the description is edited', async () => {
+    const form = await savedThenEdited('description')
+
+    expect(form.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('hides the saved state once the theme is changed', async () => {
+    const form = await savedThenEdited('theme')
+
+    expect(form.queryByRole('status')).not.toBeInTheDocument()
+  })
+
   it('sends none for cleared optional fields', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
@@ -248,6 +275,37 @@ describe('the metadata form', () => {
     await waitFor(() => {
       expect(sent).toEqual([{ name: 'Free journal', description: null }])
     })
+  })
+})
+
+describe('switching tabs', () => {
+  it('keeps what was typed in the form', async () => {
+    const user = userEvent.setup()
+    renderDraft()
+
+    await user.type(within(await metadataForm()).getByLabelText('Name'), '!')
+    await user.click(screen.getByRole('radio', { name: 'Validation' }))
+    expect(screen.queryByRole('form', { name: 'Metadata' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Overview' }))
+
+    expect(within(await metadataForm()).getByLabelText('Name')).toHaveValue('My draft!')
+  })
+
+  it('shows the saved values, not the ones before the save', async () => {
+    const user = userEvent.setup()
+    renderDraft({
+      'PUT /api/studio/game-systems/my-draft/metadata': json({ ...draft, name: 'Renamed' }),
+    })
+
+    const form = within(await metadataForm())
+    await user.clear(form.getByLabelText('Name'))
+    await user.type(form.getByLabelText('Name'), 'Renamed')
+    await user.click(form.getByRole('button', { name: 'Save' }))
+    await form.findByRole('status')
+    await user.click(screen.getByRole('radio', { name: 'Sections' }))
+    await user.click(screen.getByRole('radio', { name: 'Overview' }))
+
+    expect(within(await metadataForm()).getByLabelText('Name')).toHaveValue('Renamed')
   })
 })
 

@@ -19,6 +19,7 @@ import {
 } from './useGameSystemReleases'
 import { StudioError, type GameSystem } from './useGameSystems'
 
+// Local time, as the other dates of the app (campaigns, journal) are shown.
 const publishedAtFormat = new Intl.DateTimeFormat('en-GB', {
   dateStyle: 'medium',
   timeStyle: 'short',

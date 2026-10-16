@@ -113,6 +113,12 @@ export function usePublishGameSystem(key: string) {
       void queryClient.invalidateQueries({ queryKey: gameSystemKey(key) })
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
     },
+    onError: (error) => {
+      // A 409 means the latest release moved (or nothing changed): refresh the next version.
+      if (error instanceof StudioError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: gameSystemKey(key) })
+      }
+    },
   })
 }
 

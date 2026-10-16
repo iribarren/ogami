@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -13,7 +14,12 @@ import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
 import { nextVersion, usePublishGameSystem, type PublishRequest } from './useGameSystemReleases'
-import { StudioError, useGameSystemValidation, type GameSystem } from './useGameSystems'
+import {
+  StudioError,
+  gameSystemKey,
+  useGameSystemValidation,
+  type GameSystem,
+} from './useGameSystems'
 
 /** The API's limit on release notes, checked by the server too. */
 const MAX_NOTES_LENGTH = 2000
@@ -73,7 +79,9 @@ function PublishForm({
   const [notes, setNotes] = useState('')
   const validation = useGameSystemValidation(gameSystem.key)
   const publish = usePublishGameSystem(gameSystem.key)
+  const queryClient = useQueryClient()
   const notesId = useId()
+  const conflict = publish.error instanceof StudioError && publish.error.status === 409
   const canPublish = validation.data?.valid === true && !publish.isPending
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -107,11 +115,21 @@ function PublishForm({
         Only the saved draft is published: save your metadata edits first.
       </p>
       {publish.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {publish.error instanceof StudioError && publish.error.status === 409
-            ? conflictMessage
-            : publish.error.message}
-        </p>
+        <div role="alert" className="space-y-2 text-sm text-destructive">
+          <p>{conflict ? conflictMessage : publish.error.message}</p>
+          {conflict && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                publish.reset()
+                void queryClient.invalidateQueries({ queryKey: gameSystemKey(gameSystem.key) })
+              }}
+            >
+              Reload
+            </Button>
+          )}
+        </div>
       )}
       <Button type="submit" disabled={!canPublish}>
         Publish version {nextVersion(gameSystem)}

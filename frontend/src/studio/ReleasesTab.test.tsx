@@ -37,7 +37,9 @@ describe('the releases tab', () => {
     expect(items).toHaveLength(2)
     expect(items[0]).toHaveTextContent('Version 3')
     expect(items[0]).toHaveTextContent('Schema version 2')
-    expect(items[0]).toHaveTextContent('14 Oct 2026')
+    // Shown in local time like the app's other dates, so the expected text uses the same zone.
+    const published = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+    expect(items[0]).toHaveTextContent(published.format(new Date('2026-10-14T12:00:00+00:00')))
     expect(items[0]).toHaveTextContent('No notes')
     expect(items[0]).toHaveTextContent('11d93fc7')
     expect(items[0]).not.toHaveTextContent('11d93fc7a')

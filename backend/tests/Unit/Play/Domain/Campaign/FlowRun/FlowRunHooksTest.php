@@ -205,7 +205,7 @@ final class FlowRunHooksTest extends FlowRunTestCase
         $view = $this->view($campaign);
         self::assertSame([FlowRunStage::Hook, Hook::WorldTurn, null, null], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->hook(), self::flowRunOf($campaign)->scene(), $view->step]);
         self::assertSame([true, Hook::WorldTurn, 'World turn: Any news?'], [$view->waitsForSession, $view->progress?->part, $view->next]);
-        $this->assertStale('The FlowRun is at the world turn, waiting for a session, not at step "news".', fn () => $campaign->completeFlowStep('news', StepResult::choice('calm'), $this->release, self::at()));
+        $this->assertStale('The FlowRun is at the world turn, waiting for a session, not at step "news".', fn (): array => $campaign->completeFlowStep('news', StepResult::choice('calm'), $this->release, self::at()));
 
         $campaign->startSession(self::at(), $this->release);
         $this->assertHookScene($campaign, Hook::WorldTurn, 'The world moves');

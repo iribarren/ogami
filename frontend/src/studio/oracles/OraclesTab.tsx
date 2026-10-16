@@ -269,6 +269,7 @@ function CreateTableDialog({
 }) {
   const [open, setOpen] = useState(false)
   const create = useCreateOracleTable(gameSystemKey)
+  const latest = useGameSystemOracles(gameSystemKey)
 
   return (
     <Dialog
@@ -289,6 +290,11 @@ function CreateTableDialog({
         <CreateTableForm
           create={create}
           version={oracles.version}
+          onReload={() => {
+            // The typed values stay: the next create carries the version read now.
+            create.reset()
+            void latest.refetch()
+          }}
           onCreated={() => {
             setOpen(false)
           }}
@@ -301,10 +307,12 @@ function CreateTableDialog({
 function CreateTableForm({
   create,
   version,
+  onReload,
   onCreated,
 }: {
   create: ReturnType<typeof useCreateOracleTable>
   version: number
+  onReload: () => void
   onCreated: () => void
 }) {
   const [key, setKey] = useState('')
@@ -315,7 +323,7 @@ function CreateTableForm({
   const nameId = useId()
   const kindId = useId()
   const diceId = useId()
-  const table = newTable(key, name, ranged, dice)
+  const table = newTable(key.trim(), name.trim(), ranged, dice)
   const valid = key.trim() !== '' && name.trim() !== '' && table !== null
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -385,9 +393,15 @@ function CreateTableForm({
           {create.error.message}
         </p>
       )}
-      <Button type="submit" disabled={!valid || create.isPending}>
-        Create table
-      </Button>
+      {create.error instanceof StudioError && create.error.status === 409 ? (
+        <Button type="button" onClick={onReload}>
+          Reload the latest version
+        </Button>
+      ) : (
+        <Button type="submit" disabled={!valid || create.isPending}>
+          Create table
+        </Button>
+      )}
     </form>
   )
 }

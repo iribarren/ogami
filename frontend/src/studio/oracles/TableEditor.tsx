@@ -47,12 +47,21 @@ interface TableEditorProps {
   oracles: GameSystemOracles
   item: OracleTableItem
   history: RollHistory
+  /** Told the key a save renames the table to before it is sent, and null once it settled. */
+  onRenaming: (key: string | null) => void
   /** Refetches the oracles and starts the form again from the latest stored table. */
   onReload: () => void
 }
 
 /** The form of one table beside its test-roll panel; the draft is the form's own until saved. */
-export function TableEditor({ gameSystemKey, oracles, item, history, onReload }: TableEditorProps) {
+export function TableEditor({
+  gameSystemKey,
+  oracles,
+  item,
+  history,
+  onRenaming,
+  onReload,
+}: TableEditorProps) {
   const stored = item.definition
   const tableIndex = oracles.tables.findIndex(({ definition }) => definition.key === stored.key)
   const withKey = oracles.schemaVersion >= 2
@@ -99,6 +108,10 @@ export function TableEditor({ gameSystemKey, oracles, item, history, onReload }:
     if (!dirty) {
       return stored.key
     }
+    const renames = body.key !== stored.key
+    if (renames) {
+      onRenaming(body.key)
+    }
     try {
       await save.mutateAsync({
         expectedVersion: oracles.version,
@@ -106,14 +119,16 @@ export function TableEditor({ gameSystemKey, oracles, item, history, onReload }:
         table: body,
       })
     } catch {
+      onRenaming(null)
       return null
     }
-    if (body.key !== stored.key) {
+    if (renames) {
       await navigate({
         to: '/studio/game-systems/$key/oracle-tables/$table',
         params: { key: gameSystemKey, table: body.key },
         replace: true,
       })
+      onRenaming(null)
     }
     return body.key
   }

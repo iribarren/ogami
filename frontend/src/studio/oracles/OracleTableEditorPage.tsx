@@ -17,6 +17,9 @@ export function OracleTableEditorPage({
   const oracles = useGameSystemOracles(gameSystemKey)
   const [reloads, setReloads] = useState(0)
   const history = useRollHistory()
+  const [reloadFailed, setReloadFailed] = useState(false)
+  // The key a save is renaming the table to: the cache answers with it before the URL does.
+  const [renaming, setRenaming] = useState<string | null>(null)
 
   const backLink = (
     <Link
@@ -41,7 +44,9 @@ export function OracleTableEditorPage({
     )
   }
 
-  const item = oracles.data.tables.find(({ definition }) => definition.key === table)
+  const find = (key: string) => oracles.data.tables.find(({ definition }) => definition.key === key)
+  // Until the URL follows the rename, the editor stays on the renamed table, mounted.
+  const item = find(table) ?? (renaming === null ? undefined : find(renaming))
   if (!item) {
     return (
       <div className="space-y-3">
@@ -63,15 +68,24 @@ export function OracleTableEditorPage({
         oracles={oracles.data}
         item={item}
         history={history}
+        onRenaming={setRenaming}
         onReload={() => {
+          setReloadFailed(false)
           void oracles.refetch().then((result) => {
             // A failed refetch keeps the stale table: do not reset the form on it.
-            if (!result.isError) {
+            if (result.isError) {
+              setReloadFailed(true)
+            } else {
               setReloads((count) => count + 1)
             }
           })
         }}
       />
+      {reloadFailed && (
+        <p role="alert" className="text-sm text-destructive">
+          Couldn&apos;t reload the latest version. Try again.
+        </p>
+      )}
     </div>
   )
 }

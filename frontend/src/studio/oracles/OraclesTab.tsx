@@ -227,7 +227,7 @@ function DeleteTableDialog({
   )
 }
 
-/** Likelihood oracles are listed here; their editor comes in the next slice. */
+/** Likelihood oracles are listed here, each linking to its editor. */
 function LikelihoodList({ oracles }: { oracles: GameSystemOracles }) {
   return (
     <section aria-label="Likelihood oracles" className="space-y-3">
@@ -270,12 +270,14 @@ function CreateTableDialog({
   const [open, setOpen] = useState(false)
   const create = useCreateOracleTable(gameSystemKey)
   const latest = useGameSystemOracles(gameSystemKey)
+  const [reload, setReload] = useState<'idle' | 'pending' | 'failed'>('idle')
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
+        setReload('idle')
         create.reset()
       }}
     >
@@ -290,10 +292,19 @@ function CreateTableDialog({
         <CreateTableForm
           create={create}
           version={oracles.version}
+          reload={reload}
           onReload={() => {
-            // The typed values stay: the next create carries the version read now.
-            create.reset()
-            void latest.refetch()
+            // The typed values stay. The conflict is cleared only once the latest version is in:
+            // until then a retry would carry the stale one.
+            setReload('pending')
+            void latest.refetch().then((result) => {
+              if (result.isError) {
+                setReload('failed')
+              } else {
+                create.reset()
+                setReload('idle')
+              }
+            })
           }}
           onCreated={() => {
             setOpen(false)
@@ -307,11 +318,13 @@ function CreateTableDialog({
 function CreateTableForm({
   create,
   version,
+  reload,
   onReload,
   onCreated,
 }: {
   create: ReturnType<typeof useCreateOracleTable>
   version: number
+  reload: 'idle' | 'pending' | 'failed'
   onReload: () => void
   onCreated: () => void
 }) {
@@ -393,8 +406,13 @@ function CreateTableForm({
           {create.error.message}
         </p>
       )}
+      {reload === 'failed' && (
+        <p role="alert" className="text-sm text-destructive">
+          Couldn&apos;t reload the latest version. Try again.
+        </p>
+      )}
       {create.error instanceof StudioError && create.error.status === 409 ? (
-        <Button type="button" onClick={onReload}>
+        <Button type="button" disabled={reload === 'pending'} onClick={onReload}>
           Reload the latest version
         </Button>
       ) : (

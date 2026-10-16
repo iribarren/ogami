@@ -279,6 +279,18 @@ describe('the metadata form', () => {
 })
 
 describe('switching tabs', () => {
+  it('offers the tabs in order, the trackers and tags after the oracles', async () => {
+    renderDraft()
+
+    await metadataForm()
+
+    expect(
+      within(screen.getByRole('radiogroup', { name: 'GameSystem page' }))
+        .getAllByRole('radio')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Overview', 'Oracles', 'Trackers & tags', 'Validation', 'Releases', 'Sections'])
+  })
+
   it('keeps what was typed in the form', async () => {
     const user = userEvent.setup()
     renderDraft()

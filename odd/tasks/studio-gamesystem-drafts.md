@@ -1,7 +1,7 @@
 # Feature: studio-gamesystem-drafts
 
 - **Locator:** `odd/tasks/studio-gamesystem-drafts.md` · Engram topic `odd/studio-gamesystem-drafts/tasks`
-- **Issue:** #131 · **Branch:** `feat/studio-gamesystem-drafts-7-publish-ui` · **Status:** in progress
+- **Issue:** #131 · **Branch:** none (merged) · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-real-system` (PRs #123–#130)
@@ -69,7 +69,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `feat/studio-gamesystem-drafts-4-publish-api` | `feat(studio): studio-gamesystem-drafts 4/7 publish and history application` | T5, slice 3 review fixes | done: 1,354 |
 | 5 | `feat/studio-gamesystem-drafts-5-publish-http` | `feat(studio): studio-gamesystem-drafts 5/7 publish and history API` | T6, slice 4 review fixes | done: 1,748 = 756 API + 116 fixes + 878 generated |
 | 6 | `feat/studio-gamesystem-drafts-6-studio-shell` | `feat(studio): studio-gamesystem-drafts 6/7 studio shell and drafts UI` | T7, T8 | done: 1,834 (size exception accepted by the user) |
-| 7 | `feat/studio-gamesystem-drafts-7-publish-ui` | `feat(studio): studio-gamesystem-drafts 7/7 publish and history UI` | T9, T10, T11 | ~1,400 |
+| 7 | `feat/studio-gamesystem-drafts-7-publish-ui` | `feat(studio): studio-gamesystem-drafts 7/7 publish and history UI` | T9, T10, T11 | ~1,400 (done: 1,615 = 1,468 reviewed + 147 review fixes) |
 
 Replanned 2026-10-15: slice 1 came out at 2,436 lines (a new aggregate with persistence is ~1,200 lines alone), so T3 moved to slice 2 and later slices shifted by one. Watch the forecasts for slices 4–5.
 
@@ -87,9 +87,9 @@ Replanned 2026-10-16 (user): slice 4 came out at ~2,100 hand-written lines (T5 a
 | T6 | 5 | HTTP for publish, history, release view and restore; API tests; `make api` | delegated writer (slice 4, rebased in slice 5) | [x] | 8efd20b (slice 4 review fixes: 1dc606f; generated: 82f4ccd) |
 | T7 | 6 | Studio shell: `/studio` layout route, Studio home listing my GameSystems (cards, empty state), "New GameSystem" dialog (blank or copy of a published release: key, name, source key and version); hooks; Vitest; stories | delegated writer (slice 6) | [x] | c022268 (slice 5 review fixes: 7f974dc) |
 | T8 | 6 | GameSystem page: header and status, tabs Overview (metadata form with credits and theme; v1 hides them), Validation (error with path, warnings), section summary with counts; discard for a never-published draft; Vitest; stories | delegated writer (slice 6) | [x] | 9e13505 |
-| T9 | 7 | Publish dialog: validation result, warnings, next version, notes; refusals explained (invalid, no changes, race) | delegated writer (slice 7) | [x] | |
-| T10 | 7 | Releases tab: history list, read-only release view, restore into the draft with confirmation; Vitest; stories | delegated writer (slice 7) | [x] | |
-| T11 | 7 | e2e: a GAME_MANAGER copies a preset, edits metadata, publishes, and a SOLO_PLAYER can start a campaign on it; wrap-up: roadmap 14 done, feature doc closed | delegated writer (slice 7) | [x] | |
+| T9 | 7 | Publish dialog: validation result, warnings, next version, notes; refusals explained (invalid, no changes, race) | delegated writer (slice 7) | [x] | 8253c4d (slice 6 review fixes: 64bbb55) |
+| T10 | 7 | Releases tab: history list, read-only release view, restore into the draft with confirmation; Vitest; stories | delegated writer (slice 7) | [x] | c6301d1 |
+| T11 | 7 | e2e: a GAME_MANAGER copies a preset, edits metadata, publishes, and a SOLO_PLAYER can start a campaign on it; wrap-up: roadmap 14 done, feature doc closed | delegated writer (slice 7) | [x] | 33a1928 (slice 7 review fixes: 8c840c7) |
 
 ## Progress
 
@@ -123,7 +123,8 @@ Replanned 2026-10-16 (user): slice 4 came out at ~2,100 hand-written lines (T5 a
 | 4 | `review-2ab8b5c61c4d15c0` | 9afd525, d337bee | Approved and acknowledged. Finding: (warning) the domain's blank-notes rule (`trim`) and the database CHECK (Postgres whitespace regex) disagree on form feed, Unicode spaces such as NBSP, and NUL, so such notes pass the domain and fail at flush with a raw DBAL error: align the rules and pin the divergent inputs in the domain and Doctrine tests. Fixed in slice 5 | [#135](https://github.com/iribarren/ogami/pull/135) |
 | 5 | `review-22aca56d9550842b` | 8efd20b, 1dc606f, 82f4ccd | Approved and acknowledged. Suggestions: notes made only of zero-width format characters (U+200B, U+2060, U+FEFF) are accepted as non-blank; the documented publish 422 and the `PublishGameSystemRequest` notes description do not mention NUL; the `Location` header puts the raw `{key}` into the URL without encoding it. Fixed in slice 6 | [#136](https://github.com/iribarren/ogami/pull/136) |
 | 6 | `review-ab6e741f93e7c4fc` | 7f974dc, c022268, 9e13505 | Approved and acknowledged. Findings: (warning) a failed background refetch of the GameSystem (window focus or "Reload the latest version") switches the page to its error state and unmounts the metadata form, so unsaved edits are lost; only the initial-load failure is tested (`GameSystemPage.tsx:62-89`); suggestion: validation warnings use their text as the React key, so duplicate messages collide (`GameSystemPage.tsx:185-188`); suggestion: "Saved." stays visible after further edits (`MetadataForm.tsx:162-166`). Fixed in slice 7 | [#137](https://github.com/iribarren/ogami/pull/137) |
+| 7 | `review-4afae3504b4087a6` | 64bbb55, 8253c4d, c6301d1, 33a1928 | Approved and acknowledged. Suggestions: after a 409 version race the publish dialog keeps the stale next version and offers no reload (`PublishDialog.tsx:79-87`); the release date formatter depends on the host time zone, so its test fails east of UTC+12 (`ReleasesTab.tsx:22-25`); hiding "Saved." relies on bubbling change events, unproved for the theme and description fields (`MetadataForm.tsx:77-79`). Fixed in 8c840c7 on the same branch (user's choice, last slice), together with a tab switch that unmounted the metadata form (found by the writer); the user declined a review of that 147-line fix commit | [#138](https://github.com/iribarren/ogami/pull/138) |
 
 ## Next step
 
-Slice 7: slice 6 review fixes, T9 (publish dialog), T10 (Releases tab), T11 (e2e and wrap-up), review and PR 7/7 (`Closes #131`). Then a doc-only commit with the slice 7 review and PR link.
+None: the feature is done (issue #131 closed by #138). Follow-ups for later features: the publish 409 does not tell "no changes" from a version race (one `{error}` shape), and the release view API carries only name, schema version and section counts.

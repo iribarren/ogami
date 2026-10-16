@@ -313,3 +313,73 @@ export const narrativeV1 = {
   tags: [],
   factSlots: [],
 }
+
+/** What the step forms pick from: the draft's tables, trackers and tags. */
+export const stepPickers = {
+  tables: [
+    { key: 'places', name: 'Places' },
+    { key: 'moods', name: 'Moods' },
+  ],
+  trackers: [
+    { key: 'heat', name: 'Heat' },
+    { key: 'alarm', name: 'Alarm' },
+  ],
+  tags: [{ key: 'gang', name: 'Gang' }],
+}
+
+const intro = {
+  key: 'intro',
+  kind: 'prompt',
+  title: 'Set the scene',
+  prompt: 'What is the place like?',
+  mandatory: true,
+  inspiration: ['places'],
+}
+const who = { key: 'who', kind: 'character', title: 'Who is in on it?', next: 'end' }
+const heatRoll = {
+  key: 'heat-roll',
+  kind: 'roll',
+  title: 'How hot is it?',
+  dice: '1d6',
+  bands: [
+    { upTo: 2, effects: [{ kind: 'tracker', tracker: 'heat', op: 'add', value: 1 }] },
+    { upTo: { tracker: 'alarm' }, next: 'end' },
+    {},
+  ],
+}
+const crowd = {
+  key: 'crowd',
+  kind: 'condition',
+  title: 'Is the gang here?',
+  count: { of: 'npc', tags: ['gang'] },
+  bands: [{ upTo: 0 }, { next: 'end' }],
+}
+
+/** Stored steps of every kind the step editor edits. */
+export const stepList = [intro, heatRoll, crowd, who]
+
+/** A step list with a kind the editor does not edit yet and a step it cannot read. */
+export const stepListWithOtherKinds = [
+  intro,
+  {
+    key: 'ask',
+    kind: 'oracle',
+    title: 'Does it go wrong?',
+    oracle: 'likelihood',
+    likelihood: 'likely',
+  },
+  { key: 'odd', kind: 'prompt', title: 'Odd', inspiration: 'places' },
+]
+
+/** `next` pointing at the same and at an earlier step. */
+export const stepListBackward = [
+  { key: 'first', kind: 'character', title: 'First' },
+  { key: 'second', kind: 'character', title: 'Second', next: 'first' },
+  {
+    key: 'third',
+    kind: 'roll',
+    title: 'Third',
+    dice: '1d6',
+    bands: [{ upTo: 3, next: 'third' }, {}],
+  },
+]

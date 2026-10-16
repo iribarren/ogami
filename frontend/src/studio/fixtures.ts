@@ -244,3 +244,72 @@ export const fateAnswer = {
     ],
   },
 }
+
+const noCatalog = { tables: [], likelihood: [], checks: [], fields: [] }
+
+/**
+ * The narrative of `draft` (version 5): a counter with levels that a flow uses, a clock, a
+ * tracker of a kind the editor does not know, two tags and two fact slots.
+ */
+export const narrative = {
+  version: 5,
+  schemaVersion: 2,
+  trackers: [
+    {
+      key: 'heat',
+      definition: {
+        key: 'heat',
+        name: 'Heat',
+        hint: 'How closely the law is looking',
+        kind: 'counter',
+        min: 0,
+        max: 10,
+        initial: 2,
+        levels: [{ upTo: 3, label: 'Quiet' }, { label: 'Burning' }],
+      },
+      usedBy: ['flows[0].trackers'],
+    },
+    {
+      key: 'alarm',
+      definition: { key: 'alarm', name: 'Alarm', kind: 'clock', segments: 6 },
+      usedBy: [],
+    },
+    {
+      key: 'mood',
+      definition: { key: 'mood', name: 'Mood', kind: 'gauge' },
+      usedBy: [],
+    },
+  ],
+  tags: [
+    {
+      key: 'gang',
+      definition: { key: 'gang', label: 'Gang', hint: 'Who runs with whom' },
+      usedBy: ['sceneTypes[0].play[1]'],
+    },
+    { key: 'informer', definition: { key: 'informer', label: 'Informer' }, usedBy: [] },
+  ],
+  factSlots: [
+    {
+      key: 'target',
+      definition: { key: 'target', label: 'Target', type: 'npc' },
+      usedBy: [],
+    },
+    {
+      key: 'client',
+      definition: { key: 'client', label: 'Client', type: 'text', hint: 'Who pays' },
+      usedBy: ['flows[0].phases[0].sceneOpening[0]'],
+    },
+  ],
+  sceneTypes: [],
+  flows: [],
+  catalog: noCatalog,
+}
+
+/** A schema version 1 draft's narrative: no sections. */
+export const narrativeV1 = {
+  ...narrative,
+  schemaVersion: 1,
+  trackers: [],
+  tags: [],
+  factSlots: [],
+}

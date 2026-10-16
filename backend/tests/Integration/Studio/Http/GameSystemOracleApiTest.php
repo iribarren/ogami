@@ -218,7 +218,25 @@ final class GameSystemOracleApiTest extends WebTestCase
         $this->client->request('POST', self::BASE.'/mine/oracle-tables/escape-routes/test-rolls');
 
         self::assertResponseStatusCodeSame(422);
-        self::assertNotSame('', $this->error());
+        self::assertSame('Entry 1 of oracle table "escape-routes" nests "nowhere", but there is no oracle table "nowhere" in the table set.', $this->error());
+    }
+
+    #[Test]
+    public function aTestRollThatMatchesNoEntryIsUnprocessable(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        // 1d2 totals 1 or 2, which the only entry (3 to 3) never covers: the roll is deterministic enough to assert.
+        $table = ['key' => 'gap', 'name' => 'Gap', 'dice' => '1d2', 'entries' => [['min' => 3, 'max' => 3, 'text' => 'Never']]];
+        $this->client->jsonRequest('POST', self::BASE.'/mine/oracle-tables', ['expectedVersion' => 1, 'table' => $table]);
+        self::assertResponseStatusCodeSame(201);
+        $before = $this->oracles();
+
+        $this->client->request('POST', self::BASE.'/mine/oracle-tables/gap/test-rolls');
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertMatchesRegularExpression('/^Rolled [12] on table "gap", but no entry covers it\.$/', $this->error());
+        self::assertSame($before, $this->oracles());
     }
 
     /**

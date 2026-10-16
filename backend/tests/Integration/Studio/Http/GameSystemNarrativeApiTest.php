@@ -155,7 +155,7 @@ final class GameSystemNarrativeApiTest extends WebTestCase
 
         self::assertSame(['default' => 13, 'min' => null, 'max' => 29], self::at($this->narrative('rules'), 'catalog.checks.0.difficulty'));
         self::assertSame(['default' => 13, 'min' => null, 'max' => null], self::at($this->narrative('open'), 'catalog.checks.0.difficulty'));
-        self::assertStringContainsString('"min":null,"max":null', (string) $this->client->getResponse()->getContent());
+        self::assertStringContainsString('"difficulty":{"default":13,"min":null,"max":null}', (string) $this->client->getResponse()->getContent());
     }
 
     #[Test]

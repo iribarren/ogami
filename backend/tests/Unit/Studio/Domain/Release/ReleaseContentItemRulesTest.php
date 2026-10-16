@@ -115,6 +115,26 @@ final class ReleaseContentItemRulesTest extends TestCase
         ReleaseContent::checkItemRules(self::example());
     }
 
+    #[Test]
+    public function aValidSchemaVersion1DocumentPassesTheItemRules(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        ReleaseContent::checkItemRules(ReleaseArrays::fixture('valid/contract-doc-example'));
+    }
+
+    #[Test]
+    public function anInvalidSchemaVersion1DocumentFailsWithTheMessageOfFromArray(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture('valid/contract-doc-example'), 'oracles.tables.0.key', 'Not A Key');
+
+        $itemRules = $this->rejection(static fn () => ReleaseContent::checkItemRules($release));
+        $publish = $this->rejection(static fn (): ReleaseContent => ReleaseContent::fromArray($release));
+
+        self::assertStringStartsWith('oracles.tables: ', $itemRules);
+        self::assertSame($publish, $itemRules);
+    }
+
     private function rejection(\Closure $validation): string
     {
         try {

@@ -9,6 +9,7 @@ use App\Studio\Domain\GameSystem\GameSystemId;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\GameSystemMetadata;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
+use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Infrastructure\Persistence\Doctrine\DoctrineGameSystemRepository;
 use App\Tests\Support\Studio\ReleaseArrays;
@@ -145,6 +146,29 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
 
         self::assertEquals($loaded, $this->gameSystems->ofKey('edited'));
         self::assertSame('Renamed', $this->gameSystems->ofKey('edited')?->name());
+    }
+
+    #[Test]
+    public function aNarrativeItemSaveRoundTripsTheWholeDocument(): void
+    {
+        $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-every-part'))->toArray();
+        $this->gameSystems->add(GameSystem::createFromRelease(GameSystemId::fromString(self::FIRST_ID), 'narrated', 'Narrated', null, self::OWNER, $source, new \DateTimeImmutable('2026-10-15T10:00:00')));
+        $this->entityManager->clear();
+        $loaded = $this->gameSystems->ofKey('narrated');
+        self::assertNotNull($loaded);
+        $now = new \DateTimeImmutable('2026-10-16T10:00:00');
+
+        $loaded->saveNarrativeItem(NarrativeSection::Tags, null, ['key' => 'gang', 'label' => 'Gang'], $now);
+        $loaded->saveNarrativeItem(NarrativeSection::Trackers, 'edge', ['key' => 'edge', 'name' => 'Advantage', 'kind' => 'counter', 'min' => 0, 'max' => 3, 'initial' => 0], $now);
+        $loaded->deleteNarrativeItem(NarrativeSection::FactSlots, 'target', $now);
+        $this->gameSystems->save($loaded);
+        $this->entityManager->clear();
+
+        $reloaded = $this->gameSystems->ofKey('narrated');
+        self::assertNotNull($reloaded);
+        self::assertEquals($loaded, $reloaded);
+        self::assertSame([['key' => 'gang', 'label' => 'Gang']], $reloaded->document()['tags']);
+        ReleaseContent::checkItemRules($reloaded->document());
     }
 
     #[Test]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Studio\Domain\GameSystem;
 
 use App\Studio\Domain\GameSystem\DraftReferences;
+use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -253,6 +254,45 @@ final class DraftReferencesTest extends TestCase
             'tag' => DraftReferences::tagPathsTo($document, $key),
             'factSlot' => DraftReferences::factSlotPathsTo($document, $key),
         };
+    }
+
+    #[Test]
+    public function theNarrativePathsOfAnItemLeaveOutThePlacesInsideTheItem(): void
+    {
+        $document = ['sceneTypes' => [
+            ['key' => 'loop', 'setup' => [], 'play' => [['key' => 'a', 'kind' => 'prompt', 'title' => 'A', 'effects' => [['kind' => 'nextScene', 'sceneType' => 'loop']]]], 'closing' => []],
+            ['key' => 'other', 'setup' => [], 'play' => [['key' => 'b', 'kind' => 'prompt', 'title' => 'B', 'effects' => [['kind' => 'switchSceneType', 'sceneType' => 'loop']]]], 'closing' => []],
+        ], 'flows' => [['key' => 'loop', 'trackers' => ['loop']]]];
+
+        self::assertSame(['sceneTypes[0].play[0].effects[0]', 'sceneTypes[1].play[0].effects[0]'], DraftReferences::sceneTypePathsTo($document, 'loop'));
+        self::assertSame(['sceneTypes[1].play[0].effects[0]'], DraftReferences::narrativePathsTo($document, NarrativeSection::SceneTypes, 'loop'));
+        self::assertSame(['flows[0].trackers'], DraftReferences::narrativePathsTo($document, NarrativeSection::Trackers, 'loop'));
+        self::assertSame([], DraftReferences::narrativePathsTo($document, NarrativeSection::Flows, 'loop'));
+        self::assertSame([], DraftReferences::narrativePathsTo([], NarrativeSection::Tags, 'loop'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unparsableFormulas(): iterable
+    {
+        yield 'oversized' => ['{tracker:heat} + '.str_repeat('1 + ', 100).'1'];
+        yield 'deeply nested' => [str_repeat('(', 60).'{tracker:heat}'.str_repeat(')', 60)];
+        yield 'unbalanced' => ['({tracker:heat} + '];
+    }
+
+    /**
+     * A formula the parser refuses (InvalidFormula) reads no tracker: the scan neither throws nor
+     * lists the place, and the publisher's validation reports the formula itself.
+     */
+    #[Test]
+    #[DataProvider('unparsableFormulas')]
+    public function aFormulaTheParserRefusesReadsNothingAndNeverThrows(string $formula): void
+    {
+        $document = self::effect(['kind' => 'tracker', 'tracker' => 'edge', 'op' => 'set', 'value' => ['formula' => $formula]]);
+
+        self::assertSame(['sceneTypes[0].play[0].effects[0]'], DraftReferences::trackerPathsTo($document, 'edge'));
+        self::assertSame([], DraftReferences::trackerPathsTo($document, 'heat'));
     }
 
     /**

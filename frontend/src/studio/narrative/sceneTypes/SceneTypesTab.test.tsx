@@ -60,6 +60,8 @@ describe('the Scene Types tab', () => {
     const odd = await row('Odd')
     expect(odd).toHaveTextContent("Can't be edited here")
     expect(within(odd).queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Odd' })).not.toBeInTheDocument()
+    expect(within(odd).getByText('odd')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete odd' })).toBeEnabled()
   })
 

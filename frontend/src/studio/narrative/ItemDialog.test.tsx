@@ -52,4 +52,37 @@ describe('the item dialog', () => {
       expect(versions).toEqual([5, 5])
     })
   })
+
+  it('tells onSaved the item it sent, once the API accepted it, and closes', async () => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+    renderWithApi(
+      <ItemDialog
+        gameSystemKey="my-draft"
+        form={tagForm}
+        version={5}
+        original={null}
+        initial={tagForm.blank()}
+        trigger={<Button>New tag</Button>}
+        onSaved={onSaved}
+      />,
+      {
+        [`GET ${base}`]: () => Response.json(narrative),
+        [`POST ${base}/tags`]: () => Response.json(narrative, { status: 201 }),
+      },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'New tag' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await user.type(dialog.getByLabelText('Key'), 'rival')
+    await user.type(dialog.getByLabelText('Label'), 'Rival')
+    expect(onSaved).not.toHaveBeenCalled()
+    await user.click(dialog.getByRole('button', { name: 'Create tag' }))
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledTimes(1)
+    })
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ key: 'rival', label: 'Rival' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })

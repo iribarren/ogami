@@ -27,12 +27,16 @@ export const noAnswer: SceneTypeAnswer = {
  */
 export function sceneTypeAnswer(text: string, index: number): SceneTypeAnswer {
   const base = `sceneTypes[${String(index)}]`
-  const part = scenePartNames.find((name) => text.startsWith(`${base}.${name}`))
+  // A list is its path exactly, or a position in it: `play` is not `playX`.
+  const part = scenePartNames.find(
+    (name) => text.startsWith(`${base}.${name}[`) || text.startsWith(`${base}.${name}: `),
+  )
   if (part !== undefined) {
-    return {
-      ...noAnswer,
-      lists: { ...noAnswer.lists, [part]: [mapStepError(`${base}.${part}`, text)] },
-    }
+    // A message on the list itself has no step to sit on: it heads the list, path and all.
+    const error: StepError = text.startsWith(`${base}.${part}: `)
+      ? { index: null, band: null, effect: null, field: null, message: text }
+      : mapStepError(`${base}.${part}`, text)
+    return { ...noAnswer, lists: { ...noAnswer.lists, [part]: [error] } }
   }
   const field = text.startsWith(`${base}.`)
     ? /^(key|name|purpose|tips|oracles)(?:\[\d+\])?: (.*)$/s.exec(text.slice(base.length + 1))

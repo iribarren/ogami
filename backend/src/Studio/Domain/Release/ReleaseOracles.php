@@ -61,6 +61,8 @@ final class ReleaseOracles
             }
         }
 
+        self::entryKeys($tables);
+
         $oracleKeys = array_fill_keys($tableKeys, true);
         $likelihood = ReleaseFields::list($oracles['likelihood'], 'oracles.likelihood');
         if (\count($likelihood) > self::MAX_LIKELIHOOD_ORACLES) {
@@ -106,6 +108,33 @@ final class ReleaseOracles
         }
 
         return ['tables' => $tables, 'likelihood' => $likelihood];
+    }
+
+    /**
+     * An entry "key" (a field of schema version 2) is a key and unique within its table.
+     *
+     * @param list<array<string, mixed>> $tables
+     */
+    private static function entryKeys(array $tables): void
+    {
+        foreach ($tables as $tableIndex => $table) {
+            $seen = [];
+            /** @var list<array<string, mixed>> $entries */
+            $entries = $table['entries'];
+            foreach ($entries as $entryIndex => $entry) {
+                if (!isset($entry['key'])) {
+                    continue;
+                }
+
+                $path = \sprintf('oracles.tables[%d].entries[%d].key', $tableIndex, $entryIndex);
+                $key = ReleaseFields::key($entry['key'], $path);
+                if (isset($seen[$key])) {
+                    throw InvalidReleaseContent::at($path, \sprintf('duplicate entry key "%s"', $key));
+                }
+
+                $seen[$key] = true;
+            }
+        }
     }
 
     /**

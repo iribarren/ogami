@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Domain\GameSystem;
 
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use App\Studio\Domain\Release\OraclesSection;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseFields;
 
@@ -123,6 +124,60 @@ final class GameSystem
     }
 
     /**
+     * Creates an oracle table (no original key; it is appended) or replaces one by its original key
+     * (it keeps its position; a different key renames it). Entry sceneType and effects are taken as
+     * given. The "oracles" section must stay valid for the draft's schema version, checked by the
+     * publisher's own section validator, and nothing changes when a command is refused.
+     *
+     * @param array<array-key, mixed> $table
+     *
+     * @throws OracleNotFound        when the original key names no table
+     * @throws OracleKeyTaken        when the new key belongs to another table or likelihood oracle
+     * @throws OracleInUse           when a renamed table, or an entry key removed or renamed, is referenced
+     * @throws InvalidReleaseContent when the section would be invalid, or is not well-formed
+     */
+    public function saveOracleTable(?string $originalKey, array $table, \DateTimeImmutable $now): void
+    {
+        $this->saveOracle('tables', $originalKey, $table, $now);
+    }
+
+    /**
+     * @throws OracleNotFound        when no table has this key
+     * @throws OracleInUse           when the draft references the table
+     * @throws InvalidReleaseContent when the stored section is not well-formed
+     */
+    public function deleteOracleTable(string $key, \DateTimeImmutable $now): void
+    {
+        $this->deleteOracle('tables', $key, $now);
+    }
+
+    /**
+     * Creates or replaces a likelihood oracle as saveOracleTable() does a table. Chaos "tracker" and
+     * "randomEvent" are schema version 2 fields; a version 1 draft refuses them.
+     *
+     * @param array<array-key, mixed> $oracle
+     *
+     * @throws OracleNotFound        when the original key names no likelihood oracle
+     * @throws OracleKeyTaken        when the new key belongs to another table or likelihood oracle
+     * @throws OracleInUse           when a renamed likelihood oracle is referenced
+     * @throws InvalidReleaseContent when the section would be invalid, or is not well-formed
+     */
+    public function saveLikelihoodOracle(?string $originalKey, array $oracle, \DateTimeImmutable $now): void
+    {
+        $this->saveOracle('likelihood', $originalKey, $oracle, $now);
+    }
+
+    /**
+     * @throws OracleNotFound        when no likelihood oracle has this key
+     * @throws OracleInUse           when the draft references the likelihood oracle
+     * @throws InvalidReleaseContent when the stored section is not well-formed
+     */
+    public function deleteLikelihoodOracle(string $key, \DateTimeImmutable $now): void
+    {
+        $this->deleteOracle('likelihood', $key, $now);
+    }
+
+    /**
      * Replaces the draft with a release document as published; only the key stays this GameSystem's.
      *
      * @param array<mixed> $releaseDocument e.g. ReleaseContent::toArray() of a release of this GameSystem
@@ -195,6 +250,153 @@ final class GameSystem
     public function updatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    /**
+     * @param 'tables'|'likelihood'   $section
+     * @param array<array-key, mixed> $item
+     */
+    private function saveOracle(string $section, ?string $originalKey, array $item, \DateTimeImmutable $now): void
+    {
+        $oracles = $this->oraclesSection();
+        /** @var list<mixed> $items */
+        $items = $oracles[$section];
+        $position = \count($items);
+        if (null !== $originalKey) {
+            $position = $this->oracleIndex($items, $originalKey) ?? throw OracleNotFound::withKey($originalKey);
+        }
+
+        $key = $item['key'] ?? null;
+        if (\is_string($key) && $key !== $originalKey && (null !== $this->oracleIndex($oracles['tables'], $key) || null !== $this->oracleIndex($oracles['likelihood'], $key))) {
+            throw OracleKeyTaken::withKey($key);
+        }
+
+        if (null !== $originalKey) {
+            if ($key !== $originalKey) {
+                $this->refuseWhenReferenced($section, $originalKey);
+            }
+
+            if ('tables' === $section) {
+                $this->refuseWhenEntryKeysAreReferenced($originalKey, $items[$position], $item);
+            }
+        }
+
+        $oracles[$section][$position] = $item;
+        $validated = OraclesSection::validate($oracles, $this->schemaVersion());
+        $oracles[$section][$position] = $validated[$section][$position];
+        $this->replaceOracles($oracles, $now);
+    }
+
+    /**
+     * @param 'tables'|'likelihood' $section
+     */
+    private function deleteOracle(string $section, string $key, \DateTimeImmutable $now): void
+    {
+        $oracles = $this->oraclesSection();
+        $position = $this->oracleIndex($oracles[$section], $key) ?? throw OracleNotFound::withKey($key);
+        $this->refuseWhenReferenced($section, $key);
+
+        unset($oracles[$section][$position]);
+        $oracles[$section] = array_values($oracles[$section]);
+        OraclesSection::validate($oracles, $this->schemaVersion());
+        $this->replaceOracles($oracles, $now);
+    }
+
+    /**
+     * @param 'tables'|'likelihood' $section
+     *
+     * @throws OracleInUse when the draft names this oracle (a table's own entries do not count)
+     */
+    private function refuseWhenReferenced(string $section, string $key): void
+    {
+        $paths = OracleReferences::pathsTo($this->document, $key, 'tables' === $section ? $key : null);
+        if ([] !== $paths) {
+            throw OracleInUse::at(\sprintf('The oracle "%s"', $key), $paths);
+        }
+    }
+
+    /**
+     * @param mixed                   $stored the table as stored
+     * @param array<array-key, mixed> $saved  the table as given
+     *
+     * @throws OracleInUse when a table step branch names an entry key the saved table no longer has
+     */
+    private function refuseWhenEntryKeysAreReferenced(string $table, mixed $stored, array $saved): void
+    {
+        $kept = $this->entryKeys($saved);
+        foreach ($this->entryKeys(\is_array($stored) ? $stored : []) as $entryKey) {
+            $paths = \in_array($entryKey, $kept, true) ? [] : OracleReferences::entryPathsTo($this->document, $table, $entryKey);
+            if ([] !== $paths) {
+                throw OracleInUse::at(\sprintf('The entry "%s" of table "%s"', $entryKey, $table), $paths);
+            }
+        }
+    }
+
+    /**
+     * @param array<array-key, mixed> $table
+     *
+     * @return list<string> the keys of its entries, skipping what is not a string key
+     */
+    private function entryKeys(array $table): array
+    {
+        $entries = \is_array($table['entries'] ?? null) ? $table['entries'] : [];
+        $keys = [];
+        foreach ($entries as $entry) {
+            if (\is_array($entry) && \is_string($entry['key'] ?? null)) {
+                $keys[] = $entry['key'];
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * @param list<mixed> $items
+     */
+    private function oracleIndex(array $items, string $key): ?int
+    {
+        foreach ($items as $index => $item) {
+            if (\is_array($item) && ($item['key'] ?? null) === $key) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The stored "oracles" section, which must at least be an object of two lists.
+     *
+     * @return array{tables: list<mixed>, likelihood: list<mixed>}
+     *
+     * @throws InvalidReleaseContent
+     */
+    private function oraclesSection(): array
+    {
+        $oracles = $this->document['oracles'] ?? null;
+        if (!\is_array($oracles) || array_is_list($oracles) && [] !== $oracles) {
+            throw InvalidReleaseContent::at('oracles', 'must be an object');
+        }
+
+        /** @var array{tables: list<mixed>, likelihood: list<mixed>} $section */
+        $section = [
+            ...$oracles,
+            'tables' => ReleaseFields::list($oracles['tables'] ?? null, 'oracles.tables'),
+            'likelihood' => ReleaseFields::list($oracles['likelihood'] ?? null, 'oracles.likelihood'),
+        ];
+
+        return $section;
+    }
+
+    /**
+     * @param array<array-key, mixed> $oracles
+     */
+    private function replaceOracles(array $oracles, \DateTimeImmutable $now): void
+    {
+        $document = $this->document;
+        $document['oracles'] = $oracles;
+        $this->document = $document;
+        $this->updatedAt = $now;
     }
 
     /**

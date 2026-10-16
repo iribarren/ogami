@@ -78,7 +78,7 @@ final readonly class ReleaseContent
         $gameSystem = self::gameSystem($release['gameSystem'], $version);
         if (1 === $version) {
             $parts = [
-                'oracles' => ReleaseOracles::validate($release['oracles']),
+                'oracles' => OraclesSection::validate($release['oracles'], 1),
                 'flow' => self::flow($release['flow']),
                 'sheet' => self::reservedSheet($release['sheet']),
             ];

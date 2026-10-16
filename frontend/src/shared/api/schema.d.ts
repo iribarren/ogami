@@ -926,6 +926,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/likelihood-oracles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a likelihood oracle to one of my GameSystem drafts */
+        post: operations["createLikelihoodOracle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/likelihood-oracles/{oracle}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a likelihood oracle of one of my GameSystem drafts, renaming it when the body has another key */
+        put: operations["replaceLikelihoodOracle"];
+        post?: never;
+        /** Delete a likelihood oracle of one of my GameSystem drafts that nothing uses */
+        delete: operations["deleteLikelihoodOracle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/likelihood-oracles/{oracle}/test-answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask a likelihood oracle of one of my GameSystem drafts as last saved, rolling its random event table on a random event; never changes the draft */
+        post: operations["testAskLikelihoodOracle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems/{key}/releases": {
         parameters: {
             query?: never;
@@ -3065,6 +3117,31 @@ export interface components {
              *     ]
              */
             paths: string[];
+        };
+        SaveLikelihoodOracleRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            oracle: components["schemas"]["GameSystemLikelihoodOracle"];
+        };
+        TestAnswerRequest: {
+            /**
+             * @description The key of the likelihood level to ask with.
+             * @example likely
+             */
+            likelihood: string;
+            /**
+             * @description Within the oracle's chaos range; the neutral one when absent or null. Only allowed when the oracle has chaos.
+             * @example 5
+             */
+            chaosFactor?: number | null;
+        };
+        LikelihoodTestAnswerResponse: {
+            answer: components["schemas"]["LikelihoodAnswerResponse"];
+            /** @description The roll on the random event table (nested tables followed); null when the roll signalled no random event. */
+            randomEvent: components["schemas"]["OracleTableResultResponse"] | null;
         };
         GameSystemReleaseSummaryResponse: {
             /** @example 3 */
@@ -7264,6 +7341,346 @@ export interface operations {
                 };
             };
             /** @description The saved tables are not valid for Randomness (a nested table is missing, a range is uncovered…) or the roll matches no entry. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLikelihoodOracle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveLikelihoodOracleRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's oracles with the likelihood oracle appended and the new version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "oracle" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key is already used by another table or likelihood oracle. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The oracle breaks the release contract's rules (the message starts with the path), or has schema version 2 fields on a version 1 draft; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replaceLikelihoodOracle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                oracle: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveLikelihoodOracleRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's oracles with the likelihood oracle replaced in place and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "oracle" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no likelihood oracle with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key is already used by another table or likelihood oracle. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The oracle breaks the release contract's rules (the message starts with the path), has schema version 2 fields on a version 1 draft, or a rename is used by the draft (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    deleteLikelihoodOracle: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+                oracle: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's oracles without the likelihood oracle and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no likelihood oracle with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The draft uses the oracle (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    testAskLikelihoodOracle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                oracle: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description The answer, the roll and the effective target, and the random event roll when there was one. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LikelihoodTestAnswerResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "likelihood", or a non-integer "chaosFactor". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no likelihood oracle with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The saved oracle is not valid for Randomness, it has no such likelihood level, the chaos factor is out of range or given without chaos, or the random event tables are invalid or the roll matches no entry. */
             422: {
                 headers: {
                     [name: string]: unknown;

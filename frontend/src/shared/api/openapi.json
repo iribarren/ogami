@@ -5188,6 +5188,459 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/likelihood-oracles": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Add a likelihood oracle to one of my GameSystem drafts",
+                "operationId": "createLikelihoodOracle",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveLikelihoodOracleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The draft's oracles with the likelihood oracle appended and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"oracle\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key is already used by another table or likelihood oracle.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The oracle breaks the release contract's rules (the message starts with the path), or has schema version 2 fields on a version 1 draft; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/likelihood-oracles/{oracle}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace a likelihood oracle of one of my GameSystem drafts, renaming it when the body has another key",
+                "operationId": "replaceLikelihoodOracle",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "oracle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveLikelihoodOracleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's oracles with the likelihood oracle replaced in place and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"oracle\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no likelihood oracle with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key is already used by another table or likelihood oracle.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The oracle breaks the release contract's rules (the message starts with the path), has schema version 2 fields on a version 1 draft, or a rename is used by the draft (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete a likelihood oracle of one of my GameSystem drafts that nothing uses",
+                "operationId": "deleteLikelihoodOracle",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "oracle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's oracles without the likelihood oracle and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemOraclesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no likelihood oracle with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The draft uses the oracle (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OracleInUseResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/likelihood-oracles/{oracle}/test-answers": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Ask a likelihood oracle of one of my GameSystem drafts as last saved, rolling its random event table on a random event; never changes the draft",
+                "operationId": "testAskLikelihoodOracle",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "oracle",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TestAnswerRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The answer, the roll and the effective target, and the random event roll when there was one.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LikelihoodTestAnswerResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"likelihood\", or a non-integer \"chaosFactor\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no likelihood oracle with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The saved oracle is not valid for Randomness, it has no such likelihood level, the chaos factor is out of range or given without chaos, or the random event tables are invalid or the roll matches no entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/releases": {
             "get": {
                 "tags": [
@@ -9710,6 +10163,63 @@
                         "example": [
                             "sceneTypes[1].play[1]"
                         ]
+                    }
+                },
+                "type": "object"
+            },
+            "SaveLikelihoodOracleRequest": {
+                "required": [
+                    "expectedVersion",
+                    "oracle"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "oracle": {
+                        "$ref": "#/components/schemas/GameSystemLikelihoodOracle"
+                    }
+                },
+                "type": "object"
+            },
+            "TestAnswerRequest": {
+                "required": [
+                    "likelihood"
+                ],
+                "properties": {
+                    "likelihood": {
+                        "description": "The key of the likelihood level to ask with.",
+                        "type": "string",
+                        "example": "likely"
+                    },
+                    "chaosFactor": {
+                        "description": "Within the oracle's chaos range; the neutral one when absent or null. Only allowed when the oracle has chaos.",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "LikelihoodTestAnswerResponse": {
+                "required": [
+                    "answer",
+                    "randomEvent"
+                ],
+                "properties": {
+                    "answer": {
+                        "$ref": "#/components/schemas/LikelihoodAnswerResponse"
+                    },
+                    "randomEvent": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/OracleTableResultResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The roll on the random event table (nested tables followed); null when the roll signalled no random event."
                     }
                 },
                 "type": "object"

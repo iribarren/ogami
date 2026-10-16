@@ -147,6 +147,18 @@ final class GameSystemNarrativeApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aCheckDifficultyWithoutBoundsIsServedWithNullBounds(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('rules', 'valid/v2-checks', ['checks.0.difficulty.min']);
+        $this->draft('open', 'valid/v2-checks', ['checks.0.difficulty.min', 'checks.0.difficulty.max']);
+
+        self::assertSame(['default' => 13, 'min' => null, 'max' => 29], self::at($this->narrative('rules'), 'catalog.checks.0.difficulty'));
+        self::assertSame(['default' => 13, 'min' => null, 'max' => null], self::at($this->narrative('open'), 'catalog.checks.0.difficulty'));
+        self::assertStringContainsString('"min":null,"max":null', (string) $this->client->getResponse()->getContent());
+    }
+
+    #[Test]
     public function aVersion1DraftReadsAsEmptySections(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
@@ -490,11 +502,16 @@ final class GameSystemNarrativeApiTest extends WebTestCase
     }
 
     /**
-     * Publishes the fixture and copies it as the signed-in user's draft $key.
+     * Publishes the fixture (minus the dotted paths in $without) and copies it as the signed-in user's draft $key.
+     *
+     * @param list<string> $without
      */
-    private function draft(string $key, string $fixture = 'valid/v2-every-part'): void
+    private function draft(string $key, string $fixture = 'valid/v2-every-part', array $without = []): void
     {
         $release = ReleaseArrays::fixture($fixture);
+        foreach ($without as $path) {
+            $release = ReleaseArrays::without($release, $path);
+        }
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease(\sprintf('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9%03d', ++$this->releases), $release, false));
         $this->client->jsonRequest('POST', self::BASE, ['key' => $key, 'name' => $key, 'source' => ['key' => self::at($release, 'gameSystem.key')]]);
         self::assertResponseStatusCodeSame(201);

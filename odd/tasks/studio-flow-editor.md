@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-3-api` · **Status:** in progress (slice 3)
+- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-4-trackers-tab` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -97,7 +97,7 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | T2 | 1 | Domain: split `ReleaseVersion2::validate` into item rules and coherence (publish unchanged, regression tests); `DraftReferences` for oracle, entry, tracker, tag, fact slot and Scene Type keys (defensive, readable paths; `OracleReferences` folded in or delegating); unit tests for every reference kind | delegated writer (slice 1) | [x] | a42f2a6, f5a2791 |
 | T3 | 2 | Domain: `GameSystem` narrative commands (save/delete tracker, tag, fact slot, Scene Type, flow; rename; position kept; default flow flag; schema 1 refused; item rules after every command; rename/delete refused while referenced); oracle commands validate entry `sceneType`/`effects` and `chaos.tracker` by the item rules; errors; unit tests | delegated writer (slice 2) | [x] | 52dbbcc |
 | T4 | 2 | Application: `SaveNarrativeItem`/`DeleteNarrativeItem` handlers with `expectedVersion` (409), `GetGameSystemNarrative` read model (`usedBy`, `catalog`); unit tests; Behat | delegated writer (slice 2) | [x] | 2bcb4c9 |
-| T5 | 3 | HTTP: `GameSystemNarrativeController` (`GET /narrative`, `POST /narrative/{section}`, `PUT`/`DELETE /narrative/{section}/{item}`); every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft, a stale `expectedVersion`, an unknown section, an in-use delete and a schema 1 draft; `make api` (generated files in their own commit) | delegated writer (slice 3) | [x] | |
+| T5 | 3 | HTTP: `GameSystemNarrativeController` (`GET /narrative`, `POST /narrative/{section}`, `PUT`/`DELETE /narrative/{section}/{item}`); every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft, a stale `expectedVersion`, an unknown section, an in-use delete and a schema 1 draft; `make api` (generated files in their own commit) | delegated writer (slice 3) | [x] | 0b9a57a, 4c3fded |
 | T6 | 4 | Trackers & tags tab: hooks, typed drafts, trackers (counter with hint and levels, clock), tags, fact slots: list with "Used by", create/edit dialogs, delete disabled with the reason; 409 reload; Vitest; stories | | [ ] | |
 | T7 | 5 | Step list editor: step cards (common fields, mandatory/suggested, `next` picker, add/delete/move, backward-`next` flag), effects editor (10 kinds) and value inputs (integer, `{tracker}`, `{formula}`, `{dice}`), kinds `prompt`, `character`, `roll` and `condition` with bands; unknown fields round-trip; 422 path mapping; Vitest; stories | | [ ] | |
 | T8 | 6 | Step kinds `oracle` (branches), `table` (entry branches, otherwise), `choice` (options, skip), `pick` (branches), `check` (difficulty, outcomes); Vitest; stories | | [ ] | |
@@ -116,6 +116,7 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 - 2026-10-16: T4 done: `SaveNarrativeItem`/`DeleteNarrativeItem` and handlers (`expectedVersion` 409 through `OwnedGameSystems::getAtVersion`), `GetGameSystemNarrative` read model: each item with `usedBy` from `DraftReferences::narrativePathsTo`, schema 1 reads as empty lists, `catalog` of tables with entry keys, likelihood oracles with level keys, checks (`label`, band keys, difficulty `default`/`min`/`max` or null) and number/track sheet fields; malformed content is skipped. RED: handler, command and view classes missing for the new test class. Behat `gamesystem_narrative.feature` (8 scenarios). The user accepted the slice at 1,754 changed lines (over the 1,700 cap).
 - 2026-10-16: Slice 2 review fixes: R3-001 (a legacy schema 2 draft breaking the item rules elsewhere, a Scene Type step naming an unknown oracle or a tracker with min above max, refuses oracle table and likelihood saves with that path and stays unchanged) and R3-002 (distinct `GameSystemId` per draft in `GameSystemNarrativeHandlersTest`). Tests only: the behaviour already held, so no RED.
 - 2026-10-16: T5 done: `GameSystemNarrativeController` (`GET /narrative`, `POST /narrative/{section}`, `PUT`/`DELETE /narrative/{section}/{item}`; the route requirement restricts `{section}` to `trackers|tags|fact-slots|scene-types|flows`, others are 404), typed response DTOs (`GameSystemNarrativeResponse`, `NarrativeItemResponse`, `NarrativeCatalog*Response`), free-form `item` request body. Errors as the oracle controller: 400/401/403/404/409 (stale version, `NarrativeKeyTaken`: message body)/415/422 (`InvalidReleaseContent` message with path, `NarrativeItemInUse` through `OracleInUseResponse` with `paths`). RED: 67 API tests failed with no route; GREEN after.
+- 2026-10-16: Slice 3 review fix R3-001 (the catalog serialises a check difficulty with a null `min` and/or `max` as JSON null, no error). Tests only: the behaviour already held, so no RED.
 
 ## Reviews
 
@@ -123,7 +124,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 |---|---|---|---|---|
 | 1 | `review-4eb0aa712653dea7` | 59663cc, a42f2a6, f5a2791 | approved, acknowledged; suggestions R3-001 (schema 1 test for `ReleaseContent::checkItemRules`: valid passes, invalid gives the same message as `fromArray`) and R3-002 (prove `Formula::fromString` failure modes, oversized or deeply nested, surface as `InvalidFormula` in `DraftReferences`), fixed in slice 2 | #152 |
 | 2 | `review-d5da3cd5944270e9` | 6f28572, 52dbbcc, 2bcb4c9 | approved, acknowledged; suggestions R3-001 (oracle commands now run the item rules on the whole draft: test that a legacy draft breaking them elsewhere refuses an oracle save with that path and stays unchanged) and R3-002 (`GameSystemNarrativeHandlersTest::draft()` reuses one `GameSystemId`: give distinct ids), fixed in slice 3 | #153 |
+| 3 | `review-046e34c0f9feeb47` | 2b18647, 0b9a57a (generated 4c3fded not reviewed, covered by `api-check`; user accepted 3,275 lines) | approved, acknowledged; suggestion R3-001 (API test for a check whose difficulty has a null `min`/`max` bound in the catalog, `NarrativeCatalogResponse.php:44`), fixed in slice 4 | #154 |
 
 ## Next step
 
-Slice 3 (slice 2 review fixes, T5) on `feat/studio-flow-editor-3-api`.
+Slice 4 (slice 3 review fix R3-001, T6) on `feat/studio-flow-editor-4-trackers-tab`.

@@ -176,6 +176,22 @@ describe('the step list editor', () => {
     })
   })
 
+  it('keeps a branching step whose branches or options are not a list read-only and sends it unchanged', async () => {
+    const user = userEvent.setup()
+    const unreadable = [
+      { key: 't', kind: 'table', title: 'T', table: 'moods', branches: 'none' },
+      { key: 'c', kind: 'choice', title: 'C', options: 'none' },
+    ]
+    render(<Saver stored={unreadable} />)
+
+    expect(card(1).getByText(/cannot edit yet/)).toBeInTheDocument()
+    expect(card(1).queryByRole('button', { name: 'Add branch' })).not.toBeInTheDocument()
+    expect(card(2).getByText(/cannot edit yet/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(sent.steps).toEqual(unreadable)
+  })
+
   it('shows a server error on its card and field, and anything else on the list', () => {
     const errors = [
       'sceneTypes[2].play[0].title: must not be blank',
@@ -743,6 +759,35 @@ describe('the step list editor', () => {
       expect(card(3).getByText('label: no such option')).toBeInTheDocument()
       expect(card(3).getByText('next: no otherwise here')).toBeInTheDocument()
       expect(card(2).getByText('branches: at most 1000')).toBeInTheDocument()
+    })
+
+    it('lists a message about a field the row does not have, and shows every message of a field it has', () => {
+      render(
+        <Harness
+          stored={stepListBranching}
+          errors={errors(
+            'sceneTypes[2].play[1].branches[0].key: not a branch field',
+            'sceneTypes[2].play[1].branches[0].entry: first on entry',
+            'sceneTypes[2].play[1].branches[0].entry: second on entry',
+            'sceneTypes[2].play[2].options[0].entry: not an option field',
+            'sceneTypes[2].play[2].options[0].key: first on key',
+            'sceneTypes[2].play[2].options[0].key: second on key',
+          )}
+        />,
+      )
+      const within1 = (card: number, name: string) =>
+        within(
+          within(screen.getByRole('group', { name: `Step ${String(card)}` })).getByRole('group', {
+            name,
+          }),
+        )
+
+      expect(within1(2, 'Branch 1').getByText('first on entry')).toBeInTheDocument()
+      expect(within1(2, 'Branch 1').getByText('entry: second on entry')).toBeInTheDocument()
+      expect(within1(2, 'Branch 1').getByText('key: not a branch field')).toBeInTheDocument()
+      expect(within1(3, 'Option 1').getByText('first on key')).toBeInTheDocument()
+      expect(within1(3, 'Option 1').getByText('key: second on key')).toBeInTheDocument()
+      expect(within1(3, 'Option 1').getByText('entry: not an option field')).toBeInTheDocument()
     })
 
     it('follows its branch or option through moves, and goes when that one is deleted', async () => {

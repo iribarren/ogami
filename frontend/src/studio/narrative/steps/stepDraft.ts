@@ -187,7 +187,10 @@ function readAnswers(stored: StoredItem) {
 
 function readBranches(stored: StoredItem): BranchDraft[] | null {
   const list = listOf(stored, 'branches')
-  const branches = (list ?? []).map((branch) => {
+  if (list === null) {
+    return null
+  }
+  const branches = list.map((branch) => {
     const outcome = readOutcome(branch, ['entry'])
     const entry = isObject(branch) ? branch.entry : undefined
     return outcome === null || typeof entry !== 'string' ? null : { ...outcome, entry }

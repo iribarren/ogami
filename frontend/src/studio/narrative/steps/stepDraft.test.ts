@@ -4,7 +4,6 @@ import {
   stepKey,
   stepsToDrafts,
   stepsToItems,
-  summariseEffects,
   type BandDraft,
   type StepDraft,
 } from './stepDraft'
@@ -87,17 +86,37 @@ describe('a step draft', () => {
     })
   })
 
-  it('sends no limit for the last band and never marks a condition mandatory', () => {
-    const [draft] = stepsToDrafts([{ ...condition, mandatory: true }])
-    if (draft?.kind !== 'condition') {
-      throw new Error('Expected a condition step.')
-    }
-    const lastWithLimit = { ...draft, bands: [draft.bands[0], { ...draft.bands[0] }] } as StepDraft
+  it('never marks a condition mandatory', () => {
+    const drafts = stepsToDrafts([{ ...condition, mandatory: true }])
 
-    expect(stepsToItems([lastWithLimit])).toMatchObject({
-      steps: [{ bands: [{ upTo: 1 }, {}] }],
+    expect(stepsToItems(drafts)).not.toHaveProperty('steps.0.mandatory')
+  })
+
+  it('keeps the limit of a stored last band on an unchanged save, and flags it', () => {
+    const stored = {
+      key: 'r',
+      kind: 'roll',
+      title: 'R',
+      dice: '1d6',
+      bands: [{ upTo: 2 }, { upTo: { tracker: 'heat' }, next: 'end' }],
+    }
+
+    expect(round(stored)).toEqual({ steps: [stored] })
+    expect(stepGuides(stepsToDrafts([stored]))[0]?.bands).toEqual({
+      1: { upTo: 'The last band catches the rest: remove its limit.' },
     })
-    expect(stepsToItems([lastWithLimit])).not.toHaveProperty('steps.0.mandatory')
+  })
+
+  it('refuses a band before the last that has no limit instead of saving it without one', () => {
+    const [draft] = stepsToDrafts([roll])
+    if (draft?.kind !== 'roll') {
+      throw new Error('Expected a roll step.')
+    }
+    const open: BandDraft = { upTo: null, next: '', effects: [], extra: {} }
+
+    expect(stepsToItems([{ ...draft, bands: [open, ...draft.bands] }])).toEqual({
+      errors: { '0.bands.0.upTo': 'Set a limit: only the last band catches the rest.' },
+    })
   })
 
   it('keeps a step of another kind exactly as stored, and so a step it cannot read', () => {
@@ -152,14 +171,6 @@ describe('a step draft', () => {
       bands: [{ upTo: null }],
     })
     expect(stepsToDrafts([{ key: 'k', kind: 'oracle' }]).map(stepKey)).toEqual(['k'])
-  })
-
-  it('summarises effects', () => {
-    expect(summariseEffects([])).toBe('')
-    expect(summariseEffects([{ kind: 'endPhase' }])).toBe('1 effect: endPhase')
-    expect(summariseEffects([{ kind: 'tracker' }, { kind: 'nextScene' }, 5])).toBe(
-      '3 effects: tracker, nextScene, unknown',
-    )
   })
 })
 

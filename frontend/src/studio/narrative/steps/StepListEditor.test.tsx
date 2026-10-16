@@ -97,7 +97,6 @@ describe('the step list editor', () => {
     expect(band(3).queryByLabelText('Up to')).not.toBeInTheDocument()
     expect(band(1).getByLabelText('Up to')).toHaveValue('2')
     expect(band(2).getByRole('combobox', { name: 'Up to' })).toHaveValue('alarm')
-    expect(card(2).getByText('1 effect: tracker')).toBeInTheDocument()
 
     await user.selectOptions(band(1).getByLabelText('Up to type'), 'formula')
     await user.type(band(1).getByLabelText('Up to'), 'heat + 1')
@@ -152,7 +151,8 @@ describe('the step list editor', () => {
     const errors = [
       'sceneTypes[2].play[0].title: must not be blank',
       'sceneTypes[2].play[1].bands[0].upTo: must be an integer',
-      'sceneTypes[2].play[1].effects[0]: unknown tracker',
+      'sceneTypes[2].play[1].bands[0].effects[0].tracker: unknown tracker',
+      'sceneTypes[2].play[1].effects[3]: no such effect',
       'sceneTypes[2].play: at most 50 steps',
     ].map((text) => mapStepError('sceneTypes[2].play', text))
     render(<Harness stored={stepList} errors={errors} />)
@@ -161,7 +161,13 @@ describe('the step list editor', () => {
     expect(
       within(card(2).getByRole('group', { name: 'Band 1' })).getByText('must be an integer'),
     ).toBeInTheDocument()
-    expect(card(2).getByRole('alert')).toHaveTextContent('effects: unknown tracker')
+    const effect = within(
+      within(card(2).getByRole('group', { name: 'Band 1' })).getByRole('group', {
+        name: 'Effect 1',
+      }),
+    )
+    expect(effect.getByText('unknown tracker')).toBeInTheDocument()
+    expect(card(2).getByText('no such effect')).toBeInTheDocument()
     expect(screen.getByText('sceneTypes[2].play: at most 50 steps')).toBeInTheDocument()
   })
 
@@ -182,5 +188,214 @@ describe('the step list editor', () => {
     await user.type(card(1).getByLabelText('Title'), '!')
 
     expect(latest.written).toEqual({ steps: [{ ...stored[0], title: 'C!' }] })
+  })
+
+  it('saves what was picked for a condition count, inspiration tables and roll dice', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={stepList} />)
+
+    await user.click(card(1).getByRole('checkbox', { name: 'Moods' }))
+    await user.click(card(1).getByRole('checkbox', { name: 'Places' }))
+    await user.clear(card(2).getByLabelText('Dice'))
+    await user.type(card(2).getByLabelText('Dice'), '2d6')
+    await user.selectOptions(card(3).getByRole('combobox', { name: 'Count of' }), 'thread')
+    await user.click(card(3).getByRole('checkbox', { name: 'Gang' }))
+
+    expect(saved(0)).toMatchObject({ inspiration: ['moods'] })
+    expect(saved(1)).toMatchObject({ dice: '2d6' })
+    expect(saved(2)).toMatchObject({ count: { of: 'thread' } })
+    expect(saved(2)).not.toHaveProperty('count.tags')
+
+    await user.selectOptions(card(3).getByRole('combobox', { name: 'Reads' }), 'tracker')
+    await user.selectOptions(card(3).getByRole('combobox', { name: 'Tracker' }), 'alarm')
+
+    expect(saved(2)).toMatchObject({ tracker: 'alarm' })
+    expect(saved(2)).not.toHaveProperty('count')
+  })
+
+  describe('after bands move or go', () => {
+    const band = (number: number) =>
+      within(card(2).getByRole('group', { name: `Band ${String(number)}` }))
+
+    it('sends the bands in the new order', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} />)
+
+      await user.click(card(2).getByRole('button', { name: 'Move band 1 down' }))
+
+      expect(saved(1)).toMatchObject({
+        bands: [{ upTo: { tracker: 'alarm' }, next: 'end' }, { upTo: 2 }, {}],
+      })
+    })
+
+    it('keeps a limit with its band when the band becomes the last one, and flags it', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} />)
+
+      await user.click(card(2).getByRole('button', { name: 'Move band 2 down' }))
+
+      expect(band(3).getByRole('combobox', { name: 'Up to' })).toHaveValue('alarm')
+      expect(band(3).getByText('The last band catches the rest: remove its limit.')).toBeVisible()
+      expect(latest.written).toEqual({
+        errors: { '1.bands.1.upTo': 'Set a limit: only the last band catches the rest.' },
+      })
+
+      await user.type(band(2).getByLabelText('Up to'), '9')
+      expect(saved(1)).toMatchObject({
+        bands: [{ upTo: 2 }, { upTo: 9 }, { upTo: { tracker: 'alarm' }, next: 'end' }],
+      })
+
+      await user.click(band(3).getByRole('button', { name: 'Remove the limit of band 3' }))
+      expect(saved(1)).toMatchObject({ bands: [{ upTo: 2 }, { upTo: 9 }, { next: 'end' }] })
+      expect(band(3).getByText('Otherwise: the rest.')).toBeInTheDocument()
+    })
+
+    it('keeps the limit of the band that stays when the last one is deleted', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} />)
+
+      await user.click(card(2).getByRole('button', { name: 'Delete band 3' }))
+      await user.click(card(2).getByRole('button', { name: 'Delete band 1' }))
+
+      expect(band(1).getByRole('combobox', { name: 'Up to' })).toHaveValue('alarm')
+      expect(band(1).getByText('The last band catches the rest: remove its limit.')).toBeVisible()
+      expect(saved(1)).toMatchObject({ bands: [{ upTo: { tracker: 'alarm' }, next: 'end' }] })
+    })
+  })
+
+  describe('a server error keyed by position', () => {
+    const errors = [
+      'sceneTypes[2].play[1].title: must not be blank',
+      'sceneTypes[2].play[2].bands[0].upTo: must be an integer',
+    ].map((text) => mapStepError('sceneTypes[2].play', text))
+
+    it('follows its step when steps move, and goes with it when the step is deleted', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} errors={errors} />)
+      expect(card(2).getByText('must not be blank')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Move step 2 down' }))
+      expect(card(3).getByText('must not be blank')).toBeInTheDocument()
+      expect(card(2).queryByText('must not be blank')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Delete step 1' }))
+      expect(card(2).getByText('must not be blank')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Delete step 2' }))
+      expect(screen.queryByText('must not be blank')).not.toBeInTheDocument()
+    })
+
+    it('is not shown on a step added after the answer, and band messages go when bands move', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} errors={errors} />)
+      const first = within(card(3).getByRole('group', { name: 'Band 1' }))
+      expect(first.getByText('must be an integer')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Add step' }))
+      await user.click(card(3).getByRole('button', { name: 'Move band 1 down' }))
+
+      expect(screen.queryByText('must be an integer')).not.toBeInTheDocument()
+      expect(card(5).queryByText('must not be blank')).not.toBeInTheDocument()
+    })
+  })
+
+  it('offers each next once and warns about repeated and reserved keys, with no duplicate React keys', () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    render(
+      <Harness
+        stored={[
+          { key: 'x', kind: 'character', title: 'X' },
+          { key: 'a', kind: 'character', title: 'A' },
+          { key: 'a', kind: 'character', title: 'A again' },
+          { key: 'end', kind: 'character', title: 'End' },
+          {
+            key: 'c',
+            kind: 'condition',
+            title: 'C',
+            count: { of: 'npc' },
+            bands: [{ upTo: 1 }, {}],
+          },
+        ]}
+        errors={[
+          { index: null, band: null, effect: null, field: null, message: 'Twice' },
+          { index: null, band: null, effect: null, field: null, message: 'Twice' },
+          { index: 4, band: null, effect: null, field: 'mystery', message: 'Same' },
+          { index: 4, band: null, effect: null, field: 'mystery', message: 'Same' },
+        ]}
+      />,
+    )
+
+    const options = within(card(1).getByRole('combobox', { name: 'Next' })).getAllByRole('option')
+    expect(options.map((option) => option.getAttribute('value'))).toEqual(['', 'a', 'c', 'end'])
+    expect(card(3).getByText('Another step has this key.')).toBeInTheDocument()
+    expect(card(4).getByText('end is reserved for the end of the list.')).toBeInTheDocument()
+    expect(screen.getAllByText('Twice')).toHaveLength(2)
+    expect(logged).not.toHaveBeenCalled()
+    logged.mockRestore()
+  })
+
+  describe('with effects', () => {
+    const effectsOf = (step: number) => within(card(step).getByRole('group', { name: 'Effects' }))
+
+    it('edits the effects of a step and of a band, and saves them', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepList} />)
+      const band = within(card(2).getByRole('group', { name: 'Band 1' }))
+
+      await user.selectOptions(effectsOf(1).getByLabelText('New effect kind'), 'sceneTitle')
+      await user.click(effectsOf(1).getByRole('button', { name: 'Add effect' }))
+      await user.type(effectsOf(1).getByLabelText('Title'), 'Dawn')
+      await user.clear(band.getByLabelText('Value'))
+      await user.type(band.getByLabelText('Value'), '3')
+
+      expect(saved(0)).toMatchObject({ effects: [{ kind: 'sceneTitle', title: 'Dawn' }] })
+      expect(saved(1)).toMatchObject({
+        bands: [{ effects: [{ kind: 'tracker', tracker: 'heat', op: 'add', value: 3 }] }, {}, {}],
+      })
+    })
+
+    it('allows sheet effects in a character step only', () => {
+      render(<Harness stored={stepList} />)
+      const kinds = (step: number) =>
+        within(effectsOf(step).getByLabelText('New effect kind'))
+          .getAllByRole('option')
+          .map((option) => option.getAttribute('value'))
+
+      expect(kinds(4)).toContain('sheet')
+      expect(kinds(1)).not.toContain('sheet')
+      expect(
+        within(card(2).getByRole('group', { name: 'Band 1 effects' })).getByLabelText(
+          'New effect kind',
+        ),
+      ).not.toHaveTextContent('sheet')
+    })
+
+    it('shows effect errors on their card, and drops them when effects move', async () => {
+      const user = userEvent.setup()
+      const errors = [
+        'sceneTypes[2].play[0].effects[0]: no good',
+        'sceneTypes[2].play[0].effects[1]: also no good',
+      ].map((text) => mapStepError('sceneTypes[2].play', text))
+      render(
+        <Harness
+          stored={[
+            {
+              key: 'a',
+              kind: 'character',
+              title: 'A',
+              effects: [{ kind: 'endPhase' }, { kind: 'closeThread' }],
+            },
+          ]}
+          errors={errors}
+        />,
+      )
+      expect(effectsOf(1).getByText('no good')).toBeInTheDocument()
+      expect(effectsOf(1).getByText('also no good')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Move effect 1 down' }))
+
+      expect(screen.queryByText('no good')).not.toBeInTheDocument()
+      expect(screen.queryByText('also no good')).not.toBeInTheDocument()
+    })
   })
 })

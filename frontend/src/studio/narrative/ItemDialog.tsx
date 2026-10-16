@@ -124,7 +124,8 @@ function ItemFormBody<Draft>({
   // it: a refetch while the dialog is open must not make a stale draft look current.
   const [readAt, setReadAt] = useState(version)
   const [errors, setErrors] = useState<FieldErrors>({})
-  const [reloadFailed, setReloadFailed] = useState(false)
+  // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
+  const [reloadNote, setReloadNote] = useState<string | null>(null)
   const latest = useGameSystemNarrative(gameSystemKey)
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -158,9 +159,9 @@ function ItemFormBody<Draft>({
             : ''}
         </p>
       )}
-      {reloadFailed && (
+      {reloadNote && (
         <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t reload the latest version. Try again.
+          {reloadNote}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -173,11 +174,12 @@ function ItemFormBody<Draft>({
             variant="outline"
             onClick={() => {
               void latest.refetch().then((result) => {
-                setReloadFailed(result.isError || result.data === undefined)
                 if (result.isError || result.data === undefined) {
+                  setReloadNote("Couldn't reload the latest version. Try again.")
                   return
                 }
-                // The item and its version come from the same read; a new item keeps its draft.
+                // The item and its version come from the same read, and the version is only taken
+                // with a replaced draft: otherwise a later save would overwrite what was not seen.
                 const stored =
                   original === null
                     ? undefined
@@ -185,9 +187,19 @@ function ItemFormBody<Draft>({
                         (item) => item.key === original,
                       )
                 const reloaded = stored === undefined ? null : form.read(stored.definition)
+                if (original !== null && reloaded === null) {
+                  setReloadNote(
+                    stored === undefined
+                      ? `The ${form.noun} ${original} no longer exists. Your changes are kept; close this dialog to see the list.`
+                      : `The ${form.noun} changed to a shape this editor cannot read. Your changes are kept; the next save still conflicts.`,
+                  )
+                  return
+                }
+                // A new item keeps its draft: there is nothing to overwrite.
                 if (reloaded !== null) {
                   setDraft(reloaded)
                 }
+                setReloadNote(null)
                 setReadAt(result.data.version)
                 save.reset()
               })

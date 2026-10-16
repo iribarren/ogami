@@ -5,19 +5,17 @@ import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
 import { TextField } from '../TextField'
-import {
-  END,
-  newBand,
-  summariseEffects,
-  type BandDraft,
-  type ValueDraft,
-  type ValueForm,
-} from './stepDraft'
+import type { ValueDraft, ValueForm } from './draftParts'
+import { EffectsEditor } from './EffectsEditor'
+import { END, newBand, type BandDraft } from './stepDraft'
+import type { StepContext } from './stepContext'
+import type { StepError } from './stepError'
 
 const formNames: Record<ValueForm, string> = {
   integer: 'Number',
   tracker: 'Tracker',
   formula: 'Formula',
+  dice: 'Dice',
 }
 
 /** A `next` picker: the following step, a later key of the list, or `end`. */
@@ -36,7 +34,9 @@ export function NextPicker({
 }) {
   const id = useId()
   // A value the list no longer offers (after a move) stays visible, so it can be seen and fixed.
-  const options = [...laterKeys, END].includes(value) || value === '' ? [] : [value]
+  // Repeated keys (or a step keyed `end`) must not repeat an option: they are one choice.
+  const offered = [...new Set([...laterKeys.filter((key) => key !== END), END])]
+  const options = offered.includes(value) || value === '' ? [] : [value]
 
   return (
     <div className="space-y-2">
@@ -50,7 +50,7 @@ export function NextPicker({
         }}
       >
         <option value="">The following step</option>
-        {[...options, ...laterKeys, END].map((key) => (
+        {[...options, ...offered].map((key) => (
           <option key={key} value={key}>
             {key === END ? 'End of the list' : key}
           </option>
@@ -141,23 +141,29 @@ export interface BandProblems {
 }
 
 /**
- * Ordered bands: every band but the last has an upper limit, the last catches the rest. Effects
- * are summarised, not edited here yet.
+ * Ordered bands: every band but the last has an upper limit, the last catches the rest. Each band
+ * has its own effects (no sheet effects: no Character is known there). `effectErrors` are the
+ * server's messages about effects of these bands.
  */
 export function BandsEditor({
   bands,
   forms,
-  trackers,
+  context,
   laterKeys,
   problems,
+  effectErrors,
   onChange,
+  onRestructure,
 }: {
   bands: BandDraft[]
   forms: readonly ValueForm[]
-  trackers: { key: string; name: string }[]
+  context: StepContext
   laterKeys: string[]
   problems: BandProblems
+  effectErrors: StepError[]
   onChange: (bands: BandDraft[]) => void
+  /** Called when bands move or go, so messages keyed by position can be dropped. */
+  onRestructure?: () => void
 }) {
   const replace = (index: number, band: BandDraft) => {
     onChange(bands.map((current, at) => (at === index ? band : current)))
@@ -168,6 +174,7 @@ export function BandsEditor({
     if (band) {
       next.splice(index + by, 0, band)
     }
+    onRestructure?.()
     onChange(next)
   }
 
@@ -177,7 +184,6 @@ export function BandsEditor({
       {bands.map((band, index) => {
         const number = String(index + 1)
         const last = index === bands.length - 1
-        const effects = summariseEffects(band.effects)
         return (
           // The list is edited in place and has no ids: the position is the identity.
           <div
@@ -186,19 +192,31 @@ export function BandsEditor({
             aria-label={`Band ${number}`}
             className="space-y-2 rounded-lg p-3 ring-1 ring-foreground/10"
           >
-            {last ? (
+            {last && band.upTo === null ? (
               <p className="text-sm text-muted-foreground">Otherwise: the rest.</p>
             ) : (
               <ValueInput
                 label="Up to"
                 value={band.upTo ?? { form: 'integer', text: '' }}
                 forms={forms}
-                trackers={trackers}
+                trackers={context.trackers}
                 error={problems.upTo[index]}
                 onChange={(upTo) => {
                   replace(index, { ...band, upTo })
                 }}
               />
+            )}
+            {last && band.upTo !== null && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  replace(index, { ...band, upTo: null })
+                }}
+              >
+                Remove the limit of band {number}
+              </Button>
             )}
             <NextPicker
               label="Next"
@@ -209,7 +227,17 @@ export function BandsEditor({
                 replace(index, { ...band, next })
               }}
             />
-            {effects && <p className="text-sm text-muted-foreground">{effects}</p>}
+            <EffectsEditor
+              label={`Band ${number} effects`}
+              effects={band.effects}
+              context={context}
+              allowSheet={false}
+              errors={effectErrors.filter((error) => error.band === index)}
+              onChange={(effects) => {
+                replace(index, { ...band, effects })
+              }}
+              onRestructure={onRestructure}
+            />
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -241,6 +269,7 @@ export function BandsEditor({
                 size="sm"
                 aria-label={`Delete band ${number}`}
                 onClick={() => {
+                  onRestructure?.()
                   onChange(bands.filter((_, at) => at !== index))
                 }}
               >

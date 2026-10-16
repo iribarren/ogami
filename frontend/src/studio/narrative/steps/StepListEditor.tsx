@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useState } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -6,18 +6,20 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
-import { Textarea } from '@/shared/ui/textarea'
 
 import { TextField } from '../TextField'
 import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
+import { moveItem } from './draftParts'
+import { EffectsEditor } from './EffectsEditor'
+import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
 import {
+  bandForms,
   countTargets,
   newStep,
   stepGuides,
   stepKey,
   stepKinds,
-  summariseEffects,
   type BandDraft,
   type CountTarget,
   type EditedStep,
@@ -27,79 +29,6 @@ import {
 } from './stepDraft'
 import type { StepError } from './stepError'
 
-const bandForms = ['integer', 'tracker', 'formula'] as const
-
-/** Checkboxes over `options`; a selected key the options no longer have stays listed. */
-function CheckList({
-  legend,
-  options,
-  value,
-  onChange,
-}: {
-  legend: string
-  options: { key: string; name: string }[]
-  value: string[]
-  onChange: (value: string[]) => void
-}) {
-  const known = options.map((option) => option.key)
-  const all = [
-    ...options,
-    ...value.filter((key) => !known.includes(key)).map((key) => ({ key, name: key })),
-  ]
-
-  return (
-    <fieldset className="space-y-1">
-      <legend className="text-sm font-medium">{legend}</legend>
-      {all.length === 0 && <p className="text-sm text-muted-foreground">Nothing to pick yet.</p>}
-      {all.map((option) => (
-        <label key={option.key} className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.includes(option.key)}
-            onChange={(event) => {
-              onChange(
-                event.target.checked
-                  ? [...value, option.key]
-                  : value.filter((key) => key !== option.key),
-              )
-            }}
-          />
-          {option.name}
-        </label>
-      ))}
-    </fieldset>
-  )
-}
-
-function Area({
-  label,
-  value,
-  error,
-  onChange,
-}: {
-  label: string
-  value: string
-  error?: string
-  onChange: (value: string) => void
-}) {
-  const id = useId()
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Textarea
-        id={id}
-        value={value}
-        aria-invalid={error !== undefined}
-        onChange={(event) => {
-          onChange(event.target.value)
-        }}
-      />
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
-  )
-}
-
 /** The bands' problems: what the guides and the server say about each band's limit and next. */
 function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
   const problems: BandProblems = { upTo: {}, next: {} }
@@ -107,13 +36,16 @@ function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
     Object.assign(problems.upTo, flags.upTo === undefined ? {} : { [at]: flags.upTo })
     Object.assign(problems.next, flags.next === undefined ? {} : { [at]: flags.next })
   }
-  for (const { band, field, message } of mine) {
-    if (band !== null && (field === 'upTo' || field === 'next')) {
+  for (const { band, effect, field, message } of mine) {
+    if (band !== null && effect === null && (field === 'upTo' || field === 'next')) {
       problems[field][band] = message
     }
   }
   return problems
 }
+
+/** Messages for the effects editor: an effect, or the list of effects as a whole. */
+const aboutEffects = (error: StepError) => error.effect !== null || error.field === 'effects'
 
 function StepFields({
   step,
@@ -122,6 +54,7 @@ function StepFields({
   context,
   laterKeys,
   onChange,
+  onInnerRestructure,
 }: {
   step: EditedStep
   guide: StepGuide
@@ -129,21 +62,23 @@ function StepFields({
   context: StepContext
   laterKeys: string[]
   onChange: (step: StepDraft) => void
+  onInnerRestructure: () => void
 }) {
   const fieldError = (field: string) =>
-    mine.find((error) => error.band === null && error.field === field)?.message
+    mine.find((error) => error.band === null && error.effect === null && error.field === field)
+      ?.message
   const setBands = (bands: BandDraft[]) => {
     onChange({ ...step, bands } as StepDraft)
   }
-  const effects = summariseEffects(step.effects)
   // Everything the form shows next to a field; the rest is listed on the card.
   const inline = ['key', 'title', 'prompt', 'tip', 'dice', 'next']
   const loose = mine.filter(
     (error) =>
       error.index === null ||
-      (error.band === null
-        ? !inline.includes(error.field ?? '')
-        : error.field !== 'upTo' && error.field !== 'next'),
+      (!aboutEffects(error) &&
+        (error.band === null
+          ? !inline.includes(error.field ?? '')
+          : error.field !== 'upTo' && error.field !== 'next')),
   )
 
   return (
@@ -288,19 +223,27 @@ function StepFields({
         <BandsEditor
           bands={step.bands}
           forms={bandForms}
-          trackers={context.trackers}
+          context={context}
           laterKeys={laterKeys}
           problems={bandProblems(guide, mine)}
+          effectErrors={mine.filter((error) => error.band !== null && aboutEffects(error))}
           onChange={setBands}
+          onRestructure={onInnerRestructure}
         />
       )}
-      {effects && <p className="text-sm text-muted-foreground">{effects}</p>}
-      {loose.map((error) => (
-        <p
-          key={`${error.field ?? ''}${String(error.band)}${error.message}`}
-          role="alert"
-          className="text-sm text-destructive"
-        >
+      <EffectsEditor
+        label="Effects"
+        effects={step.effects}
+        context={context}
+        allowSheet={step.kind === 'character'}
+        errors={mine.filter((error) => error.band === null && aboutEffects(error))}
+        onChange={(effects) => {
+          onChange({ ...step, effects })
+        }}
+        onRestructure={onInnerRestructure}
+      />
+      {loose.map((error, at) => (
+        <p key={at} role="alert" className="text-sm text-destructive">
           {error.field === null ? error.message : `${error.field}: ${error.message}`}
         </p>
       ))}
@@ -319,6 +262,7 @@ function StepCard({
   onChange,
   onMove,
   onDelete,
+  onInnerRestructure,
 }: {
   step: StepDraft
   index: number
@@ -330,6 +274,7 @@ function StepCard({
   onChange: (step: StepDraft) => void
   onMove: (by: number) => void
   onDelete: () => void
+  onInnerRestructure: () => void
 }) {
   const number = String(index + 1)
   const stored = step.kind === 'stored' ? step.stored : null
@@ -413,6 +358,7 @@ function StepCard({
               context={context}
               laterKeys={laterKeys}
               onChange={onChange}
+              onInnerRestructure={onInnerRestructure}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -421,15 +367,20 @@ function StepCard({
   )
 }
 
+const noErrors: StepError[] = []
+
 /**
  * An ordered list of step cards, edited in place: add (the kind is chosen first), delete, move.
  * Controlled: `steps` and `onChange`. `errors` are the server's messages for this list, already
- * mapped by `mapStepError`; the cards flag a backward `next` before any save.
+ * mapped by `mapStepError`; the cards flag a backward `next` before any save. A new `errors` array
+ * is a new answer from the server (keep it in state, do not rebuild it on every render): its
+ * positions are the positions the steps have now, and the editor follows each step from there
+ * through moves and deletes, so a message never lands on another card.
  */
 export function StepListEditor({
   steps,
   context,
-  errors = [],
+  errors = noErrors,
   onChange,
 }: {
   steps: StepDraft[]
@@ -438,22 +389,35 @@ export function StepListEditor({
   onChange: (steps: StepDraft[]) => void
 }) {
   const [kind, setKind] = useState<StepKind>('prompt')
+  // The position each step had when `errors` arrived (null: added since), and the steps whose band
+  // messages about bands or effects no longer line up because those moved or went.
+  const [answered, setAnswered] = useState(errors)
+  const [origin, setOrigin] = useState<(number | null)[]>(() => steps.map((_, at) => at))
+  const [stale, setStale] = useState<number[]>([])
+  if (answered !== errors) {
+    setAnswered(errors)
+    setOrigin(steps.map((_, at) => at))
+    setStale([])
+  }
+  // A list replaced from outside has no known origins: its server messages are not shown on cards.
+  const origins = origin.length === steps.length ? origin : steps.map(() => null)
   const guides = stepGuides(steps)
-  const move = (index: number, by: number) => {
-    const next = [...steps]
-    const [step] = next.splice(index, 1)
-    if (step) {
-      next.splice(index + by, 0, step)
-    }
-    onChange(next)
+  const messagesOf = (index: number) => {
+    const from = origins[index]
+    return errors.filter(
+      (error) =>
+        error.index !== null &&
+        error.index === from &&
+        !((error.band !== null || error.effect !== null) && stale.includes(from)),
+    )
   }
 
   return (
     <div className="space-y-3">
       {errors
         .filter((error) => error.index === null)
-        .map((error) => (
-          <p key={error.message} role="alert" className="text-sm text-destructive">
+        .map((error, at) => (
+          <p key={at} role="alert" className="text-sm text-destructive">
             {error.message}
           </p>
         ))}
@@ -469,7 +433,7 @@ export function StepListEditor({
               index={index}
               total={steps.length}
               guide={guides[index] ?? { bands: {} }}
-              mine={errors.filter((error) => error.index === index)}
+              mine={messagesOf(index)}
               context={context}
               laterKeys={steps
                 .slice(index + 1)
@@ -479,10 +443,18 @@ export function StepListEditor({
                 onChange(steps.map((current, at) => (at === index ? changed : current)))
               }}
               onMove={(by) => {
-                move(index, by)
+                setOrigin(moveItem(origins, index, by))
+                onChange(moveItem(steps, index, by))
               }}
               onDelete={() => {
+                setOrigin(origins.filter((_, at) => at !== index))
                 onChange(steps.filter((_, at) => at !== index))
+              }}
+              onInnerRestructure={() => {
+                const from = origins[index]
+                if (from !== null && from !== undefined) {
+                  setStale((current) => [...current, from])
+                }
               }}
             />
           ))}
@@ -507,6 +479,7 @@ export function StepListEditor({
           variant="outline"
           size="sm"
           onClick={() => {
+            setOrigin([...origins, null])
             onChange([...steps, newStep(kind, steps)])
           }}
         >

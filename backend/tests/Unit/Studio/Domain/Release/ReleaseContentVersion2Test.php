@@ -546,6 +546,7 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'oracle branch next naming an earlier step' => [self::scenes('sceneTypes.3.play.0.branches.no.next', 'ask'), 'sceneTypes[3].play[0].branches.no.next: must name a later step'];
         yield 'table step naming a likelihood oracle' => [self::scenes('sceneTypes.1.play.1.table', 'fate'), 'sceneTypes[1].play[1].table: unknown oracle table "fate"'];
         yield 'branch on an entry of another table' => [self::scenes('sceneTypes.1.play.1.branches.0.entry', 'rooftops'), 'sceneTypes[1].play[1].branches[0].entry: unknown entry "rooftops" of table "complications"'];
+        yield 'branch on an entry that no table has' => [self::scenes('sceneTypes.1.play.1.branches.0.entry', 'nowhere'), 'sceneTypes[1].play[1].branches[0].entry: unknown entry "nowhere" of table "complications"'];
         yield 'duplicate branch entry' => [self::scenes('sceneTypes.1.play.1.branches.1', ['entry' => 'spotted']), 'sceneTypes[1].play[1].branches[1].entry: duplicate branch entry "spotted"'];
         yield 'unknown otherwise property' => [self::scenes('sceneTypes.1.play.1.otherwise.entry', 'patrol'), 'sceneTypes[1].play[1].otherwise.entry: unknown property'];
 

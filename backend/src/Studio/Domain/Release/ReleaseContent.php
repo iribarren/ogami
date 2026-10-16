@@ -59,6 +59,47 @@ final readonly class ReleaseContent
      */
     public static function fromArray(array $data): self
     {
+        [$version, $content] = self::validated($data, true);
+        /** @var array<string, mixed> $gameSystem */
+        $gameSystem = $content['gameSystem'];
+        /** @var string $key */
+        $key = $gameSystem['key'];
+        /** @var string $name */
+        $name = $gameSystem['name'];
+
+        /** @var list<array<string, mixed>> $sceneTypes */
+        $sceneTypes = $content['sceneTypes'] ?? [];
+        /** @var list<array<string, mixed>> $flows */
+        $flows = $content['flows'] ?? [];
+        $warnings = 2 === $version ? AuthoringWarnings::of($sceneTypes, $flows) : [];
+
+        return new self($content, $version, $key, $name, hash('sha256', self::canonicalJson($content)), $warnings);
+    }
+
+    /**
+     * Checks a document by the item rules (ADR 0030): every rule of fromArray() except the flow
+     * coherence of schema version 2 (the references inside each flow, docs/contracts/gamesystem-release.md).
+     * The Studio editor keeps a draft valid by them after every command; schema version 1 has no flow
+     * coherence, so its item rules are all its rules.
+     *
+     * @param array<mixed> $data decoded JSON, objects as string-keyed arrays
+     *
+     * @throws InvalidReleaseContent naming the path of the first offending value, as fromArray() would
+     */
+    public static function checkItemRules(array $data): void
+    {
+        self::validated($data, false);
+    }
+
+    /**
+     * @param array<mixed> $data
+     *
+     * @return array{1|2, array<string, mixed>} the schema version and the canonical content
+     *
+     * @throws InvalidReleaseContent
+     */
+    private static function validated(array $data, bool $flowCoherence): array
+    {
         $data = self::normalizeNumbers($data);
         if ([] !== $data && array_is_list($data)) {
             throw InvalidReleaseContent::at(self::ROOT, 'must be an object');
@@ -89,26 +130,14 @@ final readonly class ReleaseContent
             $parts['checks'] = [];
         } else {
             // The sheet and the checks come with the other parts: checks read the sheet and flow steps read the checks.
-            $parts = ReleaseVersion2::validate($release);
+            $parts = ReleaseVersion2::validate($release, $flowCoherence);
         }
 
-        $content = [
+        return [$version, [
             'schemaVersion' => $version,
             'gameSystem' => $gameSystem,
             ...$parts,
-        ];
-        /** @var string $key */
-        $key = $gameSystem['key'];
-        /** @var string $name */
-        $name = $gameSystem['name'];
-
-        /** @var list<array<string, mixed>> $sceneTypes */
-        $sceneTypes = $content['sceneTypes'] ?? [];
-        /** @var list<array<string, mixed>> $flows */
-        $flows = $content['flows'] ?? [];
-        $warnings = 2 === $version ? AuthoringWarnings::of($sceneTypes, $flows) : [];
-
-        return new self($content, $version, $key, $name, hash('sha256', self::canonicalJson($content)), $warnings);
+        ]];
     }
 
     public function schemaVersion(): int

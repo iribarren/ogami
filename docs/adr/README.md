@@ -33,6 +33,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted |
 | 0028 | [Studio GameSystem drafts](0028-studio-gamesystem-drafts.md) | Accepted |
 | 0029 | [Studio oracle editor](0029-studio-oracle-editor.md) | Accepted |
+| 0030 | [Studio flow editor](0030-studio-flow-editor.md) | Accepted |
 
 ## Template
 

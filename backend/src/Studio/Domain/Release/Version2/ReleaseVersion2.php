@@ -15,6 +15,10 @@ use App\Studio\Domain\Release\ReleaseOracles;
  * then the references inside each flow. Returns them in canonical form; ReleaseContent handles the parts
  * every version shares.
  *
+ * The checks of each item and its references are the item rules; the references inside each flow
+ * (FlowReferences::check()) are the flow coherence (ADR 0030). Publishing runs both, in that order;
+ * the Studio editor runs the item rules only.
+ *
  * @internal used by ReleaseContent only
  */
 final class ReleaseVersion2
@@ -83,11 +87,12 @@ final class ReleaseVersion2
     ];
 
     /**
-     * @param array<string, mixed> $release the checked top-level object (RELEASE fields)
+     * @param array<string, mixed> $release       the checked top-level object (RELEASE fields)
+     * @param bool                 $flowCoherence false to run the item rules only
      *
      * @return array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>, sheet: array<string, mixed>, checks: list<array<string, mixed>>} "theme" and "tags" are left out when absent or empty
      */
-    public static function validate(array $release): array
+    public static function validate(array $release, bool $flowCoherence = true): array
     {
         [$trackers, $trackerRanges] = self::trackers($release['trackers']);
         $oracles = OraclesSection::validate($release['oracles'], 2);
@@ -113,7 +118,10 @@ final class ReleaseVersion2
         }
 
         $flows = self::flows($release['flows'], $oracles, $catalog);
-        FlowReferences::check($oracles['tables'], $trackers, $sceneTypes, $flows, $factSlotTypes);
+        FlowReferences::releasePlaceholders($oracles['tables'], $trackers, $sceneTypes, $flows, $factSlotTypes);
+        if ($flowCoherence) {
+            FlowReferences::check($oracles['tables'], $sceneTypes, $flows, $factSlotTypes);
+        }
 
         $parts = [];
         if (isset($release['theme'])) {

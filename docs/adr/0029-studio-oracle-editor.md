@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-16
+- **Amended by:** [ADR 0030](0030-studio-flow-editor.md) (entry `sceneType` and `effects` and `chaos.tracker` are now edited)
 
 ## Context
 

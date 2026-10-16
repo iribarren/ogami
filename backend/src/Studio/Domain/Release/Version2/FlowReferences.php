@@ -15,22 +15,24 @@ use App\Studio\Domain\Release\InvalidReleaseContent;
  * flow's, and placeholders name what is in scope: the flow's trackers and steps, or the release's
  * for what no flow reaches.
  *
+ * releasePlaceholders() is one of the item rules (ADR 0030); check() is the flow coherence, which
+ * only publishing requires.
+ *
  * @internal
  */
 final class FlowReferences
 {
     /**
+     * Placeholders in the release scope: every text names a tracker, step and fact slot the release has.
+     *
      * @param list<array<string, mixed>> $tables     canonical oracle tables
      * @param list<array<string, mixed>> $trackers   canonical trackers
      * @param list<array<string, mixed>> $sceneTypes canonical Scene Types
      * @param list<array<string, mixed>> $flows      canonical flows
      * @param array<string, string>      $factSlots  the fact slot types by key
      */
-    public static function check(array $tables, array $trackers, array $sceneTypes, array $flows, array $factSlots): void
+    public static function releasePlaceholders(array $tables, array $trackers, array $sceneTypes, array $flows, array $factSlots): void
     {
-        $tablesByKey = self::byKey($tables);
-        $sceneTypesByKey = self::byKey($sceneTypes);
-
         $allLists = self::sceneTypeLists($sceneTypes, array_keys($sceneTypes));
         foreach ($flows as $flowIndex => $flow) {
             $allLists = [...$allLists, ...self::phaseLists($flow, $flowIndex)];
@@ -40,6 +42,21 @@ final class FlowReferences
         $trackerKeys = array_column($trackers, 'key');
         $releaseTrackers = array_fill_keys($trackerKeys, true);
         self::checkPlaceholders($allLists, array_keys($tables), $tables, $releaseTrackers, self::stepKeys($allLists), $factSlots, null);
+    }
+
+    /**
+     * The flow coherence: oracle selections, then for each flow the trackers, Scene Type oracles and
+     * placeholders of what it reaches.
+     *
+     * @param list<array<string, mixed>> $tables     canonical oracle tables
+     * @param list<array<string, mixed>> $sceneTypes canonical Scene Types
+     * @param list<array<string, mixed>> $flows      canonical flows
+     * @param array<string, string>      $factSlots  the fact slot types by key
+     */
+    public static function check(array $tables, array $sceneTypes, array $flows, array $factSlots): void
+    {
+        $tablesByKey = self::byKey($tables);
+        $sceneTypesByKey = self::byKey($sceneTypes);
 
         foreach ($flows as $flowIndex => $flow) {
             /** @var string $flowKey */

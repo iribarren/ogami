@@ -60,6 +60,8 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | Schema version | The version of the GameSystem release contract a release file follows (`schemaVersion`). Distinct from the release version | Studio → Play |
 | Oracle | Anything that answers a question with uncertainty: an oracle table or a likelihood oracle | Studio (defined), Randomness (resolved) |
 | Test roll | A roll of an oracle table, or a question put to a likelihood oracle, of a GameSystem draft in Studio, to try it before publishing. It rolls the saved draft, resolves nested tables like Play does, and is recorded nowhere ([ADR 0029](../adr/0029-studio-oracle-editor.md)) | Studio (defined), Randomness (resolves) |
+| Item rules | The publisher's checks of each item of a schema 2 release and its references: shapes, caps, keys, catalog lookups and release-scope placeholders; everything except flow coherence. Every Studio editor command keeps a draft valid by them ([ADR 0030](../adr/0030-studio-flow-editor.md)) | Studio |
+| Flow coherence | The publisher's flow-wide checks: oracle-selection entries name a Scene Type, the trackers a flow reaches are in `flow.trackers`, the oracle shortcuts of the Scene Types it reaches are in `flow.oracles`, and each flow's placeholders name its own trackers and steps. Only publishing requires them ([ADR 0030](../adr/0030-studio-flow-editor.md)) | Studio |
 
 ## Play
 

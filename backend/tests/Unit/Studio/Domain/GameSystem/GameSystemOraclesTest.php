@@ -246,6 +246,7 @@ final class GameSystemOraclesTest extends TestCase
                 self::fail('Expected OracleInUse');
             } catch (OracleInUse $inUse) {
                 self::assertSame(['sceneTypes[1].play[1].branches[0].entry'], $inUse->paths());
+                self::assertSame(\sprintf('The entry "%s" of table "complications" is used at sceneTypes[1].play[1].branches[0].entry.', self::at($complications, 'entries.2.key')), $inUse->getMessage());
             }
         }
 
@@ -263,12 +264,14 @@ final class GameSystemOraclesTest extends TestCase
         /** @var list<array<string, mixed>> $entries */
         $entries = $complications['entries'];
         $dropped = [...ReleaseArrays::with($complications, 'entries.2.key', 'seen'), 'entries' => [$entries[0], $entries[1], [...$entries[2], 'key' => 'seen']]];
+        $droppedKeys = \sprintf('entries "%s", "run"', self::at($complications, 'entries.2.key'));
 
         try {
             $gameSystem->saveOracleTable('complications', $dropped, $this->now);
             self::fail('Expected OracleInUse');
         } catch (OracleInUse $inUse) {
             self::assertSame(['sceneTypes[1].play[1].branches[0].entry', 'sceneTypes[1].play[1].branches[1].entry'], $inUse->paths());
+            self::assertSame(\sprintf('The %s of table "complications" is used at sceneTypes[1].play[1].branches[0].entry, sceneTypes[1].play[1].branches[1].entry.', $droppedKeys), $inUse->getMessage());
         }
     }
 

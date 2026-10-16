@@ -1,7 +1,7 @@
 # Feature: studio-oracle-editor
 
 - **Locator:** `odd/tasks/studio-oracle-editor.md` · Engram topic `odd/studio-oracle-editor/tasks`
-- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-2-application` · **Status:** in progress (slice 2)
+- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-3-table-api` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-gamesystem-drafts` (PRs #132–#139)
@@ -38,13 +38,13 @@ Out of scope: editing entry `sceneType`, entry `effects` and a likelihood oracle
 
 ## Design
 
-### Backend (slices 1–3)
+### Backend (slices 1–4)
 
 - `Studio/Domain`: `OracleReferences` (reference scan), oracle commands on the `GameSystem` aggregate (copy-on-write document), the shared oracles-section validator, new errors (`OracleNotFound`, `OracleKeyTaken`, `OracleInUse` with paths, invalid oracle → existing `InvalidReleaseContent` path style).
 - `Studio/Application`: `SaveOracleTable`, `DeleteOracleTable`, `SaveLikelihoodOracle`, `DeleteLikelihoodOracle` (with `expectedVersion`), `GetGameSystemOracles`, `TestRollOracleTable`, `TestAskLikelihoodOracle` (dispatch the Randomness queries with fragments built from the stored draft; Randomness is shared kernel, Play is not touched).
 - `Studio/Infrastructure/Http`: a `GameSystemOracleController`, error mapping and OpenAPI attributes as in `GameSystemController`; API tests; `make api`.
 
-### Frontend (slices 4–5)
+### Frontend (slices 5–6)
 
 - `frontend/src/studio/oracles/`: hooks (`useGameSystemOracles`, save/delete/test mutations updating the cached `version`), Oracles tab, table editor, likelihood editor, test-roll panel, result views (extract Play's journal result renderers to `shared` only if the shapes match).
 
@@ -63,11 +63,12 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `feat/studio-oracle-editor-1-domain` | `feat(studio): studio-oracle-editor 1/5 oracle editing domain` | T1, T2 | ~1,400 |
 | 2 | `feat/studio-oracle-editor-2-application` | `feat(studio): studio-oracle-editor 2/5 oracle commands, read model and test rolls` | T3, T4 | ~1,400 |
-| 3 | `feat/studio-oracle-editor-3-api` | `feat(studio): studio-oracle-editor 3/5 oracle editor API` | T5 | ~1,600 incl. ~600 generated |
-| 4 | `feat/studio-oracle-editor-4-table-editor` | `feat(studio): studio-oracle-editor 4/5 oracles tab and table editor` | T6, T7 | ~1,600 |
-| 5 | `feat/studio-oracle-editor-5-likelihood-editor` | `feat(studio): studio-oracle-editor 5/5 likelihood editor and e2e` | T8, T9 | ~1,400 |
+| 3 | `feat/studio-oracle-editor-3-table-api` | `feat(studio): studio-oracle-editor 3/6 oracles read and table API` | T5 | ~1,600 incl. ~700 generated |
+| 4 | `feat/studio-oracle-editor-4-likelihood-api` | `feat(studio): studio-oracle-editor 4/6 likelihood oracle API` | T6 | ~1,000 incl. ~400 generated |
+| 5 | `feat/studio-oracle-editor-5-table-editor` | `feat(studio): studio-oracle-editor 5/6 oracles tab and table editor` | T7, T8 | ~1,600 |
+| 6 | `feat/studio-oracle-editor-6-likelihood-editor` | `feat(studio): studio-oracle-editor 6/6 likelihood editor and e2e` | T9, T10 | ~1,400 |
 
-Shippable: slices 1–3 add backend unused by the UI; slice 4 makes the Oracles tab usable for tables alone.
+Shippable: slices 1–4 add backend unused by the UI; slice 5 makes the Oracles tab usable for tables alone. The API was split in two on 2026-10-16 (slice 3 forecast ~2,700 lines with 8 endpoints and their generated spec and types, over the ceiling).
 
 ## Tasks
 
@@ -75,13 +76,14 @@ Shippable: slices 1–3 add backend unused by the UI; slice 4 makes the Oracles 
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0029 (Studio oracle editor: per-item commands with expected version, section invariant, refuse rename/delete while referenced, test rolls of the saved draft, v2 extensions preserved) and ADR index row; glossary (Test roll); context map if Studio → Randomness is not yet drawn | delegated writer (slice 1) | [x] | `e0af8eb` |
 | T2 | 1 | Domain: `OracleReferences`; shared oracles-section validator extracted from the publisher's checks; `GameSystem` oracle commands (save/delete table, save/delete likelihood oracle; rename; position kept; v1 field rules; extensions preserved); errors; unit tests incl. every reference kind and a publish regression | delegated writer (slice 1) | [x] | `7719525` |
-| T3 | 2 | Application: four oracle command handlers with `expectedVersion` (409), `GetGameSystemOracles` read model with `version` and `usedBy`; unit tests; Behat scenarios | delegated writer (slice 2) | [x] | |
-| T4 | 2 | Application: `TestRollOracleTable`, `TestAskLikelihoodOracle` (random event table rolled on a signalled random event); unit tests with a fixed randomness source; Behat | delegated writer (slice 2) | [x] | |
-| T5 | 3 | HTTP: `GameSystemOracleController` for the API above; every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft and a stale `expectedVersion`; `make api` (generated files in their own commit) | | [ ] | |
-| T6 | 4 | Oracles tab: list of tables and likelihood oracles with counts and "used by", create (key, name; table ranged or weighted), delete with the in-use reason; hooks; Vitest; stories | | [ ] | |
-| T7 | 4 | Table editor route: entries editor (ranged min/max with live coverage gaps, or weights), text, nested table, entry key, read-only `sceneType`/`effects` badges, rename; 409/422 handling; test-roll panel with nested steps; Vitest; stories | | [ ] | |
-| T8 | 5 | Likelihood oracle editor route: sides, levels, chaos, exceptional %, random event table, read-only `chaos.tracker`; test-answer panel (level, chaos factor, random event result); Vitest; stories | | [ ] | |
-| T9 | 5 | e2e: a GAME_MANAGER copies a preset, edits a table entry, test-rolls it, publishes; wrap-up: roadmap 15 done, feature doc closed | | [ ] | |
+| T3 | 2 | Application: four oracle command handlers with `expectedVersion` (409), `GetGameSystemOracles` read model with `version` and `usedBy`; unit tests; Behat scenarios | delegated writer (slice 2) | [x] | `481bbfb` |
+| T4 | 2 | Application: `TestRollOracleTable`, `TestAskLikelihoodOracle` (random event table rolled on a signalled random event); unit tests with a fixed randomness source; Behat | delegated writer (slice 2) | [x] | `ca58392` |
+| T5 | 3 | HTTP: `GameSystemOracleController` with `GET /oracles` (tables and likelihood oracles), `POST /oracle-tables`, `PUT`/`DELETE /oracle-tables/{table}`, `POST /oracle-tables/{table}/test-rolls`; every error mapped (400/401/403/404/409/415/422) with API tests incl. another owner's draft and a stale `expectedVersion`; `make api` (generated files in their own commit) | | [ ] | |
+| T6 | 4 | HTTP: `POST /likelihood-oracles`, `PUT`/`DELETE /likelihood-oracles/{oracle}`, `POST /likelihood-oracles/{oracle}/test-answers` on the same controller; errors and API tests as T5; `make api` | | [ ] | |
+| T7 | 5 | Oracles tab: list of tables and likelihood oracles with counts and "used by", create (key, name; table ranged or weighted), delete with the in-use reason; hooks; Vitest; stories | | [ ] | |
+| T8 | 5 | Table editor route: entries editor (ranged min/max with live coverage gaps, or weights), text, nested table, entry key, read-only `sceneType`/`effects` badges, rename; 409/422 handling; test-roll panel with nested steps; Vitest; stories | | [ ] | |
+| T9 | 6 | Likelihood oracle editor route: sides, levels, chaos, exceptional %, random event table, read-only `chaos.tracker`; test-answer panel (level, chaos factor, random event result); Vitest; stories | | [ ] | |
+| T10 | 6 | e2e: a GAME_MANAGER copies a preset, edits a table entry, test-rolls it, publishes; wrap-up: roadmap 15 done, feature doc closed | | [ ] | |
 
 ## Progress
 
@@ -91,13 +93,15 @@ Shippable: slices 1–3 add backend unused by the UI; slice 4 makes the Oracles 
 - 2026-10-16: Slice 1 review fixes (slice 2, commit 1): publish-level test for a `table` step branch on an entry key no table has (passed first time, code was right); `OracleInUse` now lists the paths of every dropped referenced entry key (RED observed: only the first path came back).
 - 2026-10-16: T3 done: four oracle commands and handlers (`OwnedGameSystems::getAtVersion` does the 404 then the `expectedVersion` 409 check), `GetGameSystemOracles` (`version`, `schemaVersion`, `tables`, `likelihood` as `OracleView` with `usedBy`; items that are not arrays with a string key are left out). Decision: commands and handlers return `void` (the command bus returns nothing); slice 3's controller reads the new `version` back with `GetGameSystemOracles` after dispatching. Handlers were written before their tests, which passed first time (the only RED was a test bug); Behat `gamesystem_oracles.feature` (11 scenarios) added.
 - 2026-10-16: T4 done: `TestRollOracleTable` (returns `OracleTableResultView`) and `TestAskLikelihoodOracle` (returns `LikelihoodTestView`: answer + nullable random event roll) dispatch the Randomness queries with the stored draft's whole table set; `StoredOracles` reads the section raw so an invalid draft fails in Randomness (`InvalidOracleTable`, `InvalidLikelihoodOracle` for an unknown level or chaos factor: slice 3 maps both to 422) rather than being repaired; unknown table or oracle key: `OracleNotFound`. Test rolls take no repository, so a roll cannot save; tests assert document and version unchanged. v1 drafts roll fine (Randomness accepts the v1 table shape; tested on `contract-doc-example`). Handlers were written before their tests; one test was RED for a wrong scripted roll, the rest passed first time. Test double `tests/Unit/Studio/Application/RandomnessQueryBus.php` (the two Randomness queries over a scripted RNG) is used by unit tests and Behat.
+- 2026-10-16: Slice 2 review fixes (slice 3, commit 1): `InMemoryGameSystemRepository::save()` now advances `version` like Doctrine's optimistic lock; handler tests use the real version sequence, refusals assert the version unchanged, new test: two clients read version N, one saves, the other is refused with `GameSystemModifiedConcurrently`; `OracleInUse` messages asserted for one and several dropped entry keys. Written after the fix, GREEN on first run (the fake change itself turned two tests RED, fixed).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-b6727da40a526672` | `e0af8eb`, `7719525` | approved, acknowledged. Suggestions, fixed in slice 2: publish-level test for a `table` step branch naming an unknown entry key (`ReleaseVersion2` `tableEntryKeys` now indexes raw keys); `OracleInUse` for entry keys collects the paths of every dropped referenced entry key, not just the first | [#142](https://github.com/iribarren/ogami/pull/142) |
+| 2 | `review-1f8d4baa63e3e49b` | `86db4ea`, `481bbfb`, `ca58392` | approved, acknowledged. Fixed in slice 3: (warning) the in-memory GameSystem repository never advanced `version` on save, so no test proved a real stale-version refusal (A reads N, B saves, A refused) nor that a test roll never saves; (suggestion) assert the `OracleInUse` singular and plural messages | [#143](https://github.com/iribarren/ogami/pull/143) |
 
 ## Next step
 
-Slice 2 (slice 1 review fixes, T3, T4) on `feat/studio-oracle-editor-2-application`.
+Slice 3 (slice 2 review fixes, T5) on `feat/studio-oracle-editor-3-table-api`.

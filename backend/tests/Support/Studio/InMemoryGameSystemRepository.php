@@ -8,6 +8,10 @@ use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\GameSystemRepository;
 
+/**
+ * A repository kept in memory. Like Doctrine's, save() advances the GameSystem's version, so a
+ * test can tell a save from no save and a stale copy from a current one.
+ */
 final class InMemoryGameSystemRepository implements GameSystemRepository
 {
     /** @var array<string, GameSystem> by key */
@@ -30,6 +34,10 @@ final class InMemoryGameSystemRepository implements GameSystemRepository
         if (($this->gameSystems[$gameSystem->key()] ?? null) !== $gameSystem) {
             throw new \LogicException(\sprintf('GameSystem "%s" was not added through this repository.', $gameSystem->key()));
         }
+
+        // Doctrine's optimistic lock counts every save; the aggregate only reads the token.
+        $version = new \ReflectionProperty(GameSystem::class, 'version');
+        $version->setValue($gameSystem, $gameSystem->version() + 1);
     }
 
     public function ofKey(string $key): ?GameSystem

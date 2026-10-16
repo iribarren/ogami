@@ -57,3 +57,26 @@ Feature: GameSystem draft oracles
   Scenario: Another game manager cannot change the oracles
     When bob saves the table "rumours" named "Rumours" with the entries "True" in "my-heist"
     Then the GameSystem is not found
+
+  Scenario: A table is test-rolled through its nested table without changing the draft
+    Given the dice will roll "4, 3"
+    When ann test-rolls the table "complications" of "my-heist"
+    Then the test roll went through the tables "complications, escape-routes" and ended on "Sewers"
+    And ann's draft "my-heist" is unchanged
+
+  Scenario: A table that the draft does not have cannot be test-rolled
+    When ann test-rolls the table "fate" of "my-heist"
+    Then the oracle change is refused because it does not exist
+
+  Scenario: A likelihood answer that signals a random event rolls the event table too
+    Given a published GameSystem release "fate-events" from the fixture "valid/v2-random-event"
+    And ann created the GameSystem "my-fate" named "My fate" as a copy of "fate-events"
+    And the dice will roll "33, 2"
+    When ann test-asks the likelihood oracle "fate" of "my-fate" with the level "even" and the chaos factor 5
+    Then the answer is "yes" and the random event "focus" gives "A stranger appears"
+    And ann's draft "my-fate" is unchanged
+
+  Scenario: A likelihood answer without a random event rolls no event table
+    Given the dice will roll "77"
+    When ann test-asks the likelihood oracle "fate" of "my-heist" with the level "even" and the chaos factor 5
+    Then the answer is "no" and no random event is rolled

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Behat;
 
+use App\Randomness\Application\OracleTableResultView;
 use App\Studio\Application\CreateGameSystem;
 use App\Studio\Application\CreateGameSystemHandler;
 use App\Studio\Application\DeleteLikelihoodOracle;
@@ -25,6 +26,7 @@ use App\Studio\Application\GetGameSystemRelease;
 use App\Studio\Application\GetGameSystemReleaseHandler;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\GetPublishedReleaseHandler;
+use App\Studio\Application\LikelihoodTestView;
 use App\Studio\Application\ListGameSystemReleases;
 use App\Studio\Application\ListGameSystemReleasesHandler;
 use App\Studio\Application\ListMyGameSystems;
@@ -41,6 +43,10 @@ use App\Studio\Application\RestoreGameSystemRelease;
 use App\Studio\Application\RestoreGameSystemReleaseHandler;
 use App\Studio\Application\SaveOracleTable;
 use App\Studio\Application\SaveOracleTableHandler;
+use App\Studio\Application\TestAskLikelihoodOracle;
+use App\Studio\Application\TestAskLikelihoodOracleHandler;
+use App\Studio\Application\TestRollOracleTable;
+use App\Studio\Application\TestRollOracleTableHandler;
 use App\Studio\Application\ValidateGameSystemDraft;
 use App\Studio\Application\ValidateGameSystemDraftHandler;
 use App\Studio\Domain\GameSystem\GameSystemHasReleases;
@@ -56,12 +62,14 @@ use App\Studio\Domain\Release\GameSystemReleaseNotFound;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
+use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use App\Tests\Support\Studio\FixedClock;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\ReleaseArrays;
 use App\Tests\Support\Studio\SequentialGameSystemIdGenerator;
 use App\Tests\Support\Studio\SequentialReleaseIdGenerator;
+use App\Tests\Unit\Studio\Application\RandomnessQueryBus;
 use Behat\Behat\Context\Context;
 use Behat\Step\Given;
 use Behat\Step\Then;
@@ -87,6 +95,11 @@ final class StudioContext implements Context
     private readonly FixedClock $clock;
     private readonly OwnedGameSystems $owned;
     private ?\Throwable $draftRefusal = null;
+    private ScriptedRandomNumberGenerator $dice;
+    private ?OracleTableResultView $tableRoll = null;
+    private ?LikelihoodTestView $likelihoodTest = null;
+    /** @var array<string, mixed> */
+    private array $documentBeforeTest = [];
 
     public function __construct()
     {
@@ -98,6 +111,7 @@ final class StudioContext implements Context
         $this->draftIds = new SequentialGameSystemIdGenerator();
         $this->owned = new OwnedGameSystems($this->drafts);
         $this->getRelease = new GetPublishedReleaseHandler($this->releases);
+        $this->dice = new ScriptedRandomNumberGenerator();
     }
 
     #[Given('a GameSystem release file for the GameSystem :key named :name')]
@@ -504,6 +518,68 @@ final class StudioContext implements Context
     public function refusedStale(): void
     {
         Assert::assertInstanceOf(GameSystemModifiedConcurrently::class, $this->draftRefusal);
+    }
+
+    #[Given('the dice will roll :numbers')]
+    public function theDiceWillRoll(string $numbers): void
+    {
+        $this->dice = new ScriptedRandomNumberGenerator(...array_map(intval(...), explode(', ', $numbers)));
+    }
+
+    #[When('/^(?P<user>\w+) test-rolls the table "(?P<table>[^"]+)" of "(?P<key>[^"]+)"$/')]
+    public function testRollsATable(string $user, string $table, string $key): void
+    {
+        $this->documentBeforeTest = $this->owned->get($user, $key)->document();
+        $this->tableRoll = null;
+        $this->attempt(function () use ($user, $table, $key): void {
+            $this->tableRoll = (new TestRollOracleTableHandler($this->owned, new RandomnessQueryBus($this->dice)))(new TestRollOracleTable($user, $key, $table));
+        });
+    }
+
+    #[When('/^(?P<user>\w+) test-asks the likelihood oracle "(?P<oracle>[^"]+)" of "(?P<key>[^"]+)" with the level "(?P<level>[^"]+)" and the chaos factor (?P<chaos>\d+)$/')]
+    public function testAsksALikelihoodOracle(string $user, string $oracle, string $key, string $level, int $chaos): void
+    {
+        $this->documentBeforeTest = $this->owned->get($user, $key)->document();
+        $this->likelihoodTest = null;
+        $this->attempt(function () use ($user, $oracle, $key, $level, $chaos): void {
+            $this->likelihoodTest = (new TestAskLikelihoodOracleHandler($this->owned, new RandomnessQueryBus($this->dice)))(new TestAskLikelihoodOracle($user, $key, $oracle, $level, $chaos));
+        });
+    }
+
+    #[Then('the test roll went through the tables :tables and ended on :text')]
+    public function theTestRollWentThrough(string $tables, string $text): void
+    {
+        Assert::assertInstanceOf(OracleTableResultView::class, $this->tableRoll);
+        $steps = $this->tableRoll->steps;
+        Assert::assertSame([$tables, $text], [implode(', ', array_map(static fn (\App\Randomness\Application\OracleTableStepView $step): string => $step->tableKey, $steps)), array_last($steps)->text]);
+    }
+
+    #[Then('the answer is :answer and the random event :table gives :text')]
+    public function theAnswerHasARandomEvent(string $answer, string $table, string $text): void
+    {
+        Assert::assertInstanceOf(LikelihoodTestView::class, $this->likelihoodTest);
+        Assert::assertInstanceOf(OracleTableResultView::class, $this->likelihoodTest->randomEvent);
+        Assert::assertSame([$answer, $table, $text], [$this->likelihoodTest->answer->answer, $this->likelihoodTest->randomEvent->table, $this->likelihoodTest->randomEvent->steps[0]->text]);
+    }
+
+    #[Then('the answer is :answer and no random event is rolled')]
+    public function theAnswerHasNoRandomEvent(string $answer): void
+    {
+        Assert::assertInstanceOf(LikelihoodTestView::class, $this->likelihoodTest);
+        Assert::assertSame($answer, $this->likelihoodTest->answer->answer);
+        Assert::assertNull($this->likelihoodTest->randomEvent);
+    }
+
+    #[Then('/^(?P<user>\w+)\'s draft "(?P<key>[^"]+)" is unchanged$/')]
+    public function theDraftIsUnchanged(string $user, string $key): void
+    {
+        Assert::assertSame($this->documentBeforeTest, $this->owned->get($user, $key)->document());
+    }
+
+    #[Then('the oracle change is refused because it does not exist')]
+    public function refusedOracleNotFound(): void
+    {
+        Assert::assertInstanceOf(OracleNotFound::class, $this->draftRefusal);
     }
 
     /**

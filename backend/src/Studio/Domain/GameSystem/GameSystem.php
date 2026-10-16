@@ -125,9 +125,10 @@ final class GameSystem
 
     /**
      * Creates an oracle table (no original key; it is appended) or replaces one by its original key
-     * (it keeps its position; a different key renames it). Entry sceneType and effects are taken as
-     * given. The "oracles" section must stay valid for the draft's schema version, checked by the
-     * publisher's own section validator, and nothing changes when a command is refused.
+     * (it keeps its position; a different key renames it). The "oracles" section must stay valid for
+     * the draft's schema version, checked by the publisher's own section validator, and so must the
+     * draft by the item rules (entry sceneType and effects and the chaos tracker are references to
+     * other sections). Nothing changes when a command is refused.
      *
      * @param array<array-key, mixed> $table
      *
@@ -175,6 +176,65 @@ final class GameSystem
     public function deleteLikelihoodOracle(string $key, \DateTimeImmutable $now): void
     {
         $this->deleteOracle('likelihood', $key, $now);
+    }
+
+    /**
+     * Creates a tracker, tag, fact slot, Scene Type or flow (no original key; it is appended) or
+     * replaces one by its original key (it keeps its position; a different key renames it). The item
+     * is stored as given once the whole draft passes the item rules (ADR 0030), so an item that
+     * breaks them, or a change that breaks an item referencing it, is refused with the publisher's
+     * path and nothing changes. A saved flow with "default" true clears it on the others.
+     *
+     * @param array<array-key, mixed> $item
+     *
+     * @throws NarrativeItemNotFound when the original key names no item of the section
+     * @throws NarrativeKeyTaken     when the new key belongs to another item of the section
+     * @throws NarrativeItemInUse    when a renamed tracker, tag, fact slot or Scene Type is referenced outside itself
+     * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or a section is not well-formed
+     */
+    public function saveNarrativeItem(NarrativeSection $section, ?string $originalKey, array $item, \DateTimeImmutable $now): void
+    {
+        $items = $this->narrativeItems($section);
+        $position = \count($items);
+        if (null !== $originalKey) {
+            $position = $this->indexOfKey($items, $originalKey) ?? throw NarrativeItemNotFound::withKey($section, $originalKey);
+        }
+
+        $key = $item['key'] ?? null;
+        if (\is_string($key) && $key !== $originalKey && null !== $this->indexOfKey($items, $key)) {
+            throw NarrativeKeyTaken::withKey($section, $key);
+        }
+
+        if (null !== $originalKey && $key !== $originalKey) {
+            $this->refuseWhenNarrativeReferenced($section, $originalKey);
+        }
+
+        $items[$position] = $item;
+        if (NarrativeSection::Flows === $section && true === ($item['default'] ?? null)) {
+            foreach ($items as $index => $flow) {
+                if ($index !== $position && \is_array($flow) && true === ($flow['default'] ?? null)) {
+                    unset($flow['default']);
+                    $items[$index] = $flow;
+                }
+            }
+        }
+
+        $this->replaceNarrativeItems($section, array_values($items), $now);
+    }
+
+    /**
+     * @throws NarrativeItemNotFound when the section has no item with this key
+     * @throws NarrativeItemInUse    when the draft references a tracker, tag, fact slot or Scene Type outside itself
+     * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or a section is not well-formed
+     */
+    public function deleteNarrativeItem(NarrativeSection $section, string $key, \DateTimeImmutable $now): void
+    {
+        $items = $this->narrativeItems($section);
+        $position = $this->indexOfKey($items, $key) ?? throw NarrativeItemNotFound::withKey($section, $key);
+        $this->refuseWhenNarrativeReferenced($section, $key);
+
+        unset($items[$position]);
+        $this->replaceNarrativeItems($section, array_values($items), $now);
     }
 
     /**
@@ -263,11 +323,11 @@ final class GameSystem
         $items = $oracles[$section];
         $position = \count($items);
         if (null !== $originalKey) {
-            $position = $this->oracleIndex($items, $originalKey) ?? throw OracleNotFound::withKey($originalKey);
+            $position = $this->indexOfKey($items, $originalKey) ?? throw OracleNotFound::withKey($originalKey);
         }
 
         $key = $item['key'] ?? null;
-        if (\is_string($key) && $key !== $originalKey && (null !== $this->oracleIndex($oracles['tables'], $key) || null !== $this->oracleIndex($oracles['likelihood'], $key))) {
+        if (\is_string($key) && $key !== $originalKey && (null !== $this->indexOfKey($oracles['tables'], $key) || null !== $this->indexOfKey($oracles['likelihood'], $key))) {
             throw OracleKeyTaken::withKey($key);
         }
 
@@ -293,13 +353,52 @@ final class GameSystem
     private function deleteOracle(string $section, string $key, \DateTimeImmutable $now): void
     {
         $oracles = $this->oraclesSection();
-        $position = $this->oracleIndex($oracles[$section], $key) ?? throw OracleNotFound::withKey($key);
+        $position = $this->indexOfKey($oracles[$section], $key) ?? throw OracleNotFound::withKey($key);
         $this->refuseWhenReferenced($section, $key);
 
         unset($oracles[$section][$position]);
         $oracles[$section] = array_values($oracles[$section]);
         OraclesSection::validate($oracles, $this->schemaVersion());
         $this->replaceOracles($oracles, $now);
+    }
+
+    /**
+     * @return list<mixed> the stored items of the section; none when it is missing
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1 or the section is not a list
+     */
+    private function narrativeItems(NarrativeSection $section): array
+    {
+        if (1 === $this->schemaVersion()) {
+            throw InvalidReleaseContent::at('schemaVersion', 'narrative sections need schema version 2, this draft is version 1');
+        }
+
+        return ReleaseFields::list($this->document[$section->value] ?? [], $section->value);
+    }
+
+    /**
+     * @param list<mixed> $items
+     *
+     * @throws InvalidReleaseContent when the new document breaks the item rules
+     */
+    private function replaceNarrativeItems(NarrativeSection $section, array $items, \DateTimeImmutable $now): void
+    {
+        $document = $this->document;
+        $document[$section->value] = $items;
+        ReleaseContent::checkItemRules($document);
+        $this->document = $document;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * @throws NarrativeItemInUse when the draft names this item outside the item itself
+     */
+    private function refuseWhenNarrativeReferenced(NarrativeSection $section, string $key): void
+    {
+        $paths = DraftReferences::narrativePathsTo($this->document, $section, $key);
+        if ([] !== $paths) {
+            throw NarrativeItemInUse::at(\sprintf('The %s "%s"', $section->noun(), $key), $paths);
+        }
     }
 
     /**
@@ -360,7 +459,7 @@ final class GameSystem
     /**
      * @param list<mixed> $items
      */
-    private function oracleIndex(array $items, string $key): ?int
+    private function indexOfKey(array $items, string $key): ?int
     {
         foreach ($items as $index => $item) {
             if (\is_array($item) && ($item['key'] ?? null) === $key) {
@@ -402,6 +501,8 @@ final class GameSystem
     {
         $document = $this->document;
         $document['oracles'] = $oracles;
+        // The section is valid on its own; entry sceneType and effects and the chaos tracker also need the other sections (ADR 0030).
+        ReleaseContent::checkItemRules($document);
         $this->document = $document;
         $this->updatedAt = $now;
     }

@@ -170,6 +170,36 @@ final class DraftReferences
     }
 
     /**
+     * The places that name this item of a narrative section from outside the item itself, which
+     * is what blocks its rename or delete and what "used by" lists: a Scene Type's own steps naming
+     * it do not count. Flow keys are named nowhere, so a flow has none.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<string>
+     */
+    public static function narrativePathsTo(array $document, NarrativeSection $section, string $key): array
+    {
+        $paths = match ($section) {
+            NarrativeSection::Trackers => self::trackerPathsTo($document, $key),
+            NarrativeSection::Tags => self::tagPathsTo($document, $key),
+            NarrativeSection::FactSlots => self::factSlotPathsTo($document, $key),
+            NarrativeSection::SceneTypes => self::sceneTypePathsTo($document, $key),
+            NarrativeSection::Flows => [],
+        };
+
+        foreach (self::objects($document[$section->value] ?? null) as $index => $item) {
+            if ($key === ($item['key'] ?? null)) {
+                $own = \sprintf('%s[%d].', $section->value, $index);
+
+                return array_values(array_filter($paths, static fn (string $path): bool => !str_starts_with($path, $own)));
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
      * @param array<string, mixed> $document
      *
      * @return list<string>

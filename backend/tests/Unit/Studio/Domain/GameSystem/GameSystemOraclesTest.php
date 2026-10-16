@@ -364,6 +364,56 @@ final class GameSystemOraclesTest extends TestCase
     }
 
     #[Test]
+    public function anEntrySceneTypeIsSavedWhenTheDraftHasIt(): void
+    {
+        $gameSystem = $this->draft();
+        $table = $this->tables($gameSystem)[1];
+
+        $gameSystem->saveOracleTable('complications', ReleaseArrays::with($table, 'entries.2.sceneType', 'getaway'), $this->now);
+        self::assertSame('getaway', self::at($this->tables($gameSystem)[1], 'entries.2.sceneType'));
+    }
+
+    #[Test]
+    public function anEntryNamingAMissingSceneTypeIsRefusedWithItsPath(): void
+    {
+        $gameSystem = $this->draft();
+        $table = ReleaseArrays::with($this->tables($gameSystem)[1], 'entries.2.sceneType', 'nowhere');
+
+        try {
+            $gameSystem->saveOracleTable('complications', $table, $this->now);
+            self::fail('Expected InvalidReleaseContent');
+        } catch (InvalidReleaseContent $invalid) {
+            self::assertSame('oracles.tables[1].entries[2].sceneType: unknown Scene Type "nowhere"', $invalid->getMessage());
+        }
+    }
+
+    #[Test]
+    public function anEntryEffectNamingAMissingTrackerIsRefusedAndLeavesTheDraftUnchanged(): void
+    {
+        $gameSystem = $this->draft();
+        $table = ReleaseArrays::with($this->tables($gameSystem)[1], 'entries.0.effects.0.tracker', 'nowhere');
+
+        $this->assertUntouched($gameSystem, fn () => $gameSystem->saveOracleTable('complications', $table, $this->now), InvalidReleaseContent::class);
+    }
+
+    #[Test]
+    public function aChaosTrackerMustBeACounterOfTheTrackersSection(): void
+    {
+        $gameSystem = $this->draft();
+        $fate = $this->likelihood($gameSystem)[0];
+
+        foreach (['alarm' => 'must be a counter, "alarm" is a clock', 'nowhere' => 'unknown tracker "nowhere"'] as $tracker => $reason) {
+            try {
+                $gameSystem->saveLikelihoodOracle('fate', ReleaseArrays::with($fate, 'chaos.tracker', $tracker), $this->now);
+                self::fail('Expected InvalidReleaseContent');
+            } catch (InvalidReleaseContent $invalid) {
+                self::assertStringStartsWith('oracles.likelihood[0].chaos.tracker: ', $invalid->getMessage());
+                self::assertStringContainsString($reason, $invalid->getMessage());
+            }
+        }
+    }
+
+    #[Test]
     public function aReferencedLikelihoodOracleCannotBeRenamedOrDeleted(): void
     {
         $gameSystem = $this->draft();

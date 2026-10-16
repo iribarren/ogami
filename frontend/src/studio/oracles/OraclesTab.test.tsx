@@ -54,6 +54,10 @@ describe('the oracles tab', () => {
     expect(likelihood.getByRole('listitem')).toHaveTextContent(
       'Used by flows[0].phases[0].steps[1]',
     )
+    expect(likelihood.getByRole('link', { name: 'Fate question' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/likelihood-oracles/fate',
+    )
   })
 
   it('has empty states', async () => {
@@ -260,6 +264,54 @@ describe('the oracles tab', () => {
       await waitFor(() => {
         expect(versions).toEqual([7, 8])
       })
+    })
+
+    it('keeps the conflict until the latest version is in, so a retry cannot carry the old one', async () => {
+      let reads = 0
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const { user } = await openDialog({
+        [`GET ${base}/oracles`]: async () => {
+          if (++reads === 1) {
+            return Response.json(oracles)
+          }
+          await gate
+          return Response.json(withoutStorm)
+        },
+        [`POST ${base}/oracle-tables`]: json({ error: 'Changed by another request.' }, 409),
+      })
+
+      await user.type(inDialog().getByLabelText('Key'), 'omens')
+      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await user.click(screen.getByRole('button', { name: 'Create table' }))
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'Create table' })).not.toBeInTheDocument()
+      release()
+      expect(await screen.findByRole('button', { name: 'Create table' })).toBeEnabled()
+    })
+
+    it('says so when the reload fails, and still blocks the retry', async () => {
+      let reads = 0
+      const { user } = await openDialog({
+        [`GET ${base}/oracles`]: () =>
+          ++reads === 1
+            ? Response.json(oracles)
+            : Response.json({ error: 'Gone.' }, { status: 404 }),
+        [`POST ${base}/oracle-tables`]: json({ error: 'Changed by another request.' }, 409),
+      })
+
+      await user.type(inDialog().getByLabelText('Key'), 'omens')
+      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await user.click(screen.getByRole('button', { name: 'Create table' }))
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(await screen.findByText(/Couldn.t reload the latest version/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create table' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeEnabled()
     })
 
     it.each([[422, 'Oracle table key "Bad Key" is invalid.']])(

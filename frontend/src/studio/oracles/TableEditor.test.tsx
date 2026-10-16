@@ -186,14 +186,41 @@ describe('the table editor', () => {
     expect(bodies[1]).toMatchObject({ expectedVersion: 8 })
   })
 
-  it('goes to the new key after a rename', async () => {
-    const { user, router } = await openEditor('weather', {
-      [`PUT ${base}/oracle-tables/weather`]: () =>
-        Response.json({
-          ...renamed,
-          tables: [{ ...weather, definition: { ...weather.definition, key: 'skies' } }, ...others],
-        }),
+  const afterRename = {
+    ...renamed,
+    tables: [{ ...weather, definition: { ...weather.definition, key: 'skies' } }, ...others],
+  }
+
+  /** Holds the navigation back, as a slow router would: the cache answers before the URL does. */
+  function slowNavigation(router: { navigate: (options: never) => Promise<void> }) {
+    const navigate = router.navigate.bind(router)
+    vi.spyOn(router, 'navigate').mockImplementation(async (options) => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      await navigate(options)
     })
+  }
+
+  /** Records whether the not-found state is ever on screen, even for one render. */
+  function watchForNotFound() {
+    const seen = { notFound: false }
+    const observer = new MutationObserver(() => {
+      seen.notFound ||= document.body.textContent.includes('no oracle table')
+    })
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+    return {
+      seen,
+      stop: () => {
+        observer.disconnect()
+      },
+    }
+  }
+
+  it('goes to the new key after a rename, without ever showing the table as missing', async () => {
+    const { user, router } = await openEditor('weather', {
+      [`PUT ${base}/oracle-tables/weather`]: () => Response.json(afterRename),
+    })
+    slowNavigation(router)
+    const watch = watchForNotFound()
 
     await replace(user, 'Key', 'skies')
     await user.click(save())
@@ -204,6 +231,31 @@ describe('the table editor', () => {
       )
     })
     expect(await screen.findByLabelText('Key')).toHaveValue('skies')
+    watch.stop()
+    expect(watch.seen.notFound).toBe(false)
+  })
+
+  it('renames through a test roll: saves, goes to the new key, rolls it and keeps the result', async () => {
+    const rolled: string[] = []
+    const { user, router } = await openEditor('weather', {
+      [`PUT ${base}/oracle-tables/weather`]: () => Response.json(afterRename),
+      [`POST ${base}/oracle-tables/skies/test-rolls`]: () => {
+        rolled.push('skies')
+        return Response.json(stormRoll)
+      },
+    })
+    slowNavigation(router)
+    const watch = watchForNotFound()
+
+    await replace(user, 'Key', 'skies')
+    await user.click(screen.getByRole('button', { name: 'Test roll' }))
+
+    expect(await screen.findByRole('list', { name: 'Steps' })).toBeInTheDocument()
+    expect(rolled).toEqual(['skies'])
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/oracle-tables/skies')
+    expect(screen.getByLabelText('Key')).toHaveValue('skies')
+    watch.stop()
+    expect(watch.seen.notFound).toBe(false)
   })
 
   it('adds and removes entries, a new ranged one empty and a new weighted one at weight 1', async () => {
@@ -326,6 +378,26 @@ describe('the table editor', () => {
       expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Storm')
       expect(await screen.findByRole('button', { name: 'Save' })).toBeDisabled()
       expect(reads).toBe(2)
+    })
+  })
+
+  describe('a failed reload', () => {
+    it('says so and keeps the form as it is', async () => {
+      let reads = 0
+      const { user } = await openEditor('weather', {
+        [`GET ${base}/oracles`]: () =>
+          reads++ === 0
+            ? Response.json(oracles)
+            : Response.json({ error: 'Gone.' }, { status: 404 }),
+        [`PUT ${base}/oracle-tables/weather`]: json({ error: 'Changed by another request.' }, 409),
+      })
+
+      await replace(user, 'Entry 2 text', 'Gale')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(await screen.findByText(/Couldn.t reload the latest version/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Gale')
     })
   })
 

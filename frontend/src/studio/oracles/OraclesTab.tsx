@@ -51,7 +51,7 @@ export function OraclesTab({ gameSystemKey }: { gameSystemKey: string }) {
         </p>
       )}
       <TablesList gameSystemKey={gameSystemKey} oracles={oracles.data} />
-      <LikelihoodList oracles={oracles.data} />
+      <LikelihoodList gameSystemKey={gameSystemKey} oracles={oracles.data} />
     </section>
   )
 }
@@ -227,8 +227,14 @@ function DeleteTableDialog({
   )
 }
 
-/** Likelihood oracles are listed here; their editor comes in the next slice. */
-function LikelihoodList({ oracles }: { oracles: GameSystemOracles }) {
+/** Likelihood oracles are listed here, each linking to its editor. */
+function LikelihoodList({
+  gameSystemKey,
+  oracles,
+}: {
+  gameSystemKey: string
+  oracles: GameSystemOracles
+}) {
   return (
     <section aria-label="Likelihood oracles" className="space-y-3">
       <h2 className="font-heading text-lg font-semibold">Likelihood oracles</h2>
@@ -239,7 +245,13 @@ function LikelihoodList({ oracles }: { oracles: GameSystemOracles }) {
           {oracles.likelihood.map(({ definition, usedBy }) => (
             <li key={definition.key} className="space-y-1 px-4 py-3">
               <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="font-medium">{definition.name}</span>
+                <Link
+                  to="/studio/game-systems/$key/likelihood-oracles/$oracle"
+                  params={{ key: gameSystemKey, oracle: definition.key }}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {definition.name}
+                </Link>
                 <span className="font-mono text-sm break-all text-muted-foreground">
                   {definition.key}
                 </span>
@@ -270,12 +282,14 @@ function CreateTableDialog({
   const [open, setOpen] = useState(false)
   const create = useCreateOracleTable(gameSystemKey)
   const latest = useGameSystemOracles(gameSystemKey)
+  const [reload, setReload] = useState<'idle' | 'pending' | 'failed'>('idle')
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
+        setReload('idle')
         create.reset()
       }}
     >
@@ -290,10 +304,19 @@ function CreateTableDialog({
         <CreateTableForm
           create={create}
           version={oracles.version}
+          reload={reload}
           onReload={() => {
-            // The typed values stay: the next create carries the version read now.
-            create.reset()
-            void latest.refetch()
+            // The typed values stay. The conflict is cleared only once the latest version is in:
+            // until then a retry would carry the stale one.
+            setReload('pending')
+            void latest.refetch().then((result) => {
+              if (result.isError) {
+                setReload('failed')
+              } else {
+                create.reset()
+                setReload('idle')
+              }
+            })
           }}
           onCreated={() => {
             setOpen(false)
@@ -307,11 +330,13 @@ function CreateTableDialog({
 function CreateTableForm({
   create,
   version,
+  reload,
   onReload,
   onCreated,
 }: {
   create: ReturnType<typeof useCreateOracleTable>
   version: number
+  reload: 'idle' | 'pending' | 'failed'
   onReload: () => void
   onCreated: () => void
 }) {
@@ -393,8 +418,13 @@ function CreateTableForm({
           {create.error.message}
         </p>
       )}
+      {reload === 'failed' && (
+        <p role="alert" className="text-sm text-destructive">
+          Couldn&apos;t reload the latest version. Try again.
+        </p>
+      )}
       {create.error instanceof StudioError && create.error.status === 409 ? (
-        <Button type="button" onClick={onReload}>
+        <Button type="button" disabled={reload === 'pending'} onClick={onReload}>
           Reload the latest version
         </Button>
       ) : (

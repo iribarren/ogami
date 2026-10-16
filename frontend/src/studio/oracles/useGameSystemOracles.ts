@@ -10,6 +10,7 @@ export type GameSystemOracles = components['schemas']['GameSystemOraclesResponse
 export type OracleTableItem = components['schemas']['OracleTableItemResponse']
 export type LikelihoodOracleItem = components['schemas']['LikelihoodOracleItemResponse']
 export type OracleTableResult = components['schemas']['OracleTableResultResponse']
+export type LikelihoodOracle = components['schemas']['GameSystemLikelihoodOracle']
 
 /** A refused oracle write; `paths` says where the draft uses the oracle when that is why. */
 export class OracleError extends StudioError {
@@ -162,4 +163,31 @@ export function useTestRollOracleTable(key: string) {
       throw oracleError(response, error, 'Rolling the table')
     },
   })
+}
+
+/** `PUT /likelihood-oracles/{oracle}`: replaces an oracle, `current` being the key it has now. */
+export function useSaveLikelihoodOracle(key: string) {
+  const api = useApiClient()
+
+  return useOracleWrite(
+    key,
+    async ({
+      expectedVersion,
+      current,
+      oracle,
+    }: {
+      expectedVersion: number
+      current: string
+      oracle: LikelihoodOracle
+    }) => {
+      const { data, error, response } = await api.PUT(
+        '/api/studio/game-systems/{key}/likelihood-oracles/{oracle}',
+        { params: { path: { key, oracle: current } }, body: { expectedVersion, oracle } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw oracleError(response, error, 'Saving the likelihood oracle')
+    },
+  )
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Application;
 
 use App\Studio\Domain\GameSystem\GameSystem;
+use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\GameSystemRepository;
 
@@ -27,6 +28,22 @@ final readonly class OwnedGameSystems
         $gameSystem = $this->gameSystems->ofKey($key);
         if (!$gameSystem instanceof GameSystem || !$gameSystem->isOwnedBy($ownerId)) {
             throw GameSystemNotFound::withKey($key);
+        }
+
+        return $gameSystem;
+    }
+
+    /**
+     * Like get(), for a client that read the draft at $expectedVersion.
+     *
+     * @throws GameSystemNotFound             when no GameSystem has the key or it belongs to someone else
+     * @throws GameSystemModifiedConcurrently when the draft is no longer at that version
+     */
+    public function getAtVersion(string $ownerId, string $key, int $expectedVersion): GameSystem
+    {
+        $gameSystem = $this->get($ownerId, $key);
+        if ($gameSystem->version() !== $expectedVersion) {
+            throw GameSystemModifiedConcurrently::withKey($key);
         }
 
         return $gameSystem;

@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Studio\Application;
+
+use App\Shared\Application\Bus\CommandHandler;
+use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
+use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\GameSystemRepository;
+use App\Studio\Domain\GameSystem\OracleInUse;
+use App\Studio\Domain\GameSystem\OracleNotFound;
+
+/**
+ * The command returns nothing, like every command on the bus: the new draft version is read
+ * back with GetGameSystemOracles.
+ */
+final readonly class DeleteLikelihoodOracleHandler implements CommandHandler
+{
+    public function __construct(
+        private OwnedGameSystems $owned,
+        private GameSystemRepository $gameSystems,
+        private Clock $clock,
+    ) {
+    }
+
+    /**
+     * @throws GameSystemNotFound             when the user has no such GameSystem
+     * @throws GameSystemModifiedConcurrently when $expectedVersion is not the draft's version, or another request saved it meanwhile
+     * @throws OracleNotFound                 when the draft has no such oracle
+     * @throws OracleInUse                    when the draft references the oracle; nothing changes
+     */
+    public function __invoke(DeleteLikelihoodOracle $command): void
+    {
+        $gameSystem = $this->owned->getAtVersion($command->ownerId, $command->key, $command->expectedVersion);
+        $gameSystem->deleteLikelihoodOracle($command->oracle, $this->clock->now());
+        $this->gameSystems->save($gameSystem);
+    }
+}

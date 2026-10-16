@@ -1031,6 +1031,46 @@ describe('the step list editor', () => {
       expect(card(2).getByText('outcomes: at most 10')).toBeInTheDocument()
     })
 
+    it('lists a difficulty message on the card when the difficulty input is hidden', () => {
+      const hidden = [
+        { key: 'a', kind: 'check', title: 'A', check: 'nothing' },
+        { key: 'b', kind: 'check', title: 'B', check: '' },
+        { key: 'c', kind: 'check', title: 'C', check: 'luck' },
+      ]
+      render(
+        <Harness
+          stored={hidden}
+          errors={errors(
+            'sceneTypes[2].play[0].difficulty: bad difficulty a',
+            'sceneTypes[2].play[1].difficulty: bad difficulty b',
+            'sceneTypes[2].play[2].difficulty: bad difficulty c',
+          )}
+        />,
+      )
+
+      expect(card(1).queryByLabelText('Difficulty')).not.toBeInTheDocument()
+      expect(card(1).getByText('difficulty: bad difficulty a')).toBeInTheDocument()
+      expect(card(2).getByText('difficulty: bad difficulty b')).toBeInTheDocument()
+      expect(card(3).getByText('difficulty: bad difficulty c')).toBeInTheDocument()
+    })
+
+    it('lists a message about a field the kind of step does not have on the card', () => {
+      render(
+        <Harness
+          stored={stepListPickCheck}
+          errors={errors(
+            'sceneTypes[2].play[1].count.min: bad min',
+            'sceneTypes[2].play[1].of: bad of',
+            'sceneTypes[2].play[0].check: bad check',
+          )}
+        />,
+      )
+
+      expect(card(2).getByText('count.min: bad min')).toBeInTheDocument()
+      expect(card(2).getByText('of: bad of')).toBeInTheDocument()
+      expect(card(1).getByText('check: bad check')).toBeInTheDocument()
+    })
+
     it('follows an outcome through the removal of another, and goes when it is removed', async () => {
       const user = userEvent.setup()
       const stored = [

@@ -914,3 +914,9 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
     return guide
   })
 }
+
+/** The difficulty of the chosen check. A value the check does not take stays visible, to be seen and cleared. */
+export function checkDifficulty(step: Extract<StepDraft, { kind: 'check' }>, context: StepContext) {
+  const range = context.checks.find((check) => check.key === step.check)?.difficulty ?? null
+  return { range, show: range !== null || step.difficulty.text.trim() !== '' }
+}

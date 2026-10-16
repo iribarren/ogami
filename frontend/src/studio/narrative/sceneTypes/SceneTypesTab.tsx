@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -13,6 +14,7 @@ import { sceneTypeToDraft, scenePartNames } from './sceneTypeDraft'
 /** The Scene Types of a draft in stored order, with where each is used; each opens its editor page. */
 export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
+  const navigate = useNavigate()
 
   return (
     <NarrativeGate narrative={narrative}>
@@ -27,6 +29,12 @@ export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
               original={null}
               initial={sceneTypeForm.blank()}
               trigger={<Button size="sm">New Scene Type</Button>}
+              onSaved={(item) => {
+                void navigate({
+                  to: '/studio/game-systems/$key/scene-types/$sceneType',
+                  params: { key: gameSystemKey, sceneType: String(item.key) },
+                })
+              }}
             />
           </div>
           {data.sceneTypes.length === 0 ? (
@@ -67,7 +75,17 @@ function SceneTypeRow({
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-medium">{title}</span>
+          {draft === null ? (
+            <span className="font-medium">{title}</span>
+          ) : (
+            <Link
+              to="/studio/game-systems/$key/scene-types/$sceneType"
+              params={{ key: gameSystemKey, sceneType: item.key }}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {title}
+            </Link>
+          )}
           <span className="font-mono text-sm break-all text-muted-foreground">{item.key}</span>
           {draft === null ? (
             <Badge variant="outline">Can&apos;t be edited here</Badge>

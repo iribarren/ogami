@@ -42,6 +42,10 @@ describe('the Scene Types tab', () => {
     expect(ambushRow).toHaveTextContent('ambush')
     expect(ambushRow).toHaveTextContent('setup 1 · play 2 · closing 1')
     expect(ambushRow).toHaveTextContent('Used by flows[0].phases[0].selection.sceneTypes[0]')
+    expect(within(ambushRow).getByRole('link', { name: 'Ambush' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/scene-types/ambush',
+    )
     expect(quiet).toHaveTextContent('setup 0 · play 0 · closing 0')
     expect(quiet).toHaveTextContent('Not used')
     const names = within(screen.getByRole('region', { name: 'Scene Types' }))
@@ -82,7 +86,7 @@ describe('the Scene Types tab', () => {
 })
 
 describe('creating a Scene Type', () => {
-  it('sends the smallest Scene Type the publisher accepts', async () => {
+  it('sends the smallest Scene Type the publisher accepts and opens its editor', async () => {
     const sent: unknown[] = []
     const created = {
       key: 'heist',
@@ -93,7 +97,7 @@ describe('creating a Scene Type', () => {
       play: [],
       closing: [],
     }
-    const { user } = await openTab({
+    const { user, router } = await openTab({
       [`POST ${base}/narrative/scene-types`]: async (request) => {
         sent.push(await request.json())
         return Response.json(
@@ -116,9 +120,9 @@ describe('creating a Scene Type', () => {
     await user.type(inDialog().getByLabelText('Purpose'), 'Steal it.')
     await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    expect(await screen.findByRole('form', { name: 'Scene Type' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Key')).toHaveValue('heist')
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/heist')
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
   })
 

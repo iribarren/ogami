@@ -1,7 +1,7 @@
 # Feature: studio-oracle-editor
 
 - **Locator:** `odd/tasks/studio-oracle-editor.md` · Engram topic `odd/studio-oracle-editor/tasks`
-- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-8-likelihood-tab-e2e` · **Status:** in progress (slice 8)
+- **Issue:** #141 · **Branch:** `feat/studio-oracle-editor-8-likelihood-tab-e2e` · **Status:** done (pending slice 8 review and PR)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-gamesystem-drafts` (PRs #132–#139)
@@ -87,7 +87,7 @@ Shippable: slices 1–4 add backend unused by the UI; slice 5 makes the Oracles 
 | T9 | 7 | Likelihood oracle editor route: sides, levels, chaos, exceptional %, random event table, read-only `chaos.tracker`; rename; 409/422 handling; save hook; tab rows link to the editor; Vitest; stories | delegated writer (slice 7) | [x] | `da4f81c` (fixes `576a2e1`) |
 | T12 | 8 | Likelihood editor test-answer panel: level, chaos factor, answer and random event table roll (shared table result view), history of the last 5 kept across a rename; test-answer hook; Vitest; stories | delegated writer (slice 8) | [x] | |
 | T11 | 8 | Oracles tab: create a likelihood oracle (key, name, a valid default definition) and delete it (disabled with the "Used by" reason; 409 reload), as for tables; Vitest; stories | delegated writer (slice 8) | [x] | |
-| T10 | 8 | e2e: a GAME_MANAGER copies a preset, edits a table entry, test-rolls it, publishes; wrap-up: roadmap 15 done, feature doc closed | | [ ] | |
+| T10 | 8 | e2e: a GAME_MANAGER copies a preset, edits a table entry, test-rolls it, publishes; wrap-up: roadmap 15 done, feature doc closed | delegated writer (slice 8) | [x] | |
 
 ## Progress
 
@@ -111,6 +111,7 @@ Shippable: slices 1–4 add backend unused by the UI; slice 5 makes the Oracles 
 - 2026-10-16: Slice 7 review fixes (slice 8, commit 1): the create dialog's "Reload the latest version" belongs to its dialog session (`useReloadLatest`: closing or reopening ends the session, a late answer is ignored, so a late failure shows nothing and a late success keeps a newer error); both editors clear `onRenaming` in `finally` and swallow a rejected `navigate()` (the URL then decides what the page shows). RED observed for the three new tests against the old code.
 - 2026-10-16: T12 done (slice 8, commit 2): `TestAnswerPanel.tsx` beside the likelihood form (level, chaos factor from `chaosRange`, answer and the random event table roll through the `TableResultView` extracted from `TestRollPanel`), `useTestAskLikelihoodOracle`, `useRollHistory` generalised (last 5, kept across a rename in the page). Like the table test roll: saves unsaved edits first, asks nothing when the save fails, the 422 message is shown. The tests came with the saved patch from the previous session (written with the code, passed first time) and passed unchanged on top of commit 1.
 - 2026-10-16: T11 done (slice 8, commit 3): `New likelihood oracle` and per-row Delete in the Oracles tab, `useCreateLikelihoodOracle`, `useDeleteLikelihoodOracle`, `newLikelihood`. Decision: the default definition is the smallest usable one the domain accepts, two levels on a d100 (`unlikely` 35, `likely` 65), no chaos, exceptional bands or random event (checked against `LikelihoodOracle::fromArray`: sides 2–1000, 1–20 levels, integer targets; valid for schema v1 and v2); the editor adds the rest. Create and delete share the table dialogs' code (`CreateOracleDialog`, `CreateForm`, `DeleteOracleDialog`, one `useReloadLatest` session), so the likelihood create has the same session-safe reload, 409/422 handling and "Used by" reason. Tests written after the code and passed first time.
+- 2026-10-16: T10 done (slice 8, commit 4): `frontend/e2e/studio-oracle-editor.spec.ts`: a GAME_MANAGER copies `free-journal`, opens the Oracles tab, edits the first entry of `action`, saves, reloads to prove the draft holds it, test-rolls and publishes version 1. Roadmap feature 15 marked done; feature closed after the PR merges.
 
 ## Reviews
 
@@ -126,4 +127,4 @@ Shippable: slices 1–4 add backend unused by the UI; slice 5 makes the Oracles 
 
 ## Next step
 
-Slice 8 (slice 7 review fixes, T12, T11, T10) on `feat/studio-oracle-editor-8-likelihood-tab-e2e`; last slice, its PR `Closes #141`.
+Feature closed after PR merge (slice 8 is the last; its PR `Closes #141`).

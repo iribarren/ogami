@@ -857,6 +857,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/narrative": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the trackers, tags, fact slots, Scene Types and flows of one of my GameSystem drafts, with where each is used and what the pickers offer */
+        get: operations["getGameSystemNarrative"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/narrative/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a tracker, tag, fact slot, Scene Type or flow to one of my GameSystem drafts */
+        post: operations["createNarrativeItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/narrative/{section}/{item}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a tracker, tag, fact slot, Scene Type or flow of one of my GameSystem drafts, renaming it when the body has another key */
+        put: operations["replaceNarrativeItem"];
+        post?: never;
+        /** Delete a tracker, tag, fact slot, Scene Type or flow of one of my GameSystem drafts that nothing uses */
+        delete: operations["deleteNarrativeItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems/{key}/oracles": {
         parameters: {
             query?: never;
@@ -2965,6 +3017,149 @@ export interface components {
              */
             warnings: string[];
         };
+        NarrativeItemResponse: {
+            /**
+             * @description The item's key, the one in the path of a replace or delete.
+             * @example alarm
+             */
+            key: string;
+            /**
+             * @description The item as in a release document (the release contract describes each section's fields).
+             * @example {
+             *       "key": "alarm",
+             *       "name": "Alarm",
+             *       "kind": "clock",
+             *       "segments": 6
+             *     }
+             */
+            definition: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description Where the draft references the item outside itself (e.g. "flows[0].phases[1].selection"); a referenced tracker, tag, fact slot or Scene Type cannot be renamed or deleted.
+             * @example [
+             *       "flows[0].trackers"
+             *     ]
+             */
+            usedBy: string[];
+        };
+        NarrativeCatalogTableResponse: {
+            /** @example complications */
+            key: string;
+            /** @example Complications */
+            name: string;
+            /**
+             * @description The keys of its entries, which a table step can branch on.
+             * @example [
+             *       "patrol",
+             *       "lucky-break"
+             *     ]
+             */
+            entries: string[];
+        };
+        NarrativeCatalogLikelihoodResponse: {
+            /** @example fate */
+            key: string;
+            /** @example Fate question */
+            name: string;
+            /**
+             * @description The keys of its levels, which an oracle step may ask at.
+             * @example [
+             *       "unlikely",
+             *       "even",
+             *       "likely"
+             *     ]
+             */
+            levels: string[];
+        };
+        NarrativeCatalogDifficultyResponse: {
+            /** @example 13 */
+            default: number;
+            /**
+             * @description Lowest difficulty the player may set; null when unbounded.
+             * @example 9
+             */
+            min: number | null;
+            /**
+             * @description Highest difficulty the player may set; null when unbounded.
+             * @example 29
+             */
+            max: number | null;
+        };
+        NarrativeCatalogCheckResponse: {
+            /** @example skill */
+            key: string;
+            /** @example Skill check */
+            label: string;
+            /**
+             * @description The keys of its bands, which a check step's outcomes name.
+             * @example [
+             *       "fail",
+             *       "success"
+             *     ]
+             */
+            bands: string[];
+            /** @description Null when the check has no difficulty the player sets. */
+            difficulty: components["schemas"]["NarrativeCatalogDifficultyResponse"] | null;
+        };
+        NarrativeCatalogFieldResponse: {
+            /** @example hands */
+            key: string;
+            /** @example Hands */
+            label: string;
+        };
+        NarrativeCatalogResponse: {
+            tables: components["schemas"]["NarrativeCatalogTableResponse"][];
+            likelihood: components["schemas"]["NarrativeCatalogLikelihoodResponse"][];
+            checks: components["schemas"]["NarrativeCatalogCheckResponse"][];
+            fields: components["schemas"]["NarrativeCatalogFieldResponse"][];
+        };
+        GameSystemNarrativeResponse: {
+            /**
+             * @description The draft's version: send it as "expectedVersion" with the next narrative write.
+             * @example 3
+             */
+            version: number;
+            /**
+             * @description The draft's schema version: a version 1 draft has no narrative sections and refuses every command.
+             * @example 2
+             */
+            schemaVersion: number;
+            trackers: components["schemas"]["NarrativeItemResponse"][];
+            tags: components["schemas"]["NarrativeItemResponse"][];
+            factSlots: components["schemas"]["NarrativeItemResponse"][];
+            sceneTypes: components["schemas"]["NarrativeItemResponse"][];
+            flows: components["schemas"]["NarrativeItemResponse"][];
+            catalog: components["schemas"]["NarrativeCatalogResponse"];
+        };
+        /**
+         * @example {
+         *       "key": "gang",
+         *       "label": "Gang"
+         *     }
+         */
+        NarrativeItemRequest: {
+            [key: string]: unknown;
+        };
+        SaveNarrativeItemRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            item: components["schemas"]["NarrativeItemRequest"];
+        };
+        OracleInUseResponse: {
+            /** @description A human-readable message naming where it is used. */
+            error: string;
+            /**
+             * @description Where the draft references it (e.g. "flows[0].phases[1].steps[2]").
+             * @example [
+             *       "sceneTypes[1].play[1]"
+             *     ]
+             */
+            paths: string[];
+        };
         /** @description Ranged entries have "min" and "max"; weighted entries may have a "weight" (1 by default). An entry needs a "text" unless it nests a "table". "key", "sceneType" and "effects" are schema version 2 fields: kept as given, refused on a version 1 draft. */
         GameSystemOracleTableEntry: {
             /**
@@ -3106,17 +3301,6 @@ export interface components {
              */
             expectedVersion: number;
             table: components["schemas"]["GameSystemOracleTable"];
-        };
-        OracleInUseResponse: {
-            /** @description A human-readable message naming where it is used. */
-            error: string;
-            /**
-             * @description Where the draft references it (e.g. "flows[0].phases[1].steps[2]").
-             * @example [
-             *       "sceneTypes[1].play[1]"
-             *     ]
-             */
-            paths: string[];
         };
         SaveLikelihoodOracleRequest: {
             /**
@@ -6980,6 +7164,320 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGameSystemNarrative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The narrative sections as stored, in order, the catalog and the draft version. A schema version 1 draft has empty sections. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemNarrativeResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createNarrativeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which narrative section: trackers, tags, fact slots, Scene Types or flows. */
+                section: "trackers" | "tags" | "fact-slots" | "scene-types" | "flows";
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNarrativeItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's narrative with the item appended and the new version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemNarrativeResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "item" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or the section is not one of those listed. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The item breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no narrative sections); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replaceNarrativeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which narrative section: trackers, tags, fact slots, Scene Types or flows. */
+                section: "trackers" | "tags" | "fact-slots" | "scene-types" | "flows";
+                key: string;
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveNarrativeItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's narrative with the item replaced in place and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemNarrativeResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "item" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, the section is not one of those listed, or it has no item with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The item breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a rename is used by the draft (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    deleteNarrativeItem: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                /** @description Which narrative section: trackers, tags, fact slots, Scene Types or flows. */
+                section: "trackers" | "tags" | "fact-slots" | "scene-types" | "flows";
+                key: string;
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's narrative without the item and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemNarrativeResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, the section is not one of those listed, or it has no item with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The draft uses the item (the paths say where), or has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
                 };
             };
         };

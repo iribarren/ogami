@@ -112,11 +112,11 @@ final class GameSystemOraclesHandlersTest extends TestCase
         $this->draft('my-heist');
 
         $this->saveTable(null, ['key' => 'rumours', 'name' => 'Rumours', 'entries' => [['text' => 'True'], ['text' => 'False']]]);
-        $this->saveTable('rumours', ['key' => 'gossip', 'name' => 'Gossip', 'entries' => [['text' => 'True']]]);
+        $this->saveTable('rumours', ['key' => 'gossip', 'name' => 'Gossip', 'entries' => [['text' => 'True']]], version: 2);
 
         self::assertSame(['heist-scenes', 'complications', 'escape-routes', 'gossip'], $this->keys($this->oracles('ann', 'my-heist')->tables));
 
-        (new DeleteOracleTableHandler($this->owned, $this->gameSystems, $this->clock))(new DeleteOracleTable('ann', 'my-heist', 'gossip', 1));
+        (new DeleteOracleTableHandler($this->owned, $this->gameSystems, $this->clock))(new DeleteOracleTable('ann', 'my-heist', 'gossip', 3));
 
         self::assertSame(['heist-scenes', 'complications', 'escape-routes'], $this->keys($this->oracles('ann', 'my-heist')->tables));
         self::assertEquals($this->clock->now(), $this->gameSystems->ofKey('my-heist')?->updatedAt());
@@ -129,13 +129,26 @@ final class GameSystemOraclesHandlersTest extends TestCase
         $handler = new SaveLikelihoodOracleHandler($this->owned, $this->gameSystems, $this->clock);
 
         $handler(new SaveLikelihoodOracle('ann', 'my-heist', null, ['key' => 'gut', 'name' => 'Gut', 'sides' => 100, 'levels' => [['key' => 'even', 'label' => '50/50', 'target' => 50]]], 1));
-        $handler(new SaveLikelihoodOracle('ann', 'my-heist', 'gut', ['key' => 'hunch', 'name' => 'Hunch', 'sides' => 100, 'levels' => [['key' => 'even', 'label' => '50/50', 'target' => 50]]], 1));
+        $handler(new SaveLikelihoodOracle('ann', 'my-heist', 'gut', ['key' => 'hunch', 'name' => 'Hunch', 'sides' => 100, 'levels' => [['key' => 'even', 'label' => '50/50', 'target' => 50]]], 2));
 
         self::assertSame(['fate', 'hunch'], $this->keys($this->oracles('ann', 'my-heist')->likelihood));
 
-        (new DeleteLikelihoodOracleHandler($this->owned, $this->gameSystems, $this->clock))(new DeleteLikelihoodOracle('ann', 'my-heist', 'hunch', 1));
+        (new DeleteLikelihoodOracleHandler($this->owned, $this->gameSystems, $this->clock))(new DeleteLikelihoodOracle('ann', 'my-heist', 'hunch', 3));
 
         self::assertSame(['fate'], $this->keys($this->oracles('ann', 'my-heist')->likelihood));
+    }
+
+    #[Test]
+    public function aSaveByAClientThatReadBeforeAnotherSavedIsRefused(): void
+    {
+        $draft = $this->draft('my-heist');
+        $readByBoth = $this->oracles('ann', 'my-heist')->version;
+
+        $this->saveTable(null, ['key' => 'rumours', 'name' => 'Rumours', 'entries' => [['text' => 'True']]], version: $readByBoth);
+        $before = $draft->document();
+
+        $this->expectRefusal(GameSystemModifiedConcurrently::class, $draft, $before, fn () => $this->saveTable(null, ['key' => 'gossip', 'name' => 'Gossip', 'entries' => [['text' => 'True']]], version: $readByBoth));
+        self::assertSame($readByBoth + 1, $this->oracles('ann', 'my-heist')->version);
     }
 
     /**
@@ -235,6 +248,8 @@ final class GameSystemOraclesHandlersTest extends TestCase
      */
     private function expectRefusal(string $refusal, GameSystem $draft, array $before, \Closure $command): void
     {
+        $version = $draft->version();
+
         try {
             $command();
             self::fail('Expected '.$refusal);
@@ -243,6 +258,7 @@ final class GameSystemOraclesHandlersTest extends TestCase
         }
 
         self::assertSame($before, $draft->document());
+        self::assertSame($version, $draft->version());
         ReleaseContent::fromArray($draft->document());
     }
 

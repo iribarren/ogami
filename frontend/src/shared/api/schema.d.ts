@@ -857,6 +857,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/oracles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the oracle tables and likelihood oracles of one of my GameSystem drafts, with where each is used */
+        get: operations["getGameSystemOracles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/oracle-tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an oracle table to one of my GameSystem drafts */
+        post: operations["createOracleTable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/oracle-tables/{table}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace an oracle table of one of my GameSystem drafts, renaming it when the body has another key */
+        put: operations["replaceOracleTable"];
+        post?: never;
+        /** Delete an oracle table of one of my GameSystem drafts that nothing uses */
+        delete: operations["deleteOracleTable"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/oracle-tables/{table}/test-rolls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll on an oracle table of one of my GameSystem drafts as last saved, following nested tables; never changes the draft */
+        post: operations["testRollOracleTable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems/{key}/releases": {
         parameters: {
             query?: never;
@@ -2843,6 +2912,159 @@ export interface components {
              *     ]
              */
             warnings: string[];
+        };
+        /** @description Ranged entries have "min" and "max"; weighted entries may have a "weight" (1 by default). An entry needs a "text" unless it nests a "table". "key", "sceneType" and "effects" are schema version 2 fields: kept as given, refused on a version 1 draft. */
+        GameSystemOracleTableEntry: {
+            /**
+             * @description Lowest total this entry covers, on a ranged table.
+             * @example 1
+             */
+            min?: number | null;
+            /**
+             * @description Highest total this entry covers, on a ranged table.
+             * @example 3
+             */
+            max?: number | null;
+            /**
+             * @description Relative chance of this entry, on a weighted table; 1 by default.
+             * @example 2
+             */
+            weight?: number | null;
+            /** @example Clear */
+            text?: string | null;
+            /**
+             * @description The key of a table of the draft to roll on next when this entry is selected.
+             * @example storm-kind
+             */
+            table?: string | null;
+            /**
+             * @description Unique within the table; a flow's table step can branch on it.
+             * @example patrol
+             */
+            key?: string | null;
+            /**
+             * @description The Scene Type this entry opens. Not edited by the oracle editor.
+             * @example firefight
+             */
+            sceneType?: string | null;
+            /** @description What selecting this entry does to the campaign: effect objects as the release contract defines them. Not edited by the oracle editor. */
+            effects: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** @description A ranged table has "dice" and entries with "min" and "max" that do not overlap; a weighted table has no "dice", entries with an optional "weight" and rolls 1dW for total weight W. */
+        GameSystemOracleTable: {
+            /**
+             * @description Unique among the draft's tables and likelihood oracles: a-z, 0-9 and "-".
+             * @example weather
+             */
+            key: string;
+            /** @example Weather */
+            name: string;
+            entries: components["schemas"]["GameSystemOracleTableEntry"][];
+            /**
+             * @description Dice notation rolled on a ranged table; absent on a weighted table.
+             * @example 1d6
+             */
+            dice?: string | null;
+        };
+        OracleTableItemResponse: {
+            definition: components["schemas"]["GameSystemOracleTable"];
+            /**
+             * @description Where the draft references the table (e.g. "flows[0].phases[1].steps[2]"); a referenced table cannot be renamed or deleted.
+             * @example [
+             *       "sceneTypes[1].play[1]"
+             *     ]
+             */
+            usedBy: string[];
+        };
+        /** @description The effective target is the level's target + (chaosFactor − neutral) × shiftPerPoint, clamped to 0…sides; min ≤ neutral ≤ max. */
+        GameSystemLikelihoodChaos: {
+            /** @example 1 */
+            min: number;
+            /** @example 9 */
+            max: number;
+            /**
+             * @description The chaos factor used when none is given.
+             * @example 5
+             */
+            neutral: number;
+            /**
+             * @description Target points added per chaos point above neutral; 0 to sides.
+             * @example 5
+             */
+            shiftPerPoint: number;
+            /**
+             * @description The tracker holding the chaos factor (schema version 2). Not edited by the oracle editor.
+             * @example chaos
+             */
+            tracker?: string | null;
+        };
+        /** @description Rolls 1d<sides> = R against the effective target T: yes when R ≤ T. With p = exceptionalPercent, the yes is exceptional when R ≤ floor(T × p / 100), the no when R > sides − floor((sides − T) × p / 100). */
+        GameSystemLikelihoodOracle: {
+            /**
+             * @description Unique among the draft's tables and likelihood oracles: a-z, 0-9 and "-".
+             * @example fate
+             */
+            key: string;
+            /** @example Fate question */
+            name: string;
+            /** @example 100 */
+            sides: number;
+            /** @description The likelihoods a question can be asked with; unique keys. */
+            levels: components["schemas"]["LikelihoodLevelDefinition"][];
+            /** @description Absent when the oracle has no chaos factor. */
+            chaos?: components["schemas"]["GameSystemLikelihoodChaos"] | null;
+            /**
+             * @description Size of the exceptional bands, in percent; 0 by default.
+             * @example 20
+             */
+            exceptionalPercent?: number | null;
+            /** @description Absent when a double is no random event (schema version 2). */
+            randomEvent?: components["schemas"]["LikelihoodRandomEventDefinition"] | null;
+        };
+        LikelihoodOracleItemResponse: {
+            definition: components["schemas"]["GameSystemLikelihoodOracle"];
+            /**
+             * @description Where the draft references the oracle; a referenced oracle cannot be renamed or deleted.
+             * @example [
+             *       "sceneTypes[3].play[0]"
+             *     ]
+             */
+            usedBy: string[];
+        };
+        GameSystemOraclesResponse: {
+            /**
+             * @description The draft's version: send it as "expectedVersion" with the next oracle write.
+             * @example 3
+             */
+            version: number;
+            /**
+             * @description The draft's schema version: a version 1 draft refuses the schema version 2 fields.
+             * @example 2
+             */
+            schemaVersion: number;
+            tables: components["schemas"]["OracleTableItemResponse"][];
+            likelihood: components["schemas"]["LikelihoodOracleItemResponse"][];
+        };
+        SaveOracleTableRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            table: components["schemas"]["GameSystemOracleTable"];
+        };
+        OracleInUseResponse: {
+            /** @description A human-readable message naming where it is used. */
+            error: string;
+            /**
+             * @description Where the draft references it (e.g. "flows[0].phases[1].steps[2]").
+             * @example [
+             *       "sceneTypes[1].play[1]"
+             *     ]
+             */
+            paths: string[];
         };
         GameSystemReleaseSummaryResponse: {
             /** @example 3 */
@@ -6676,6 +6898,373 @@ export interface operations {
             };
             /** @description The user has no GameSystem with this key. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGameSystemOracles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The oracles as stored, in order, and the draft version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createOracleTable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveOracleTableRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's oracles with the table appended and the new version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "table" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key is already used by another table or likelihood oracle. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The table breaks the release contract's rules (the message starts with the path), or has schema version 2 fields on a version 1 draft; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replaceOracleTable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveOracleTableRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's oracles with the table replaced in place and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "table" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no table with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key is already used by another table or likelihood oracle. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The table breaks the release contract's rules (the message starts with the path), has schema version 2 fields on a version 1 draft, or a rename or a dropped entry key is used by the draft (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    deleteOracleTable: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's oracles without the table and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemOraclesResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no table with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The draft uses the table (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    testRollOracleTable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every table rolled on, root first, with the dice, total and selected entry. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OracleTableResultResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no table with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The saved tables are not valid for Randomness (a nested table is missing, a range is uncovered…) or the roll matches no entry. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

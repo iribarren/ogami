@@ -528,13 +528,36 @@ final class GameSystemOracleApiTest extends WebTestCase
         $this->draft('mine');
         $before = $this->oracles();
 
-        foreach ([['likelihood' => 'certain', 'chaosFactor' => null], ['likelihood' => 'even', 'chaosFactor' => 10], ['likelihood' => 'even', 'chaosFactor' => 0]] as $question) {
+        $questions = [
+            [['likelihood' => 'certain', 'chaosFactor' => null], 'There is no likelihood level "certain"; the levels are "unlikely", "even", "likely".'],
+            [['likelihood' => 'even', 'chaosFactor' => 10], 'The chaos factor is between 1 and 9, 10 given.'],
+            [['likelihood' => 'even', 'chaosFactor' => 0], 'The chaos factor is between 1 and 9, 0 given.'],
+        ];
+        foreach ($questions as [$question, $message]) {
             $this->client->jsonRequest('POST', self::BASE.'/mine/likelihood-oracles/fate/test-answers', $question);
 
             self::assertResponseStatusCodeSame(422, (string) json_encode($question));
-            self::assertNotSame('', $this->error());
+            self::assertSame($message, $this->error());
         }
 
+        self::assertSame($before, $this->oracles());
+    }
+
+    #[Test]
+    public function aChaosFactorSentToAnOracleWithoutChaosIsUnprocessable(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $fate = (array) self::at($this->oracles(), 'likelihood.0.definition');
+        unset($fate['chaos']);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/likelihood-oracles/fate', ['expectedVersion' => 1, 'oracle' => $fate]);
+        self::assertResponseIsSuccessful();
+        $before = $this->oracles();
+
+        $this->client->jsonRequest('POST', self::BASE.'/mine/likelihood-oracles/fate/test-answers', ['likelihood' => 'even', 'chaosFactor' => 5]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('This likelihood oracle has no chaos factor, 5 given.', $this->error());
         self::assertSame($before, $this->oracles());
     }
 
@@ -544,12 +567,14 @@ final class GameSystemOracleApiTest extends WebTestCase
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
         $draft = $this->draft('mine');
         $this->storeDocument('mine', ReleaseArrays::with(ReleaseArrays::with($draft, 'oracles.likelihood.0.randomEvent', ['table' => 'nowhere']), 'oracles.tables.1.entries.3.table', 'nowhere'));
+        $before = $this->oracles();
         $this->scriptRolls(33);
 
         $this->client->jsonRequest('POST', self::BASE.'/mine/likelihood-oracles/fate/test-answers', ['likelihood' => 'even', 'chaosFactor' => 5]);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertNotSame('', $this->error());
+        self::assertSame('Entry 4 of oracle table "complications" nests "nowhere", but there is no oracle table "nowhere" in the table set.', $this->error());
+        self::assertSame($before, $this->oracles(), 'The draft and its version are unchanged.');
     }
 
     /**

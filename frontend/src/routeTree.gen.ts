@@ -18,6 +18,7 @@ import { Route as PlayIndexRouteImport } from './routes/play.index'
 import { Route as StudioIndexRouteImport } from './routes/studio.index'
 import { Route as PlayCampaignsCampaignIdRouteImport } from './routes/play.campaigns.$campaignId'
 import { Route as StudioGameSystemsKeyRouteImport } from './routes/studio.game-systems.$key'
+import { Route as StudioGameSystemsKeyOracleTablesTableRouteImport } from './routes/studio.game-systems.$key_.oracle-tables.$table'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +65,12 @@ const StudioGameSystemsKeyRoute = StudioGameSystemsKeyRouteImport.update({
   path: '/game-systems/$key',
   getParentRoute: () => StudioRoute,
 } as any)
+const StudioGameSystemsKeyOracleTablesTableRoute =
+  StudioGameSystemsKeyOracleTablesTableRouteImport.update({
+    id: '/game-systems/$key_/oracle-tables/$table',
+    path: '/game-systems/$key/oracle-tables/$table',
+    getParentRoute: () => StudioRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
   '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
+  '/studio/game-systems/$key/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,6 +92,7 @@ export interface FileRoutesByTo {
   '/studio': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
   '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
+  '/studio/game-systems/$key/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,6 +105,7 @@ export interface FileRoutesById {
   '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
   '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
+  '/studio/game-systems/$key_/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/studio/'
     | '/play/campaigns/$campaignId'
     | '/studio/game-systems/$key'
+    | '/studio/game-systems/$key/oracle-tables/$table'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/play/campaigns/$campaignId'
     | '/studio/game-systems/$key'
+    | '/studio/game-systems/$key/oracle-tables/$table'
   id:
     | '__root__'
     | '/'
@@ -129,6 +141,7 @@ export interface FileRouteTypes {
     | '/studio/'
     | '/play/campaigns/$campaignId'
     | '/studio/game-systems/$key'
+    | '/studio/game-systems/$key_/oracle-tables/$table'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioGameSystemsKeyRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/studio/game-systems/$key_/oracle-tables/$table': {
+      id: '/studio/game-systems/$key_/oracle-tables/$table'
+      path: '/game-systems/$key/oracle-tables/$table'
+      fullPath: '/studio/game-systems/$key/oracle-tables/$table'
+      preLoaderRoute: typeof StudioGameSystemsKeyOracleTablesTableRouteImport
+      parentRoute: typeof StudioRoute
+    }
   }
 }
 
@@ -222,11 +242,14 @@ const PlayRouteWithChildren = PlayRoute._addFileChildren(PlayRouteChildren)
 interface StudioRouteChildren {
   StudioIndexRoute: typeof StudioIndexRoute
   StudioGameSystemsKeyRoute: typeof StudioGameSystemsKeyRoute
+  StudioGameSystemsKeyOracleTablesTableRoute: typeof StudioGameSystemsKeyOracleTablesTableRoute
 }
 
 const StudioRouteChildren: StudioRouteChildren = {
   StudioIndexRoute: StudioIndexRoute,
   StudioGameSystemsKeyRoute: StudioGameSystemsKeyRoute,
+  StudioGameSystemsKeyOracleTablesTableRoute:
+    StudioGameSystemsKeyOracleTablesTableRoute,
 }
 
 const StudioRouteWithChildren =

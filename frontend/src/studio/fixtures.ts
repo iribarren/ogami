@@ -93,3 +93,94 @@ export const releaseTwo = {
   name: 'Noir detective (old name)',
   sectionCounts: { oracleTables: 1, trackers: 0 },
 }
+
+/** The oracles of `draft` (version 7): one ranged and one weighted table, one in use, and a likelihood oracle. */
+export const oracles = {
+  version: 7,
+  schemaVersion: 2,
+  tables: [
+    {
+      definition: {
+        key: 'weather',
+        name: 'Weather',
+        dice: '1d6',
+        source: 'srd',
+        entries: [
+          {
+            min: 1,
+            max: 4,
+            text: 'Clear',
+            key: 'clear',
+            sceneType: 'calm',
+            effects: [{ kind: 'x' }],
+          },
+          { min: 5, max: 6, text: 'Storm', table: 'storm-kind' },
+        ],
+      },
+      usedBy: ['sceneTypes[1].play[0]'],
+    },
+    {
+      definition: {
+        key: 'storm-kind',
+        name: 'Storm kind',
+        entries: [{ weight: 2, text: 'Rain' }, { text: 'Hail' }, { weight: 1, text: 'Gale' }],
+      },
+      usedBy: [],
+    },
+  ],
+  likelihood: [
+    {
+      definition: {
+        key: 'fate',
+        name: 'Fate question',
+        sides: 100,
+        levels: [
+          { key: 'even', label: '50/50', target: 50 },
+          { key: 'likely', label: 'Likely', target: 65 },
+        ],
+      },
+      usedBy: ['flows[0].phases[0].steps[1]'],
+    },
+  ],
+}
+
+/** A schema version 1 draft's oracles: tables only, no entry keys. */
+export const oraclesV1 = {
+  version: 2,
+  schemaVersion: 1,
+  tables: [
+    {
+      definition: {
+        key: 'weather',
+        name: 'Weather',
+        dice: '1d6',
+        entries: [{ min: 1, max: 6, text: 'Clear' }],
+      },
+      usedBy: [],
+    },
+  ],
+  likelihood: [],
+}
+
+/** What rolling `weather` can answer: the storm entry nests `storm-kind`. */
+export const stormRoll = {
+  table: 'weather',
+  steps: [
+    {
+      tableKey: 'weather',
+      tableName: 'Weather',
+      dice: '1d6',
+      total: 6,
+      text: 'Storm',
+      nestedTableKey: 'storm-kind',
+    },
+    {
+      tableKey: 'storm-kind',
+      tableName: 'Storm kind',
+      dice: '1d4',
+      total: 2,
+      text: 'Hail',
+      nestedTableKey: null,
+    },
+  ],
+}

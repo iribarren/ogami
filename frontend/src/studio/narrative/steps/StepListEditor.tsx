@@ -72,14 +72,17 @@ function StepFields({
   }
   // Everything the form shows next to a field; the rest is listed on the card.
   const inline = ['key', 'title', 'prompt', 'tip', 'dice', 'next']
-  const loose = mine.filter(
-    (error) =>
-      error.index === null ||
-      (!aboutEffects(error) &&
-        (error.band === null
-          ? !inline.includes(error.field ?? '')
-          : error.field !== 'upTo' && error.field !== 'next')),
-  )
+  const bands = 'bands' in step ? step.bands.length : 0
+  // A message about a band the step does not have is listed here, not lost.
+  const loose = mine.filter((error) => {
+    if (error.band !== null) {
+      return (
+        error.band >= bands ||
+        !(aboutEffects(error) || ['upTo', 'next'].includes(error.field ?? ''))
+      )
+    }
+    return error.index === null || (!aboutEffects(error) && !inline.includes(error.field ?? ''))
+  })
 
   return (
     <div className="space-y-3 pt-3">

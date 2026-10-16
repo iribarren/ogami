@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { stepList, stepListBackward, stepListWithOtherKinds, stepPickers } from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts, stepsToItems } from './stepDraft'
-import { mapStepError, type StepError } from './stepError'
+import { clientStepErrors, mapStepError, type StepError } from './stepError'
 
 /** The editor as a screen holds it: the drafts in state, the written steps exposed for checks. */
 const latest: { written: unknown } = { written: null }
@@ -20,6 +20,29 @@ function Harness({ stored, errors }: { stored: unknown[]; errors?: StepError[] }
 
 /** The step at `index` as it would be saved. */
 const saved = (index: number) => (latest.written as { steps: unknown[] }).steps[index]
+
+/** The editor with a Save button as a screen has one: client errors are shown, nothing is sent. */
+const sent: { steps: unknown } = { steps: null }
+
+function Saver({ stored }: { stored: unknown[] }) {
+  const [steps, setSteps] = useState(() => stepsToDrafts(stored))
+  const [errors, setErrors] = useState<StepError[]>([])
+  return (
+    <>
+      <StepListEditor steps={steps} context={stepPickers} errors={errors} onChange={setSteps} />
+      <button
+        type="button"
+        onClick={() => {
+          const result = stepsToItems(steps)
+          sent.steps = 'steps' in result ? result.steps : null
+          setErrors('errors' in result ? clientStepErrors(result.errors) : [])
+        }}
+      >
+        Save
+      </button>
+    </>
+  )
+}
 
 const card = (number: number) =>
   within(screen.getByRole('group', { name: `Step ${String(number)}` }))
@@ -332,6 +355,48 @@ describe('the step list editor', () => {
     expect(screen.getAllByText('Twice')).toHaveLength(2)
     expect(logged).not.toHaveBeenCalled()
     logged.mockRestore()
+  })
+
+  it('shows an effect error for a band that does not exist on the card, never nowhere', () => {
+    const errors = [
+      'sceneTypes[2].play[1].bands[7].effects[0].tracker: unknown tracker',
+      'sceneTypes[2].play[1].bands[7].upTo: must be an integer',
+      'sceneTypes[2].play[0].bands[0].effects[0]: no bands here',
+    ].map((text) => mapStepError('sceneTypes[2].play', text))
+    render(<Harness stored={stepList} errors={errors} />)
+
+    expect(card(2).getByText('tracker: unknown tracker')).toBeInTheDocument()
+    expect(card(2).getByText('upTo: must be an integer')).toBeInTheDocument()
+    expect(card(1).getByText('no bands here')).toBeInTheDocument()
+  })
+
+  it('shows a value that is not a whole number next to it and sends nothing', async () => {
+    const user = userEvent.setup()
+    render(<Saver stored={stepList} />)
+    const effects = within(card(1).getByRole('group', { name: 'Effects' }))
+    const band = within(card(2).getByRole('group', { name: 'Band 1 effects' }))
+
+    await user.click(effects.getByRole('button', { name: 'Add effect' }))
+    await user.clear(effects.getByLabelText('Value'))
+    await user.type(effects.getByLabelText('Value'), '1.5')
+    await user.clear(band.getByLabelText('Value'))
+    await user.type(band.getByLabelText('Value'), 'abc')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(sent.steps).toBeNull()
+    expect(effects.getByText('Use a whole number.')).toBeInTheDocument()
+    expect(band.getByText('Use a whole number.')).toBeInTheDocument()
+
+    await user.clear(effects.getByLabelText('Value'))
+    await user.type(effects.getByLabelText('Value'), '2')
+    await user.clear(band.getByLabelText('Value'))
+    await user.type(band.getByLabelText('Value'), '3')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(screen.queryByText('Use a whole number.')).not.toBeInTheDocument()
+    expect((sent.steps as unknown[])[0]).toMatchObject({
+      effects: [{ kind: 'tracker', value: 2 }],
+    })
   })
 
   describe('with effects', () => {

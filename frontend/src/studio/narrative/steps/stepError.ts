@@ -51,3 +51,14 @@ export function mapStepError(base: string, text: string): StepError {
   }
   return error
 }
+
+/**
+ * The whole numbers `stepsToItems` refuses (keyed `<step>.bands.<band>.upTo`, `<step>.effects.<n>.value`,
+ * …) as errors of their steps, so they show where the author typed them.
+ */
+export function clientStepErrors(errors: Record<string, string>): StepError[] {
+  return Object.entries(errors).map(([key, message]) => {
+    const path = key.split('.').map((part) => (/^\d+$/.test(part) ? `[${part}]` : `.${part}`))
+    return mapStepError('steps', `steps${path.join('')}: ${message}`)
+  })
+}

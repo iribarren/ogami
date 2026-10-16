@@ -33,6 +33,27 @@ describe('an effect draft', () => {
     ])
   })
 
+  it('keeps an empty optional the stored effect carries, and omits it in a new one', () => {
+    const stored = [
+      { kind: 'createNpc', name: '', agenda: '', tags: [] },
+      { kind: 'createThread', name: 'The debt', tags: [] },
+      { kind: 'fillFact', slot: 'client', text: '' },
+    ]
+
+    expect(round(stored).effects).toEqual(stored)
+
+    const [npc] = effectsToDrafts(stored)
+    if (npc?.kind !== 'createNpc') {
+      throw new Error('Expected a createNpc effect.')
+    }
+    expect(effectsToStored([{ ...npc, tags: ['gang'] }], 'effects', {})).toEqual([
+      { kind: 'createNpc', name: '', agenda: '', tags: ['gang'] },
+    ])
+    expect(effectsToStored([newEffect('createNpc')], 'effects', {})).toEqual([
+      { kind: 'createNpc' },
+    ])
+  })
+
   it('omits empty optionals like the canonical form', () => {
     const blank: EffectDraft[] = [
       { kind: 'createNpc', name: '', agenda: '', tags: [], extra: {} },

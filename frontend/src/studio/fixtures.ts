@@ -314,7 +314,7 @@ export const narrativeV1 = {
   factSlots: [],
 }
 
-/** What the step forms pick from: the draft's tables, trackers and tags. */
+/** What the step forms pick from: the draft's tables, trackers, tags, Scene Types, fact slots and sheet fields. */
 export const stepPickers = {
   tables: [
     { key: 'places', name: 'Places' },
@@ -325,6 +325,18 @@ export const stepPickers = {
     { key: 'alarm', name: 'Alarm' },
   ],
   tags: [{ key: 'gang', name: 'Gang' }],
+  sceneTypes: [
+    { key: 'chase', name: 'Chase' },
+    { key: 'hideout', name: 'Hideout' },
+  ],
+  factSlots: [
+    { key: 'client', name: 'Client', type: 'text' },
+    { key: 'target', name: 'Target', type: 'npc' },
+  ],
+  sheetFields: [
+    { key: 'hands', name: 'Hands' },
+    { key: 'stress', name: 'Stress' },
+  ],
 }
 
 const intro = {

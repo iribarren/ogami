@@ -295,6 +295,7 @@ describe('switching tabs', () => {
       'Scene Types',
       'Flows',
       'Sheet',
+      'Checks',
       'Validation',
       'Releases',
       'Sections',

@@ -17,6 +17,7 @@ import { MetadataForm } from './MetadataForm'
 import { NarrativeTab } from './narrative/NarrativeTab'
 import { FlowsTab } from './narrative/flows/FlowsTab'
 import { SceneTypesTab } from './narrative/sceneTypes/SceneTypesTab'
+import { ChecksTab } from './checks/ChecksTab'
 import { OraclesTab } from './oracles/OraclesTab'
 import { PublishDialog } from './PublishDialog'
 import { ReleasesTab } from './ReleasesTab'
@@ -37,6 +38,7 @@ type Tab =
   | 'sceneTypes'
   | 'flows'
   | 'sheet'
+  | 'checks'
   | 'validation'
   | 'releases'
   | 'sections'
@@ -179,6 +181,7 @@ function GameSystemView({
         <SegmentedControlItem value="sceneTypes">Scene Types</SegmentedControlItem>
         <SegmentedControlItem value="flows">Flows</SegmentedControlItem>
         <SegmentedControlItem value="sheet">Sheet</SegmentedControlItem>
+        <SegmentedControlItem value="checks">Checks</SegmentedControlItem>
         <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
         <SegmentedControlItem value="releases">Releases</SegmentedControlItem>
         <SegmentedControlItem value="sections">Sections</SegmentedControlItem>
@@ -193,6 +196,7 @@ function GameSystemView({
       {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
       {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
       {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} />}
+      {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} />}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
       {tab === 'releases' && (
         <ReleasesTab

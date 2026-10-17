@@ -101,7 +101,7 @@ function typedFor(field: { type: string }, sample: Sample | undefined): string {
 /** A number's value when nobody typed: its default, else 0, held within its range. */
 function startOf(field: SheetFieldView): number {
   const start = field.default ?? 0
-  return Math.min(Math.max(start, field.min ?? start), field.max ?? start)
+  return Math.min(Math.max(start, field.min ?? -Infinity), field.max ?? Infinity)
 }
 
 /**

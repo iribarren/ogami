@@ -104,6 +104,25 @@ describe('the sandbox', () => {
     ])
   })
 
+  it('holds a number’s default within a range that declares only a min or only a max', () => {
+    const { bounds } = resolveSandbox(
+      state({
+        template: [field('pow', { min: 5, default: 2 }), field('dex', { max: 3, default: 8 })],
+        bands: [
+          band({ kind: 'formula', value: '{pow}' }),
+          band({ kind: 'formula', value: '{dex}' }),
+          last,
+        ],
+      }),
+    )
+
+    expect(bounds).toEqual([
+      { kind: 'value', value: 5 },
+      { kind: 'value', value: 3 },
+      { kind: 'rest' },
+    ])
+  })
+
   it('reads a track’s max from the catalog', () => {
     const { bounds } = resolveSandbox(
       state({ bands: [band({ kind: 'formula', value: '{hp.max}' }), last] }),

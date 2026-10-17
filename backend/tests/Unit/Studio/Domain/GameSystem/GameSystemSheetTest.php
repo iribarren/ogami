@@ -408,25 +408,26 @@ final class GameSystemSheetTest extends TestCase
     public function aLegacyDraftBreakingTheItemRulesElsewhereIsRefusedWithThatPath(): void
     {
         $gameSystem = $this->draft();
+        $gameSystem->saveSheetField(null, self::field(), $this->now);
         $gameSystem->restore(ReleaseArrays::with($gameSystem->document(), 'sceneTypes.0.oracles', ['ghost']), $this->created);
         $document = $gameSystem->document();
+        $version = $gameSystem->version();
 
         foreach ([
-            fn () => $gameSystem->saveSheetField(null, self::field(), $this->now),
-            fn () => $gameSystem->deleteSheetField('sanity', $this->now),
+            fn () => $gameSystem->saveSheetField(null, self::field('mana'), $this->now),
+            fn () => $gameSystem->deleteSheetField('luck', $this->now),
             fn () => $gameSystem->moveSheetField('hp', 0, $this->now),
         ] as $command) {
             try {
                 $command();
-                self::fail('Expected InvalidReleaseContent or SheetFieldInUse');
+                self::fail('Expected InvalidReleaseContent');
             } catch (InvalidReleaseContent $invalid) {
                 self::assertStringStartsWith('sceneTypes[0].oracles[0]: ', $invalid->getMessage());
-            } catch (SheetFieldInUse) {
-                // sanity is referenced, so delete is refused before the item rules run
             }
         }
 
         self::assertSame($document, $gameSystem->document());
+        self::assertSame($version, $gameSystem->version());
     }
 
     #[Test]

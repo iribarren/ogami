@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-3-field-commands` · **Status:** in progress (slice 3)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-4-field-api` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -94,8 +94,8 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 | T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | fac045b |
 | T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | delegated writer (slice 2) | [x] | 07876cb |
 | T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | 3e075c2 |
-| T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | |
-| T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | |
+| T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | 240a46a |
+| T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | 56f91e2 |
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | | [ ] | |
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
 | T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | | [ ] | |
@@ -114,6 +114,7 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 - 2026-10-17: Slice 2 review fix R3: the `sheetLayout` fixture declares `Notes` (the `notes` field now has that group); a test renders every field label; a `SheetFields` test pins today's behaviour (fields of an undeclared group or without a group are not rendered).
 - 2026-10-17: T6 done. `DraftReferences::sheetFieldPathsTo` (derived formulas, check modifiers and band formulas, sheet effects by `field` and `{formula}` in steps, outcomes and table entries); `GameSystem::saveSheetField`, `deleteSheetField`, `moveSheetField` (out-of-range index is `InvalidReleaseContent` on `index`) with `SheetFieldKeyTaken`, `SheetFieldNotFound`, `SheetFieldInUse`; every command runs the item rules on the whole draft.
 - 2026-10-17: T7 done. `SaveSheetField`, `DeleteSheetField`, `MoveSheetField` with handlers; `GetGameSystemSheet` → `GameSystemSheetView` (version, schemaVersion, columns, groups or null, fields, trackers, publishedFieldKeys of the latest release), read defensively; no HTTP layer yet (slice 4).
+- 2026-10-17: Slice 3 review fixes R3: the legacy-draft test deletes an unreferenced field and asserts the `sceneTypes[0].oracles[0]: ` prefix and an unchanged version and document; the fixture test queries each field by its own control (label, `current` input, `Add` button), so a group legend cannot satisfy it.
 
 ## Reviews
 
@@ -121,7 +122,8 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 |---|---|---|---|---|
 | 1 | `review-794ba421dad9849f` | 68c37f8, 8763fc2, fac045b | approved, acknowledged; 1 suggestion R3-play-layout-coverage-gaps (Play translator tests: non-string group name, derived field span > group columns, invalid second field reports index 1), fixed in slice 2 | #167 |
 | 2 | `review-8690c6c8f4c4f4e7` | eddc740, 07876cb, 3e075c2 | approved, acknowledged; WARNING R3-layout-fixture-drops-fields (`frontend/src/play/characters/fixtures.ts`: the `sheetLayout` fixture leaves out a group one of its fields uses, so the `WithLayout` story silently drops that field; declare the group, assert every field label renders, unit-test what the renderer does with a field whose group is undeclared), fixed in slice 3 | #168 |
+| 3 | `review-4e6b8a000308443b` | 80ac0eb, 240a46a, 56f91e2 | approved, acknowledged; 2 suggestions: R3-legacy-delete-item-rules-unproved (`GameSystemSheetTest.php`: the legacy-draft delete case targets the referenced `sanity`, so it hits `SheetFieldInUse`; delete an unreferenced field, assert the `sceneTypes[0].oracles[0]: ` prefix and an unchanged draft), R3-fixture-label-assertion-ambiguous (`frontend/src/play/characters/fixtures.test.tsx`: the label `Notes` equals the group name; query by accessible label); fixed in slice 4 | #169 |
 
 ## Next step
 
-Slice 3: writer delivers the slice 2 review fix, T6 and T7 on `feat/studio-sheet-builder-3-field-commands`, then native review and PR.
+Slice 4: writer delivers the slice 3 review fixes and T7b on `feat/studio-sheet-builder-4-field-api`, then native review and PR.

@@ -279,6 +279,22 @@ describe('editing the layout', () => {
   })
 })
 
+describe('the preview beside the layout dialog', () => {
+  it('shows the unsaved draft while the dialog is open and the saved layout once it closes', async () => {
+    const { user } = await openSheet()
+    await editLayout(user)
+
+    await user.type(within(group(1)).getByLabelText('Name'), ' and more')
+
+    expect(screen.getByText('Stats and more', { selector: 'legend' })).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByText('Stats and more', { selector: 'legend' })).not.toBeInTheDocument()
+    expect(screen.getByText('Stats', { selector: 'legend' })).toBeInTheDocument()
+  })
+})
+
 describe('a refused layout save', () => {
   it('puts a message with a path on the input it names and keeps the dialog open', async () => {
     const { user } = await openSheet({
@@ -294,6 +310,30 @@ describe('a refused layout save', () => {
     expect(await within(group(2)).findByText('duplicate group name "Stats"')).toBeVisible()
     expect(within(group(2)).getByLabelText('Name')).toHaveAttribute('aria-invalid', 'true')
     expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('drops a message once the draft changed, so it never lands on another group', async () => {
+    const { user } = await openSheet({
+      [`PUT ${base}/sheet/layout`]: json(
+        { error: 'sheet.groups[1].name: duplicate group name "Stats"' },
+        422,
+      ),
+    })
+
+    await editLayout(user)
+    await saveLayout(user)
+    expect(await within(group(2)).findByText('duplicate group name "Stats"')).toBeVisible()
+
+    await user.click(within(group(2)).getByRole('button', { name: 'Move up' }))
+
+    expect(inDialog().queryByText('duplicate group name "Stats"')).not.toBeInTheDocument()
+    expect(within(group(2)).getByLabelText('Name')).not.toHaveAttribute('aria-invalid', 'true')
+
+    await user.clear(within(group(1)).getByLabelText('Name'))
+    await saveLayout(user)
+
+    expect(await within(group(1)).findByText('Give the group a name.')).toBeVisible()
+    expect(inDialog().queryByText('duplicate group name "Stats"')).not.toBeInTheDocument()
   })
 
   it('maps the sheet columns and the group columns and span', async () => {

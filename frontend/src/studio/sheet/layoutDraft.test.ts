@@ -62,6 +62,10 @@ describe('reading the stored layout', () => {
     ],
     ['group columns out of range', { ...stored, groups: [{ name: 'A', columns: 5, span: 1 }] }],
     ['a span out of range', { ...stored, groups: [{ name: 'A', columns: 1, span: 0 }] }],
+    [
+      'a span wider than the stored sheet columns',
+      { columns: 1, groups: [{ name: 'A', columns: 1, span: 2 }] },
+    ],
     ['a group without a name', { ...stored, groups: [{ columns: 1, span: 1 }] }],
   ])('refuses %s instead of guessing', (_name, sheet) => {
     expect(readLayout(sheet as never)).toBeNull()

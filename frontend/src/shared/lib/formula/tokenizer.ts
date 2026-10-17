@@ -22,11 +22,18 @@ export function tokenize(formula: string): Token[] {
     const groups = match?.groups
     if (match === null || groups === undefined) {
       if (formula[offset] === '{') {
-        throw new InvalidFormula('syntax', `Unclosed reference at position ${String(offset + 1)}.`)
+        throw new InvalidFormula(
+          'syntax',
+          `Unclosed reference at position ${String(offset + 1)}.`,
+          {
+            position: offset + 1,
+          },
+        )
       }
       throw new InvalidFormula(
         'syntax',
         `Unexpected character "${formula[offset] ?? ''}" at position ${String(offset + 1)}.`,
+        { position: offset + 1 },
       )
     }
     const position = offset + 1
@@ -39,6 +46,7 @@ export function tokenize(formula: string): Token[] {
         throw new InvalidFormula(
           'syntax',
           `Unknown name "${name}" at position ${String(position)}.`,
+          { position },
         )
       }
       tokens.push({ type: 'function', text: name, position })
@@ -48,6 +56,7 @@ export function tokenize(formula: string): Token[] {
         throw new InvalidFormula(
           'syntax',
           `Invalid reference ${reference} at position ${String(position)}.`,
+          { position },
         )
       }
       tokens.push({ type: 'reference', text: reference, position, reference: read })

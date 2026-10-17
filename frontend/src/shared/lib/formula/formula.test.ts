@@ -96,3 +96,35 @@ describe('dependencyOrder', () => {
     expect(() => dependencyOrder(formulas({ a: '{a} + 1' }))).toThrow(InvalidFormula)
   })
 })
+
+describe('InvalidFormula positions', () => {
+  const failure = (text: string) => {
+    try {
+      parseFormula(text)
+    } catch (caught) {
+      return caught as InvalidFormula
+    }
+    throw new Error(`"${text}" should not parse.`)
+  }
+
+  // 1-based, in the trimmed text, as the PHP kernel's messages say.
+  it.each([
+    ['1 + $', 5],
+    ['{unclosed', 1],
+    ['1 + {Bad Key}', 5],
+    ['1 + foo', 5],
+    ['(1 + 2))', 8],
+    ['1 2', 3],
+    ['max(1; 2)', 6],
+  ])('puts the position of "%s" at %i', (text, position) => {
+    const error = failure(text)
+
+    expect(error.kind).toBe('syntax')
+    expect(error.position).toBe(position)
+    expect(error.message).toContain(`position ${String(position)}`)
+  })
+
+  it.each(['1 +', '', '{a} * (', 'max(1)'])('has no position for "%s"', (text) => {
+    expect(failure(text).position).toBeUndefined()
+  })
+})

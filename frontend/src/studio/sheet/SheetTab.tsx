@@ -13,7 +13,9 @@ import {
 
 import { StudioError } from '../useGameSystems'
 import { SheetFieldDialog } from './SheetFieldDialog'
+import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
+import { SheetPreview } from './SheetPreview'
 import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
 import {
   SheetError,
@@ -65,11 +67,12 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
   const move = useMoveSheetField(gameSystemKey)
   const latest = useGameSystemSheet(gameSystemKey)
   const [reloadFailed, setReloadFailed] = useState(false)
+  const [layoutDraft, setLayoutDraft] = useState<LayoutDraft | null>(null)
   const sections = sheetSections(data.fields, data.groups)
 
   return (
     <section aria-label="Sheet" className="space-y-4">
-      <SheetLayoutPanel gameSystemKey={gameSystemKey} sheet={data} />
+      <SheetLayoutPanel gameSystemKey={gameSystemKey} sheet={data} onDraftChange={setLayoutDraft} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-heading text-lg font-semibold">Sheet fields</h2>
         <SheetFieldDialog
@@ -145,6 +148,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
           )}
         </section>
       ))}
+      <SheetPreview sheet={data} layoutDraft={layoutDraft} />
     </section>
   )
 }

@@ -1,11 +1,14 @@
 /** A formula that does not parse (or formulas that depend on each other in a cycle). */
 export class InvalidFormula extends Error {
   readonly kind: 'syntax' | 'cycle'
+  /** The 1-based position in the trimmed text that the message names; none when it names none. */
+  readonly position: number | undefined
 
-  constructor(kind: 'syntax' | 'cycle', message: string) {
+  constructor(kind: 'syntax' | 'cycle', message: string, details: { position?: number } = {}) {
     super(message)
     this.name = 'InvalidFormula'
     this.kind = kind
+    this.position = details.position
   }
 }
 

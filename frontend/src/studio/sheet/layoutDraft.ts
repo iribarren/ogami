@@ -41,7 +41,7 @@ const inRange = (value: unknown, max: number): value is number =>
 
 /**
  * The stored layout as form state, or null when the sheet declares none or holds a value the form
- * cannot show (a count out of range, a group without a name): it is never guessed.
+ * cannot show (a count out of range, a span wider than the sheet's columns, a group without a name): it is never guessed.
  */
 export function readLayout(sheet: {
   columns: number
@@ -55,7 +55,7 @@ export function readLayout(sheet: {
     if (
       typeof name !== 'string' ||
       !inRange(columns, maxGroupColumns) ||
-      !inRange(span, maxSheetColumns)
+      !inRange(span, sheet.columns)
     ) {
       return null
     }

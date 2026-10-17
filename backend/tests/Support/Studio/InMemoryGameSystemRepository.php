@@ -53,6 +53,11 @@ final class InMemoryGameSystemRepository implements GameSystemRepository
         return $owned;
     }
 
+    public function libraryPacks(): array
+    {
+        return array_values(array_filter($this->gameSystems, static fn (GameSystem $gameSystem): bool => $gameSystem->isLibraryPack()));
+    }
+
     public function remove(GameSystem $gameSystem): void
     {
         unset($this->gameSystems[$gameSystem->key()]);

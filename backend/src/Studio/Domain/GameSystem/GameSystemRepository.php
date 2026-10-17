@@ -28,5 +28,10 @@ interface GameSystemRepository
      */
     public function ofOwner(string $ownerId): array;
 
+    /**
+     * @return list<GameSystem> every library pack of any owner, in no particular order
+     */
+    public function libraryPacks(): array;
+
     public function remove(GameSystem $gameSystem): void;
 }

@@ -36,6 +36,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0030 | [Studio flow editor](0030-studio-flow-editor.md) | Accepted |
 | 0031 | [Sheet layout and Studio sheet builder](0031-sheet-layout-and-studio-sheet-builder.md) | Accepted |
 | 0032 | [Studio check editor and test-roll sandbox](0032-studio-check-editor.md) | Accepted |
+| 0033 | [Studio library packs](0033-studio-library-packs.md) | Accepted |
 
 ## Template
 

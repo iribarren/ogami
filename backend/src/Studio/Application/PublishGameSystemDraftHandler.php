@@ -6,6 +6,7 @@ namespace App\Studio\Application;
 
 use App\Shared\Application\Bus\CommandHandler;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\Release\GameSystemDraftUnchanged;
 use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
@@ -25,6 +26,7 @@ final readonly class PublishGameSystemDraftHandler implements CommandHandler
 
     /**
      * @throws GameSystemNotFound             when the user has no such GameSystem
+     * @throws LibraryPackRefuses             when the GameSystem is a library pack, which is never published
      * @throws InvalidReleaseContent          naming the path of the first offending value in the draft; nothing is published
      * @throws InvalidGameSystemRelease       when the notes are blank or too long; nothing is published
      * @throws GameSystemDraftUnchanged       when the draft has the content of the latest release
@@ -32,7 +34,12 @@ final readonly class PublishGameSystemDraftHandler implements CommandHandler
      */
     public function __invoke(PublishGameSystemDraft $command): void
     {
-        $content = ReleaseContent::fromArray($this->owned->get($command->ownerId, $command->key)->document());
+        $gameSystem = $this->owned->get($command->ownerId, $command->key);
+        if ($gameSystem->isLibraryPack()) {
+            throw LibraryPackRefuses::to('be published', $command->key);
+        }
+
+        $content = ReleaseContent::fromArray($gameSystem->document());
 
         if (!$this->publisher->publish(ReleaseId::fromString($command->releaseId), $content, $command->notes, true)) {
             throw GameSystemDraftUnchanged::for($command->key, $this->releases->latestFor($command->key)?->version() ?? 0);

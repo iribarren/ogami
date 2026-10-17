@@ -19,7 +19,7 @@ const failures = {
 }
 
 /** An integer as typed, or undefined while it is empty, fractional or not a number. */
-function integer(text: string): number | undefined {
+export function integer(text: string): number | undefined {
   const trimmed = text.trim()
   return /^-?\d+$/.test(trimmed) && Number.isSafeInteger(Number(trimmed))
     ? Number(trimmed)

@@ -1,4 +1,4 @@
-import { useId, useState, type SubmitEvent } from 'react'
+import { useEffect, useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import {
@@ -39,6 +39,8 @@ import {
 const numbered = (count: number) =>
   Array.from({ length: count }, (_, at) => ({ value: String(at + 1), label: String(at + 1) }))
 
+const ignoreDraft = () => undefined
+
 const reloadFailed = "Couldn't reload the latest version. Try again."
 
 /** What a refusal says, with the places that read the thing when the API names them. */
@@ -50,14 +52,17 @@ function refusal(error: Error) {
 
 /**
  * The sheet's layout: declare it from the fields' groups, or edit and remove the declared one.
- * Fields keep their own group and order either way.
+ * Fields keep their own group and order either way. While the edit dialog is open, `onDraftChange`
+ * is given its unsaved draft (null once it closes), for the preview to show.
  */
 export function SheetLayoutPanel({
   gameSystemKey,
   sheet,
+  onDraftChange = ignoreDraft,
 }: {
   gameSystemKey: string
   sheet: GameSystemSheet
+  onDraftChange?: (draft: LayoutDraft | null) => void
 }) {
   const declare = useDeclareSheetLayout(gameSystemKey)
 
@@ -111,6 +116,7 @@ export function SheetLayoutPanel({
               gameSystemKey={gameSystemKey}
               sheet={sheet}
               editable={readLayout(sheet) !== null}
+              onDraftChange={onDraftChange}
             />
             <RemoveLayoutDialog gameSystemKey={gameSystemKey} version={sheet.version} />
           </div>
@@ -231,10 +237,12 @@ function EditLayoutDialog({
   gameSystemKey,
   sheet,
   editable,
+  onDraftChange,
 }: {
   gameSystemKey: string
   sheet: GameSystemSheet
   editable: boolean
+  onDraftChange: (draft: LayoutDraft | null) => void
 }) {
   const [open, setOpen] = useState(false)
   const save = useSaveSheetLayout(gameSystemKey)
@@ -263,6 +271,7 @@ function EditLayoutDialog({
           gameSystemKey={gameSystemKey}
           sheet={sheet}
           save={save}
+          onDraftChange={onDraftChange}
           onSaved={() => {
             setOpen(false)
           }}
@@ -276,11 +285,13 @@ function LayoutForm({
   gameSystemKey,
   sheet,
   save,
+  onDraftChange,
   onSaved,
 }: {
   gameSystemKey: string
   sheet: GameSystemSheet
   save: ReturnType<typeof useSaveSheetLayout>
+  onDraftChange: (draft: LayoutDraft | null) => void
   onSaved: () => void
 }) {
   // Filled once, when the dialog opens, from the sheet it was read at: a refetch while the dialog
@@ -296,6 +307,17 @@ function LayoutForm({
   const [reloadNote, setReloadNote] = useState<string | null>(null)
   const latest = useGameSystemSheet(gameSystemKey)
   const { error } = save
+
+  useEffect(() => {
+    onDraftChange(draft)
+  }, [draft, onDraftChange])
+  // The form is gone with its dialog: the preview goes back to the saved layout.
+  useEffect(
+    () => () => {
+      onDraftChange(null)
+    },
+    [onDraftChange],
+  )
 
   const refused = error instanceof SheetError && error.status === 422
   const answer = refused && sent === draft ? sheetLayoutAnswer(error.message) : null

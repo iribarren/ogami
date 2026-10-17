@@ -279,6 +279,22 @@ describe('editing the layout', () => {
   })
 })
 
+describe('the preview beside the layout dialog', () => {
+  it('shows the unsaved draft while the dialog is open and the saved layout once it closes', async () => {
+    const { user } = await openSheet()
+    await editLayout(user)
+
+    await user.type(within(group(1)).getByLabelText('Name'), ' and more')
+
+    expect(screen.getByText('Stats and more', { selector: 'legend' })).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByText('Stats and more', { selector: 'legend' })).not.toBeInTheDocument()
+    expect(screen.getByText('Stats', { selector: 'legend' })).toBeInTheDocument()
+  })
+})
+
 describe('a refused layout save', () => {
   it('puts a message with a path on the input it names and keeps the dialog open', async () => {
     const { user } = await openSheet({

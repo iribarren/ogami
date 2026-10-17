@@ -99,7 +99,7 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 | T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | 240a46a |
 | T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | 56f91e2 |
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
-| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
+| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | |
 | T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | | [ ] | |
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
 | T11 | 7 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
@@ -120,6 +120,7 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 - 2026-10-17: T7b done. `GameSystemSheetController` (`GET /sheet`; create, replace/rename, delete, move under `/sheet/fields`), `GameSystemSheetResponse` with group and tracker responses, request DTOs, `OracleInUseResponse` also for `SheetFieldInUse`; API tests for every status of every endpoint, each refusal asserting the draft unchanged; the read model's `publishedFieldKeys` is empty until the draft itself is published.
 - 2026-10-17: Slice 4 review fixes R3-001, R3-002: every sheet write answers through one helper, so a draft gone when the sheet is read back after a committed write is a 409, not a 404 (controller unit test with stub buses); the DELETE `expectedVersion` is read raw and an array-shaped value is the 400 `MALFORMED_DELETE`.
 - 2026-10-17: T8 domain and application: `GameSystem::saveSheetLayout` (group identity by `previousName` or name, simultaneous rename cascade, dropping a group with fields refused), `declareSheetLayout`, `removeSheetLayout`, each all-or-nothing through the item rules; `SaveSheetLayout`, `DeclareSheetLayout`, `RemoveSheetLayout` with handlers. No HTTP layer yet.
+- 2026-10-17: T8 HTTP: `PUT /sheet/layout`, `POST /sheet/layout/declare`, `DELETE /sheet/layout` with request DTOs and OpenAPI; API tests for every status of every endpoint, each refusal asserting the draft unchanged, and happy paths for the rename cascade, declare and remove.
 
 ## Reviews
 

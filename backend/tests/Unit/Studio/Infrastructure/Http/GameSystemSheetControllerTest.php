@@ -52,6 +52,9 @@ final class GameSystemSheetControllerTest extends TestCase
             $controller->replace('mine', 'luck', new Request(server: $json, content: '{"expectedVersion":1,"field":{"key":"luck"}}'), $user),
             $controller->delete('mine', 'luck', new Request(['expectedVersion' => '1']), $user),
             $controller->move('mine', 'luck', new Request(server: $json, content: '{"expectedVersion":1,"index":0}'), $user),
+            $controller->saveLayout('mine', new Request(server: $json, content: '{"expectedVersion":1,"groups":[{"name":"General"}]}'), $user),
+            $controller->declareLayout('mine', new Request(server: $json, content: '{"expectedVersion":1}'), $user),
+            $controller->removeLayout('mine', new Request(['expectedVersion' => '1']), $user),
         ];
 
         foreach ($responses as $response) {

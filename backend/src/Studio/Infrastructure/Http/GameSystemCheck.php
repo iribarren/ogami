@@ -33,7 +33,7 @@ final readonly class GameSystemCheck
         public string $dice,
         #[OA\Property(description: 'A formula over the sheet and trackers (1 to 200 characters) added to the roll.', example: '{hands}+{edge}')]
         public ?string $modifier,
-        #[OA\Property(ref: new Model(type: GameSystemCheckDifficulty::class), description: 'Absent when the check has no difficulty.')]
+        #[OA\Property(ref: new Model(type: GameSystemCheckDifficulty::class), description: 'Absent or null when the check has no difficulty.', nullable: true)]
         public ?GameSystemCheckDifficulty $difficulty,
         #[OA\Property(type: 'array', items: new OA\Items(ref: new Model(type: GameSystemCheckBand::class)), maxItems: 10, minItems: 1)]
         public array $bands,

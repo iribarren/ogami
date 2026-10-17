@@ -28,12 +28,33 @@ describe('checkAnswer', () => {
 
   it.each([
     ['another check', 'checks[1].dice: bad', 2],
-    ['a band', 'checks[2].bands[0].upTo: bad', 2],
-    ['the bands as a whole', 'checks[2].bands: must have 1 to 10 items', 2],
+    ['a band property the form has no input for', 'checks[2].bands[0].colour: bad', 2],
+    ['a band of another check', 'checks[1].bands[0].key: bad', 2],
     ['a property the form has no input for', 'checks[2].colour: is not a property', 2],
     ['a path that is not a check', 'index: must be 0 to 1', 2],
     ['a message with no path', 'The draft changed.', 2],
   ])('shows %s as a form message, whole', (_, text, index) => {
     expect(checkAnswer(text, index)).toEqual({ fields: {}, form: text })
+  })
+
+  it.each(['key', 'label', 'upTo'])('puts checks[2].bands[1].%s on that band', (name) => {
+    expect(checkAnswer(`checks[2].bands[1].${name}: is wrong`, 2)).toEqual({
+      fields: { band: { 1: { [name]: 'is wrong' } } },
+      form: null,
+    })
+  })
+
+  it.each(['formula', 'tracker'])('puts a refusal of the %s bound on the bound input', (kind) => {
+    expect(checkAnswer(`checks[0].bands[3].upTo.${kind}: Unknown field "x".`, 0)).toEqual({
+      fields: { band: { 3: { upTo: 'Unknown field "x".' } } },
+      form: null,
+    })
+  })
+
+  it('puts a refusal of the bands as a whole on the bands', () => {
+    expect(checkAnswer('checks[2].bands: must have 1 to 10 items', 2)).toEqual({
+      fields: { bands: 'must have 1 to 10 items' },
+      form: null,
+    })
   })
 })

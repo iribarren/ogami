@@ -238,6 +238,78 @@ final class GameSystem
     }
 
     /**
+     * Creates a sheet field (no original key; it is appended) or replaces one by its original key (it
+     * keeps its position; a different key renames it). The field is stored as given once the whole
+     * draft passes the item rules (ADR 0030), so a type change that breaks a formula or a sheet
+     * effect, or a layout rule, is refused with the publisher's path and nothing changes. The
+     * sheet's columns and groups stay as they are; a draft without a sheet or fields gets them.
+     *
+     * @param array<array-key, mixed> $field
+     *
+     * @throws SheetFieldNotFound    when the original key names no field
+     * @throws SheetFieldKeyTaken    when the new key belongs to another field
+     * @throws SheetFieldInUse       when a renamed field is referenced outside itself
+     * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or the sheet is not well-formed
+     */
+    public function saveSheetField(?string $originalKey, array $field, \DateTimeImmutable $now): void
+    {
+        $fields = $this->sheetFields();
+        $position = \count($fields);
+        if (null !== $originalKey) {
+            $position = $this->indexOfKey($fields, $originalKey) ?? throw SheetFieldNotFound::withKey($originalKey);
+        }
+
+        $key = $field['key'] ?? null;
+        if (\is_string($key) && $key !== $originalKey && null !== $this->indexOfKey($fields, $key)) {
+            throw SheetFieldKeyTaken::withKey($key);
+        }
+
+        if (null !== $originalKey && $key !== $originalKey) {
+            $this->refuseWhenSheetFieldReferenced($originalKey);
+        }
+
+        $fields[$position] = $field;
+        $this->replaceSheetFields(array_values($fields), $now);
+    }
+
+    /**
+     * @throws SheetFieldNotFound    when the sheet has no field with this key
+     * @throws SheetFieldInUse       when the draft references the field outside itself
+     * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or the sheet is not well-formed
+     */
+    public function deleteSheetField(string $key, \DateTimeImmutable $now): void
+    {
+        $fields = $this->sheetFields();
+        $position = $this->indexOfKey($fields, $key) ?? throw SheetFieldNotFound::withKey($key);
+        $this->refuseWhenSheetFieldReferenced($key);
+
+        unset($fields[$position]);
+        $this->replaceSheetFields(array_values($fields), $now);
+    }
+
+    /**
+     * Moves a field to a position of the whole field list and changes nothing else; its group
+     * changes through saveSheetField().
+     *
+     * @param int $index the target position, 0 to the number of fields minus one
+     *
+     * @throws SheetFieldNotFound    when the sheet has no field with this key
+     * @throws InvalidReleaseContent when the index is out of range, the draft is schema version 1, the draft would break the item rules, or the sheet is not well-formed
+     */
+    public function moveSheetField(string $key, int $index, \DateTimeImmutable $now): void
+    {
+        $fields = $this->sheetFields();
+        $position = $this->indexOfKey($fields, $key) ?? throw SheetFieldNotFound::withKey($key);
+        if ($index < 0 || $index >= \count($fields)) {
+            throw InvalidReleaseContent::at('index', \sprintf('must be between 0 and %d, %d given', \count($fields) - 1, $index));
+        }
+
+        $moved = array_splice($fields, $position, 1);
+        array_splice($fields, $index, 0, $moved);
+        $this->replaceSheetFields($fields, $now);
+    }
+
+    /**
      * Replaces the draft with a release document as published; only the key stays this GameSystem's.
      *
      * @param array<mixed> $releaseDocument e.g. ReleaseContent::toArray() of a release of this GameSystem
@@ -310,6 +382,60 @@ final class GameSystem
     public function updatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    /**
+     * @return list<mixed> the stored fields of the sheet; none when it has none
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1 or the sheet or its fields are not well-formed
+     */
+    private function sheetFields(): array
+    {
+        if (1 === $this->schemaVersion()) {
+            throw InvalidReleaseContent::at('schemaVersion', 'the sheet needs schema version 2, this draft is version 1');
+        }
+
+        return ReleaseFields::list($this->sheet()['fields'] ?? [], 'sheet.fields');
+    }
+
+    /**
+     * @return array<array-key, mixed>
+     *
+     * @throws InvalidReleaseContent when the stored sheet is not an object
+     */
+    private function sheet(): array
+    {
+        $sheet = $this->document['sheet'] ?? [];
+        if (!\is_array($sheet) || array_is_list($sheet) && [] !== $sheet) {
+            throw InvalidReleaseContent::at('sheet', 'must be an object');
+        }
+
+        return $sheet;
+    }
+
+    /**
+     * @param list<mixed> $fields
+     *
+     * @throws InvalidReleaseContent when the new document breaks the item rules
+     */
+    private function replaceSheetFields(array $fields, \DateTimeImmutable $now): void
+    {
+        $document = $this->document;
+        $document['sheet'] = [...$this->sheet(), 'fields' => $fields];
+        ReleaseContent::checkItemRules($document);
+        $this->document = $document;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * @throws SheetFieldInUse when the draft names this field outside the field itself
+     */
+    private function refuseWhenSheetFieldReferenced(string $key): void
+    {
+        $paths = DraftReferences::sheetFieldPathsTo($this->document, $key, $key);
+        if ([] !== $paths) {
+            throw SheetFieldInUse::at(\sprintf('The sheet field "%s"', $key), $paths);
+        }
     }
 
     /**

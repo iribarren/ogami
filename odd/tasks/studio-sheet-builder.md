@@ -94,7 +94,7 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 | T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | fac045b |
 | T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | delegated writer (slice 2) | [x] | 07876cb |
 | T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | 3e075c2 |
-| T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | | [ ] | |
+| T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | |
 | T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | | [ ] | |
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | | [ ] | |
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
@@ -112,6 +112,7 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 - 2026-10-17: T4 done. Campaign response `pinnedRelease.sheetLayout` (nullable) and field `span`; OpenAPI and TS types regenerated; API tests for a layout and a legacy release (null, span 1).
 - 2026-10-17: T5 done. `SheetFields`, `derivedValues`, `sheetValues` moved to `frontend/src/shared/sheet/` with neutral types (`SheetTemplateView`); layout renders as nested CSS grids (one column below `sm`); no-layout rendering unchanged; tests and a `WithLayout` story.
 - 2026-10-17: Slice 2 review fix R3: the `sheetLayout` fixture declares `Notes` (the `notes` field now has that group); a test renders every field label; a `SheetFields` test pins today's behaviour (fields of an undeclared group or without a group are not rendered).
+- 2026-10-17: T6 done. `DraftReferences::sheetFieldPathsTo` (derived formulas, check modifiers and band formulas, sheet effects by `field` and `{formula}` in steps, outcomes and table entries); `GameSystem::saveSheetField`, `deleteSheetField`, `moveSheetField` (out-of-range index is `InvalidReleaseContent` on `index`) with `SheetFieldKeyTaken`, `SheetFieldNotFound`, `SheetFieldInUse`; every command runs the item rules on the whole draft.
 
 ## Reviews
 

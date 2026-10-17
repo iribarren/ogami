@@ -6825,7 +6825,8 @@
                     "maxLength",
                     "itemLabel",
                     "maxItems",
-                    "formula"
+                    "formula",
+                    "span"
                 ],
                 "properties": {
                     "key": {
@@ -6905,6 +6906,64 @@
                         "type": "string",
                         "example": "{reflexes} + 4",
                         "nullable": true
+                    },
+                    "span": {
+                        "description": "How many columns of its group the field takes; 1 for a release without a layout.",
+                        "type": "integer",
+                        "example": 2,
+                        "minimum": 1
+                    }
+                },
+                "type": "object"
+            },
+            "SheetGroupResponse": {
+                "required": [
+                    "name",
+                    "columns",
+                    "span"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "The name the fields of the group carry in their `group`.",
+                        "type": "string",
+                        "example": "Stats"
+                    },
+                    "columns": {
+                        "description": "The columns of fields inside the group.",
+                        "type": "integer",
+                        "example": 2,
+                        "maximum": 4,
+                        "minimum": 1
+                    },
+                    "span": {
+                        "description": "How many columns of the sheet the group takes.",
+                        "type": "integer",
+                        "example": 1,
+                        "maximum": 2,
+                        "minimum": 1
+                    }
+                },
+                "type": "object"
+            },
+            "SheetLayoutResponse": {
+                "required": [
+                    "columns",
+                    "groups"
+                ],
+                "properties": {
+                    "columns": {
+                        "description": "The columns of groups the sheet has.",
+                        "type": "integer",
+                        "example": 2,
+                        "maximum": 2,
+                        "minimum": 1
+                    },
+                    "groups": {
+                        "description": "The groups in declared order. A field names its group; a group without fields renders nothing.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetGroupResponse"
+                        }
                     }
                 },
                 "type": "object"
@@ -6916,7 +6975,8 @@
                     "version",
                     "theme",
                     "credits",
-                    "sheet"
+                    "sheet",
+                    "sheetLayout"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -6959,6 +7019,15 @@
                         "items": {
                             "$ref": "#/components/schemas/SheetFieldResponse"
                         }
+                    },
+                    "sheetLayout": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SheetLayoutResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together."
                     }
                 },
                 "type": "object"

@@ -85,7 +85,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         $sheet = array_map(static fn (mixed $field): array => (array) $field, array_values($sheet));
         self::assertSame(['role', 'look', 'reflexes', 'luck', 'debt', 'hp', 'humanity', 'gear', 'cyberware'], array_column($sheet, 'key'));
         self::assertSame(
-            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null],
+            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'span' => 1],
             $sheet[0],
         );
         self::assertSame(['number', 1, 10, 4], [$sheet[2]['type'] ?? null, $sheet[2]['min'] ?? null, $sheet[2]['max'] ?? null, $sheet[2]['default'] ?? null]);

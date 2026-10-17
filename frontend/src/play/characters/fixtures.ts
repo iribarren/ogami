@@ -22,6 +22,7 @@ const base: SheetField = {
   itemLabel: null,
   maxItems: null,
   formula: null,
+  span: 1,
 }
 
 /** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes. */

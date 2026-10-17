@@ -92,6 +92,7 @@ export const lostMineCampaign: Campaign = {
     theme: null,
     credits: null,
     sheet: [],
+    sheetLayout: null,
   },
   sessions: [
     {
@@ -203,6 +204,7 @@ export function newCampaign(name: string, gameSystem: GameSystemSummary): Campai
       theme: null,
       credits: gameSystem.credits,
       sheet: [],
+      sheetLayout: null,
     },
     sessions: [],
     currentSessionNumber: null,

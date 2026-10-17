@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
@@ -24,6 +24,22 @@ const sceneTypeOptions = (data: GameSystemNarrative) =>
   }))
 
 /**
+ * When the narrative last changed: the update time of its data once the data is a new value, 0
+ * while it is the one first read. A refetch that finds the same data does not move it.
+ */
+function useChangedAt(data: GameSystemNarrative | undefined, updatedAt: number): number {
+  const [seen, setSeen] = useState(data)
+  const [changedAt, setChangedAt] = useState(0)
+  if (seen !== data) {
+    setSeen(data)
+    if (seen !== undefined) {
+      setChangedAt(updatedAt)
+    }
+  }
+  return changedAt
+}
+
+/**
  * The flows of a draft in stored order, with their phases, the validation issues about each and
  * where each is used; each opens its editor page.
  */
@@ -31,6 +47,7 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
   const validation = useGameSystemValidation(gameSystemKey)
   const noSceneTypes = useId()
+  const changedAt = useChangedAt(narrative.data, narrative.dataUpdatedAt)
   const navigate = useNavigate()
 
   return (
@@ -80,10 +97,11 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                     version={data.version}
                     // The validation numbers flows by their stored position, which is the order
                     // the narrative read model lists them in. A save refreshes both reads, the
-                    // validation after the narrative: while it is on its way its positions are
-                    // the old ones, so no row shows a count then.
+                    // validation after the narrative: until it is read again its positions are
+                    // the old ones, so no row shows a count then. A refresh that finds the
+                    // narrative as it was keeps the counts.
                     issues={
-                      validation.data && !validation.isFetching
+                      validation.data && validation.dataUpdatedAt >= changedAt
                         ? flowIssueCount(validation.data, index)
                         : 0
                     }

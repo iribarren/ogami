@@ -49,6 +49,7 @@ function PhaseCard({
   phase,
   index,
   total,
+  locked,
   answer,
   onChange,
   onMove,
@@ -57,6 +58,7 @@ function PhaseCard({
   phase: PhaseDraft
   index: number
   total: number
+  locked: boolean
   answer: PhaseAnswer | undefined
   onChange: (phase: PhaseDraft) => void
   onMove: (by: number) => void
@@ -81,7 +83,7 @@ function PhaseCard({
             type="button"
             variant="outline"
             size="sm"
-            disabled={index === 0}
+            disabled={locked || index === 0}
             aria-label={`Move phase ${number} up`}
             onClick={() => {
               onMove(-1)
@@ -93,7 +95,7 @@ function PhaseCard({
             type="button"
             variant="outline"
             size="sm"
-            disabled={index === total - 1}
+            disabled={locked || index === total - 1}
             aria-label={`Move phase ${number} down`}
             onClick={() => {
               onMove(1)
@@ -105,7 +107,7 @@ function PhaseCard({
             type="button"
             variant="outline"
             size="sm"
-            disabled={total === 1}
+            disabled={locked || total === 1}
             aria-label={`Delete phase ${number}`}
             onClick={onDelete}
           >
@@ -176,24 +178,28 @@ function PhaseCard({
 
 /**
  * The phases of a flow as an ordered list of cards: add, move, delete. A message about a phase
- * moves, or goes, with it, so it stays on the card it is about.
+ * moves, or goes, with it, so it stays on the card it is about. While `locked` (a save is on its
+ * way) the phases cannot be added, moved or deleted: the server's messages are about the phases
+ * that were sent, so they must still be the phases on the page when they arrive.
  */
 export function PhaseOutline({
   phases,
   answers,
   sceneType,
+  locked = false,
   onChange,
 }: {
   phases: PhaseDraft[]
   answers: (PhaseAnswer | undefined)[]
   /** The Scene Type a new phase starts with; null when the draft has none. */
   sceneType: string | null
+  locked?: boolean
   onChange: (phases: PhaseDraft[], answers: (PhaseAnswer | undefined)[]) => void
 }) {
   const reasonId = useId()
   // `answers` has holes: spread to the phases' length so that moving one keeps the others in place.
   const aligned = phases.map((_, index) => answers[index])
-  const addDisabled = sceneType === null || phases.length >= MAX_PHASES
+  const addDisabled = locked || sceneType === null || phases.length >= MAX_PHASES
 
   return (
     <div className="space-y-3">
@@ -205,6 +211,7 @@ export function PhaseOutline({
             phase={phase}
             index={index}
             total={phases.length}
+            locked={locked}
             answer={aligned[index]}
             onChange={(changed) => {
               onChange(
@@ -230,7 +237,7 @@ export function PhaseOutline({
           variant="outline"
           size="sm"
           disabled={addDisabled}
-          aria-describedby={addDisabled ? reasonId : undefined}
+          aria-describedby={addDisabled && !locked ? reasonId : undefined}
           onClick={() => {
             if (sceneType !== null) {
               onChange([...phases, newPhase(phases, sceneType)], aligned)
@@ -239,7 +246,7 @@ export function PhaseOutline({
         >
           Add phase
         </Button>
-        {addDisabled && (
+        {addDisabled && !locked && (
           <p id={reasonId} className="text-sm text-muted-foreground">
             {sceneType === null
               ? 'Add a Scene Type first.'

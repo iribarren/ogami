@@ -228,6 +228,7 @@ export function FlowEditor({
           phases={draft.phases}
           answers={answer.phases}
           sceneType={narrative.sceneTypes[0]?.key ?? null}
+          locked={save.isPending}
           onChange={(phases, phaseAnswers) => {
             setDraft({ ...draft, phases })
             setAnswer({ ...answer, phases: phaseAnswers })

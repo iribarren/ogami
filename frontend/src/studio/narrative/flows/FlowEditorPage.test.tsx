@@ -274,6 +274,25 @@ describe('the phase outline', () => {
     expect(add).toHaveAccessibleDescription('Add a Scene Type first.')
   })
 
+  it('cannot add a twenty-first phase, and says so', async () => {
+    const phases = Array.from({ length: 20 }, (_, at) => ({
+      key: `p${String(at)}`,
+      name: `P${String(at)}`,
+      mode: 'once',
+      selection: { rule: 'sequence', sceneTypes: ['ambush'] },
+    }))
+    await openEditor('heist', {
+      [`GET ${base}/narrative`]: json({
+        ...narrativeFlows,
+        flows: [{ ...narrativeFlows.flows[0], definition: { ...heist, phases } }],
+      }),
+    })
+
+    const add = screen.getByRole('button', { name: 'Add phase' })
+    expect(add).toBeDisabled()
+    expect(add).toHaveAccessibleDescription('A flow has at most 20 phases.')
+  })
+
   it('sends nothing for an empty key or a key another phase has, and says so on the phase', async () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
@@ -344,6 +363,35 @@ describe('a refused save', () => {
     expect(phase(1).getByText(/duplicate phase key/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Delete phase 1' }))
     expect(screen.queryByText(/duplicate phase key/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the phases as they were sent while the save is pending, so the message lands on the right card', async () => {
+    let release: () => void = () => undefined
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { user } = await openEditor('heist', {
+      [put]: async () => {
+        await pending
+        return Response.json(
+          { error: 'flows[0].phases[1].name: must be at most 80 characters' },
+          { status: 422 },
+        )
+      },
+    })
+
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(save()).toBeDisabled()
+    })
+    for (const name of ['Add phase', 'Move phase 1 down', 'Move phase 2 up', 'Delete phase 1']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+    release()
+    expect(await phase(2).findByText('must be at most 80 characters')).toBeInTheDocument()
+    expect(phase(1).queryByText('must be at most 80 characters')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add phase' })).toBeEnabled()
   })
 
   it.each([

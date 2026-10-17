@@ -1,0 +1,106 @@
+# Feature: studio-check-editor
+
+- **Locator:** `odd/tasks/studio-check-editor.md` · Engram topic `odd/studio-check-editor/tasks`
+- **Issue:** #177 · **Branch:** `feat/studio-check-editor-1-check-commands` · **Status:** in progress
+- **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
+- **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
+- **Previous feature:** `studio-sheet-builder` (PRs #167–#176)
+
+## Objective
+
+Roadmap feature 17 (milestone M4). In a schema 2 GameSystem draft, a GAME_MANAGER authors checks: dice notation, a modifier formula, an optional difficulty and outcome bands, with live formula diagnostics. A test-roll sandbox rolls a saved check against a sample sheet (sample field and tracker values, difficulty, situational modifier) and shows every band's bound, the total and the band reached. The check shape is the contract's as it stands (ADR 0024); the publisher's rules are the editor's rules.
+
+Out of scope: any change to the check contract (exploding dice, pools, success counting, opposed rolls, re-rolls stay ADR 0024 gaps); a TypeScript dice parser or roller; check steps (edited by the flow editor, 18); the library (18b); migrating Campaigns when a check changes (ADR 0010, 0014).
+
+## Problem and why
+
+- A draft's `checks` can only come from a copied or restored release (ADR 0028). The Sections tab only counts them; the flow editor only picks them for check steps.
+- Renaming or deleting a check that a check step uses fails only through the item rules, with a single path; the sheet builder and oracle editor refuse in-use keys listing every path.
+- A GM cannot see what a check does before publishing: how bands fall for a given sheet and difficulty, or what a roll gives. Play's `Check::perform` is Play Domain, which Studio cannot import (PHPat); only Randomness and Formula are shared kernel.
+- `FormulaInput` (studio-sheet-builder) is scope-free, but `formulaDiagnostics` is derived-field specific and always refuses `{check:…}`.
+
+## Model summary (today, schema 2)
+
+`checks` ≤50, keys unique ([contract §Checks](../../docs/contracts/gamesystem-release.md), ADR 0024). Check `{key, label 1–100, hint? ≤500, dice ≤100 (Randomness notation), modifier? (check-scope formula 1–200), difficulty? {label 1–60, default, min?, max?} (integers ±1,000, min ≤ default ≤ max), bands 1–10 of {key, label 1–100, upTo?: int | {tracker} | {formula}}}`. Every band but the last has `upTo`; literal bounds strictly increase. Total = dice + modifier + situational (−100..100); the outcome is the first band whose bound ≥ total, the last band catches the rest. Check scope = sheet scope (`{key}` number/track/derived, `{key.max}` tracks, `{tracker:key}`); a band formula may read `{check:difficulty}` only when its check declares a difficulty; the modifier never reads `{check:…}`. Studio validation: `backend/src/Studio/Domain/Release/Version2/Checks.php` (+ `Bands.php`, `Steps.php:307,324` for check steps). Play: `GameSystemReleaseTranslator::checks()` and `Play/Domain/GameSystem/Check/Check.php::perform` (difficulty → situational → modifier → bounds → roll → overflow guard → band). References to a check: only check steps, `step.check` and `step.outcomes[].band`, in Scene Type `setup/play/closing` and flow phase/hook steps.
+
+## Decisions
+
+| Question | Decision |
+|---|---|
+| Test roll (user, 2026-10-17) | **Server roll**, as the oracle editor ([ADR 0029](../../docs/adr/0029-studio-oracle-editor.md)): on the saved draft, never recorded. Studio composes the shared-kernel `DiceExpression` and `Formula` itself (ADR 0024: "the same Play-independent pieces"); the editor saves unsaved edits first |
+| Dice validation (user, 2026-10-17) | **On save.** The server's 422 on `checks[i].dice` is shown on the dice input. No TS dice parser |
+| Contract (Claude) | Unchanged. Every release keeps its canonical form and hash |
+| Studio API (Claude) | `GameSystemCheckController` in the ADR 0030 style: `GET /checks` read model (version, schemaVersion, checks, reference catalog: number/track/derived field keys with labels and track max, trackers with initial values, check-step usage paths per check); `POST /checks`, `PUT /checks/{check}` (rename when the key changes; the body is the whole check), `DELETE …?expectedVersion=N`, `POST /checks/{check}/move {expectedVersion, index}` (index in the whole list, out of range a 422 on `index`). Body `{expectedVersion, check}`; every command returns the read model; 400/404/409/415/422 as ADR 0030; in use answers as `OracleInUseResponse` with the paths |
+| References (Claude) | `DraftReferences` gains check keys (`step.check`) and band keys per check (`step.outcomes[].band` of steps naming that check), in Scene Type and flow steps. Renaming or deleting a referenced check is a 422 listing every path. A check save that drops a referenced band key (a band rename is a drop plus an add, no cascade) is a 422 listing the outcome paths. Other breaking edits (dropping the difficulty a step sets) go through the item rules with their path |
+| Test-roll request (Claude) | `POST /checks/{check}/test-rolls {sheet: {fieldKey: int}, trackers: {trackerKey: int}, difficulty?: int\|null, situational?: int\|null}`. Only number and track fields take a sample; derived values are computed by the server from the saved sheet. A missing number takes its `default`, else 0; a missing track 0; a missing tracker its initial value. Unknown keys, non-integers, values outside a field's `min`/`max` or a track's `max`, a difficulty outside the check's range or on a check without one, a situational outside −100..100: 422 with the path. Evaluation failures (division by zero, overflow) are a 422 and nothing is rolled, as Play |
+| Test-roll response (Claude) | `{dice {expression, total, detail as Randomness gives it}, modifier, situational, difficulty\|null, total, bands [{key, label, bound\|null}], band}` (`band` = key reached). Formula bounds that are not increasing for these samples are returned as they are; the UI warns |
+| Studio test-roll domain (Claude) | `Studio/Domain/Check/` (or next to the release model) evaluates a check for a test roll in Play's order with an injected `RandomNumberGenerator`; unit tests mirror Play's `Check::perform` cases so the two agree. No shared-kernel move |
+| Checks tab (Claude) | `frontend/src/studio/checks/`, a `Checks` tab on `GameSystemPage`: list with up/down move and delete (confirm, in-use paths); editor for key, label, hint, dice, modifier, difficulty (optional block) and bands (add, remove, reorder; `upTo` kind none/number/tracker/formula; the last band has none). Path-prefixed 422s onto inputs (`checkError.ts`), 409 reload. Modifier and band formulas use `FormulaInput` with a check-scope diagnostics sibling of `formulaDiagnostics` (`{check:difficulty}` only in band formulas of a check with a difficulty; no cycle check) |
+| Sandbox (Claude) | Beside the editor of a saved check: sample values for number and track fields and trackers, shared with the Sheet tab's preview by lifting `useSheetSamples` to `GameSystemPage`; difficulty (default preset) and situational inputs; band bounds computed live client-side with the TS formula kernel (warning when not increasing); Roll calls the server and keeps the last 5 results (`useRollHistory` pattern) |
+
+## Design
+
+### Backend (slices 1–3)
+
+- ADR 0032 (Studio check editor and test-roll sandbox); ADR index row; glossary entry if a term is new (Test roll exists: reuse it).
+- `DraftReferences::checkPathsTo` and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse`; each command runs the item rules on the whole draft and is all-or-nothing; v1 drafts refused as for the sheet.
+- `SaveCheck`, `DeleteCheck`, `MoveCheck` and handlers; `GetGameSystemChecks` → read model, read defensively.
+- Controller, request/response DTOs, API tests for every status of every endpoint (each refusal asserts the draft unchanged), `make api`.
+- Test roll: domain evaluation, sample-values validation, `TestRollCheck` query, endpoint, API tests.
+
+### Frontend (slices 4–6)
+
+- `useGameSystemChecks`, `checkDraft.ts` (form state and request building that omits empty optionals), `checkError.ts`, Checks tab list, editor.
+- Bands editor and check-scope `FormulaInput` diagnostics.
+- Sandbox, lifted samples, roll history; Playwright e2e.
+
+## Constraints
+
+- Releases keep their canonical form and hash; no contract or Play change.
+- The publisher's item rules decide what a check may be; the test roll agrees with Play's `Check::perform` (same order, same refusals).
+- Domain stays framework-free; Studio imports only shared-kernel Randomness and Formula, never Play.
+- Frontend uses only the generated client; no new library (ADR 0004).
+- Studio is owner-only per draft (ADR 0028).
+
+## Slice plan
+
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice (reviewer refuses ~1,850). Each slice's first commit carries the previous slice's review fixes. A slice with API changes commits the regenerated `openapi.json` / `schema.d.ts` on their own.
+
+| # | Branch | PR title | Tasks | Forecast |
+|---|---|---|---|---|
+| 1 | `feat/studio-check-editor-1-check-commands` | `feat(studio): studio-check-editor 1/6 check commands and read model` | T1, T2, T3 | ~1,400 |
+| 2 | `feat/studio-check-editor-2-check-api` | `feat(studio): studio-check-editor 2/6 check API` | T4 | ~1,600 incl. ~700 generated |
+| 3 | `feat/studio-check-editor-3-test-roll` | `feat(studio): studio-check-editor 3/6 check test roll` | T5 | ~1,500 incl. ~300 generated |
+| 4 | `feat/studio-check-editor-4-checks-tab` | `feat(studio): studio-check-editor 4/6 checks tab and editor` | T6 | ~1,600 |
+| 5 | `feat/studio-check-editor-5-bands-formulas` | `feat(studio): studio-check-editor 5/6 bands editor and check formulas` | T7 | ~1,500 |
+| 6 | `feat/studio-check-editor-6-sandbox-e2e` | `feat(studio): studio-check-editor 6/6 test-roll sandbox and end to end` | T8, T9 | ~1,600 |
+
+## Tasks
+
+| ID | Slice | Task | Route | Status | Commit |
+|---|---|---|---|---|---|
+| T1 | 1 | Docs: this feature doc; ADR 0032 (Studio check editor and test-roll sandbox) and ADR index row; glossary only if a new term appears | delegated writer (slice 1) | [x] | |
+| T2 | 1 | Domain: `DraftReferences` check-key and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` (rename/delete of a referenced check and dropping a referenced band refused with every path) with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse` | delegated writer (slice 1) | [x] | |
+| T3 | 1 | Application: `SaveCheck`, `DeleteCheck`, `MoveCheck` and handlers; `GetGameSystemChecks` query and read model (version, schemaVersion, checks, reference catalog, usage paths per check) | delegated writer (slice 1) | [x] | |
+| T4 | 2 | HTTP: `GameSystemCheckController` (`GET /checks`, create, replace/rename, delete, move), DTOs, error mapping, API tests for every 400/404/409/415/422, `make api` | delegated writer (slice 2) | [ ] | |
+| T5 | 3 | Test roll: Studio domain evaluation in Play's order with an injected RNG (unit tests mirroring `Check::perform`), sample-values validation, `TestRollCheck` query, `POST /checks/{check}/test-rolls`, API tests, `make api` | delegated writer (slice 3) | [ ] | |
+| T6 | 4 | Checks tab: `useGameSystemChecks`, `checkDraft.ts`, `checkError.ts`, list with move/delete, editor for key/label/hint/dice/modifier/difficulty, 409 handling, tests, stories | delegated writer (slice 4) | [ ] | |
+| T7 | 5 | Bands editor (add/remove/reorder, `upTo` kinds) and check-scope formula diagnostics in `FormulaInput` for modifier and band formulas; tests, stories | delegated writer (slice 5) | [ ] | |
+| T8 | 6 | Sandbox: lift `useSheetSamples` to `GameSystemPage`; sample inputs, difficulty, situational, live band bounds with a non-increasing warning, Roll with the last 5 results; tests, stories | delegated writer (slice 6) | [ ] | |
+| T9 | 6 | Playwright: author a check with bands and roll it in the sandbox; feature doc close | delegated writer (slice 6) | [ ] | |
+
+## Progress
+
+- 2026-10-17: Feature started. Explored the check contract, Play's `Check::perform`, Studio's sheet and oracle editor patterns and `FormulaInput`. User chose a server test roll and dice validation on save. Issue #177.
+- 2026-10-17: T1 done. ADR 0032 and its index row added; glossary Test roll entry extended to checks.
+- 2026-10-17: T2 done. `DraftReferences::checkPathsTo` and `bandPathsTo`; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse`. RED observed (undefined methods, 25 + 9 errors), then GREEN (267 Domain/GameSystem tests).
+- 2026-10-17: T3 done. `SaveCheck`, `DeleteCheck`, `MoveCheck` with handlers; `GetGameSystemChecks` returns `GameSystemChecksView` (checks as stored, `CheckFieldView` and `CheckTrackerView` catalog, usages per check key), read defensively. No HTTP layer yet.
+
+## Reviews
+
+| Slice | Lineage | Commits | Outcome | PR |
+|---|---|---|---|---|
+
+## Next step
+
+Slice 1: T1–T3 on `feat/studio-check-editor-1-check-commands`.

@@ -249,6 +249,51 @@ final class DraftReferences
     }
 
     /**
+     * The check steps that name this check: the "check" of each, in Scene Type parts and flow
+     * phase hooks.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<string>
+     */
+    public static function checkPathsTo(array $document, string $key): array
+    {
+        $paths = [];
+        foreach (self::steps($document) as $path => $step) {
+            if ('check' === ($step['kind'] ?? null) && $key === ($step['check'] ?? null)) {
+                $paths[] = $path.'.check';
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
+     * The outcomes of check steps naming this check that name this band: their "band".
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<string>
+     */
+    public static function bandPathsTo(array $document, string $check, string $band): array
+    {
+        $paths = [];
+        foreach (self::steps($document) as $path => $step) {
+            if ('check' !== ($step['kind'] ?? null) || $check !== ($step['check'] ?? null)) {
+                continue;
+            }
+
+            foreach (self::objects($step['outcomes'] ?? null) as $index => $outcome) {
+                if ($band === ($outcome['band'] ?? null)) {
+                    $paths[] = \sprintf('%s.outcomes[%d].band', $path, $index);
+                }
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
      * @param array<string, mixed> $document
      *
      * @return list<string>

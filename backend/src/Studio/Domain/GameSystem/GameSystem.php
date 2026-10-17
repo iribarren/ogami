@@ -313,6 +313,81 @@ final class GameSystem
     }
 
     /**
+     * Creates a check (no original key; it is appended) or replaces one by its original key (it
+     * keeps its position; a different key renames it). The check is stored as given once the whole
+     * draft passes the item rules (ADR 0032), so a dice notation, formula, difficulty or band that
+     * the publisher refuses, or a check step that the change would break, is refused with the
+     * publisher's path and nothing changes. A draft without checks gets them.
+     *
+     * @param array<array-key, mixed> $check
+     *
+     * @throws CheckNotFound         when the original key names no check
+     * @throws CheckKeyTaken         when the new key belongs to another check
+     * @throws CheckInUse            when a renamed check is named by a check step, or the check drops a band that an outcome names
+     * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or "checks" is not well-formed
+     */
+    public function saveCheck(?string $originalKey, array $check, \DateTimeImmutable $now): void
+    {
+        $checks = $this->checks();
+        $position = \count($checks);
+        if (null !== $originalKey) {
+            $position = $this->indexOfKey($checks, $originalKey) ?? throw CheckNotFound::withKey($originalKey);
+        }
+
+        $key = $check['key'] ?? null;
+        if (\is_string($key) && $key !== $originalKey && null !== $this->indexOfKey($checks, $key)) {
+            throw CheckKeyTaken::withKey($key);
+        }
+
+        if (null !== $originalKey) {
+            if ($key !== $originalKey) {
+                $this->refuseWhenCheckReferenced($originalKey);
+            }
+
+            $this->refuseWhenBandsAreReferenced($originalKey, $checks[$position], $check);
+        }
+
+        $checks[$position] = $check;
+        $this->replaceChecks(array_values($checks), $now);
+    }
+
+    /**
+     * @throws CheckNotFound         when the draft has no check with this key
+     * @throws CheckInUse            when a check step names the check
+     * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or "checks" is not well-formed
+     */
+    public function deleteCheck(string $key, \DateTimeImmutable $now): void
+    {
+        $checks = $this->checks();
+        $position = $this->indexOfKey($checks, $key) ?? throw CheckNotFound::withKey($key);
+        $this->refuseWhenCheckReferenced($key);
+
+        unset($checks[$position]);
+        $this->replaceChecks(array_values($checks), $now);
+    }
+
+    /**
+     * Moves a check to a position of the whole check list and changes nothing else.
+     *
+     * @param int $index the target position, 0 to the number of checks minus one
+     *
+     * @throws CheckNotFound         when the draft has no check with this key
+     * @throws InvalidReleaseContent when the index is out of range, the draft is schema version 1, the draft would break the item rules, or "checks" is not well-formed
+     */
+    public function moveCheck(string $key, int $index, \DateTimeImmutable $now): void
+    {
+        $checks = $this->checks();
+        $position = $this->indexOfKey($checks, $key) ?? throw CheckNotFound::withKey($key);
+        if ($index < 0 || $index >= \count($checks)) {
+            throw InvalidReleaseContent::at('index', \sprintf('must be between 0 and %d, %d given', \count($checks) - 1, $index));
+        }
+
+        $moved = array_splice($checks, $position, 1);
+        array_splice($checks, $index, 0, $moved);
+        $this->replaceChecks($checks, $now);
+    }
+
+    /**
      * Replaces the declared groups, the sheet's columns and the groups' columns and spans in one go.
      * A group is identified by its "previousName" when it has one, else by its name, so it may be
      * renamed (every field of it follows, all renames at once, so two groups can swap names),
@@ -625,6 +700,86 @@ final class GameSystem
         if ([] !== $paths) {
             throw SheetFieldInUse::at(\sprintf('The sheet field "%s"', $key), $paths);
         }
+    }
+
+    /**
+     * @return list<mixed> the stored checks; none when the draft has none
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1 or "checks" is not a list
+     */
+    private function checks(): array
+    {
+        if (1 === $this->schemaVersion()) {
+            throw InvalidReleaseContent::at('schemaVersion', 'checks need schema version 2, this draft is version 1');
+        }
+
+        return ReleaseFields::list($this->document['checks'] ?? [], 'checks');
+    }
+
+    /**
+     * @param list<mixed> $checks
+     *
+     * @throws InvalidReleaseContent when the new document breaks the item rules
+     */
+    private function replaceChecks(array $checks, \DateTimeImmutable $now): void
+    {
+        $document = $this->document;
+        $document['checks'] = $checks;
+        ReleaseContent::checkItemRules($document);
+        $this->document = $document;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * @throws CheckInUse when a check step names this check
+     */
+    private function refuseWhenCheckReferenced(string $key): void
+    {
+        $paths = DraftReferences::checkPathsTo($this->document, $key);
+        if ([] !== $paths) {
+            throw CheckInUse::at(\sprintf('The check "%s"', $key), $paths);
+        }
+    }
+
+    /**
+     * A band is identified by its key, so a band rename is a drop plus an add: the outcomes that
+     * name a dropped band are listed, and nothing cascades.
+     *
+     * @param array<array-key, mixed> $new
+     *
+     * @throws CheckInUse when a band of the stored check is missing from the new one and an outcome names it
+     */
+    private function refuseWhenBandsAreReferenced(string $check, mixed $stored, array $new): void
+    {
+        $kept = $this->bandKeys($new);
+        $paths = [];
+        foreach ($this->bandKeys(\is_array($stored) ? $stored : []) as $band) {
+            if (!\in_array($band, $kept, true)) {
+                $paths = [...$paths, ...DraftReferences::bandPathsTo($this->document, $check, $band)];
+            }
+        }
+
+        if ([] !== $paths) {
+            throw CheckInUse::at(\sprintf('A band of the check "%s"', $check), $paths);
+        }
+    }
+
+    /**
+     * @param array<array-key, mixed> $check
+     *
+     * @return list<string> the keys of the bands that are objects with a string key
+     */
+    private function bandKeys(array $check): array
+    {
+        $bands = $check['bands'] ?? null;
+        $keys = [];
+        foreach (\is_array($bands) && array_is_list($bands) ? $bands : [] as $band) {
+            if (\is_array($band) && \is_string($band['key'] ?? null)) {
+                $keys[] = $band['key'];
+            }
+        }
+
+        return $keys;
     }
 
     /**

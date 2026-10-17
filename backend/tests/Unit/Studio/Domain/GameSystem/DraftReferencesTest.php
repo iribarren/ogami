@@ -331,6 +331,8 @@ final class DraftReferencesTest extends TestCase
         self::assertSame([], DraftReferences::sceneTypePathsTo($document, 'fate'));
         self::assertSame([], DraftReferences::tagPathsTo($document, 'fate'));
         self::assertSame([], DraftReferences::factSlotPathsTo($document, 'fate'));
+        self::assertSame([], DraftReferences::checkPathsTo($document, 'fate'));
+        self::assertSame([], DraftReferences::bandPathsTo($document, 'fate', 'a'));
     }
 
     /**
@@ -425,5 +427,40 @@ final class DraftReferencesTest extends TestCase
 
         self::assertSame([], DraftReferences::sheetFieldPathsTo($document, 'pow'));
         self::assertSame([], DraftReferences::sheetFieldPathsTo(['sheet' => 'nope', 'checks' => 3], 'pow'));
+    }
+
+    #[Test]
+    public function aCheckIsNamedByTheCheckStepsOfSceneTypesAndPhaseHooks(): void
+    {
+        $document = $this->sheetDocument('valid/v2-checks');
+        $document['flows'] = [['phases' => [['sceneOpening' => [['kind' => 'prompt'], ['kind' => 'check', 'check' => 'luck']]]]]];
+        /** @var array<string, mixed> $document */
+        $document = ReleaseArrays::with($document, 'sceneTypes.0.closing', [['kind' => 'check', 'check' => 'skill']]);
+
+        self::assertSame(['sceneTypes[0].play[0].check', 'sceneTypes[0].closing[0].check'], DraftReferences::checkPathsTo($document, 'skill'));
+        self::assertSame(['flows[0].phases[0].sceneOpening[1].check'], DraftReferences::checkPathsTo($document, 'luck'));
+        self::assertSame([], DraftReferences::checkPathsTo($document, 'unused'));
+    }
+
+    #[Test]
+    public function onlyCheckStepsNameACheck(): void
+    {
+        $document = ['sceneTypes' => [['play' => [['kind' => 'prompt', 'check' => 'skill'], ['kind' => 'roll', 'check' => 'skill']]]]];
+
+        self::assertSame([], DraftReferences::checkPathsTo($document, 'skill'));
+    }
+
+    #[Test]
+    public function aBandIsNamedByTheOutcomesOfStepsNamingItsCheck(): void
+    {
+        $document = $this->sheetDocument('valid/v2-checks');
+        /** @var array<string, mixed> $document */
+        $document = ReleaseArrays::with($document, 'sceneTypes.0.setup', [['kind' => 'check', 'check' => 'luck', 'outcomes' => [['band' => 'crit']]]]);
+
+        self::assertSame(['sceneTypes[0].play[0].outcomes[1].band'], DraftReferences::bandPathsTo($document, 'skill', 'crit'));
+        self::assertSame(['sceneTypes[0].play[0].outcomes[0].band'], DraftReferences::bandPathsTo($document, 'skill', 'fail'));
+        self::assertSame([], DraftReferences::bandPathsTo($document, 'skill', 'success'));
+        self::assertSame([], DraftReferences::bandPathsTo($document, 'luck', 'fail'));
+        self::assertSame(['sceneTypes[0].setup[0].outcomes[0].band'], DraftReferences::bandPathsTo($document, 'luck', 'crit'));
     }
 }

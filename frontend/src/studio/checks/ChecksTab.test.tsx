@@ -310,6 +310,119 @@ describe('the checks tab', () => {
     })
   })
 
+  describe('when the person moves or deletes from the list while editing', () => {
+    const swapped = { ...checks, version: 6, checks: [checks.checks[1], checks.checks[0]] }
+
+    it('keeps the unsaved edits and saves at the version their own move returned', async () => {
+      const { sent, handler } = recorder(Response.json({ ...swapped, version: 7 }))
+      const { user } = await openChecks({
+        [`POST ${base}/checks/luck/move`]: json(swapped),
+        [`PUT ${base}/checks/skill`]: handler,
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      await user.clear(form.getByLabelText('Label'))
+      await user.type(form.getByLabelText('Label'), 'Mine')
+      await user.click(screen.getByRole('button', { name: 'Move up luck' }))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Move down luck' })).toBeEnabled()
+      })
+      expect(form.getByLabelText('Label')).toHaveValue('Mine')
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect(sent[0]).toMatchObject({ expectedVersion: 6, check: { label: 'Mine' } })
+      expect(screen.queryByText(/was changed by another request/)).toBeNull()
+    })
+
+    it('keeps the edits and the new version after deleting another check', async () => {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 7 }))
+      const { user } = await openChecks({
+        [`DELETE ${base}/checks/luck`]: json({ ...checks, version: 6, checks: [checks.checks[0]] }),
+        [`PUT ${base}/checks/skill`]: handler,
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      await user.clear(form.getByLabelText('Label'))
+      await user.type(form.getByLabelText('Label'), 'Mine')
+      await user.click(screen.getByRole('button', { name: 'Delete luck' }))
+      await user.click(inDialog().getByRole('button', { name: 'Delete the check' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect(sent[0]).toMatchObject({ expectedVersion: 6, check: { label: 'Mine' } })
+    })
+
+    it('closes the editor when the check being edited is deleted', async () => {
+      const { user } = await openChecks({
+        [`DELETE ${base}/checks/luck`]: json({ ...checks, version: 6, checks: [checks.checks[0]] }),
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+      await user.click(screen.getByRole('button', { name: 'Delete luck' }))
+      await user.click(inDialog().getByRole('button', { name: 'Delete the check' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: 'Edit luck' })).toBeNull()
+      })
+    })
+
+    it('keeps the old version when the result skipped one, so a save reports the conflict', async () => {
+      const { sent, handler } = recorder(Response.json(changed, { status: 409 }))
+      const { user } = await openChecks({
+        [`POST ${base}/checks/luck/move`]: json({ ...swapped, version: 7 }),
+        [`PUT ${base}/checks/skill`]: handler,
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      await user.click(screen.getByRole('button', { name: 'Move up luck' }))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Move down luck' })).toBeEnabled()
+      })
+      await user.click(screen.getByRole('button', { name: 'Save check' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect(sent[0]).toMatchObject({ expectedVersion: 5 })
+      expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
+    })
+  })
+
+  it('says the latest version could not be loaded when the reload after a conflict fails, and retries', async () => {
+    let reachable = true
+    const { user } = await openChecks({
+      [`GET ${base}/checks`]: () =>
+        reachable ? Response.json(checks) : Response.json({ error: 'Down.' }, { status: 500 }),
+      [`POST ${base}/checks/skill/move`]: () => {
+        reachable = false
+        return Response.json(changed, { status: 409 })
+      },
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Move down skill' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('was changed by another request')
+    expect(alert).toHaveTextContent("Couldn't load the latest version")
+    expect(alert).not.toHaveTextContent('The latest version was loaded.')
+
+    reachable = true
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByText(/The latest version was loaded\./)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
   it('deletes a check after confirming', async () => {
     let calls = 0
     const { user } = await openChecks({

@@ -83,8 +83,7 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
   const move = useMoveCheck(gameSystemKey)
   const latest = useGameSystemChecks(gameSystemKey)
   const [selected, setSelected] = useState<Selection>(null)
-  const [reloadFailed, setReloadFailed] = useState(false)
-  const [conflict, setConflict] = useState<string | null>(null)
+  const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
 
   function open(original: string | null, start: GameSystemChecks) {
     setConflict(null)
@@ -96,8 +95,28 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
    * the latest check (or closes when it is gone) and its next save carries the new version.
    */
   function onConflict(message: string) {
-    void reload().then(() => {
-      setConflict(message)
+    void reload().then((loaded) => {
+      setConflict({ message, loaded })
+    })
+  }
+
+  /**
+   * A move or delete made from this list succeeded: the open editor moves on to the version it
+   * returned, keeping its unsaved edits, so the person's own change does not make their next save
+   * a conflict. Only when nothing else changed the draft since the editor was opened (the version
+   * went up by exactly this one command) and the edited check is still there; otherwise the old
+   * version stays and a save reports the real conflict.
+   */
+  function advance(result: GameSystemChecks) {
+    setSelected((current) => {
+      if (
+        current === null ||
+        result.version !== current.start.version + 1 ||
+        (current.original !== null && !result.checks.some((c) => c.key === current.original))
+      ) {
+        return current
+      }
+      return { ...current, start: result }
     })
   }
 
@@ -105,7 +124,6 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
   async function reload() {
     const result = await latest.refetch()
     const fresh = result.data
-    setReloadFailed(result.isError || fresh === undefined)
     if (result.isError || fresh === undefined) {
       return false
     }
@@ -140,14 +158,29 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
         </p>
       )}
       {conflict !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {conflict} The latest version was loaded.
-        </p>
-      )}
-      {reloadFailed && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t reload the latest version. Try again.
-        </p>
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+          <p>
+            {conflict.message}{' '}
+            {conflict.loaded
+              ? 'The latest version was loaded.'
+              : "Couldn't load the latest version: what is shown may be out of date."}
+          </p>
+          {!conflict.loaded && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void reload().then((loaded) => {
+                  if (loaded) {
+                    setConflict((current) => current && { ...current, loaded })
+                  }
+                })
+              }}
+            >
+              Try again
+            </Button>
+          )}
+        </div>
       )}
       {data.checks.length === 0 && (
         <p className="text-muted-foreground">This draft has no checks yet.</p>
@@ -164,14 +197,13 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
               selected={selected?.original === check.key}
               busy={move.isPending}
               onEdit={(original) => {
-                setReloadFailed(false)
                 open(original, data)
               }}
               onMove={(target) => {
-                setReloadFailed(false)
                 move.mutate(
                   { expectedVersion: data.version, check: check.key, index: target },
                   {
+                    onSuccess: advance,
                     onError: (error) => {
                       if (error instanceof StudioError && error.status === 409) {
                         move.reset()
@@ -181,9 +213,11 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
                   },
                 )
               }}
-              onDeleted={() => {
+              onDeleted={(result) => {
                 if (selected?.original === check.key) {
                   setSelected(null)
+                } else {
+                  advance(result)
                 }
               }}
             />
@@ -225,7 +259,7 @@ function CheckRow({
   busy: boolean
   onEdit: (key: string) => void
   onMove: (target: number) => void
-  onDeleted: () => void
+  onDeleted: (result: GameSystemChecks) => void
 }) {
   const { key, label, dice } = check
   if (typeof key !== 'string') {
@@ -302,7 +336,7 @@ function DeleteCheckDialog({
   gameSystemKey: string
   checkKey: string
   version: number
-  onDeleted: () => void
+  onDeleted: (result: GameSystemChecks) => void
 }) {
   const [open, setOpen] = useState(false)
   const remove = useDeleteCheck(gameSystemKey)
@@ -366,9 +400,9 @@ function DeleteCheckDialog({
               remove.mutate(
                 { expectedVersion: version, check: checkKey },
                 {
-                  onSuccess: () => {
+                  onSuccess: (result) => {
                     setOpen(false)
-                    onDeleted()
+                    onDeleted(result)
                   },
                 },
               )

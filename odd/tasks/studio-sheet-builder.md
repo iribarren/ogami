@@ -119,6 +119,7 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 - 2026-10-17: Slice 3 review fixes R3: the legacy-draft test deletes an unreferenced field and asserts the `sceneTypes[0].oracles[0]: ` prefix and an unchanged version and document; the fixture test queries each field by its own control (label, `current` input, `Add` button), so a group legend cannot satisfy it.
 - 2026-10-17: T7b done. `GameSystemSheetController` (`GET /sheet`; create, replace/rename, delete, move under `/sheet/fields`), `GameSystemSheetResponse` with group and tracker responses, request DTOs, `OracleInUseResponse` also for `SheetFieldInUse`; API tests for every status of every endpoint, each refusal asserting the draft unchanged; the read model's `publishedFieldKeys` is empty until the draft itself is published.
 - 2026-10-17: Slice 4 review fixes R3-001, R3-002: every sheet write answers through one helper, so a draft gone when the sheet is read back after a committed write is a 409, not a 404 (controller unit test with stub buses); the DELETE `expectedVersion` is read raw and an array-shaped value is the 400 `MALFORMED_DELETE`.
+- 2026-10-17: T8 domain and application: `GameSystem::saveSheetLayout` (group identity by `previousName` or name, simultaneous rename cascade, dropping a group with fields refused), `declareSheetLayout`, `removeSheetLayout`, each all-or-nothing through the item rules; `SaveSheetLayout`, `DeclareSheetLayout`, `RemoveSheetLayout` with handlers. No HTTP layer yet.
 
 ## Reviews
 

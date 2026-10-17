@@ -24,6 +24,9 @@ final class GameSystem
     /** The length of the owner_id column. */
     private const int OWNER_MAX_LENGTH = 255;
 
+    /** The group declaring a layout gives the fields that have none. */
+    private const string DEFAULT_SHEET_GROUP = 'General';
+
     /**
      * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
      * stale copy is refused (GameSystemModifiedConcurrently). The model never changes it.
@@ -310,6 +313,137 @@ final class GameSystem
     }
 
     /**
+     * Replaces the declared groups, the sheet's columns and the groups' columns and spans in one go.
+     * A group is identified by its "previousName" when it has one, else by its name, so it may be
+     * renamed (every field of it follows, all renames at once, so two groups can swap names),
+     * reordered or kept; a group nobody names is dropped, which is refused while it holds fields.
+     * "previousName" is not stored. The range, uniqueness and span rules are the item rules' (ADR 0031).
+     *
+     * @param array<array-key, mixed> $groups
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1 or declares no groups, a group is not an object or names a missing one, one is dropped with fields, the draft would break the item rules, or the sheet is not well-formed
+     */
+    public function saveSheetLayout(mixed $columns, array $groups, \DateTimeImmutable $now): void
+    {
+        $fields = $this->sheetFields();
+        $sheet = $this->sheet();
+        $declared = $this->declaredGroupNames($sheet);
+        if ([] === $declared) {
+            throw InvalidReleaseContent::at('sheet.groups', 'no layout is declared, declare the layout first');
+        }
+
+        if ([] === $groups) {
+            throw InvalidReleaseContent::at('groups', 'must not be empty, use DELETE /sheet/layout to remove the layout');
+        }
+
+        if (!array_is_list($groups)) {
+            throw InvalidReleaseContent::at('groups', 'must be a list');
+        }
+
+        $renames = [];
+        $kept = [];
+        $stored = [];
+        foreach ($groups as $index => $group) {
+            $path = \sprintf('groups[%d]', $index);
+            if (!\is_array($group) || [] !== $group && array_is_list($group)) {
+                throw InvalidReleaseContent::at($path, 'must be an object');
+            }
+
+            $name = $group['name'] ?? null;
+            if (!\is_string($name)) {
+                throw InvalidReleaseContent::at($path.'.name', 'must be a text');
+            }
+
+            $current = $this->currentGroupOf($group, $name, $declared, $path);
+            if (null !== $current) {
+                if (isset($kept[$current])) {
+                    throw InvalidReleaseContent::at($path, \sprintf('names the group "%s" like groups[%d]', $current, $kept[$current]));
+                }
+
+                $kept[$current] = $index;
+                if ($current !== $name) {
+                    $renames[$current] = $name;
+                }
+            }
+
+            $stored[] = array_filter(array_diff_key($group, ['previousName' => true]), static fn (mixed $value, string|int $property): bool => null !== $value && (1 !== $value || 'columns' !== $property && 'span' !== $property), \ARRAY_FILTER_USE_BOTH);
+        }
+
+        foreach ($declared as $name) {
+            $held = \count(array_filter($fields, static fn (mixed $field): bool => \is_array($field) && ($field['group'] ?? null) === $name));
+            if (!isset($kept[$name]) && $held > 0) {
+                throw InvalidReleaseContent::at('groups', \sprintf('cannot drop the group "%s", it holds %d %s, move or delete its fields first', $name, $held, 1 === $held ? 'field' : 'fields'));
+            }
+        }
+
+        unset($sheet['columns']);
+        if (null !== $columns && 1 !== $columns) {
+            $sheet['columns'] = $columns;
+        }
+
+        $sheet['groups'] = $stored;
+        $sheet['fields'] = array_map(static fn (mixed $field): mixed => \is_array($field) && \is_string($field['group'] ?? null) && isset($renames[$field['group']]) ? [...$field, 'group' => $renames[$field['group']]] : $field, $fields);
+        $this->replaceSheet($sheet, $now);
+    }
+
+    /**
+     * Turns a sheet without declared groups into one with them: a group for each distinct field group
+     * in order of first appearance (a field without one belongs to "General"), every field naming its
+     * group, fields reordered so each group is contiguous (their relative order is kept). One column,
+     * no spans.
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, already declares groups, has no fields, the draft would break the item rules, or the sheet is not well-formed
+     */
+    public function declareSheetLayout(\DateTimeImmutable $now): void
+    {
+        $fields = $this->sheetFields();
+        $sheet = $this->sheet();
+        if ([] !== $this->declaredGroupNames($sheet)) {
+            throw InvalidReleaseContent::at('sheet.groups', 'already declared');
+        }
+
+        if ([] === $fields) {
+            throw InvalidReleaseContent::at('sheet.fields', 'add a field first, there is nothing to group');
+        }
+
+        $grouped = [];
+        foreach ($fields as $index => $field) {
+            if (!\is_array($field)) {
+                throw InvalidReleaseContent::at(\sprintf('sheet.fields[%d]', $index), 'must be an object');
+            }
+
+            $group = $field['group'] ?? self::DEFAULT_SHEET_GROUP;
+            if (!\is_string($group)) {
+                throw InvalidReleaseContent::at(\sprintf('sheet.fields[%d].group', $index), 'must be a text');
+            }
+
+            $grouped[$group][] = [...$field, 'group' => $group];
+        }
+
+        $sheet['groups'] = array_map(static fn (int|string $name): array => ['name' => (string) $name], array_keys($grouped));
+        $this->replaceSheet([...$sheet, 'fields' => array_merge(...array_values($grouped))], $now);
+    }
+
+    /**
+     * Back to plain groups: drops the sheet's columns, the declared groups and every field's span;
+     * the fields keep their group and order.
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, declares no groups, the draft would break the item rules, or the sheet is not well-formed
+     */
+    public function removeSheetLayout(\DateTimeImmutable $now): void
+    {
+        $fields = $this->sheetFields();
+        $sheet = $this->sheet();
+        if ([] === $this->declaredGroupNames($sheet)) {
+            throw InvalidReleaseContent::at('sheet.groups', 'no declared layout, there is nothing to remove');
+        }
+
+        unset($sheet['columns'], $sheet['groups']);
+        $sheet['fields'] = array_map(static fn (mixed $field): mixed => \is_array($field) ? array_diff_key($field, ['span' => true]) : $field, $fields);
+        $this->replaceSheet($sheet, $now);
+    }
+
+    /**
      * Replaces the draft with a release document as published; only the key stays this GameSystem's.
      *
      * @param array<mixed> $releaseDocument e.g. ReleaseContent::toArray() of a release of this GameSystem
@@ -414,17 +548,72 @@ final class GameSystem
     }
 
     /**
+     * @param array<array-key, mixed> $sheet
+     *
+     * @throws InvalidReleaseContent when the stored sheet is not an object
+     */
+    private function replaceSheet(array $sheet, \DateTimeImmutable $now): void
+    {
+        $document = $this->document;
+        $document['sheet'] = $sheet;
+        ReleaseContent::checkItemRules($document);
+        $this->document = $document;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * @param array<array-key, mixed> $sheet
+     *
+     * @return list<string> the names of the declared groups; none without a layout
+     *
+     * @throws InvalidReleaseContent when "groups" is not a list
+     */
+    private function declaredGroupNames(array $sheet): array
+    {
+        $names = [];
+        foreach (ReleaseFields::list($sheet['groups'] ?? [], 'sheet.groups') as $group) {
+            if (\is_array($group) && \is_string($group['name'] ?? null)) {
+                $names[] = $group['name'];
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * @param array<array-key, mixed> $group    a group of a layout save
+     * @param list<string>            $declared the names of the declared groups
+     *
+     * @return string|null the declared group it stands for: its "previousName", else its name when that is declared; null for a new group
+     *
+     * @throws InvalidReleaseContent when "previousName" is not the name of a declared group
+     */
+    private function currentGroupOf(array $group, string $name, array $declared, string $path): ?string
+    {
+        $previous = $group['previousName'] ?? null;
+        if (null === $previous) {
+            return \in_array($name, $declared, true) ? $name : null;
+        }
+
+        if (!\is_string($previous)) {
+            throw InvalidReleaseContent::at($path.'.previousName', 'must be the name of a declared group');
+        }
+
+        if (!\in_array($previous, $declared, true)) {
+            throw InvalidReleaseContent::at($path.'.previousName', \sprintf('no declared group is named "%s"', $previous));
+        }
+
+        return $previous;
+    }
+
+    /**
      * @param list<mixed> $fields
      *
      * @throws InvalidReleaseContent when the new document breaks the item rules
      */
     private function replaceSheetFields(array $fields, \DateTimeImmutable $now): void
     {
-        $document = $this->document;
-        $document['sheet'] = [...$this->sheet(), 'fields' => $fields];
-        ReleaseContent::checkItemRules($document);
-        $this->document = $document;
-        $this->updatedAt = $now;
+        $this->replaceSheet([...$this->sheet(), 'fields' => $fields], $now);
     }
 
     /**

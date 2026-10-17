@@ -271,13 +271,15 @@ Start feature `studio-gamesystem-drafts` (ODD). Studio: GameSystem drafts (creat
 
 **15. studio-oracle-editor**
 
-Done: an Oracles tab on the GameSystem page and an editor for the oracle tables and likelihood oracles of a draft ([ADR 0029](adr/0029-studio-oracle-editor.md)): create and delete (refused while the draft uses the oracle, with the places listed), rename, ranged tables with live coverage, weighted tables, nested tables and entry keys, likelihood levels, chaos, exceptional percent and random event table, per-item saves with an expected version, and live test rolls and test answers of the saved draft through Randomness. Entry scene types, effects and the chaos tracker are kept and shown read-only until features 16 to 18. The prompt is kept for reference.
+Done: an Oracles tab on the GameSystem page and an editor for the oracle tables and likelihood oracles of a draft ([ADR 0029](adr/0029-studio-oracle-editor.md)): create and delete (refused while the draft uses the oracle, with the places listed), rename, ranged tables with live coverage, weighted tables, nested tables and entry keys, likelihood levels, chaos, exceptional percent and random event table, per-item saves with an expected version, and live test rolls and test answers of the saved draft through Randomness. Entry scene types, effects and the chaos tracker were kept and shown read-only until feature 18 edited them. The prompt is kept for reference.
 
 ```text
 Start feature `studio-oracle-editor` (ODD). Studio: rich editor for oracle tables and likelihood oracles in a draft, with live test rolls through Randomness.
 ```
 
 **18. studio-flow-editor**
+
+Done: Trackers & tags, Scene Types and Flows tabs on the GameSystem page and list/outline editors for the NarrativeFlow model of a schema 2 draft ([ADR 0030](adr/0030-studio-flow-editor.md)): trackers, tags and fact slots; Scene Types with their setup, play and closing steps; flows with phases, selection, hooks and world turn; step kinds `prompt`, `character`, `roll`, `condition`, `oracle`, `table`, `choice`, `pick` and `check` with branches, bands and effects; oracle table entries gain a Scene Type and effects and likelihood oracles a chaos tracker (counters only). Per-item saves with an expected version, create and delete (refused while the draft uses the item, with the places listed), and server messages placed on the field they name. The publisher's rules are the editor's rules; unknown fields and shapes round-trip. The prompt is kept for reference.
 
 ```text
 Start feature `studio-flow-editor` (ODD). Studio: a list/outline editor for the NarrativeFlow model of ADR 0017 as amended by ADR 0018 in a draft: Scene Types (purpose, tips, setup/play/closing steps, oracle shortcuts), trackers (hints, counter levels), tags, fact slots, and flows with phases (act label, mode, scene selection, scene, session and phase hooks, world turn), the oracles and trackers each flow selects, steps with mandatory/suggested, branches and effects. Validation matches the publisher. Existing presets (Mythic-style, guided sample) serve as starting points. No node-graph library (ADR 0004).

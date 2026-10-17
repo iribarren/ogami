@@ -32,6 +32,9 @@ final readonly class ReleaseContent
 
     private const string ROOT = ReleaseFields::ROOT;
 
+    /** How the canonical JSON is written, for the content and for a library item's hash. */
+    private const int JSON_FLAGS = \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR;
+
     /** Fields of each object the contract defines, in schema order: name => required. */
     private const array RELEASE = ['schemaVersion' => true, 'gameSystem' => true, 'oracles' => true, 'flow' => true, 'sheet' => true, 'checks' => true];
     private const array GAME_SYSTEM = ['key' => true, 'name' => true, 'description' => false];
@@ -186,11 +189,43 @@ final readonly class ReleaseContent
     }
 
     /**
+     * sha256 (hex) of one item (an oracle, a tracker, a Scene Type...) in canonical JSON: numbers
+     * normalized as in the content and object keys sorted, so the hash does not depend on key order
+     * or number spelling (JSONB keeps neither). It compares the same item in different places.
+     *
+     * @param array<array-key, mixed> $item decoded JSON, objects as string-keyed arrays
+     */
+    public static function itemHash(array $item): string
+    {
+        return hash('sha256', json_encode(self::sortedKeys(self::normalizeNumbers($item)), self::JSON_FLAGS));
+    }
+
+    /**
+     * @param array<array-key, mixed> $data
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function sortedKeys(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (\is_array($value)) {
+                $data[$key] = self::sortedKeys($value);
+            }
+        }
+
+        if (!array_is_list($data)) {
+            ksort($data, \SORT_STRING);
+        }
+
+        return $data;
+    }
+
+    /**
      * @param array<string, mixed> $content
      */
     private static function canonicalJson(array $content): string
     {
-        return json_encode(self::withSheetObject($content), \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
+        return json_encode(self::withSheetObject($content), self::JSON_FLAGS);
     }
 
     /**

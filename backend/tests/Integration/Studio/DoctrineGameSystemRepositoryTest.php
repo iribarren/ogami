@@ -10,6 +10,9 @@ use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\GameSystemKind;
 use App\Studio\Domain\GameSystem\GameSystemMetadata;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
+use App\Studio\Domain\GameSystem\LibraryImport;
+use App\Studio\Domain\GameSystem\LibraryItemRef;
+use App\Studio\Domain\GameSystem\LibrarySection;
 use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Infrastructure\Persistence\Doctrine\DoctrineGameSystemRepository;
@@ -66,13 +69,9 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     }
 
     #[Test]
-    public function aLibraryPackRoundTripsWithItsKindAndImports(): void
+    public function aLibraryPackRoundTripsWithItsKind(): void
     {
-        $pack = GameSystem::createLibraryPack(GameSystemId::fromString(self::FIRST_ID), 'names', self::OWNER, 'Names', 'Generic', new \DateTimeImmutable('2026-10-18T10:00:00'));
-        $pack->saveNarrativeItem(NarrativeSection::Tags, null, ['key' => 'gang', 'label' => 'Gang'], new \DateTimeImmutable('2026-10-18T11:00:00'));
-        // Slice 2 fills the imports through commands; until then only the mapping can set them.
-        $imports = [['section' => 'tags', 'key' => 'gang', 'pack' => 'other', 'hash' => str_repeat('a', 64)]];
-        new \ReflectionProperty(GameSystem::class, 'libraryImports')->setValue($pack, $imports);
+        $pack = $this->pack(self::FIRST_ID, 'names');
         $this->gameSystems->add($pack);
         $this->entityManager->clear();
 
@@ -82,8 +81,57 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
         self::assertNotSame($pack, $loaded);
         self::assertEquals($pack, $loaded);
         self::assertSame(GameSystemKind::LibraryPack, $loaded->kind());
-        // JSONB does not keep the order of an object's keys.
-        self::assertEquals($imports, $loaded->libraryImports());
+        self::assertSame([], $loaded->libraryImports());
+    }
+
+    #[Test]
+    public function aDraftRoundTripsItsLibraryImportsAndTheirChanges(): void
+    {
+        $pack = $this->pack(self::FIRST_ID, 'names');
+        $draft = $this->blank(self::SECOND_ID, 'my-game', self::OWNER);
+        $draft->importFromLibrary($pack, [new LibraryItemRef(LibrarySection::SceneTypes, 'tavern')], new \DateTimeImmutable('2026-10-18T12:00:00'));
+        $this->gameSystems->add($pack);
+        $this->gameSystems->add($draft);
+        $this->entityManager->clear();
+
+        $loaded = $this->gameSystems->ofKey('my-game');
+
+        self::assertNotNull($loaded);
+        self::assertNotSame($draft, $loaded);
+        // JSONB does not keep the order of an object's keys; the whole aggregate is still equal.
+        self::assertEquals($draft, $loaded);
+        self::assertSame(['oracles/names', 'tags/social', 'scene-types/tavern'], array_map(static fn (LibraryImport $import): string => $import->ref()->id(), $loaded->libraryImports()));
+        self::assertSame(ReleaseContent::itemHash(['key' => 'social', 'label' => 'Social']), $loaded->libraryImports()[1]->hash);
+
+        // A later command that drops an import is saved too: the column is replaced as a whole.
+        $loaded->deleteNarrativeItem(NarrativeSection::SceneTypes, 'tavern', new \DateTimeImmutable('2026-10-18T13:00:00'));
+        $loaded->detachLibraryImport(LibrarySection::Tags, 'social', new \DateTimeImmutable('2026-10-18T13:00:00'));
+        $this->gameSystems->save($loaded);
+        $this->entityManager->clear();
+
+        $reloaded = $this->gameSystems->ofKey('my-game');
+
+        self::assertNotNull($reloaded);
+        self::assertEquals($loaded, $reloaded);
+        self::assertSame(['oracles/names'], array_map(static fn (LibraryImport $import): string => $import->ref()->id(), $reloaded->libraryImports()));
+    }
+
+    #[Test]
+    public function malformedStoredImportsFailClosedWhenTheGameSystemIsRead(): void
+    {
+        $this->gameSystems->add($this->blank(self::FIRST_ID, 'corrupt', self::OWNER));
+        $this->gameSystems->add($this->blank(self::SECOND_ID, 'fine', self::OWNER));
+        $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '[{\"section\": \"tags\"}]' WHERE game_system_key = 'corrupt'");
+        $this->entityManager->clear();
+
+        foreach ([fn (): mixed => $this->gameSystems->ofKey('corrupt'), fn (): mixed => $this->gameSystems->ofOwner(self::OWNER)] as $read) {
+            try {
+                $read();
+                self::fail('The malformed imports were read.');
+            } catch (\UnexpectedValueException $malformed) {
+                self::assertStringContainsString('library import 0', $malformed->getMessage());
+            }
+        }
     }
 
     #[Test]
@@ -299,5 +347,22 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     private function blank(string $id, string $key, string $owner, string $now = '2026-10-15T10:00:00'): GameSystem
     {
         return GameSystem::createBlank(GameSystemId::fromString($id), $key, ucfirst($key), 'A test', $owner, new \DateTimeImmutable($now));
+    }
+
+    /**
+     * A pack with a Scene Type that needs the table "names" and the tag "social".
+     */
+    private function pack(string $id, string $key): GameSystem
+    {
+        $now = new \DateTimeImmutable('2026-10-18T11:00:00');
+        $pack = GameSystem::createLibraryPack(GameSystemId::fromString($id), $key, self::OWNER, ucfirst($key), 'Generic', new \DateTimeImmutable('2026-10-18T10:00:00'));
+        $pack->saveOracleTable(null, ['key' => 'names', 'name' => 'Names', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'Aldric']]], $now);
+        $pack->saveNarrativeItem(NarrativeSection::Tags, null, ['key' => 'social', 'label' => 'Social'], $now);
+        $pack->saveNarrativeItem(NarrativeSection::SceneTypes, null, [
+            'key' => 'tavern', 'name' => 'Tavern', 'purpose' => 'Hear rumours.', 'oracles' => ['names'], 'setup' => [], 'play' => [],
+            'closing' => [['key' => 'meet', 'kind' => 'choice', 'title' => 'Meet?', 'options' => [['key' => 'yes', 'label' => 'Yes', 'effects' => [['kind' => 'createNpc', 'name' => 'Innkeeper', 'tags' => ['social']]]], ['key' => 'no', 'label' => 'No']], 'skip' => 'no']],
+        ], $now);
+
+        return $pack;
     }
 }

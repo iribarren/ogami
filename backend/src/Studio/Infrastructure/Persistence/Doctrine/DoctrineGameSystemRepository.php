@@ -70,25 +70,49 @@ final readonly class DoctrineGameSystemRepository implements GameSystemRepositor
         }
     }
 
+    /**
+     * @throws \UnexpectedValueException when the stored library imports are malformed
+     */
     public function ofKey(string $key): ?GameSystem
     {
-        return $this->entityManager->getRepository(GameSystem::class)->findOneBy(['key' => $key]);
+        $gameSystem = $this->entityManager->getRepository(GameSystem::class)->findOneBy(['key' => $key]);
+
+        return $gameSystem instanceof GameSystem ? $this->readable($gameSystem) : null;
     }
 
     public function ofOwner(string $ownerId): array
     {
-        return $this->entityManager->getRepository(GameSystem::class)
+        /** @var list<GameSystem> $gameSystems */
+        $gameSystems = $this->entityManager->getRepository(GameSystem::class)
             ->findBy(['ownerId' => $ownerId], ['updatedAt' => 'DESC', 'key' => 'ASC']);
+
+        return array_map($this->readable(...), $gameSystems);
     }
 
     public function libraryPacks(): array
     {
-        return $this->entityManager->getRepository(GameSystem::class)->findBy(['kind' => GameSystemKind::LibraryPack]);
+        /** @var list<GameSystem> $packs */
+        $packs = $this->entityManager->getRepository(GameSystem::class)->findBy(['kind' => GameSystemKind::LibraryPack]);
+
+        return array_map($this->readable(...), $packs);
     }
 
     public function remove(GameSystem $gameSystem): void
     {
         $this->entityManager->remove($gameSystem);
         $this->entityManager->flush();
+    }
+
+    /**
+     * The library imports are a JSONB column that Doctrine hydrates as it is: a malformed value
+     * (never written by the model) fails here, closed, rather than being acted on later.
+     *
+     * @throws \UnexpectedValueException when the stored imports are malformed
+     */
+    private function readable(GameSystem $gameSystem): GameSystem
+    {
+        $gameSystem->libraryImports();
+
+        return $gameSystem;
     }
 }

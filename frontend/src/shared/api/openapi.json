@@ -6465,6 +6465,537 @@
                     }
                 }
             }
+        },
+        "/api/studio/game-systems/{key}/sheet": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read the sheet of one of my GameSystem drafts: layout, fields, the trackers a formula may read and the field keys of its latest release",
+                "operationId": "getGameSystemSheet",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The sheet as stored, in order, and the draft version. A schema version 1 draft has no fields.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/sheet/fields": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Add a field to the sheet of one of my GameSystem drafts",
+                "operationId": "createSheetField",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveSheetFieldRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The draft's sheet with the field appended and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"field\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key names another field.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The field breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no sheet fields); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/sheet/fields/{field}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace a field of the sheet of one of my GameSystem drafts, renaming it when the body has another key",
+                "operationId": "replaceSheetField",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveSheetFieldRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet with the field replaced in place and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"field\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or the sheet has no field with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key names another field.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The field breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a rename is read by the draft (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete a field of the sheet of one of my GameSystem drafts that nothing reads",
+                "operationId": "deleteSheetField",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet without the field and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or the sheet has no field with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The draft reads the field (the paths say where), or has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/sheet/fields/{field}/move": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Move a field of the sheet of one of my GameSystem drafts to another position of the field list",
+                "operationId": "moveSheetField",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "field",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MoveSheetFieldRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet with the field at its new position and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, or has no integer \"expectedVersion\" or no integer \"index\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or the sheet has no field with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "\"index\" is outside the field list (the message starts with \"index\"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -11161,6 +11692,172 @@
                         "description": "The release version whose content replaces the draft.",
                         "type": "integer",
                         "example": 2
+                    }
+                },
+                "type": "object"
+            },
+            "SheetGroupResponse2": {
+                "required": [
+                    "name",
+                    "columns",
+                    "span"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "The group's name, the one a field's \"group\" refers to.",
+                        "type": "string",
+                        "example": "Stats"
+                    },
+                    "columns": {
+                        "description": "How many columns of fields the group has (1 to 4), 1 when not set.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "span": {
+                        "description": "How many of the sheet's columns the group spans (1 or 2), 1 when not set.",
+                        "type": "integer",
+                        "example": 1
+                    }
+                },
+                "type": "object"
+            },
+            "SheetTrackerResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "max"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The tracker's key, the one after \"tracker:\" in a formula.",
+                        "type": "string",
+                        "example": "alarm"
+                    },
+                    "label": {
+                        "description": "The tracker's name.",
+                        "type": "string",
+                        "example": "Alarm"
+                    },
+                    "max": {
+                        "description": "A counter's max or a clock's segments; null when the tracker has none.",
+                        "type": "integer",
+                        "example": 6,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemSheetResponse": {
+                "required": [
+                    "version",
+                    "schemaVersion",
+                    "columns",
+                    "groups",
+                    "fields",
+                    "trackers",
+                    "publishedFieldKeys"
+                ],
+                "properties": {
+                    "version": {
+                        "description": "The draft's version: send it as \"expectedVersion\" with the next sheet write.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "schemaVersion": {
+                        "description": "The draft's schema version: a version 1 draft has no sheet fields and refuses every command.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "columns": {
+                        "description": "The sheet's columns of groups (1 or 2), 1 when not set.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "groups": {
+                        "description": "The declared groups in order; null when the sheet declares none.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetGroupResponse2"
+                        },
+                        "nullable": true
+                    },
+                    "fields": {
+                        "description": "The fields as in a release document (the release contract describes each type's properties), in order.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "example": {
+                                "key": "pow",
+                                "label": "Power",
+                                "type": "number",
+                                "min": 1,
+                                "max": 99
+                            },
+                            "additionalProperties": true
+                        }
+                    },
+                    "trackers": {
+                        "description": "The draft's trackers, which a derived field may read as {tracker:key}.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetTrackerResponse"
+                        }
+                    },
+                    "publishedFieldKeys": {
+                        "description": "The field keys of the GameSystem's latest release, empty when it has none: renaming or deleting one makes Characters on later upgrades lose that value.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "pow",
+                            "hp"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "SaveSheetFieldRequest": {
+                "required": [
+                    "expectedVersion",
+                    "field"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "field": {
+                        "description": "The field to create, or the whole replacement of the one in the path, as in a release document; its key is the new key on a rename.",
+                        "type": "object",
+                        "example": {
+                            "key": "luck",
+                            "label": "Luck",
+                            "type": "number",
+                            "min": 0,
+                            "max": 10
+                        },
+                        "additionalProperties": true
+                    }
+                },
+                "type": "object"
+            },
+            "MoveSheetFieldRequest": {
+                "required": [
+                    "expectedVersion",
+                    "index"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "index": {
+                        "description": "The field's new position in the whole field list, from 0 to the field count minus 1; out of range is refused (422).",
+                        "type": "integer",
+                        "example": 0
                     }
                 },
                 "type": "object"

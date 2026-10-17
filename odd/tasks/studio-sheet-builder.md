@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-2-play-layout` · **Status:** in progress (slice 2)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-3-field-commands` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -37,6 +37,7 @@ Out of scope: the check editor (17: checks are only read here, to find reference
 | References (Claude) | `DraftReferences` gains sheet field keys: derived formulas, check formulas, sheet effects (`field` and `{formula}` values) in steps, outcomes and table entries. Rename or delete while referenced is a 422 listing the paths. A type change goes through the item rules (a sheet effect on a now-`text` field fails with its path) |
 | Formula editor (Claude) | Client-side live validation with `shared/lib/formula`: syntax with a structured `position` (TS only; PHP keeps its messages, conformance vectors unchanged), unknown or wrong-kind references in the sheet scope, cycles across the draft sheet. Insert-reference menu; computed value from the preview's sample values. The server stays the authority on save. Built as a reusable `FormulaInput` for the check editor (17) |
 | Live preview (Claude) | Renders the unsaved form state through the shared `SheetFields`; sample values editable per field, sample tracker values start at each tracker's initial value; nothing is saved |
+| Field move (Claude, slice 3 planning) | `POST /sheet/fields/{field}/move {expectedVersion, index}` only reorders: `index` is the target position in the whole `fields` list (0 to count − 1, out of range is a 422 on `index`). A field's group changes through `PUT /sheet/fields/{field}`, as any other property; with declared groups fields render in list order within their group, so the UI computes the index from the neighbour |
 | Rename after publish (Claude) | Allowed. A hint when the key exists in the latest release: Characters on campaigns that upgrade later lose that value (migration is feature 20) |
 
 ## Design
@@ -49,11 +50,11 @@ Out of scope: the check editor (17: checks are only read here, to find reference
 - Studio: `SheetFields::validate` (or a `SheetLayout` helper next to it) checks `columns`, `groups` and spans; `v2.schema.json`; agreement vectors; canonical-form and hash tests (a release without layout keeps its hash).
 - Play: `SheetTemplate` gains a layout value object; translator re-checks; Campaign response + OpenAPI; shared renderer with the grid.
 
-### Studio backend (slices 3–4)
+### Studio backend (slices 3–5)
 
 - `GameSystem` commands for fields and layout, each running `ReleaseContent::checkItemRules` on the whole document; `DraftReferences` for sheet field keys; read model handler; controller and API tests for every 404/409/422.
 
-### Studio frontend (slices 5–7)
+### Studio frontend (slices 6–8)
 
 - Sheet tab on `GameSystemPage`: groups with their fields, field editor per type, add/edit/delete/move, path-prefixed 422s mapped to fields (`sheetError.ts`), 409 as conflict.
 - Layout panel: declare groups, rename/reorder/delete groups, columns and spans. Live preview panel with sample values.
@@ -74,12 +75,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `feat/studio-sheet-builder-1-layout-contract` | `feat(studio): studio-sheet-builder 1/8 sheet layout contract` | T1, T2, T3 | ~1,200 |
 | 2 | `feat/studio-sheet-builder-2-play-layout` | `feat(play): studio-sheet-builder 2/8 play renders the sheet layout` | T4, T5 | ~1,300 |
-| 3 | `feat/studio-sheet-builder-3-field-commands` | `feat(studio): studio-sheet-builder 3/8 sheet field commands` | T6, T7 | ~1,600 |
-| 4 | `feat/studio-sheet-builder-4-layout-commands` | `feat(studio): studio-sheet-builder 4/8 sheet layout commands` | T8 | ~1,100 |
-| 5 | `feat/studio-sheet-builder-5-sheet-tab` | `feat(studio): studio-sheet-builder 5/8 sheet tab and field editor` | T9 | ~1,600 |
-| 6 | `feat/studio-sheet-builder-6-layout-preview` | `feat(studio): studio-sheet-builder 6/8 layout editor and live preview` | T10, T11 | ~1,400 |
-| 7 | `feat/studio-sheet-builder-7-formula-editor` | `feat(studio): studio-sheet-builder 7/8 formula editor` | T12 | ~1,200 |
-| 8 | `feat/studio-sheet-builder-8-e2e` | `test(e2e): studio-sheet-builder 8/8 sheet builder end to end` | T13 | ~700 |
+| 3 | `feat/studio-sheet-builder-3-field-commands` | `feat(studio): studio-sheet-builder 3/9 sheet field commands and read model` | T6, T7 | ~1,400 |
+| 4 | `feat/studio-sheet-builder-4-field-api` | `feat(studio): studio-sheet-builder 4/9 sheet field API` | T7b | ~1,400 incl. ~400 generated |
+| 5 | `feat/studio-sheet-builder-5-layout-commands` | `feat(studio): studio-sheet-builder 5/9 sheet layout commands` | T8 | ~1,300 |
+| 6 | `feat/studio-sheet-builder-6-sheet-tab` | `feat(studio): studio-sheet-builder 6/9 sheet tab and field editor` | T9 | ~1,600 |
+| 7 | `feat/studio-sheet-builder-7-layout-preview` | `feat(studio): studio-sheet-builder 7/9 layout editor and live preview` | T10, T11 | ~1,400 |
+| 8 | `feat/studio-sheet-builder-8-formula-editor` | `feat(studio): studio-sheet-builder 8/9 formula editor` | T12 | ~1,200 |
+| 9 | `feat/studio-sheet-builder-9-e2e` | `test(e2e): studio-sheet-builder 9/9 sheet builder end to end` | T13 | ~700 |
+
+Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read model, controller, API tests for every 404/409/422, generated files) forecast ~2,300; the narrative analog (studio-flow-editor slices 2–3) landed well past its forecasts. The HTTP layer moved to slice 4 (T7b) and the plan grew to 9 slices. PRs #167–#168 keep their `n/8` titles. Slice 3 adds commands and a query unused by any endpoint, so it is safe on `main`.
 
 ## Tasks
 
@@ -88,16 +92,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | Docs: this feature doc; ADR 0031 (sheet layout model and Studio sheet builder; amends ADR 0022's layout line) and ADR index row; contract §Sheet (layout table, canonical form, Play reading); glossary (Sheet layout, Group) | delegated writer (slice 1) | [x] | 68c37f8 |
 | T2 | 1 | Studio publisher: `sheet.columns`, `sheet.groups`, field `span` with the layout rules as item rules; canonical form omits defaults; `v2.schema.json` and agreement vectors; tests incl. hash of a release without layout unchanged | delegated writer (slice 1) | [x] | 8763fc2 |
 | T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | fac045b |
-| T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | |
-| T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | | [ ] | |
-| T7 | 3 | Application + HTTP: handlers, `GET /sheet` read model, field endpoints, error mapping, API tests, `make api` | | [ ] | |
-| T8 | 4 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
-| T9 | 5 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | | [ ] | |
-| T10 | 6 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
-| T11 | 6 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
-| T12 | 7 | `FormulaInput`: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
-| T13 | 8 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | | [ ] | |
+| T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | delegated writer (slice 2) | [x] | 07876cb |
+| T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | 3e075c2 |
+| T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | |
+| T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | |
+| T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | | [ ] | |
+| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
+| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | | [ ] | |
+| T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
+| T11 | 7 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
+| T12 | 8 | `FormulaInput`: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
+| T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | | [ ] | |
 
 ## Progress
 
@@ -106,13 +111,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-17: Slice 1 review fix R3: Play translator tests cover a non-string group name, a derived field span above its group's columns and an invalid second field (index 1); no translator bug.
 - 2026-10-17: T4 done. Campaign response `pinnedRelease.sheetLayout` (nullable) and field `span`; OpenAPI and TS types regenerated; API tests for a layout and a legacy release (null, span 1).
 - 2026-10-17: T5 done. `SheetFields`, `derivedValues`, `sheetValues` moved to `frontend/src/shared/sheet/` with neutral types (`SheetTemplateView`); layout renders as nested CSS grids (one column below `sm`); no-layout rendering unchanged; tests and a `WithLayout` story.
+- 2026-10-17: Slice 2 review fix R3: the `sheetLayout` fixture declares `Notes` (the `notes` field now has that group); a test renders every field label; a `SheetFields` test pins today's behaviour (fields of an undeclared group or without a group are not rendered).
+- 2026-10-17: T6 done. `DraftReferences::sheetFieldPathsTo` (derived formulas, check modifiers and band formulas, sheet effects by `field` and `{formula}` in steps, outcomes and table entries); `GameSystem::saveSheetField`, `deleteSheetField`, `moveSheetField` (out-of-range index is `InvalidReleaseContent` on `index`) with `SheetFieldKeyTaken`, `SheetFieldNotFound`, `SheetFieldInUse`; every command runs the item rules on the whole draft.
+- 2026-10-17: T7 done. `SaveSheetField`, `DeleteSheetField`, `MoveSheetField` with handlers; `GetGameSystemSheet` → `GameSystemSheetView` (version, schemaVersion, columns, groups or null, fields, trackers, publishedFieldKeys of the latest release), read defensively; no HTTP layer yet (slice 4).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-794ba421dad9849f` | 68c37f8, 8763fc2, fac045b | approved, acknowledged; 1 suggestion R3-play-layout-coverage-gaps (Play translator tests: non-string group name, derived field span > group columns, invalid second field reports index 1), fixed in slice 2 | #167 |
+| 2 | `review-8690c6c8f4c4f4e7` | eddc740, 07876cb, 3e075c2 | approved, acknowledged; WARNING R3-layout-fixture-drops-fields (`frontend/src/play/characters/fixtures.ts`: the `sheetLayout` fixture leaves out a group one of its fields uses, so the `WithLayout` story silently drops that field; declare the group, assert every field label renders, unit-test what the renderer does with a field whose group is undeclared), fixed in slice 3 | #168 |
 
 ## Next step
 
-Slice 2: writer delivers the slice 1 review fix, T4 and T5 on `feat/studio-sheet-builder-2-play-layout`, then native review and PR.
+Slice 3: writer delivers the slice 2 review fix, T6 and T7 on `feat/studio-sheet-builder-3-field-commands`, then native review and PR.

@@ -332,4 +332,98 @@ final class DraftReferencesTest extends TestCase
         self::assertSame([], DraftReferences::tagPathsTo($document, 'fate'));
         self::assertSame([], DraftReferences::factSlotPathsTo($document, 'fate'));
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sheetDocument(string $fixture = 'valid/v2-sheet-effects'): array
+    {
+        /** @var array<string, mixed> $document */
+        $document = ReleaseContent::fromArray(ReleaseArrays::fixture($fixture))->toArray();
+
+        return $document;
+    }
+
+    #[Test]
+    public function aSheetFieldIsReferencedByDerivedFormulasSheetEffectsAndTheirValues(): void
+    {
+        $document = $this->sheetDocument();
+
+        self::assertSame([
+            'sheet.fields[3].formula',
+            'sceneTypes[0].setup[0].effects[0]',
+            'sceneTypes[0].play[0].outcomes[0].effects[2]',
+        ], DraftReferences::sheetFieldPathsTo($document, 'pow'));
+        self::assertSame(['sceneTypes[0].play[0].outcomes[0].effects[1]'], DraftReferences::sheetFieldPathsTo($document, 'hp'));
+        self::assertSame([], DraftReferences::sheetFieldPathsTo($document, 'unused'));
+    }
+
+    #[Test]
+    public function aSheetFieldIsReferencedByCheckBandFormulas(): void
+    {
+        self::assertContains('checks[0].bands[0].upTo.formula', DraftReferences::sheetFieldPathsTo($this->sheetDocument(), 'sanity'));
+    }
+
+    #[Test]
+    public function aSheetFieldIsReferencedByCheckModifiers(): void
+    {
+        self::assertSame(
+            ['sheet.fields[1].formula', 'checks[0].modifier'],
+            DraftReferences::sheetFieldPathsTo($this->sheetDocument('valid/v2-checks'), 'hands'),
+        );
+    }
+
+    #[Test]
+    public function theFieldItselfDoesNotCountWhenItIsTheExceptField(): void
+    {
+        $document = $this->sheetDocument('valid/v2-checks');
+
+        self::assertSame(['checks[0].modifier'], DraftReferences::sheetFieldPathsTo($document, 'hands', 'edge'));
+        self::assertSame(['sheet.fields[1].formula', 'checks[0].modifier'], DraftReferences::sheetFieldPathsTo($document, 'hands', 'hands'));
+    }
+
+    #[Test]
+    public function aTrackMaxReadAndASheetEffectInATableEntryCount(): void
+    {
+        $document = $this->sheetDocument();
+        $document['sheet'] = ['fields' => [
+            ['key' => 'hp', 'label' => 'HP', 'type' => 'track', 'max' => 10],
+            ['key' => 'half', 'label' => 'Half', 'type' => 'derived', 'formula' => '{hp.max} / 2'],
+        ]];
+        $document['sceneTypes'] = [];
+        $document['oracles'] = ['tables' => [['key' => 't', 'entries' => [
+            ['key' => 'a'],
+            ['key' => 'b', 'effects' => [['kind' => 'sheet', 'field' => 'hp', 'op' => 'add', 'value' => 1]]],
+        ]]], 'likelihood' => []];
+
+        self::assertSame(
+            ['sheet.fields[1].formula', 'oracles.tables[0].entries[1].effects[0]'],
+            DraftReferences::sheetFieldPathsTo($document, 'hp'),
+        );
+    }
+
+    #[Test]
+    public function aSheetEffectWhoseFieldAndFormulaNameTheKeyIsListedOnce(): void
+    {
+        $document = $this->sheetDocument();
+        $document['sceneTypes'] = [['setup' => [['effects' => [
+            ['kind' => 'sheet', 'field' => 'pow', 'op' => 'set', 'value' => ['formula' => '{pow} + {pow.max}']],
+        ]]]]];
+        $document['sheet'] = [];
+
+        self::assertSame(['sceneTypes[0].setup[0].effects[0]'], DraftReferences::sheetFieldPathsTo($document, 'pow'));
+    }
+
+    #[Test]
+    public function aFormulaThatDoesNotParseOrAMalformedDocumentReadsNothing(): void
+    {
+        $document = $this->sheetDocument();
+        $document['sheet'] = ['fields' => [['key' => 'bad', 'type' => 'derived', 'formula' => '{pow} +'], 'junk', ['formula' => 7]]];
+        $document['checks'] = [['modifier' => '{pow} *', 'bands' => 'nope'], 'junk'];
+        $document['sceneTypes'] = 'nope';
+        $document['oracles'] = ['tables' => [['entries' => 'nope']]];
+
+        self::assertSame([], DraftReferences::sheetFieldPathsTo($document, 'pow'));
+        self::assertSame([], DraftReferences::sheetFieldPathsTo(['sheet' => 'nope', 'checks' => 3], 'pow'));
+    }
 }

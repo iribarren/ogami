@@ -74,6 +74,20 @@ describe('SheetFields with a layout', () => {
   })
 })
 
+describe('SheetFields with a field whose group is not declared', () => {
+  it('drops the field and the ungrouped ones: only declared groups render', () => {
+    renderSheet({
+      fields: [field('str', 'Stats'), field('lost', 'Missing'), field('free', null)],
+      layout,
+    })
+
+    expect(screen.getByLabelText('STR')).toBeInTheDocument()
+    expect(screen.queryByLabelText('LOST')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('FREE')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Missing' })).not.toBeInTheDocument()
+  })
+})
+
 describe('SheetFields without a layout', () => {
   it('keeps consecutive fields of the same group together under its name', () => {
     renderSheet({

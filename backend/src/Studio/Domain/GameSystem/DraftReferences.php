@@ -200,6 +200,55 @@ final class DraftReferences
     }
 
     /**
+     * The places that name this sheet field key: derived field formulas, check modifiers and band
+     * formulas reading {key} or {key.max}, and sheet effects whose "field" is the key or whose
+     * {formula} value reads it, in steps, outcomes and table entries. Flow formulas read trackers
+     * only, so they never name a field.
+     *
+     * @param array<string, mixed> $document
+     * @param string|null          $exceptField a field whose own formula does not count (the one being replaced or deleted)
+     *
+     * @return list<string>
+     */
+    public static function sheetFieldPathsTo(array $document, string $key, ?string $exceptField = null): array
+    {
+        $paths = [];
+        $sheet = \is_array($document['sheet'] ?? null) ? $document['sheet'] : [];
+        foreach (self::objects($sheet['fields'] ?? null) as $index => $field) {
+            if (null === $exceptField || $exceptField !== ($field['key'] ?? null)) {
+                $paths += self::sheetFormulaPaths($field['formula'] ?? null, $key, \sprintf('sheet.fields[%d].formula', $index));
+            }
+        }
+
+        foreach (self::objects($document['checks'] ?? null) as $index => $check) {
+            $path = \sprintf('checks[%d]', $index);
+            $paths += self::sheetFormulaPaths($check['modifier'] ?? null, $key, $path.'.modifier');
+            foreach (self::objects($check['bands'] ?? null) as $bandIndex => $band) {
+                $upTo = $band['upTo'] ?? null;
+                $paths += self::sheetFormulaPaths(\is_array($upTo) ? $upTo['formula'] ?? null : null, $key, \sprintf('%s.bands[%d].upTo.formula', $path, $bandIndex));
+            }
+        }
+
+        foreach (self::effectHolders($document) as $path => $holder) {
+            foreach (self::objects($holder['effects'] ?? null) as $index => $effect) {
+                if ('sheet' !== ($effect['kind'] ?? null)) {
+                    continue;
+                }
+
+                $value = $effect['value'] ?? null;
+                $effectPath = \sprintf('%s.effects[%d]', $path, $index);
+                if ($key === ($effect['field'] ?? null)) {
+                    $paths[$effectPath] = true;
+                } else {
+                    $paths += self::sheetFormulaPaths(\is_array($value) ? $value['formula'] ?? null : null, $key, $effectPath);
+                }
+            }
+        }
+
+        return array_keys($paths);
+    }
+
+    /**
      * @param array<string, mixed> $document
      *
      * @return list<string>
@@ -305,19 +354,13 @@ final class DraftReferences
         }
 
         yield from self::effectsReferences($step, $path);
-        foreach (self::OUTCOME_LISTS as $list) {
-            foreach (\is_array($step[$list] ?? null) ? $step[$list] : [] as $name => $outcome) {
-                if (!\is_array($outcome)) {
-                    continue;
-                }
-
-                $outcomePath = \is_int($name) ? \sprintf('%s.%s[%d]', $path, $list, $name) : \sprintf('%s.%s.%s', $path, $list, $name);
-                if ('bands' === $list) {
-                    yield from self::valueReferences($outcome['upTo'] ?? null, $outcomePath);
-                }
-
-                yield from self::effectsReferences($outcome, $outcomePath);
+        foreach (self::outcomes($step, $path) as $outcomePath => $outcome) {
+            // Only band outcomes carry an "upTo" bound.
+            if (str_starts_with($outcomePath, $path.'.bands')) {
+                yield from self::valueReferences($outcome['upTo'] ?? null, $outcomePath);
             }
+
+            yield from self::effectsReferences($outcome, $outcomePath);
         }
 
         if (\is_array($step['otherwise'] ?? null)) {
@@ -427,6 +470,77 @@ final class DraftReferences
                 yield [self::TRACKER, $key, $path];
             } elseif ('fact' === $match[1]) {
                 yield [self::FACT_SLOT, $key, $path];
+            }
+        }
+    }
+
+    /**
+     * The path of a formula when it reads the field as {key} or {key.max}, as the key of a map of
+     * paths; none when it does not parse.
+     *
+     * @return array<string, true>
+     */
+    private static function sheetFormulaPaths(mixed $formula, string $key, string $path): array
+    {
+        if (!\is_string($formula)) {
+            return [];
+        }
+
+        try {
+            $reads = Formula::fromString($formula)->references();
+        } catch (InvalidFormula) {
+            return [];
+        }
+
+        foreach ($reads as $read) {
+            if (\in_array($read->kind, [ReferenceKind::Field, ReferenceKind::TrackMax], true) && $key === $read->key) {
+                return [$path => true];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Everything that may carry "effects", by path: each step, each of its outcomes, its
+     * "otherwise" and each table entry.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return iterable<string, array<array-key, mixed>>
+     */
+    private static function effectHolders(array $document): iterable
+    {
+        foreach (self::steps($document) as $path => $step) {
+            yield $path => $step;
+            yield from self::outcomes($step, $path);
+            if (\is_array($step['otherwise'] ?? null)) {
+                yield $path.'.otherwise' => $step['otherwise'];
+            }
+        }
+
+        $oracles = \is_array($document['oracles'] ?? null) ? $document['oracles'] : [];
+        foreach (self::objects($oracles['tables'] ?? null) as $tableIndex => $table) {
+            foreach (self::objects($table['entries'] ?? null) as $entryIndex => $entry) {
+                yield \sprintf('oracles.tables[%d].entries[%d]', $tableIndex, $entryIndex) => $entry;
+            }
+        }
+    }
+
+    /**
+     * The outcomes of a step (bands, options, outcomes, branches), by path.
+     *
+     * @param array<array-key, mixed> $step
+     *
+     * @return iterable<string, array<array-key, mixed>>
+     */
+    private static function outcomes(array $step, string $path): iterable
+    {
+        foreach (self::OUTCOME_LISTS as $list) {
+            foreach (\is_array($step[$list] ?? null) ? $step[$list] : [] as $name => $outcome) {
+                if (\is_array($outcome)) {
+                    yield (\is_int($name) ? \sprintf('%s.%s[%d]', $path, $list, $name) : \sprintf('%s.%s.%s', $path, $list, $name)) => $outcome;
+                }
             }
         }
     }

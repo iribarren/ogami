@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-8-preview-diagnostics` · **Status:** in progress (slice 8)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-9-formula-input-e2e` · **Status:** in progress (slice 9)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -109,8 +109,8 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | 3597f60, a8da25e, a501e9b |
 | T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | 0c9aba0, b943383 |
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | delegated writer (slice 7) | [x] | 127971e (slice 6 fixes), f98c591 |
-| T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | delegated writer (slice 8) | [x] | |
-| T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | delegated writer (slice 8) | [x] | |
+| T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | delegated writer (slice 8) | [x] | 6f40753 (slice 7 fixes), 3797aeb |
+| T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | delegated writer (slice 8) | [x] | d4f0de7 |
 | T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
 | T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | | [ ] | |
 
@@ -137,6 +137,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 - 2026-10-17: Slice 7 review fixes R3: a 422 of the layout save is read against the draft the save sent and dropped once the draft changed (test: stale message gone after a move, a fresh client error shows); `readLayout` checks a group span against the stored sheet columns and fails closed (test).
 - 2026-10-17: T11 done. `SheetPreview` at the end of the Sheet tab: shared `SheetFields` and `computeDerived` over `previewTemplate` (defensive read-model mapping in `previewTemplate.ts`); "unsaved state" is the layout dialog's draft, lifted through `SheetLayoutPanel`'s `onDraftChange` (an invalid draft shows the saved layout, fields follow a renamed group); editable sample values (reset when a field changes type or goes) and one integer input per tracker; tests and a story. Tests were written after the component, not RED first.
 - 2026-10-17: T12a done (logic only). TS `InvalidFormula.position` (1-based in the trimmed text, only where the PHP message names a position; none for end of formula, arguments, depth, size); `formulaDiagnostics` returns the syntax error, the first reference a derived field may not read (unknown field or tracker, text/list field, `.max` of a non-track, check), a cycle through the field with the closing reference's position, else the value as `computeDerived`; unit tests per branch. Not mirrored: other fields' own errors and cycles elsewhere (the publisher reports them on those fields). RED observed for the position tests; the diagnostics tests were written with the module.
+- 2026-10-17: Slice 8 review fixes (R3): tests pin that a refused or cycle reference position counts in the trimmed text (`  {pow} + {ghost}` → 9; no bug); the preview template reads a stored field span that is not a whole number from 1 to its group's columns as 1.
 
 ## Reviews
 
@@ -149,7 +150,8 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | 5 | `review-6556e3019ded422d` | 644cdb3, 3597f60, a8da25e (generated a501e9b: review declined) | approved, acknowledged; 1 suggestion R3-001 (`GameSystem.php` `declareSheetLayout`: fields are bucketed by group name as an array key, so a numeric-string group `"7"` becomes an int key; cast back to string and add a domain test declaring a sheet with a numeric-string group and asserting the exact string group name), fixed in slice 6. PR size 2,133, exception approved by the user | #171 |
 | 6 | `review-98ff5155dbf462be` (9a6b1ce..0c9aba0), `review-93ea738dfd72de2b` (b943383) | 9a6b1ce, 0c9aba0, b943383 | approved, acknowledged; WARNING R3-cache-invalidation-unproved (`useGameSystemSheet.test.tsx`: assert the GameSystem page and validation queries are invalidated after a write), SUGGESTION R3-span-not-validated (`sheetDraft.ts`: validate span as a whole number, with a test), SUGGESTION R3-conflict-leaves-stale-version (`useGameSystemSheet.ts`: invalidate the sheet query on a 409 in the hook, with a test), WARNING R3-001 (`SheetFieldDialog.tsx`: test a 409 reload whose GET /sheet fails; the dialog note, move panel and delete dialog keep the 409 state), SUGGESTION R3-002 (`SheetFieldDialog.tsx`: the "field no longer exists" note is unreachable because the row unmounts; drop it); fixed in slice 7. PR size 2,367, exception approved by the user | #172 |
 | 7 | `review-bd3a4eba1da4d63f` (127971e..f98c591; fixes commit 127971e: review declined) | 127971e, f98c591 | approved, acknowledged; WARNING R3-stale-422-position (`SheetLayoutPanel.tsx`: a 422 maps to groups by the sent request's position but is read against the current draft; clear or re-key it when the draft changes so it cannot override a fresh client error; test), SUGGESTION R3-readlayout-span-vs-columns (`layoutDraft.ts` `readLayout`: a group span is checked against the maximum sheet columns, not the stored sheet columns; fail closed; test); fixed in slice 8. PR size 1,863, exception approved by the user | #173 |
+| 8 | `review-2e5b8578a5297347` (d62e7fa..d4f0de7) | 6f40753, 3797aeb, d4f0de7 | approved, acknowledged; WARNING R3-reference-position-untrimmed-unproved (`formulaDiagnostics.ts`: positions of refused and cycle references are untested on a formula with leading whitespace; test `  {pow} + {ghost}` → 9), SUGGESTION R3-preview-span-out-of-range (`previewTemplate.ts`: a stored field span of 0, negative or wider than its group's columns reaches the renderer; default it to 1, test); fixed in slice 9. PR size 968 | #174 |
 
 ## Next step
 
-Slice 8: commit 1 fixes the slice 7 findings; T11 live preview; T12a formula diagnostics logic; native review; PR.
+Slice 9 (last): commit 1 fixes the slice 8 findings; T12b `FormulaInput` (sample values lifted from the preview to the Sheet tab, so the dialog computes over them); T13 Playwright and a preset layout, feature doc close; native review; PR (`Closes #166`); then one doc-only commit on its own branch with the slice 9 review and PR.

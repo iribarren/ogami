@@ -57,6 +57,25 @@ describe('the preview template', () => {
     expect(template.fields[1]).toMatchObject({ group: null, span: 1, multiline: null })
   })
 
+  it.each([0, -1, 1.5, 3, 'wide'])('reads a stored field span of %s as 1', (span) => {
+    // The fixture's Stats group has 2 columns.
+    const template = previewTemplate(
+      { ...stored, fields: [{ key: 'a', label: 'A', type: 'number', group: 'Stats', span }] },
+      null,
+    )
+
+    expect(template.fields[0]?.span).toBe(1)
+  })
+
+  it('keeps a stored field span that fits its group', () => {
+    const template = previewTemplate(
+      { ...stored, fields: [{ key: 'a', label: 'A', type: 'number', group: 'Stats', span: 2 }] },
+      null,
+    )
+
+    expect(template.fields[0]?.span).toBe(2)
+  })
+
   it('shows a layout draft instead of the saved layout, fields following a renamed group', () => {
     const draft = savedDraft()
     const [first] = draft.groups

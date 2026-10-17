@@ -59,8 +59,15 @@ export function previewTemplate(
   }
 
   const layout = request ?? readLayout(sheet)
+  // A span the renderer cannot place (not a whole number from 1 to the group's columns) reads as 1.
+  const widths = new Map(layout?.groups.map(({ name, columns }) => [name, columns]))
   return {
-    fields,
+    fields: fields.map((field) => {
+      const width = field.group === null ? undefined : widths.get(field.group)
+      return width !== undefined && field.span >= 1 && field.span <= width
+        ? field
+        : { ...field, span: 1 }
+    }),
     layout:
       layout === null
         ? null

@@ -18,14 +18,16 @@ final readonly class ListMyGameSystemsHandler implements QueryHandler
     }
 
     /**
-     * @return list<GameSystemSummary> most recently updated first
+     * @return list<GameSystemSummary> most recently updated first; library packs are not listed
      */
     public function __invoke(ListMyGameSystems $query): array
     {
+        $drafts = array_values(array_filter($this->gameSystems->ofOwner($query->ownerId), static fn (GameSystem $gameSystem): bool => !$gameSystem->isLibraryPack()));
+
         return array_map(function (GameSystem $gameSystem): GameSystemSummary {
             $publication = GameSystemPublication::of($gameSystem, $this->releases);
 
             return new GameSystemSummary($gameSystem->key(), $gameSystem->name(), $gameSystem->schemaVersion(), $publication->latestReleaseVersion, $publication->hasUnpublishedChanges, $gameSystem->updatedAt());
-        }, $this->gameSystems->ofOwner($query->ownerId));
+        }, $drafts);
     }
 }

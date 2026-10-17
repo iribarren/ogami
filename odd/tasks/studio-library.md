@@ -101,8 +101,8 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0033 (Studio library packs) and ADR index row; glossary Library, Library import, Library pack; vision question on generic flows closed | inline (parent: design authored this session) | [x] | |
-| T2 | 1 | Domain: `GameSystemKind`; `GameSystem::createLibraryPack`; `LibraryPackRefuses` on flows, sheet fields and layout, checks, theme, credits, restore (and later publish/imports); persistence `kind` column + migration (default `game-system`), `library_imports` column (default `[]`), repository mapping; legacy rows read as `game-system` | delegated writer (slice 1) | [ ] | |
-| T3 | 1 | Application: `CreateLibraryPack` (draft key rules) and handler, `ListLibraryPacks` query (every pack, `mine`, counts per section, updatedAt); publish handler refuses a pack; the existing GameSystem list excludes packs | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Domain: `GameSystemKind`; `GameSystem::createLibraryPack`; `LibraryPackRefuses` on flows, sheet fields and layout, checks, theme, credits, restore (and later publish/imports); persistence `kind` column + migration (default `game-system`), `library_imports` column (default `[]`), repository mapping; legacy rows read as `game-system` | delegated writer (slice 1) | [x] | |
+| T3 | 1 | Application: `CreateLibraryPack` (draft key rules) and handler, `ListLibraryPacks` query (every pack, `mine`, counts per section, updatedAt); publish handler refuses a pack; the existing GameSystem list excludes packs | delegated writer (slice 1) | [x] | |
 | T4 | 2 | Domain: `LibrarySection`, item hash, dependency closure via `DraftReferences`; `planLibraryImport`, `importFromLibrary`, `updateFromLibrary`, `detachLibraryImport`, pruning after every command; `LibraryItemNotFound`, `LibraryItemKeyTaken`, `LibraryImportNotFound`, `LibraryItemRemoved` | delegated writer (slice 2) | [ ] | |
 | T5 | 2 | Application: `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `PreviewLibraryImport`, `GetGameSystemLibraryImports` (statuses, editedLocally), `GetLibraryPack` (catalog with dependsOn); publish stores `library_sources` on the release row (migration) | delegated writer (slice 2) | [ ] | |
 | T6 | 3 | HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 3) | [ ] | |
@@ -116,6 +116,9 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 - 2026-10-18: Feature started. Explored the draft aggregate, item rules, `DraftReferences`, the publisher, the Studio API and UI, and the Play ACL. The user chose library packs, pinned copy imports, no generic flows and Studio-only provenance. Issue #185.
 - 2026-10-18: T1 done. Added ADR 0033 and its index row, the glossary entries Library, Library import and Library pack, and closed the vision question on generic flows.
+
+- 2026-10-18: T2 done. `GameSystemKind`, `GameSystem::createLibraryPack` and `LibraryPackRefuses` (flows, sheet fields and layout, checks, theme, credits, restore); migration `Version20261018100000` adds `kind` and `library_imports`; `libraryImports` is `[]` until slice 2. Repository gained `libraryPacks()`; the in-memory test repository follows.
+- 2026-10-18: T3 done. `CreateLibraryPack`, `ListLibraryPacks` (every owner, `mine`, item counts, mine first then by name); the GameSystem list excludes packs; publish and restore refuse a pack in the handlers (a pack has no release, so restore refuses before the release lookup).
 
 ## Reviews
 

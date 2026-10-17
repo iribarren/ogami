@@ -19,8 +19,9 @@ final readonly class NumberField extends Field
         public ?int $min = null,
         public ?int $max = null,
         public ?int $default = null,
+        int $span = 1,
     ) {
-        parent::__construct($key, $label, $hint, $group);
+        parent::__construct($key, $label, $hint, $group, $span);
     }
 
     /**

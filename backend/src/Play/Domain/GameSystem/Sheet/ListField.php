@@ -19,8 +19,9 @@ final readonly class ListField extends Field
         ?string $group = null,
         public ?string $itemLabel = null,
         public ?int $maxItems = null,
+        int $span = 1,
     ) {
-        parent::__construct($key, $label, $hint, $group);
+        parent::__construct($key, $label, $hint, $group, $span);
     }
 
     public function limit(): int

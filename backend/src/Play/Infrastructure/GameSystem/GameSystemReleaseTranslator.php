@@ -59,6 +59,8 @@ use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SheetGroup;
+use App\Play\Domain\GameSystem\Sheet\SheetLayout;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
@@ -95,9 +97,15 @@ final readonly class GameSystemReleaseTranslator
 
     // The sheet limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
     private const int MAX_SHEET_FIELDS = 100;
+    // The sheet layout limits of the contract (ADR 0031).
+    private const int MAX_SHEET_COLUMNS = 2;
+    private const int MAX_SHEET_GROUPS = 20;
+    private const int MAX_GROUP_COLUMNS = 4;
+    private const int MAX_GROUP_SPAN = 2;
     private const int MAX_FIELD_LABEL_LENGTH = 100;
     private const int MAX_FIELD_HINT_LENGTH = 500;
     private const int MAX_FIELD_GROUP_LENGTH = 60;
+    private const int MAX_FIELD_SPAN = 4;
     private const int MAX_FIELD_ITEM_LABEL_LENGTH = 60;
     private const int MAX_TEXT_FIELD_LENGTH = 2000;
     private const int MAX_LIST_FIELD_ITEMS = 100;
@@ -756,7 +764,7 @@ final readonly class GameSystemReleaseTranslator
     {
         $sheet = $this->object($view, $value ?? [], 'sheet');
         foreach (array_keys($sheet) as $name) {
-            if ('fields' !== $name) {
+            if (!\in_array($name, ['fields', 'columns', 'groups'], true)) {
                 throw $this->invalid($view, 'sheet.'.$name, 'unknown property.');
             }
         }
@@ -766,9 +774,11 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, 'sheet.fields', \sprintf('at most %d fields.', self::MAX_SHEET_FIELDS));
         }
 
+        $layout = $this->sheetLayout($view, $sheet);
         $fields = $paths = [];
-        foreach ($list as $index => $field) {
-            $field = $this->sheetField($view, $field, $paths[] = \sprintf('sheet.fields[%d]', $index));
+        foreach ($list as $index => $raw) {
+            $field = $this->sheetField($view, $raw, $paths[] = $path = \sprintf('sheet.fields[%d]', $index));
+            $this->assertFieldFitsTheLayout($view, $layout, $field, \is_array($raw) && null !== ($raw['span'] ?? null), $path);
             if (isset($fields[$field->key])) {
                 throw $this->invalid($view, \sprintf('sheet.fields[%d].key', $index), \sprintf('duplicate field key "%s".', $field->key));
             }
@@ -778,7 +788,87 @@ final readonly class GameSystemReleaseTranslator
 
         $this->assertDerivedFieldsReadable($view, $fields, array_combine(array_keys($fields), $paths), $trackerKeys);
 
-        return new SheetTemplate(array_values($fields));
+        return new SheetTemplate(array_values($fields), $layout);
+    }
+
+    /**
+     * The groups of the sheet layout (ADR 0031), or null when none is declared. Studio checks every
+     * rule on publish; the stored content is not trusted.
+     *
+     * @param array<mixed> $sheet
+     */
+    private function sheetLayout(PublishedReleaseView $view, array $sheet): ?SheetLayout
+    {
+        $list = $this->list($view, $sheet['groups'] ?? [], 'sheet.groups');
+        if (\count($list) > self::MAX_SHEET_GROUPS) {
+            throw $this->invalid($view, 'sheet.groups', \sprintf('at most %d groups.', self::MAX_SHEET_GROUPS));
+        }
+
+        $columns = $this->optionalInt($view, $sheet['columns'] ?? null, 'sheet.columns', 1, self::MAX_SHEET_COLUMNS);
+        if ([] === $list) {
+            return null === $columns ? null : throw $this->invalid($view, 'sheet.columns', 'needs declared groups.');
+        }
+
+        $groups = [];
+        foreach ($list as $index => $group) {
+            $path = \sprintf('sheet.groups[%d]', $index);
+            $group = $this->object($view, $group, $path);
+            foreach (array_keys($group) as $name) {
+                if (!\in_array($name, ['name', 'columns', 'span'], true)) {
+                    throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
+                }
+            }
+
+            $name = $this->boundedString($view, $group['name'] ?? null, $path.'.name', self::MAX_FIELD_GROUP_LENGTH);
+            if (isset($groups[$name])) {
+                throw $this->invalid($view, $path.'.name', \sprintf('duplicate group name "%s".', $name));
+            }
+
+            $span = $this->optionalInt($view, $group['span'] ?? null, $path.'.span', 1, self::MAX_GROUP_SPAN) ?? 1;
+            if ($span > ($columns ?? 1)) {
+                throw $this->invalid($view, $path.'.span', \sprintf('must be at most the columns of the sheet (%d).', $columns ?? 1));
+            }
+
+            $groups[$name] = new SheetGroup($name, $this->optionalInt($view, $group['columns'] ?? null, $path.'.columns', 1, self::MAX_GROUP_COLUMNS) ?? 1, $span);
+        }
+
+        return new SheetLayout($columns ?? 1, array_values($groups));
+    }
+
+    /**
+     * Without a layout a field has no span; with one it names a declared group and spans at most that
+     * group's columns.
+     *
+     * @param bool $spanGiven whether the stored field carries a span, whatever its value
+     */
+    private function assertFieldFitsTheLayout(PublishedReleaseView $view, ?SheetLayout $layout, Field $field, bool $spanGiven, string $path): void
+    {
+        if (!$layout instanceof SheetLayout) {
+            if ($spanGiven) {
+                throw $this->invalid($view, $path.'.span', 'needs declared groups.');
+            }
+
+            return;
+        }
+
+        $group = null;
+        foreach ($layout->groups as $declared) {
+            if ($declared->name === $field->group) {
+                $group = $declared;
+            }
+        }
+
+        if (null === $field->group) {
+            throw $this->invalid($view, $path.'.group', 'needs one of the declared groups.');
+        }
+
+        if (null === $group) {
+            throw $this->invalid($view, $path.'.group', \sprintf('unknown group "%s".', $field->group));
+        }
+
+        if ($field->span > $group->columns) {
+            throw $this->invalid($view, $path.'.span', \sprintf('must be at most the columns of group "%s" (%d).', $group->name, $group->columns));
+        }
     }
 
     /**
@@ -1037,7 +1127,7 @@ final readonly class GameSystemReleaseTranslator
         }
 
         foreach (array_keys($field) as $name) {
-            if (!\in_array($name, ['key', 'label', 'hint', 'group', 'type', ...self::FIELD_PROPERTIES[$type]], true)) {
+            if (!\in_array($name, ['key', 'label', 'hint', 'group', 'span', 'type', ...self::FIELD_PROPERTIES[$type]], true)) {
                 throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
             }
         }
@@ -1049,6 +1139,7 @@ final readonly class GameSystemReleaseTranslator
             $this->boundedString($view, $field['label'] ?? null, $path.'.label', self::MAX_FIELD_LABEL_LENGTH),
             null === ($field['hint'] ?? null) ? null : $this->boundedString($view, $field['hint'], $path.'.hint', self::MAX_FIELD_HINT_LENGTH, false),
             null === ($field['group'] ?? null) ? null : $this->boundedString($view, $field['group'], $path.'.group', self::MAX_FIELD_GROUP_LENGTH),
+            'span' => $this->optionalInt($view, $field['span'] ?? null, $path.'.span', 1, self::MAX_FIELD_SPAN) ?? 1,
         ];
 
         return match ($type) {
@@ -1078,8 +1169,8 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * @param array{string, string, ?string, ?string} $common key, label, hint, group
-     * @param array<mixed>                            $field
+     * @param array{0: string, 1: string, 2: ?string, 3: ?string, span: int} $common key, label, hint, group, span
+     * @param array<mixed>                                                   $field
      */
     private function numberField(PublishedReleaseView $view, array $common, array $field, string $path): NumberField
     {

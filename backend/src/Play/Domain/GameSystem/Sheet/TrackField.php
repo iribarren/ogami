@@ -16,7 +16,8 @@ final readonly class TrackField extends Field
         ?string $hint = null,
         ?string $group = null,
         public ?int $max = null,
+        int $span = 1,
     ) {
-        parent::__construct($key, $label, $hint, $group);
+        parent::__construct($key, $label, $hint, $group, $span);
     }
 }

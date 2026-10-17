@@ -178,6 +178,20 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-too-long-thread-name' => ['sceneTypes[0].play[0].effects[0].name: must be at most 200 characters', '/sceneTypes/0/play/0/effects/0/name'],
         'generated: v2-sheet-too-many-fields' => ['sheet.fields: at most 100 fields', '/sheet/fields'],
         'generated: v2-sheet-label-too-long' => ['sheet.fields[0].label: must be at most 100 characters', '/sheet/fields/0/label'],
+        'generated: v2-sheet-columns-0' => ['sheet.columns: must be at least 1', '/sheet/columns'],
+        'generated: v2-sheet-columns-3' => ['sheet.columns: must be at most 2', '/sheet/columns'],
+        'generated: v2-sheet-columns-string' => ['sheet.columns: must be an integer', '/sheet/columns'],
+        'generated: v2-sheet-groups-object' => ['sheet.groups: must be a list', '/sheet/groups'],
+        'generated: v2-sheet-21-groups' => ['sheet.groups: at most 20 groups', '/sheet/groups'],
+        'generated: v2-sheet-group-without-name' => ['sheet.groups[0].name: required', '/sheet/groups/0'],
+        'generated: v2-sheet-group-name-empty' => ['sheet.groups[0].name: must not be empty', '/sheet/groups/0/name'],
+        'generated: v2-sheet-group-name-61' => ['sheet.groups[0].name: must be at most 60 characters', '/sheet/groups/0/name'],
+        'generated: v2-sheet-group-columns-5' => ['sheet.groups[0].columns: must be at most 4', '/sheet/groups/0/columns'],
+        'generated: v2-sheet-group-span-3' => ['sheet.groups[0].span: must be at most 2', '/sheet/groups/0/span'],
+        'generated: v2-sheet-group-span-string' => ['sheet.groups[0].span: must be an integer', '/sheet/groups/0/span'],
+        'generated: v2-sheet-group-unknown-property' => ['sheet.groups[0].color: unknown property', '/sheet/groups/0'],
+        'generated: v2-sheet-field-span-0' => ['sheet.fields[0].span: must be at least 1', '/sheet/fields/0/span'],
+        'generated: v2-sheet-field-span-5' => ['sheet.fields[0].span: must be at most 4', '/sheet/fields/0/span'],
         'generated: v2-too-many-flows' => ['flows: at most 20 flows', '/flows'],
         'generated: v2-too-long-credits-notice' => ['gameSystem.credits.notice: must be at most 2000 characters', '/gameSystem/credits/notice'],
         'generated: v2-too-long-credits-license' => ['gameSystem.credits.license: must be at most 200 characters', '/gameSystem/credits/license'],
@@ -350,6 +364,14 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'v2-placeholder-fact-without-key' => 'sceneTypes[0].play[0].prompt: placeholder {fact} needs a fact slot key, as in {fact:city}',
         'v2-scene-type-oracle-outside-flow' => 'sceneTypes[0].oracles[0]: oracle "fate" is not one of the oracles of flow "main"',
         'v2-sheet-duplicate-field-key' => 'sheet.fields[1].key: duplicate field key "luck"',
+        'generated: v2-sheet-columns-without-groups' => 'sheet.columns: needs declared groups',
+        'generated: v2-sheet-field-span-without-groups' => 'sheet.fields[0].span: needs declared groups',
+        'generated: v2-sheet-duplicate-group-name' => 'sheet.groups[1].name: duplicate group name "Stats"',
+        'generated: v2-sheet-group-name-blank' => 'sheet.groups[0].name: must not be blank',
+        'generated: v2-sheet-group-span-above-columns' => 'sheet.groups[1].span: must be at most the columns of the sheet (1), 2 given',
+        'generated: v2-sheet-field-span-above-group-columns' => 'sheet.fields[0].span: must be at most the columns of group "Stats" (2), 3 given',
+        'generated: v2-sheet-field-without-group' => 'sheet.fields[0].group: required, the sheet declares groups',
+        'generated: v2-sheet-field-in-undeclared-group' => 'sheet.fields[0].group: unknown group "Notes"',
         'v2-sheet-group-whitespace-only' => 'sheet.fields[0].group: must not be blank',
         'v2-sheet-item-label-whitespace-only' => 'sheet.fields[0].itemLabel: must not be blank',
         'v2-sheet-label-whitespace-only' => 'sheet.fields[0].label: must not be blank',
@@ -382,7 +404,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield 'generated: '.$name => [json_encode($release, \JSON_THROW_ON_ERROR)];
         }
 
-        foreach (self::generatedCheckCases()['valid'] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['valid'], ...self::generatedSheetLayoutCases()['valid']] as $name => $json) {
             yield $name => [$json];
         }
 
@@ -404,7 +426,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield $name => [$name, $json];
         }
 
-        foreach ([...self::generatedCheckCases()['structural'], ...self::generatedSheetEffectCases()['structural']] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['structural'], ...self::generatedSheetEffectCases()['structural'], ...self::generatedSheetLayoutCases()['structural']] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -418,7 +440,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield $name => [$name, $json];
         }
 
-        foreach ([...self::generatedCheckCases()['semantic'], ...self::generatedSheetEffectCases()['semantic']] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['semantic'], ...self::generatedSheetEffectCases()['semantic'], ...self::generatedSheetLayoutCases()['semantic']] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -707,6 +729,58 @@ final class ReleaseSchemaAgreementTest extends TestCase
         ];
 
         return ['structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
+    }
+
+    /**
+     * Releases with a sheet layout (ADR 0031), built in code from the minimal release: the valid ones,
+     * the ones the schema rejects, and the ones only the domain rejects.
+     *
+     * @return array{valid: array<string, string>, structural: array<string, string>, semantic: array<string, string>} JSON by case name
+     */
+    private static function generatedSheetLayoutCases(): array
+    {
+        $field = static fn (array $override = []): array => ['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'group' => 'Stats', ...$override];
+        $build = static fn (array $sheet): string => json_encode([...self::minimalReleaseV2(), 'sheet' => $sheet], \JSON_THROW_ON_ERROR);
+        $stats = [['name' => 'Stats', 'columns' => 2]];
+        $names = static fn (int $count): array => array_map(static fn (int $i): array => ['name' => 'G'.$i], range(1, $count));
+
+        $valid = [
+            'v2-sheet-layout' => $build(['columns' => 2, 'groups' => [['name' => 'Stats', 'columns' => 4, 'span' => 2], ['name' => 'Notes']], 'fields' => [$field(['span' => 4]), $field(['key' => 'bio', 'group' => 'Notes', 'span' => 1])]]),
+            'v2-sheet-layout-defaults-and-nulls' => $build(['columns' => null, 'groups' => [['name' => 'Stats', 'columns' => 1, 'span' => null]], 'fields' => [$field(['span' => null])]]),
+            'v2-sheet-layout-empty-group' => $build(['groups' => [['name' => 'Stats'], ['name' => 'Empty']], 'fields' => [$field()]]),
+            'v2-sheet-layout-20-groups' => $build(['groups' => $names(20)]),
+            'v2-sheet-layout-null-groups' => $build(['groups' => null, 'fields' => [['key' => 'str', 'label' => 'Strength', 'type' => 'number']]]),
+        ];
+
+        $structural = [
+            'v2-sheet-columns-0' => $build(['columns' => 0, 'groups' => $stats]),
+            'v2-sheet-columns-3' => $build(['columns' => 3, 'groups' => $stats]),
+            'v2-sheet-columns-string' => $build(['columns' => '2', 'groups' => $stats]),
+            'v2-sheet-groups-object' => $build(['groups' => ['name' => 'Stats']]),
+            'v2-sheet-21-groups' => $build(['groups' => $names(21)]),
+            'v2-sheet-group-without-name' => $build(['groups' => [['columns' => 2]]]),
+            'v2-sheet-group-name-empty' => $build(['groups' => [['name' => '']]]),
+            'v2-sheet-group-name-61' => $build(['groups' => [['name' => str_repeat('n', 61)]]]),
+            'v2-sheet-group-columns-5' => $build(['groups' => [['name' => 'Stats', 'columns' => 5]]]),
+            'v2-sheet-group-span-3' => $build(['groups' => [['name' => 'Stats', 'span' => 3]]]),
+            'v2-sheet-group-span-string' => $build(['groups' => [['name' => 'Stats', 'span' => '2']]]),
+            'v2-sheet-group-unknown-property' => $build(['groups' => [['name' => 'Stats', 'color' => 'red']]]),
+            'v2-sheet-field-span-0' => $build(['groups' => $stats, 'fields' => [$field(['span' => 0])]]),
+            'v2-sheet-field-span-5' => $build(['groups' => $stats, 'fields' => [$field(['span' => 5])]]),
+        ];
+
+        $semantic = [
+            'v2-sheet-columns-without-groups' => $build(['columns' => 2]),
+            'v2-sheet-field-span-without-groups' => $build(['fields' => [['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'span' => 1]]]),
+            'v2-sheet-duplicate-group-name' => $build(['groups' => [['name' => 'Stats'], ['name' => 'Stats']]]),
+            'v2-sheet-group-name-blank' => $build(['groups' => [['name' => '  ']]]),
+            'v2-sheet-group-span-above-columns' => $build(['groups' => [['name' => 'Stats'], ['name' => 'Notes', 'span' => 2]]]),
+            'v2-sheet-field-span-above-group-columns' => $build(['groups' => $stats, 'fields' => [$field(['span' => 3])]]),
+            'v2-sheet-field-without-group' => $build(['groups' => $stats, 'fields' => [$field(['group' => null])]]),
+            'v2-sheet-field-in-undeclared-group' => $build(['groups' => $stats, 'fields' => [$field(['group' => 'Notes'])]]),
+        ];
+
+        return ['valid' => self::generated($valid), 'structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
     }
 
     /**

@@ -9,7 +9,8 @@ use App\Formula\Domain\InvalidFormula;
 
 /**
  * The character sheet a GameSystem release defines (ADR 0022): its fields in layout order. A
- * release without fields has an empty template, and its Characters have a name and tags only.
+ * release without fields has an empty template, and its Characters have a name and tags only. The
+ * layout (ADR 0031) is null when the release declares no groups.
  */
 final readonly class SheetTemplate
 {
@@ -24,7 +25,7 @@ final readonly class SheetTemplate
      *
      * @throws \InvalidArgumentException when two fields share a key or derived fields read each other in a cycle
      */
-    public function __construct(array $fields = [])
+    public function __construct(array $fields = [], private ?SheetLayout $layout = null)
     {
         $byKey = [];
         foreach ($fields as $field) {
@@ -57,6 +58,11 @@ final readonly class SheetTemplate
     public function fields(): array
     {
         return array_values($this->fields);
+    }
+
+    public function layout(): ?SheetLayout
+    {
+        return $this->layout;
     }
 
     public function field(string $key): ?Field

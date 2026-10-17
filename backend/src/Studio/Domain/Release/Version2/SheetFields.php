@@ -10,8 +10,9 @@ use App\Studio\Domain\Release\ReleaseFields;
 
 /**
  * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of five
- * types, each with its own closed set of properties; a "derived" field holds a formula (ADR 0023). The canonical sheet is [] without fields, so
- * a release that never used the sheet keeps its content hash.
+ * types, each with its own closed set of properties; a "derived" field holds a formula (ADR 0023). An optional layout of groups
+ * (SheetLayout, ADR 0031) places the fields in a grid. The canonical sheet is [] without fields or layout, so a release that never
+ * used the sheet keeps its content hash.
  *
  * @internal
  */
@@ -28,8 +29,8 @@ final class SheetFields
     public const int MAX_TRACK = 999;
     public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
 
-    private const array SHEET = ['fields' => false];
-    private const array COMMON = ['key' => true, 'label' => true, 'hint' => false, 'group' => false, 'type' => true];
+    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false];
+    private const array COMMON = ['key' => true, 'label' => true, 'hint' => false, 'group' => false, 'span' => false, 'type' => true];
 
     /** The fields each type adds to COMMON, in schema order: name => required. */
     private const array TYPES = [
@@ -43,17 +44,23 @@ final class SheetFields
     /**
      * @param list<string> $trackerKeys the trackers of the release, which derived fields may read
      *
-     * @return array{fields?: list<array<string, mixed>>} no "fields" key when the sheet has none
+     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>} no "fields" key when the sheet has none, no layout keys without a layout
      */
     public static function validate(mixed $value, array $trackerKeys = []): array
     {
         $sheet = ReleaseFields::object($value, 'sheet', self::SHEET);
+        [$layout, $groupColumns] = SheetLayout::validate($sheet);
         $fields = [];
         $keys = [];
         $derived = [];
         foreach (ReleaseFields::sizedList($sheet['fields'] ?? [], 'sheet.fields', 0, self::MAX_FIELDS, 'fields') as $index => $field) {
             $path = \sprintf('sheet.fields[%d]', $index);
             $field = self::field($field, $path);
+            SheetLayout::checkField($groupColumns, $field, $path);
+            if (1 === ($field['span'] ?? null)) {
+                unset($field['span']);
+            }
+
             /** @var string $key */
             $key = $field['key'];
             if (isset($keys[$key])) {
@@ -75,7 +82,7 @@ final class SheetFields
         // A formula may read a field listed after it, so the references are checked once every field is known.
         Formulas::sheet($derived, $keys, $trackerKeys);
 
-        return [] === $fields ? [] : ['fields' => $fields];
+        return ([] === $fields ? [] : ['fields' => $fields]) + $layout;
     }
 
     /**
@@ -94,6 +101,10 @@ final class SheetFields
 
         if (isset($field['group'])) {
             ReleaseFields::text($field['group'], $path.'.group', 1, self::MAX_GROUP_LENGTH);
+        }
+
+        if (isset($field['span'])) {
+            ReleaseFields::integer($field['span'], $path.'.span', 1, SheetLayout::MAX_FIELD_SPAN);
         }
 
         $field = match ($type) {

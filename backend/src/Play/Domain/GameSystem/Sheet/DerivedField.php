@@ -18,7 +18,8 @@ final readonly class DerivedField extends Field
         ?string $hint,
         ?string $group,
         public Formula $formula,
+        int $span = 1,
     ) {
-        parent::__construct($key, $label, $hint, $group);
+        parent::__construct($key, $label, $hint, $group, $span);
     }
 }

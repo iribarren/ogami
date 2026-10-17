@@ -6,8 +6,8 @@ namespace App\Play\Domain\GameSystem\Sheet;
 
 /**
  * One field of a SheetTemplate (ADR 0022): the key Character values are stored under, the label and
- * hint players see, and an optional group that lays consecutive fields out together. Each type adds
- * its own limits.
+ * hint players see, an optional group, and how many columns of its group it spans (ADR 0031). Without
+ * a layout, a group lays consecutive fields out together. Each type adds its own limits.
  */
 abstract readonly class Field
 {
@@ -16,6 +16,7 @@ abstract readonly class Field
         public string $label,
         public ?string $hint = null,
         public ?string $group = null,
+        public int $span = 1,
     ) {
     }
 }

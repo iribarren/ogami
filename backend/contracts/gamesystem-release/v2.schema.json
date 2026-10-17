@@ -48,7 +48,7 @@
       "items": { "$ref": "#/$defs/flow" }
     },
     "sheet": {
-      "description": "The character sheet template (ADR 0022). {} and {\"fields\": []} are the same sheet: no fields. Field keys are unique (checked by the domain).",
+      "description": "The character sheet template (ADR 0022). {} and {\"fields\": []} are the same sheet: no fields. Field keys are unique (checked by the domain). The layout (ADR 0031) is groups in a grid: columns, groups and field spans need declared groups, every field then names a declared group, and a group span is at most the sheet columns and a field span at most its group columns (checked by the domain).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -56,6 +56,12 @@
           "type": ["array", "null"],
           "maxItems": 100,
           "items": { "$ref": "#/$defs/sheetField" }
+        },
+        "columns": { "type": ["integer", "null"], "minimum": 1, "maximum": 2 },
+        "groups": {
+          "type": ["array", "null"],
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/sheetGroup" }
         }
       }
     },
@@ -101,12 +107,25 @@
         "label": { "$ref": "#/$defs/label" },
         "hint": { "type": ["string", "null"], "maxLength": 500 },
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "span": { "$ref": "#/$defs/fieldSpan" },
         "type": { "const": "number" },
         "min": { "$ref": "#/$defs/sheetNumber" },
         "max": { "$ref": "#/$defs/sheetNumber" },
         "default": { "$ref": "#/$defs/sheetNumber" }
       }
     },
+    "sheetGroup": {
+      "description": "A group of the sheet layout (ADR 0031). Names are unique, compared exactly (checked by the domain).",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "columns": { "type": ["integer", "null"], "minimum": 1, "maximum": 4 },
+        "span": { "type": ["integer", "null"], "minimum": 1, "maximum": 2 }
+      }
+    },
+    "fieldSpan": { "type": ["integer", "null"], "minimum": 1, "maximum": 4 },
     "sheetNumber": { "type": ["integer", "null"], "minimum": -1000000, "maximum": 1000000 },
     "textField": {
       "description": "Free text, 200 characters by default and 2000 when multiline.",
@@ -118,6 +137,7 @@
         "label": { "$ref": "#/$defs/label" },
         "hint": { "type": ["string", "null"], "maxLength": 500 },
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "span": { "$ref": "#/$defs/fieldSpan" },
         "type": { "const": "text" },
         "multiline": { "type": ["boolean", "null"] },
         "maxLength": { "type": ["integer", "null"], "minimum": 1, "maximum": 2000 }
@@ -133,6 +153,7 @@
         "label": { "$ref": "#/$defs/label" },
         "hint": { "type": ["string", "null"], "maxLength": 500 },
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "span": { "$ref": "#/$defs/fieldSpan" },
         "type": { "const": "list" },
         "itemLabel": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
         "maxItems": { "type": ["integer", "null"], "minimum": 1, "maximum": 100 }
@@ -148,6 +169,7 @@
         "label": { "$ref": "#/$defs/label" },
         "hint": { "type": ["string", "null"], "maxLength": 500 },
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "span": { "$ref": "#/$defs/fieldSpan" },
         "type": { "const": "track" },
         "max": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 }
       }
@@ -162,6 +184,7 @@
         "label": { "$ref": "#/$defs/label" },
         "hint": { "type": ["string", "null"], "maxLength": 500 },
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "span": { "$ref": "#/$defs/fieldSpan" },
         "type": { "const": "derived" },
         "formula": { "$ref": "#/$defs/formulaText" }
       }

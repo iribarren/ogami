@@ -1,6 +1,6 @@
 # 0022. Character sheets in schema version 2
 
-- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md), [0024](0024-structured-checks-without-scripting.md) and [0027](0027-sheet-effects.md)
+- **Status:** Accepted, amended by [0023](0023-formula-kernel-and-derived-values.md), [0024](0024-structured-checks-without-scripting.md), [0027](0027-sheet-effects.md) and [0031](0031-sheet-layout-and-studio-sheet-builder.md)
 - **Date:** 2026-10-13
 
 ## Context
@@ -18,7 +18,7 @@ A sheet template is the same kind of change: no existing release uses it, `{}` s
   - `text`: optional `multiline`, `maxLength` (1–2000).
   - `list`: optional `itemLabel`, `maxItems` (1–100). Items are trimmed strings. Lists cover inventory and cyberware.
   - `track`: a resource track `{current, max}`; optional fixed `max` (1–999), otherwise each Character sets its own. It starts full.
-- **Fields** have a unique `key`, a `label`, an optional `hint` and an optional `group` that lays consecutive fields out together. At most 100 per sheet.
+- **Fields** have a unique `key`, a `label`, an optional `hint` and an optional `group` that lays consecutive fields out together (amended by [0031](0031-sheet-layout-and-studio-sheet-builder.md): a sheet may declare groups in a grid). At most 100 per sheet.
 - **Characters are value objects in the Campaign aggregate**, like NPCs: a JSONB column with its own Doctrine type, no table, at most 100 per Campaign.
 - **Values are validated against the pinned release's sheet** on every write (unknown key, wrong type, out of bounds fail). A missing key reads as the field default. A release without fields gives Characters a name and tags only.
 - **NPC promotion** creates a Character with the NPC's name, release tags and free tags. The NPC is closed and records `promotedTo`; it cannot be reopened or promoted again. In the current Scene's cast the Character replaces the NPC.

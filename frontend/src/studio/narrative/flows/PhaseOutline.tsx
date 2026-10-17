@@ -7,49 +7,21 @@ import { NativeSelect } from '@/shared/ui/native-select'
 import { TextField } from '../TextField'
 import { Area } from '../steps/fields'
 import { moveItem } from '../steps/draftParts'
-import { newPhase, phaseHooks, phaseModes, type PhaseDraft, type PhaseHook } from './flowDraft'
+import type { StepContext } from '../steps/stepContext'
+import { newPhase, phaseModes, type PhaseDraft } from './flowDraft'
 import type { PhaseAnswer } from './flowError'
+import { PhaseHooks } from './PhaseHooks'
+import { SelectionEditor } from './SelectionEditor'
 
 /** The most phases a flow may have (`ReleaseVersion2::MAX_PHASES`). */
 export const MAX_PHASES = 20
-
-const hookNames: Record<PhaseHook, string> = {
-  sessionOpening: 'session opening',
-  sessionClosing: 'session closing',
-  phaseOpening: 'phase opening',
-  phaseClosing: 'phase closing',
-  sceneOpening: 'scene opening',
-  sceneClosing: 'scene closing',
-  worldTurn: 'world turn',
-}
-
-const count = (steps: number) => (steps === 1 ? '1 step' : `${String(steps)} steps`)
-
-/** The selection and the hooks of a phase in one line each: this slice does not edit them. */
-function PhaseSummary({ phase }: { phase: PhaseDraft }) {
-  const { selection } = phase
-  const hooks = phaseHooks.flatMap((hook) => {
-    const steps = phase.hooks[hook]?.length ?? 0
-    return steps > 0 ? [`${hookNames[hook]} ${count(steps)}`] : []
-  })
-
-  return (
-    <div className="space-y-1 text-sm text-muted-foreground">
-      <p>
-        {selection.rule === 'oracle'
-          ? `Picks scenes from the oracle table ${selection.table}.`
-          : `${selection.rule === 'sequence' ? 'Plays in order' : 'The player picks from'}: ${selection.sceneTypes.join(', ')}.`}
-      </p>
-      <p>{hooks.length === 0 ? 'No hooks.' : `Hooks: ${hooks.join(', ')}.`}</p>
-    </div>
-  )
-}
 
 function PhaseCard({
   phase,
   index,
   total,
   locked,
+  context,
   answer,
   onChange,
   onMove,
@@ -59,6 +31,7 @@ function PhaseCard({
   index: number
   total: number
   locked: boolean
+  context: StepContext
   answer: PhaseAnswer | undefined
   onChange: (phase: PhaseDraft) => void
   onMove: (by: number) => void
@@ -166,7 +139,18 @@ function PhaseCard({
           onChange({ ...phase, description })
         }}
       />
-      <PhaseSummary phase={phase} />
+      <SelectionEditor
+        selection={phase.selection}
+        sceneTypes={context.sceneTypes ?? []}
+        tables={context.tables}
+        messages={answer?.selection ?? []}
+        onChange={(selection) => {
+          onChange({ ...phase, selection })
+        }}
+      />
+      <fieldset disabled={locked}>
+        <PhaseHooks phase={phase} context={context} answer={answer} onChange={onChange} />
+      </fieldset>
       {answer?.messages.map((message) => (
         <p key={message} className="text-sm text-destructive">
           {message}
@@ -186,6 +170,7 @@ export function PhaseOutline({
   phases,
   answers,
   sceneType,
+  context,
   locked = false,
   onChange,
 }: {
@@ -193,6 +178,8 @@ export function PhaseOutline({
   answers: (PhaseAnswer | undefined)[]
   /** The Scene Type a new phase starts with; null when the draft has none. */
   sceneType: string | null
+  /** What the selection and the hooks' steps pick from. */
+  context: StepContext
   locked?: boolean
   onChange: (phases: PhaseDraft[], answers: (PhaseAnswer | undefined)[]) => void
 }) {
@@ -212,6 +199,7 @@ export function PhaseOutline({
             index={index}
             total={phases.length}
             locked={locked}
+            context={context}
             answer={aligned[index]}
             onChange={(changed) => {
               onChange(

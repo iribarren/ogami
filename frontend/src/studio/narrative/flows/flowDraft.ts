@@ -1,4 +1,6 @@
+import type { FieldErrors } from '../narrativeDraft'
 import { isObject, listOf, stringsOf, textOf, unknownFields } from '../steps/draftParts'
+import { stepsToDrafts, stepsToItems, type StepDraft } from '../steps/stepDraft'
 import type { StoredItem } from '../useGameSystemNarrative'
 
 // Typed form state of a flow: its own fields and its phases. Like the other narrative drafts, what
@@ -25,6 +27,12 @@ export const phaseHooks = [
 ] as const
 export type PhaseHook = (typeof phaseHooks)[number]
 
+/** The most Scene Types a selection may list (`ReleaseVersion2::MAX_SELECTION_SCENE_TYPES`). */
+export const MAX_SELECTION_SCENE_TYPES = 20
+
+export const selectionRules = ['sequence', 'player', 'oracle'] as const
+export type SelectionRule = (typeof selectionRules)[number]
+
 /** How a phase picks its next scene: from a list of Scene Types, or from an oracle table. */
 export type SelectionDraft =
   | { rule: 'sequence' | 'player'; sceneTypes: string[]; extra: StoredItem }
@@ -38,10 +46,10 @@ export interface PhaseDraft {
   mode: PhaseMode
   selection: SelectionDraft
   /**
-   * The step lists as stored, raw: this slice only lists flows. A hook the phase does not have
-   * stays missing; the flow editor reads them with `stepDraft`.
+   * The step lists of the hooks. A hook the phase does not have stays missing, and one the author
+   * empties is removed (`setHook`): the publisher drops an empty list, so none is sent for it.
    */
-  hooks: Partial<Record<PhaseHook, unknown[]>>
+  hooks: Partial<Record<PhaseHook, StepDraft[]>>
   /** Fields this editor does not know. */
   extra: StoredItem
 }
@@ -64,6 +72,12 @@ export interface FlowDraft {
 export interface FlowResult {
   item: StoredItem
 }
+
+/** The whole numbers `stepsToItems` refuses, by phase position and hook. */
+export type HookErrors = Record<number, Partial<Record<PhaseHook, FieldErrors>>>
+
+/** The item to send, or the hook step errors that stop the save; nothing is sent with any. */
+export type FlowSave = FlowResult | { errors: HookErrors }
 
 const flowKnown = [
   'key',
@@ -128,7 +142,7 @@ function phaseToDraft(value: unknown): PhaseDraft | null {
       return null
     }
     if (value[hook] !== undefined) {
-      hooks[hook] = steps
+      hooks[hook] = stepsToDrafts(steps)
     }
   }
   return {
@@ -195,7 +209,51 @@ function selectionToItem(selection: SelectionDraft): StoredItem {
     : { ...selection.extra, rule: selection.rule, sceneTypes: selection.sceneTypes }
 }
 
-function phaseToItem(phase: PhaseDraft): StoredItem {
+/** The selection after its rule is picked: the Scene Types stay between `sequence` and `player`, any other switch starts the other field empty. */
+export function withRule(selection: SelectionDraft, rule: SelectionRule): SelectionDraft {
+  if (rule === selection.rule) {
+    return selection
+  }
+  if (rule === 'oracle') {
+    return { rule, table: '', extra: {} }
+  }
+  return { rule, sceneTypes: selection.rule === 'oracle' ? [] : selection.sceneTypes, extra: {} }
+}
+
+/** The phase with the hook's steps; an empty list removes the hook. */
+export function setHook(phase: PhaseDraft, hook: PhaseHook, steps: StepDraft[]): PhaseDraft {
+  const hooks: PhaseDraft['hooks'] = {}
+  for (const name of phaseHooks) {
+    const list = name === hook ? steps : phase.hooks[name]
+    const emptied = name === hook && steps.length === 0
+    if (list !== undefined && !emptied) {
+      hooks[name] = list
+    }
+  }
+  return { ...phase, hooks }
+}
+
+function hooksToItems(hooks: PhaseDraft['hooks']) {
+  const lists: Partial<Record<PhaseHook, StoredItem[]>> = {}
+  const errors: Partial<Record<PhaseHook, FieldErrors>> = {}
+  for (const hook of phaseHooks) {
+    const steps = hooks[hook]
+    if (steps !== undefined) {
+      const result = stepsToItems(steps)
+      if ('errors' in result) {
+        errors[hook] = result.errors
+      } else {
+        lists[hook] = result.steps
+      }
+    }
+  }
+  return { lists, errors }
+}
+
+function phaseToItem(
+  phase: PhaseDraft,
+  lists: Partial<Record<PhaseHook, StoredItem[]>>,
+): StoredItem {
   return {
     ...phase.extra,
     key: phase.key.trim(),
@@ -204,12 +262,25 @@ function phaseToItem(phase: PhaseDraft): StoredItem {
     ...optionalText('description', phase.description),
     mode: phase.mode,
     selection: selectionToItem(phase.selection),
-    ...phase.hooks,
+    ...lists,
   }
 }
 
-/** The item to send. `default` is sent only when true: the publisher drops a false one. */
-export function flowToItem(draft: FlowDraft): FlowResult {
+/**
+ * The item to send, or the whole numbers a hook's steps refuse. `default` is sent only when true:
+ * the publisher drops a false one.
+ */
+export function flowToItem(draft: FlowDraft): FlowSave {
+  const hooks = draft.phases.map((phase) => hooksToItems(phase.hooks))
+  const errors: HookErrors = {}
+  hooks.forEach(({ errors: phaseErrors }, position) => {
+    if (Object.keys(phaseErrors).length > 0) {
+      errors[position] = phaseErrors
+    }
+  })
+  if (Object.keys(errors).length > 0) {
+    return { errors }
+  }
   return {
     item: {
       ...draft.extra,
@@ -221,7 +292,9 @@ export function flowToItem(draft: FlowDraft): FlowResult {
       defaultView: draft.defaultView,
       oracles: draft.oracles,
       trackers: draft.trackers,
-      phases: draft.phases.map(phaseToItem),
+      phases: draft.phases.map((phase, position) =>
+        phaseToItem(phase, hooks[position]?.lists ?? {}),
+      ),
     },
   }
 }

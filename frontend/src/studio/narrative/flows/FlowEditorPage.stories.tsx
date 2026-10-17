@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, within } from 'storybook/test'
+import { expect, userEvent, within } from 'storybook/test'
 
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
@@ -39,6 +39,40 @@ export const WithPhases: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('group', { name: 'Phase 2' })).toBeVisible()
     await expect(canvas.getByLabelText('Default flow')).toBeChecked()
+  },
+}
+
+const withHook = {
+  ...narrativeFlows,
+  flows: [
+    {
+      key: 'heist',
+      usedBy: [],
+      definition: {
+        ...narrativeFlows.flows[0]?.definition,
+        phases: [
+          {
+            key: 'setup',
+            name: 'Setup',
+            mode: 'loop',
+            selection: { rule: 'oracle', table: 'places' },
+            worldTurn: [{ key: 'tick', kind: 'prompt', title: 'The street stirs' }],
+          },
+        ],
+      },
+    },
+    ...narrativeFlows.flows.slice(1),
+  ],
+}
+
+/** A phase that picks its scenes from an oracle table, with a world turn step to open. */
+export const OracleSelectionAndHook: Story = {
+  parameters: { api: { [`GET ${base}/narrative`]: json(withHook) } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByLabelText('Oracle table')).toHaveValue('places')
+    await userEvent.click(canvas.getByRole('button', { name: 'World turn (1 step)' }))
+    await expect(await canvas.findByDisplayValue('The street stirs')).toBeVisible()
   },
 }
 

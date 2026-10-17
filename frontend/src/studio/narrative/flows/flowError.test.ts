@@ -1,11 +1,21 @@
-import { flowAnswer, flowChecks, noAnswer } from './flowError'
-import { flowToDraft } from './flowDraft'
+import { flowAnswer, flowChecks, noAnswer, type PhaseAnswer } from './flowError'
+import { flowToDraft, setHook } from './flowDraft'
+import { stepsToDrafts } from '../steps/stepDraft'
 
 const phase = (key: string) => ({
   key,
   name: key,
   mode: 'once',
   selection: { rule: 'sequence', sceneTypes: ['ambush'] },
+})
+
+/** A phase answer with only what the test says. */
+const said = (answer: Partial<PhaseAnswer>): PhaseAnswer => ({
+  fields: {},
+  messages: [],
+  selection: [],
+  hooks: {},
+  ...answer,
 })
 
 const draft = (...keys: string[]) => {
@@ -44,21 +54,61 @@ describe('the answer to a refused flow', () => {
     'puts a message about the phase field %s on its card',
     (field) => {
       const answer = flowAnswer(`flows[1].phases[2].${field}: nope`, 1, 3)
-      expect(answer.phases[2]).toEqual({ fields: { [field]: 'nope' }, messages: [] })
+      expect(answer.phases[2]).toEqual(said({ fields: { [field]: 'nope' } }))
       expect(answer.phases[0]).toBeUndefined()
       expect(answer.page).toBeNull()
     },
   )
 
-  it('lists anything else under a phase, selection and hooks included, on its card', () => {
-    expect(
-      flowAnswer('flows[0].phases[1].selection.sceneTypes[0]: unknown Scene Type "x"', 0, 2)
-        .phases[1],
-    ).toEqual({ fields: {}, messages: ['selection.sceneTypes[0]: unknown Scene Type "x"'] })
-    expect(
-      flowAnswer('flows[0].phases[0].sessionOpening[2].title: must not be blank', 0, 1).phases[0]
-        ?.messages,
-    ).toEqual(['sessionOpening[2].title: must not be blank'])
+  it('puts a message about the selection on its card, without the path', () => {
+    for (const text of [
+      'flows[0].phases[1].selection.sceneTypes[0]: unknown Scene Type "x"',
+      'flows[0].phases[1].selection.sceneTypes: must list at least 1 Scene Types',
+      'flows[0].phases[1].selection.table: unknown oracle table "x"',
+      'flows[0].phases[1].selection.rule: must be one of sequence, player, oracle',
+      'flows[0].phases[1].selection: must be an object',
+    ]) {
+      expect(flowAnswer(text, 0, 2).phases[1]).toEqual(
+        said({ selection: [text.slice(text.indexOf(': ') + 2)] }),
+      )
+    }
+  })
+
+  it('puts a message about a hook step on that hook, mapped like a Scene Type step', () => {
+    const answer = flowAnswer('flows[0].phases[1].worldTurn[2].effects[0].value: nope', 0, 2)
+
+    expect(answer.phases[1]).toEqual(
+      said({
+        hooks: {
+          worldTurn: [{ index: 2, band: null, effect: 0, field: 'value', message: 'nope' }],
+        },
+      }),
+    )
+    expect(answer.phases[0]).toBeUndefined()
+  })
+
+  it('puts a message about the hook itself on its list, path included', () => {
+    const text = 'flows[0].phases[0].sceneOpening: at most 50 steps'
+
+    expect(flowAnswer(text, 0, 1).phases[0]).toEqual(
+      said({
+        hooks: {
+          sceneOpening: [{ index: null, band: null, effect: null, field: null, message: text }],
+        },
+      }),
+    )
+  })
+
+  it('does not take another name for a hook, and keeps a path it cannot read on the card, whole', () => {
+    expect(flowAnswer('flows[0].phases[0].worldTurnX[0].title: nope', 0, 1).phases[0]).toEqual(
+      said({ messages: ['worldTurnX[0].title: nope'] }),
+    )
+    expect(flowAnswer('flows[0].phases[0].worldTurn[0]weird: nope', 0, 1).phases[0]).toEqual(
+      said({ messages: ['flows[0].phases[0].worldTurn[0]weird: nope'] }),
+    )
+  })
+
+  it('lists anything else under a phase on its card', () => {
     expect(flowAnswer('flows[0].phases[0]: odd', 0, 1).phases[0]?.messages).toEqual(['odd'])
   })
 
@@ -86,7 +136,7 @@ describe('the checks made before a save', () => {
     expect(flowChecks(empty)).toEqual({
       ...noAnswer,
       fields: { key: 'Enter a key.' },
-      phases: [undefined, { fields: { key: 'Enter a key.' }, messages: [] }],
+      phases: [undefined, said({ fields: { key: 'Enter a key.' } })],
     })
   })
 
@@ -94,7 +144,62 @@ describe('the checks made before a save', () => {
     expect(flowChecks(draft('setup', 'job', 'setup'))?.phases).toEqual([
       undefined,
       undefined,
-      { fields: { key: 'Another phase has this key.' }, messages: [] },
+      said({ fields: { key: 'Another phase has this key.' } }),
     ])
   })
+})
+
+describe('the selection checks made before a save', () => {
+  const withSelection = (selection: unknown) => {
+    const read = flowToDraft({
+      key: 'heist',
+      name: 'Heist',
+      defaultView: 'focus',
+      oracles: [],
+      trackers: [],
+      phases: [{ ...phase('setup'), selection }],
+    })
+    if (read === null) {
+      throw new Error('Unreadable flow.')
+    }
+    return read
+  }
+
+  it.each([
+    [{ rule: 'sequence', sceneTypes: [] }, 'Pick at least one Scene Type.'],
+    [{ rule: 'player', sceneTypes: [] }, 'Pick at least one Scene Type.'],
+    [{ rule: 'oracle', table: '' }, 'Pick an oracle table.'],
+    [
+      { rule: 'player', sceneTypes: ['a', 'b', 'a'] },
+      'A player selection lists each Scene Type once.',
+    ],
+    [
+      { rule: 'sequence', sceneTypes: Array.from({ length: 21 }, () => 'a') },
+      'Pick at most 20 Scene Types.',
+    ],
+  ])('refuses %j', (selection, message) => {
+    expect(flowChecks(withSelection(selection))?.phases[0]).toEqual(said({ selection: [message] }))
+  })
+
+  it('accepts a sequence naming a Scene Type twice and an oracle table', () => {
+    expect(flowChecks(withSelection({ rule: 'sequence', sceneTypes: ['a', 'a'] }))).toBeNull()
+    expect(flowChecks(withSelection({ rule: 'oracle', table: 'places' }))).toBeNull()
+  })
+
+  it('carries the hook step errors of the save onto their steps', () => {
+    const answer = flowChecks(draft('setup'), {
+      0: { worldTurn: { '1.bands.0.upTo': 'Use a whole number.' } },
+    })
+
+    expect(answer?.phases[0]?.hooks.worldTurn).toEqual([
+      { index: 1, band: 0, effect: null, field: 'upTo', message: 'Use a whole number.' },
+    ])
+    // A hook with nothing in it is not a problem.
+    expect(flowChecks(setHookOn(draft('setup')))).toBeNull()
+  })
+})
+
+const setHookOn = (flow: ReturnType<typeof draft>) => ({
+  ...flow,
+  phases: flow.phases.map((phase) => setHook(phase, 'worldTurn', stepsToDrafts([]))),
 })

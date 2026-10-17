@@ -1,4 +1,11 @@
-import { flowToDraft, flowToItem, newFlow, newFlowToItem, refreshNewFlow } from './flowDraft'
+import {
+  flowToDraft,
+  flowToItem,
+  newFlow,
+  newFlowToItem,
+  newPhase,
+  refreshNewFlow,
+} from './flowDraft'
 
 // The shapes of the three preset flows: Kingsport (introduction, a player phase with hooks),
 // Night job (sceneOpening hooks) and Mythic-style (journal view, no introduction).
@@ -197,5 +204,32 @@ describe('a new flow', () => {
     })
     expect(refreshNewFlow(chosen, choices.slice(0, 1)).sceneType).toBe('ambush')
     expect(refreshNewFlow(chosen, []).sceneType).toBe('')
+  })
+})
+
+describe('a new phase', () => {
+  const phases = flowToDraft({
+    key: 'heist',
+    name: 'Heist',
+    defaultView: 'focus',
+    oracles: [],
+    trackers: [],
+    phases: [
+      { key: 'phase-2', name: 'Two', mode: 'once', selection: { rule: 'oracle', table: 'places' } },
+    ],
+  })?.phases
+
+  it('is the smallest phase the publisher accepts, with a key no phase has', () => {
+    expect(newPhase(phases ?? [], 'quiet')).toEqual({
+      key: 'phase-3',
+      name: 'Phase 2',
+      act: '',
+      description: '',
+      mode: 'once',
+      selection: { rule: 'sequence', sceneTypes: ['quiet'], extra: {} },
+      hooks: {},
+      extra: {},
+    })
+    expect(newPhase([], 'quiet').key).toBe('phase-1')
   })
 })

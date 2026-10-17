@@ -60,11 +60,15 @@ describe('the Flows tab', () => {
     expect(keys).toEqual(['heist', 'side-job', 'odd-flow'])
   })
 
-  it('does not link the rows: the editor comes later', async () => {
+  it('links the rows it can edit to the flow editor, and not the one it cannot read', async () => {
     await openTab()
 
-    await row('Heist')
-    expect(within(screen.getByRole('region', { name: 'Flows' })).queryByRole('link')).toBeNull()
+    const heist = await row('Heist')
+    expect(within(heist).getByRole('link', { name: 'Heist' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/flows/heist',
+    )
+    expect(within(await row('Odd flow')).queryByRole('link')).toBeNull()
   })
 
   it('lists a flow of a shape it cannot read read-only, with a reason, and still lets it go', async () => {
@@ -191,7 +195,7 @@ describe('creating a flow', () => {
         },
       ],
     }
-    const { user } = await openTab({
+    const { user, router } = await openTab({
       [`POST ${base}/narrative/flows`]: async (request) => {
         sent.push(await request.json())
         return Response.json(
@@ -212,7 +216,9 @@ describe('creating a flow', () => {
     await user.selectOptions(inDialog().getByLabelText('First Scene Type'), 'Quiet')
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
 
-    expect(await screen.findByText('Chase')).toBeInTheDocument()
+    // The editor of the new flow opens.
+    expect(await screen.findByRole('form', { name: 'Flow' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/chase')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
   })

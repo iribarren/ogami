@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -30,6 +31,7 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
   const validation = useGameSystemValidation(gameSystemKey)
   const noSceneTypes = useId()
+  const navigate = useNavigate()
 
   return (
     <NarrativeGate narrative={narrative}>
@@ -55,6 +57,12 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                   version={data.version}
                   original={null}
                   initial={newFlow(sceneTypes)}
+                  onSaved={(item) => {
+                    void navigate({
+                      to: '/studio/game-systems/$key/flows/$flow',
+                      params: { key: gameSystemKey, flow: String(item.key) },
+                    })
+                  }}
                   refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}
                   trigger={<Button size="sm">New flow</Button>}
                 />
@@ -110,7 +118,17 @@ function FlowRow({
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-medium">{title}</span>
+          {draft === null ? (
+            <span className="font-medium">{title}</span>
+          ) : (
+            <Link
+              to="/studio/game-systems/$key/flows/$flow"
+              params={{ key: gameSystemKey, flow: item.key }}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {title}
+            </Link>
+          )}
           <span className="font-mono text-sm break-all text-muted-foreground">{item.key}</span>
           {draft === null ? (
             <Badge variant="outline">Can&apos;t be edited here</Badge>

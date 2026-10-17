@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-7-layout-panel` · **Status:** in progress (slice 7)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-8-preview-diagnostics` · **Status:** in progress (slice 8)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -108,7 +108,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | 3597f60, a8da25e, a501e9b |
 | T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | 0c9aba0, b943383 |
-| T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | delegated writer (slice 7) | [x] | |
+| T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | delegated writer (slice 7) | [x] | 127971e (slice 6 fixes), f98c591 |
 | T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
 | T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | | [ ] | |
 | T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
@@ -134,6 +134,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 - 2026-10-17: T9 part 2: `SheetTab` (list by declared or consecutive group, empty groups noted, move up/down to the neighbour's index, delete confirm with in-use paths, 409 reload), `SheetFieldDialog` (per-type inputs, group select or free text, span select, rename hint for published keys, 422 mapped to inputs or the form, 409 reload), `Sheet` tab on `GameSystemPage`, tests for every 400/404/409/422 path, stories. No API change; layout editing is slice 7.
 - 2026-10-17: Slice 6 review fixes: tests prove a write marks the GameSystem page and validation stale; a 409 now refetches the sheet in the hook (tests); `writeField` validates the span as a whole number from 1 to the group's columns; tests for a 409 whose reload fails in the field dialog, the move panel and the delete dialog (code already kept the state, pinned); the unreachable "field no longer exists" note is dropped.
 - 2026-10-17: T10 done. `SheetLayoutPanel` above the field list (declare from the fields' groups; edit dialog with sheet columns, group name, columns, span, move up/down, add, delete disabled while the group holds fields; remove with confirm), `layoutDraft.ts` (read fails closed, `previousName` only on rename, client rules), `sheetLayoutAnswer` (`sheet.columns:` and `sheet.groups[i].<property>:` onto inputs), `useSaveSheetLayout`/`useDeclareSheetLayout`/`useRemoveSheetLayout`; 400/404/409/422 tested for each write incl. a 409 whose reload fails. The field dialog's span select already stopped at the group's columns (tested in slice 6), so it is unchanged.
+- 2026-10-17: Slice 7 review fixes R3: a 422 of the layout save is read against the draft the save sent and dropped once the draft changed (test: stale message gone after a move, a fresh client error shows); `readLayout` checks a group span against the stored sheet columns and fails closed (test).
 
 ## Reviews
 
@@ -145,7 +146,8 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | 4 | `review-6cdcac261eef84ad` | 218461c, 231d8c4 (generated 8be0dfc: review declined) | approved, acknowledged; 2 suggestions: R3-001 (`GameSystemSheetController.php`: the write and the follow-up read share one try/catch, so a draft deleted in between answers 404 after a committed write; separate write refusals from the read), R3-002 (`GameSystemSheetController.php` `delete`: an array-shaped `expectedVersion` query parameter makes Symfony's `filter` throw instead of the 400 `MALFORMED_DELETE`; read the raw value and validate); fixed in slice 5. PR size 2,251, exception approved by the user | #170 |
 | 5 | `review-6556e3019ded422d` | 644cdb3, 3597f60, a8da25e (generated a501e9b: review declined) | approved, acknowledged; 1 suggestion R3-001 (`GameSystem.php` `declareSheetLayout`: fields are bucketed by group name as an array key, so a numeric-string group `"7"` becomes an int key; cast back to string and add a domain test declaring a sheet with a numeric-string group and asserting the exact string group name), fixed in slice 6. PR size 2,133, exception approved by the user | #171 |
 | 6 | `review-98ff5155dbf462be` (9a6b1ce..0c9aba0), `review-93ea738dfd72de2b` (b943383) | 9a6b1ce, 0c9aba0, b943383 | approved, acknowledged; WARNING R3-cache-invalidation-unproved (`useGameSystemSheet.test.tsx`: assert the GameSystem page and validation queries are invalidated after a write), SUGGESTION R3-span-not-validated (`sheetDraft.ts`: validate span as a whole number, with a test), SUGGESTION R3-conflict-leaves-stale-version (`useGameSystemSheet.ts`: invalidate the sheet query on a 409 in the hook, with a test), WARNING R3-001 (`SheetFieldDialog.tsx`: test a 409 reload whose GET /sheet fails; the dialog note, move panel and delete dialog keep the 409 state), SUGGESTION R3-002 (`SheetFieldDialog.tsx`: the "field no longer exists" note is unreachable because the row unmounts; drop it); fixed in slice 7. PR size 2,367, exception approved by the user | #172 |
+| 7 | `review-bd3a4eba1da4d63f` (127971e..f98c591; fixes commit 127971e: review declined) | 127971e, f98c591 | approved, acknowledged; WARNING R3-stale-422-position (`SheetLayoutPanel.tsx`: a 422 maps to groups by the sent request's position but is read against the current draft; clear or re-key it when the draft changes so it cannot override a fresh client error; test), SUGGESTION R3-readlayout-span-vs-columns (`layoutDraft.ts` `readLayout`: a group span is checked against the maximum sheet columns, not the stored sheet columns; fail closed; test); fixed in slice 8. PR size 1,863, exception approved by the user | #173 |
 
 ## Next step
 
-Slice 7: native review of the two commits (fixes, T10), then PR.
+Slice 8: commit 1 fixes the slice 7 findings; T11 live preview; T12a formula diagnostics logic; native review; PR.

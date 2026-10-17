@@ -296,6 +296,30 @@ describe('a refused layout save', () => {
     expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('drops a message once the draft changed, so it never lands on another group', async () => {
+    const { user } = await openSheet({
+      [`PUT ${base}/sheet/layout`]: json(
+        { error: 'sheet.groups[1].name: duplicate group name "Stats"' },
+        422,
+      ),
+    })
+
+    await editLayout(user)
+    await saveLayout(user)
+    expect(await within(group(2)).findByText('duplicate group name "Stats"')).toBeVisible()
+
+    await user.click(within(group(2)).getByRole('button', { name: 'Move up' }))
+
+    expect(inDialog().queryByText('duplicate group name "Stats"')).not.toBeInTheDocument()
+    expect(within(group(2)).getByLabelText('Name')).not.toHaveAttribute('aria-invalid', 'true')
+
+    await user.clear(within(group(1)).getByLabelText('Name'))
+    await saveLayout(user)
+
+    expect(await within(group(1)).findByText('Give the group a name.')).toBeVisible()
+    expect(inDialog().queryByText('duplicate group name "Stats"')).not.toBeInTheDocument()
+  })
+
   it('maps the sheet columns and the group columns and span', async () => {
     const { user } = await openSheet({
       [`PUT ${base}/sheet/layout`]: json({ error: 'sheet.columns: must be at most 2' }, 422),

@@ -290,14 +290,24 @@ function LayoutForm({
     () => readLayout(base) ?? { columns: 1, groups: [] },
   )
   const [errors, setErrors] = useState<LayoutErrors | null>(null)
+  // The draft the last save sent: the API names groups by their position in that request, so its
+  // 422 answer is read against the draft only while the draft is still that one.
+  const [sent, setSent] = useState<LayoutDraft | null>(null)
   const [reloadNote, setReloadNote] = useState<string | null>(null)
   const latest = useGameSystemSheet(gameSystemKey)
   const { error } = save
 
-  const answer =
-    error instanceof SheetError && error.status === 422 ? sheetLayoutAnswer(error.message) : null
+  const refused = error instanceof SheetError && error.status === 422
+  const answer = refused && sent === draft ? sheetLayoutAnswer(error.message) : null
+  // A 422 about a draft that has changed since says nothing about this one.
   const message =
-    errors?.form ?? (error === null ? null : answer ? answer.form : refusal(error)) ?? ''
+    errors?.form ??
+    (error === null || (refused && answer === null)
+      ? null
+      : answer
+        ? answer.form
+        : refusal(error)) ??
+    ''
   const columnsError = errors?.columns ?? answer?.columns ?? undefined
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -308,6 +318,7 @@ function LayoutForm({
       return
     }
     setErrors(null)
+    setSent(draft)
     save.mutate({ expectedVersion: base.version, layout: result.request }, { onSuccess: onSaved })
   }
 

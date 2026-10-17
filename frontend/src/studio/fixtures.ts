@@ -382,6 +382,85 @@ export const narrativeScenes = {
   },
 }
 
+/**
+ * The narrative with the three Scene Types of `narrativeScenes` and three flows: `heist` (the
+ * default, two phases), `side-job` (one phase, listed as used) and one of a shape the editor
+ * cannot read.
+ */
+export const narrativeFlows = {
+  ...narrativeScenes,
+  flows: [
+    {
+      key: 'heist',
+      definition: {
+        key: 'heist',
+        name: 'Heist',
+        default: true,
+        defaultView: 'focus',
+        oracles: ['fate'],
+        trackers: [],
+        phases: [
+          {
+            key: 'setup',
+            name: 'Setup',
+            mode: 'once',
+            selection: { rule: 'sequence', sceneTypes: ['ambush'] },
+          },
+          {
+            key: 'job',
+            name: 'The job',
+            mode: 'loop',
+            selection: { rule: 'player', sceneTypes: ['ambush', 'quiet'] },
+          },
+        ],
+      },
+      usedBy: [],
+    },
+    {
+      key: 'side-job',
+      definition: {
+        key: 'side-job',
+        name: 'Side job',
+        defaultView: 'journal',
+        oracles: [],
+        trackers: [],
+        phases: [
+          {
+            key: 'main',
+            name: 'Main',
+            mode: 'once',
+            selection: { rule: 'oracle', table: 'places' },
+          },
+        ],
+      },
+      usedBy: ['sceneTypes[0].play[1]'],
+    },
+    {
+      key: 'odd-flow',
+      definition: { key: 'odd-flow', name: 'Odd flow', defaultView: 'focus', phases: 'none' },
+      usedBy: [],
+    },
+  ],
+}
+
+/** An invalid draft with one error and warnings about the second flow, and one about the first. */
+export const flowIssues = {
+  valid: false,
+  error: { message: 'flows[1].phases[0].selection.table: unknown oracle table "places"' },
+  warnings: [],
+}
+
+/** A valid draft whose warnings are about the flows: two of the first, none of the second. */
+export const flowWarnings = {
+  valid: true,
+  error: null,
+  warnings: [
+    'flows[0].phases[1]: no step ever ends the phase',
+    'flows[0].oracles[0]: is not used by any step',
+    'sceneTypes[1]: is never selected',
+  ],
+}
+
 /** What the step forms pick from: the draft's tables (with entries), likelihood oracles (with levels), checks (with bands and difficulty range), trackers, tags, Scene Types, fact slots and sheet fields. */
 export const stepPickers = {
   tables: [

@@ -12,6 +12,8 @@ import {
   type LabelledDraft,
   type TrackerDraft,
 } from './narrativeDraft'
+import { NewFlowFields } from './flows/FlowFields'
+import { newFlow, newFlowToItem, type NewFlowDraft } from './flows/flowDraft'
 import { newSceneTypeToItem, type NewSceneTypeDraft } from './sceneTypes/sceneTypeDraft'
 
 export const trackerForm: ItemForm<TrackerDraft> = {
@@ -49,4 +51,17 @@ export const sceneTypeForm: ItemForm<NewSceneTypeDraft> = {
   read: () => null,
   write: newSceneTypeToItem,
   Fields: SceneTypeFields,
+}
+
+/**
+ * Creates a flow only: the flow editor edits one, so there is nothing to read here. Its Scene
+ * Types come with the draft (`newFlow`), which the tab fills from the read model.
+ */
+export const flowForm: ItemForm<NewFlowDraft> = {
+  noun: 'flow',
+  section: 'flows',
+  blank: () => newFlow([]),
+  read: () => null,
+  write: newFlowToItem,
+  Fields: NewFlowFields,
 }

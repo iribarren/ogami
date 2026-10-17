@@ -90,7 +90,7 @@ describe('the checks tab', () => {
     expect(screen.getByRole('button', { name: 'Delete odd' })).toBeEnabled()
   })
 
-  it('opens a check in the editor with its bands read-only', async () => {
+  it('opens a check in the editor with its bands and their bounds', async () => {
     const { user } = await openChecks()
 
     await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
@@ -101,8 +101,12 @@ describe('the checks tab', () => {
     expect(form.getByLabelText('Modifier')).toHaveValue('{pow}')
     expect(form.getByLabelText('Difficulty')).toBeChecked()
     expect(form.getByLabelText('Default')).toHaveValue('13')
-    expect(form.getByText('up to {check:difficulty}-1')).toBeVisible()
-    expect(form.getByText('catches the rest')).toBeVisible()
+    expect(form.getByLabelText('Band 1 key')).toHaveValue('fail')
+    expect(form.getByLabelText('Band 1 bound')).toHaveValue('formula')
+    expect(form.getByLabelText('Band 1 formula')).toHaveValue('{check:difficulty}-1')
+    expect(form.getByLabelText('Band 2 key')).toHaveValue('win')
+    expect(form.queryByLabelText('Band 2 bound')).toBeNull()
+    expect(form.getByText(/The last band catches the rest/)).toBeVisible()
   })
 
   it('creates a check with the default band and selects the saved one', async () => {
@@ -307,6 +311,219 @@ describe('the checks tab', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Move up skill' })).toBeEnabled()
+    })
+  })
+
+  describe('the bands editor', () => {
+    async function editLuck(handlers: Record<string, FakeHandler> = {}) {
+      const opened = await openChecks(handlers)
+      await opened.user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+      return { ...opened, form: within(screen.getByRole('form', { name: 'Edit luck' })) }
+    }
+
+    it('shows a bound of every kind and saves the untouched check unchanged', async () => {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }))
+      const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: handler })
+
+      expect(form.getByLabelText('Band 1 bound')).toHaveValue('tracker')
+      expect(form.getByLabelText('Band 1 tracker')).toHaveValue('heat')
+      expect(form.getByLabelText('Band 2 bound')).toHaveValue('number')
+      expect(form.getByLabelText('Band 2 number')).toHaveValue('40')
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(sent[0]).toMatchObject({ check: { bands: checks.checks[1]?.bands } })
+    })
+
+    it('adds, edits, reorders and removes bands, sending them in order', async () => {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }))
+      const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: handler })
+
+      await user.click(form.getByRole('button', { name: 'Add band' }))
+      await user.type(form.getByLabelText('Band 4 key'), 'crit')
+      await user.type(form.getByLabelText('Band 4 label'), 'Critical')
+      // The old last band now needs a bound.
+      await user.selectOptions(form.getByLabelText('Band 3 bound'), 'number')
+      await user.type(form.getByLabelText('Band 3 number'), '90')
+      await user.click(form.getByRole('button', { name: 'Move down band 1' }))
+      // Band 1 is now Middling and band 2 the Bad one.
+      await user.click(form.getByRole('button', { name: 'Remove band 2' }))
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(sent[0]).toMatchObject({
+        check: {
+          bands: [
+            { key: 'mid', label: 'Middling', upTo: 40 },
+            { key: 'good', label: 'Good', upTo: 90 },
+            { key: 'crit', label: 'Critical' },
+          ],
+        },
+      })
+      expect(sent[0]).not.toHaveProperty('check.bands.2.upTo')
+    })
+
+    it('says a bound moved to the last place is dropped, and does not send it', async () => {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }))
+      const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: handler })
+
+      await user.click(form.getByRole('button', { name: 'Move down band 2' }))
+
+      expect(form.getByText(/Its bound is dropped when you save/)).toBeVisible()
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+      // Band 3 (no bound) moved up, so it needs one: nothing is sent.
+      expect(sent).toEqual([])
+      expect(form.getByText('Choose a bound: only the last band catches the rest.')).toBeVisible()
+    })
+
+    it('limits a check to between 1 and 10 bands', async () => {
+      const { user, form } = await editLuck()
+
+      for (let count = 3; count < 10; count += 1) {
+        await user.click(form.getByRole('button', { name: 'Add band' }))
+      }
+      expect(form.getByRole('button', { name: 'Add band' })).toBeDisabled()
+      for (let count = 10; count > 1; count -= 1) {
+        await user.click(form.getByRole('button', { name: 'Remove band 1' }))
+      }
+      expect(form.getByRole('button', { name: 'Remove band 1' })).toBeDisabled()
+    })
+
+    it('refuses a band number that is not whole without calling the API', async () => {
+      const { sent, handler } = recorder(Response.json(checks))
+      const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: handler })
+
+      await user.clear(form.getByLabelText('Band 2 number'))
+      await user.type(form.getByLabelText('Band 2 number'), '4.5')
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await form.findByText('Must be a whole number.')).toBeVisible()
+      expect(form.getByLabelText('Band 2 number')).toBeInvalid()
+      expect(sent).toEqual([])
+    })
+
+    it('keeps a stored tracker the draft no longer has, and a bound of a shape it has no input for', async () => {
+      const { sent, handler } = recorder(Response.json(checks))
+      const odd = {
+        key: 'odd',
+        label: 'Odd',
+        dice: '1d6',
+        bands: [
+          { key: 'a', label: 'A', upTo: { tracker: 'gone' } },
+          { key: 'b', label: 'B', upTo: 2.5 },
+          { key: 'c', label: 'C' },
+        ],
+      }
+      const { user } = await openChecks({
+        [`GET ${base}/checks`]: json({ ...checks, checks: [odd] }),
+        [`PUT ${base}/checks/odd`]: handler,
+      })
+      await user.click(await screen.findByRole('button', { name: 'Edit odd' }))
+      const form = within(screen.getByRole('form', { name: 'Edit odd' }))
+
+      expect(form.getByLabelText('Band 1 tracker')).toHaveValue('gone')
+      expect(form.getByText('gone (not in this draft)')).toBeInTheDocument()
+      expect(form.getByText('2.5')).toBeVisible()
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(sent[0]).toMatchObject({ check: { bands: odd.bands } })
+    })
+
+    it.each([
+      ['key', 'Band 2 key'],
+      ['label', 'Band 2 label'],
+      ['upTo', 'Band 2 number'],
+    ])('puts the publisher refusal of a band %s on that band input', async (path, input) => {
+      const { user, form } = await editLuck({
+        [`PUT ${base}/checks/luck`]: json(
+          { error: `checks[1].bands[1].${path}: is refused.` },
+          422,
+        ),
+      })
+
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await form.findByText('is refused.')).toBeVisible()
+      expect(form.getByLabelText(input)).toBeInvalid()
+      expect(form.queryByRole('alert')).toBeNull()
+    })
+
+    it('shows the refusal of a formula bound with its path below the bound on the formula input', async () => {
+      const { user, form } = await editLuck({
+        [`PUT ${base}/checks/luck`]: json(
+          { error: 'checks[1].bands[0].upTo.tracker: Unknown tracker "heat".' },
+          422,
+        ),
+      })
+
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await form.findByText('Unknown tracker "heat".')).toBeVisible()
+      expect(form.getByLabelText('Band 1 tracker')).toBeInvalid()
+    })
+
+    it('shows a refusal listing outcome paths as the server returns it', async () => {
+      const text =
+        'Band "good" is used by outcomes: sceneTypes[0].play[0].outcomes[1].band, flows[0].phases[0].steps[0].outcomes[2].band.'
+      const { user, form } = await editLuck({
+        [`PUT ${base}/checks/luck`]: json({ error: text }, 422),
+      })
+
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await form.findByRole('alert')).toHaveTextContent(text)
+    })
+
+    it('shows the bands-level refusal under the bands', async () => {
+      const { user, form } = await editLuck({
+        [`PUT ${base}/checks/luck`]: json(
+          { error: 'checks[1].bands: must have 1 to 10 items.' },
+          422,
+        ),
+      })
+
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await form.findByText('must have 1 to 10 items.')).toBeVisible()
+      expect(form.queryByRole('alert')).toBeNull()
+    })
+
+    it('reports a 409 on a concurrent save of the bands', async () => {
+      const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: json(changed, 409) })
+
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
+    })
+
+    it('offers {check:difficulty} only in band formulas of a check with a difficulty', async () => {
+      const { user } = await openChecks()
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+
+      // Only band 1's menu offers it: the modifier's never does.
+      expect(form.getAllByRole('option', { name: /\{check:difficulty\}/ })).toHaveLength(1)
+
+      await user.click(form.getByLabelText('Difficulty'))
+      expect(form.queryAllByRole('option', { name: /\{check:difficulty\}/ })).toHaveLength(0)
+      expect(form.getByText(/this check declares no difficulty/)).toBeVisible()
+    })
+
+    it('diagnoses the modifier and a band formula as they are typed', async () => {
+      const { user } = await openChecks()
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+
+      await user.clear(form.getByLabelText('Modifier'))
+      await user.type(form.getByLabelText('Modifier'), '{{check:difficulty}')
+      expect(form.getByText(/the modifier cannot read a check reference/)).toBeVisible()
+
+      await user.clear(form.getByLabelText('Modifier'))
+      await user.type(form.getByLabelText('Modifier'), '{{pow}+2')
+      expect(form.getByText('Value with the sample values: 2')).toBeVisible()
+
+      await user.clear(form.getByLabelText('Band 1 formula'))
+      await user.type(form.getByLabelText('Band 1 formula'), '{{nope}')
+      expect(form.getByText(/unknown field "nope"/)).toBeVisible()
+      expect(form.getByRole('button', { name: 'Save check' })).toBeEnabled()
     })
   })
 

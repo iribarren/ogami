@@ -22,19 +22,38 @@ const inputs: Record<string, keyof CheckErrors> = {
   'difficulty.max': 'difficultyMax',
 }
 
+/** The band input a path below `bands` names: `bands[1].key`, `bands[1].upTo.formula`… */
+function bandAnswer(path: string, message: string): CheckAnswer | null {
+  if (path === 'bands') {
+    return { fields: { bands: message }, form: null }
+  }
+  const match = /^bands\[(\d+)\]\.(key|label|upTo)(?:\.(?:tracker|formula))?$/.exec(path)
+  const [, position, input] = match ?? []
+  if (position === undefined || input === undefined) {
+    return null
+  }
+  return { fields: { band: { [Number(position)]: { [input]: message } } }, form: null }
+}
+
 /**
  * Reads the publisher's `path: message` for the check at `index` of the draft's checks
- * (`checks[2].dice: …`). A path of another check, of the bands or of a property the form has no
+ * (`checks[2].dice: …`). A path of another check or of a property the form has no
  * input for comes back whole as a form message.
  */
 export function checkAnswer(text: string, index: number): CheckAnswer {
   const prefix = `checks[${String(index)}].`
   if (text.startsWith(prefix)) {
-    const match = /^([\w.]+): (.*)$/s.exec(text.slice(prefix.length))
+    const match = /^([\w.[\]]+): (.*)$/s.exec(text.slice(prefix.length))
     const [, path, message] = match ?? []
-    const input = path === undefined ? undefined : inputs[path]
-    if (input !== undefined && message !== undefined) {
-      return { fields: { [input]: message }, form: null }
+    if (path !== undefined && message !== undefined) {
+      const input = inputs[path]
+      if (input !== undefined) {
+        return { fields: { [input]: message }, form: null }
+      }
+      const band = bandAnswer(path, message)
+      if (band !== null) {
+        return band
+      }
     }
   }
   return { fields: {}, form: text }

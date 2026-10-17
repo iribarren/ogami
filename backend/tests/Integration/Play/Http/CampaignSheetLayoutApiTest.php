@@ -80,9 +80,7 @@ final class CampaignSheetLayoutApiTest extends WebTestCase
 
         self::assertArrayHasKey('sheetLayout', $pinned);
         self::assertNull($pinned['sheetLayout']);
-        $spans = array_column((array) ($pinned['sheet'] ?? null), 'span');
-        self::assertCount(9, $spans);
-        self::assertSame([1], array_values(array_unique($spans)));
+        self::assertSame(array_fill(0, 9, 1), array_column((array) ($pinned['sheet'] ?? null), 'span'));
     }
 
     /**
@@ -92,7 +90,9 @@ final class CampaignSheetLayoutApiTest extends WebTestCase
     {
         $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => $gameSystemKey]);
         self::assertResponseStatusCodeSame(201);
-        $id = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR)['id'] ?? null;
+        $created = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($created);
+        $id = $created['id'] ?? null;
         self::assertIsString($id);
 
         $this->client->request('GET', '/api/campaigns/'.$id);

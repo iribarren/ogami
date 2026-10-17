@@ -89,7 +89,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | Studio publisher: `sheet.columns`, `sheet.groups`, field `span` with the layout rules as item rules; canonical form omits defaults; `v2.schema.json` and agreement vectors; tests incl. hash of a release without layout unchanged | delegated writer (slice 1) | [x] | 8763fc2 |
 | T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | fac045b |
 | T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | | [ ] | |
+| T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | |
 | T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | | [ ] | |
 | T7 | 3 | Application + HTTP: handlers, `GET /sheet` read model, field endpoints, error mapping, API tests, `make api` | | [ ] | |
 | T8 | 4 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
@@ -105,6 +105,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-17: T1 done. ADR 0031, ADR index and 0022 note, contract §Sheet layout, glossary (Sheet layout, Group).
 - 2026-10-17: Slice 1 review fix R3: Play translator tests cover a non-string group name, a derived field span above its group's columns and an invalid second field (index 1); no translator bug.
 - 2026-10-17: T4 done. Campaign response `pinnedRelease.sheetLayout` (nullable) and field `span`; OpenAPI and TS types regenerated; API tests for a layout and a legacy release (null, span 1).
+- 2026-10-17: T5 done. `SheetFields`, `derivedValues`, `sheetValues` moved to `frontend/src/shared/sheet/` with neutral types (`SheetTemplateView`); layout renders as nested CSS grids (one column below `sm`); no-layout rendering unchanged; tests and a `WithLayout` story.
 
 ## Reviews
 

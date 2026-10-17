@@ -1,12 +1,13 @@
 import { useState } from 'react'
 
+import { summarize } from '@/shared/sheet/sheetValues'
 import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import { RollCheckDialog } from '../checks/RollCheckDialog'
 import { TagChips } from '../lists/TagFields'
 import { CharacterForm } from './CharacterForm'
-import { summarize } from './sheetValues'
+import { sheetTemplate } from './sheetTemplate'
 import { useCharacterActions, type Character, type CharacterFields } from './useCharacters'
 
 /**
@@ -18,6 +19,7 @@ import { useCharacterActions, type Character, type CharacterFields } from './use
 export function CharactersPanel({ campaign }: { campaign: Campaign }) {
   const { save } = useCharacterActions(campaign.id)
   const sheet = campaign.pinnedRelease.sheet
+  const template = sheetTemplate(campaign.pinnedRelease)
   // The id of the Character being edited, 'new' for the add form, none when no form is open.
   const [form, setForm] = useState<string | null>(null)
 
@@ -30,7 +32,7 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
     return (
       <CharacterForm
         character={character}
-        sheet={sheet}
+        sheet={template}
         trackers={campaign.trackers}
         releaseTags={campaign.tags}
         pending={save.isPending}

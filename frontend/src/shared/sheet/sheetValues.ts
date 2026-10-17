@@ -1,4 +1,4 @@
-import type { SheetField, SheetValue } from './useCharacters'
+import type { SheetFieldView, SheetValue } from './types'
 
 /**
  * What a field holds while it is edited: text as typed, so a number can be empty for a moment
@@ -10,12 +10,12 @@ export type Draft = string | string[] | { current: string; max: string }
  * The fields a Character stores a value for: every field but the derived ones, which the API
  * computes and refuses a value for.
  */
-export function storedFields(sheet: SheetField[]): SheetField[] {
+export function storedFields(sheet: SheetFieldView[]): SheetFieldView[] {
   return sheet.filter((field) => field.type !== 'derived')
 }
 
 /** The value of `field`: the stored one, or its default when there is none or it has another shape. */
-export function valueOrDefault(field: SheetField, stored: SheetValue | undefined): SheetValue {
+export function valueOrDefault(field: SheetFieldView, stored: SheetValue | undefined): SheetValue {
   switch (field.type) {
     case 'number':
       return typeof stored === 'number' ? stored : (field.default ?? 0)
@@ -33,7 +33,7 @@ export function valueOrDefault(field: SheetField, stored: SheetValue | undefined
   }
 }
 
-export function toDraft(field: SheetField, stored: SheetValue | undefined): Draft {
+export function toDraft(field: SheetFieldView, stored: SheetValue | undefined): Draft {
   const value = valueOrDefault(field, stored)
   if (typeof value === 'number') {
     return String(value)
@@ -45,7 +45,7 @@ export function toDraft(field: SheetField, stored: SheetValue | undefined): Draf
 }
 
 /** The value to send for a draft; blank list rows are dropped. */
-export function fromDraft(field: SheetField, draft: Draft): SheetValue {
+export function fromDraft(field: SheetFieldView, draft: Draft): SheetValue {
   if (typeof draft === 'string') {
     return field.type === 'number' ? Number(draft) : draft
   }
@@ -57,7 +57,7 @@ export function fromDraft(field: SheetField, draft: Draft): SheetValue {
 
 /** One short phrase for a field's value, as the Characters list shows it. */
 export function summarize(
-  field: SheetField,
+  field: SheetFieldView,
   stored: SheetValue | undefined,
   derived: Record<string, number | null> = {},
 ): string | null {

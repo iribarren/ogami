@@ -6,9 +6,8 @@ import {
   type Reference,
 } from '@/shared/lib/formula'
 
-import type { Tracker } from '../trackers/useTrackers'
+import type { SheetFieldView, TrackerReading } from './types'
 import type { Draft } from './sheetValues'
-import type { SheetField } from './useCharacters'
 
 /** What a derived field shows: its value, or the short reason it has none. */
 export type DerivedResult = { value: number } | { reason: string }
@@ -34,9 +33,9 @@ function integer(text: string): number | undefined {
  * on one that cannot, is a reason instead; nothing here throws.
  */
 export function computeDerived(
-  sheet: SheetField[],
+  sheet: SheetFieldView[],
   drafts: Record<string, Draft>,
-  trackers: Tracker[],
+  trackers: TrackerReading[],
 ): Record<string, DerivedResult> {
   const fields = new Map(sheet.map((field) => [field.key, field]))
   const results: Record<string, DerivedResult> = {}

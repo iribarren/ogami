@@ -118,6 +118,18 @@ export const lostMineWithCharacters: Campaign = {
   characters: [{ ...viCharacter, values: {} }],
 }
 
+/** The layout of `sheet`: two columns, Identity across both, Stats in two columns beside Vitals, an empty group. */
+export const sheetLayout: NonNullable<Campaign['pinnedRelease']['sheetLayout']> = {
+  columns: 2,
+  groups: [
+    { name: 'Identity', columns: 1, span: 2 },
+    { name: 'Stats', columns: 2, span: 1 },
+    { name: 'Vitals', columns: 1, span: 1 },
+    { name: 'Gear', columns: 1, span: 2 },
+    { name: 'Unused', columns: 1, span: 1 },
+  ],
+}
+
 /** `nightJobCampaign` whose release has two checks: "Skill check" (with a difficulty) and "Luck". */
 export const nightJobWithChecks: Campaign = {
   ...nightJobCampaign,

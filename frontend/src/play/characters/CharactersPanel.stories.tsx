@@ -10,6 +10,7 @@ import {
   nightJobWithChecks,
   oldCharacter,
   sheet,
+  sheetLayout,
   viCharacter,
 } from './fixtures'
 import { CharactersPanel } from './CharactersPanel'
@@ -90,5 +91,28 @@ export const RollACheck: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Roll a check for Vi' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     await expect(dialog.getByLabelText('Difficulty Value')).toHaveValue(13)
+  },
+}
+
+/** A release that declares a sheet layout: groups as boxes in two columns; one column on a phone. */
+export const WithLayout: Story = {
+  args: {
+    campaign: {
+      ...nightJobCampaign,
+      pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheetLayout },
+    },
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-2xl">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit Vi' }))
+    await expect(canvas.getByRole('group', { name: 'Stats' })).toBeInTheDocument()
+    await expect(canvas.queryByRole('group', { name: 'Unused' })).not.toBeInTheDocument()
   },
 }

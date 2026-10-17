@@ -1,64 +1,28 @@
-import { useId, useMemo, useState } from 'react'
+import { useId } from 'react'
 
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { computeDerived, integer } from '@/shared/sheet/derivedValues'
+import { computeDerived } from '@/shared/sheet/derivedValues'
 import { SheetFields } from '@/shared/sheet/SheetFields'
-import { toDraft, type Draft } from '@/shared/sheet/sheetValues'
-import type { SheetFieldView, TrackerReading } from '@/shared/sheet/types'
 
-import type { LayoutDraft } from './layoutDraft'
-import { previewTemplate } from './previewTemplate'
 import type { GameSystemSheet } from './useGameSystemSheet'
-
-/** A sample value, with the type it was typed for: another type starts it again. */
-interface Sample {
-  type: SheetFieldView['type']
-  draft: Draft
-}
-
-/** Without the samples of fields that are gone or changed type; the same object when none is. */
-function pruned(samples: Record<string, Sample>, fields: SheetFieldView[]) {
-  const kept = Object.entries(samples).filter(([key, sample]) =>
-    fields.some((field) => field.key === key && field.type === sample.type),
-  )
-  return kept.length === Object.keys(samples).length ? samples : Object.fromEntries(kept)
-}
+import type { SheetSamples } from './useSheetSamples'
 
 /**
  * The sheet as a player will see it, with the shared renderer and derived values. Sample values
- * and sample Trackers are typed here and never saved. `layoutDraft` is the layout panel's unsaved
- * draft: while it is valid it is shown instead of the saved layout.
+ * and sample Trackers are typed here and never saved; they live in `samples`, which the Sheet tab
+ * shares with the formula inputs. The template shows the layout panel's unsaved draft while it is
+ * valid, instead of the saved layout.
  */
 export function SheetPreview({
   sheet,
-  layoutDraft,
+  samples,
 }: {
   sheet: GameSystemSheet
-  layoutDraft: LayoutDraft | null
+  samples: SheetSamples
 }) {
-  const template = useMemo(() => previewTemplate(sheet, layoutDraft), [sheet, layoutDraft])
-  const [samples, setSamples] = useState<Record<string, Sample>>({})
-  const [trackerSamples, setTrackerSamples] = useState<Record<string, string>>({})
+  const { template, drafts, trackerSamples, readings } = samples
   const headingId = useId()
-
-  const kept = pruned(samples, template.fields)
-  if (kept !== samples) {
-    setSamples(kept)
-  }
-  const drafts = Object.fromEntries(
-    template.fields.map((field) => [
-      field.key,
-      kept[field.key]?.draft ?? toDraft(field, undefined),
-    ]),
-  )
-
-  // A Tracker whose sample is not a whole number has no reading: a derived field that reads it
-  // says its value is incomplete.
-  const readings = sheet.trackers.flatMap(({ key }): TrackerReading[] => {
-    const value = integer(trackerSamples[key] ?? '0')
-    return value === undefined ? [] : [{ key, value }]
-  })
   const derived = computeDerived(template.fields, drafts, readings)
 
   return (
@@ -80,12 +44,7 @@ export function SheetPreview({
           template={template}
           drafts={drafts}
           derived={derived}
-          onChange={(key, draft) => {
-            const field = template.fields.find((held) => held.key === key)
-            if (field !== undefined) {
-              setSamples({ ...kept, [key]: { type: field.type, draft } })
-            }
-          }}
+          onChange={samples.setSample}
         />
       )}
       {sheet.trackers.length > 0 && (
@@ -98,7 +57,7 @@ export function SheetPreview({
                 label={label}
                 value={trackerSamples[key] ?? '0'}
                 onChange={(value) => {
-                  setTrackerSamples({ ...trackerSamples, [key]: value })
+                  samples.setTrackerSample(key, value)
                 }}
               />
             ))}

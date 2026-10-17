@@ -120,6 +120,17 @@ describe('formula diagnostics', () => {
     })
   })
 
+  it('counts positions in the trimmed text, for a refused reference and for a cycle', () => {
+    expect(diagnose('  {pow} + {ghost}').error).toEqual({
+      message: '{ghost}: unknown field "ghost"',
+      position: 9,
+    })
+    expect(diagnose('\n  {pow} + {other}  ').error).toMatchObject({
+      message: 'Derived values depend on each other in a cycle: bonus -> other -> bonus.',
+      position: 9,
+    })
+  })
+
   it('reports a field that reads itself', () => {
     expect(diagnose('{bonus} + 1')).toMatchObject({
       error: {

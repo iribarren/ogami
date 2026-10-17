@@ -16,6 +16,7 @@ import { SheetFieldDialog } from './SheetFieldDialog'
 import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
 import { SheetPreview } from './SheetPreview'
+import { useSheetSamples, type SheetSamples } from './useSheetSamples'
 import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
 import {
   SheetError,
@@ -68,6 +69,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
   const latest = useGameSystemSheet(gameSystemKey)
   const [reloadFailed, setReloadFailed] = useState(false)
   const [layoutDraft, setLayoutDraft] = useState<LayoutDraft | null>(null)
+  const samples = useSheetSamples(data, layoutDraft)
   const sections = sheetSections(data.fields, data.groups)
 
   return (
@@ -78,6 +80,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
         <SheetFieldDialog
           gameSystemKey={gameSystemKey}
           sheet={data}
+          samples={samples}
           original={null}
           trigger={<Button size="sm">Add field</Button>}
         />
@@ -131,6 +134,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
                   key={typeof field.key === 'string' ? field.key : `#${String(index)}`}
                   gameSystemKey={gameSystemKey}
                   sheet={data}
+                  samples={samples}
                   field={field}
                   index={index}
                   busy={move.isPending}
@@ -148,7 +152,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
           )}
         </section>
       ))}
-      <SheetPreview sheet={data} layoutDraft={layoutDraft} />
+      <SheetPreview sheet={data} samples={samples} />
     </section>
   )
 }
@@ -156,6 +160,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
 function FieldRow({
   gameSystemKey,
   sheet,
+  samples,
   field,
   index,
   busy,
@@ -163,6 +168,7 @@ function FieldRow({
 }: {
   gameSystemKey: string
   sheet: GameSystemSheet
+  samples: SheetSamples
   field: StoredField
   index: number
   busy: boolean
@@ -192,6 +198,7 @@ function FieldRow({
       <SheetFieldDialog
         gameSystemKey={gameSystemKey}
         sheet={sheet}
+        samples={samples}
         original={key}
         trigger={
           <Button variant="outline" size="sm" disabled={!editable} aria-label={`Edit ${key}`}>

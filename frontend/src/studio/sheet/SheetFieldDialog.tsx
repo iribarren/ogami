@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode, type SubmitEvent } from 'react'
+import { useId, useMemo, useState, type ReactNode, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import {
@@ -14,6 +14,8 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import { TextField } from '../narrative/TextField'
 import { StudioError } from '../useGameSystems'
+import { formulaDiagnostics, type FormulaDiagnostics } from './formulaDiagnostics'
+import { FormulaInput, type ReferenceOption } from './FormulaInput'
 import {
   blankField,
   fieldTypes,
@@ -31,6 +33,7 @@ import {
   useSaveSheetField,
   type GameSystemSheet,
 } from './useGameSystemSheet'
+import type { SheetSamples } from './useSheetSamples'
 
 /**
  * The create button or an Edit button (`original` is the key of the field being replaced) and its
@@ -40,11 +43,14 @@ import {
 export function SheetFieldDialog({
   gameSystemKey,
   sheet,
+  samples,
   original,
   trigger,
 }: {
   gameSystemKey: string
   sheet: GameSystemSheet
+  /** The Sheet tab's sample values, which a derived field's formula is computed over. */
+  samples: SheetSamples
   original: string | null
   trigger: ReactNode
 }) {
@@ -70,6 +76,7 @@ export function SheetFieldDialog({
         <FieldForm
           gameSystemKey={gameSystemKey}
           sheet={sheet}
+          samples={samples}
           original={original}
           save={save}
           onSaved={() => {
@@ -92,12 +99,14 @@ const typeLabels: Record<FieldType, string> = {
 function FieldForm({
   gameSystemKey,
   sheet,
+  samples,
   original,
   save,
   onSaved,
 }: {
   gameSystemKey: string
   sheet: GameSystemSheet
+  samples: SheetSamples
   original: string | null
   save: ReturnType<typeof useSaveSheetField>
   onSaved: () => void
@@ -132,6 +141,26 @@ function FieldForm({
   const renamed = original !== null && draft.key.trim() !== original
   const publishedRename = renamed && base.publishedFieldKeys.includes(original)
   const columns = base.groups?.find((group) => group.name === draft.group)?.columns ?? 1
+
+  // What the formula may read, and what it computes to, with this field as typed in place of the
+  // saved one. Blank formulas say nothing yet: the publisher refuses them on save.
+  const diagnostics = useMemo(() => {
+    if (draft.type !== 'derived' || draft.formula.trim() === '') {
+      return null
+    }
+    return formulaDiagnostics({
+      key: draft.key.trim() || (original ?? ''),
+      formula: draft.formula,
+      fields: samples.template.fields.filter((field) => field.key !== original),
+      drafts: samples.drafts,
+      trackerKeys: base.trackers.map((tracker) => tracker.key),
+      trackers: samples.readings,
+    })
+  }, [draft.type, draft.key, draft.formula, original, samples, base.trackers])
+  const references = useMemo(
+    () => readableReferences(samples, base, draft.key.trim() || (original ?? '')),
+    [samples, base, draft.key, original],
+  )
 
   const change = (changes: Partial<FieldDraft>) => {
     setDraft((current) => ({ ...current, ...changes }))
@@ -265,7 +294,13 @@ function FieldForm({
           />
         </>
       )}
-      <TypeFields draft={draft} change={change} errors={shown} />
+      <TypeFields
+        draft={draft}
+        change={change}
+        errors={shown}
+        diagnostics={diagnostics}
+        references={references}
+      />
       {message !== '' && (
         <p role="alert" className="text-sm text-destructive">
           {message}
@@ -295,10 +330,14 @@ function TypeFields({
   draft,
   change,
   errors,
+  diagnostics,
+  references,
 }: {
   draft: FieldDraft
   change: (changes: Partial<FieldDraft>) => void
   errors: Record<string, string | undefined>
+  diagnostics: FormulaDiagnostics | null
+  references: ReferenceOption[]
 }) {
   const multilineId = useId()
   const text = (label: string, name: keyof FieldDraft) => (
@@ -348,8 +387,48 @@ function TypeFields({
     case 'track':
       return text('Max', 'max')
     case 'derived':
-      return text('Formula', 'formula')
+      return (
+        <FormulaInput
+          label="Formula"
+          value={draft.formula}
+          onChange={(formula) => {
+            change({ formula })
+          }}
+          diagnostics={diagnostics}
+          references={references}
+          error={errors.formula}
+        />
+      )
   }
+}
+
+/** What a derived field named `own` may read: number, track and derived fields, track maxes, Trackers. */
+function readableReferences(
+  samples: SheetSamples,
+  sheet: GameSystemSheet,
+  own: string,
+): ReferenceOption[] {
+  const fields = samples.template.fields
+    .filter((field) => field.key !== own)
+    .flatMap(({ key, label, type }): ReferenceOption[] => {
+      switch (type) {
+        case 'number':
+        case 'derived':
+          return [{ reference: key, label }]
+        case 'track':
+          return [
+            { reference: key, label },
+            { reference: `${key}.max`, label: `${label} max` },
+          ]
+        default:
+          return []
+      }
+    })
+  const trackers = sheet.trackers.map(({ key, label }) => ({
+    reference: `tracker:${key}`,
+    label: `Tracker ${label}`,
+  }))
+  return [...fields, ...trackers]
 }
 
 export function SelectField({

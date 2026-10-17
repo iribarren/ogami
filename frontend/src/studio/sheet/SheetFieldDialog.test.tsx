@@ -431,3 +431,82 @@ describe('a refused save', () => {
     expect(inDialog().getByText(/was changed by another request/)).toBeVisible()
   })
 })
+
+describe('the formula of a derived field', () => {
+  async function editBonus(handlers: Record<string, FakeHandler> = {}) {
+    const opened = await openSheet(handlers)
+    await opened.user.click(await screen.findByRole('button', { name: 'Edit bonus' }))
+    return opened
+  }
+
+  async function retype(user: ReturnType<typeof userEvent.setup>, text: string) {
+    const input = inDialog().getByLabelText('Formula')
+    await user.clear(input)
+    await user.click(input)
+    await user.paste(text)
+  }
+
+  it('shows the value over the sample values', async () => {
+    await editBonus()
+
+    expect(inDialog().getByText('Value with the sample values: 1')).toBeVisible()
+  })
+
+  it('computes over the sample values typed in the preview', async () => {
+    const { user } = await openSheet()
+    const preview = within(await screen.findByRole('region', { name: 'Preview' }))
+    await user.clear(preview.getByLabelText('Power'))
+    await user.type(preview.getByLabelText('Power'), '7')
+    await user.click(screen.getByRole('button', { name: 'Edit bonus' }))
+
+    expect(inDialog().getByText('Value with the sample values: 8')).toBeVisible()
+  })
+
+  it('marks a syntax error where it is, after leading whitespace', async () => {
+    const { user } = await editBonus()
+
+    await retype(user, '  1 + * 2')
+
+    expect(inDialog().getByText('*', { selector: 'mark' })).toBeVisible()
+    expect(inDialog().queryByText(/Value with the sample values/)).not.toBeInTheDocument()
+  })
+
+  it('refuses an unknown reference and a cycle, and marks the reference', async () => {
+    const { user } = await editBonus()
+
+    await retype(user, '{pow} + {ghost}')
+    expect(inDialog().getByText('{ghost}: unknown field "ghost"')).toBeVisible()
+    expect(inDialog().getByText('{', { selector: 'mark' })).toBeVisible()
+
+    await retype(user, '{bonus} + 1')
+    expect(inDialog().getByText(/depend on each other in a cycle: bonus -> bonus/)).toBeVisible()
+  })
+
+  it('inserts a reference to a field or a Tracker, not to the field itself or a text field', async () => {
+    const { user } = await editBonus()
+    const options = within(inDialog().getByLabelText('Insert reference'))
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('value'))
+
+    expect(options).toEqual(['', 'pow', 'hp', 'hp.max', 'dex', 'tracker:heat'])
+    await retype(user, '1 + ')
+    await user.selectOptions(inDialog().getByLabelText('Insert reference'), 'tracker:heat')
+    expect(inDialog().getByLabelText('Formula')).toHaveValue('1 + {tracker:heat}')
+  })
+
+  it('does not block saving: the server answers, and its refusal shows on the input', async () => {
+    const { sent, handler } = recorder(
+      Response.json({ error: 'sheet.fields[3].formula: unknown field "ghost"' }, { status: 422 }),
+    )
+    const { user } = await editBonus({ [`PUT ${base}/sheet/fields/bonus`]: handler })
+
+    await retype(user, '{pow} + {ghost}')
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toMatchObject({ key: 'bonus', formula: '{pow} + {ghost}' })
+    })
+    expect(await inDialog().findByText('unknown field "ghost"')).toBeVisible()
+    expect(inDialog().getByLabelText('Formula')).toHaveAttribute('aria-invalid', 'true')
+  })
+})

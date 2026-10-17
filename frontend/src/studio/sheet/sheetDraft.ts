@@ -166,7 +166,13 @@ export function writeField(
     }
     field.group = group
     if (draft.span !== '') {
-      field.span = Number(draft.span)
+      const columns = groups.find((declared) => declared.name === group)?.columns ?? 1
+      const span = Number(draft.span)
+      if (wholeNumber.test(draft.span) && span >= 1 && span <= columns) {
+        field.span = span
+      } else {
+        errors.span = `Must be a whole number from 1 to ${String(columns)}.`
+      }
     }
   } else if (group !== '') {
     field.group = group

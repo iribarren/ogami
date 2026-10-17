@@ -182,7 +182,30 @@ describe('moving a field', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
-    expect(reads).toBe(2)
+    // The conflict itself refetched the sheet; the button reloads once more and clears the error.
+    expect(reads).toBe(3)
+  })
+
+  it('keeps the conflict and says so when the reload fails', async () => {
+    let reads = 0
+    const { user } = await openSheet({
+      [`GET ${base}/sheet`]: () =>
+        reads++ === 0 ? Response.json(sheet) : new Response('Oops', { status: 500 }),
+      [`POST ${base}/sheet/fields/pow/move`]: json(changed, 409),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Move down pow' }))
+    await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(
+      await screen.findByText(
+        "Couldn't reload the latest version. Try again.",
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeVisible()
+    expect(screen.getByText(/was changed by another request/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeVisible()
   })
 
   it.each([
@@ -252,6 +275,29 @@ describe('deleting a field', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+  })
+
+  it('keeps the conflict and the dialog open when the reload fails', async () => {
+    let reads = 0
+    const { user } = await openSheet({
+      [`GET ${base}/sheet`]: () =>
+        reads++ === 0 ? Response.json(sheet) : new Response('Oops', { status: 500 }),
+      [`DELETE ${base}/sheet/fields/dex`]: json(changed, 409),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Delete dex' }))
+    await user.click(inDialog().getByRole('button', { name: 'Delete the field' }))
+    await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(
+      await inDialog().findByText(
+        "Couldn't reload the latest version. Try again.",
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeVisible()
+    expect(inDialog().getByText(/was changed by another request/)).toBeVisible()
+    expect(inDialog().getByRole('button', { name: 'Reload the latest version' })).toBeVisible()
   })
 
   it.each([

@@ -371,7 +371,7 @@ describe('a refused save', () => {
     expect(inDialog().getByLabelText('Key')).toHaveValue('pow')
   })
 
-  it('closes with the list when the reload finds the field gone', async () => {
+  it('closes with the list when the conflict refetch finds the field gone', async () => {
     let reads = 0
     const gone = { ...sheet, version: 9, fields: sheet.fields.filter((f) => f.key !== 'dex') }
     const { user } = await openSheet({
@@ -381,7 +381,6 @@ describe('a refused save', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit dex' }))
     await user.click(inDialog().getByRole('button', { name: 'Save field' }))
-    await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -407,5 +406,28 @@ describe('a refused save', () => {
 
     expect(await inDialog().findByText(/changed to a shape this editor cannot read/)).toBeVisible()
     expect(inDialog().getByLabelText('Label')).toHaveValue('Dexterity')
+  })
+
+  it('keeps the conflict state when the reload of the sheet fails', async () => {
+    let reads = 0
+    const { user } = await openSheet({
+      [`GET ${base}/sheet`]: () =>
+        reads++ === 0 ? Response.json(sheet) : new Response('Oops', { status: 500 }),
+      [`PUT ${base}/sheet/fields/pow`]: json(changed, 409),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit pow' }))
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+    await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(
+      await inDialog().findByText(
+        "Couldn't reload the latest version. Try again.",
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeVisible()
+    expect(inDialog().getByRole('button', { name: 'Reload the latest version' })).toBeVisible()
+    expect(inDialog().getByText(/was changed by another request/)).toBeVisible()
   })
 })

@@ -4,6 +4,7 @@ import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
 import { gameSystemKey, StudioError, studioError, validationKey } from '../useGameSystems'
+import type { LayoutRequest } from './layoutDraft'
 import type { StoredField } from './sheetDraft'
 
 export type GameSystemSheet = components['schemas']['GameSystemSheetResponse']
@@ -57,7 +58,8 @@ export function useGameSystemSheet(key: string) {
 /**
  * Every write answers with the whole sheet and the new version: it replaces the cached one, so
  * the next write carries the right `expectedVersion`. The draft changed, so what the GameSystem
- * page shows and its validation are refetched.
+ * page shows and its validation are refetched. A 409 means the cached version is stale, so the
+ * sheet is refetched too: the next write must not carry the version that was just refused.
  */
 function useSheetWrite<Variables>(
   key: string,
@@ -71,6 +73,11 @@ function useSheetWrite<Variables>(
       queryClient.setQueryData(sheetKey(key), sheet)
       void queryClient.invalidateQueries({ queryKey: gameSystemKey(key), exact: true })
       void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+    },
+    onError: (error) => {
+      if (error instanceof StudioError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: sheetKey(key), exact: true })
+      }
     },
   })
 }
@@ -156,4 +163,58 @@ export function useMoveSheetField(key: string) {
       throw sheetError(response, error, 'Moving the field')
     },
   )
+}
+
+/** `PUT /sheet/layout`: the sheet's columns and the whole list of groups, in order. */
+export function useSaveSheetLayout(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(
+    key,
+    async ({ expectedVersion, layout }: { expectedVersion: number; layout: LayoutRequest }) => {
+      const { data, error, response } = await api.PUT(
+        '/api/studio/game-systems/{key}/sheet/layout',
+        {
+          params: { path: { key } },
+          body: { expectedVersion, ...layout },
+        },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Saving the layout')
+    },
+  )
+}
+
+/** `POST /sheet/layout/declare`: groups from the fields' own group text. */
+export function useDeclareSheetLayout(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
+    const { data, error, response } = await api.POST(
+      '/api/studio/game-systems/{key}/sheet/layout/declare',
+      { params: { path: { key } }, body: { expectedVersion } },
+    )
+    if (data !== undefined) {
+      return data
+    }
+    throw sheetError(response, error, 'Declaring the layout')
+  })
+}
+
+/** `DELETE /sheet/layout?expectedVersion=N`: back to plain groups. */
+export function useRemoveSheetLayout(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
+    const { data, error, response } = await api.DELETE(
+      '/api/studio/game-systems/{key}/sheet/layout',
+      { params: { path: { key }, query: { expectedVersion } } },
+    )
+    if (data !== undefined) {
+      return data
+    }
+    throw sheetError(response, error, 'Removing the layout')
+  })
 }

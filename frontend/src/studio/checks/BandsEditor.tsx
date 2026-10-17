@@ -10,7 +10,7 @@ import {
   blankBand,
   maxBands,
   type BandDraft,
-  type BandErrors,
+  type BandErrorMap,
   type DifficultyDraft,
   type UpToDraft,
 } from './checkDraft'
@@ -56,12 +56,16 @@ export function BandsEditor({
   errors,
 }: {
   bands: BandDraft[]
-  onChange: (bands: BandDraft[]) => void
+  /**
+   * `order` comes with a rearrangement (a move, a removal, an added band): for each band now, the
+   * position it had before, null for the new one, so what is known by position follows the bands.
+   */
+  onChange: (bands: BandDraft[], order?: (number | null)[]) => void
   catalog: Pick<GameSystemChecks, 'fields' | 'trackers'>
   difficulty: DifficultyDraft | null
   /** The publisher's message about the bands as a whole. */
   error?: string
-  errors: Record<number, BandErrors>
+  errors: BandErrorMap
 }) {
   const declared = useMemo(() => declaredDifficulty(difficulty), [difficulty])
   const references = useMemo(
@@ -78,7 +82,9 @@ export function BandsEditor({
     if (band !== undefined) {
       next.splice(to, 0, band)
     }
-    onChange(next)
+    const order: (number | null)[] = bands.map((_, at) => at)
+    order.splice(to, 0, ...order.splice(index, 1))
+    onChange(next, order)
   }
 
   return (
@@ -163,7 +169,10 @@ export function BandsEditor({
                   aria-label={`Remove ${name.toLowerCase()}`}
                   disabled={bands.length <= 1}
                   onClick={() => {
-                    onChange(bands.filter((_, at) => at !== index))
+                    onChange(
+                      bands.filter((_, at) => at !== index),
+                      bands.flatMap((_, at) => (at === index ? [] : [at])),
+                    )
                   }}
                 >
                   Remove
@@ -180,7 +189,7 @@ export function BandsEditor({
         size="sm"
         disabled={bands.length >= maxBands}
         onClick={() => {
-          onChange([...bands, blankBand()])
+          onChange([...bands, blankBand()], [...bands.keys(), null])
         }}
       >
         Add band

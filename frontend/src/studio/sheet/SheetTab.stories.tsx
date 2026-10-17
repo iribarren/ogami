@@ -6,6 +6,7 @@ import { StoryProviders } from '@/test/StoryProviders'
 
 import { sheet, sheetUngrouped, sheetV1 } from '../fixtures'
 import { SheetTab } from './SheetTab'
+import { useSampleValues } from './useSheetSamples'
 
 const json =
   (body: unknown, status = 200): FakeHandler =>
@@ -14,9 +15,14 @@ const json =
 
 const base = '/api/studio/game-systems/my-draft'
 
+/** The tab with the sample values the GameSystem page keeps for it. */
+function WithSamples({ gameSystemKey }: { gameSystemKey: string }) {
+  return <SheetTab gameSystemKey={gameSystemKey} sampleValues={useSampleValues()} />
+}
+
 const meta = {
   title: 'Studio/SheetTab',
-  component: SheetTab,
+  component: WithSamples,
   args: { gameSystemKey: 'my-draft' },
   parameters: { api: { [`GET ${base}/sheet`]: json(sheet) } },
   decorators: [
@@ -26,7 +32,7 @@ const meta = {
       </StoryProviders>
     ),
   ],
-} satisfies Meta<typeof SheetTab>
+} satisfies Meta<typeof WithSamples>
 
 export default meta
 type Story = StoryObj<typeof meta>

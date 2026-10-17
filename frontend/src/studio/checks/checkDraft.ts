@@ -43,6 +43,37 @@ export interface CheckDraft {
 /** A message per band input. */
 export type BandErrors = Partial<Record<'key' | 'label' | 'upTo', string>>
 
+/** The messages of the bands' inputs, by the band's position. */
+export type BandErrorMap = Record<number, BandErrors>
+
+/**
+ * Two sets of band messages as one, field by field: a band both name keeps the messages of every
+ * input, and the later set wins only for an input both have a message for.
+ */
+export function mergeBandErrors(first: BandErrorMap, second: BandErrorMap): BandErrorMap {
+  const merged: BandErrorMap = { ...first }
+  for (const [position, found] of Object.entries(second)) {
+    merged[Number(position)] = { ...merged[Number(position)], ...found }
+  }
+  return merged
+}
+
+/**
+ * The band messages after the bands were rearranged: `order` lists, for each band now, the
+ * position it had before (null for a band just added). A message follows its band; a removed
+ * band's is dropped and the later ones shift; a new band starts with none.
+ */
+export function followBands(errors: BandErrorMap, order: (number | null)[]): BandErrorMap {
+  const followed: BandErrorMap = {}
+  order.forEach((before, position) => {
+    const found = before === null ? undefined : errors[before]
+    if (found !== undefined) {
+      followed[position] = found
+    }
+  })
+  return followed
+}
+
 /** A message per input, keyed like the draft; the difficulty inputs are `difficulty<Name>`. */
 export type CheckErrors = Partial<
   Record<
@@ -61,7 +92,7 @@ export type CheckErrors = Partial<
   >
 > & {
   /** The messages of each band's inputs, by the band's position. */
-  band?: Record<number, BandErrors>
+  band?: BandErrorMap
 }
 
 export const blankDifficulty = (): DifficultyDraft => ({
@@ -168,6 +199,25 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     difficulty: read,
     bands: readBands as BandDraft[],
   }
+}
+
+/** A value written with its keys in order, so two checks that differ only by key order match. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonical).join(',')}]`
+  }
+  if (isObject(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((name) => `${JSON.stringify(name)}:${canonical(value[name])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/** Whether two stored checks say the same, whatever the order of their properties. */
+export function sameCheck(first: StoredCheck, second: StoredCheck): boolean {
+  return canonical(first) === canonical(second)
 }
 
 const wholeNumber = /^-?\d+$/

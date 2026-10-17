@@ -12,18 +12,25 @@ import {
 } from '@/shared/ui/dialog'
 import { Label } from '@/shared/ui/label'
 
+import type { SampleValues } from '../sheet/useSheetSamples'
 import { BandsEditor } from './BandsEditor'
+import { CheckSandbox } from './CheckSandbox'
 import { TextField } from '../narrative/TextField'
 import { FormulaInput } from '../sheet/FormulaInput'
 import { StudioError } from '../useGameSystems'
 import {
   blankCheck,
   blankDifficulty,
+  followBands,
+  mergeBandErrors,
   readCheck,
+  sameCheck,
   writeCheck,
+  type BandErrorMap,
   type CheckDraft,
   type CheckErrors,
   type DifficultyDraft,
+  type StoredCheck,
 } from './checkDraft'
 import { checkFormulaDiagnostics, checkReferences } from './checkFormulaDiagnostics'
 import { checkAnswer } from './checkError'
@@ -37,7 +44,14 @@ import {
 } from './useGameSystemChecks'
 
 /** The checks of a draft: a list to move and delete, and an editor panel for one check at a time. */
-export function ChecksTab({ gameSystemKey }: { gameSystemKey: string }) {
+export function ChecksTab({
+  gameSystemKey,
+  sampleValues,
+}: {
+  gameSystemKey: string
+  /** The sample values the page keeps, shared with the Sheet tab's preview. */
+  sampleValues: SampleValues
+}) {
   const checks = useGameSystemChecks(gameSystemKey)
 
   if (checks.data === undefined) {
@@ -68,7 +82,7 @@ export function ChecksTab({ gameSystemKey }: { gameSystemKey: string }) {
           Couldn&apos;t refresh the checks. {checks.error.message}
         </p>
       )}
-      <CheckList gameSystemKey={gameSystemKey} data={checks.data} />
+      <CheckList gameSystemKey={gameSystemKey} data={checks.data} sampleValues={sampleValues} />
     </>
   )
 }
@@ -80,7 +94,15 @@ export function ChecksTab({ gameSystemKey }: { gameSystemKey: string }) {
  */
 type Selection = { original: string | null; start: GameSystemChecks; opened: number } | null
 
-function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameSystemChecks }) {
+function CheckList({
+  gameSystemKey,
+  data,
+  sampleValues,
+}: {
+  gameSystemKey: string
+  data: GameSystemChecks
+  sampleValues: SampleValues
+}) {
   const move = useMoveCheck(gameSystemKey)
   const latest = useGameSystemChecks(gameSystemKey)
   const [selected, setSelected] = useState<Selection>(null)
@@ -119,6 +141,20 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
       }
       return { ...current, start: result }
     })
+  }
+
+  /**
+   * The open editor saved its check: it goes on from the returned checks, keeping the form as it
+   * is (and the sandbox with its results), under the key the check now has. Only the editor that
+   * was open when the save began: another opening has its own check.
+   */
+  function adopt(opened: number, saved: GameSystemChecks, key: string) {
+    setConflict(null)
+    setSelected((current) =>
+      current !== null && current.opened === opened
+        ? { ...current, original: key, start: saved }
+        : current,
+    )
   }
 
   /** Refetches the checks and opens the editor again on them; a failure keeps what is shown. */
@@ -231,8 +267,9 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
           gameSystemKey={gameSystemKey}
           start={selected.start}
           original={selected.original}
+          sampleValues={sampleValues}
           onSaved={(saved, key) => {
-            open(key, saved)
+            adopt(selected.opened, saved, key)
           }}
           onConflict={onConflict}
         />
@@ -426,12 +463,14 @@ function CheckEditor({
   gameSystemKey,
   start,
   original,
+  sampleValues,
   onSaved,
   onConflict,
 }: {
   gameSystemKey: string
   start: GameSystemChecks
   original: string | null
+  sampleValues: SampleValues
   onSaved: (saved: GameSystemChecks, key: string) => void
   onConflict: (message: string) => void
 }) {
@@ -440,7 +479,12 @@ function CheckEditor({
     const stored = start.checks.find((check) => check.key === original)
     return (stored && readCheck(stored)) ?? blankCheck()
   })
-  const [errors, setErrors] = useState<CheckErrors>({})
+  const [errors, setErrors] = useState<Omit<CheckErrors, 'band'>>({})
+  // The band messages, by position, from the form's own checks and from the publisher's refusal.
+  // They follow their band when the bands are rearranged: a message must not stay on the band
+  // that took the place of the one it was about.
+  const [localBands, setLocalBands] = useState<BandErrorMap>({})
+  const [publishedBands, setPublishedBands] = useState<BandErrorMap>({})
   const { error } = save
   const references = useMemo(() => checkReferences(start, 'modifier', false), [start])
   const modifierDiagnostics = useMemo(
@@ -476,7 +520,8 @@ function CheckEditor({
   const shown: CheckErrors = {
     ...errors,
     ...answer?.fields,
-    band: { ...errors.band, ...answer?.fields.band },
+    // Per input: a refusal of a band's key does not hide the form's message about its label.
+    band: mergeBandErrors(localBands, publishedBands),
   }
 
   const change = (changes: Partial<CheckDraft>) => {
@@ -490,156 +535,201 @@ function CheckEditor({
     )
   }
 
+  /** Shows what is wrong with the form, as a refused submit does. */
+  function showErrors(found: CheckErrors) {
+    const { band, ...fields } = found
+    setErrors(fields)
+    setLocalBands(band ?? {})
+  }
+
+  /**
+   * Saves the check and goes on from what the API returned: the saved check's key, or null when
+   * the save was refused (a 422 shows on the form, a 409 reloads the editor).
+   */
+  async function commit(check: StoredCheck): Promise<string | null> {
+    setErrors({})
+    setLocalBands({})
+    setPublishedBands({})
+    try {
+      const saved = await save.mutateAsync({ expectedVersion: start.version, original, check })
+      // The returned read model says which check was saved.
+      const key = saved.checks.find((held) => held.key === check.key)?.key ?? String(check.key)
+      onSaved(saved, key)
+      return key
+    } catch (failure) {
+      if (failure instanceof StudioError && failure.status === 409) {
+        onConflict(failure.message)
+      } else if (failure instanceof CheckError && failure.status === 422) {
+        setPublishedBands(checkAnswer(failure.message, position).fields.band ?? {})
+      }
+      return null
+    }
+  }
+
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     const result = writeCheck(draft)
     if ('errors' in result) {
-      setErrors(result.errors)
+      showErrors(result.errors)
       return
     }
-    setErrors({})
-    save.mutate(
-      { expectedVersion: start.version, original, check: result.check },
-      {
-        onSuccess: (saved) => {
-          // The returned read model says which check was saved.
-          onSaved(
-            saved,
-            saved.checks.find((check) => check.key === result.check.key)?.key ??
-              String(result.check.key),
-          )
-        },
-        onError: (failure) => {
-          if (failure instanceof StudioError && failure.status === 409) {
-            onConflict(failure.message)
-          }
-        },
-      },
-    )
+    void commit(result.check)
   }
+
+  // Whether the form says something other than the saved check does.
+  const stored = start.checks.find((check) => check.key === original)
+  const written = writeCheck(draft)
+  const dirty = !('check' in written) || stored === undefined || !sameCheck(written.check, stored)
 
   const title = original === null ? 'New check' : `Edit ${original}`
 
   return (
-    <form
-      aria-label={title}
-      className="space-y-4 rounded-xl p-4 ring-1 ring-foreground/10"
-      onSubmit={handleSubmit}
-    >
-      <h3 className="font-heading font-semibold">{title}</h3>
-      <TextField
-        label="Key"
-        value={draft.key}
-        onChange={(key) => {
-          change({ key })
-        }}
-        error={shown.key}
-      />
-      <TextField
-        label="Label"
-        value={draft.label}
-        onChange={(label) => {
-          change({ label })
-        }}
-        error={shown.label}
-      />
-      <TextField
-        label="Hint"
-        value={draft.hint}
-        onChange={(hint) => {
-          change({ hint })
-        }}
-        error={shown.hint}
-      />
-      <TextField
-        label="Dice"
-        value={draft.dice}
-        onChange={(dice) => {
-          change({ dice })
-        }}
-        error={shown.dice}
-        help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
-      />
-      <FormulaInput
-        label="Modifier"
-        value={draft.modifier}
-        onChange={(modifier) => {
-          change({ modifier })
-        }}
-        diagnostics={modifierDiagnostics}
-        references={references}
-        error={shown.modifier}
-      />
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <input
-            id={difficultyId}
-            type="checkbox"
-            checked={draft.difficulty !== null}
-            onChange={(event) => {
-              change({ difficulty: event.target.checked ? blankDifficulty() : null })
-            }}
-          />
-          <Label htmlFor={difficultyId}>Difficulty</Label>
-        </div>
-        {shown.difficulty && <p className="text-sm text-destructive">{shown.difficulty}</p>}
-        {draft.difficulty !== null && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TextField
-              label="Difficulty label"
-              value={draft.difficulty.label}
-              onChange={(label) => {
-                changeDifficulty({ label })
+    <div className="space-y-4">
+      <form
+        aria-label={title}
+        className="space-y-4 rounded-xl p-4 ring-1 ring-foreground/10"
+        onSubmit={handleSubmit}
+      >
+        <h3 className="font-heading font-semibold">{title}</h3>
+        <TextField
+          label="Key"
+          value={draft.key}
+          onChange={(key) => {
+            change({ key })
+          }}
+          error={shown.key}
+        />
+        <TextField
+          label="Label"
+          value={draft.label}
+          onChange={(label) => {
+            change({ label })
+          }}
+          error={shown.label}
+        />
+        <TextField
+          label="Hint"
+          value={draft.hint}
+          onChange={(hint) => {
+            change({ hint })
+          }}
+          error={shown.hint}
+        />
+        <TextField
+          label="Dice"
+          value={draft.dice}
+          onChange={(dice) => {
+            change({ dice })
+          }}
+          error={shown.dice}
+          help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
+        />
+        <FormulaInput
+          label="Modifier"
+          value={draft.modifier}
+          onChange={(modifier) => {
+            change({ modifier })
+          }}
+          diagnostics={modifierDiagnostics}
+          references={references}
+          error={shown.modifier}
+        />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              id={difficultyId}
+              type="checkbox"
+              checked={draft.difficulty !== null}
+              onChange={(event) => {
+                change({ difficulty: event.target.checked ? blankDifficulty() : null })
               }}
-              error={shown.difficultyLabel}
             />
-            <TextField
-              label="Default"
-              value={draft.difficulty.default}
-              onChange={(value) => {
-                changeDifficulty({ default: value })
-              }}
-              error={shown.difficultyDefault}
-            />
-            <TextField
-              label="Min"
-              value={draft.difficulty.min}
-              onChange={(min) => {
-                changeDifficulty({ min })
-              }}
-              error={shown.difficultyMin}
-            />
-            <TextField
-              label="Max"
-              value={draft.difficulty.max}
-              onChange={(max) => {
-                changeDifficulty({ max })
-              }}
-              error={shown.difficultyMax}
-            />
+            <Label htmlFor={difficultyId}>Difficulty</Label>
           </div>
+          {shown.difficulty && <p className="text-sm text-destructive">{shown.difficulty}</p>}
+          {draft.difficulty !== null && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Difficulty label"
+                value={draft.difficulty.label}
+                onChange={(label) => {
+                  changeDifficulty({ label })
+                }}
+                error={shown.difficultyLabel}
+              />
+              <TextField
+                label="Default"
+                value={draft.difficulty.default}
+                onChange={(value) => {
+                  changeDifficulty({ default: value })
+                }}
+                error={shown.difficultyDefault}
+              />
+              <TextField
+                label="Min"
+                value={draft.difficulty.min}
+                onChange={(min) => {
+                  changeDifficulty({ min })
+                }}
+                error={shown.difficultyMin}
+              />
+              <TextField
+                label="Max"
+                value={draft.difficulty.max}
+                onChange={(max) => {
+                  changeDifficulty({ max })
+                }}
+                error={shown.difficultyMax}
+              />
+            </div>
+          )}
+        </div>
+        <BandsEditor
+          bands={draft.bands}
+          onChange={(bands, order) => {
+            change({ bands })
+            if (order !== undefined) {
+              setLocalBands((held) => followBands(held, order))
+              setPublishedBands((held) => followBands(held, order))
+            }
+          }}
+          catalog={start}
+          difficulty={draft.difficulty}
+          error={shown.bands}
+          errors={shown.band ?? {}}
+        />
+        {message !== '' && (
+          <p role="alert" className="text-sm text-destructive">
+            {message}
+          </p>
         )}
-      </div>
-      <BandsEditor
-        bands={draft.bands}
-        onChange={(bands) => {
-          change({ bands })
-        }}
-        catalog={start}
-        difficulty={draft.difficulty}
-        error={shown.bands}
-        errors={shown.band ?? {}}
-      />
-      {message !== '' && (
-        <p role="alert" className="text-sm text-destructive">
-          {message}
-        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" disabled={save.isPending}>
+            {original === null ? 'Create check' : 'Save check'}
+          </Button>
+        </div>
+      </form>
+      {original !== null && (
+        <CheckSandbox
+          gameSystemKey={gameSystemKey}
+          catalog={start}
+          bands={draft.bands}
+          difficulty={draft.difficulty}
+          sampleValues={sampleValues}
+          dirty={dirty}
+          ensureSaved={async () => {
+            if (!dirty) {
+              return original
+            }
+            const result = writeCheck(draft)
+            if ('errors' in result) {
+              showErrors(result.errors)
+              return null
+            }
+            return commit(result.check)
+          }}
+        />
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={save.isPending}>
-          {original === null ? 'Create check' : 'Save check'}
-        </Button>
-      </div>
-    </form>
+    </div>
   )
 }

@@ -1,4 +1,13 @@
-import { blankCheck, readCheck, writeCheck, type CheckDraft, type StoredCheck } from './checkDraft'
+import {
+  blankCheck,
+  followBands,
+  mergeBandErrors,
+  readCheck,
+  sameCheck,
+  writeCheck,
+  type CheckDraft,
+  type StoredCheck,
+} from './checkDraft'
 
 const stored: StoredCheck = {
   key: 'skill',
@@ -302,5 +311,46 @@ describe('the bands', () => {
       upTo: { kind: 'number' as const, value: String(index) },
     }))
     expect(writeCheck(draft)).toEqual({ errors: { bands: 'A check has 1 to 10 bands.' } })
+  })
+})
+
+describe('the band messages', () => {
+  const errors = { 0: { key: 'a' }, 2: { label: 'c' } }
+
+  it('follow a band that moved, drop a removed one and leave a new band clean', () => {
+    // Band 2 moved up to the front.
+    expect(followBands(errors, [2, 0, 1])).toEqual({ 0: { label: 'c' }, 1: { key: 'a' } })
+    // Band 0 removed: the later ones shift.
+    expect(followBands(errors, [1, 2])).toEqual({ 1: { label: 'c' } })
+    // A band added at the end.
+    expect(followBands(errors, [0, 1, 2, null])).toEqual(errors)
+  })
+
+  it('merge field by field, the later one winning only for the same input', () => {
+    expect(
+      mergeBandErrors({ 0: { label: 'own', key: 'old' }, 1: { key: 'x' } }, { 0: { key: 'new' } }),
+    ).toEqual({
+      0: { label: 'own', key: 'new' },
+      1: { key: 'x' },
+    })
+  })
+})
+
+describe('comparing checks', () => {
+  it('ignores the order of properties but not their values', () => {
+    expect(
+      sameCheck(
+        { key: 'a', bands: [{ key: 'x', label: 'X' }], difficulty: { label: 'D', default: 1 } },
+        { difficulty: { default: 1, label: 'D' }, bands: [{ label: 'X', key: 'x' }], key: 'a' },
+      ),
+    ).toBe(true)
+    expect(sameCheck({ key: 'a', hint: 'h' }, { key: 'a' })).toBe(false)
+    expect(sameCheck({ bands: [1, 2] }, { bands: [2, 1] })).toBe(false)
+  })
+
+  it('finds a check that the form leaves as stored unchanged', () => {
+    const written = writeCheck(drafted(stored))
+
+    expect('check' in written && sameCheck(written.check, stored)).toBe(true)
   })
 })

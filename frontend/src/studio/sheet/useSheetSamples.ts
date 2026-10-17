@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { integer } from '@/shared/sheet/derivedValues'
 import { toDraft, type Draft } from '@/shared/sheet/sheetValues'
@@ -9,7 +9,7 @@ import { previewTemplate } from './previewTemplate'
 import type { GameSystemSheet } from './useGameSystemSheet'
 
 /** A sample value, with the type it was typed for: another type starts it again. */
-interface Sample {
+export interface Sample {
   type: SheetFieldView['type']
   draft: Draft
 }
@@ -20,6 +20,40 @@ function pruned(samples: Record<string, Sample>, fields: SheetFieldView[]) {
     fields.some((field) => field.key === key && field.type === sample.type),
   )
   return kept.length === Object.keys(samples).length ? samples : Object.fromEntries(kept)
+}
+
+/**
+ * The sample values the Sheet tab's preview and the Checks tab's sandbox share, never saved: what
+ * was typed for each field (with its type) and for each Tracker, as typed. The GameSystem page
+ * owns them so a value typed in one tab is there in the other.
+ */
+export interface SampleValues {
+  /** What was typed for a field, by its key; a field nobody typed for has none. */
+  samples: Record<string, Sample>
+  /** What was typed for a Tracker, by its key, as typed. */
+  trackerSamples: Record<string, string>
+  setSample: (key: string, sample: Sample) => void
+  setTrackerSample: (key: string, value: string) => void
+  /** Drops the samples of fields that are not in `fields` or have another type there. */
+  keepOnly: (fields: SheetFieldView[]) => void
+}
+
+/** The page-level owner of the sample values; the tabs derive what they show from it. */
+export function useSampleValues(): SampleValues {
+  const [samples, setSamples] = useState<Record<string, Sample>>({})
+  const [trackerSamples, setTrackerSamples] = useState<Record<string, string>>({})
+
+  const setSample = useCallback((key: string, sample: Sample) => {
+    setSamples((held) => ({ ...held, [key]: sample }))
+  }, [])
+  const setTrackerSample = useCallback((key: string, value: string) => {
+    setTrackerSamples((held) => ({ ...held, [key]: value }))
+  }, [])
+  const keepOnly = useCallback((fields: SheetFieldView[]) => {
+    setSamples((held) => pruned(held, fields))
+  }, [])
+
+  return { samples, trackerSamples, setSample, setTrackerSample, keepOnly }
 }
 
 /** The sample values of the Sheet tab, shared by the preview and the formula inputs. */
@@ -37,21 +71,24 @@ export interface SheetSamples {
 }
 
 /**
- * The sample field values and sample Tracker values of the sheet, never saved. A sample is
- * dropped when its field is gone or changed type.
+ * What the Sheet tab derives from the shared sample values: the template with the layout being
+ * edited, one draft per field, the Tracker readings. A sample is dropped when its field is gone
+ * or changed type.
  */
 export function useSheetSamples(
+  values: SampleValues,
   sheet: GameSystemSheet,
   layoutDraft: LayoutDraft | null,
 ): SheetSamples {
   const template = useMemo(() => previewTemplate(sheet, layoutDraft), [sheet, layoutDraft])
-  const [samples, setSamples] = useState<Record<string, Sample>>({})
-  const [trackerSamples, setTrackerSamples] = useState<Record<string, string>>({})
+  const { samples, trackerSamples, keepOnly } = values
 
   const kept = pruned(samples, template.fields)
-  if (kept !== samples) {
-    setSamples(kept)
-  }
+  // The owner is pruned after the render; this render already shows only what is kept.
+  useEffect(() => {
+    keepOnly(template.fields)
+  }, [keepOnly, template.fields])
+
   const drafts = Object.fromEntries(
     template.fields.map((field) => [
       field.key,
@@ -74,11 +111,9 @@ export function useSheetSamples(
     setSample: (key, draft) => {
       const field = template.fields.find((held) => held.key === key)
       if (field !== undefined) {
-        setSamples({ ...kept, [key]: { type: field.type, draft } })
+        values.setSample(key, { type: field.type, draft })
       }
     },
-    setTrackerSample: (key, value) => {
-      setTrackerSamples({ ...trackerSamples, [key]: value })
-    },
+    setTrackerSample: values.setTrackerSample,
   }
 }

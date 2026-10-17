@@ -23,6 +23,7 @@ import { PublishDialog } from './PublishDialog'
 import { ReleasesTab } from './ReleasesTab'
 import { SectionCounts } from './SectionCounts'
 import { SheetTab } from './sheet/SheetTab'
+import { useSampleValues } from './sheet/useSheetSamples'
 import {
   StudioError,
   useDiscardGameSystem,
@@ -125,6 +126,8 @@ function GameSystemView({
 }) {
   const [tab, setTab] = useState<Tab>('overview')
   const [notice, setNotice] = useState<string | null>(null)
+  // The sample values of the Sheet tab's preview and the Checks tab's sandbox: one set for both.
+  const sampleValues = useSampleValues()
   // The form owns what is typed and only starts from this GameSystem: a save does not reset it,
   // while a reload the person asked for remounts it on the latest version.
   const [formStart, setFormStart] = useState({ gameSystem, reloads: 0 })
@@ -195,8 +198,8 @@ function GameSystemView({
       {tab === 'narrative' && <NarrativeTab gameSystemKey={gameSystem.key} />}
       {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
       {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
-      {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} />}
-      {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} />}
+      {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
+      {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
       {tab === 'releases' && (
         <ReleasesTab

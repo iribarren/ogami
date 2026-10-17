@@ -787,6 +787,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the checks of one of my GameSystem drafts, what their formulas may read and where each is used */
+        get: operations["getGameSystemChecks"];
+        put?: never;
+        /** Add a check to one of my GameSystem drafts */
+        post: operations["createCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/checks/{check}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a check of one of my GameSystem drafts, renaming it when the body has another key */
+        put: operations["replaceCheck"];
+        post?: never;
+        /** Delete a check of one of my GameSystem drafts that no check step names */
+        delete: operations["deleteCheck"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/checks/{check}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a check of one of my GameSystem drafts to another position of the check list */
+        post: operations["moveCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems": {
         parameters: {
             query?: never;
@@ -3000,6 +3053,162 @@ export interface components {
              */
             database: "ok" | "down";
         };
+        /** @description Integers between -1,000 and 1,000 with min <= default <= max. */
+        GameSystemCheckDifficulty: {
+            /** @example Difficulty Value */
+            label: string;
+            /** @example 13 */
+            default: number;
+            /**
+             * @description The lowest difficulty a step may set.
+             * @example 9
+             */
+            min?: number | null;
+            /**
+             * @description The highest difficulty a step may set.
+             * @example 29
+             */
+            max?: number | null;
+        };
+        /** @description Every band but the last has an "upTo"; literal bounds strictly increase. The first band whose bound is at least the total is the outcome, the last band catches the rest. */
+        GameSystemCheckBand: {
+            /**
+             * @description Unique among the check's bands; a check step's outcome names it.
+             * @example success
+             */
+            key: string;
+            /** @example Success */
+            label: string;
+            /** @description The inclusive upper bound of the band: a number, a tracker's value or a formula; absent on the last band. */
+            upTo: number | {
+                /** @example alarm */
+                tracker: string;
+            } | {
+                /** @example {check:difficulty}+4 */
+                formula: string;
+            };
+        };
+        /** @description Total = dice + modifier + situational modifier; the outcome is the first band whose bound is at least the total. */
+        GameSystemCheck: {
+            /**
+             * @description Unique among the draft's checks: a-z, 0-9 and "-".
+             * @example skill
+             */
+            key: string;
+            /** @example Skill check */
+            label: string;
+            /** @description Shown to the player when they roll. */
+            hint?: string | null;
+            /**
+             * @description Dice notation, at most 100 characters.
+             * @example 1d10
+             */
+            dice: string;
+            /**
+             * @description A formula over the sheet and trackers (1 to 200 characters) added to the roll.
+             * @example {hands}+{edge}
+             */
+            modifier?: string | null;
+            difficulty: components["schemas"]["GameSystemCheckDifficulty"];
+            bands: components["schemas"]["GameSystemCheckBand"][];
+        };
+        CheckFieldResponse: {
+            /**
+             * @description The field's key, the one in "{key}" of a formula.
+             * @example hands
+             */
+            key: string;
+            /** @example Hands */
+            label: string;
+            /**
+             * @description A track is also readable as {key.max}.
+             * @example number
+             * @enum {string}
+             */
+            type: "number" | "track" | "derived";
+            /**
+             * @description A track's max; null when it declares none or the field is not a track.
+             * @example 6
+             */
+            max: number | null;
+        };
+        CheckTrackerResponse: {
+            /**
+             * @description The tracker's key, the one after "tracker:" in a formula.
+             * @example alarm
+             */
+            key: string;
+            /**
+             * @description The tracker's name.
+             * @example Alarm
+             */
+            label: string;
+            /**
+             * @description A counter's initial value, 0 for a clock; null when the draft states none.
+             * @example 0
+             */
+            initial: number | null;
+        };
+        GameSystemChecksResponse: {
+            /**
+             * @description The draft's version: send it as "expectedVersion" with the next check write.
+             * @example 3
+             */
+            version: number;
+            /**
+             * @description The draft's schema version: a version 1 draft has no checks and refuses every command.
+             * @example 2
+             */
+            schemaVersion: number;
+            /** @description The checks as stored, in order (a draft that breaks the rules may hold others than the schema describes). */
+            checks: components["schemas"]["GameSystemCheck"][];
+            /** @description The number, track and derived sheet fields a formula may read. */
+            fields: components["schemas"]["CheckFieldResponse"][];
+            /** @description The draft's trackers, which a formula or band bound may read. */
+            trackers: components["schemas"]["CheckTrackerResponse"][];
+            /**
+             * @description Where the check steps of the draft name each check, by check key (e.g. "sceneTypes[0].play[0].check"); a used check cannot be renamed or deleted.
+             * @example {
+             *       "skill": [
+             *         "sceneTypes[0].play[0].check"
+             *       ]
+             *     }
+             */
+            usages: {
+                [key: string]: string[];
+            };
+        };
+        SaveCheckRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            check: components["schemas"]["GameSystemCheck"];
+        };
+        OracleInUseResponse: {
+            /** @description A human-readable message naming where it is used. */
+            error: string;
+            /**
+             * @description Where the draft references it (e.g. "flows[0].phases[1].steps[2]").
+             * @example [
+             *       "sceneTypes[1].play[1]"
+             *     ]
+             */
+            paths: string[];
+        };
+        MoveCheckRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description The check's new position in the whole check list, from 0 to the check count minus 1; out of range is refused (422).
+             * @example 0
+             */
+            index: number;
+        };
         GameSystemSummaryResponse2: {
             /** @example my-system */
             key: string;
@@ -3285,17 +3494,6 @@ export interface components {
              */
             expectedVersion: number;
             item: components["schemas"]["NarrativeItemRequest"];
-        };
-        OracleInUseResponse: {
-            /** @description A human-readable message naming where it is used. */
-            error: string;
-            /**
-             * @description Where the draft references it (e.g. "flows[0].phases[1].steps[2]").
-             * @example [
-             *       "sceneTypes[1].play[1]"
-             *     ]
-             */
-            paths: string[];
         };
         /** @description Ranged entries have "min" and "max"; weighted entries may have a "weight" (1 by default). An entry needs a "text" unless it nests a "table". "key", "sceneType" and "effects" are schema version 2 fields: kept as given, refused on a version 1 draft. */
         GameSystemOracleTableEntry: {
@@ -7082,6 +7280,404 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    getGameSystemChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The checks as stored, in order, the sheet fields and trackers a formula may read, the check steps that name each check, and the draft version. A schema version 1 draft has no checks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemChecksResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's checks with the check appended and the new version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemChecksResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "check" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key names another check. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The check breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no checks); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replaceCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                check: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's checks with the check replaced in place and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemChecksResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "check" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no check with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key names another check. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The check breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a step names the check being renamed or a band the check drops (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    deleteCheck: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+                check: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's checks without the check and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemChecksResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no check with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A check step names the check (the paths say where), or the draft has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    moveCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                check: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's checks with the check at its new position and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemChecksResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, or has no integer "expectedVersion" or no integer "index". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no check with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description "index" is outside the check list (the message starts with "index"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

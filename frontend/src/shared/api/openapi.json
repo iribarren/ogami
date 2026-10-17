@@ -4268,6 +4268,535 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/checks": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read the checks of one of my GameSystem drafts, what their formulas may read and where each is used",
+                "operationId": "getGameSystemChecks",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The checks as stored, in order, the sheet fields and trackers a formula may read, the check steps that name each check, and the draft version. A schema version 1 draft has no checks.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemChecksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Add a check to one of my GameSystem drafts",
+                "operationId": "createCheck",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The draft's checks with the check appended and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemChecksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"check\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key names another check.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The check breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no checks); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/checks/{check}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace a check of one of my GameSystem drafts, renaming it when the body has another key",
+                "operationId": "replaceCheck",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "check",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's checks with the check replaced in place and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemChecksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no \"check\" object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no check with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key names another check.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The check breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a step names the check being renamed or a band the check drops (the paths say where); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete a check of one of my GameSystem drafts that no check step names",
+                "operationId": "deleteCheck",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "check",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's checks without the check and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemChecksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no check with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A check step names the check (the paths say where), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OracleInUseResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/checks/{check}/move": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Move a check of one of my GameSystem drafts to another position of the check list",
+                "operationId": "moveCheck",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "check",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MoveCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's checks with the check at its new position and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemChecksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, or has no integer \"expectedVersion\" or no integer \"index\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no check with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "\"index\" is outside the check list (the message starts with \"index\"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems": {
             "get": {
                 "tags": [
@@ -10938,6 +11467,322 @@
                 },
                 "type": "object"
             },
+            "GameSystemCheckDifficulty": {
+                "description": "Integers between -1,000 and 1,000 with min <= default <= max.",
+                "required": [
+                    "label",
+                    "default"
+                ],
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "example": "Difficulty Value",
+                        "maxLength": 60
+                    },
+                    "default": {
+                        "type": "integer",
+                        "example": 13
+                    },
+                    "min": {
+                        "description": "The lowest difficulty a step may set.",
+                        "type": "integer",
+                        "example": 9,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "The highest difficulty a step may set.",
+                        "type": "integer",
+                        "example": 29,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemCheckBand": {
+                "description": "Every band but the last has an \"upTo\"; literal bounds strictly increase. The first band whose bound is at least the total is the outcome, the last band catches the rest.",
+                "required": [
+                    "key",
+                    "label",
+                    "upTo"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Unique among the check's bands; a check step's outcome names it.",
+                        "type": "string",
+                        "example": "success"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Success"
+                    },
+                    "upTo": {
+                        "description": "The inclusive upper bound of the band: a number, a tracker's value or a formula; absent on the last band.",
+                        "oneOf": [
+                            {
+                                "type": "integer",
+                                "example": 7
+                            },
+                            {
+                                "required": [
+                                    "tracker"
+                                ],
+                                "properties": {
+                                    "tracker": {
+                                        "type": "string",
+                                        "example": "alarm"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "required": [
+                                    "formula"
+                                ],
+                                "properties": {
+                                    "formula": {
+                                        "type": "string",
+                                        "example": "{check:difficulty}+4"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemCheck": {
+                "description": "Total = dice + modifier + situational modifier; the outcome is the first band whose bound is at least the total.",
+                "required": [
+                    "key",
+                    "label",
+                    "dice",
+                    "difficulty",
+                    "bands"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Unique among the draft's checks: a-z, 0-9 and \"-\".",
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]+$",
+                        "example": "skill"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Skill check",
+                        "maxLength": 100
+                    },
+                    "hint": {
+                        "description": "Shown to the player when they roll.",
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 500
+                    },
+                    "dice": {
+                        "description": "Dice notation, at most 100 characters.",
+                        "type": "string",
+                        "example": "1d10"
+                    },
+                    "modifier": {
+                        "description": "A formula over the sheet and trackers (1 to 200 characters) added to the roll.",
+                        "type": "string",
+                        "example": "{hands}+{edge}",
+                        "nullable": true
+                    },
+                    "difficulty": {
+                        "$ref": "#/components/schemas/GameSystemCheckDifficulty"
+                    },
+                    "bands": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GameSystemCheckBand"
+                        },
+                        "maxItems": 10,
+                        "minItems": 1
+                    }
+                },
+                "type": "object"
+            },
+            "CheckFieldResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "type",
+                    "max"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The field's key, the one in \"{key}\" of a formula.",
+                        "type": "string",
+                        "example": "hands"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Hands"
+                    },
+                    "type": {
+                        "description": "A track is also readable as {key.max}.",
+                        "type": "string",
+                        "example": "number",
+                        "enum": [
+                            "number",
+                            "track",
+                            "derived"
+                        ]
+                    },
+                    "max": {
+                        "description": "A track's max; null when it declares none or the field is not a track.",
+                        "type": "integer",
+                        "example": 6,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTrackerResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "initial"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The tracker's key, the one after \"tracker:\" in a formula.",
+                        "type": "string",
+                        "example": "alarm"
+                    },
+                    "label": {
+                        "description": "The tracker's name.",
+                        "type": "string",
+                        "example": "Alarm"
+                    },
+                    "initial": {
+                        "description": "A counter's initial value, 0 for a clock; null when the draft states none.",
+                        "type": "integer",
+                        "example": 0,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemChecksResponse": {
+                "required": [
+                    "version",
+                    "schemaVersion",
+                    "checks",
+                    "fields",
+                    "trackers",
+                    "usages"
+                ],
+                "properties": {
+                    "version": {
+                        "description": "The draft's version: send it as \"expectedVersion\" with the next check write.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "schemaVersion": {
+                        "description": "The draft's schema version: a version 1 draft has no checks and refuses every command.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "checks": {
+                        "description": "The checks as stored, in order (a draft that breaks the rules may hold others than the schema describes).",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GameSystemCheck"
+                        }
+                    },
+                    "fields": {
+                        "description": "The number, track and derived sheet fields a formula may read.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckFieldResponse"
+                        }
+                    },
+                    "trackers": {
+                        "description": "The draft's trackers, which a formula or band bound may read.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckTrackerResponse"
+                        }
+                    },
+                    "usages": {
+                        "description": "Where the check steps of the draft name each check, by check key (e.g. \"sceneTypes[0].play[0].check\"); a used check cannot be renamed or deleted.",
+                        "type": "object",
+                        "example": {
+                            "skill": [
+                                "sceneTypes[0].play[0].check"
+                            ]
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "SaveCheckRequest": {
+                "required": [
+                    "expectedVersion",
+                    "check"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "check": {
+                        "$ref": "#/components/schemas/GameSystemCheck"
+                    }
+                },
+                "type": "object"
+            },
+            "OracleInUseResponse": {
+                "required": [
+                    "error",
+                    "paths"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message naming where it is used.",
+                        "type": "string"
+                    },
+                    "paths": {
+                        "description": "Where the draft references it (e.g. \"flows[0].phases[1].steps[2]\").",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "sceneTypes[1].play[1]"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "MoveCheckRequest": {
+                "required": [
+                    "expectedVersion",
+                    "index"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "index": {
+                        "description": "The check's new position in the whole check list, from 0 to the check count minus 1; out of range is refused (422).",
+                        "type": "integer",
+                        "example": 0
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemSummaryResponse2": {
                 "required": [
                     "key",
@@ -11529,29 +12374,6 @@
                     },
                     "item": {
                         "$ref": "#/components/schemas/NarrativeItemRequest"
-                    }
-                },
-                "type": "object"
-            },
-            "OracleInUseResponse": {
-                "required": [
-                    "error",
-                    "paths"
-                ],
-                "properties": {
-                    "error": {
-                        "description": "A human-readable message naming where it is used.",
-                        "type": "string"
-                    },
-                    "paths": {
-                        "description": "Where the draft references it (e.g. \"flows[0].phases[1].steps[2]\").",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "example": [
-                            "sceneTypes[1].play[1]"
-                        ]
                     }
                 },
                 "type": "object"

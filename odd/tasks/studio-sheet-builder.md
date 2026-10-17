@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-6-sheet-tab` · **Status:** in progress (slice 6)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-7-layout-panel` · **Status:** in progress (slice 7)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -80,15 +80,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `feat/studio-sheet-builder-4-field-api` | `feat(studio): studio-sheet-builder 4/9 sheet field API` | T7b | ~1,400 incl. ~400 generated |
 | 5 | `feat/studio-sheet-builder-5-layout-commands` | `feat(studio): studio-sheet-builder 5/9 sheet layout commands` | T8 | ~2,100 incl. ~600 generated (size exception, user) |
 | 6 | `feat/studio-sheet-builder-6-sheet-tab` | `feat(studio): studio-sheet-builder 6/9 sheet tab and field editor` | T9 | ~1,600 |
-| 7 | `feat/studio-sheet-builder-7-layout-preview` | `feat(studio): studio-sheet-builder 7/9 layout editor and live preview` | T10, T11 | ~1,400 |
-| 8 | `feat/studio-sheet-builder-8-formula-editor` | `feat(studio): studio-sheet-builder 8/9 formula editor` | T12 | ~1,200 |
-| 9 | `feat/studio-sheet-builder-9-e2e` | `test(e2e): studio-sheet-builder 9/9 sheet builder end to end` | T13 | ~700 |
+| 7 | `feat/studio-sheet-builder-7-layout-panel` | `feat(studio): studio-sheet-builder 7/9 layout panel` | T10 | ~1,600 incl. slice 6 fixes |
+| 8 | `feat/studio-sheet-builder-8-preview-diagnostics` | `feat(studio): studio-sheet-builder 8/9 live preview and formula diagnostics` | T11, T12a | ~1,500 |
+| 9 | `feat/studio-sheet-builder-9-formula-input-e2e` | `feat(studio): studio-sheet-builder 9/9 formula input and end to end` | T12b, T13 | ~1,500 |
 
 Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read model, controller, API tests for every 404/409/422, generated files) forecast ~2,300; the narrative analog (studio-flow-editor slices 2–3) landed well past its forecasts. The HTTP layer moved to slice 4 (T7b) and the plan grew to 9 slices. PRs #167–#168 keep their `n/8` titles. Slice 3 adds commands and a query unused by any endpoint, so it is safe on `main`.
 
 Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 forecasts ~2,100. The user kept it as one slice with a size exception; the generated files go in their own commit, so the code commits fit one review candidate.
 
 Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a size exception; the two T9 commits are reviewed separately.
+
+Slices 7–9 replanned (2026-10-17): slice 6's UI landed at ~2,400 against a 1,600 forecast, so T10 + T11 + the slice 6 fixes would pass the ceiling. Slice 7 is the slice 6 fixes and T10; T11 moves to slice 8 with the formula diagnostics logic (T12a); slice 9 is `FormulaInput` (T12b) and the e2e (T13). Still 9 slices.
 
 ## Tasks
 
@@ -103,10 +105,11 @@ Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a si
 | T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | 56f91e2 |
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | 3597f60, a8da25e, a501e9b |
-| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | |
+| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | 0c9aba0, b943383 |
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
-| T11 | 7 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
-| T12 | 8 | `FormulaInput`: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
+| T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
+| T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | | [ ] | |
+| T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
 | T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | | [ ] | |
 
 ## Progress
@@ -127,6 +130,7 @@ Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a si
 - 2026-10-17: Slice 5 review fix R3-001: a domain test declares a sheet with the numeric-string group `"7"` and asserts the group name and the fields' `group` stay the string `"7"`; `declareSheetLayout` already casts the array key back to string (added with the command), so the test pins that behaviour and no source change was needed.
 - 2026-10-17: T9 part 1 (logic, no UI yet): `useGameSystemSheet` (read model query; save, delete, move mutations; `SheetError` with the in-use `paths`), `sheetDraft.ts` (form state, request building that omits empty optionals, sections by declared or consecutive group, move target index), `sheetError.ts` (`sheet.fields[i].<property>:` messages onto the dialog inputs, the rest to the form); sheet fixtures.
 - 2026-10-17: T9 part 2: `SheetTab` (list by declared or consecutive group, empty groups noted, move up/down to the neighbour's index, delete confirm with in-use paths, 409 reload), `SheetFieldDialog` (per-type inputs, group select or free text, span select, rename hint for published keys, 422 mapped to inputs or the form, 409 reload), `Sheet` tab on `GameSystemPage`, tests for every 400/404/409/422 path, stories. No API change; layout editing is slice 7.
+- 2026-10-17: Slice 6 review fixes: tests prove a write marks the GameSystem page and validation stale; a 409 now refetches the sheet in the hook (tests); `writeField` validates the span as a whole number from 1 to the group's columns; tests for a 409 whose reload fails in the field dialog, the move panel and the delete dialog (code already kept the state, pinned); the unreachable "field no longer exists" note is dropped.
 
 ## Reviews
 
@@ -137,7 +141,8 @@ Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a si
 | 3 | `review-4e6b8a000308443b` | 80ac0eb, 240a46a, 56f91e2 | approved, acknowledged; 2 suggestions: R3-legacy-delete-item-rules-unproved (`GameSystemSheetTest.php`: the legacy-draft delete case targets the referenced `sanity`, so it hits `SheetFieldInUse`; delete an unreferenced field, assert the `sceneTypes[0].oracles[0]: ` prefix and an unchanged draft), R3-fixture-label-assertion-ambiguous (`frontend/src/play/characters/fixtures.test.tsx`: the label `Notes` equals the group name; query by accessible label); fixed in slice 4 | #169 |
 | 4 | `review-6cdcac261eef84ad` | 218461c, 231d8c4 (generated 8be0dfc: review declined) | approved, acknowledged; 2 suggestions: R3-001 (`GameSystemSheetController.php`: the write and the follow-up read share one try/catch, so a draft deleted in between answers 404 after a committed write; separate write refusals from the read), R3-002 (`GameSystemSheetController.php` `delete`: an array-shaped `expectedVersion` query parameter makes Symfony's `filter` throw instead of the 400 `MALFORMED_DELETE`; read the raw value and validate); fixed in slice 5. PR size 2,251, exception approved by the user | #170 |
 | 5 | `review-6556e3019ded422d` | 644cdb3, 3597f60, a8da25e (generated a501e9b: review declined) | approved, acknowledged; 1 suggestion R3-001 (`GameSystem.php` `declareSheetLayout`: fields are bucketed by group name as an array key, so a numeric-string group `"7"` becomes an int key; cast back to string and add a domain test declaring a sheet with a numeric-string group and asserting the exact string group name), fixed in slice 6. PR size 2,133, exception approved by the user | #171 |
+| 6 | `review-98ff5155dbf462be` (9a6b1ce..0c9aba0), `review-93ea738dfd72de2b` (b943383) | 9a6b1ce, 0c9aba0, b943383 | approved, acknowledged; WARNING R3-cache-invalidation-unproved (`useGameSystemSheet.test.tsx`: assert the GameSystem page and validation queries are invalidated after a write), SUGGESTION R3-span-not-validated (`sheetDraft.ts`: validate span as a whole number, with a test), SUGGESTION R3-conflict-leaves-stale-version (`useGameSystemSheet.ts`: invalidate the sheet query on a 409 in the hook, with a test), WARNING R3-001 (`SheetFieldDialog.tsx`: test a 409 reload whose GET /sheet fails; the dialog note, move panel and delete dialog keep the 409 state), SUGGESTION R3-002 (`SheetFieldDialog.tsx`: the "field no longer exists" note is unreachable because the row unmounts; drop it); fixed in slice 7. PR size 2,367, exception approved by the user | #172 |
 
 ## Next step
 
-Slice 6: native review of both T9 commits separately, then PR.
+Slice 7: slice 6 review fixes, then T10 layout panel; native review, then PR.

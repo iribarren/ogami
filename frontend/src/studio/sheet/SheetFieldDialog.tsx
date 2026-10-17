@@ -161,12 +161,14 @@ function FieldForm({
       // A refused key (409 on another field) is not a stale version: the draft stays as typed.
       if (data.version !== base.version && original !== null) {
         const stored = data.fields.find((field) => field.key === original)
-        const reloaded = stored === undefined ? null : readField(stored)
+        if (stored === undefined) {
+          // The field is gone: the list drops its row, and this dialog with it.
+          return
+        }
+        const reloaded = readField(stored)
         if (reloaded === null) {
           setReloadNote(
-            stored === undefined
-              ? `The field ${original} no longer exists. Your changes are kept; close this dialog to see the list.`
-              : 'The field changed to a shape this editor cannot read. Your changes are kept; the next save still conflicts.',
+            'The field changed to a shape this editor cannot read. Your changes are kept; the next save still conflicts.',
           )
           return
         }

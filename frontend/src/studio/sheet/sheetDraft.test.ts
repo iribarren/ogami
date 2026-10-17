@@ -110,6 +110,21 @@ describe('writing a field', () => {
     })
   })
 
+  it.each(['1.5', 'x', '0', '3', '-1'])(
+    'flags the span %s: a whole number from 1 to the group columns',
+    (span) => {
+      expect(writeField(filled({ type: 'track', group: 'Stats', span }), groups)).toEqual({
+        errors: { span: 'Must be a whole number from 1 to 2.' },
+      })
+    },
+  )
+
+  it('limits the span to the columns of the group', () => {
+    expect(writeField(filled({ type: 'track', group: 'Health', span: '2' }), groups)).toEqual({
+      errors: { span: 'Must be a whole number from 1 to 1.' },
+    })
+  })
+
   it('flags what is blank or not a whole number, field by field', () => {
     expect(
       writeField(filled({ key: ' ', label: '', type: 'number', min: '1.5', max: 'x' }), null),

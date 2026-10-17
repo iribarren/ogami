@@ -57,7 +57,8 @@ export function useGameSystemSheet(key: string) {
 /**
  * Every write answers with the whole sheet and the new version: it replaces the cached one, so
  * the next write carries the right `expectedVersion`. The draft changed, so what the GameSystem
- * page shows and its validation are refetched.
+ * page shows and its validation are refetched. A 409 means the cached version is stale, so the
+ * sheet is refetched too: the next write must not carry the version that was just refused.
  */
 function useSheetWrite<Variables>(
   key: string,
@@ -71,6 +72,11 @@ function useSheetWrite<Variables>(
       queryClient.setQueryData(sheetKey(key), sheet)
       void queryClient.invalidateQueries({ queryKey: gameSystemKey(key), exact: true })
       void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+    },
+    onError: (error) => {
+      if (error instanceof StudioError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: sheetKey(key), exact: true })
+      }
     },
   })
 }

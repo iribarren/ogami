@@ -7,8 +7,10 @@ import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 
 import { sheet } from '../fixtures'
+import { gameSystemKey, validationKey } from '../useGameSystems'
 import {
   SheetError,
+  sheetKey,
   useDeleteSheetField,
   useGameSystemSheet,
   useMoveSheetField,
@@ -25,7 +27,7 @@ function setup(handlers: Record<string, FakeHandler>) {
       <ApiClientProvider client={api}>{children}</ApiClientProvider>
     </QueryClientProvider>
   )
-  return { fakeApi, wrapper }
+  return { client, fakeApi, wrapper }
 }
 
 describe('useGameSystemSheet', () => {
@@ -115,5 +117,60 @@ describe('the sheet writes', () => {
       expect(result.current.read.data?.version).toBe(8)
     })
     expect(fakeApi.requests.filter((request) => request === `GET ${base}/sheet`)).toHaveLength(1)
+  })
+
+  it('mark the GameSystem page and its validation stale after a write', async () => {
+    const { client, wrapper } = setup({
+      [`POST ${base}/sheet/fields/pow/move`]: () => Response.json({ ...sheet, version: 8 }),
+    })
+    client.setQueryData(gameSystemKey('my-draft'), {})
+    client.setQueryData(validationKey('my-draft'), { valid: true, issues: [] })
+    const { result } = renderHook(() => useMoveSheetField('my-draft'), { wrapper })
+
+    result.current.mutate({ expectedVersion: 7, field: 'pow', index: 2 })
+
+    await waitFor(() => {
+      expect(client.getQueryState(gameSystemKey('my-draft'))?.isInvalidated).toBe(true)
+    })
+    expect(client.getQueryState(validationKey('my-draft'))?.isInvalidated).toBe(true)
+  })
+
+  it('refetch the sheet on a 409, so the next write carries the version that won', async () => {
+    let reads = 0
+    const { fakeApi, wrapper } = setup({
+      [`GET ${base}/sheet`]: () => Response.json({ ...sheet, version: 7 + reads++ }),
+      [`POST ${base}/sheet/fields/pow/move`]: () =>
+        Response.json({ error: 'changed' }, { status: 409 }),
+    })
+    const { result } = renderHook(
+      () => ({ read: useGameSystemSheet('my-draft'), move: useMoveSheetField('my-draft') }),
+      { wrapper },
+    )
+    await waitFor(() => {
+      expect(result.current.read.data?.version).toBe(7)
+    })
+
+    result.current.move.mutate({ expectedVersion: 7, field: 'pow', index: 2 })
+
+    await waitFor(() => {
+      expect(result.current.read.data?.version).toBe(8)
+    })
+    expect(fakeApi.requests.filter((request) => request === `GET ${base}/sheet`)).toHaveLength(2)
+  })
+
+  it('leave the cached sheet alone on a refusal that is not a conflict', async () => {
+    const { client, wrapper } = setup({
+      [`POST ${base}/sheet/fields/pow/move`]: () =>
+        Response.json({ error: 'index: out of range' }, { status: 422 }),
+    })
+    client.setQueryData(sheetKey('my-draft'), sheet)
+    const { result } = renderHook(() => useMoveSheetField('my-draft'), { wrapper })
+
+    result.current.mutate({ expectedVersion: 7, field: 'pow', index: 9 })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+    expect(client.getQueryState(sheetKey('my-draft'))?.isInvalidated).toBe(false)
   })
 })

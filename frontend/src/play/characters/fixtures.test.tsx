@@ -11,8 +11,20 @@ describe('the sheet layout fixture', () => {
 
     render(<SheetFields template={template} drafts={{}} derived={{}} onChange={vi.fn()} />)
 
+    // Each field by its own control, so a group legend with the same name cannot satisfy it.
     for (const field of sheet) {
-      expect(screen.getAllByText(field.label).length).toBeGreaterThan(0)
+      switch (field.type) {
+        case 'list':
+          expect(
+            screen.getByRole('button', { name: `Add ${field.itemLabel ?? 'Item'}` }),
+          ).toBeVisible()
+          break
+        case 'track':
+          expect(screen.getByLabelText(`${field.label} current`)).toBeVisible()
+          break
+        default:
+          expect(screen.getByLabelText(field.label)).toBeVisible()
+      }
     }
   })
 

@@ -1082,6 +1082,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the sheet of one of my GameSystem drafts: layout, fields, the trackers a formula may read and the field keys of its latest release */
+        get: operations["getGameSystemSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/sheet/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a field to the sheet of one of my GameSystem drafts */
+        post: operations["createSheetField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/sheet/fields/{field}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a field of the sheet of one of my GameSystem drafts, renaming it when the body has another key */
+        put: operations["replaceSheetField"];
+        post?: never;
+        /** Delete a field of the sheet of one of my GameSystem drafts that nothing reads */
+        delete: operations["deleteSheetField"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/sheet/fields/{field}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a field of the sheet of one of my GameSystem drafts to another position of the field list */
+        post: operations["moveSheetField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3430,6 +3499,105 @@ export interface components {
              * @example 2
              */
             version: number;
+        };
+        SheetGroupResponse2: {
+            /**
+             * @description The group's name, the one a field's "group" refers to.
+             * @example Stats
+             */
+            name: string;
+            /**
+             * @description How many columns of fields the group has (1 to 4), 1 when not set.
+             * @example 2
+             */
+            columns: number;
+            /**
+             * @description How many of the sheet's columns the group spans (1 or 2), 1 when not set.
+             * @example 1
+             */
+            span: number;
+        };
+        SheetTrackerResponse: {
+            /**
+             * @description The tracker's key, the one after "tracker:" in a formula.
+             * @example alarm
+             */
+            key: string;
+            /**
+             * @description The tracker's name.
+             * @example Alarm
+             */
+            label: string;
+            /**
+             * @description A counter's max or a clock's segments; null when the tracker has none.
+             * @example 6
+             */
+            max: number | null;
+        };
+        GameSystemSheetResponse: {
+            /**
+             * @description The draft's version: send it as "expectedVersion" with the next sheet write.
+             * @example 3
+             */
+            version: number;
+            /**
+             * @description The draft's schema version: a version 1 draft has no sheet fields and refuses every command.
+             * @example 2
+             */
+            schemaVersion: number;
+            /**
+             * @description The sheet's columns of groups (1 or 2), 1 when not set.
+             * @example 1
+             */
+            columns: number;
+            /** @description The declared groups in order; null when the sheet declares none. */
+            groups: components["schemas"]["SheetGroupResponse2"][] | null;
+            /** @description The fields as in a release document (the release contract describes each type's properties), in order. */
+            fields: {
+                [key: string]: unknown;
+            }[];
+            /** @description The draft's trackers, which a derived field may read as {tracker:key}. */
+            trackers: components["schemas"]["SheetTrackerResponse"][];
+            /**
+             * @description The field keys of the GameSystem's latest release, empty when it has none: renaming or deleting one makes Characters on later upgrades lose that value.
+             * @example [
+             *       "pow",
+             *       "hp"
+             *     ]
+             */
+            publishedFieldKeys: string[];
+        };
+        SaveSheetFieldRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description The field to create, or the whole replacement of the one in the path, as in a release document; its key is the new key on a rename.
+             * @example {
+             *       "key": "luck",
+             *       "label": "Luck",
+             *       "type": "number",
+             *       "min": 0,
+             *       "max": 10
+             *     }
+             */
+            field: {
+                [key: string]: unknown;
+            };
+        };
+        MoveSheetFieldRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description The field's new position in the whole field list, from 0 to the field count minus 1; out of range is refused (422).
+             * @example 0
+             */
+            index: number;
         };
     };
     responses: never;
@@ -8491,6 +8659,404 @@ export interface operations {
                 };
             };
             /** @description The GameSystem has no release with that version; the draft is unchanged. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGameSystemSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sheet as stored, in order, and the draft version. A schema version 1 draft has no fields. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSheetField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSheetFieldRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet with the field appended and the new version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "field" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key names another field. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The field breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no sheet fields); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replaceSheetField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSheetFieldRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet with the field replaced in place and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no "field" object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or the sheet has no field with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key names another field. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The field breaks the release contract's rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a rename is read by the draft (the paths say where); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    deleteSheetField: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's sheet without the field and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or the sheet has no field with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The draft reads the field (the paths say where), or has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"] | components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    moveSheetField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveSheetFieldRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet with the field at its new position and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, or has no integer "expectedVersion" or no integer "index". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or the sheet has no field with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description "index" is outside the field list (the message starts with "index"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

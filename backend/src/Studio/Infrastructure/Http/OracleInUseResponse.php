@@ -6,11 +6,12 @@ namespace App\Studio\Infrastructure\Http;
 
 use App\Studio\Domain\GameSystem\NarrativeItemInUse;
 use App\Studio\Domain\GameSystem\OracleInUse;
+use App\Studio\Domain\GameSystem\SheetFieldInUse;
 use OpenApi\Attributes as OA;
 
 /**
- * An oracle, an entry key of one, or a tracker, tag, fact slot or Scene Type is referenced by the
- * draft, so it cannot be renamed, removed or deleted.
+ * An oracle, an entry key of one, a tracker, tag, fact slot or Scene Type, or a sheet field is
+ * referenced by the draft, so it cannot be renamed, removed or deleted.
  */
 #[OA\Schema(required: ['error', 'paths'])]
 final readonly class OracleInUseResponse
@@ -26,7 +27,7 @@ final readonly class OracleInUseResponse
     ) {
     }
 
-    public static function fromException(OracleInUse|NarrativeItemInUse $exception): self
+    public static function fromException(OracleInUse|NarrativeItemInUse|SheetFieldInUse $exception): self
     {
         return new self($exception->getMessage(), $exception->paths());
     }

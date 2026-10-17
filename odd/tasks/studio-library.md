@@ -1,7 +1,7 @@
 # Feature: studio-library
 
 - **Locator:** `odd/tasks/studio-library.md` · Engram topic `odd/studio-library/tasks`
-- **Issue:** #185 · **Branch:** `feat/studio-library-1-library-packs` · **Status:** in progress
+- **Issue:** #185 · **Branch:** `feat/studio-library-2-imports` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-check-editor` (PRs #178–#184)
@@ -89,8 +89,8 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/studio-library-1-library-packs` | `feat(studio): studio-library 1/7 library packs` | T1, T2, T3 | ~1,300 |
-| 2 | `feat/studio-library-2-imports` | `feat(studio): studio-library 2/7 library imports` | T4, T5 | ~1,600 |
-| 3 | `feat/studio-library-3-pack-api` | `feat(studio): studio-library 3/7 library pack API` | T6 | ~1,300 incl. ~350 generated |
+| 2 | `feat/studio-library-2-imports` | `feat(studio): studio-library 2/7 library imports` | T4, T5 | ~1,500 |
+| 3 | `feat/studio-library-3-pack-api` | `feat(studio): studio-library 3/7 library pack API` | T6 | ~1,450 incl. ~350 generated |
 | 4 | `feat/studio-library-4-import-api` | `feat(studio): studio-library 4/7 library import API` | T7 | ~1,600 incl. ~450 generated |
 | 5 | `feat/studio-library-5-packs-ui` | `feat(studio): studio-library 5/7 library packs in Studio` | T8 | ~1,300 |
 | 6 | `feat/studio-library-6-import-ui` | `feat(studio): studio-library 6/7 import dialog and library tab` | T9 | ~1,600 |
@@ -100,12 +100,12 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0033 (Studio library packs) and ADR index row; glossary Library, Library import, Library pack; vision question on generic flows closed | inline (parent: design authored this session) | [x] | |
-| T2 | 1 | Domain: `GameSystemKind`; `GameSystem::createLibraryPack`; `LibraryPackRefuses` on flows, sheet fields and layout, checks, theme, credits, restore (and later publish/imports); persistence `kind` column + migration (default `game-system`), `library_imports` column (default `[]`), repository mapping; legacy rows read as `game-system` | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Application: `CreateLibraryPack` (draft key rules) and handler, `ListLibraryPacks` query (every pack, `mine`, counts per section, updatedAt); publish handler refuses a pack; the existing GameSystem list excludes packs | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0033 (Studio library packs) and ADR index row; glossary Library, Library import, Library pack; vision question on generic flows closed | inline (parent: design authored this session) | [x] | cc9db7f |
+| T2 | 1 | Domain: `GameSystemKind`; `GameSystem::createLibraryPack`; `LibraryPackRefuses` on flows, sheet fields and layout, checks, theme, credits, restore (and later publish/imports); persistence `kind` column + migration (default `game-system`), `library_imports` column (default `[]`), repository mapping; legacy rows read as `game-system` | delegated writer (slice 1) | [x] | 117fa6a |
+| T3 | 1 | Application: `CreateLibraryPack` (draft key rules) and handler, `ListLibraryPacks` query (every pack, `mine`, counts per section, updatedAt); publish handler refuses a pack; the existing GameSystem list excludes packs | delegated writer (slice 1) | [x] | a77c28c |
 | T4 | 2 | Domain: `LibrarySection`, item hash, dependency closure via `DraftReferences`; `planLibraryImport`, `importFromLibrary`, `updateFromLibrary`, `detachLibraryImport`, pruning after every command; `LibraryItemNotFound`, `LibraryItemKeyTaken`, `LibraryImportNotFound`, `LibraryItemRemoved` | delegated writer (slice 2) | [ ] | |
-| T5 | 2 | Application: `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `PreviewLibraryImport`, `GetGameSystemLibraryImports` (statuses, editedLocally), `GetLibraryPack` (catalog with dependsOn); publish stores `library_sources` on the release row (migration) | delegated writer (slice 2) | [ ] | |
-| T6 | 3 | HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 3) | [ ] | |
+| T5 | 2 | Application: `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `PreviewLibraryImport`, `GetGameSystemLibraryImports` (statuses, editedLocally); publish stores `library_sources` on the release row (migration) | delegated writer (slice 2) | [ ] | |
+| T6 | 3 | Application `GetLibraryPack` (catalog with dependsOn, moved from T5 for slice 2's size); HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 3) | [ ] | |
 | T7 | 4 | HTTP: library import controller (list, preview, import, update, detach), `libraryChanges` on list/detail, `librarySources` on release history, API tests for every status (including 409 on a concurrent save), `make api` | delegated writer (slice 4) | [ ] | |
 | T8 | 5 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 5) | [ ] | |
 | T9 | 6 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 6) | [ ] | |
@@ -124,7 +124,8 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-d6a850a27d4e8fc0` | cc9db7f..a77c28c | Approved, 2 suggestions: restore case for another owner's pack in `LibraryPackHandlersTest` (fixed in slice 2); map `LibraryPackRefuses` to 409 with API tests (slice 3, as planned) | #186 |
 
 ## Next step
 
-Slice 1: T2–T3 on `feat/studio-library-1-library-packs`.
+Slice 2: T4–T5 on `feat/studio-library-2-imports`. `GetLibraryPack` (catalog) moved to slice 3 (T6) to keep slice 2 under the size ceiling.

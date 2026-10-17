@@ -226,6 +226,27 @@ export function flowToItem(draft: FlowDraft): FlowResult {
   }
 }
 
+/**
+ * A phase to add: the smallest one the publisher accepts, with a key no phase has and a selection
+ * that starts at `sceneType`, like the first phase of `newFlowToItem`.
+ */
+export function newPhase(phases: PhaseDraft[], sceneType: string): PhaseDraft {
+  let number = phases.length + 1
+  while (phases.some(({ key }) => key === `phase-${String(number)}`)) {
+    number += 1
+  }
+  return {
+    key: `phase-${String(number)}`,
+    name: `Phase ${String(phases.length + 1)}`,
+    act: '',
+    description: '',
+    mode: 'once',
+    selection: { rule: 'sequence', sceneTypes: [sceneType], extra: {} },
+    hooks: {},
+    extra: {},
+  }
+}
+
 /** What the New flow dialog asks for: the first phase needs a Scene Type to pick from. */
 export interface NewFlowDraft {
   key: string
@@ -242,6 +263,15 @@ export const newFlow = (sceneTypes: NewFlowDraft['sceneTypes']): NewFlowDraft =>
   sceneType: sceneTypes[0]?.key ?? '',
   sceneTypes,
 })
+
+/** The dialog after a reload: it offers the latest Scene Types and keeps the chosen one while it exists. */
+export function refreshNewFlow(
+  draft: NewFlowDraft,
+  sceneTypes: NewFlowDraft['sceneTypes'],
+): NewFlowDraft {
+  const kept = sceneTypes.some(({ key }) => key === draft.sceneType)
+  return { ...draft, sceneType: kept ? draft.sceneType : (sceneTypes[0]?.key ?? ''), sceneTypes }
+}
 
 /**
  * The smallest flow the publisher accepts: `oracles` and `trackers` may be empty, a flow needs one

@@ -443,7 +443,7 @@ export const narrativeFlows = {
   ],
 }
 
-/** An invalid draft with one error and warnings about the second flow, and one about the first. */
+/** An invalid draft whose one error is about the second flow (no warnings; a test adds its own). */
 export const flowIssues = {
   valid: false,
   error: { message: 'flows[1].phases[0].selection.table: unknown oracle table "places"' },

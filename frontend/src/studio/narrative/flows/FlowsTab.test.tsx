@@ -60,11 +60,15 @@ describe('the Flows tab', () => {
     expect(keys).toEqual(['heist', 'side-job', 'odd-flow'])
   })
 
-  it('does not link the rows: the editor comes later', async () => {
+  it('links the rows it can edit to the flow editor, and not the one it cannot read', async () => {
     await openTab()
 
-    await row('Heist')
-    expect(within(screen.getByRole('region', { name: 'Flows' })).queryByRole('link')).toBeNull()
+    const heist = await row('Heist')
+    expect(within(heist).getByRole('link', { name: 'Heist' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/flows/heist',
+    )
+    expect(within(await row('Odd flow')).queryByRole('link')).toBeNull()
   })
 
   it('lists a flow of a shape it cannot read read-only, with a reason, and still lets it go', async () => {
@@ -120,6 +124,41 @@ describe('the issues of each flow', () => {
     expect(within(await row('Side job')).queryByText(/issue/)).not.toBeInTheDocument()
   })
 
+  it('shows no count while the validation is being refreshed after a delete, then counts the right rows', async () => {
+    let reads = 0
+    let release: () => void = () => undefined
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { user } = await openTab({
+      [`GET ${base}/validation`]: async () => {
+        if (++reads === 1) {
+          return Response.json({ ...flowWarnings, warnings: ['flows[0]: stale'] })
+        }
+        await pending
+        return Response.json({ ...flowWarnings, warnings: ['flows[1]: fresh'] })
+      },
+      [`DELETE ${base}/narrative/flows/heist`]: json({
+        ...narrativeFlows,
+        version: 6,
+        flows: narrativeFlows.flows.filter(({ key }) => key !== 'heist'),
+      }),
+    })
+
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Delete heist' }))
+    await user.click(screen.getByRole('button', { name: 'Delete the flow' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Heist')).not.toBeInTheDocument()
+    })
+    // The stored position 0 is now the Side job: the old count must not land on it.
+    expect(screen.queryByText(/issue/)).not.toBeInTheDocument()
+    release()
+    expect(await within(await row('Odd flow')).findByText('1 issue')).toBeInTheDocument()
+    expect(within(await row('Side job')).queryByText(/issue/)).not.toBeInTheDocument()
+  })
+
   it('shows no count for a valid draft', async () => {
     await openTab()
 
@@ -156,7 +195,7 @@ describe('creating a flow', () => {
         },
       ],
     }
-    const { user } = await openTab({
+    const { user, router } = await openTab({
       [`POST ${base}/narrative/flows`]: async (request) => {
         sent.push(await request.json())
         return Response.json(
@@ -177,7 +216,9 @@ describe('creating a flow', () => {
     await user.selectOptions(inDialog().getByLabelText('First Scene Type'), 'Quiet')
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
 
-    expect(await screen.findByText('Chase')).toBeInTheDocument()
+    // The editor of the new flow opens.
+    expect(await screen.findByRole('form', { name: 'Flow' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/chase')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
   })
@@ -213,6 +254,7 @@ describe('creating a flow', () => {
 
   it('offers to reload when the draft changed since it was read, and takes the new list', async () => {
     let reads = 0
+    const sent: number[] = []
     const { user } = await openTab({
       [`GET ${base}/narrative`]: () =>
         Response.json(
@@ -220,7 +262,12 @@ describe('creating a flow', () => {
             ? narrativeFlows
             : { ...narrativeFlows, version: 6, sceneTypes: narrativeScenes.sceneTypes.slice(0, 1) },
         ),
-      [`POST ${base}/narrative/flows`]: json(changed, 409),
+      [`POST ${base}/narrative/flows`]: async (request) => {
+        sent.push(((await request.json()) as { expectedVersion: number }).expectedVersion)
+        return sent.length === 1
+          ? Response.json(changed, { status: 409 })
+          : Response.json(narrativeFlows, { status: 201 })
+      },
     })
 
     await user.click(await screen.findByRole('button', { name: 'New flow' }))
@@ -231,6 +278,15 @@ describe('creating a flow', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Reload the latest version' })).toBeNull()
+    })
+    // The reloaded Scene Types are what the select offers, and the next create sends their version.
+    expect(inDialog().getByLabelText('First Scene Type')).toHaveValue('ambush')
+    expect(
+      within(inDialog().getByLabelText('First Scene Type')).getAllByRole('option'),
+    ).toHaveLength(1)
+    await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
+    await waitFor(() => {
+      expect(sent).toEqual([5, 6])
     })
   })
 })

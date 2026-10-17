@@ -313,6 +313,23 @@ final class GameSystem
     }
 
     /**
+     * One saved check as stored, for a test roll to read.
+     *
+     * @return array<array-key, mixed>
+     *
+     * @throws CheckNotFound         when the draft has no check with this key
+     * @throws InvalidReleaseContent when the draft is schema version 1 or "checks" is not well-formed
+     */
+    public function check(string $key): array
+    {
+        $checks = $this->checks();
+        $check = $checks[$this->indexOfKey($checks, $key) ?? throw CheckNotFound::withKey($key)];
+        \assert(\is_array($check));
+
+        return $check;
+    }
+
+    /**
      * Creates a check (no original key; it is appended) or replaces one by its original key (it
      * keeps its position; a different key renames it). The check is stored as given once the whole
      * draft passes the item rules (ADR 0032), so a dice notation, formula, difficulty or band that

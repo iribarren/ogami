@@ -840,6 +840,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/checks/{check}/test-rolls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Roll a check of one of my GameSystem drafts as last saved against sample values; never changes the draft and is never recorded */
+        post: operations["testRollCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems": {
         parameters: {
             query?: never;
@@ -3208,6 +3225,77 @@ export interface components {
              * @example 0
              */
             index: number;
+        };
+        CheckTestRollRequest: {
+            /**
+             * @description The sample value of each number and track field by key: an integer within the number's min..max, or a track's 0..max. A missing number takes its default (else 0), a missing track 0. A derived field is computed, so it takes none; an unknown key is refused (422).
+             * @example {
+             *       "hands": 6
+             *     }
+             */
+            sheet?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * @description The sample value of each tracker by key: an integer within a counter's min..max or a clock's 0..segments. A missing tracker takes its initial value.
+             * @example {
+             *       "alarm": 2
+             *     }
+             */
+            trackers?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * @description The Check difficulty, within the check's range; absent or null takes the declared default. Refused (422) for a check that declares none.
+             * @example 13
+             */
+            difficulty?: number | null;
+            /**
+             * @description The situational modifier, from -100 to 100; absent or null is 0.
+             * @example -2
+             */
+            situational?: number | null;
+        };
+        CheckTestRollBandResponse: {
+            /** @example success */
+            key: string;
+            /** @example Success */
+            label: string;
+            /**
+             * @description The band's upper bound for these samples (a formula or tracker bound evaluated, difficulty included); null for the last band, which catches the rest. Bounds that do not increase are returned as they are.
+             * @example 17
+             */
+            bound: number | null;
+        };
+        CheckTestRollResponse: {
+            dice: components["schemas"]["RollResponse"];
+            /**
+             * @description The value of the check's modifier formula for the samples; 0 when it has none.
+             * @example 6
+             */
+            modifier: number;
+            /**
+             * @description The situational modifier that applied.
+             * @example 0
+             */
+            situational: number;
+            /**
+             * @description The Check difficulty that applied: the one sent, else the declared default; null for a check that declares none.
+             * @example 13
+             */
+            difficulty: number | null;
+            /**
+             * @description The dice, plus the modifier, plus the situational modifier.
+             * @example 13
+             */
+            total: number;
+            /** @description Every band in order with its bound for these samples. */
+            bands: components["schemas"]["CheckTestRollBandResponse"][];
+            /**
+             * @description The key of the band reached: the first whose bound is at least the total, else the last.
+             * @example success
+             */
+            band: string;
         };
         GameSystemSummaryResponse2: {
             /** @example my-system */
@@ -7672,6 +7760,87 @@ export interface operations {
                 };
             };
             /** @description "index" is outside the check list (the message starts with "index"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    testRollCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                check: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckTestRollRequest"];
+            };
+        };
+        responses: {
+            /** @description The dice rolled, the modifier, the situational modifier, the difficulty that applied, the total, every band with its bound for these samples and the band reached. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckTestRollResponse"];
+                };
+            };
+            /** @description The body is not a JSON object. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either), or it has no check with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path: "sheet.hands", "trackers.alarm", "difficulty", "situational"), a formula or the dice cannot be evaluated for these samples (nothing is rolled), the saved draft is not readable, or it has schema version 1 (no checks). */
             422: {
                 headers: {
                     [name: string]: unknown;

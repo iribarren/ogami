@@ -4797,6 +4797,115 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/checks/{check}/test-rolls": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Roll a check of one of my GameSystem drafts as last saved against sample values; never changes the draft and is never recorded",
+                "operationId": "testRollCheck",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "check",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CheckTestRollRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The dice rolled, the modifier, the situational modifier, the difficulty that applied, the total, every band with its bound for these samples and the band reached.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CheckTestRollResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The body is not a JSON object.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either), or it has no check with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path: \"sheet.hands\", \"trackers.alarm\", \"difficulty\", \"situational\"), a formula or the dice cannot be evaluated for these samples (nothing is rolled), the saved draft is not readable, or it has schema version 1 (no checks).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems": {
             "get": {
                 "tags": [
@@ -11779,6 +11888,119 @@
                         "description": "The check's new position in the whole check list, from 0 to the check count minus 1; out of range is refused (422).",
                         "type": "integer",
                         "example": 0
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollRequest": {
+                "properties": {
+                    "sheet": {
+                        "description": "The sample value of each number and track field by key: an integer within the number's min..max, or a track's 0..max. A missing number takes its default (else 0), a missing track 0. A derived field is computed, so it takes none; an unknown key is refused (422).",
+                        "type": "object",
+                        "example": {
+                            "hands": 6
+                        },
+                        "nullable": true,
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    },
+                    "trackers": {
+                        "description": "The sample value of each tracker by key: an integer within a counter's min..max or a clock's 0..segments. A missing tracker takes its initial value.",
+                        "type": "object",
+                        "example": {
+                            "alarm": 2
+                        },
+                        "nullable": true,
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    },
+                    "difficulty": {
+                        "description": "The Check difficulty, within the check's range; absent or null takes the declared default. Refused (422) for a check that declares none.",
+                        "type": "integer",
+                        "example": 13,
+                        "nullable": true
+                    },
+                    "situational": {
+                        "description": "The situational modifier, from -100 to 100; absent or null is 0.",
+                        "type": "integer",
+                        "example": -2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollBandResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "bound"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "success"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Success"
+                    },
+                    "bound": {
+                        "description": "The band's upper bound for these samples (a formula or tracker bound evaluated, difficulty included); null for the last band, which catches the rest. Bounds that do not increase are returned as they are.",
+                        "type": "integer",
+                        "example": 17,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollResponse": {
+                "required": [
+                    "dice",
+                    "modifier",
+                    "situational",
+                    "difficulty",
+                    "total",
+                    "bands",
+                    "band"
+                ],
+                "properties": {
+                    "dice": {
+                        "$ref": "#/components/schemas/RollResponse"
+                    },
+                    "modifier": {
+                        "description": "The value of the check's modifier formula for the samples; 0 when it has none.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "situational": {
+                        "description": "The situational modifier that applied.",
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "difficulty": {
+                        "description": "The Check difficulty that applied: the one sent, else the declared default; null for a check that declares none.",
+                        "type": "integer",
+                        "example": 13,
+                        "nullable": true
+                    },
+                    "total": {
+                        "description": "The dice, plus the modifier, plus the situational modifier.",
+                        "type": "integer",
+                        "example": 13
+                    },
+                    "bands": {
+                        "description": "Every band in order with its bound for these samples.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckTestRollBandResponse"
+                        }
+                    },
+                    "band": {
+                        "description": "The key of the band reached: the first whose bound is at least the total, else the last.",
+                        "type": "string",
+                        "example": "success"
                     }
                 },
                 "type": "object"

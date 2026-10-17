@@ -142,8 +142,9 @@ final class GameSystemCheckApiTest extends WebTestCase
         ] as [$method, $path, $body]) {
             $this->client->jsonRequest($method, self::BASE.$path, $body);
 
-            self::assertContains($this->client->getResponse()->getStatusCode(), [404, 422], $method.' '.$path);
-            self::assertNotSame('', $this->error());
+            // The version 1 refusal comes before the lookup of the check, so even a key that names nothing is a 422, not a 404.
+            self::assertResponseStatusCodeSame(422, $method.' '.$path);
+            self::assertStringContainsString('schemaVersion', $this->error(), $method.' '.$path);
         }
 
         $this->client->jsonRequest('POST', self::BASE.'/journal/checks', ['expectedVersion' => 1, 'check' => $this->grit()]);

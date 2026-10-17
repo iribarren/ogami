@@ -88,6 +88,8 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 
 Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 forecasts ~2,100. The user kept it as one slice with a size exception; the generated files go in their own commit, so the code commits fit one review candidate.
 
+Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a size exception; the two T9 commits are reviewed separately.
+
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
@@ -101,7 +103,7 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 | T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | 56f91e2 |
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | 3597f60, a8da25e, a501e9b |
-| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [ ] | |
+| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | |
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
 | T11 | 7 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
 | T12 | 8 | `FormulaInput`: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
@@ -123,7 +125,8 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 - 2026-10-17: T8 domain and application: `GameSystem::saveSheetLayout` (group identity by `previousName` or name, simultaneous rename cascade, dropping a group with fields refused), `declareSheetLayout`, `removeSheetLayout`, each all-or-nothing through the item rules; `SaveSheetLayout`, `DeclareSheetLayout`, `RemoveSheetLayout` with handlers. No HTTP layer yet.
 - 2026-10-17: T8 HTTP: `PUT /sheet/layout`, `POST /sheet/layout/declare`, `DELETE /sheet/layout` with request DTOs and OpenAPI; API tests for every status of every endpoint, each refusal asserting the draft unchanged, and happy paths for the rename cascade, declare and remove.
 - 2026-10-17: Slice 5 review fix R3-001: a domain test declares a sheet with the numeric-string group `"7"` and asserts the group name and the fields' `group` stay the string `"7"`; `declareSheetLayout` already casts the array key back to string (added with the command), so the test pins that behaviour and no source change was needed.
-- 2026-10-17: T9 part 1 (logic, no UI yet): `useGameSystemSheet` (read model query; save, delete, move mutations; `SheetError` with the in-use `paths`), `sheetDraft.ts` (form state, request building that omits empty optionals, sections by declared or consecutive group, move target index), `sheetError.ts` (`sheet.fields[i].<property>:` messages onto the dialog inputs, the rest to the form); sheet fixtures. The tab and dialog (~1,400 lines with tests and stories) would pass the slice's 1,700 line stop, so they are not committed; see Next step.
+- 2026-10-17: T9 part 1 (logic, no UI yet): `useGameSystemSheet` (read model query; save, delete, move mutations; `SheetError` with the in-use `paths`), `sheetDraft.ts` (form state, request building that omits empty optionals, sections by declared or consecutive group, move target index), `sheetError.ts` (`sheet.fields[i].<property>:` messages onto the dialog inputs, the rest to the form); sheet fixtures.
+- 2026-10-17: T9 part 2: `SheetTab` (list by declared or consecutive group, empty groups noted, move up/down to the neighbour's index, delete confirm with in-use paths, 409 reload), `SheetFieldDialog` (per-type inputs, group select or free text, span select, rename hint for published keys, 422 mapped to inputs or the form, 409 reload), `Sheet` tab on `GameSystemPage`, tests for every 400/404/409/422 path, stories. No API change; layout editing is slice 7.
 
 ## Reviews
 
@@ -137,4 +140,4 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 
 ## Next step
 
-Slice 6 is split: part 1 (logic) is committed; `SheetTab`, `SheetFieldDialog`, the `Sheet` tab wiring, their tests and stories are written, pass, and wait uncommitted in the working tree for the parent's decision on slice size (T9 stays open).
+Slice 6: native review of both T9 commits separately, then PR.

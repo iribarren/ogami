@@ -21,6 +21,7 @@ import { OraclesTab } from './oracles/OraclesTab'
 import { PublishDialog } from './PublishDialog'
 import { ReleasesTab } from './ReleasesTab'
 import { SectionCounts } from './SectionCounts'
+import { SheetTab } from './sheet/SheetTab'
 import {
   StudioError,
   useDiscardGameSystem,
@@ -35,6 +36,7 @@ type Tab =
   | 'narrative'
   | 'sceneTypes'
   | 'flows'
+  | 'sheet'
   | 'validation'
   | 'releases'
   | 'sections'
@@ -176,6 +178,7 @@ function GameSystemView({
         <SegmentedControlItem value="narrative">Trackers &amp; tags</SegmentedControlItem>
         <SegmentedControlItem value="sceneTypes">Scene Types</SegmentedControlItem>
         <SegmentedControlItem value="flows">Flows</SegmentedControlItem>
+        <SegmentedControlItem value="sheet">Sheet</SegmentedControlItem>
         <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
         <SegmentedControlItem value="releases">Releases</SegmentedControlItem>
         <SegmentedControlItem value="sections">Sections</SegmentedControlItem>
@@ -189,6 +192,7 @@ function GameSystemView({
       {tab === 'narrative' && <NarrativeTab gameSystemKey={gameSystem.key} />}
       {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
       {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
+      {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} />}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
       {tab === 'releases' && (
         <ReleasesTab

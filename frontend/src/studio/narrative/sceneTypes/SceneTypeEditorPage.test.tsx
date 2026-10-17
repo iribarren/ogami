@@ -177,6 +177,30 @@ describe('the Scene Type editor', () => {
     expect(screen.queryByText(/has no Scene Type/)).not.toBeInTheDocument()
   })
 
+  it('sends the version of the save that renamed it with the next save, to the new key', async () => {
+    const renamed = { ...ambush, key: 'trap' }
+    const renamedSave = recorder(() => Response.json(withScene(renamed, 9)))
+    const nextSave = recorder(() => Response.json(withScene(renamed, 10)))
+    const { user, router } = await openEditor('ambush', {
+      [put]: renamedSave.handler,
+      [`PUT ${base}/narrative/scene-types/trap`]: nextSave.handler,
+    })
+
+    await replace(user, sceneKey(), 'trap')
+    await user.click(save())
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/trap')
+    })
+    await replace(user, screen.getByLabelText('Name'), 'Trap again')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(nextSave.sent).toHaveLength(1)
+    })
+    expect(renamedSave.sent[0]?.expectedVersion).toBe(5)
+    expect(nextSave.sent[0]?.expectedVersion).toBe(9)
+  })
+
   it('reads a legacy Scene Type with no tips and does not invent them on save', async () => {
     const saved = recorder(() => Response.json(narrativeScenes))
     const { user } = await openEditor('quiet', {

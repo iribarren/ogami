@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-9-scene-types` · **Status:** in progress (slice 9)
+- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-10-flows-tab` · **Status:** in progress (slice 10)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -86,14 +86,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 7 | `feat/studio-flow-editor-7-step-kinds` | `feat(studio): studio-flow-editor 7/11 oracle, table and choice steps` | T8 | ~1,550 |
 | 8 | `feat/studio-flow-editor-8-pick-check` | `feat(studio): studio-flow-editor 8/11 pick and check steps` | T8b | ~1,200 |
 | 9 | `feat/studio-flow-editor-9-scene-types` | `feat(studio): studio-flow-editor 9/11 Scene Types tab and editor` | T9 | ~1,400 |
-| 10 | `feat/studio-flow-editor-10-flows` | `feat(studio): studio-flow-editor 10/11 Flows tab and flow editor` | T10 | ~1,700 |
-| 11 | `feat/studio-flow-editor-11-oracle-fields-e2e` | `feat(studio): studio-flow-editor 11/11 oracle entry fields, chaos tracker and e2e` | T11, T12 | ~1,100 |
+| 10 | `feat/studio-flow-editor-10-flows-tab` | `feat(studio): studio-flow-editor 10/12 Flows tab` | T10 | ~1,500 |
+| 11 | `feat/studio-flow-editor-11-flow-editor` | `feat(studio): studio-flow-editor 11/12 flow editor and phase outline` | T10b | ~1,700 |
+| 12 | `feat/studio-flow-editor-12-oracle-fields-e2e` | `feat(studio): studio-flow-editor 12/12 oracle entry fields, chaos tracker and e2e` | T11, T12 | ~1,100 |
 
 Slice 5 replanned (2026-10-16): T7 as first planned (step cards, effects editor with 10 kinds, value inputs, four kinds, tests, stories) forecast ~2,000 with the slice 4 fixes, over the reviewer ceiling; the effects editor moved to slice 6 (T7b) and the plan grew to 10 slices. PRs #152–#155 keep their `n/9` titles.
 
 Slice 7 replanned (2026-10-16): slices 5 and 6 each landed ~2,250 lines against ~1,600 forecasts (Prettier expands JSX), so T8's five kinds plus the slice 6 fixes would not fit the ceiling. `pick` and `check` moved to slice 8 (T8b) and the plan grew to 11 slices. PRs #156–#157 keep their `n/10` titles.
 
-Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept edited entry fields only through the API); slice 4 makes the Trackers & tags tab usable; slices 5–8 add editors not yet linked (stories only); slice 9 makes Scene Types editable; slice 10 flows; slice 11 completes the oracle fields and adds the e2e.
+Slice 10 replanned (2026-10-17): slices keep landing 25–40% over forecast (slice 9: 1,923 against ~1,400), and T10 (~1,700) plus the slice 9 fixes would not fit the ceiling. The flow editor moved to slice 11 (T10b) and the plan grew to 12 slices. PRs #158–#160 keep their `n/11` titles. The tab's issue count comes from the existing `GET /validation` (first error and warnings, by path), so the slice stays frontend only.
+
+Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept edited entry fields only through the API); slice 4 makes the Trackers & tags tab usable; slices 5–8 add editors not yet linked (stories only); slice 9 makes Scene Types editable; slice 10 lists flows (rows not linked yet); slice 11 makes flows editable; slice 12 completes the oracle fields and adds the e2e.
 
 ## Tasks
 
@@ -109,10 +112,11 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | T7b | 6 | Effects editor (10 kinds, at most 10, sheet effects only where allowed) and value inputs (integer, `{tracker}`, `{formula}`, `{dice}`), wired into step cards and bands; Vitest; stories | delegated writer (slice 6) | [x] | 6b7e7f3 |
 | T8 | 7 | Step kinds `oracle` (likelihood level, yes/no/exceptional branches), `table` (entry branches, otherwise), `choice` (options, skip) with a shared outcome editor (`next`, effects); 422 paths for branches and options; Vitest; stories | delegated writer (slice 7) | [x] | 9ec6bed |
 | T8b | 8 | Step kinds `pick` (of, tags, mode, count, found/none branches) and `check` (check, difficulty value input within the check's range, outcomes by band with sheet effects allowed); Vitest; stories | delegated writer (slice 8) | [x] | 72508a1 |
-| T9 | 9 | Scene Types tab (list, counts, "Used by", create, delete) and editor route (name, purpose, tips, oracle shortcuts, setup/play/closing step lists, rename, 409/422); Vitest; stories | delegated writer (slice 9) | [x] | |
-| T10 | 10 | Flows tab (list, default flag, validation issue count, create, delete) and flow editor route (fields, oracles/trackers selects, phase outline: act, mode, selection, hooks, world turn; rename; 409/422); Vitest; stories | | [ ] | |
-| T11 | 11 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | | [ ] | |
-| T12 | 11 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | | [ ] | |
+| T9 | 9 | Scene Types tab (list, counts, "Used by", create, delete) and editor route (name, purpose, tips, oracle shortcuts, setup/play/closing step lists, rename, 409/422); Vitest; stories | delegated writer (slice 9) | [x] | 570bc50, aecb86f |
+| T10 | 10 | Typed flow drafts (flow fields, phases with selection and hooks, unknown fields round-trip, unreadable shapes read-only); Flows tab (list in stored order, default flag, phase count, validation issue count, create, delete); Vitest; stories | delegated writer (slice 10) | [x] | |
+| T10b | 11 | Flow editor route (fields, default flag, default view, oracles/trackers selects, phase outline: add/move/delete, key, name, act, description, mode, selection, hooks and world turn step lists; rename; 409/422); Vitest; stories | | [ ] | |
+| T11 | 12 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | | [ ] | |
+| T12 | 12 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | | [ ] | |
 
 ## Progress
 
@@ -138,6 +142,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 - 2026-10-17: Slice 8 review fix R3-001 (route: delegated writer, trigger: 2+ non-trivial files): a message about a field the card does not render (`difficulty` with the input hidden, `of`/`mode`/`count.*`/`check` on a step of another kind) is listed on the card; the rendered fields are now per kind (`ownFields`, `checkDifficulty`). RED: the two new UI tests failed against the old code; GREEN after.
 - 2026-10-17: T9 part 1 (route: delegated writer, trigger: 2+ non-trivial files): "Scene Types" tab after "Trackers & tags" (list in stored order with step counts and "Used by", delete disabled with the reason, unreadable shapes read-only, a "New Scene Type" dialog that creates the smallest item the publisher accepts: `oracles` and the three step lists empty), `sceneTypeDraft` (unknown fields round-trip, legacy missing `tips`) and `sceneTypeAnswer` (server `path: message` to list, card, field or page), shared `NarrativeGate`, `ItemDialog` `onSaved`. Rows link to the editor in the next commit. RED: not observed (tests written after the code).
 - 2026-10-17: T9 done (route: delegated writer, trigger: 2+ non-trivial files; the user accepted ~1,920 lines for the slice, committed in two parts): `SceneTypeEditorPage` at `/studio/game-systems/$key_/scene-types/$sceneType` (key rename then navigate to the new key, name, purpose, tips, oracle shortcuts from the catalog, three `StepListEditor`s), a save sends the original key and the version the form was filled at, client errors in any list send nothing, 422 paths go to the list card, field or page, 409 reload takes the new version only with a replaced draft, an item gone or unreadable after a reload keeps the form and the old version with a message, not found state; the tab rows link to it and the create dialog opens it. Unsaved changes are not guarded. RED: not observed (tests written after the code).
+- 2026-10-17: slice 9 review fixes (route: delegated writer): `sceneTypeAnswer` matches a step list exactly (`<list>[n]…` or `<list>: …`, so `setupX` is no list) with a message on the list itself kept as a list-level error; tests for both, for `ItemDialog` `onSaved`, and for the version a save sends after a rename remount (the first save's response); the tab test's link and read-only row assertions were already real in `aecb86f` and got one more check each. RED: observed for the list matching, not for the added tests of existing behavior.
+- 2026-10-17: T10 done (route: delegated writer, trigger: 2+ non-trivial files): `flowDraft` (flow fields, phases with `once`/`loop`, `sequence`/`player`/`oracle` selection and the seven hooks kept as stored lists; unknown fields of flow, phase and selection round-trip, optional fields stay missing, a false `default` is not sent; any unreadable shape reads as null; `flowToItem` for slice 11; `newFlowToItem` sends `{key, name, defaultView: focus, oracles: [], trackers: [], phases: [main: once, sequence of the chosen Scene Type]}`, checked against `ReleaseVersion2::flows`/`phase`), `FlowsTab` after Scene Types (stored order, name, key, Default badge, phase count, "Used by", issue count from the validation query by stored position and shown only once it loads, delete disabled with the reason, unreadable rows read-only, rows not linked, "New flow" dialog with a first Scene Type select, disabled with "Add a Scene Type first." without Scene Types, 404/409/422 shown, 409 reload), `flowIssueCount`, stories and fixtures. RED: not observed (tests written after the code).
 
 ## Reviews
 
@@ -151,7 +157,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | 6 | main..580f7ff declined by the user; `review-2e252bfaa5bfa246` (580f7ff..6b7e7f3) | 580f7ff, 6b7e7f3 (user accepted 2,228 lines) | range 2 approved, acknowledged; WARNING R3-001 (`StepListEditor.tsx:77-81`: an effect error naming a band index out of range is shown nowhere), WARNING R3-002 (`stepDraft.ts:268-270`: the client "Use a whole number." effect value error has no UI test and may not surface), SUGGESTION R3-003 (`effectDraft.ts:171-173`: `given()` drops explicit empty optional strings and lists on an unchanged save); fixed in slice 7 | #157 |
 | 7 | `review-c1098f541060f529` (main..9ec6bed) | 6567192, 9ec6bed (1,751 lines) | approved, acknowledged; WARNING R3-001 (`stepDraft.ts:189-190`: a table step whose stored `branches` is not an array becomes editable with no branches and the first save drops it), SUGGESTION R3-002 (`BranchingFields.tsx:52-53`: row field messages matched by name for every kind: an `entry` message on a choice option is hidden, a `key`/`label` message on a table branch shows as the Entry error, a second message on the same field is lost), SUGGESTION R3-003 (`stepDraft.ts:151-152`: empty stored answers / `otherwise` dropped on an unchanged save; confirmed canonical: `Steps::outcomeObject` treats empty as absent, `ReleaseContentVersion2Test.php:227` hashes `{yes: null, no: []}` like no branches, no change); R3-001 and R3-002 fixed in slice 8 | #158 |
 | 8 | `review-4135374f93df5c3d` (main..72508a1) | 1ac0a52, 72508a1 (1,349 lines) | approved, acknowledged; WARNING R3-001 (`PickCheckFields.tsx:135`: a server `difficulty` message is shown nowhere when the Difficulty input is hidden (unknown or empty check, a check without difficulty and no stored value); the same for `of`/`mode`/`check`/`count.min`/`count.max` messages on a step of another kind; no test); fixed in slice 9 | #159 |
+| 9 | `review-01c2dc6ff82394fe` (main..570bc50), `review-76a6c40b35b012c3` (570bc50..aecb86f) | b68d400, 570bc50, aecb86f (user accepted 1,923 lines, reviewed per range) | both approved, acknowledged; range 1: WARNING R3-001 (`sceneTypeError.ts:30`: the list is matched by a bare string prefix, and a list-level message without a step index is handed to `mapStepError`; untested), SUGGESTION R3-002 (`SceneTypesTab.test.tsx:37`: the link test asserts no link, the read-only row test is vacuous), SUGGESTION R3-003 (`ItemDialog.tsx:99-101`: `onSaved` untested); range 2: WARNING R3-001 (`SceneTypeEditorPage.test.tsx:163-177`: no test of the version a second save sends after a rename remount; expect `expectedVersion` from the save response); fixed in slice 10 | #160 |
 
 ## Next step
 
-Slice 9 (slice 8 review fix R3-001, T9) on `feat/studio-flow-editor-9-scene-types`.
+Slice 10 (slice 9 review fixes, T10) on `feat/studio-flow-editor-10-flows-tab`.

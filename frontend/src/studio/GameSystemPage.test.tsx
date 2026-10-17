@@ -279,7 +279,7 @@ describe('the metadata form', () => {
 })
 
 describe('switching tabs', () => {
-  it('offers the tabs in order, the trackers and tags after the oracles and the Scene Types after them', async () => {
+  it('offers the tabs in order, the trackers and tags after the oracles and the Scene Types and the flows after them', async () => {
     renderDraft()
 
     await metadataForm()
@@ -293,6 +293,7 @@ describe('switching tabs', () => {
       'Oracles',
       'Trackers & tags',
       'Scene Types',
+      'Flows',
       'Validation',
       'Releases',
       'Sections',

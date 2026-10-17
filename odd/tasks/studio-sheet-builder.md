@@ -45,6 +45,7 @@ Out of scope: the check editor (17: checks are only read here, to find reference
 
 - New ADR 0031 (sheet layout and Studio sheet builder) amending ADR 0022's layout line; contract §Sheet; glossary (Sheet layout, Group).
 - 2026-10-17: T2 done. `SheetLayout` (Studio) and `SheetFields` check columns, groups and spans as item rules; schema and agreement vectors updated; hash of a release without layout unchanged.
+- 2026-10-17: T3 done. Play `SheetLayout`/`SheetGroup` value objects, `SheetTemplate::layout()`, field `span`; translator re-checks every layout rule and fails closed; legacy releases read with no layout and span 1.
 - Studio: `SheetFields::validate` (or a `SheetLayout` helper next to it) checks `columns`, `groups` and spans; `v2.schema.json`; agreement vectors; canonical-form and hash tests (a release without layout keeps its hash).
 - Play: `SheetTemplate` gains a layout value object; translator re-checks; Campaign response + OpenAPI; shared renderer with the grid.
 
@@ -86,7 +87,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0031 (sheet layout model and Studio sheet builder; amends ADR 0022's layout line) and ADR index row; contract §Sheet (layout table, canonical form, Play reading); glossary (Sheet layout, Group) | delegated writer (slice 1) | [x] | |
 | T2 | 1 | Studio publisher: `sheet.columns`, `sheet.groups`, field `span` with the layout rules as item rules; canonical form omits defaults; `v2.schema.json` and agreement vectors; tests incl. hash of a release without layout unchanged | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | | [ ] | |
+| T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | |
 | T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | | [ ] | |
 | T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | | [ ] | |
 | T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | | [ ] | |

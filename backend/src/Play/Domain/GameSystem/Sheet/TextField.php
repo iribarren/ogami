@@ -19,8 +19,9 @@ final readonly class TextField extends Field
         ?string $group = null,
         public bool $multiline = false,
         public ?int $maxLength = null,
+        int $span = 1,
     ) {
-        parent::__construct($key, $label, $hint, $group);
+        parent::__construct($key, $label, $hint, $group, $span);
     }
 
     public function limit(): int

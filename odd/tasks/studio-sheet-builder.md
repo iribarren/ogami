@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-5-layout-commands` · **Status:** in progress (slice 5)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-6-sheet-tab` · **Status:** in progress (slice 6)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -38,6 +38,7 @@ Out of scope: the check editor (17: checks are only read here, to find reference
 | Formula editor (Claude) | Client-side live validation with `shared/lib/formula`: syntax with a structured `position` (TS only; PHP keeps its messages, conformance vectors unchanged), unknown or wrong-kind references in the sheet scope, cycles across the draft sheet. Insert-reference menu; computed value from the preview's sample values. The server stays the authority on save. Built as a reusable `FormulaInput` for the check editor (17) |
 | Live preview (Claude) | Renders the unsaved form state through the shared `SheetFields`; sample values editable per field, sample tracker values start at each tracker's initial value; nothing is saved |
 | Field move (Claude, slice 3 planning) | `POST /sheet/fields/{field}/move {expectedVersion, index}` only reorders: `index` is the target position in the whole `fields` list (0 to count − 1, out of range is a 422 on `index`). A field's group changes through `PUT /sheet/fields/{field}`, as any other property; with declared groups fields render in list order within their group, so the UI computes the index from the neighbour |
+| Sheet tab (Claude, slice 6 planning) | `frontend/src/studio/sheet/`, a `Sheet` tab on `GameSystemPage`. Fields listed by group (declared groups in order, empty ones shown; without declared groups, consecutive groups as Play renders them). Add/edit in one dialog: key, label, hint, type with its own properties; group is a select of declared groups (free text without), span a select up to the group's columns (only with declared groups). Up/down buttons move a field to its neighbour's index within its group. Delete through a confirm dialog; an in-use 422 lists the paths. Derived formula is a plain text input until `FormulaInput` (slice 8). Layout editing waits for slice 7 |
 | Rename after publish (Claude) | Allowed. A hint when the key exists in the latest release: Characters on campaigns that upgrade later lose that value (migration is feature 20) |
 
 ## Design
@@ -87,6 +88,8 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 
 Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 forecasts ~2,100. The user kept it as one slice with a size exception; the generated files go in their own commit, so the code commits fit one review candidate.
 
+Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a size exception; the two T9 commits are reviewed separately.
+
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
@@ -99,8 +102,8 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 | T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | 240a46a |
 | T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | 56f91e2 |
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
-| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | |
-| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | | [ ] | |
+| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | 3597f60, a8da25e, a501e9b |
+| T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | |
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
 | T11 | 7 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
 | T12 | 8 | `FormulaInput`: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
@@ -121,6 +124,9 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 - 2026-10-17: Slice 4 review fixes R3-001, R3-002: every sheet write answers through one helper, so a draft gone when the sheet is read back after a committed write is a 409, not a 404 (controller unit test with stub buses); the DELETE `expectedVersion` is read raw and an array-shaped value is the 400 `MALFORMED_DELETE`.
 - 2026-10-17: T8 domain and application: `GameSystem::saveSheetLayout` (group identity by `previousName` or name, simultaneous rename cascade, dropping a group with fields refused), `declareSheetLayout`, `removeSheetLayout`, each all-or-nothing through the item rules; `SaveSheetLayout`, `DeclareSheetLayout`, `RemoveSheetLayout` with handlers. No HTTP layer yet.
 - 2026-10-17: T8 HTTP: `PUT /sheet/layout`, `POST /sheet/layout/declare`, `DELETE /sheet/layout` with request DTOs and OpenAPI; API tests for every status of every endpoint, each refusal asserting the draft unchanged, and happy paths for the rename cascade, declare and remove.
+- 2026-10-17: Slice 5 review fix R3-001: a domain test declares a sheet with the numeric-string group `"7"` and asserts the group name and the fields' `group` stay the string `"7"`; `declareSheetLayout` already casts the array key back to string (added with the command), so the test pins that behaviour and no source change was needed.
+- 2026-10-17: T9 part 1 (logic, no UI yet): `useGameSystemSheet` (read model query; save, delete, move mutations; `SheetError` with the in-use `paths`), `sheetDraft.ts` (form state, request building that omits empty optionals, sections by declared or consecutive group, move target index), `sheetError.ts` (`sheet.fields[i].<property>:` messages onto the dialog inputs, the rest to the form); sheet fixtures.
+- 2026-10-17: T9 part 2: `SheetTab` (list by declared or consecutive group, empty groups noted, move up/down to the neighbour's index, delete confirm with in-use paths, 409 reload), `SheetFieldDialog` (per-type inputs, group select or free text, span select, rename hint for published keys, 422 mapped to inputs or the form, 409 reload), `Sheet` tab on `GameSystemPage`, tests for every 400/404/409/422 path, stories. No API change; layout editing is slice 7.
 
 ## Reviews
 
@@ -130,7 +136,8 @@ Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 fore
 | 2 | `review-8690c6c8f4c4f4e7` | eddc740, 07876cb, 3e075c2 | approved, acknowledged; WARNING R3-layout-fixture-drops-fields (`frontend/src/play/characters/fixtures.ts`: the `sheetLayout` fixture leaves out a group one of its fields uses, so the `WithLayout` story silently drops that field; declare the group, assert every field label renders, unit-test what the renderer does with a field whose group is undeclared), fixed in slice 3 | #168 |
 | 3 | `review-4e6b8a000308443b` | 80ac0eb, 240a46a, 56f91e2 | approved, acknowledged; 2 suggestions: R3-legacy-delete-item-rules-unproved (`GameSystemSheetTest.php`: the legacy-draft delete case targets the referenced `sanity`, so it hits `SheetFieldInUse`; delete an unreferenced field, assert the `sceneTypes[0].oracles[0]: ` prefix and an unchanged draft), R3-fixture-label-assertion-ambiguous (`frontend/src/play/characters/fixtures.test.tsx`: the label `Notes` equals the group name; query by accessible label); fixed in slice 4 | #169 |
 | 4 | `review-6cdcac261eef84ad` | 218461c, 231d8c4 (generated 8be0dfc: review declined) | approved, acknowledged; 2 suggestions: R3-001 (`GameSystemSheetController.php`: the write and the follow-up read share one try/catch, so a draft deleted in between answers 404 after a committed write; separate write refusals from the read), R3-002 (`GameSystemSheetController.php` `delete`: an array-shaped `expectedVersion` query parameter makes Symfony's `filter` throw instead of the 400 `MALFORMED_DELETE`; read the raw value and validate); fixed in slice 5. PR size 2,251, exception approved by the user | #170 |
+| 5 | `review-6556e3019ded422d` | 644cdb3, 3597f60, a8da25e (generated a501e9b: review declined) | approved, acknowledged; 1 suggestion R3-001 (`GameSystem.php` `declareSheetLayout`: fields are bucketed by group name as an array key, so a numeric-string group `"7"` becomes an int key; cast back to string and add a domain test declaring a sheet with a numeric-string group and asserting the exact string group name), fixed in slice 6. PR size 2,133, exception approved by the user | #171 |
 
 ## Next step
 
-Slice 5: writer delivers the slice 4 review fixes and T8 on `feat/studio-sheet-builder-5-layout-commands`, then native review and PR.
+Slice 6: native review of both T9 commits separately, then PR.

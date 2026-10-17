@@ -361,6 +361,23 @@ final class GameSystemSheetLayoutTest extends TestCase
     }
 
     #[Test]
+    public function aNumericGroupNameStaysATextWhenDeclared(): void
+    {
+        $gameSystem = $this->draft();
+        $gameSystem->restore(ReleaseArrays::with($gameSystem->document(), 'sheet.fields', array_map(
+            static fn (array $field, string $group): array => [...$field, 'group' => $group],
+            $this->fields($gameSystem),
+            ['7', 'Other', '7', 'Other'],
+        )), $this->created);
+
+        $gameSystem->declareSheetLayout($this->now);
+
+        self::assertSame([['name' => '7'], ['name' => 'Other']], $this->sheet($gameSystem)['groups']);
+        self::assertSame(['pow' => '7', 'sanity' => '7', 'hp' => 'Other', 'bonus' => 'Other'], $this->groupOfEach($gameSystem));
+        ReleaseContent::checkItemRules($gameSystem->document());
+    }
+
+    #[Test]
     public function aFieldWhoseGroupIsLiterallyGeneralSharesTheGroupOfTheFieldsWithoutOne(): void
     {
         $gameSystem = $this->draft();

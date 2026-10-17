@@ -4,7 +4,7 @@ import { expect, within } from 'storybook/test'
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { oracles, oraclesV1, stormRoll } from '../fixtures'
+import { oracles, oraclesV1, stormRoll, narrativeScenes } from '../fixtures'
 import { OracleTableEditorPage } from './OracleTableEditorPage'
 
 const json =
@@ -20,6 +20,7 @@ const meta = {
   args: { gameSystemKey: 'my-draft', table: 'weather' },
   parameters: {
     api: {
+      [`GET ${base}/narrative`]: json(narrativeScenes),
       [`GET ${base}/oracles`]: json(oracles),
       [`POST ${base}/oracle-tables/weather/test-rolls`]: json(stormRoll),
     },

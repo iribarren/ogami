@@ -1,3 +1,4 @@
+import { newEffect } from '../narrative/steps/effectDraft'
 import type { OracleTable } from './tableDraft'
 import type { EntryDraft, TableDraft } from './tableDraft'
 import {
@@ -169,6 +170,78 @@ describe('toTable', () => {
 
     expect(toTable(stored, draft, 1).entries[0]).toHaveProperty('key', 'clear')
     expect(toTable(stored, draft, 2).entries[0]).toHaveProperty('key', 'edited')
+  })
+
+  it('reads the Scene Type and effects of an entry, and sends them back as stored', () => {
+    const withExtras = {
+      ...stored,
+      entries: [
+        {
+          ...stored.entries[0],
+          sceneType: 'calm',
+          effects: [{ kind: 'endPhase', note: 'kept' }, { kind: 'odd' }],
+        },
+        stored.entries[1],
+      ],
+    } as OracleTable
+    const draft = toDraft(withExtras)
+
+    expect(draft.entries[0]).toMatchObject({ sceneType: 'calm' })
+    expect(draft.entries[0]?.effects).toHaveLength(2)
+    expect(toTable(withExtras, draft, 2)).toEqual(withExtras)
+  })
+
+  it('sets, changes and removes the Scene Type and the effects of an entry', () => {
+    const draft = toDraft(stored)
+    edit(draft, 1, { sceneType: 'quiet' })
+    draft.entries = draft.entries.map((entry, at) =>
+      at === 1 ? { ...entry, effects: [{ kind: 'endPhase' as const, extra: {} }] } : entry,
+    )
+
+    expect(toTable(stored, draft, 2).entries[1]).toMatchObject({
+      sceneType: 'quiet',
+      effects: [{ kind: 'endPhase' }],
+    })
+    edit(draft, 1, { sceneType: '' })
+    draft.entries = draft.entries.map((entry) => ({ ...entry, effects: [] }))
+    expect(toTable(stored, draft, 2).entries[1]).toEqual(stored.entries[1])
+  })
+
+  it('keeps an empty stored effects list, and a Scene Type or effects that are not readable', () => {
+    const odd = {
+      ...stored,
+      entries: [
+        { ...stored.entries[0], effects: [], sceneType: 7 },
+        { ...stored.entries[1], effects: 'x' },
+      ],
+    } as unknown as OracleTable
+    const draft = toDraft(odd)
+    edit(draft, 0, { text: 'Fair' })
+
+    const table = toTable(odd, draft, 2)
+
+    expect(table.entries[0]).toEqual({ ...odd.entries[0], text: 'Fair' })
+    expect(table.entries[1]).toEqual(odd.entries[1])
+  })
+
+  it('refuses an effect value that is not a whole number, by its entry and effect', () => {
+    const draft = toDraft(stored)
+    const effect = { ...newEffect('tracker'), value: { form: 'integer' as const, text: 'x' } }
+    draft.entries = draft.entries.map((entry, at) =>
+      at === 1 ? { ...entry, effects: [effect] } : entry,
+    )
+    const errors: Record<string, string> = {}
+
+    toTable(stored, draft, 2, errors)
+
+    expect(Object.keys(errors)).toEqual(['entries.1.effects.0.value'])
+  })
+
+  it('never sends the Scene Type or the effects of a schema version 1 draft', () => {
+    const draft = toDraft(stored)
+    edit(draft, 1, { sceneType: 'quiet' })
+
+    expect(toTable(stored, draft, 1).entries[1]).toEqual(stored.entries[1])
   })
 
   it('builds a new entry without any v2 field', () => {

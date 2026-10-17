@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
+import { stepContext } from '../narrative/steps/stepContext'
+import { useGameSystemNarrative } from '../narrative/useGameSystemNarrative'
 import { StudioError } from '../useGameSystems'
 import { TableEditor } from './TableEditor'
 import { useRollHistory } from './useRollHistory'
@@ -15,6 +17,7 @@ export function OracleTableEditorPage({
   table: string
 }) {
   const oracles = useGameSystemOracles(gameSystemKey)
+  const narrative = useGameSystemNarrative(gameSystemKey)
   const [reloads, setReloads] = useState(0)
   const history = useRollHistory<OracleTableResult>()
   const [reloadFailed, setReloadFailed] = useState(false)
@@ -44,6 +47,18 @@ export function OracleTableEditorPage({
     )
   }
 
+  // A version 2 entry picks its Scene Type and effects from the narrative, so it is read first.
+  const withNarrative = oracles.data.schemaVersion >= 2
+  if (withNarrative && narrative.data === undefined) {
+    return narrative.isPending ? (
+      <p className="text-muted-foreground">Loading the table…</p>
+    ) : (
+      <p role="alert" className="text-sm text-destructive">
+        {narrative.error.message}
+      </p>
+    )
+  }
+
   const find = (key: string) => oracles.data.tables.find(({ definition }) => definition.key === key)
   // Until the URL follows the rename, the editor stays on the renamed table, mounted.
   const item = find(table) ?? (renaming === null ? undefined : find(renaming))
@@ -66,6 +81,7 @@ export function OracleTableEditorPage({
         key={`${table}-${String(reloads)}`}
         gameSystemKey={gameSystemKey}
         oracles={oracles.data}
+        context={withNarrative && narrative.data ? stepContext(narrative.data) : null}
         item={item}
         history={history}
         onRenaming={setRenaming}

@@ -1,5 +1,8 @@
 import type { components } from '@/shared/api/schema'
 
+import type { FieldErrors } from '../narrative/narrativeDraft'
+import { effectsToDrafts, effectsToStored, type EffectDraft } from '../narrative/steps/effectDraft'
+
 export type OracleTable = components['schemas']['GameSystemOracleTable']
 export type OracleEntry = components['schemas']['GameSystemOracleTableEntry']
 
@@ -111,6 +114,10 @@ export interface EntryDraft {
   weight: string
   table: string
   key: string
+  /** The Scene Type the entry starts; empty for none. Version 2 only. */
+  sceneType: string
+  /** The entry's effects. Version 2 only. */
+  effects: EffectDraft[]
 }
 
 export interface TableDraft {
@@ -134,8 +141,18 @@ export function toEntryDraft(entry: StoredEntry, id: number): EntryDraft {
     weight: number(entry.weight),
     table: text(entry.table),
     key: text(entry.key),
+    sceneType: text(entry.sceneType),
+    effects: Array.isArray(entry.effects) ? effectsToDrafts(entry.effects) : [],
   }
 }
+
+/** Whether the stored Scene Type is absent or text: anything else is kept as stored, not edited. */
+export const sceneTypeEditable = (entry: StoredEntry) =>
+  entry.sceneType === undefined || typeof entry.sceneType === 'string'
+
+/** Whether the stored effects are absent or a list: anything else is kept as stored, not edited. */
+export const effectsEditable = (entry: StoredEntry) =>
+  entry.effects === undefined || Array.isArray(entry.effects)
 
 export function toDraft(table: OracleTable): TableDraft {
   return {
@@ -187,21 +204,35 @@ export function numbersValid(draft: TableDraft) {
 
 /**
  * The table to save: the stored one with the edits laid over it, so every field the editor does
- * not know survives. The entry key, a schema version 2 field, is only sent from a version 2 draft.
+ * not know survives. The entry key, Scene Type and effects, schema version 2 fields, are only sent
+ * from a version 2 draft. Effect values that are not whole numbers are keyed
+ * `entries.<n>.effects.<m>.value` in `errors`.
  */
 export function toTable(
   original: OracleTable,
   draft: TableDraft,
   schemaVersion: number,
+  errors: FieldErrors = {},
 ): SaveTable {
   const table: Record<string, unknown> = { ...original, key: draft.key, name: draft.name }
   put(table, 'dice', draft.ranged ? draft.dice.trim() : undefined)
-  table.entries = draft.entries.map((entry) => {
+  table.entries = draft.entries.map((entry, index) => {
     const stored: Record<string, unknown> = { ...entry.original }
     put(stored, 'text', entry.text)
     put(stored, 'table', entry.table)
     if (schemaVersion >= 2) {
       put(stored, 'key', entry.key)
+      if (sceneTypeEditable(entry.original)) {
+        put(stored, 'sceneType', entry.sceneType)
+      }
+      if (effectsEditable(entry.original)) {
+        const effects = effectsToStored(entry.effects, `entries.${String(index)}.effects`, errors)
+        if (effects.length > 0) {
+          stored.effects = effects
+        } else if (!Array.isArray(entry.original.effects) || entry.original.effects.length > 0) {
+          delete stored.effects
+        }
+      }
     }
     put(stored, 'min', draft.ranged ? (parseInteger(entry.min) ?? undefined) : undefined)
     put(stored, 'max', draft.ranged ? (parseInteger(entry.max) ?? undefined) : undefined)

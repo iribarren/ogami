@@ -1,12 +1,12 @@
 import { useId, useRef, useState, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import type { NarrativeItem } from '../narrative/useGameSystemNarrative'
 import { StudioError } from '../useGameSystems'
 import {
   chaosRange,
@@ -44,12 +44,93 @@ function levelOfError(message: string, oracleIndex: number, levels: number): num
   return sameOracle && index < levels ? index : null
 }
 
+/**
+ * Whether a refused save is about this oracle's chaos tracker (`…likelihood[0].chaos.tracker: …`).
+ * Another oracle's tracker is not this form's field.
+ */
+function isTrackerError(message: string, oracleIndex: number): boolean {
+  const match = /(?:likelihood\[(\d+)\]\.)?chaos\.tracker\b/.exec(message)
+  return match !== null && (match[1] === undefined || Number(match[1]) === oracleIndex)
+}
+
 const chaosFields = [
   ['min', 'Min'],
   ['max', 'Max'],
   ['neutral', 'Neutral'],
   ['shiftPerPoint', 'Shift per point'],
 ] as const
+
+/**
+ * The counter that holds the chaos factor, picked from the draft's. A stored tracker that is not
+ * a counter, or that the draft does not have, stays selected and is flagged; a stored value that
+ * is not text is shown, never replaced.
+ */
+function TrackerField({
+  draft,
+  stored,
+  trackers,
+  error,
+  onChange,
+}: {
+  draft: string
+  stored: unknown
+  trackers: NarrativeItem[]
+  error: string | null
+  onChange: (tracker: string) => void
+}) {
+  const id = useId()
+  const problemId = useId()
+  if (stored !== undefined && typeof stored !== 'string') {
+    return (
+      <p className="text-sm text-destructive">
+        The chaos tracker is not text; it is kept as stored.
+      </p>
+    )
+  }
+  const counters = trackers.filter(({ definition }) => definition.kind === 'counter')
+  const known = trackers.find(({ key }) => key === draft)
+  const flag =
+    draft === '' || counters.some(({ key }) => key === draft)
+      ? null
+      : known
+        ? `The tracker "${draft}" is not a counter.`
+        : `The draft has no tracker "${draft}".`
+  const name = (item: NarrativeItem) =>
+    typeof item.definition.name === 'string' ? item.definition.name : item.key
+
+  return (
+    <div className="max-w-64 space-y-2">
+      <Label htmlFor={id}>Chaos tracker</Label>
+      <NativeSelect
+        id={id}
+        value={draft}
+        aria-invalid={flag !== null || error !== null}
+        aria-describedby={error === null ? undefined : problemId}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
+      >
+        <option value="">None</option>
+        {flag !== null && (
+          <option value={draft}>
+            {draft} ({known ? 'not a counter' : 'unknown'})
+          </option>
+        )}
+        {counters.map((item) => (
+          <option key={item.key} value={item.key}>
+            {name(item)}
+          </option>
+        ))}
+      </NativeSelect>
+      {flag !== null && <p className="text-sm text-destructive">{flag}</p>}
+      {error !== null && (
+        <p id={problemId} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
 
 /** A number field that says it is unreadable. */
 function NumberField({
@@ -154,6 +235,8 @@ function LevelRow({
 interface LikelihoodOracleEditorProps {
   gameSystemKey: string
   oracles: GameSystemOracles
+  /** The draft's trackers, which the chaos factor picks from; null for a draft without them. */
+  trackers: NarrativeItem[] | null
   item: LikelihoodOracleItem
   history: RollHistory<LikelihoodTest>
   /** Told the key a save renames the oracle to before it is sent, and null once it settled. */
@@ -166,6 +249,7 @@ interface LikelihoodOracleEditorProps {
 export function LikelihoodOracleEditor({
   gameSystemKey,
   oracles,
+  trackers,
   item,
   history,
   onRenaming,
@@ -194,7 +278,6 @@ export function LikelihoodOracleEditor({
   const problems = draftProblems(draft)
   const valid = problems.length === 0
   const conflict = save.error instanceof StudioError && save.error.status === 409
-  const tracker = stored.chaos?.tracker
 
   function edit(next: LikelihoodDraft) {
     setDraft(next)
@@ -249,7 +332,11 @@ export function LikelihoodOracleEditor({
   const error = save.error
   const levelProblems: Record<number, string> = {}
   let formProblem = error?.message ?? null
-  if (error) {
+  let trackerProblem: string | null = null
+  if (error && trackers !== null && draft.chaos && isTrackerError(error.message, oracleIndex)) {
+    trackerProblem = error.message
+    formProblem = null
+  } else if (error) {
     const index = levelOfError(error.message, oracleIndex, draft.levels.length)
     const inUse = error instanceof OracleError && error.paths.length > 0
     if (index !== null && !inUse) {
@@ -375,7 +462,7 @@ export function LikelihoodOracleEditor({
                 edit({
                   ...draft,
                   chaos: event.target.checked
-                    ? { min: '', max: '', neutral: '', shiftPerPoint: '' }
+                    ? { min: '', max: '', neutral: '', shiftPerPoint: '', tracker: '' }
                     : null,
                 })
               }}
@@ -396,10 +483,16 @@ export function LikelihoodOracleEditor({
               ))}
             </div>
           )}
-          {typeof tracker === 'string' && version2 && (
-            <p className="text-sm text-muted-foreground">
-              Chaos tracker <Badge variant="secondary">{tracker}</Badge> (not edited here)
-            </p>
+          {draft.chaos && trackers !== null && (
+            <TrackerField
+              draft={draft.chaos.tracker}
+              stored={stored.chaos?.tracker}
+              trackers={trackers}
+              error={trackerProblem}
+              onChange={(tracker) => {
+                setChaos('tracker', tracker)
+              }}
+            />
           )}
         </fieldset>
         {version2 && (

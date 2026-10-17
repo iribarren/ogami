@@ -5,6 +5,7 @@ import {
   toDraft,
   toLevelDraft,
   toOracle,
+  trackerEditable,
   type LevelDraft,
   type LikelihoodDraft,
 } from './likelihoodDraft'
@@ -52,7 +53,7 @@ describe('toDraft and toOracle', () => {
         exceptionalPercent: '',
         randomEvent: '',
         levels: [{ ...level, target: '12' }],
-        chaos: { min: '2', max: '8', neutral: '4', shiftPerPoint: '1' },
+        chaos: { min: '2', max: '8', neutral: '4', shiftPerPoint: '1', tracker: 'chaos' },
       }),
       2,
     )
@@ -85,6 +86,28 @@ describe('toDraft and toOracle', () => {
     expect(oracle.chaos).toEqual({ min: 1, max: 9, neutral: 5, shiftPerPoint: 5, extra: 1 })
   })
 
+  it('picks, changes and removes the chaos tracker in a version 2 draft', () => {
+    const draft = toDraft(full)
+    const withTracker = (tracker: string) =>
+      toOracle(
+        full,
+        edit(draft, { chaos: { min: '1', max: '9', neutral: '5', shiftPerPoint: '5', tracker } }),
+        2,
+      ).chaos
+
+    expect(withTracker('heat')).toEqual({ ...full.chaos, tracker: 'heat' })
+    expect(withTracker('')).not.toHaveProperty('tracker')
+    expect(withTracker('')).toHaveProperty('extra', 1)
+  })
+
+  it('keeps a chaos tracker that is not text as stored', () => {
+    const odd = { ...full, chaos: { ...full.chaos, tracker: 42 } } as unknown as LikelihoodOracle
+
+    expect(toDraft(odd).chaos?.tracker).toBe('')
+    expect(toOracle(odd, toDraft(odd), 2)).toEqual(odd)
+    expect(trackerEditable(odd)).toBe(false)
+  })
+
   it('numbers an added level after the stored ones', () => {
     expect(toLevelDraft({}, 2)).toMatchObject({ id: 2, key: '', label: '', target: '' })
   })
@@ -102,7 +125,7 @@ describe('draftProblems', () => {
     ['name', { name: '' }],
     ['sides', { sides: '1.5' }],
     ['exceptional percent', { exceptionalPercent: 'x' }],
-    ['chaos', { chaos: { min: '1', max: '', neutral: '5', shiftPerPoint: '5' } }],
+    ['chaos', { chaos: { min: '1', max: '', neutral: '5', shiftPerPoint: '5', tracker: '' } }],
     ['levels', { levels: [{ ...level, target: '5.5' }] }],
     ['level key', { levels: [{ ...level, key: '' }] }],
     ['level label', { levels: [{ ...level, label: ' ' }] }],
@@ -125,7 +148,11 @@ describe('chaosRange', () => {
     expect(chaosRange(draft)).toEqual({ min: 1, max: 9 })
     expect(chaosRange(edit(draft, { chaos: null }))).toBeNull()
     expect(
-      chaosRange(edit(draft, { chaos: { min: 'a', max: '9', neutral: '5', shiftPerPoint: '5' } })),
+      chaosRange(
+        edit(draft, {
+          chaos: { min: 'a', max: '9', neutral: '5', shiftPerPoint: '5', tracker: '' },
+        }),
+      ),
     ).toBeNull()
   })
 })

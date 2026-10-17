@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { oracles, oraclesV1, stormRoll } from '../fixtures'
+import { oracles, oraclesV1, stormRoll, narrativeScenes } from '../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -21,6 +21,7 @@ async function openEditor(
   const rendered = renderAppAt(`/studio/game-systems/my-draft/oracle-tables/${table}`, {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
     [`GET ${base}/oracles`]: json(stored),
+    [`GET ${base}/narrative`]: json(narrativeScenes),
     ...handlers,
   })
   await screen.findByRole('form', { name: 'Oracle table' })
@@ -55,6 +56,7 @@ describe('the table editor', () => {
     renderAppAt('/studio/game-systems/my-draft/oracle-tables/nope', {
       'GET /api/auth/me': signedInAs('GAME_MANAGER'),
       [`GET ${base}/oracles`]: json(oracles),
+      [`GET ${base}/narrative`]: json(narrativeScenes),
     })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('no oracle table “nope”')
@@ -103,13 +105,107 @@ describe('the table editor', () => {
     expect(screen.getByLabelText('Entry 3 weight')).toHaveValue('1')
   })
 
-  it('shows the scene type and effects of an entry, and the entry key of a version 2 table', async () => {
+  it('shows the Scene Type and effects of an entry, and the entry key of a version 2 table', async () => {
     await openEditor('weather')
 
-    expect(entry(1).getByText('Scene type: calm')).toBeInTheDocument()
-    expect(entry(1).getByText('1 effect')).toBeInTheDocument()
+    // The stored Scene Type is not one of the draft's: it stays selected, flagged.
+    const sceneType = screen.getByLabelText('Entry 1 Scene Type')
+    expect(sceneType).toHaveValue('calm')
+    expect(sceneType).toBeInvalid()
+    expect(entry(1).getByText(/no Scene Type/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Entry 2 Scene Type')).toHaveValue('')
+    expect(
+      within(screen.getByLabelText('Entry 2 Scene Type'))
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['None', 'Ambush', 'Quiet', 'Odd'])
+    // The stored effect has a kind the editor does not know: kept, read-only.
+    expect(entry(1).getByText(/kind or shape this editor cannot edit/)).toBeInTheDocument()
     expect(screen.getByLabelText('Entry 1 key')).toHaveValue('clear')
-    expect(entry(2).queryByText(/Scene type/)).not.toBeInTheDocument()
+  })
+
+  it('shows neither Scene Type nor effects for a version 1 table', async () => {
+    await openEditor('weather', {}, oraclesV1)
+
+    expect(screen.queryByLabelText('Entry 1 Scene Type')).not.toBeInTheDocument()
+    expect(screen.queryByText('Entry 1 effects')).not.toBeInTheDocument()
+  })
+
+  it('sends back exactly what was stored for the Scene Type and effects of an entry it did not edit', async () => {
+    const bodies: unknown[] = []
+    const { user } = await openEditor('weather', {
+      [`PUT ${base}/oracle-tables/weather`]: async (request) => {
+        bodies.push(await request.json())
+        return Response.json(renamed)
+      },
+    })
+
+    await replace(user, 'Entry 2 text', 'Gale')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1)
+    })
+    const [first, second] = weather.definition.entries
+    expect(bodies[0]).toEqual({
+      expectedVersion: 7,
+      table: { ...weather.definition, entries: [first, { ...second, text: 'Gale' }] },
+    })
+  })
+
+  it('picks a Scene Type and adds an effect to an entry, and removes the Scene Type again', async () => {
+    const bodies: unknown[] = []
+    const { user } = await openEditor('weather', {
+      [`PUT ${base}/oracle-tables/weather`]: async (request) => {
+        bodies.push(await request.json())
+        return Response.json(renamed)
+      },
+    })
+
+    await user.selectOptions(screen.getByLabelText('Entry 2 Scene Type'), 'quiet')
+    await user.selectOptions(entry(2).getByLabelText('New effect kind'), 'endPhase')
+    await user.click(entry(2).getByRole('button', { name: 'Add effect' }))
+    await user.selectOptions(screen.getByLabelText('Entry 1 Scene Type'), '')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1)
+    })
+    const [first, second] = weather.definition.entries as [{ sceneType?: string }, object]
+    const withoutScene = { ...first }
+    delete withoutScene.sceneType
+    expect(bodies[0]).toEqual({
+      expectedVersion: 7,
+      table: {
+        ...weather.definition,
+        entries: [withoutScene, { ...second, sceneType: 'quiet', effects: [{ kind: 'endPhase' }] }],
+      },
+    })
+  })
+
+  it('offers no sheet effect for an entry, and holds at ten effects', async () => {
+    const { user } = await openEditor('storm-kind')
+
+    const kinds = within(entry(1).getByLabelText('New effect kind'))
+      .getAllByRole('option')
+      .map((option) => option.textContent)
+    expect(kinds).not.toContain('sheet')
+    for (let count = 0; count < 10; count += 1) {
+      await user.click(entry(1).getByRole('button', { name: 'Add effect' }))
+    }
+    expect(entry(1).getByRole('button', { name: 'Add effect' })).toBeDisabled()
+  })
+
+  it('cannot be saved while an effect value is not a whole number', async () => {
+    const { user } = await openEditor('storm-kind')
+
+    await user.click(entry(1).getByRole('button', { name: 'Add effect' }))
+    await user.selectOptions(entry(1).getByLabelText('Tracker'), 'heat')
+    await user.clear(entry(1).getByLabelText('Value'))
+    await user.type(entry(1).getByLabelText('Value'), 'x')
+
+    expect(save()).toBeDisabled()
+    expect(entry(1).getByLabelText('Value')).toBeInvalid()
   })
 
   it('hides the entry key of a version 1 table and never sends it', async () => {
@@ -308,6 +404,42 @@ describe('the table editor', () => {
       expect(await entry(2).findByRole('alert')).toHaveTextContent('table "ghost" does not exist')
       expect(entry(1).queryByRole('alert')).not.toBeInTheDocument()
       expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Gale')
+    })
+
+    it('attaches a message about the Scene Type of an entry to its field', async () => {
+      const { user } = await openEditor('weather', {
+        [`PUT ${base}/oracle-tables/weather`]: json(
+          { error: 'oracles.tables[0].entries[1].sceneType: unknown Scene Type "ghost"' },
+          422,
+        ),
+      })
+
+      await user.selectOptions(screen.getByLabelText('Entry 2 Scene Type'), 'quiet')
+      await user.click(save())
+
+      const field = screen.getByLabelText('Entry 2 Scene Type')
+      expect(await entry(2).findByRole('alert')).toHaveTextContent('unknown Scene Type "ghost"')
+      expect(field).toBeInvalid()
+      expect(field).toHaveValue('quiet')
+    })
+
+    it('attaches a message about an effect of an entry to that effect', async () => {
+      const { user } = await openEditor('weather', {
+        [`PUT ${base}/oracle-tables/weather`]: json(
+          {
+            error: 'oracles.tables[0].entries[1].effects[0].sceneType: unknown Scene Type "ghost"',
+          },
+          422,
+        ),
+      })
+
+      await user.selectOptions(entry(2).getByLabelText('New effect kind'), 'nextScene')
+      await user.click(entry(2).getByRole('button', { name: 'Add effect' }))
+      await user.click(save())
+
+      const card = within(await entry(2).findByRole('group', { name: 'Effect 1' }))
+      expect(await card.findByText('unknown Scene Type "ghost"')).toBeInTheDocument()
+      expect(entry(2).queryByLabelText('Entry 2 Scene Type')).toBeValid()
     })
 
     it('shows any other message at the form, and clears it on the next edit', async () => {

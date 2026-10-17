@@ -352,7 +352,7 @@ function TypeFields({
   }
 }
 
-function SelectField({
+export function SelectField({
   label,
   value,
   onChange,

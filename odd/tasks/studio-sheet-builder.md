@@ -92,6 +92,8 @@ Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a si
 
 Slices 7–9 replanned (2026-10-17): slice 6's UI landed at ~2,400 against a 1,600 forecast, so T10 + T11 + the slice 6 fixes would pass the ceiling. Slice 7 is the slice 6 fixes and T10; T11 moves to slice 8 with the formula diagnostics logic (T12a); slice 9 is `FormulaInput` (T12b) and the e2e (T13). Still 9 slices.
 
+Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the user approved a size exception; the two commits are reviewed separately.
+
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
@@ -106,7 +108,7 @@ Slices 7–9 replanned (2026-10-17): slice 6's UI landed at ~2,400 against a 1,6
 | T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
 | T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | 3597f60, a8da25e, a501e9b |
 | T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | delegated writer (slice 6) | [x] | 0c9aba0, b943383 |
-| T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
+| T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | delegated writer (slice 7) | [x] | |
 | T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
 | T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | | [ ] | |
 | T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
@@ -131,6 +133,7 @@ Slices 7–9 replanned (2026-10-17): slice 6's UI landed at ~2,400 against a 1,6
 - 2026-10-17: T9 part 1 (logic, no UI yet): `useGameSystemSheet` (read model query; save, delete, move mutations; `SheetError` with the in-use `paths`), `sheetDraft.ts` (form state, request building that omits empty optionals, sections by declared or consecutive group, move target index), `sheetError.ts` (`sheet.fields[i].<property>:` messages onto the dialog inputs, the rest to the form); sheet fixtures.
 - 2026-10-17: T9 part 2: `SheetTab` (list by declared or consecutive group, empty groups noted, move up/down to the neighbour's index, delete confirm with in-use paths, 409 reload), `SheetFieldDialog` (per-type inputs, group select or free text, span select, rename hint for published keys, 422 mapped to inputs or the form, 409 reload), `Sheet` tab on `GameSystemPage`, tests for every 400/404/409/422 path, stories. No API change; layout editing is slice 7.
 - 2026-10-17: Slice 6 review fixes: tests prove a write marks the GameSystem page and validation stale; a 409 now refetches the sheet in the hook (tests); `writeField` validates the span as a whole number from 1 to the group's columns; tests for a 409 whose reload fails in the field dialog, the move panel and the delete dialog (code already kept the state, pinned); the unreachable "field no longer exists" note is dropped.
+- 2026-10-17: T10 done. `SheetLayoutPanel` above the field list (declare from the fields' groups; edit dialog with sheet columns, group name, columns, span, move up/down, add, delete disabled while the group holds fields; remove with confirm), `layoutDraft.ts` (read fails closed, `previousName` only on rename, client rules), `sheetLayoutAnswer` (`sheet.columns:` and `sheet.groups[i].<property>:` onto inputs), `useSaveSheetLayout`/`useDeclareSheetLayout`/`useRemoveSheetLayout`; 400/404/409/422 tested for each write incl. a 409 whose reload fails. The field dialog's span select already stopped at the group's columns (tested in slice 6), so it is unchanged.
 
 ## Reviews
 
@@ -145,4 +148,4 @@ Slices 7–9 replanned (2026-10-17): slice 6's UI landed at ~2,400 against a 1,6
 
 ## Next step
 
-Slice 7: slice 6 review fixes, then T10 layout panel; native review, then PR.
+Slice 7: native review of the two commits (fixes, T10), then PR.

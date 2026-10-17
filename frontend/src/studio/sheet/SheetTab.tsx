@@ -13,6 +13,7 @@ import {
 
 import { StudioError } from '../useGameSystems'
 import { SheetFieldDialog } from './SheetFieldDialog'
+import { SheetLayoutPanel } from './SheetLayoutPanel'
 import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
 import {
   SheetError,
@@ -68,6 +69,7 @@ function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: Gam
 
   return (
     <section aria-label="Sheet" className="space-y-4">
+      <SheetLayoutPanel gameSystemKey={gameSystemKey} sheet={data} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-heading text-lg font-semibold">Sheet fields</h2>
         <SheetFieldDialog

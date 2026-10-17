@@ -4,6 +4,7 @@ import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
 import { gameSystemKey, StudioError, studioError, validationKey } from '../useGameSystems'
+import type { LayoutRequest } from './layoutDraft'
 import type { StoredField } from './sheetDraft'
 
 export type GameSystemSheet = components['schemas']['GameSystemSheetResponse']
@@ -162,4 +163,58 @@ export function useMoveSheetField(key: string) {
       throw sheetError(response, error, 'Moving the field')
     },
   )
+}
+
+/** `PUT /sheet/layout`: the sheet's columns and the whole list of groups, in order. */
+export function useSaveSheetLayout(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(
+    key,
+    async ({ expectedVersion, layout }: { expectedVersion: number; layout: LayoutRequest }) => {
+      const { data, error, response } = await api.PUT(
+        '/api/studio/game-systems/{key}/sheet/layout',
+        {
+          params: { path: { key } },
+          body: { expectedVersion, ...layout },
+        },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Saving the layout')
+    },
+  )
+}
+
+/** `POST /sheet/layout/declare`: groups from the fields' own group text. */
+export function useDeclareSheetLayout(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
+    const { data, error, response } = await api.POST(
+      '/api/studio/game-systems/{key}/sheet/layout/declare',
+      { params: { path: { key } }, body: { expectedVersion } },
+    )
+    if (data !== undefined) {
+      return data
+    }
+    throw sheetError(response, error, 'Declaring the layout')
+  })
+}
+
+/** `DELETE /sheet/layout?expectedVersion=N`: back to plain groups. */
+export function useRemoveSheetLayout(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
+    const { data, error, response } = await api.DELETE(
+      '/api/studio/game-systems/{key}/sheet/layout',
+      { params: { path: { key }, query: { expectedVersion } } },
+    )
+    if (data !== undefined) {
+      return data
+    }
+    throw sheetError(response, error, 'Removing the layout')
+  })
 }

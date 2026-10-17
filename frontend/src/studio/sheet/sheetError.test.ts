@@ -1,4 +1,4 @@
-import { sheetFieldAnswer } from './sheetError'
+import { sheetFieldAnswer, sheetLayoutAnswer } from './sheetError'
 
 describe('reading a refusal for the field in the dialog', () => {
   it.each([
@@ -33,5 +33,58 @@ describe('reading a refusal for the field in the dialog', () => {
     ['a message without a path', 'Something else'],
   ])('gives %s to the form, path and all', (_name, text) => {
     expect(sheetFieldAnswer(text, 2)).toEqual({ fields: {}, form: text })
+  })
+})
+
+describe('reading a refusal for the layout dialog', () => {
+  it.each([
+    [
+      'sheet.groups[1].name: duplicate group name "Stats"',
+      1,
+      'name',
+      'duplicate group name "Stats"',
+    ],
+    ['sheet.groups[0].columns: must be at most 4', 0, 'columns', 'must be at most 4'],
+    [
+      'sheet.groups[2].span: must be at most the columns of the sheet (1), 2 given',
+      2,
+      'span',
+      'must be at most the columns of the sheet (1), 2 given',
+    ],
+  ])('gives %s to the input of that group', (text, index, property, message) => {
+    expect(sheetLayoutAnswer(text)).toEqual({
+      columns: null,
+      groups: { [index]: { [property]: message } },
+      form: null,
+    })
+  })
+
+  it('gives the sheet columns their own message', () => {
+    expect(sheetLayoutAnswer('sheet.columns: must be at most 2')).toEqual({
+      columns: 'must be at most 2',
+      groups: {},
+      form: null,
+    })
+  })
+
+  it.each([
+    ['a property the form has no input for', 'sheet.groups[0].colour: unknown property'],
+    ['a group as a whole', 'sheet.groups[0]: must be an object'],
+    [
+      'the request groups',
+      'groups: must not be empty, use DELETE /sheet/layout to remove the layout',
+    ],
+    [
+      'a dropped group',
+      'groups: cannot drop the group "Stats", it holds 2 fields, move or delete its fields first',
+    ],
+    ['a field of the sheet', 'sheet.fields[1].group: unknown group "Ghost"'],
+    [
+      'a layout that is not declared',
+      'sheet.groups: no layout is declared, declare the layout first',
+    ],
+    ['a message without a path', 'Something else'],
+  ])('gives %s to the form, path and all', (_name, text) => {
+    expect(sheetLayoutAnswer(text)).toEqual({ columns: null, groups: {}, form: text })
   })
 })

@@ -107,7 +107,8 @@ final class SampleSheetTest extends TestCase
         yield 'a tracker that is not an integer' => [[], ['alarm' => 1.5], 'trackers.alarm: must be an integer'];
         yield 'a clock above its segments' => [[], ['alarm' => 7], 'trackers.alarm: must be 0 to 6, got 7'];
         yield 'a counter below its min' => [[], ['chaos' => -6], 'trackers.chaos: must be -5 to 5, got -6'];
-        yield 'a sheet that is a list' => [[1], [], 'sheet: must be an object of field keys and integers'];
+        yield 'a sheet that is a list' => [[5], [], 'sheet.0: is not a field of the sheet'];
+        yield 'trackers that are a list' => [[], [5], 'trackers.0: is not a tracker of the draft'];
     }
 
     /**
@@ -127,12 +128,35 @@ final class SampleSheetTest extends TestCase
     #[Test]
     public function samplesThatAreNotObjectsAreRefusedOnTheirPath(): void
     {
-        foreach ([['sheet', 'x'], ['trackers', 5], ['sheet', null]] as [$path, $value]) {
+        foreach ([['sheet', 'x'], ['trackers', 5], ['sheet', true]] as [$path, $value]) {
             try {
                 'sheet' === $path ? SampleSheet::fromDocument($this->document(), $value, []) : SampleSheet::fromDocument($this->document(), [], $value);
                 self::fail($path.' is not an object.');
             } catch (InvalidTestRoll $invalid) {
                 self::assertStringStartsWith($path.': must be an object', $invalid->getMessage());
+            }
+        }
+    }
+
+    #[Test]
+    public function nullSamplesAreAbsentSoTheDefaultsApply(): void
+    {
+        $sheet = SampleSheet::fromDocument($this->document(), null, null);
+
+        self::assertSame([4, 3], [$this->read($sheet, Reference::field('hands')), $this->read($sheet, Reference::tracker('chaos'))]);
+    }
+
+    #[Test]
+    public function aFailedDerivedValueIsReportedAgainAndNeverAsACycle(): void
+    {
+        $sheet = SampleSheet::fromDocument($this->document(), [], []);
+
+        foreach (['broken', 'reader', 'broken', 'reader'] as $key) {
+            try {
+                $sheet->value(Reference::field($key));
+                self::fail('"'.$key.'" has no value.');
+            } catch (FormulaEvaluationFailed $failed) {
+                self::assertSame(\sprintf('The formula reads "%s", which has no value.', $key), $failed->getMessage());
             }
         }
     }

@@ -129,8 +129,9 @@ final class SampleSheet implements ValueResolver
                 $this->derived[$key] = $this->formulas[$key]->evaluate($this);
             } catch (FormulaEvaluationFailed) {
                 $this->derived[$key] = null;
+            } finally {
+                unset($this->computing[$key]);
             }
-            unset($this->computing[$key]);
         }
 
         return $this->derived[$key];
@@ -154,13 +155,20 @@ final class SampleSheet implements ValueResolver
     }
 
     /**
+     * A null is absent. A non-empty list is read as an object keyed by its indexes, so each of its
+     * items is refused on its own path ("sheet.0"): the request cannot tell a JSON `{}` from `[]`.
+     *
      * @return array<array-key, mixed>
      *
-     * @throws InvalidTestRoll when the samples are not a JSON object
+     * @throws InvalidTestRoll when the samples are neither null nor a JSON object or list
      */
     private static function samples(mixed $samples, string $path): array
     {
-        if (!\is_array($samples) || ([] !== $samples && array_is_list($samples))) {
+        if (null === $samples) {
+            return [];
+        }
+
+        if (!\is_array($samples)) {
             throw InvalidTestRoll::at($path, 'must be an object of '.('sheet' === $path ? 'field' : 'tracker').' keys and integers');
         }
 

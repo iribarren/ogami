@@ -119,6 +119,22 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
     }
 
     #[Test]
+    public function nullSheetAndTrackersAreAbsentAndEmptyListsAreEmptyObjects(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+
+        $this->scriptRolls(50, 50, 50);
+        foreach ([['sheet' => null, 'trackers' => null], ['sheet' => []], ['trackers' => []]] as $body) {
+            $this->testRoll(self::BASE.'/mine/checks/luck/test-rolls', $body);
+
+            self::assertResponseStatusCodeSame(200, json_encode($body, \JSON_THROW_ON_ERROR));
+            // The defaults: the clock starts at 0, so the tracker bound is 0.
+            self::assertSame([null, 'good', [20, 0, null]], [$this->json()['difficulty'], $this->json()['band'], $this->bounds()]);
+        }
+    }
+
+    #[Test]
     public function aTestRollNeverChangesTheDraft(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
@@ -235,7 +251,9 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
         yield 'a null sample' => ['skill', ['sheet' => ['hands' => null]], 'sheet.hands: must be an integer'];
         yield 'a sample below the min' => ['skill', ['sheet' => ['hands' => -1]], 'sheet.hands: must be 0 to 10, got -1'];
         yield 'a sample above the max' => ['skill', ['sheet' => ['hands' => 11]], 'sheet.hands: must be 0 to 10, got 11'];
-        yield 'a sheet that is a list' => ['skill', ['sheet' => [1]], 'sheet: must be an object'];
+        // Request::toArray() cannot tell `{}` from `[]`, so a list is read as an object keyed by its indexes.
+        yield 'a sheet that is a list' => ['skill', ['sheet' => [5]], 'sheet.0: is not a field of the sheet'];
+        yield 'trackers that are a list' => ['luck', ['trackers' => [5]], 'trackers.0: is not a tracker of the draft'];
         yield 'a sheet that is a string' => ['skill', ['sheet' => 'hands'], 'sheet: must be an object'];
         yield 'an unknown tracker' => ['luck', ['trackers' => ['ghost' => 1]], 'trackers.ghost: is not a tracker of the draft'];
         yield 'a tracker that is not an integer' => ['luck', ['trackers' => ['alarm' => 'high']], 'trackers.alarm: must be an integer'];

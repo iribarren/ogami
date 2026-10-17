@@ -661,3 +661,52 @@ export const sheetUngrouped = {
 
 /** A schema version 1 draft's sheet: no fields. */
 export const sheetV1 = { ...sheetUngrouped, schemaVersion: 1, fields: [] }
+
+/**
+ * The checks of a draft: `skill` has a difficulty and a band bounded by it and is used by a check
+ * step; `luck` was stored before the editor, with a tracker bound and no difficulty.
+ */
+export const checks = {
+  version: 5,
+  schemaVersion: 2,
+  checks: [
+    {
+      key: 'skill',
+      label: 'Skill check',
+      hint: 'Roll low, add your edge',
+      dice: '1d10',
+      modifier: '{pow}',
+      difficulty: { label: 'Difficulty', default: 13, min: 9, max: 29 },
+      bands: [
+        { key: 'fail', label: 'Fail', upTo: { formula: '{check:difficulty}-1' } },
+        { key: 'win', label: 'Win' },
+      ],
+    },
+    {
+      key: 'luck',
+      label: 'Luck',
+      dice: 'd%',
+      bands: [
+        { key: 'bad', label: 'Bad', upTo: { tracker: 'heat' } },
+        { key: 'mid', label: 'Middling', upTo: 40 },
+        { key: 'good', label: 'Good' },
+      ],
+    },
+  ],
+  fields: [
+    { key: 'pow', label: 'Power', type: 'number', max: null },
+    { key: 'hp', label: 'Hit points', type: 'track', max: 12 },
+  ],
+  trackers: [{ key: 'heat', label: 'Heat', initial: 0 }],
+  usages: { skill: ['sceneTypes[0].play[0].check'], luck: [] },
+}
+
+/** A schema version 1 draft's checks: none, and every command refused. */
+export const checksV1 = {
+  version: 3,
+  schemaVersion: 1,
+  checks: [],
+  fields: [],
+  trackers: [],
+  usages: {},
+}

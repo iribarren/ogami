@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-12-phase-steps` · **Status:** in progress (slice 12)
+- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-13-oracle-fields-e2e` · **Status:** in progress (slice 13)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -118,7 +118,7 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | T9 | 9 | Scene Types tab (list, counts, "Used by", create, delete) and editor route (name, purpose, tips, oracle shortcuts, setup/play/closing step lists, rename, 409/422); Vitest; stories | delegated writer (slice 9) | [x] | 570bc50, aecb86f |
 | T10 | 10 | Typed flow drafts (flow fields, phases with selection and hooks, unknown fields round-trip, unreadable shapes read-only); Flows tab (list in stored order, default flag, phase count, validation issue count, create, delete); Vitest; stories | delegated writer (slice 10) | [x] | a52a8c9 |
 | T10b | 11 | Flow editor route (fields, default flag, default view, oracles/trackers selects, phase outline: add/move/delete, key, name, act, description, mode; selection and hooks kept as stored and summarised; rename; 409/422); Flows tab rows link to it; Vitest; stories | delegated writer (slice 11) | [x] | cf67848 |
-| T10c | 12 | Phase selection editor (`sequence`/`player`/`oracle`), hooks and world turn step lists in the phase outline; 422 paths for them; Vitest; stories | delegated writer (slice 12) | [x] | |
+| T10c | 12 | Phase selection editor (`sequence`/`player`/`oracle`), hooks and world turn step lists in the phase outline; 422 paths for them; Vitest; stories | delegated writer (slice 12) | [x] | 4c7171b |
 | T11 | 13 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | | [ ] | |
 | T12 | 13 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | | [ ] | |
 
@@ -168,7 +168,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | 9 | `review-01c2dc6ff82394fe` (main..570bc50), `review-76a6c40b35b012c3` (570bc50..aecb86f) | b68d400, 570bc50, aecb86f (user accepted 1,923 lines, reviewed per range) | both approved, acknowledged; range 1: WARNING R3-001 (`sceneTypeError.ts:30`: the list is matched by a bare string prefix, and a list-level message without a step index is handed to `mapStepError`; untested), SUGGESTION R3-002 (`SceneTypesTab.test.tsx:37`: the link test asserts no link, the read-only row test is vacuous), SUGGESTION R3-003 (`ItemDialog.tsx:99-101`: `onSaved` untested); range 2: WARNING R3-001 (`SceneTypeEditorPage.test.tsx:163-177`: no test of the version a second save sends after a rename remount; expect `expectedVersion` from the save response); fixed in slice 10 | #160 |
 | 10 | `review-2be7d8d85bebe0c9` (main..a52a8c9) | 64d5c34, a52a8c9 (1,329 lines) | approved, acknowledged; WARNING R3-001 (`FlowsTab.tsx:68`: issue counts are joined to rows by index across the narrative and validation queries; a stale validation after a create or delete puts counts on the wrong rows; untested), WARNING R3-002 (`FlowsTab.test.tsx:214-235`: the 409 reload test only checks the button is gone; assert the reloaded Scene Types in the select and version 6 on the next create), SUGGESTION R3-003 (`fixtures.ts:445-450`: the `flowIssues` fixture comment mentions warnings it lacks); fixed in slice 11 | #161 |
 | 11 | `review-2717d0985b4beb5c` (main..cf67848) | 039878f, cf67848 (1,596 lines) | approved, acknowledged; WARNING R3-001 (`FlowEditor.tsx:73-79`: a 422 is mapped by the submitted draft's phase positions but applied to the current draft; phase add/move/delete stay enabled while a save is pending, so messages can land on the wrong card or be dropped), SUGGESTION R3-002 (`FlowsTab.tsx:85-89`: counts flicker off on every background validation refetch; gate on freshness against the narrative query instead), SUGGESTION R3-003 (`PhaseOutline.tsx:192`: the 20-phase limit's disabled Add and its reason are untested); fixed in slice 12 | #162 |
+| 12 | `review-72000f081fbc73bc` (main..4c7171b) | 3771e83, 4c7171b (1,305 lines) | approved, acknowledged; WARNING R3-001 (`FlowsTab.tsx:30-40`: `useChangedAt` starts its freshness mark at 0 on mount, so a remount whose narrative is newer than the cached validation shows stale counts on the wrong rows; the base hid counts while the validation was fetching; remount untested); fixed in slice 13 | #163 |
 
 ## Next step
 
-Slice 12 (slice 11 review fixes, T10c) is done on `feat/studio-flow-editor-12-phase-steps`: native review, then PR; slice 13 (T11, T12) follows.
+Slice 13 (slice 12 review fix, T11, T12) on `feat/studio-flow-editor-13-oracle-fields-e2e`: writer, native review, PR (`Closes #151`); then a doc-only commit on its own branch records the slice 13 review and PR and closes the feature.

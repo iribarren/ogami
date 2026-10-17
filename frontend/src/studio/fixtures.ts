@@ -612,3 +612,52 @@ export const stepListBackward = [
     bands: [{ upTo: 3, next: 'third' }, {}],
   },
 ]
+
+/**
+ * The sheet of a draft with declared groups: Stats (2 columns) holds `pow` (spans both) and
+ * `dex`, Health holds `hp` and the derived `bonus`, Notes holds nothing. `hp` was published.
+ */
+export const sheet = {
+  version: 7,
+  schemaVersion: 2,
+  columns: 2,
+  groups: [
+    { name: 'Stats', columns: 2, span: 1 },
+    { name: 'Health', columns: 1, span: 1 },
+    { name: 'Notes', columns: 1, span: 1 },
+  ],
+  fields: [
+    { key: 'pow', label: 'Power', group: 'Stats', span: 2, type: 'number', min: 0, max: 18 },
+    {
+      key: 'hp',
+      label: 'Hit points',
+      hint: 'Zero is out',
+      group: 'Health',
+      type: 'track',
+      max: 12,
+    },
+    { key: 'dex', label: 'Dexterity', group: 'Stats', type: 'number', default: 10 },
+    { key: 'bonus', label: 'Bonus', group: 'Health', type: 'derived', formula: '{pow} + 1' },
+  ],
+  trackers: [{ key: 'heat', label: 'Heat', max: 10 }],
+  publishedFieldKeys: ['hp'],
+}
+
+/** A sheet without declared groups: Play lists consecutive fields of one group together. */
+export const sheetUngrouped = {
+  version: 4,
+  schemaVersion: 2,
+  columns: 1,
+  groups: null,
+  fields: [
+    { key: 'pow', label: 'Power', group: 'Stats', type: 'number' },
+    { key: 'dex', label: 'Dexterity', group: 'Stats', type: 'number' },
+    { key: 'notes', label: 'Notes', type: 'text', multiline: true },
+    { key: 'hp', label: 'Hit points', group: 'Health', type: 'track', max: 12 },
+  ],
+  trackers: [],
+  publishedFieldKeys: [],
+}
+
+/** A schema version 1 draft's sheet: no fields. */
+export const sheetV1 = { ...sheetUngrouped, schemaVersion: 1, fields: [] }

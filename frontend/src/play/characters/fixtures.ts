@@ -25,7 +25,7 @@ const base: SheetField = {
   span: 1,
 }
 
-/** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes. */
+/** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes (each in its own group). */
 export const sheet: SheetField[] = [
   { ...base, key: 'role', label: 'Role', group: 'Identity', type: 'text', maxLength: 40 },
   {
@@ -60,7 +60,15 @@ export const sheet: SheetField[] = [
     itemLabel: 'Item',
     maxItems: 3,
   },
-  { ...base, key: 'notes', label: 'Notes', type: 'text', multiline: true, maxLength: 2000 },
+  {
+    ...base,
+    key: 'notes',
+    label: 'Notes',
+    group: 'Notes',
+    type: 'text',
+    multiline: true,
+    maxLength: 2000,
+  },
 ]
 
 /** A derived field over two numbers of `sheet`; add it to a sheet where a test needs one. */
@@ -118,7 +126,7 @@ export const lostMineWithCharacters: Campaign = {
   characters: [{ ...viCharacter, values: {} }],
 }
 
-/** The layout of `sheet`: two columns, Identity across both, Stats in two columns beside Vitals, an empty group. */
+/** The layout of `sheet`: two columns, Identity across both, Stats in two columns beside Vitals, Gear and Notes across both, an empty group. */
 export const sheetLayout: NonNullable<Campaign['pinnedRelease']['sheetLayout']> = {
   columns: 2,
   groups: [
@@ -126,6 +134,7 @@ export const sheetLayout: NonNullable<Campaign['pinnedRelease']['sheetLayout']> 
     { name: 'Stats', columns: 2, span: 1 },
     { name: 'Vitals', columns: 1, span: 1 },
     { name: 'Gear', columns: 1, span: 2 },
+    { name: 'Notes', columns: 1, span: 2 },
     { name: 'Unused', columns: 1, span: 1 },
   ],
 }

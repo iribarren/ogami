@@ -39,11 +39,13 @@ export function parse(formula: string): Node {
     if (token.type === type) {
       return advance()
     }
+    // Only a message that names a position carries one, as in the PHP kernel.
     throw new InvalidFormula(
       'syntax',
       token.type === 'end'
         ? `Unexpected end of the formula, expected ${expected}.`
         : `Unexpected "${token.text}" at position ${String(token.position)}, expected ${expected}.`,
+      token.type === 'end' ? {} : { position: token.position },
     )
   }
   const operatorIn = (...operators: Operator[]): Operator | null => {

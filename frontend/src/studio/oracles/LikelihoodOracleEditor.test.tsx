@@ -357,6 +357,29 @@ describe('the likelihood oracle editor', () => {
       expect(screen.getByLabelText('Name')).toHaveValue('Luck')
     })
 
+    it('shows a message about the chaos tracker even when the stored tracker is not text', async () => {
+      const stored = withTracker('heat')
+      const [oracle] = stored.likelihood as [(typeof stored.likelihood)[number]]
+      // A stored tracker the editor cannot edit: not text.
+      ;(oracle.definition.chaos as { tracker: unknown }).tracker = 5
+      const { user } = await openEditor(
+        'fate',
+        {
+          [put]: json(
+            { error: 'oracles.likelihood[0].chaos.tracker: must be a string, 5 given' },
+            422,
+          ),
+        },
+        stored,
+      )
+
+      await replace(user, 'Name', 'Luck')
+      await user.click(save())
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('must be a string')
+      expect(screen.getByText('The chaos tracker is not text; it is kept as stored.')).toBeVisible()
+    })
+
     it('lists where the draft uses the oracle when a rename is refused', async () => {
       const { user } = await openEditor('fate', {
         [put]: json(
@@ -453,5 +476,31 @@ describe('the likelihood oracle editor', () => {
     expect(await screen.findByLabelText('Key')).toHaveValue('luck')
     observer.disconnect()
     expect(notFound).toBe(false)
+  })
+})
+
+describe('the likelihood oracle editor page', () => {
+  const route = '/studio/game-systems/my-draft/likelihood-oracles/fate'
+  const handlers = (narrative: FakeHandler) => ({
+    'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+    [`GET ${base}/oracles`]: json(oracles),
+    [`GET ${base}/narrative`]: narrative,
+  })
+
+  it('shows the loading state, not the form, while the narrative loads', async () => {
+    renderAppAt(
+      route,
+      handlers(() => new Promise<Response>(() => undefined)),
+    )
+
+    expect(await screen.findByText('Loading the oracle…')).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Likelihood oracle' })).not.toBeInTheDocument()
+  })
+
+  it('shows the error, not the form, when the narrative fails to load', async () => {
+    renderAppAt(route, handlers(json({ error: 'Narrative down' }, 404)))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Narrative down')
+    expect(screen.queryByRole('form', { name: 'Likelihood oracle' })).not.toBeInTheDocument()
   })
 })

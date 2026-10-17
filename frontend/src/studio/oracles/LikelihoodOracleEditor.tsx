@@ -82,9 +82,10 @@ function TrackerField({
   const problemId = useId()
   if (stored !== undefined && typeof stored !== 'string') {
     return (
-      <p className="text-sm text-destructive">
-        The chaos tracker is not text; it is kept as stored.
-      </p>
+      <div className="space-y-1 text-sm text-destructive">
+        <p>The chaos tracker is not text; it is kept as stored.</p>
+        {error !== null && <p role="alert">{error}</p>}
+      </div>
     )
   }
   const counters = trackers.filter(({ definition }) => definition.kind === 'counter')

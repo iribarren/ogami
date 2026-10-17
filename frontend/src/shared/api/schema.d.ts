@@ -1151,6 +1151,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/sheet/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the layout of the sheet of one of my GameSystem drafts: its columns and its groups, renaming, reordering, adding and dropping groups */
+        put: operations["saveSheetLayout"];
+        post?: never;
+        /** Remove the layout of the sheet of one of my GameSystem drafts: the sheet's columns, the declared groups and every field's span; fields keep their group and order */
+        delete: operations["removeSheetLayout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/sheet/layout/declare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Declare the layout of the sheet of one of my GameSystem drafts from the groups its fields name: one group each in order of first appearance, fields without a group in "General" */
+        post: operations["declareSheetLayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3598,6 +3633,49 @@ export interface components {
              * @example 0
              */
             index: number;
+        };
+        SheetLayoutGroupRequest: {
+            /**
+             * @description The group's name, 1 to 60 characters, unique in the layout; the one a field's "group" refers to.
+             * @example Stats
+             */
+            name: string;
+            /**
+             * @description The current name of the group this one renames; every field of it follows. Without it, the group is the one with this name, or a new one. Never stored.
+             * @example Attributes
+             */
+            previousName?: string | null;
+            /**
+             * @description How many columns of fields the group has (1 to 4); 1 when left out.
+             * @example 2
+             */
+            columns?: number | null;
+            /**
+             * @description How many of the sheet's columns the group spans (1 or 2, at most the sheet's columns); 1 when left out.
+             * @example 1
+             */
+            span?: number | null;
+        };
+        SaveSheetLayoutRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description The sheet's columns of groups (1 or 2); 1 when left out.
+             * @example 2
+             */
+            columns?: number | null;
+            /** @description The whole new list of groups, in order: at least one, at most 20. A group of the current layout that is not listed is dropped, which is refused while it holds fields. */
+            groups: components["schemas"]["SheetLayoutGroupRequest"][];
+        };
+        DeclareSheetLayoutRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
         };
     };
     responses: never;
@@ -9057,6 +9135,263 @@ export interface operations {
                 };
             };
             /** @description "index" is outside the field list (the message starts with "index"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveSheetLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSheetLayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet with the new layout (a renamed group's fields follow it) and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion", or "groups" is not a list of objects. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The sheet declares no layout yet (the message starts with "sheet.groups"), "groups" is empty or names a missing group or one twice (the message starts with "groups"), a group that holds fields is dropped, the layout breaks the release contract's rules (the message starts with the path), or the draft has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeSheetLayout: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's sheet without layout and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The sheet declares no layout (the message starts with "sheet.groups"), the draft breaks the release contract's rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    declareSheetLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclareSheetLayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet with the declared groups, its fields regrouped so each group is contiguous, and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no integer "expectedVersion". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The sheet already declares a layout or has no fields (the message starts with "sheet.groups" or "sheet.fields"), the groups break the release contract's rules (more than 20), or the draft has schema version 1; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

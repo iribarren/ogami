@@ -293,6 +293,8 @@ Start feature `studio-sheet-builder` (ODD). Studio: visual sheet-template builde
 
 **17. studio-check-editor**
 
+Done: a Checks tab on the GameSystem page and an editor for the checks of a schema 2 draft ([ADR 0032](adr/0032-studio-check-editor.md)): create, rename, reorder and delete (refused while a check step uses the check or one of its bands, with the places listed), dice, modifier formula, optional difficulty and outcome bands with literal, tracker and formula bounds, and check-scope formula diagnostics. A test-roll sandbox beside a saved check rolls it on the server against the sample sheet the Sheet tab's preview also uses, with live band bounds and the last 5 results; nothing is recorded. The check contract is unchanged. The prompt is kept for reference.
+
 ```text
 Start feature `studio-check-editor` (ODD). Studio: check editor (dice and formula editor, outcome bands) with a test-roll sandbox against a sample sheet.
 ```

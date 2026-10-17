@@ -1,7 +1,7 @@
 # Feature: studio-check-editor
 
 - **Locator:** `odd/tasks/studio-check-editor.md` · Engram topic `odd/studio-check-editor/tasks`
-- **Issue:** #177 · **Branch:** `feat/studio-check-editor-6-sandbox-e2e` · **Status:** in progress
+- **Issue:** #177 · **Branch:** `docs/studio-check-editor-wrap-up` · **Status:** done (PRs #178–#183)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-sheet-builder` (PRs #167–#176)
@@ -86,8 +86,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 3 | Test roll: Studio domain evaluation in Play's order with an injected RNG (unit tests mirroring `Check::perform`), sample-values validation, `TestRollCheck` query, `POST /checks/{check}/test-rolls`, API tests, `make api` | delegated writer (slice 3) | [x] | 0636f30, 417a21a, a4f8c13 |
 | T6 | 4 | Checks tab: `useGameSystemChecks`, `checkDraft.ts`, `checkError.ts`, list with move/delete, editor for key/label/hint/dice/modifier/difficulty, 409 handling, tests | delegated writer (slice 4) | [x] | e4272f0 |
 | T7 | 5 | Bands editor (add/remove/reorder, `upTo` kinds) and check-scope formula diagnostics in `FormulaInput` for modifier and band formulas; ChecksTab stories (moved from slice 4); `SaveCheckRequest.check.difficulty` typed as optional in the OpenAPI schema (drop the cast in `useSaveCheck`); tests, stories | delegated writer (slice 5) | [x] | 42cea62, 257c46a |
-| T8 | 6 | Sandbox: lift `useSheetSamples` to `GameSystemPage`; sample inputs, difficulty, situational, live band bounds with a non-increasing warning, Roll with the last 5 results; tests, stories | delegated writer (slice 6) | [x] | |
-| T9 | 6 | Playwright: author a check with bands and roll it in the sandbox; feature doc close | delegated writer (slice 6) | [x] | |
+| T8 | 6 | Sandbox: lift `useSheetSamples` to `GameSystemPage`; sample inputs, difficulty, situational, live band bounds with a non-increasing warning, Roll with the last 5 results; tests, stories | delegated writer (slice 6) | [x] | 38604db, 8295b58 (fix 2c3b1fb) |
+| T9 | 6 | Playwright: author a check with bands and roll it in the sandbox; feature doc close | delegated writer (slice 6) | [x] | 453b5b3 |
 
 ## Progress
 
@@ -118,7 +118,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `review-04bbd05d07b30cd6` (0636f30), `review-6efc262584c6aeaf` (417a21a) | 0bed2c0, 0636f30, 417a21a (generated a4f8c13: review skipped) | Approved and acknowledged, reviewed per commit (user accepted ~2,480 lines in one PR). Suggestions: `SampleSheet` refuses a null `sheet`/`trackers` though the decision treats null as absent (the controller maps `?? []`); the derived-cycle marker is not cleared on failure (`SampleSheet.php:127`); `{"sheet": []}` is accepted while `{"sheet": {"0": 1}}` is refused (nested list/object gap of `Request::toArray()`); fixed in slice 4 | [#180](https://github.com/iribarren/ogami/pull/180) |
 | 4 | `review-261ee814ae7fef83` | 84e9b50, e4272f0 | Approved and acknowledged. R3 warning: the open editor keeps the version it was opened at, so the person's own move or delete in the list, then a save, is a guaranteed 409 whose reload discards their unsaved edits (`ChecksTab.tsx:75-80`); R3 suggestion: the conflict banner says "The latest version was loaded." even when the refetch failed (`ChecksTab.tsx:98-101`); fixed in slice 5 | [#181](https://github.com/iribarren/ogami/pull/181) |
 | 5 | `review-77185a070ee69647` | 18332f6, 42cea62, 257c46a | Approved and acknowledged. R3 warning: band errors are looked up by index and not cleared or remapped when a band is moved, removed or added (`BandsEditor.tsx:90`); R3 suggestion: local and publisher band errors are merged shallowly, so a publisher entry hides the local key, label and upTo messages (`ChecksTab.tsx:476-480`); fixed in slice 6 | [#182](https://github.com/iribarren/ogami/pull/182) |
+| 6 | `review-09b482556a26f6fa` (e4edf68, 38604db), `review-135d94753b92b94d` (8295b58, 453b5b3, 2c3b1fb) | e4edf68, 38604db, 8295b58, 453b5b3, 2c3b1fb | Approved and acknowledged, reviewed in two parts (user accepted ~2,235 lines in one PR). Review 1: R3 warning, a number sample's default was not held within a min-only or max-only range (`checkSandbox.ts:102-105`), fixed in 2c3b1fb; R3 suggestion, `useTestRollCheck` untested, covered by the sandbox tests in 8295b58. Review 2: R3 suggestion, follow-up: typing a track's value in the sandbox resets that shared sample's max to the catalog max, and no test covers the track sharing path (`CheckSandbox.tsx:125-136`) | [#183](https://github.com/iribarren/ogami/pull/183) |
 
 ## Next step
 
-Slice 6 (slice 5 review fixes, T8, T9) on `feat/studio-check-editor-6-sandbox-e2e`: review, PR (`Closes #177`), merge. Then the last slice's review outcome and PR link in one doc-only commit.
+Feature closed: PR #183 merged and closed #177. Follow-up, for a later Studio feature: keep a shared track sample's max when the sandbox sets its value, with a test (see the slice 6 review row).

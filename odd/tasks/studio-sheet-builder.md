@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-9-formula-input-e2e` · **Status:** done (slice 9 in review)
+- **Issue:** #166 · **Branch:** `fix/studio-sheet-builder-10-rename-references` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -83,6 +83,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 7 | `feat/studio-sheet-builder-7-layout-panel` | `feat(studio): studio-sheet-builder 7/9 layout panel` | T10 | ~1,600 incl. slice 6 fixes |
 | 8 | `feat/studio-sheet-builder-8-preview-diagnostics` | `feat(studio): studio-sheet-builder 8/9 live preview and formula diagnostics` | T11, T12a | ~1,500 |
 | 9 | `feat/studio-sheet-builder-9-formula-input-e2e` | `feat(studio): studio-sheet-builder 9/9 formula input and end to end` | T12b, T13 | ~1,500 |
+| 10 | `fix/studio-sheet-builder-10-rename-references` | `fix(studio): studio-sheet-builder 10/10 formula references of a renamed field` | slice 9 review fix, feature close | ~100 |
 
 Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read model, controller, API tests for every 404/409/422, generated files) forecast ~2,300; the narrative analog (studio-flow-editor slices 2–3) landed well past its forecasts. The HTTP layer moved to slice 4 (T7b) and the plan grew to 9 slices. PRs #167–#168 keep their `n/8` titles. Slice 3 adds commands and a query unused by any endpoint, so it is safe on `main`.
 
@@ -93,6 +94,8 @@ Slice 6 (2026-10-17): T9 grew to ~2,360; the user kept it as one slice with a si
 Slices 7–9 replanned (2026-10-17): slice 6's UI landed at ~2,400 against a 1,600 forecast, so T10 + T11 + the slice 6 fixes would pass the ceiling. Slice 7 is the slice 6 fixes and T10; T11 moves to slice 8 with the formula diagnostics logic (T12a); slice 9 is `FormulaInput` (T12b) and the e2e (T13). Still 9 slices.
 
 Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the user approved a size exception; the two commits are reviewed separately.
+
+Slice 10 (2026-10-17): the slice 9 review left a WARNING; the user chose a closing branch that fixes it and records slice 9, instead of a doc-only commit. PR #175 keeps its `9/9` title.
 
 ## Tasks
 
@@ -111,8 +114,8 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | delegated writer (slice 7) | [x] | 127971e (slice 6 fixes), f98c591 |
 | T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | delegated writer (slice 8) | [x] | 6f40753 (slice 7 fixes), 3797aeb |
 | T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | delegated writer (slice 8) | [x] | d4f0de7 |
-| T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | delegated writer (slice 9) | [x] | |
-| T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | delegated writer (slice 9) | [x] | |
+| T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | delegated writer (slice 9) | [x] | ef5188c (slice 8 fixes), f80bedc |
+| T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | delegated writer (slice 9) | [x] | 48d520c |
 
 ## Progress
 
@@ -140,6 +143,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 - 2026-10-17: Slice 8 review fixes (R3): tests pin that a refused or cycle reference position counts in the trimmed text (`  {pow} + {ghost}` → 9; no bug); the preview template reads a stored field span that is not a whole number from 1 to its group's columns as 1.
 - 2026-10-17: T12b done. Sample values lifted from the preview into `useSheetSamples` (Sheet tab), shared with the field dialog; `FormulaInput` (props: diagnostics and reference options) marks the error position (offset by leading whitespace), inserts `{key}` at the caret, shows the value over the samples; diagnostics never block Save and a server 422 still shows. Written after the code, tests then green; the new Vitest files pass alone (the radio-not-found timeouts of the full `src/studio/sheet` run are load-dependent).
 - 2026-10-17: T13 done. `night-job` declares a layout (2 sheet columns; Identity span 2, Stats 3 columns span 2, Condition 2 columns, Kit); `make presets` published it as v6. `studio-sheet-builder.spec.ts`: copy the preset, add a fifth group, a number field and a derived field (bad reference diagnosed, insert reference, computed value), save, preview shows the value, reload keeps it. Passed on the first run, written after the feature.
+- 2026-10-17: Slice 9 review fix R3-rename-reference-scope-mismatch: the field dialog reads the other fields once, without the saved key or the typed key, for both the diagnostics and the reference menu; a test renames `bonus` to `bonus2` and takes the key `pow` (RED observed: the menu still offered `bonus`).
 
 ## Reviews
 
@@ -153,7 +157,8 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | 6 | `review-98ff5155dbf462be` (9a6b1ce..0c9aba0), `review-93ea738dfd72de2b` (b943383) | 9a6b1ce, 0c9aba0, b943383 | approved, acknowledged; WARNING R3-cache-invalidation-unproved (`useGameSystemSheet.test.tsx`: assert the GameSystem page and validation queries are invalidated after a write), SUGGESTION R3-span-not-validated (`sheetDraft.ts`: validate span as a whole number, with a test), SUGGESTION R3-conflict-leaves-stale-version (`useGameSystemSheet.ts`: invalidate the sheet query on a 409 in the hook, with a test), WARNING R3-001 (`SheetFieldDialog.tsx`: test a 409 reload whose GET /sheet fails; the dialog note, move panel and delete dialog keep the 409 state), SUGGESTION R3-002 (`SheetFieldDialog.tsx`: the "field no longer exists" note is unreachable because the row unmounts; drop it); fixed in slice 7. PR size 2,367, exception approved by the user | #172 |
 | 7 | `review-bd3a4eba1da4d63f` (127971e..f98c591; fixes commit 127971e: review declined) | 127971e, f98c591 | approved, acknowledged; WARNING R3-stale-422-position (`SheetLayoutPanel.tsx`: a 422 maps to groups by the sent request's position but is read against the current draft; clear or re-key it when the draft changes so it cannot override a fresh client error; test), SUGGESTION R3-readlayout-span-vs-columns (`layoutDraft.ts` `readLayout`: a group span is checked against the maximum sheet columns, not the stored sheet columns; fail closed; test); fixed in slice 8. PR size 1,863, exception approved by the user | #173 |
 | 8 | `review-2e5b8578a5297347` (d62e7fa..d4f0de7) | 6f40753, 3797aeb, d4f0de7 | approved, acknowledged; WARNING R3-reference-position-untrimmed-unproved (`formulaDiagnostics.ts`: positions of refused and cycle references are untested on a formula with leading whitespace; test `  {pow} + {ghost}` → 9), SUGGESTION R3-preview-span-out-of-range (`previewTemplate.ts`: a stored field span of 0, negative or wider than its group's columns reaches the renderer; default it to 1, test); fixed in slice 9. PR size 968 | #174 |
+| 9 | `review-90e185b22c839103` (38f95a0..48d520c) | ef5188c, f80bedc, 48d520c | approved, acknowledged; WARNING R3-rename-reference-scope-mismatch (`SheetFieldDialog.tsx`: the diagnostics drop the saved key, the reference menu the typed key, so a field being renamed is offered a reference its input refuses; exclude both in both, test a rename); fixed in slice 10. PR size 825 | #175 |
 
 ## Next step
 
-Record the slice 9 review and PR in a doc-only commit on its own branch.
+None: the feature is done once slice 10 merges (`Closes #166` went with #175).

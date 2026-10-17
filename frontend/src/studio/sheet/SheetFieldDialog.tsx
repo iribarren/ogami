@@ -11,6 +11,7 @@ import {
 } from '@/shared/ui/dialog'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
+import type { SheetFieldView } from '@/shared/sheet/types'
 
 import { TextField } from '../narrative/TextField'
 import { StudioError } from '../useGameSystems'
@@ -142,6 +143,14 @@ function FieldForm({
   const publishedRename = renamed && base.publishedFieldKeys.includes(original)
   const columns = base.groups?.find((group) => group.name === draft.group)?.columns ?? 1
 
+  // This field is its typed key; its saved key is gone once a rename is saved, and a key it takes
+  // from another field is its own. The diagnostics and the reference menu read the same others.
+  const own = draft.key.trim() || (original ?? '')
+  const others = useMemo(
+    () => samples.template.fields.filter((field) => field.key !== original && field.key !== own),
+    [samples, original, own],
+  )
+
   // What the formula may read, and what it computes to, with this field as typed in place of the
   // saved one. Blank formulas say nothing yet: the publisher refuses them on save.
   const diagnostics = useMemo(() => {
@@ -149,18 +158,15 @@ function FieldForm({
       return null
     }
     return formulaDiagnostics({
-      key: draft.key.trim() || (original ?? ''),
+      key: own,
       formula: draft.formula,
-      fields: samples.template.fields.filter((field) => field.key !== original),
+      fields: others,
       drafts: samples.drafts,
       trackerKeys: base.trackers.map((tracker) => tracker.key),
       trackers: samples.readings,
     })
-  }, [draft.type, draft.key, draft.formula, original, samples, base.trackers])
-  const references = useMemo(
-    () => readableReferences(samples, base, draft.key.trim() || (original ?? '')),
-    [samples, base, draft.key, original],
-  )
+  }, [draft.type, draft.formula, own, others, samples, base.trackers])
+  const references = useMemo(() => readableReferences(others, base), [others, base])
 
   const change = (changes: Partial<FieldDraft>) => {
     setDraft((current) => ({ ...current, ...changes }))
@@ -402,28 +408,22 @@ function TypeFields({
   }
 }
 
-/** What a derived field named `own` may read: number, track and derived fields, track maxes, Trackers. */
-function readableReferences(
-  samples: SheetSamples,
-  sheet: GameSystemSheet,
-  own: string,
-): ReferenceOption[] {
-  const fields = samples.template.fields
-    .filter((field) => field.key !== own)
-    .flatMap(({ key, label, type }): ReferenceOption[] => {
-      switch (type) {
-        case 'number':
-        case 'derived':
-          return [{ reference: key, label }]
-        case 'track':
-          return [
-            { reference: key, label },
-            { reference: `${key}.max`, label: `${label} max` },
-          ]
-        default:
-          return []
-      }
-    })
+/** What a derived field may read among `others`: number, track and derived fields, track maxes, Trackers. */
+function readableReferences(others: SheetFieldView[], sheet: GameSystemSheet): ReferenceOption[] {
+  const fields = others.flatMap(({ key, label, type }): ReferenceOption[] => {
+    switch (type) {
+      case 'number':
+      case 'derived':
+        return [{ reference: key, label }]
+      case 'track':
+        return [
+          { reference: key, label },
+          { reference: `${key}.max`, label: `${label} max` },
+        ]
+      default:
+        return []
+    }
+  })
   const trackers = sheet.trackers.map(({ key, label }) => ({
     reference: `tracker:${key}`,
     label: `Tracker ${label}`,

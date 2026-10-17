@@ -472,6 +472,72 @@ describe('the checks tab', () => {
       expect(await form.findByRole('alert')).toHaveTextContent(text)
     })
 
+    describe('a refusal of a band follows the band', () => {
+      const refused = {
+        [`PUT ${base}/checks/luck`]: json({ error: 'checks[1].bands[1].key: is refused.' }, 422),
+      }
+
+      async function refuseMid() {
+        const opened = await editLuck(refused)
+        await opened.user.click(opened.form.getByRole('button', { name: 'Save check' }))
+        expect(await opened.form.findByText('is refused.')).toBeVisible()
+        expect(opened.form.getByLabelText('Band 2 key')).toBeInvalid()
+        return opened
+      }
+
+      it('moves with its band when the band is moved', async () => {
+        const { user, form } = await refuseMid()
+
+        await user.click(form.getByRole('button', { name: 'Move up band 2' }))
+
+        expect(form.getByLabelText('Band 1 key')).toHaveValue('mid')
+        expect(form.getByLabelText('Band 1 key')).toBeInvalid()
+        expect(form.getByLabelText('Band 2 key')).toBeValid()
+        expect(form.getAllByText('is refused.')).toHaveLength(1)
+      })
+
+      it('shifts up when an earlier band is removed, and goes with a removed band', async () => {
+        const { user, form } = await refuseMid()
+
+        await user.click(form.getByRole('button', { name: 'Remove band 1' }))
+
+        expect(form.getByLabelText('Band 1 key')).toHaveValue('mid')
+        expect(form.getByLabelText('Band 1 key')).toBeInvalid()
+        expect(form.getByLabelText('Band 2 key')).toBeValid()
+
+        await user.click(form.getByRole('button', { name: 'Remove band 1' }))
+
+        expect(form.queryByText('is refused.')).toBeNull()
+        expect(form.getByLabelText('Band 1 key')).toBeValid()
+      })
+
+      it('stays on its band when a band is added, and the new band starts clean', async () => {
+        const { user, form } = await refuseMid()
+
+        await user.click(form.getByRole('button', { name: 'Add band' }))
+
+        expect(form.getByLabelText('Band 2 key')).toBeInvalid()
+        expect(form.getByLabelText('Band 4 key')).toBeValid()
+        expect(form.getAllByText('is refused.')).toHaveLength(1)
+      })
+
+      it('keeps the form’s own message about another input of the same band', async () => {
+        const { user, form } = await editLuck({
+          [`PUT ${base}/checks/luck`]: json({ error: 'checks[1].bands[0].key: is refused.' }, 422),
+        })
+        await user.click(form.getByRole('button', { name: 'Save check' }))
+        expect(await form.findByText('is refused.')).toBeVisible()
+
+        await user.clear(form.getByLabelText('Band 1 label'))
+        await user.click(form.getByRole('button', { name: 'Save check' }))
+
+        expect(form.getByText('is refused.')).toBeVisible()
+        expect(form.getByText('Give the band a label.')).toBeVisible()
+        expect(form.getByLabelText('Band 1 key')).toBeInvalid()
+        expect(form.getByLabelText('Band 1 label')).toBeInvalid()
+      })
+    })
+
     it('shows the bands-level refusal under the bands', async () => {
       const { user, form } = await editLuck({
         [`PUT ${base}/checks/luck`]: json(

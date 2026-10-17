@@ -19,8 +19,11 @@ import { StudioError } from '../useGameSystems'
 import {
   blankCheck,
   blankDifficulty,
+  followBands,
+  mergeBandErrors,
   readCheck,
   writeCheck,
+  type BandErrorMap,
   type CheckDraft,
   type CheckErrors,
   type DifficultyDraft,
@@ -440,7 +443,12 @@ function CheckEditor({
     const stored = start.checks.find((check) => check.key === original)
     return (stored && readCheck(stored)) ?? blankCheck()
   })
-  const [errors, setErrors] = useState<CheckErrors>({})
+  const [errors, setErrors] = useState<Omit<CheckErrors, 'band'>>({})
+  // The band messages, by position, from the form's own checks and from the publisher's refusal.
+  // They follow their band when the bands are rearranged: a message must not stay on the band
+  // that took the place of the one it was about.
+  const [localBands, setLocalBands] = useState<BandErrorMap>({})
+  const [publishedBands, setPublishedBands] = useState<BandErrorMap>({})
   const { error } = save
   const references = useMemo(() => checkReferences(start, 'modifier', false), [start])
   const modifierDiagnostics = useMemo(
@@ -476,7 +484,8 @@ function CheckEditor({
   const shown: CheckErrors = {
     ...errors,
     ...answer?.fields,
-    band: { ...errors.band, ...answer?.fields.band },
+    // Per input: a refusal of a band's key does not hide the form's message about its label.
+    band: mergeBandErrors(localBands, publishedBands),
   }
 
   const change = (changes: Partial<CheckDraft>) => {
@@ -494,10 +503,14 @@ function CheckEditor({
     event.preventDefault()
     const result = writeCheck(draft)
     if ('errors' in result) {
-      setErrors(result.errors)
+      const { band, ...fields } = result.errors
+      setErrors(fields)
+      setLocalBands(band ?? {})
       return
     }
     setErrors({})
+    setLocalBands({})
+    setPublishedBands({})
     save.mutate(
       { expectedVersion: start.version, original, check: result.check },
       {
@@ -512,6 +525,8 @@ function CheckEditor({
         onError: (failure) => {
           if (failure instanceof StudioError && failure.status === 409) {
             onConflict(failure.message)
+          } else if (failure instanceof CheckError && failure.status === 422) {
+            setPublishedBands(checkAnswer(failure.message, position).fields.band ?? {})
           }
         },
       },
@@ -622,8 +637,12 @@ function CheckEditor({
       </div>
       <BandsEditor
         bands={draft.bands}
-        onChange={(bands) => {
+        onChange={(bands, order) => {
           change({ bands })
+          if (order !== undefined) {
+            setLocalBands((held) => followBands(held, order))
+            setPublishedBands((held) => followBands(held, order))
+          }
         }}
         catalog={start}
         difficulty={draft.difficulty}

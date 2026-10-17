@@ -21,7 +21,8 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * The sheet of a GameSystem draft over the Studio API: the read and the field commands. Runs against
+ * The sheet of a GameSystem draft over the Studio API: the read, the field commands and the layout
+ * commands. Runs against
  * valid/v2-sheet-effects: fields pow, hp, sanity and bonus (derived from pow); pow is read by bonus
  * and by sheet effects, sanity by a check band. Owner only: another user's draft is not found.
  */
@@ -40,6 +41,9 @@ final class GameSystemSheetApiTest extends WebTestCase
         'replace' => ['PUT', '/mine/sheet/fields/pow'],
         'delete' => ['DELETE', '/mine/sheet/fields/pow?expectedVersion=1'],
         'move' => ['POST', '/mine/sheet/fields/pow/move'],
+        'saveLayout' => ['PUT', '/mine/sheet/layout'],
+        'declareLayout' => ['POST', '/mine/sheet/layout/declare'],
+        'removeLayout' => ['DELETE', '/mine/sheet/layout?expectedVersion=1'],
     ];
 
     private KernelBrowser $client;
@@ -92,7 +96,7 @@ final class GameSystemSheetApiTest extends WebTestCase
         $this->signIn('bob@example.com', ['GAME_MANAGER']);
 
         foreach (['mine', 'nothing'] as $key) {
-            $this->client->jsonRequest($method, str_replace('/mine/', '/'.$key.'/', $path), ['expectedVersion' => 1, 'field' => $this->luck(), 'index' => 0]);
+            $this->client->jsonRequest($method, str_replace('/mine/', '/'.$key.'/', $path), ['expectedVersion' => 1, 'field' => $this->luck(), 'index' => 0, 'groups' => [['name' => 'Stats']]]);
 
             self::assertResponseStatusCodeSame(404, $method.' '.$key);
             self::assertSame(\sprintf('No GameSystem "%s".', $key), $this->error());
@@ -235,6 +239,74 @@ final class GameSystemSheetApiTest extends WebTestCase
         self::assertEquals($this->json(), $this->sheet());
     }
 
+    #[Test]
+    public function aRenamedGroupTakesItsFieldsAlongAndTheWholeSheetIsStored(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->laidOut(...));
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/layout', ['expectedVersion' => 1, 'columns' => 2, 'groups' => [
+            ['name' => 'Attributes', 'previousName' => 'Stats', 'columns' => 2, 'span' => 2],
+            ['name' => 'Health', 'columns' => 1],
+            ['name' => 'Gear'],
+        ]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $sheet = $this->json();
+        self::assertSame(2, $sheet['version']);
+        self::assertSame(2, $sheet['columns']);
+        self::assertSame([
+            ['name' => 'Attributes', 'columns' => 2, 'span' => 2],
+            ['name' => 'Health', 'columns' => 1, 'span' => 1],
+            ['name' => 'Gear', 'columns' => 1, 'span' => 1],
+        ], $sheet['groups']);
+        self::assertSame(['pow', 'hp', 'sanity', 'bonus'], $this->keys($sheet));
+        self::assertSame(['Attributes', 'Health', 'Health', 'Attributes'], array_column((array) $sheet['fields'], 'group'));
+        self::assertSame(2, self::at($sheet, 'fields.0.span'), 'A field keeps its span.');
+        self::assertEquals($sheet, $this->sheet(), 'The response is the read model, as stored.');
+    }
+
+    #[Test]
+    public function declaringTheLayoutGroupsTheFieldsAndRemovingItKeepsTheGroups(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+
+        $this->client->jsonRequest('POST', self::BASE.'/mine/sheet/layout/declare', ['expectedVersion' => 1]);
+
+        self::assertResponseStatusCodeSame(200);
+        $sheet = $this->json();
+        self::assertSame([2, 1], [$sheet['version'], $sheet['columns']]);
+        self::assertSame([['name' => 'General', 'columns' => 1, 'span' => 1]], $sheet['groups']);
+        self::assertSame(['pow', 'hp', 'sanity', 'bonus'], $this->keys($sheet));
+        self::assertSame(['General', 'General', 'General', 'General'], array_column((array) $sheet['fields'], 'group'));
+        self::assertEquals($sheet, $this->sheet());
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/layout?expectedVersion=2');
+
+        self::assertResponseStatusCodeSame(200);
+        $sheet = $this->json();
+        self::assertSame([3, 1, null], [$sheet['version'], $sheet['columns'], $sheet['groups']]);
+        self::assertSame(['General', 'General', 'General', 'General'], array_column((array) $sheet['fields'], 'group'));
+        self::assertEquals($sheet, $this->sheet());
+    }
+
+    #[Test]
+    public function removingALaidOutSheetDropsTheSpansAndColumns(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->laidOut(...));
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/layout?expectedVersion=1');
+
+        self::assertResponseStatusCodeSame(200);
+        $sheet = $this->json();
+        self::assertSame([2, 1, null], [$sheet['version'], $sheet['columns'], $sheet['groups']]);
+        self::assertSame(['Stats', 'Health', 'Health', 'Stats'], array_column((array) $sheet['fields'], 'group'));
+        self::assertSame([], array_filter((array) $sheet['fields'], static fn (mixed $field): bool => \is_array($field) && \array_key_exists('span', $field)));
+        self::assertEquals($sheet, $this->sheet());
+    }
+
     /**
      * @return iterable<string, array{string, string|null, mixed}>
      */
@@ -269,6 +341,35 @@ final class GameSystemSheetApiTest extends WebTestCase
         yield 'DELETE expectedVersion not a number' => ['DELETE /mine/sheet/fields/pow?expectedVersion=abc', null, null];
         yield 'DELETE expectedVersion a float' => ['DELETE /mine/sheet/fields/pow?expectedVersion=1.5', null, null];
         yield 'DELETE expectedVersion empty' => ['DELETE /mine/sheet/fields/pow?expectedVersion=', null, null];
+        $layout = '/mine/sheet/layout';
+        $group = ['name' => 'Stats'];
+        yield 'layout not a JSON object' => ['PUT '.$layout, '[1]', null];
+        yield 'layout not JSON' => ['PUT '.$layout, '{"groups":', null];
+        yield 'layout no expectedVersion' => ['PUT '.$layout, null, ['groups' => [$group]]];
+        yield 'layout expectedVersion a string' => ['PUT '.$layout, null, ['expectedVersion' => '1', 'groups' => [$group]]];
+        yield 'layout expectedVersion a float' => ['PUT '.$layout, null, ['expectedVersion' => 1.5, 'groups' => [$group]]];
+        yield 'layout no groups' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'columns' => 1]];
+        yield 'layout groups null' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'groups' => null]];
+        yield 'layout groups a string' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'groups' => 'Stats']];
+        yield 'layout groups an object' => ['PUT '.$layout, '{"expectedVersion":1,"groups":{"a":{"name":"Stats"}}}', null];
+        yield 'layout groups an empty object' => ['PUT '.$layout, '{"expectedVersion":1,"groups":{}}', null];
+        yield 'layout a group a string' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'groups' => ['Stats']]];
+        yield 'layout a group a list' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'groups' => [[$group]]]];
+        yield 'layout a group an empty list' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'groups' => [[]]]];
+        yield 'layout a group null' => ['PUT '.$layout, null, ['expectedVersion' => 1, 'groups' => [$group, null]]];
+
+        $declare = '/mine/sheet/layout/declare';
+        yield 'declare not a JSON object' => ['POST '.$declare, '[1]', null];
+        yield 'declare not JSON' => ['POST '.$declare, '{"expectedVersion":', null];
+        yield 'declare no expectedVersion' => ['POST '.$declare, null, ['version' => 1]];
+        yield 'declare expectedVersion a string' => ['POST '.$declare, null, ['expectedVersion' => '1']];
+        yield 'declare expectedVersion a float' => ['POST '.$declare, null, ['expectedVersion' => 1.5]];
+
+        yield 'DELETE layout without expectedVersion' => ['DELETE '.$layout, null, null];
+        yield 'DELETE layout expectedVersion not a number' => ['DELETE '.$layout.'?expectedVersion=abc', null, null];
+        yield 'DELETE layout expectedVersion an array' => ['DELETE '.$layout.'?expectedVersion[]=1', null, null];
+        yield 'DELETE expectedVersion an array' => ['DELETE /mine/sheet/fields/pow?expectedVersion[]=1', null, null];
+        yield 'DELETE expectedVersion a keyed array' => ['DELETE /mine/sheet/fields/pow?expectedVersion[a]=1', null, null];
     }
 
     /**
@@ -301,7 +402,7 @@ final class GameSystemSheetApiTest extends WebTestCase
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
         $this->draft('mine');
 
-        foreach ([['POST', '/mine/sheet/fields'], ['PUT', '/mine/sheet/fields/pow'], ['POST', '/mine/sheet/fields/pow/move']] as [$method, $path]) {
+        foreach ([['POST', '/mine/sheet/fields'], ['PUT', '/mine/sheet/fields/pow'], ['POST', '/mine/sheet/fields/pow/move'], ['PUT', '/mine/sheet/layout'], ['POST', '/mine/sheet/layout/declare']] as [$method, $path]) {
             $this->client->request($method, self::BASE.$path, server: ['CONTENT_TYPE' => 'text/plain'], content: 'field');
 
             self::assertResponseStatusCodeSame(415, $method.' '.$path);
@@ -348,6 +449,9 @@ final class GameSystemSheetApiTest extends WebTestCase
             ['PUT', '/mine/sheet/fields/luck', ['expectedVersion' => 1, 'field' => [...$this->luck(), 'label' => 'Changed']]],
             ['DELETE', '/mine/sheet/fields/luck?expectedVersion=1', []],
             ['POST', '/mine/sheet/fields/luck/move', ['expectedVersion' => 1, 'index' => 0]],
+            ['PUT', '/mine/sheet/layout', ['expectedVersion' => 1, 'groups' => [['name' => 'General']]]],
+            ['POST', '/mine/sheet/layout/declare', ['expectedVersion' => 1]],
+            ['DELETE', '/mine/sheet/layout?expectedVersion=1', []],
         ] as [$method, $path, $body]) {
             $this->client->jsonRequest($method, self::BASE.$path, $body);
 
@@ -458,6 +562,57 @@ final class GameSystemSheetApiTest extends WebTestCase
         self::assertSame($before, $this->sheet());
     }
 
+    /**
+     * @return iterable<string, array{string, array<string, mixed>|null, string, non-empty-string}>
+     */
+    public static function layoutRefusals(): iterable
+    {
+        $stats = ['name' => 'Stats', 'columns' => 2];
+        $health = ['name' => 'Health'];
+        $put = static fn (array $groups, mixed $columns = 2): array => ['expectedVersion' => 1, 'columns' => $columns, 'groups' => $groups];
+
+        yield 'saving before a layout is declared' => ['PUT /mine/sheet/layout', $put([$stats]), 'plain', 'sheet.groups: no layout is declared'];
+        yield 'saving no groups' => ['PUT /mine/sheet/layout', $put([]), 'laidOut', 'groups: must not be empty'];
+        yield 'dropping a group that holds fields' => ['PUT /mine/sheet/layout', $put([$stats]), 'laidOut', 'groups: cannot drop the group "Health", it holds 2 fields'];
+        yield 'a previous name nobody has' => ['PUT /mine/sheet/layout', $put([$stats, ['name' => 'Health', 'previousName' => 'Ghost']]), 'laidOut', 'groups[1].previousName: '];
+        yield 'a previous name that is not a string' => ['PUT /mine/sheet/layout', $put([$stats, ['name' => 'Health', 'previousName' => 7]]), 'laidOut', 'groups[1].previousName: '];
+        yield 'two groups for one current group' => ['PUT /mine/sheet/layout', $put([$stats, $health, ['name' => 'Body', 'previousName' => 'Health']]), 'laidOut', 'groups[2]: '];
+        yield 'a group without a name' => ['PUT /mine/sheet/layout', $put([$stats, $health, ['columns' => 2]]), 'laidOut', 'groups[2].name: '];
+        yield 'columns a string' => ['PUT /mine/sheet/layout', $put([$stats, $health], 'two'), 'laidOut', 'sheet.columns: '];
+        yield 'columns above 2' => ['PUT /mine/sheet/layout', $put([$stats, $health], 3), 'laidOut', 'sheet.columns: '];
+        yield 'a blank group name' => ['PUT /mine/sheet/layout', $put([$stats, $health, ['name' => ' ']]), 'laidOut', 'sheet.groups[2].name: '];
+        yield 'group columns above 4' => ['PUT /mine/sheet/layout', $put([['name' => 'Stats', 'columns' => 5], $health]), 'laidOut', 'sheet.groups[0].columns: '];
+        yield 'a span above the sheet columns' => ['PUT /mine/sheet/layout', $put([['name' => 'Stats', 'columns' => 2, 'span' => 2], $health], 1), 'laidOut', 'sheet.groups[0].span: '];
+        yield 'fewer group columns than a field spans' => ['PUT /mine/sheet/layout', $put([['name' => 'Stats'], $health]), 'laidOut', 'sheet.fields[0].span: '];
+        yield 'declaring when groups are declared' => ['POST /mine/sheet/layout/declare', ['expectedVersion' => 1], 'laidOut', 'sheet.groups: already declared'];
+        yield 'declaring a sheet without fields' => ['POST /mine/sheet/layout/declare', ['expectedVersion' => 1], 'minimal', 'sheet.fields: add a field first'];
+        yield 'removing when no layout is declared' => ['DELETE /mine/sheet/layout?expectedVersion=1', null, 'plain', 'sheet.groups: no declared layout'];
+    }
+
+    /**
+     * @param array<string, mixed>|null $body
+     * @param non-empty-string          $messageStart
+     */
+    #[Test]
+    #[DataProvider('layoutRefusals')]
+    public function aLayoutCommandTheDraftRefusesIsUnprocessableWithItsPathAndChangesNothing(string $request, ?array $body, string $state, string $messageStart): void
+    {
+        [$method, $uri] = explode(' ', $request);
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        match ($state) {
+            'laidOut' => $this->draft('mine', edit: $this->laidOut(...)),
+            'minimal' => $this->draft('mine', 'valid/v2-minimal'),
+            default => $this->draft('mine'),
+        };
+        $before = $this->sheet();
+
+        $this->client->jsonRequest($method, self::BASE.$uri, $body ?? []);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith($messageStart, $this->error());
+        self::assertSame($before, $this->sheet());
+    }
+
     #[Test]
     public function aVersion1DraftRefusesEverySheetCommand(): void
     {
@@ -470,6 +625,9 @@ final class GameSystemSheetApiTest extends WebTestCase
             ['PUT', '/journal/sheet/fields/luck', ['expectedVersion' => 1, 'field' => $this->luck()]],
             ['DELETE', '/journal/sheet/fields/luck?expectedVersion=1', []],
             ['POST', '/journal/sheet/fields/luck/move', ['expectedVersion' => 1, 'index' => 0]],
+            ['PUT', '/journal/sheet/layout', ['expectedVersion' => 1, 'groups' => [['name' => 'Stats']]]],
+            ['POST', '/journal/sheet/layout/declare', ['expectedVersion' => 1]],
+            ['DELETE', '/journal/sheet/layout?expectedVersion=1', []],
         ] as [$method, $path, $body]) {
             $this->client->jsonRequest($method, self::BASE.$path, $body);
 
@@ -477,6 +635,23 @@ final class GameSystemSheetApiTest extends WebTestCase
             self::assertStringStartsWith('schemaVersion', $this->error());
         }
         self::assertSame($before, $this->sheet('journal'));
+    }
+
+    /**
+     * Declares Stats (2 columns) with pow and bonus, and Health with hp and sanity, on a sheet of 2
+     * columns; pow spans 2.
+     *
+     * @param array<mixed> $release
+     *
+     * @return array<mixed>
+     */
+    private function laidOut(array $release): array
+    {
+        /** @var list<array<string, mixed>> $fields */
+        $fields = self::at($release, 'sheet.fields');
+        $fields = array_map(static fn (array $field): array => [...$field, 'group' => \in_array($field['key'], ['hp', 'sanity'], true) ? 'Health' : 'Stats', ...'pow' === $field['key'] ? ['span' => 2] : []], $fields);
+
+        return ReleaseArrays::with($release, 'sheet', ['columns' => 2, 'groups' => [['name' => 'Stats', 'columns' => 2], ['name' => 'Health']], 'fields' => $fields]);
     }
 
     /**

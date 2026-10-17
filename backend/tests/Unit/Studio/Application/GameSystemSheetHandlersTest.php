@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Studio\Application;
 
+use App\Studio\Application\DeclareSheetLayout;
+use App\Studio\Application\DeclareSheetLayoutHandler;
 use App\Studio\Application\DeleteSheetField;
 use App\Studio\Application\DeleteSheetFieldHandler;
 use App\Studio\Application\GameSystemSheetView;
@@ -12,8 +14,12 @@ use App\Studio\Application\GetGameSystemSheetHandler;
 use App\Studio\Application\MoveSheetField;
 use App\Studio\Application\MoveSheetFieldHandler;
 use App\Studio\Application\OwnedGameSystems;
+use App\Studio\Application\RemoveSheetLayout;
+use App\Studio\Application\RemoveSheetLayoutHandler;
 use App\Studio\Application\SaveSheetField;
 use App\Studio\Application\SaveSheetFieldHandler;
+use App\Studio\Application\SaveSheetLayout;
+use App\Studio\Application\SaveSheetLayoutHandler;
 use App\Studio\Application\SheetGroupView;
 use App\Studio\Application\SheetTrackerView;
 use App\Studio\Domain\GameSystem\GameSystem;
@@ -42,6 +48,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SaveSheetFieldHandler::class)]
 #[CoversClass(DeleteSheetFieldHandler::class)]
 #[CoversClass(MoveSheetFieldHandler::class)]
+#[CoversClass(SaveSheetLayoutHandler::class)]
+#[CoversClass(DeclareSheetLayoutHandler::class)]
+#[CoversClass(RemoveSheetLayoutHandler::class)]
 #[CoversClass(GetGameSystemSheetHandler::class)]
 final class GameSystemSheetHandlersTest extends TestCase
 {
@@ -177,6 +186,30 @@ final class GameSystemSheetHandlersTest extends TestCase
         self::assertEquals($this->clock->now(), $this->gameSystems->ofKey('my-sheet')?->updatedAt());
     }
 
+    #[Test]
+    public function theLayoutIsDeclaredSavedWithARenameAndRemoved(): void
+    {
+        $this->draft('my-sheet');
+
+        $this->declareLayout();
+        $view = $this->sheet('ann', 'my-sheet');
+        self::assertEquals([new SheetGroupView('General', 1, 1)], $view->groups);
+        self::assertSame(2, $view->version);
+
+        $this->saveLayout(2, [['name' => 'Core', 'previousName' => 'General', 'columns' => 2], ['name' => 'Extras']], version: 2);
+        $view = $this->sheet('ann', 'my-sheet');
+        self::assertSame(2, $view->columns);
+        self::assertEquals([new SheetGroupView('Core', 2, 1), new SheetGroupView('Extras', 1, 1)], $view->groups);
+        self::assertSame(['Core'], $this->groupsOf($view));
+        self::assertSame(3, $view->version);
+
+        $this->removeLayout(version: 3);
+        $view = $this->sheet('ann', 'my-sheet');
+        self::assertSame([1, null, 4], [$view->columns, $view->groups, $view->version]);
+        self::assertSame(['Core'], $this->groupsOf($view));
+        self::assertEquals($this->clock->now(), $this->gameSystems->ofKey('my-sheet')?->updatedAt());
+    }
+
     /**
      * @return iterable<string, array{\Closure(self, string, int): void}>
      */
@@ -185,6 +218,9 @@ final class GameSystemSheetHandlersTest extends TestCase
         yield 'save' => [static fn (self $t, string $user, int $version) => $t->save(null, ['key' => 'luck', 'label' => 'Luck', 'type' => 'number'], $user, $version)];
         yield 'delete' => [static fn (self $t, string $user, int $version) => $t->delete('bonus', $user, $version)];
         yield 'move' => [static fn (self $t, string $user, int $version) => $t->move('bonus', 0, $user, $version)];
+        yield 'save layout' => [static fn (self $t, string $user, int $version) => $t->saveLayout(1, [['name' => 'General']], $user, $version)];
+        yield 'declare layout' => [static fn (self $t, string $user, int $version) => $t->declareLayout($user, $version)];
+        yield 'remove layout' => [static fn (self $t, string $user, int $version) => $t->removeLayout($user, $version)];
     }
 
     /**
@@ -241,6 +277,8 @@ final class GameSystemSheetHandlersTest extends TestCase
         yield 'deleting a referenced field' => [static fn (self $t) => $t->delete('sanity'), SheetFieldInUse::class];
         yield 'moving a missing field' => [static fn (self $t) => $t->move('nowhere', 0), SheetFieldNotFound::class];
         yield 'moving out of range' => [static fn (self $t) => $t->move('pow', 4), InvalidReleaseContent::class];
+        yield 'saving a layout before declaring one' => [static fn (self $t) => $t->saveLayout(1, [['name' => 'General']]), InvalidReleaseContent::class];
+        yield 'removing a layout nobody declared' => [static fn (self $t) => $t->removeLayout(), InvalidReleaseContent::class];
     }
 
     /**
@@ -267,6 +305,9 @@ final class GameSystemSheetHandlersTest extends TestCase
         $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->save(null, ['key' => 'luck', 'label' => 'Luck', 'type' => 'number'], key: 'my-journal'));
         $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->delete('luck', key: 'my-journal'));
         $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->move('luck', 0, key: 'my-journal'));
+        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->saveLayout(1, [['name' => 'General']], key: 'my-journal'));
+        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->declareLayout(key: 'my-journal'));
+        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->removeLayout(key: 'my-journal'));
     }
 
     /**
@@ -304,6 +345,32 @@ final class GameSystemSheetHandlersTest extends TestCase
     public function move(string $field, int $index, string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
     {
         (new MoveSheetFieldHandler($this->owned, $this->gameSystems, $this->clock))(new MoveSheetField($user, $key, $version, $field, $index));
+    }
+
+    /**
+     * @param array<mixed> $groups
+     */
+    public function saveLayout(mixed $columns, array $groups, string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
+    {
+        (new SaveSheetLayoutHandler($this->owned, $this->gameSystems, $this->clock))(new SaveSheetLayout($user, $key, $version, $columns, $groups));
+    }
+
+    public function declareLayout(string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
+    {
+        (new DeclareSheetLayoutHandler($this->owned, $this->gameSystems, $this->clock))(new DeclareSheetLayout($user, $key, $version));
+    }
+
+    public function removeLayout(string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
+    {
+        (new RemoveSheetLayoutHandler($this->owned, $this->gameSystems, $this->clock))(new RemoveSheetLayout($user, $key, $version));
+    }
+
+    /**
+     * @return list<string> the distinct groups its fields name
+     */
+    private function groupsOf(GameSystemSheetView $view): array
+    {
+        return array_values(array_unique(array_filter(array_column($view->fields, 'group'), \is_string(...))));
     }
 
     private function sheet(string $user, string $key): GameSystemSheetView

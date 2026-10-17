@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-4-field-api` · **Status:** in progress (slice 4)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-5-layout-commands` · **Status:** in progress (slice 5)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -77,13 +77,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `feat/studio-sheet-builder-2-play-layout` | `feat(play): studio-sheet-builder 2/8 play renders the sheet layout` | T4, T5 | ~1,300 |
 | 3 | `feat/studio-sheet-builder-3-field-commands` | `feat(studio): studio-sheet-builder 3/9 sheet field commands and read model` | T6, T7 | ~1,400 |
 | 4 | `feat/studio-sheet-builder-4-field-api` | `feat(studio): studio-sheet-builder 4/9 sheet field API` | T7b | ~1,400 incl. ~400 generated |
-| 5 | `feat/studio-sheet-builder-5-layout-commands` | `feat(studio): studio-sheet-builder 5/9 sheet layout commands` | T8 | ~1,300 |
+| 5 | `feat/studio-sheet-builder-5-layout-commands` | `feat(studio): studio-sheet-builder 5/9 sheet layout commands` | T8 | ~2,100 incl. ~600 generated (size exception, user) |
 | 6 | `feat/studio-sheet-builder-6-sheet-tab` | `feat(studio): studio-sheet-builder 6/9 sheet tab and field editor` | T9 | ~1,600 |
 | 7 | `feat/studio-sheet-builder-7-layout-preview` | `feat(studio): studio-sheet-builder 7/9 layout editor and live preview` | T10, T11 | ~1,400 |
 | 8 | `feat/studio-sheet-builder-8-formula-editor` | `feat(studio): studio-sheet-builder 8/9 formula editor` | T12 | ~1,200 |
 | 9 | `feat/studio-sheet-builder-9-e2e` | `test(e2e): studio-sheet-builder 9/9 sheet builder end to end` | T13 | ~700 |
 
 Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read model, controller, API tests for every 404/409/422, generated files) forecast ~2,300; the narrative analog (studio-flow-editor slices 2–3) landed well past its forecasts. The HTTP layer moved to slice 4 (T7b) and the plan grew to 9 slices. PRs #167–#168 keep their `n/8` titles. Slice 3 adds commands and a query unused by any endpoint, so it is safe on `main`.
+
+Slice 5 (2026-10-17): slice 4's five endpoints generated 1,263 lines, so T8 forecasts ~2,100. The user kept it as one slice with a size exception; the generated files go in their own commit, so the code commits fit one review candidate.
 
 ## Tasks
 
@@ -96,8 +98,8 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 | T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | 3e075c2 |
 | T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | delegated writer (slice 3) | [x] | 240a46a |
 | T7 | 3 | Application: save/delete/move field commands and handlers; `GetGameSystemSheet` query and read model (version, sheet, tracker catalog, field keys of the latest release) | delegated writer (slice 3) | [x] | 56f91e2 |
-| T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | |
-| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
+| T7b | 4 | HTTP: `GameSystemSheetController` (`GET /sheet`, field endpoints), request/response DTOs, error mapping, API tests for every 404/409/422, `make api` | delegated writer (slice 4) | [x] | 231d8c4, 8be0dfc |
+| T8 | 5 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | delegated writer (slice 5) | [x] | |
 | T9 | 6 | Sheet tab: `useGameSystemSheet`, grouped field list, field editor per type, add/edit/delete/move, `sheetError.ts`, conflict handling, tests, stories | | [ ] | |
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | | [ ] | |
 | T11 | 7 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | | [ ] | |
@@ -116,6 +118,9 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 - 2026-10-17: T7 done. `SaveSheetField`, `DeleteSheetField`, `MoveSheetField` with handlers; `GetGameSystemSheet` → `GameSystemSheetView` (version, schemaVersion, columns, groups or null, fields, trackers, publishedFieldKeys of the latest release), read defensively; no HTTP layer yet (slice 4).
 - 2026-10-17: Slice 3 review fixes R3: the legacy-draft test deletes an unreferenced field and asserts the `sceneTypes[0].oracles[0]: ` prefix and an unchanged version and document; the fixture test queries each field by its own control (label, `current` input, `Add` button), so a group legend cannot satisfy it.
 - 2026-10-17: T7b done. `GameSystemSheetController` (`GET /sheet`; create, replace/rename, delete, move under `/sheet/fields`), `GameSystemSheetResponse` with group and tracker responses, request DTOs, `OracleInUseResponse` also for `SheetFieldInUse`; API tests for every status of every endpoint, each refusal asserting the draft unchanged; the read model's `publishedFieldKeys` is empty until the draft itself is published.
+- 2026-10-17: Slice 4 review fixes R3-001, R3-002: every sheet write answers through one helper, so a draft gone when the sheet is read back after a committed write is a 409, not a 404 (controller unit test with stub buses); the DELETE `expectedVersion` is read raw and an array-shaped value is the 400 `MALFORMED_DELETE`.
+- 2026-10-17: T8 domain and application: `GameSystem::saveSheetLayout` (group identity by `previousName` or name, simultaneous rename cascade, dropping a group with fields refused), `declareSheetLayout`, `removeSheetLayout`, each all-or-nothing through the item rules; `SaveSheetLayout`, `DeclareSheetLayout`, `RemoveSheetLayout` with handlers. No HTTP layer yet.
+- 2026-10-17: T8 HTTP: `PUT /sheet/layout`, `POST /sheet/layout/declare`, `DELETE /sheet/layout` with request DTOs and OpenAPI; API tests for every status of every endpoint, each refusal asserting the draft unchanged, and happy paths for the rename cascade, declare and remove.
 
 ## Reviews
 
@@ -124,7 +129,8 @@ Slice 3 replanned (2026-10-17): T6 + T7 as first planned (domain, handlers, read
 | 1 | `review-794ba421dad9849f` | 68c37f8, 8763fc2, fac045b | approved, acknowledged; 1 suggestion R3-play-layout-coverage-gaps (Play translator tests: non-string group name, derived field span > group columns, invalid second field reports index 1), fixed in slice 2 | #167 |
 | 2 | `review-8690c6c8f4c4f4e7` | eddc740, 07876cb, 3e075c2 | approved, acknowledged; WARNING R3-layout-fixture-drops-fields (`frontend/src/play/characters/fixtures.ts`: the `sheetLayout` fixture leaves out a group one of its fields uses, so the `WithLayout` story silently drops that field; declare the group, assert every field label renders, unit-test what the renderer does with a field whose group is undeclared), fixed in slice 3 | #168 |
 | 3 | `review-4e6b8a000308443b` | 80ac0eb, 240a46a, 56f91e2 | approved, acknowledged; 2 suggestions: R3-legacy-delete-item-rules-unproved (`GameSystemSheetTest.php`: the legacy-draft delete case targets the referenced `sanity`, so it hits `SheetFieldInUse`; delete an unreferenced field, assert the `sceneTypes[0].oracles[0]: ` prefix and an unchanged draft), R3-fixture-label-assertion-ambiguous (`frontend/src/play/characters/fixtures.test.tsx`: the label `Notes` equals the group name; query by accessible label); fixed in slice 4 | #169 |
+| 4 | `review-6cdcac261eef84ad` | 218461c, 231d8c4 (generated 8be0dfc: review declined) | approved, acknowledged; 2 suggestions: R3-001 (`GameSystemSheetController.php`: the write and the follow-up read share one try/catch, so a draft deleted in between answers 404 after a committed write; separate write refusals from the read), R3-002 (`GameSystemSheetController.php` `delete`: an array-shaped `expectedVersion` query parameter makes Symfony's `filter` throw instead of the 400 `MALFORMED_DELETE`; read the raw value and validate); fixed in slice 5. PR size 2,251, exception approved by the user | #170 |
 
 ## Next step
 
-Slice 4: writer delivers the slice 3 review fixes and T7b on `feat/studio-sheet-builder-4-field-api`, then native review and PR.
+Slice 5: writer delivers the slice 4 review fixes and T8 on `feat/studio-sheet-builder-5-layout-commands`, then native review and PR.

@@ -7,6 +7,8 @@ import { gameSystemKey, StudioError, studioError, validationKey } from '../useGa
 import type { StoredCheck } from './checkDraft'
 
 export type GameSystemChecks = components['schemas']['GameSystemChecksResponse']
+export type CheckTestRollRequest = components['schemas']['CheckTestRollRequest']
+export type CheckTestRoll = components['schemas']['CheckTestRollResponse']
 
 /** A refused check write; `paths` says where the draft uses the check when that is why. */
 export class CheckError extends StudioError {
@@ -162,4 +164,32 @@ export function useMoveCheck(key: string) {
       throw checkError(response, error, 'Moving the check')
     },
   )
+}
+
+/**
+ * `POST /checks/{check}/test-rolls`: rolls the saved check with the sample values; the draft never
+ * changes and nothing is recorded. A refusal (the check is gone, a sample is out of range, the
+ * formulas fail) throws with the API's message, path included.
+ */
+export function useTestRollCheck(key: string) {
+  const api = useApiClient()
+
+  return useMutation({
+    mutationFn: async ({
+      check,
+      request,
+    }: {
+      check: string
+      request: CheckTestRollRequest
+    }): Promise<CheckTestRoll> => {
+      const { data, error, response } = await api.POST(
+        '/api/studio/game-systems/{key}/checks/{check}/test-rolls',
+        { params: { path: { key, check } }, body: request },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw checkError(response, error, 'Rolling the check')
+    },
+  })
 }

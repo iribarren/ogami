@@ -16,7 +16,7 @@ import { SheetFieldDialog } from './SheetFieldDialog'
 import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
 import { SheetPreview } from './SheetPreview'
-import { useSheetSamples, type SheetSamples } from './useSheetSamples'
+import { useSheetSamples, type SampleValues, type SheetSamples } from './useSheetSamples'
 import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
 import {
   SheetError,
@@ -27,7 +27,14 @@ import {
 } from './useGameSystemSheet'
 
 /** The sheet template of a draft: its fields by group, to add, edit, move and delete. */
-export function SheetTab({ gameSystemKey }: { gameSystemKey: string }) {
+export function SheetTab({
+  gameSystemKey,
+  sampleValues,
+}: {
+  gameSystemKey: string
+  /** The sample values the page keeps, shared with the Checks tab's sandbox. */
+  sampleValues: SampleValues
+}) {
   const sheet = useGameSystemSheet(gameSystemKey)
 
   if (sheet.data === undefined) {
@@ -59,17 +66,25 @@ export function SheetTab({ gameSystemKey }: { gameSystemKey: string }) {
           Couldn&apos;t refresh the sheet. {sheet.error.message}
         </p>
       )}
-      <SheetFields gameSystemKey={gameSystemKey} data={sheet.data} />
+      <SheetFields gameSystemKey={gameSystemKey} data={sheet.data} sampleValues={sampleValues} />
     </>
   )
 }
 
-function SheetFields({ gameSystemKey, data }: { gameSystemKey: string; data: GameSystemSheet }) {
+function SheetFields({
+  gameSystemKey,
+  data,
+  sampleValues,
+}: {
+  gameSystemKey: string
+  data: GameSystemSheet
+  sampleValues: SampleValues
+}) {
   const move = useMoveSheetField(gameSystemKey)
   const latest = useGameSystemSheet(gameSystemKey)
   const [reloadFailed, setReloadFailed] = useState(false)
   const [layoutDraft, setLayoutDraft] = useState<LayoutDraft | null>(null)
-  const samples = useSheetSamples(data, layoutDraft)
+  const samples = useSheetSamples(sampleValues, data, layoutDraft)
   const sections = sheetSections(data.fields, data.groups)
 
   return (

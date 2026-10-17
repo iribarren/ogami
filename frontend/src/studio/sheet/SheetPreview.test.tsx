@@ -5,7 +5,7 @@ import { sheet } from '../fixtures'
 import { readLayout, type LayoutDraft } from './layoutDraft'
 import { SheetPreview as Preview } from './SheetPreview'
 import type { GameSystemSheet } from './useGameSystemSheet'
-import { useSheetSamples } from './useSheetSamples'
+import { useSampleValues, useSheetSamples } from './useSheetSamples'
 
 const stored = sheet as GameSystemSheet
 
@@ -17,7 +17,7 @@ function SheetPreview({
   sheet: GameSystemSheet
   layoutDraft: LayoutDraft | null
 }) {
-  return <Preview sheet={shown} samples={useSheetSamples(shown, layoutDraft)} />
+  return <Preview sheet={shown} samples={useSheetSamples(useSampleValues(), shown, layoutDraft)} />
 }
 
 const preview = () => within(screen.getByRole('region', { name: 'Preview' }))

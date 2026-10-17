@@ -201,6 +201,25 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
   }
 }
 
+/** A value written with its keys in order, so two checks that differ only by key order match. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonical).join(',')}]`
+  }
+  if (isObject(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((name) => `${JSON.stringify(name)}:${canonical(value[name])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/** Whether two stored checks say the same, whatever the order of their properties. */
+export function sameCheck(first: StoredCheck, second: StoredCheck): boolean {
+  return canonical(first) === canonical(second)
+}
+
 const wholeNumber = /^-?\d+$/
 
 /** A whole number the text spells exactly, or null. */

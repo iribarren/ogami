@@ -3,6 +3,7 @@ import {
   followBands,
   mergeBandErrors,
   readCheck,
+  sameCheck,
   writeCheck,
   type CheckDraft,
   type StoredCheck,
@@ -332,5 +333,24 @@ describe('the band messages', () => {
       0: { label: 'own', key: 'new' },
       1: { key: 'x' },
     })
+  })
+})
+
+describe('comparing checks', () => {
+  it('ignores the order of properties but not their values', () => {
+    expect(
+      sameCheck(
+        { key: 'a', bands: [{ key: 'x', label: 'X' }], difficulty: { label: 'D', default: 1 } },
+        { difficulty: { default: 1, label: 'D' }, bands: [{ label: 'X', key: 'x' }], key: 'a' },
+      ),
+    ).toBe(true)
+    expect(sameCheck({ key: 'a', hint: 'h' }, { key: 'a' })).toBe(false)
+    expect(sameCheck({ bands: [1, 2] }, { bands: [2, 1] })).toBe(false)
+  })
+
+  it('finds a check that the form leaves as stored unchanged', () => {
+    const written = writeCheck(drafted(stored))
+
+    expect('check' in written && sameCheck(written.check, stored)).toBe(true)
   })
 })

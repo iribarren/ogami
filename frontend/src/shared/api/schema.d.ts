@@ -3126,7 +3126,8 @@ export interface components {
              * @example {hands}+{edge}
              */
             modifier?: string | null;
-            difficulty: components["schemas"]["GameSystemCheckDifficulty"];
+            /** @description Absent or null when the check has no difficulty. */
+            difficulty?: components["schemas"]["GameSystemCheckDifficulty"] | null;
             bands: components["schemas"]["GameSystemCheckBand"][];
         };
         CheckFieldResponse: {

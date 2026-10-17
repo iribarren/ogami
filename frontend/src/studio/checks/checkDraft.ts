@@ -10,9 +10,25 @@ export interface DifficultyDraft {
 }
 
 /**
- * The form state of one check. The bands are not edited yet: they are kept exactly as stored, so
- * a save sends them back unchanged.
+ * The form state of a band's bound. A bound of a shape the form has no input for is `unknown`: it
+ * is shown as stored and sent back unchanged, never dropped or guessed.
  */
+export type UpToDraft =
+  | { kind: 'none' }
+  | { kind: 'number' | 'tracker' | 'formula'; value: string }
+  | { kind: 'unknown'; raw: unknown }
+
+/** The form state of one band; a number bound is text until the form is built. */
+export interface BandDraft {
+  key: string
+  label: string
+  upTo: UpToDraft
+}
+
+/** The most bands a check may have, as the publisher. */
+export const maxBands = 10
+
+/** The form state of one check. */
 export interface CheckDraft {
   key: string
   label: string
@@ -21,12 +37,16 @@ export interface CheckDraft {
   modifier: string
   /** Null while the check has no difficulty. */
   difficulty: DifficultyDraft | null
-  bands: unknown[]
+  bands: BandDraft[]
 }
+
+/** A message per band input. */
+export type BandErrors = Partial<Record<'key' | 'label' | 'upTo', string>>
 
 /** A message per input, keyed like the draft; the difficulty inputs are `difficulty<Name>`. */
 export type CheckErrors = Partial<
   Record<
+    | 'bands'
     | 'key'
     | 'label'
     | 'hint'
@@ -39,7 +59,10 @@ export type CheckErrors = Partial<
     | 'difficultyMax',
     string
   >
->
+> & {
+  /** The messages of each band's inputs, by the band's position. */
+  band?: Record<number, BandErrors>
+}
 
 export const blankDifficulty = (): DifficultyDraft => ({
   label: '',
@@ -47,6 +70,8 @@ export const blankDifficulty = (): DifficultyDraft => ({
   min: '',
   max: '',
 })
+
+export const blankBand = (): BandDraft => ({ key: '', label: '', upTo: { kind: 'none' } })
 
 /** A new check starts with the one band every check needs. */
 export function blankCheck(): CheckDraft {
@@ -57,12 +82,43 @@ export function blankCheck(): CheckDraft {
     dice: '',
     modifier: '',
     difficulty: null,
-    bands: [{ key: 'outcome', label: 'Outcome' }],
+    bands: [{ key: 'outcome', label: 'Outcome', upTo: { kind: 'none' } }],
   }
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** The bound as form state; a shape the form cannot hold is kept whole as `unknown`. */
+function readUpTo(upTo: unknown): UpToDraft {
+  if (upTo === undefined || upTo === null) {
+    return { kind: 'none' }
+  }
+  if (typeof upTo === 'number' && Number.isInteger(upTo)) {
+    return { kind: 'number', value: String(upTo) }
+  }
+  if (isObject(upTo)) {
+    const keys = Object.keys(upTo)
+    if (keys.length === 1 && keys[0] === 'tracker' && typeof upTo.tracker === 'string') {
+      return { kind: 'tracker', value: upTo.tracker }
+    }
+    if (keys.length === 1 && keys[0] === 'formula' && typeof upTo.formula === 'string') {
+      return { kind: 'formula', value: upTo.formula }
+    }
+  }
+  return { kind: 'unknown', raw: upTo }
+}
+
+/** The stored band as form state, or null when it is not an object with a text key and label and nothing else. */
+function readBand(band: unknown): BandDraft | null {
+  if (!isObject(band) || typeof band.key !== 'string' || typeof band.label !== 'string') {
+    return null
+  }
+  if (Object.keys(band).some((name) => !['key', 'label', 'upTo'].includes(name))) {
+    return null
+  }
+  return { key: band.key, label: band.label, upTo: readUpTo(band.upTo) }
+}
 
 /** The stored check as form state, or null when a property has a shape the form cannot hold. */
 export function readCheck(stored: StoredCheck): CheckDraft | null {
@@ -73,6 +129,10 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
   const optionalText = (value: unknown) =>
     value === undefined || value === null || typeof value === 'string'
   if (!optionalText(hint) || !optionalText(modifier) || !Array.isArray(bands)) {
+    return null
+  }
+  const readBands = bands.map(readBand)
+  if (readBands.includes(null)) {
     return null
   }
 
@@ -106,7 +166,7 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     dice,
     modifier: typeof modifier === 'string' ? modifier : '',
     difficulty: read,
-    bands: bands as unknown[],
+    bands: readBands as BandDraft[],
   }
 }
 
@@ -183,41 +243,72 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
     }
     check.difficulty = difficulty
   }
-  check.bands = draft.bands
+  const bands = writeBands(draft.bands, errors)
+  if (bands !== null) {
+    check.bands = bands
+  }
 
   return Object.keys(errors).length > 0 ? { errors } : { check }
 }
 
-/** One band as the tab shows it, read-only. */
-export interface BandSummary {
-  key: string
-  label: string
-  bound: string
-}
-
-/** The bands as stored, each with its bound said in words; one of an unknown shape is "unreadable". */
-export function describeBands(bands: unknown[]): BandSummary[] {
-  return bands.map((band) => {
-    if (!isObject(band) || typeof band.key !== 'string' || typeof band.label !== 'string') {
-      return { key: '?', label: '?', bound: 'unreadable' }
+/**
+ * The bands to send, in order, or null with the errors found. The last band catches the rest, so
+ * its bound is left out (the editor says so); every other band needs one. A bound of an unknown
+ * shape is sent as it was stored.
+ */
+function writeBands(bands: BandDraft[], errors: CheckErrors): unknown[] | null {
+  if (bands.length < 1 || bands.length > maxBands) {
+    errors.bands = `A check has 1 to ${String(maxBands)} bands.`
+    return null
+  }
+  const written: unknown[] = []
+  bands.forEach((band, index) => {
+    const found: BandErrors = {}
+    const key = band.key.trim()
+    const label = band.label.trim()
+    if (key === '') {
+      found.key = 'Give the band a key.'
     }
-    const { key, label, upTo } = band
-    return { key, label, bound: bound(upTo) }
+    if (label === '') {
+      found.label = 'Give the band a label.'
+    }
+    const out: Record<string, unknown> = { key, label }
+    if (index < bands.length - 1) {
+      const upTo = writeUpTo(band.upTo)
+      if ('error' in upTo) {
+        found.upTo = upTo.error
+      } else if (upTo.upTo !== undefined) {
+        out.upTo = upTo.upTo
+      }
+    }
+    if (Object.keys(found).length > 0) {
+      errors.band = { ...errors.band, [index]: found }
+    }
+    written.push(out)
   })
+  return errors.band === undefined ? written : null
 }
 
-function bound(upTo: unknown): string {
-  if (upTo === undefined || upTo === null) {
-    return 'catches the rest'
+/** The bound of a band that is not the last: what it says, or what is missing. */
+function writeUpTo(upTo: UpToDraft): { upTo: unknown } | { error: string } {
+  switch (upTo.kind) {
+    case 'none':
+      return { error: 'Choose a bound: only the last band catches the rest.' }
+    case 'unknown':
+      return { upTo: upTo.raw }
+    case 'number': {
+      const text = upTo.value.trim()
+      if (text === '') {
+        return { error: 'Give the band a number.' }
+      }
+      const value = integerOf(text)
+      return value === null ? { error: 'Must be a whole number.' } : { upTo: value }
+    }
+    case 'tracker':
+      return upTo.value === '' ? { error: 'Choose a tracker.' } : { upTo: { tracker: upTo.value } }
+    case 'formula': {
+      const formula = upTo.value.trim()
+      return formula === '' ? { error: 'Write the formula.' } : { upTo: { formula } }
+    }
   }
-  if (typeof upTo === 'number') {
-    return `up to ${String(upTo)}`
-  }
-  if (isObject(upTo) && typeof upTo.tracker === 'string') {
-    return `up to the tracker ${upTo.tracker}`
-  }
-  if (isObject(upTo) && typeof upTo.formula === 'string') {
-    return `up to ${upTo.formula}`
-  }
-  return 'unreadable'
 }

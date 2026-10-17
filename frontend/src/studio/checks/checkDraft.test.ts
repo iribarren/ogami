@@ -1,11 +1,4 @@
-import {
-  blankCheck,
-  describeBands,
-  readCheck,
-  writeCheck,
-  type CheckDraft,
-  type StoredCheck,
-} from './checkDraft'
+import { blankCheck, readCheck, writeCheck, type CheckDraft, type StoredCheck } from './checkDraft'
 
 const stored: StoredCheck = {
   key: 'skill',
@@ -160,22 +153,154 @@ describe('writeCheck', () => {
   })
 })
 
-describe('describeBands', () => {
-  it('says each band bound as stored', () => {
+describe('the bands', () => {
+  const withBands = (bands: unknown[]): StoredCheck => ({ ...stored, bands })
+
+  it('reads every kind of bound into the form', () => {
     expect(
-      describeBands([
-        { key: 'a', label: 'A', upTo: 7 },
-        { key: 'b', label: 'B', upTo: { tracker: 'alarm' } },
-        { key: 'c', label: 'C', upTo: { formula: '{pow}+1' } },
-        { key: 'd', label: 'D' },
-        'odd',
-      ]),
+      drafted(
+        withBands([
+          { key: 'a', label: 'A', upTo: 7 },
+          { key: 'b', label: 'B', upTo: { tracker: 'alarm' } },
+          { key: 'c', label: 'C', upTo: { formula: '{pow}+1' } },
+          { key: 'd', label: 'D' },
+        ]),
+      ).bands,
     ).toEqual([
-      { key: 'a', label: 'A', bound: 'up to 7' },
-      { key: 'b', label: 'B', bound: 'up to the tracker alarm' },
-      { key: 'c', label: 'C', bound: 'up to {pow}+1' },
-      { key: 'd', label: 'D', bound: 'catches the rest' },
-      { key: '?', label: '?', bound: 'unreadable' },
+      { key: 'a', label: 'A', upTo: { kind: 'number', value: '7' } },
+      { key: 'b', label: 'B', upTo: { kind: 'tracker', value: 'alarm' } },
+      { key: 'c', label: 'C', upTo: { kind: 'formula', value: '{pow}+1' } },
+      { key: 'd', label: 'D', upTo: { kind: 'none' } },
     ])
+  })
+
+  it.each([
+    ['a number', 7],
+    ['a negative number', -3],
+    ['a tracker, known or not', { tracker: 'gone' }],
+    ['a formula', { formula: '{check:difficulty}+4' }],
+  ])('round trips a stored bound that is %s', (_, upTo) => {
+    const check = withBands([
+      { key: 'a', label: 'A', upTo },
+      { key: 'b', label: 'B' },
+    ])
+
+    expect(writeCheck(drafted(check))).toEqual({ check })
+  })
+
+  it.each([
+    ['a fraction', 2.5],
+    ['text', 'high'],
+    ['a tracker that is not text', { tracker: 3 }],
+    ['an object with another property', { tracker: 'a', formula: 'b' }],
+    ['an empty object', {}],
+  ])('keeps a bound that is %s as stored, never dropping it', (_, upTo) => {
+    const check = withBands([
+      { key: 'a', label: 'A', upTo },
+      { key: 'b', label: 'B' },
+    ])
+
+    expect(drafted(check).bands[0]?.upTo).toEqual({ kind: 'unknown', raw: upTo })
+    expect(writeCheck(drafted(check))).toEqual({ check })
+  })
+
+  it.each([
+    ['a band that is not an object', ['hit']],
+    ['a band without a label', [{ key: 'a' }]],
+    ['a band with a property of its own', [{ key: 'a', label: 'A', colour: 'red' }]],
+  ])('cannot hold %s', (_, bands) => {
+    expect(readCheck(withBands(bands))).toBeNull()
+  })
+
+  it('leaves out the bound of the last band, even one it kept from moving', () => {
+    const draft = drafted(withBands([{ key: 'a', label: 'A' }]))
+    draft.bands = [
+      { key: 'a', label: 'A', upTo: { kind: 'none' } },
+      { key: 'b', label: 'B', upTo: { kind: 'number', value: '9' } },
+    ]
+    draft.bands.reverse()
+
+    expect(writeCheck(draft)).toMatchObject({
+      check: {
+        bands: [
+          { key: 'b', label: 'B', upTo: 9 },
+          { key: 'a', label: 'A' },
+        ],
+      },
+    })
+    expect(writeCheck(draft)).not.toHaveProperty('check.bands.1.upTo')
+  })
+
+  it('keeps the bands in the order of the form, with no bound dropped but the last', () => {
+    const draft = drafted(stored)
+    draft.bands = [
+      { key: 'one', label: 'One', upTo: { kind: 'number', value: '1' } },
+      { key: 'two', label: 'Two', upTo: { kind: 'formula', value: ' {pow} ' } },
+      { key: 'three', label: 'Three', upTo: { kind: 'tracker', value: 'heat' } },
+    ]
+
+    expect(writeCheck(draft)).toMatchObject({
+      check: {
+        bands: [
+          { key: 'one', label: 'One', upTo: 1 },
+          { key: 'two', label: 'Two', upTo: { formula: '{pow}' } },
+          { key: 'three', label: 'Three' },
+        ],
+      },
+    })
+  })
+
+  it('asks for what each band needs, by position', () => {
+    const draft = drafted(stored)
+    draft.bands = [
+      { key: '', label: ' ', upTo: { kind: 'none' } },
+      { key: 'b', label: 'B', upTo: { kind: 'number', value: '' } },
+      { key: 'c', label: 'C', upTo: { kind: 'tracker', value: '' } },
+      { key: 'd', label: 'D', upTo: { kind: 'formula', value: ' ' } },
+      { key: 'e', label: 'E', upTo: { kind: 'none' } },
+    ]
+
+    expect(writeCheck(draft)).toEqual({
+      errors: {
+        band: {
+          0: {
+            key: 'Give the band a key.',
+            label: 'Give the band a label.',
+            upTo: 'Choose a bound: only the last band catches the rest.',
+          },
+          1: { upTo: 'Give the band a number.' },
+          2: { upTo: 'Choose a tracker.' },
+          3: { upTo: 'Write the formula.' },
+        },
+      },
+    })
+  })
+
+  it.each(['1.5', 'ten', '1e3', '9007199254740993'])(
+    'refuses the band number %s instead of sending NaN',
+    (value) => {
+      const draft = drafted(stored)
+      draft.bands = [
+        { key: 'a', label: 'A', upTo: { kind: 'number', value } },
+        { key: 'b', label: 'B', upTo: { kind: 'none' } },
+      ]
+
+      expect(writeCheck(draft)).toEqual({
+        errors: { band: { 0: { upTo: 'Must be a whole number.' } } },
+      })
+    },
+  )
+
+  it('refuses no bands and more than ten', () => {
+    const draft = drafted(stored)
+    draft.bands = []
+    expect(writeCheck(draft)).toEqual({ errors: { bands: 'A check has 1 to 10 bands.' } })
+
+    draft.bands = Array.from({ length: 11 }, (_, index) => ({
+      key: `b${String(index)}`,
+      label: 'B',
+      upTo: { kind: 'number' as const, value: String(index) },
+    }))
+    expect(writeCheck(draft)).toEqual({ errors: { bands: 'A check has 1 to 10 bands.' } })
   })
 })

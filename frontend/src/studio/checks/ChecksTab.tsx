@@ -12,19 +12,20 @@ import {
 } from '@/shared/ui/dialog'
 import { Label } from '@/shared/ui/label'
 
+import { BandsEditor } from './BandsEditor'
 import { TextField } from '../narrative/TextField'
-import { FormulaInput, type ReferenceOption } from '../sheet/FormulaInput'
+import { FormulaInput } from '../sheet/FormulaInput'
 import { StudioError } from '../useGameSystems'
 import {
   blankCheck,
   blankDifficulty,
-  describeBands,
   readCheck,
   writeCheck,
   type CheckDraft,
   type CheckErrors,
   type DifficultyDraft,
 } from './checkDraft'
+import { checkFormulaDiagnostics, checkReferences } from './checkFormulaDiagnostics'
 import { checkAnswer } from './checkError'
 import {
   CheckError,
@@ -83,8 +84,7 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
   const move = useMoveCheck(gameSystemKey)
   const latest = useGameSystemChecks(gameSystemKey)
   const [selected, setSelected] = useState<Selection>(null)
-  const [reloadFailed, setReloadFailed] = useState(false)
-  const [conflict, setConflict] = useState<string | null>(null)
+  const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
 
   function open(original: string | null, start: GameSystemChecks) {
     setConflict(null)
@@ -96,8 +96,28 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
    * the latest check (or closes when it is gone) and its next save carries the new version.
    */
   function onConflict(message: string) {
-    void reload().then(() => {
-      setConflict(message)
+    void reload().then((loaded) => {
+      setConflict({ message, loaded })
+    })
+  }
+
+  /**
+   * A move or delete made from this list succeeded: the open editor moves on to the version it
+   * returned, keeping its unsaved edits, so the person's own change does not make their next save
+   * a conflict. Only when nothing else changed the draft since the editor was opened (the version
+   * went up by exactly this one command) and the edited check is still there; otherwise the old
+   * version stays and a save reports the real conflict.
+   */
+  function advance(result: GameSystemChecks) {
+    setSelected((current) => {
+      if (
+        current === null ||
+        result.version !== current.start.version + 1 ||
+        (current.original !== null && !result.checks.some((c) => c.key === current.original))
+      ) {
+        return current
+      }
+      return { ...current, start: result }
     })
   }
 
@@ -105,7 +125,6 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
   async function reload() {
     const result = await latest.refetch()
     const fresh = result.data
-    setReloadFailed(result.isError || fresh === undefined)
     if (result.isError || fresh === undefined) {
       return false
     }
@@ -140,14 +159,29 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
         </p>
       )}
       {conflict !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {conflict} The latest version was loaded.
-        </p>
-      )}
-      {reloadFailed && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t reload the latest version. Try again.
-        </p>
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+          <p>
+            {conflict.message}{' '}
+            {conflict.loaded
+              ? 'The latest version was loaded.'
+              : "Couldn't load the latest version: what is shown may be out of date."}
+          </p>
+          {!conflict.loaded && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void reload().then((loaded) => {
+                  if (loaded) {
+                    setConflict((current) => current && { ...current, loaded })
+                  }
+                })
+              }}
+            >
+              Try again
+            </Button>
+          )}
+        </div>
       )}
       {data.checks.length === 0 && (
         <p className="text-muted-foreground">This draft has no checks yet.</p>
@@ -164,14 +198,13 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
               selected={selected?.original === check.key}
               busy={move.isPending}
               onEdit={(original) => {
-                setReloadFailed(false)
                 open(original, data)
               }}
               onMove={(target) => {
-                setReloadFailed(false)
                 move.mutate(
                   { expectedVersion: data.version, check: check.key, index: target },
                   {
+                    onSuccess: advance,
                     onError: (error) => {
                       if (error instanceof StudioError && error.status === 409) {
                         move.reset()
@@ -181,9 +214,11 @@ function CheckList({ gameSystemKey, data }: { gameSystemKey: string; data: GameS
                   },
                 )
               }}
-              onDeleted={() => {
+              onDeleted={(result) => {
                 if (selected?.original === check.key) {
                   setSelected(null)
+                } else {
+                  advance(result)
                 }
               }}
             />
@@ -225,7 +260,7 @@ function CheckRow({
   busy: boolean
   onEdit: (key: string) => void
   onMove: (target: number) => void
-  onDeleted: () => void
+  onDeleted: (result: GameSystemChecks) => void
 }) {
   const { key, label, dice } = check
   if (typeof key !== 'string') {
@@ -302,7 +337,7 @@ function DeleteCheckDialog({
   gameSystemKey: string
   checkKey: string
   version: number
-  onDeleted: () => void
+  onDeleted: (result: GameSystemChecks) => void
 }) {
   const [open, setOpen] = useState(false)
   const remove = useDeleteCheck(gameSystemKey)
@@ -366,9 +401,9 @@ function DeleteCheckDialog({
               remove.mutate(
                 { expectedVersion: version, check: checkKey },
                 {
-                  onSuccess: () => {
+                  onSuccess: (result) => {
                     setOpen(false)
-                    onDeleted()
+                    onDeleted(result)
                   },
                 },
               )
@@ -382,26 +417,10 @@ function DeleteCheckDialog({
   )
 }
 
-/** What a formula may read: the number, track and derived fields, a track's max, the trackers. */
-function readableReferences(data: GameSystemChecks): ReferenceOption[] {
-  return [
-    ...data.fields.flatMap((field) => [
-      { reference: field.key, label: field.label },
-      ...(field.type === 'track'
-        ? [{ reference: `${field.key}.max`, label: `${field.label} max` }]
-        : []),
-    ]),
-    ...data.trackers.map((tracker) => ({
-      reference: `tracker:${tracker.key}`,
-      label: tracker.label,
-    })),
-  ]
-}
-
 /**
  * The form of one check, filled from the checks it was opened at, whose version a save carries:
  * after a conflict the next save still conflicts until the person reloads. Saving sends the whole
- * check; the bands are shown as stored, until the bands editor comes.
+ * check, bands included.
  */
 function CheckEditor({
   gameSystemKey,
@@ -423,7 +442,19 @@ function CheckEditor({
   })
   const [errors, setErrors] = useState<CheckErrors>({})
   const { error } = save
-  const references = useMemo(() => readableReferences(start), [start])
+  const references = useMemo(() => checkReferences(start, 'modifier', false), [start])
+  const modifierDiagnostics = useMemo(
+    () =>
+      draft.modifier.trim() === ''
+        ? null
+        : checkFormulaDiagnostics({
+            formula: draft.modifier,
+            scope: 'modifier',
+            catalog: start,
+            difficulty: null,
+          }),
+    [draft.modifier, start],
+  )
   const difficultyId = useId()
 
   const position =
@@ -442,7 +473,11 @@ function CheckEditor({
             ? ` Used by ${error.paths.join(', ')}.`
             : ''
         }`
-  const shown: CheckErrors = { ...errors, ...answer?.fields }
+  const shown: CheckErrors = {
+    ...errors,
+    ...answer?.fields,
+    band: { ...errors.band, ...answer?.fields.band },
+  }
 
   const change = (changes: Partial<CheckDraft>) => {
     setDraft((current) => ({ ...current, ...changes }))
@@ -531,7 +566,7 @@ function CheckEditor({
         onChange={(modifier) => {
           change({ modifier })
         }}
-        diagnostics={null}
+        diagnostics={modifierDiagnostics}
         references={references}
         error={shown.modifier}
       />
@@ -585,7 +620,16 @@ function CheckEditor({
           </div>
         )}
       </div>
-      <Bands bands={draft.bands} />
+      <BandsEditor
+        bands={draft.bands}
+        onChange={(bands) => {
+          change({ bands })
+        }}
+        catalog={start}
+        difficulty={draft.difficulty}
+        error={shown.bands}
+        errors={shown.band ?? {}}
+      />
       {message !== '' && (
         <p role="alert" className="text-sm text-destructive">
           {message}
@@ -597,30 +641,5 @@ function CheckEditor({
         </Button>
       </div>
     </form>
-  )
-}
-
-/** The bands as stored; they are kept as they are until the bands editor comes. */
-function Bands({ bands }: { bands: unknown[] }) {
-  return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-medium">Bands</h4>
-      <ul className="divide-y rounded-lg ring-1 ring-foreground/10">
-        {describeBands(bands).map((band, index) => (
-          // A band key can repeat in a draft that breaks the rules, so the position is part of the key.
-          <li
-            key={`${String(index)}:${band.key}`}
-            className="flex flex-wrap gap-x-3 px-3 py-2 text-sm"
-          >
-            <span className="font-medium">{band.label}</span>
-            <span className="font-mono break-all text-muted-foreground">{band.key}</span>
-            <span className="text-muted-foreground">{band.bound}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-muted-foreground">
-        Bands are kept as they are; editing them comes later.
-      </p>
-    </div>
   )
 }

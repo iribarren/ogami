@@ -26,7 +26,7 @@ export interface FormulaDiagnostics {
 const readable = ['number', 'track', 'derived']
 
 /** Why a derived field cannot read `reference`, or null when it can: the publisher's rules. */
-function problem(
+export function referenceProblem(
   reference: Reference,
   types: Map<string, SheetFieldView['type']>,
   trackerKeys: string[],
@@ -52,7 +52,7 @@ function problem(
 }
 
 /** Where the formula first writes `reference`, 1-based in its trimmed text. */
-function positionOf(formula: Formula, reference: Reference): number | undefined {
+export function positionOf(formula: Formula, reference: Reference): number | undefined {
   const spelling = `{${referenceToString(reference)}}`
   return tokenize(formula.text).find((token) => token.text === spelling)?.position
 }
@@ -119,7 +119,7 @@ export function formulaDiagnostics({
   const types = new Map(fields.map((field) => [field.key, field.type]))
   types.set(key, 'derived')
   for (const reference of formula.references) {
-    const reason = problem(reference, types, trackerKeys)
+    const reason = referenceProblem(reference, types, trackerKeys)
     if (reason !== null) {
       return {
         error: {

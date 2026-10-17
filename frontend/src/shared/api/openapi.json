@@ -11666,7 +11666,6 @@
                     "key",
                     "label",
                     "dice",
-                    "difficulty",
                     "bands"
                 ],
                 "properties": {
@@ -11699,7 +11698,13 @@
                         "nullable": true
                     },
                     "difficulty": {
-                        "$ref": "#/components/schemas/GameSystemCheckDifficulty"
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemCheckDifficulty"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Absent or null when the check has no difficulty."
                     },
                     "bands": {
                         "type": "array",

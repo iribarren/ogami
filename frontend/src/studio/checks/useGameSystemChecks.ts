@@ -99,7 +99,6 @@ export function useSaveCheck(key: string) {
       original: string | null
       check: StoredCheck
     }) => {
-      // The generated type wrongly requires `difficulty` (optional in the contract); the publisher validates the check.
       const body = { expectedVersion, check: check as components['schemas']['GameSystemCheck'] }
       const { data, error, response } =
         original === null

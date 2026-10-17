@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
 /**
  * The GameSystem release a campaign is pinned to (ADR 0014).
  */
-#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet'])]
+#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout'])]
 final readonly class PinnedReleaseResponse
 {
     /**
@@ -34,11 +34,13 @@ final readonly class PinnedReleaseResponse
             items: new OA\Items(ref: new Model(type: SheetFieldResponse::class)),
         )]
         public array $sheet,
+        #[OA\Property(ref: new Model(type: SheetLayoutResponse::class), description: 'How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together.', nullable: true)]
+        public ?SheetLayoutResponse $sheetLayout,
     ) {
     }
 
     public static function fromView(PinnedReleaseView $view): self
     {
-        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet));
+        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout));
     }
 }

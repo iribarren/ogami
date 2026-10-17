@@ -1,8 +1,8 @@
-import { edgeTracker } from '../campaigns/fixtures'
+import { edgeTracker } from '@/play/campaigns/fixtures'
 import { computeDerived } from './derivedValues'
-import { initiativeField, sheet } from './fixtures'
+import { initiativeField, sheet } from '@/play/characters/fixtures'
 import type { Draft } from './sheetValues'
-import type { SheetField } from './useCharacters'
+import type { SheetFieldView } from './types'
 
 const drafts: Record<string, Draft> = {
   reflexes: '7',
@@ -11,7 +11,7 @@ const drafts: Record<string, Draft> = {
 }
 
 /** A derived field over the fixture sheet. */
-const derived = (key: string, formula: string): SheetField => ({
+const derived = (key: string, formula: string): SheetFieldView => ({
   ...initiativeField,
   key,
   label: key,

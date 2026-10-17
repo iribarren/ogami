@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-1-layout-contract` · **Status:** in progress (slice 1)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-2-play-layout` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -85,11 +85,11 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0031 (sheet layout model and Studio sheet builder; amends ADR 0022's layout line) and ADR index row; contract §Sheet (layout table, canonical form, Play reading); glossary (Sheet layout, Group) | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Studio publisher: `sheet.columns`, `sheet.groups`, field `span` with the layout rules as item rules; canonical form omits defaults; `v2.schema.json` and agreement vectors; tests incl. hash of a release without layout unchanged | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | |
-| T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | | [ ] | |
-| T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | | [ ] | |
+| T1 | 1 | Docs: this feature doc; ADR 0031 (sheet layout model and Studio sheet builder; amends ADR 0022's layout line) and ADR index row; contract §Sheet (layout table, canonical form, Play reading); glossary (Sheet layout, Group) | delegated writer (slice 1) | [x] | 68c37f8 |
+| T2 | 1 | Studio publisher: `sheet.columns`, `sheet.groups`, field `span` with the layout rules as item rules; canonical form omits defaults; `v2.schema.json` and agreement vectors; tests incl. hash of a release without layout unchanged | delegated writer (slice 1) | [x] | 8763fc2 |
+| T3 | 1 | Play translator: read and re-check the layout into `SheetTemplate` (fails closed); stored releases without layout read as today; unit tests | delegated writer (slice 1) | [x] | fac045b |
+| T4 | 2 | Play API: `pinnedRelease.sheetLayout` and field `span`; `make api`; API tests | delegated writer (slice 2) | [x] | |
+| T5 | 2 | Frontend: move `SheetFields`, `derivedValues`, `sheetValues` to `shared/sheet/` with a neutral type; grid rendering (one column on phones); Play fixtures, tests and stories | delegated writer (slice 2) | [x] | |
 | T6 | 3 | Domain: `DraftReferences` for sheet field keys; `GameSystem` save/delete/move field commands (rename refused while referenced) | | [ ] | |
 | T7 | 3 | Application + HTTP: handlers, `GET /sheet` read model, field endpoints, error mapping, API tests, `make api` | | [ ] | |
 | T8 | 4 | Layout commands: `PUT /sheet/layout` (rename cascade, refuse dropping a group with fields), `POST /sheet/layout/declare`, `DELETE /sheet/layout`; API tests; `make api` | | [ ] | |
@@ -103,12 +103,16 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-17: Feature started. Explored the sheet contract, Formula kernel, Studio editor pattern and Play renderer. User chose to extend the contract with a group-grid layout. Issue #166.
 - 2026-10-17: T1 done. ADR 0031, ADR index and 0022 note, contract §Sheet layout, glossary (Sheet layout, Group).
+- 2026-10-17: Slice 1 review fix R3: Play translator tests cover a non-string group name, a derived field span above its group's columns and an invalid second field (index 1); no translator bug.
+- 2026-10-17: T4 done. Campaign response `pinnedRelease.sheetLayout` (nullable) and field `span`; OpenAPI and TS types regenerated; API tests for a layout and a legacy release (null, span 1).
+- 2026-10-17: T5 done. `SheetFields`, `derivedValues`, `sheetValues` moved to `frontend/src/shared/sheet/` with neutral types (`SheetTemplateView`); layout renders as nested CSS grids (one column below `sm`); no-layout rendering unchanged; tests and a `WithLayout` story.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-794ba421dad9849f` | 68c37f8, 8763fc2, fac045b | approved, acknowledged; 1 suggestion R3-play-layout-coverage-gaps (Play translator tests: non-string group name, derived field span > group columns, invalid second field reports index 1), fixed in slice 2 | #167 |
 
 ## Next step
 
-Slice 1: writer delivers T1–T3 on `feat/studio-sheet-builder-1-layout-contract`, then native review and PR.
+Slice 2: writer delivers the slice 1 review fix, T4 and T5 on `feat/studio-sheet-builder-2-play-layout`, then native review and PR.

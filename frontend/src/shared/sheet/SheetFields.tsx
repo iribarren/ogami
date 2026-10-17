@@ -7,29 +7,76 @@ import { Textarea } from '@/shared/ui/textarea'
 
 import type { DerivedResult } from './derivedValues'
 import { toDraft, type Draft } from './sheetValues'
-import type { SheetField } from './useCharacters'
+import type { SheetFieldView, SheetGroupView, SheetTemplateView } from './types'
 
 const maxItemLength = 200
 
+// Tailwind finds classes only as whole strings, so the grid classes are spelled out. Everything
+// is one column below `sm`; the spans apply from there up.
+const sheetColumns: Record<number, string> = { 1: 'sm:grid-cols-1', 2: 'sm:grid-cols-2' }
+const groupColumns: Record<number, string> = {
+  1: 'sm:grid-cols-1',
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-3',
+  4: 'sm:grid-cols-4',
+}
+const groupSpans: Record<number, string> = { 1: '', 2: 'sm:col-span-2' }
+const fieldSpans: Record<number, string> = {
+  1: '',
+  2: 'sm:col-span-2',
+  3: 'sm:col-span-3',
+  4: 'sm:col-span-4',
+}
+
 /**
- * The fields of the sheet as form controls, consecutive fields with the same group together
- * under the group's name. The drafts are the form's state, kept by the caller.
+ * The fields of the sheet as form controls. With a layout, the groups in declared order as boxes
+ * in a grid of the sheet's columns, each with its own grid of columns and the fields' spans; a
+ * group without fields renders nothing. Without one, consecutive fields with the same group sit
+ * together under the group's name. The drafts are the form's state, kept by the caller.
  */
 export function SheetFields({
-  fields,
+  template,
   drafts,
   derived,
   onChange,
 }: {
-  fields: SheetField[]
+  template: SheetTemplateView
   drafts: Record<string, Draft>
   /** What derived fields show, by key; a field without an entry shows a dash. */
   derived: Record<string, DerivedResult>
   onChange: (key: string, draft: Draft) => void
 }) {
-  const blocks: { group: string | null; fields: SheetField[] }[] = []
+  const control = (field: SheetFieldView) => (
+    <FieldControl
+      key={field.key}
+      field={field}
+      draft={drafts[field.key] ?? toDraft(field, undefined)}
+      derived={derived[field.key]}
+      onChange={(draft) => {
+        onChange(field.key, draft)
+      }}
+    />
+  )
+
+  if (template.layout !== null) {
+    const { columns, groups } = template.layout
+    return (
+      <div className={`grid grid-cols-1 gap-3 ${sheetColumns[columns] ?? ''}`}>
+        {groups.map((group) => (
+          <GroupBox
+            key={group.name}
+            group={group}
+            fields={template.fields.filter((field) => field.group === group.name)}
+            control={control}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const blocks: { group: string | null; fields: SheetFieldView[] }[] = []
   let current: (typeof blocks)[number] | undefined
-  for (const field of fields) {
+  for (const field of template.fields) {
     if (current?.group === field.group) {
       current.fields.push(field)
     } else {
@@ -41,17 +88,7 @@ export function SheetFields({
   return (
     <>
       {blocks.map(({ group, fields: held }) => {
-        const controls = held.map((field) => (
-          <FieldControl
-            key={field.key}
-            field={field}
-            draft={drafts[field.key] ?? toDraft(field, undefined)}
-            derived={derived[field.key]}
-            onChange={(draft) => {
-              onChange(field.key, draft)
-            }}
-          />
-        ))
+        const controls = held.map(control)
         return group === null ? (
           <div key={held[0]?.key} className="space-y-3">
             {controls}
@@ -67,13 +104,40 @@ export function SheetFields({
   )
 }
 
+/** One group of the layout: a box with its own columns, placed across `span` columns of the sheet. */
+function GroupBox({
+  group,
+  fields,
+  control,
+}: {
+  group: SheetGroupView
+  fields: SheetFieldView[]
+  control: (field: SheetFieldView) => React.ReactNode
+}) {
+  if (fields.length === 0) {
+    return null
+  }
+  return (
+    <fieldset className={`min-w-0 space-y-3 ${groupSpans[group.span] ?? ''}`}>
+      <legend className="text-sm font-medium">{group.name}</legend>
+      <div className={`grid grid-cols-1 gap-3 ${groupColumns[group.columns] ?? ''}`}>
+        {fields.map((field) => (
+          <div key={field.key} className={`min-w-0 ${fieldSpans[field.span] ?? ''}`}>
+            {control(field)}
+          </div>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
 function FieldControl({
   field,
   draft,
   derived,
   onChange,
 }: {
-  field: SheetField
+  field: SheetFieldView
   draft: Draft
   derived: DerivedResult | undefined
   onChange: (draft: Draft) => void

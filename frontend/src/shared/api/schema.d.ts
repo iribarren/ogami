@@ -1311,6 +1311,37 @@ export interface components {
              * @example {reflexes} + 4
              */
             formula: string | null;
+            /**
+             * @description How many columns of its group the field takes; 1 for a release without a layout.
+             * @example 2
+             */
+            span: number;
+        };
+        SheetGroupResponse: {
+            /**
+             * @description The name the fields of the group carry in their `group`.
+             * @example Stats
+             */
+            name: string;
+            /**
+             * @description The columns of fields inside the group.
+             * @example 2
+             */
+            columns: number;
+            /**
+             * @description How many columns of the sheet the group takes.
+             * @example 1
+             */
+            span: number;
+        };
+        SheetLayoutResponse: {
+            /**
+             * @description The columns of groups the sheet has.
+             * @example 2
+             */
+            columns: number;
+            /** @description The groups in declared order. A field names its group; a group without fields renders nothing. */
+            groups: components["schemas"]["SheetGroupResponse"][];
         };
         PinnedReleaseResponse: {
             /** @example ironsworn */
@@ -1329,6 +1360,8 @@ export interface components {
             credits: components["schemas"]["CreditsResponse"] | null;
             /** @description The fields of the release's character sheet in layout order; empty for a release without one. Characters hold a value per field. */
             sheet: components["schemas"]["SheetFieldResponse"][];
+            /** @description How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together. */
+            sheetLayout: components["schemas"]["SheetLayoutResponse"] | null;
         };
         ItemRefResponse: {
             /**

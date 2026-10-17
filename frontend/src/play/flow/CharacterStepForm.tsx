@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import { CharacterForm } from '../characters/CharacterForm'
+import { sheetTemplate } from '../characters/sheetTemplate'
 import { useCharacterActions } from '../characters/useCharacters'
 
 /**
@@ -35,7 +36,7 @@ export function CharacterStepForm({
     return (
       <CharacterForm
         character={null}
-        sheet={campaign.pinnedRelease.sheet}
+        sheet={sheetTemplate(campaign.pinnedRelease)}
         trackers={campaign.trackers}
         releaseTags={campaign.tags}
         pending={pending || save.isPending}

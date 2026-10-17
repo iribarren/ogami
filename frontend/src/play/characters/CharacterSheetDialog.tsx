@@ -1,3 +1,4 @@
+import { valueOrDefault } from '@/shared/sheet/sheetValues'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -8,7 +9,6 @@ import {
   DialogTrigger,
 } from '@/shared/ui/dialog'
 
-import { valueOrDefault } from './sheetValues'
 import type { Character, SheetField } from './useCharacters'
 
 /** A field's value; a derived one is the server's, or a dash when it has none. */

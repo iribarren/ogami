@@ -22,6 +22,7 @@ const base: SheetField = {
   itemLabel: null,
   maxItems: null,
   formula: null,
+  span: 1,
 }
 
 /** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes. */
@@ -115,6 +116,18 @@ export const lostMineWithCharacters: Campaign = {
   ...lostMineCampaign,
   tags: [leaderTag, allyTag],
   characters: [{ ...viCharacter, values: {} }],
+}
+
+/** The layout of `sheet`: two columns, Identity across both, Stats in two columns beside Vitals, an empty group. */
+export const sheetLayout: NonNullable<Campaign['pinnedRelease']['sheetLayout']> = {
+  columns: 2,
+  groups: [
+    { name: 'Identity', columns: 1, span: 2 },
+    { name: 'Stats', columns: 2, span: 1 },
+    { name: 'Vitals', columns: 1, span: 1 },
+    { name: 'Gear', columns: 1, span: 2 },
+    { name: 'Unused', columns: 1, span: 1 },
+  ],
 }
 
 /** `nightJobCampaign` whose release has two checks: "Skill check" (with a difficulty) and "Luck". */

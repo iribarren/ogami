@@ -3,14 +3,15 @@ import { useId, useState, type SubmitEvent } from 'react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { computeDerived } from '@/shared/sheet/derivedValues'
+import { SheetFields } from '@/shared/sheet/SheetFields'
+import { fromDraft, storedFields, toDraft, type Draft } from '@/shared/sheet/sheetValues'
+import type { SheetTemplateView } from '@/shared/sheet/types'
 
 import { TagFields, type ReleaseTag } from '../lists/TagFields'
 import { useFreeTags } from '../lists/useFreeTags'
 import type { Tracker } from '../trackers/useTrackers'
-import { computeDerived } from './derivedValues'
-import { SheetFields } from './SheetFields'
-import { fromDraft, storedFields, toDraft, type Draft } from './sheetValues'
-import type { Character, CharacterFields, SheetField } from './useCharacters'
+import type { Character, CharacterFields } from './useCharacters'
 
 const maxName = 100
 
@@ -31,8 +32,8 @@ export function CharacterForm({
   onCancel,
 }: {
   character: Character | null
-  /** Every field of the sheet, derived ones included. */
-  sheet: SheetField[]
+  /** Every field of the sheet, derived ones included, and how it is laid out. */
+  sheet: SheetTemplateView
   trackers: Tracker[]
   releaseTags: ReleaseTag[]
   pending: boolean
@@ -44,7 +45,7 @@ export function CharacterForm({
   const id = useId()
   const free = useFreeTags(character?.freeTags ?? [])
   // A field the Character has no value for starts as its default.
-  const stored = storedFields(sheet)
+  const stored = storedFields(sheet.fields)
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
     Object.fromEntries(
       stored.map((field) => [field.key, toDraft(field, character?.values[field.key])]),
@@ -86,9 +87,9 @@ export function CharacterForm({
           />
         </div>
         <SheetFields
-          fields={sheet}
+          template={sheet}
           drafts={drafts}
-          derived={computeDerived(sheet, drafts, trackers)}
+          derived={computeDerived(sheet.fields, drafts, trackers)}
           onChange={(key, draft) => {
             setDrafts({ ...drafts, [key]: draft })
           }}

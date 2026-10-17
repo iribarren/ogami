@@ -34,12 +34,21 @@ final class GameSystem
     private int $version = 1;
 
     /**
+     * What the draft imported from the library, kept outside the document (ADR 0033). Always empty
+     * for now; the import commands fill it.
+     *
+     * @var list<array<string, mixed>>
+     */
+    private array $libraryImports = [];
+
+    /**
      * @param array<string, mixed> $document a release document: schemaVersion, gameSystem, sections
      */
     private function __construct(
         private readonly string $id,
         private readonly string $key,
         private readonly string $ownerId,
+        private readonly GameSystemKind $kind,
         private array $document,
         private readonly \DateTimeImmutable $createdAt,
         private \DateTimeImmutable $updatedAt,
@@ -53,24 +62,19 @@ final class GameSystem
      */
     public static function createBlank(GameSystemId $id, string $key, string $name, ?string $description, string $ownerId, \DateTimeImmutable $now): self
     {
-        $key = self::validKey($key);
-        $gameSystem = ['key' => $key, 'name' => GameSystemMetadata::name($name)];
-        $description = GameSystemMetadata::description($description);
-        if (null !== $description) {
-            $gameSystem['description'] = $description;
-        }
+        return self::blank(GameSystemKind::GameSystem, $id, $key, $name, $description, $ownerId, $now);
+    }
 
-        return new self($id->toString(), $key, self::validOwner($ownerId), [
-            'schemaVersion' => 2,
-            'gameSystem' => $gameSystem,
-            'oracles' => ['tables' => [], 'likelihood' => []],
-            'trackers' => [],
-            'factSlots' => [],
-            'sceneTypes' => [],
-            'flows' => [],
-            'sheet' => [],
-            'checks' => [],
-        ], $now, $now);
+    /**
+     * A library pack: blank like createBlank(), and like it schema version 2, with no theme or
+     * credits. It holds oracles, trackers, tags, fact slots and Scene Types, and refuses the rest
+     * with LibraryPackRefuses (ADR 0033).
+     *
+     * @throws InvalidGameSystemMetadata when the key, owner, name or description is invalid
+     */
+    public static function createLibraryPack(GameSystemId $id, string $key, string $ownerId, string $name, ?string $description, \DateTimeImmutable $now): self
+    {
+        return self::blank(GameSystemKind::LibraryPack, $id, $key, $name, $description, $ownerId, $now);
     }
 
     /**
@@ -88,7 +92,7 @@ final class GameSystem
         $name = GameSystemMetadata::name($name);
         $description = GameSystemMetadata::description($description);
 
-        return new self($id->toString(), $key, self::validOwner($ownerId), self::withNameAndDescription(self::withKey(self::plain($sourceDocument), $key), $name, $description), $now, $now);
+        return new self($id->toString(), $key, self::validOwner($ownerId), GameSystemKind::GameSystem, self::withNameAndDescription(self::withKey(self::plain($sourceDocument), $key), $name, $description), $now, $now);
     }
 
     /**
@@ -98,6 +102,14 @@ final class GameSystem
      */
     public function editMetadata(GameSystemMetadata $metadata, \DateTimeImmutable $now): void
     {
+        if (null !== $metadata->credits) {
+            $this->refuseOnPack('have credits');
+        }
+
+        if (null !== $metadata->theme) {
+            $this->refuseOnPack('have a theme');
+        }
+
         if (1 === $this->schemaVersion()) {
             foreach (['credits' => $metadata->credits, 'theme' => $metadata->theme] as $field => $value) {
                 if (null !== $value) {
@@ -197,6 +209,10 @@ final class GameSystem
      */
     public function saveNarrativeItem(NarrativeSection $section, ?string $originalKey, array $item, \DateTimeImmutable $now): void
     {
+        if (NarrativeSection::Flows === $section) {
+            $this->refuseOnPack('save a flow');
+        }
+
         $items = $this->narrativeItems($section);
         $position = \count($items);
         if (null !== $originalKey) {
@@ -232,6 +248,10 @@ final class GameSystem
      */
     public function deleteNarrativeItem(NarrativeSection $section, string $key, \DateTimeImmutable $now): void
     {
+        if (NarrativeSection::Flows === $section) {
+            $this->refuseOnPack('delete a flow');
+        }
+
         $items = $this->narrativeItems($section);
         $position = $this->indexOfKey($items, $key) ?? throw NarrativeItemNotFound::withKey($section, $key);
         $this->refuseWhenNarrativeReferenced($section, $key);
@@ -256,6 +276,7 @@ final class GameSystem
      */
     public function saveSheetField(?string $originalKey, array $field, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('save a sheet field');
         $fields = $this->sheetFields();
         $position = \count($fields);
         if (null !== $originalKey) {
@@ -282,6 +303,7 @@ final class GameSystem
      */
     public function deleteSheetField(string $key, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('delete a sheet field');
         $fields = $this->sheetFields();
         $position = $this->indexOfKey($fields, $key) ?? throw SheetFieldNotFound::withKey($key);
         $this->refuseWhenSheetFieldReferenced($key);
@@ -301,6 +323,7 @@ final class GameSystem
      */
     public function moveSheetField(string $key, int $index, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('move a sheet field');
         $fields = $this->sheetFields();
         $position = $this->indexOfKey($fields, $key) ?? throw SheetFieldNotFound::withKey($key);
         if ($index < 0 || $index >= \count($fields)) {
@@ -345,6 +368,7 @@ final class GameSystem
      */
     public function saveCheck(?string $originalKey, array $check, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('save a check');
         $checks = $this->checks();
         $position = \count($checks);
         if (null !== $originalKey) {
@@ -375,6 +399,7 @@ final class GameSystem
      */
     public function deleteCheck(string $key, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('delete a check');
         $checks = $this->checks();
         $position = $this->indexOfKey($checks, $key) ?? throw CheckNotFound::withKey($key);
         $this->refuseWhenCheckReferenced($key);
@@ -393,6 +418,7 @@ final class GameSystem
      */
     public function moveCheck(string $key, int $index, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('move a check');
         $checks = $this->checks();
         $position = $this->indexOfKey($checks, $key) ?? throw CheckNotFound::withKey($key);
         if ($index < 0 || $index >= \count($checks)) {
@@ -417,6 +443,7 @@ final class GameSystem
      */
     public function saveSheetLayout(mixed $columns, array $groups, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('save a sheet layout');
         $fields = $this->sheetFields();
         $sheet = $this->sheet();
         $declared = $this->declaredGroupNames($sheet);
@@ -488,6 +515,7 @@ final class GameSystem
      */
     public function declareSheetLayout(\DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('declare a sheet layout');
         $fields = $this->sheetFields();
         $sheet = $this->sheet();
         if ([] !== $this->declaredGroupNames($sheet)) {
@@ -524,6 +552,7 @@ final class GameSystem
      */
     public function removeSheetLayout(\DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('remove a sheet layout');
         $fields = $this->sheetFields();
         $sheet = $this->sheet();
         if ([] === $this->declaredGroupNames($sheet)) {
@@ -544,6 +573,7 @@ final class GameSystem
      */
     public function restore(array $releaseDocument, \DateTimeImmutable $now): void
     {
+        $this->refuseOnPack('restore a release');
         $this->document = self::withKey(self::plain($releaseDocument), $this->key);
         $this->updatedAt = $now;
     }
@@ -561,6 +591,24 @@ final class GameSystem
     public function ownerId(): string
     {
         return $this->ownerId;
+    }
+
+    public function kind(): GameSystemKind
+    {
+        return $this->kind;
+    }
+
+    public function isLibraryPack(): bool
+    {
+        return GameSystemKind::LibraryPack === $this->kind;
+    }
+
+    /**
+     * @return list<array<string, mixed>> what the draft imported from the library; empty until imports exist
+     */
+    public function libraryImports(): array
+    {
+        return $this->libraryImports;
     }
 
     public function isOwnedBy(string $userId): bool
@@ -992,6 +1040,41 @@ final class GameSystem
         ReleaseContent::checkItemRules($document);
         $this->document = $document;
         $this->updatedAt = $now;
+    }
+
+    /**
+     * @throws InvalidGameSystemMetadata when the key, owner, name or description is invalid
+     */
+    private static function blank(GameSystemKind $kind, GameSystemId $id, string $key, string $name, ?string $description, string $ownerId, \DateTimeImmutable $now): self
+    {
+        $key = self::validKey($key);
+        $gameSystem = ['key' => $key, 'name' => GameSystemMetadata::name($name)];
+        $description = GameSystemMetadata::description($description);
+        if (null !== $description) {
+            $gameSystem['description'] = $description;
+        }
+
+        return new self($id->toString(), $key, self::validOwner($ownerId), $kind, [
+            'schemaVersion' => 2,
+            'gameSystem' => $gameSystem,
+            'oracles' => ['tables' => [], 'likelihood' => []],
+            'trackers' => [],
+            'factSlots' => [],
+            'sceneTypes' => [],
+            'flows' => [],
+            'sheet' => [],
+            'checks' => [],
+        ], $now, $now);
+    }
+
+    /**
+     * @throws LibraryPackRefuses when the draft is a library pack
+     */
+    private function refuseOnPack(string $operation): void
+    {
+        if (GameSystemKind::LibraryPack === $this->kind) {
+            throw LibraryPackRefuses::to($operation, $this->key);
+        }
     }
 
     /**

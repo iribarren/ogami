@@ -6,6 +6,7 @@ namespace App\Studio\Infrastructure\Persistence\Doctrine;
 
 use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
+use App\Studio\Domain\GameSystem\GameSystemKind;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -78,6 +79,11 @@ final readonly class DoctrineGameSystemRepository implements GameSystemRepositor
     {
         return $this->entityManager->getRepository(GameSystem::class)
             ->findBy(['ownerId' => $ownerId], ['updatedAt' => 'DESC', 'key' => 'ASC']);
+    }
+
+    public function libraryPacks(): array
+    {
+        return $this->entityManager->getRepository(GameSystem::class)->findBy(['kind' => GameSystemKind::LibraryPack]);
     }
 
     public function remove(GameSystem $gameSystem): void

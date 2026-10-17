@@ -286,6 +286,11 @@ final class GameSystemPublicationHandlersTest extends TestCase
                 return $this->inner->ofOwner($ownerId);
             }
 
+            public function libraryPacks(): array
+            {
+                return $this->inner->libraryPacks();
+            }
+
             public function remove(\App\Studio\Domain\GameSystem\GameSystem $gameSystem): void
             {
                 $this->inner->remove($gameSystem);

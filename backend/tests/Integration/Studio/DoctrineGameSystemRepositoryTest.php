@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Studio;
 use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemId;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
+use App\Studio\Domain\GameSystem\GameSystemKind;
 use App\Studio\Domain\GameSystem\GameSystemMetadata;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\NarrativeSection;
@@ -62,6 +63,74 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
         $this->entityManager->clear();
 
         self::assertEquals($gameSystem, $this->gameSystems->ofKey('blank'));
+    }
+
+    #[Test]
+    public function aLibraryPackRoundTripsWithItsKindAndImports(): void
+    {
+        $pack = GameSystem::createLibraryPack(GameSystemId::fromString(self::FIRST_ID), 'names', self::OWNER, 'Names', 'Generic', new \DateTimeImmutable('2026-10-18T10:00:00'));
+        $pack->saveNarrativeItem(NarrativeSection::Tags, null, ['key' => 'gang', 'label' => 'Gang'], new \DateTimeImmutable('2026-10-18T11:00:00'));
+        // Slice 2 fills the imports through commands; until then only the mapping can set them.
+        $imports = [['section' => 'tags', 'key' => 'gang', 'pack' => 'other', 'hash' => str_repeat('a', 64)]];
+        new \ReflectionProperty(GameSystem::class, 'libraryImports')->setValue($pack, $imports);
+        $this->gameSystems->add($pack);
+        $this->entityManager->clear();
+
+        $loaded = $this->gameSystems->ofKey('names');
+
+        self::assertNotNull($loaded);
+        self::assertNotSame($pack, $loaded);
+        self::assertEquals($pack, $loaded);
+        self::assertSame(GameSystemKind::LibraryPack, $loaded->kind());
+        // JSONB does not keep the order of an object's keys.
+        self::assertEquals($imports, $loaded->libraryImports());
+    }
+
+    #[Test]
+    public function aDraftRoundTripsAsAGameSystemWithNoImports(): void
+    {
+        $this->gameSystems->add($this->blank(self::FIRST_ID, 'plain', self::OWNER));
+        $this->entityManager->clear();
+
+        $loaded = $this->gameSystems->ofKey('plain');
+
+        self::assertNotNull($loaded);
+        self::assertSame(GameSystemKind::GameSystem, $loaded->kind());
+        self::assertSame([], $loaded->libraryImports());
+    }
+
+    #[Test]
+    public function aRowStoredBeforeLibraryPacksReadsAsAGameSystemWithNoImports(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $document = json_encode(GameSystem::createBlank(GameSystemId::fromString(self::FIRST_ID), 'legacy', 'Legacy', null, self::OWNER, new \DateTimeImmutable('2026-10-15T10:00:00'))->document(), \JSON_THROW_ON_ERROR);
+        // The columns of the first migration only: kind and library_imports take their defaults.
+        $connection->executeStatement(
+            'INSERT INTO studio_gamesystem (id, game_system_key, owner_id, document, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [self::FIRST_ID, 'legacy', self::OWNER, $document, '2026-10-15 10:00:00', '2026-10-15 10:00:00'],
+        );
+
+        $loaded = $this->gameSystems->ofKey('legacy');
+
+        self::assertNotNull($loaded);
+        self::assertSame(GameSystemKind::GameSystem, $loaded->kind());
+        self::assertFalse($loaded->isLibraryPack());
+        self::assertSame([], $loaded->libraryImports());
+    }
+
+    #[Test]
+    public function itListsEveryLibraryPackOfAnyOwnerAndNoDraft(): void
+    {
+        $now = new \DateTimeImmutable('2026-10-18T10:00:00');
+        $this->gameSystems->add(GameSystem::createLibraryPack(GameSystemId::fromString(self::FIRST_ID), 'mine', self::OWNER, 'Mine', null, $now));
+        $this->gameSystems->add(GameSystem::createLibraryPack(GameSystemId::fromString(self::SECOND_ID), 'theirs', 'user-2', 'Theirs', null, $now));
+        $this->gameSystems->add($this->blank('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a63', 'draft', self::OWNER));
+        $this->entityManager->clear();
+
+        $keys = array_map(static fn (GameSystem $gameSystem): string => $gameSystem->key(), $this->gameSystems->libraryPacks());
+        sort($keys);
+
+        self::assertSame(['mine', 'theirs'], $keys);
     }
 
     #[Test]

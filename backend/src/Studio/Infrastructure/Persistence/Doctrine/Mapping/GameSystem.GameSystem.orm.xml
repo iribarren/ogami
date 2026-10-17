@@ -20,9 +20,21 @@
 
         <field name="key" type="string" column="game_system_key" length="64"/>
         <field name="ownerId" type="string" column="owner_id"/>
+        <!-- Legacy rows are GameSystems with no imports: the column defaults match that. -->
+        <field name="kind" type="string" column="kind" length="32" enum-type="App\Studio\Domain\GameSystem\GameSystemKind">
+            <options>
+                <option name="default">game-system</option>
+            </options>
+        </field>
         <field name="document" type="json" column="document">
             <options>
                 <option name="jsonb">true</option>
+            </options>
+        </field>
+        <field name="libraryImports" type="json" column="library_imports">
+            <options>
+                <option name="jsonb">true</option>
+                <option name="default">[]</option>
             </options>
         </field>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>

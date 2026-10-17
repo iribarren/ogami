@@ -13,6 +13,8 @@ import {
   narrativeV1,
   validDraft,
 } from '../../fixtures'
+import { validationKey } from '../../useGameSystems'
+import { narrativeKey } from '../useGameSystemNarrative'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -157,6 +159,52 @@ describe('the issues of each flow', () => {
     release()
     expect(await within(await row('Odd flow')).findByText('1 issue')).toBeInTheDocument()
     expect(within(await row('Side job')).queryByText(/issue/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the counts while the validation is refreshed in the background and the narrative has not changed', async () => {
+    let reads = 0
+    let release: () => void = () => undefined
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { queryClient } = await openTab({
+      [`GET ${base}/validation`]: async () => {
+        if (++reads > 1) {
+          await pending
+        }
+        return Response.json({ ...flowWarnings, warnings: ['flows[0]: odd'] })
+      },
+    })
+
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+    void queryClient.refetchQueries({ queryKey: validationKey('my-draft') })
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+    expect(within(await row('Heist')).getByText('1 issue')).toBeInTheDocument()
+    release()
+  })
+
+  it('shows no count once the narrative has changed until the validation is read again', async () => {
+    let narrative: unknown = narrativeFlows
+    const { queryClient } = await openTab({
+      [`GET ${base}/narrative`]: () => Response.json(narrative),
+      [`GET ${base}/validation`]: json({ ...flowWarnings, warnings: ['flows[0]: odd'] }),
+    })
+
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+    narrative = {
+      ...narrativeFlows,
+      version: 6,
+      flows: narrativeFlows.flows.filter(({ key }) => key !== 'heist'),
+    }
+    await queryClient.refetchQueries({ queryKey: narrativeKey('my-draft') })
+    await waitFor(() => {
+      expect(screen.queryByText('Heist')).not.toBeInTheDocument()
+    })
+    expect(screen.queryByText(/issue/)).not.toBeInTheDocument()
+    await queryClient.refetchQueries({ queryKey: validationKey('my-draft') })
+    expect(await within(await row('Side job')).findByText('1 issue')).toBeInTheDocument()
   })
 
   it('shows no count for a valid draft', async () => {

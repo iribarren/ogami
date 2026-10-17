@@ -5,7 +5,11 @@ import {
   newFlowToItem,
   newPhase,
   refreshNewFlow,
+  setHook,
+  withRule,
+  type SelectionDraft,
 } from './flowDraft'
+import { stepsToDrafts, type BandDraft } from '../steps/stepDraft'
 
 // The shapes of the three preset flows: Kingsport (introduction, a player phase with hooks),
 // Night job (sceneOpening hooks) and Mythic-style (journal view, no introduction).
@@ -127,7 +131,7 @@ describe('a flow as form state', () => {
     const draft = flowToDraft({ ...mythic, default: false })
 
     expect(draft?.default).toBe(false)
-    expect(draft && flowToItem(draft).item).toEqual(mythic)
+    expect(draft && flowToItem(draft)).toEqual({ item: mythic })
   })
 
   it.each([
@@ -158,6 +162,125 @@ describe('a flow as form state', () => {
     ['a hook that is not a list', { ...mythic, phases: [{ ...mythic.phases[0], worldTurn: 'x' }] }],
   ])('cannot read %s', (_name, stored) => {
     expect(flowToDraft(stored)).toBeNull()
+  })
+})
+
+const phaseOf = (stored: unknown) => {
+  const draft = flowToDraft(stored as Record<string, unknown>)
+  const phase = draft?.phases[0]
+  if (draft === null || phase === undefined) {
+    throw new Error('Unreadable flow.')
+  }
+  return { draft, phase }
+}
+
+describe('the hooks of a phase', () => {
+  it('reads each as steps and leaves a hook the phase lacks missing', () => {
+    const { phase } = phaseOf({ ...kingsport, phases: [kingsport.phases[1]] })
+
+    expect(Object.keys(phase.hooks)).toEqual(['sceneClosing', 'worldTurn'])
+    expect(phase.hooks.worldTurn).toMatchObject([{ kind: 'prompt', title: 'Dread' }])
+  })
+
+  it('does not write a hook the phase never had, nor an empty list for one the author emptied', () => {
+    const { draft, phase } = phaseOf({ ...kingsport, phases: [kingsport.phases[1]] })
+    const emptied = setHook(phase, 'worldTurn', [])
+    const saved = flowToItem({ ...draft, phases: [emptied] })
+
+    expect(Object.keys(emptied.hooks)).toEqual(['sceneClosing'])
+    expect('item' in saved && saved.item.phases).toEqual([
+      { ...kingsport.phases[1], worldTurn: undefined },
+    ])
+    expect('item' in saved && JSON.stringify(saved.item.phases)).not.toContain('worldTurn')
+  })
+
+  it('keeps a stored empty list as stored until the author touches it', () => {
+    const { draft } = phaseOf(mythic)
+
+    expect(flowToItem(draft)).toEqual({ item: mythic })
+  })
+
+  it('adds a hook in schema order and sends the edited steps', () => {
+    const { draft, phase } = phaseOf(nightJob)
+    const edited = setHook(
+      setHook(phase, 'worldTurn', stepsToDrafts([{ key: 'tick', kind: 'prompt', title: 'Tick' }])),
+      'sessionOpening',
+      stepsToDrafts([{ key: 'hello', kind: 'prompt', title: 'Hello' }]),
+    )
+    const saved = flowToItem({ ...draft, phases: [edited] })
+    const sent = 'item' in saved ? (saved.item.phases as Record<string, unknown>[]) : []
+
+    expect(
+      Object.keys(sent[0] ?? {}).filter((key) => key.endsWith('Opening') || key === 'worldTurn'),
+    ).toEqual(['sessionOpening', 'sceneOpening', 'worldTurn'])
+    expect(sent[0]?.worldTurn).toEqual([{ key: 'tick', kind: 'prompt', title: 'Tick' }])
+  })
+
+  it('keeps a step kind it does not know as stored', () => {
+    const odd = { key: 'x', kind: 'future', title: 'X', extra: [1] }
+    const { draft } = phaseOf({
+      ...kingsport,
+      phases: [{ ...kingsport.phases[0], sceneOpening: [odd] }],
+    })
+
+    expect(flowToItem(draft)).toMatchObject({
+      item: { phases: [{ sceneOpening: [odd] }] },
+    })
+  })
+
+  it('refuses the whole save, by phase and hook, when a step has a number it cannot send', () => {
+    const roll = { key: 'r', kind: 'roll', title: 'R', dice: '1d6', bands: [{ upTo: 3 }, {}] }
+    const { draft, phase } = phaseOf({
+      ...kingsport,
+      phases: [{ ...kingsport.phases[0], phaseClosing: [roll] }],
+    })
+    const [step] = phase.hooks.phaseClosing ?? []
+    if (step?.kind !== 'roll') {
+      throw new Error('Expected a roll step.')
+    }
+    const bad: BandDraft = {
+      upTo: { form: 'integer', text: '1.5' },
+      next: '',
+      effects: [],
+      extra: {},
+    }
+    const edited = setHook(phase, 'phaseClosing', [{ ...step, bands: [bad, ...step.bands] }])
+
+    expect(flowToItem({ ...draft, phases: [edited] })).toEqual({
+      errors: { 0: { phaseClosing: { '0.bands.0.upTo': 'Use a whole number.' } } },
+    })
+  })
+})
+
+describe('the selection rule', () => {
+  const sequence: SelectionDraft = { rule: 'sequence', sceneTypes: ['a', 'b'], extra: { f: 1 } }
+
+  it('keeps the Scene Types between sequence and player and drops the unknown fields', () => {
+    expect(withRule(sequence, 'player')).toEqual({
+      rule: 'player',
+      sceneTypes: ['a', 'b'],
+      extra: {},
+    })
+    expect(withRule(withRule(sequence, 'player'), 'sequence')).toEqual({
+      rule: 'sequence',
+      sceneTypes: ['a', 'b'],
+      extra: {},
+    })
+  })
+
+  it('starts the other field empty when going to or from an oracle', () => {
+    const oracle = withRule(sequence, 'oracle')
+
+    expect(oracle).toEqual({ rule: 'oracle', table: '', extra: {} })
+    expect(withRule({ rule: 'oracle', table: 'places', extra: {} }, 'player')).toEqual({
+      rule: 'player',
+      sceneTypes: [],
+      extra: {},
+    })
+  })
+
+  it('returns the selection itself, extra fields included, while the rule is the same', () => {
+    expect(withRule(sequence, 'sequence')).toBe(sequence)
   })
 })
 

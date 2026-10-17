@@ -20,8 +20,7 @@ import { PhaseOutline } from './PhaseOutline'
 
 /**
  * The form of one flow. It is filled once, from `initial` read at `version`; a save sends that
- * version, and a reload replaces the draft and the version together or neither. Each phase's
- * selection and hooks are shown, not edited: they are sent back as they were stored.
+ * version, and a reload replaces the draft and the version together or neither.
  */
 export function FlowEditor({
   gameSystemKey,
@@ -43,6 +42,8 @@ export function FlowEditor({
   const [answer, setAnswer] = useState<FlowAnswer>(noAnswer)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
+  // Remounts the phases on a reload: their hook lists keep no state of the draft they replace.
+  const [generation, setGeneration] = useState(0)
   const viewId = useId()
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
@@ -52,14 +53,15 @@ export function FlowEditor({
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    const refused = flowChecks(draft)
-    if (refused !== null) {
-      setAnswer(refused)
+    const result = flowToItem(draft)
+    const refused = flowChecks(draft, 'errors' in result ? result.errors : {})
+    if (refused !== null || 'errors' in result) {
+      setAnswer(refused ?? noAnswer)
       return
     }
     setAnswer(noAnswer)
     setReloadNote(null)
-    const { item } = flowToItem(draft)
+    const { item } = result
     const key = String(item.key)
     try {
       const saved = await save.mutateAsync({
@@ -114,6 +116,7 @@ export function FlowEditor({
     setReadAt(result.data.version)
     setReloadNote(null)
     setAnswer(noAnswer)
+    setGeneration((count) => count + 1)
   }
 
   const field = (name: string) => answer.fields[name]
@@ -225,9 +228,12 @@ export function FlowEditor({
       <section aria-label="Phases" className="space-y-3">
         <h2 className="font-heading text-lg font-semibold">Phases</h2>
         <PhaseOutline
+          key={generation}
           phases={draft.phases}
           answers={answer.phases}
           sceneType={narrative.sceneTypes[0]?.key ?? null}
+          context={context}
+          locked={save.isPending}
           onChange={(phases, phaseAnswers) => {
             setDraft({ ...draft, phases })
             setAnswer({ ...answer, phases: phaseAnswers })

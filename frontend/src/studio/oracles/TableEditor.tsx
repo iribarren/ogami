@@ -5,6 +5,9 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
+import type { FieldErrors } from '../narrative/narrativeDraft'
+import { mapStepError, type StepError } from '../narrative/steps/stepError'
+import type { StepContext } from '../narrative/steps/stepContext'
 import { StudioError } from '../useGameSystems'
 import { CoverageSummary, EntriesEditor } from './EntriesEditor'
 import {
@@ -43,9 +46,19 @@ function entryOfError(message: string, tableIndex: number, entries: number): num
   return sameTable && index < entries ? index : null
 }
 
+/** The client's refusals of effect values (`entries.<n>.effects.<m>.value`), as errors of their entries. */
+function clientEntryErrors(errors: FieldErrors): StepError[] {
+  return Object.entries(errors).map(([key, message]) => {
+    const path = key.split('.').map((part) => (/^\d+$/.test(part) ? `[${part}]` : `.${part}`))
+    return mapStepError('entries', `${path.join('').slice(1)}: ${message}`)
+  })
+}
+
 interface TableEditorProps {
   gameSystemKey: string
   oracles: GameSystemOracles
+  /** What entry Scene Types and effects pick from; null for a draft of a schema without them. */
+  context: StepContext | null
   item: OracleTableItem
   history: RollHistory<OracleTableResult>
   /** Told the key a save renames the table to before it is sent, and null once it settled. */
@@ -58,6 +71,7 @@ interface TableEditorProps {
 export function TableEditor({
   gameSystemKey,
   oracles,
+  context,
   item,
   history,
   onRenaming,
@@ -76,7 +90,8 @@ export function TableEditor({
   const diceId = useId()
 
   const trimmed = { ...draft, key: draft.key.trim(), name: draft.name.trim() }
-  const body = toTable(stored, trimmed, oracles.schemaVersion)
+  const effectErrors: FieldErrors = {}
+  const body = toTable(stored, trimmed, oracles.schemaVersion, effectErrors)
   const dirty = JSON.stringify(body) !== JSON.stringify(stored)
   const range = draft.ranged ? diceRange(draft.dice) : null
   const coverage =
@@ -91,6 +106,7 @@ export function TableEditor({
     trimmed.name !== '' &&
     !diceMissing &&
     numbersValid(draft) &&
+    Object.keys(effectErrors).length === 0 &&
     draft.entries.length > 0 &&
     draft.entries.every(({ text }) => text.trim() !== '')
 
@@ -152,12 +168,28 @@ export function TableEditor({
   coverage?.invalid.forEach(
     (index) => (problems[index] = 'Min and max must be whole numbers, min at most max.'),
   )
+  const entryErrors: Record<number, StepError[]> = {}
+  clientEntryErrors(effectErrors).forEach((about) => {
+    if (about.index !== null) {
+      entryErrors[about.index] = [...(entryErrors[about.index] ?? []), about]
+    }
+  })
   let formProblem = error?.message ?? null
   if (error) {
     const index = entryOfError(error.message, tableIndex, draft.entries.length)
     const inUse = error instanceof OracleError && error.paths.length > 0
     if (index !== null && !inUse) {
-      problems[index] = error.message
+      // Messages about the Scene Type or the effects of the entry go to those fields.
+      const about = mapStepError(`oracles.tables[${String(tableIndex)}].entries`, error.message)
+      if (
+        context !== null &&
+        about.index === index &&
+        (about.effect !== null || about.field === 'sceneType' || about.field === 'effects')
+      ) {
+        entryErrors[index] = [...(entryErrors[index] ?? []), about]
+      } else {
+        problems[index] = error.message
+      }
       formProblem = null
     }
   }
@@ -227,6 +259,8 @@ export function TableEditor({
           tables={oracles.tables
             .map(({ definition }) => definition.key)
             .filter((key) => key !== stored.key)}
+          context={context}
+          errors={entryErrors}
           onChange={(entries: EntryDraft[]) => {
             edit({ ...draft, entries })
           }}

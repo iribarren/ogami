@@ -207,6 +207,38 @@ describe('the issues of each flow', () => {
     expect(await within(await row('Side job')).findByText('1 issue')).toBeInTheDocument()
   })
 
+  it('shows no count after coming back to the tab when the narrative changed since the validation was read', async () => {
+    const { user, queryClient } = await openTab({
+      [`GET ${base}/validation`]: json({ ...flowWarnings, warnings: ['flows[0]: odd'] }),
+    })
+
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Overview' }))
+    queryClient.setQueryData(narrativeKey('my-draft'), {
+      ...narrativeFlows,
+      version: 6,
+      flows: narrativeFlows.flows.filter(({ key }) => key !== 'heist'),
+    })
+    await user.click(screen.getByRole('radio', { name: 'Flows' }))
+
+    await row('Side job')
+    expect(screen.queryByText(/issue/)).not.toBeInTheDocument()
+    await queryClient.refetchQueries({ queryKey: validationKey('my-draft') })
+    expect(await within(await row('Side job')).findByText('1 issue')).toBeInTheDocument()
+  })
+
+  it('keeps the counts after coming back to the tab when nothing changed', async () => {
+    const { user } = await openTab({
+      [`GET ${base}/validation`]: json({ ...flowWarnings, warnings: ['flows[0]: odd'] }),
+    })
+
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Overview' }))
+    await user.click(screen.getByRole('radio', { name: 'Flows' }))
+
+    expect(within(await row('Heist')).getByText('1 issue')).toBeInTheDocument()
+  })
+
   it('shows no count for a valid draft', async () => {
     await openTab()
 

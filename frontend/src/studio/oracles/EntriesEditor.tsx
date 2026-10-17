@@ -1,12 +1,21 @@
 import { useId } from 'react'
 
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
-import { parseInteger, type Coverage, type EntryDraft, type Span } from './tableDraft'
+import { EffectsEditor } from '../narrative/steps/EffectsEditor'
+import { aboutEffects, type StepError } from '../narrative/steps/stepError'
+import type { StepContext } from '../narrative/steps/stepContext'
+import {
+  effectsEditable,
+  parseInteger,
+  sceneTypeEditable,
+  type Coverage,
+  type EntryDraft,
+  type Span,
+} from './tableDraft'
 
 const span = ({ from, to }: Span) => (from === to ? String(from) : `${String(from)}–${String(to)}`)
 
@@ -28,18 +37,68 @@ export function CoverageSummary({ coverage }: { coverage: Coverage }) {
   )
 }
 
-/** The part of an entry the editor shows but does not edit; it is sent back as stored. */
-function StoredBadges({ entry }: { entry: EntryDraft }) {
-  const { sceneType, effects } = entry.original
+/**
+ * The Scene Type an entry starts, picked from the draft's. A stored key the draft no longer has
+ * stays selected and is flagged; a stored value that is not text is shown, never replaced.
+ */
+function SceneTypeField({
+  label,
+  entry,
+  context,
+  error,
+  onChange,
+}: {
+  label: string
+  entry: EntryDraft
+  context: StepContext
+  error: string | undefined
+  onChange: (sceneType: string) => void
+}) {
+  const problemId = useId()
+  const options = context.sceneTypes ?? []
+  const unknown = entry.sceneType !== '' && !options.some(({ key }) => key === entry.sceneType)
+  if (!sceneTypeEditable(entry.original)) {
+    return (
+      <p className="text-sm text-destructive">
+        {label} Scene Type is not text; it is kept as stored.
+      </p>
+    )
+  }
   return (
-    <>
-      {typeof sceneType === 'string' && <Badge variant="secondary">Scene type: {sceneType}</Badge>}
-      {Array.isArray(effects) && effects.length > 0 && (
-        <Badge variant="secondary">
-          {effects.length === 1 ? '1 effect' : `${String(effects.length)} effects`}
-        </Badge>
+    <div className="min-w-48 space-y-1">
+      <Label>
+        Scene Type
+        <NativeSelect
+          aria-label={`${label} Scene Type`}
+          aria-invalid={unknown || error !== undefined}
+          aria-describedby={error === undefined ? undefined : problemId}
+          value={entry.sceneType}
+          onChange={(event) => {
+            onChange(event.target.value)
+          }}
+        >
+          <option value="">None</option>
+          {unknown && (
+            <option value={entry.sceneType}>{entry.sceneType} (not in this draft)</option>
+          )}
+          {options.map(({ key, name }) => (
+            <option key={key} value={key}>
+              {name}
+            </option>
+          ))}
+        </NativeSelect>
+      </Label>
+      {unknown && (
+        <p className="text-sm text-destructive">
+          The draft has no Scene Type &ldquo;{entry.sceneType}&rdquo;.
+        </p>
       )}
-    </>
+      {error !== undefined && (
+        <p id={problemId} role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -51,6 +110,10 @@ interface EntryRowProps {
   withKey: boolean
   /** The keys of the other tables an entry can nest. */
   tables: string[]
+  /** What the Scene Type and effects pick from; null for a draft whose schema has neither. */
+  context: StepContext | null
+  /** What the server or the editor says about this entry's Scene Type and effects. */
+  errors: StepError[]
   /** What is wrong with this entry, from the editor or from the server. */
   problem: string | null
   canRemove: boolean
@@ -64,6 +127,8 @@ function EntryRow({
   ranged,
   withKey,
   tables,
+  context,
+  errors,
   problem,
   canRemove,
   onChange,
@@ -163,8 +228,37 @@ function EntryRow({
             </Label>
           </div>
         )}
-        <StoredBadges entry={entry} />
+        {context !== null && (
+          <SceneTypeField
+            label={label}
+            entry={entry}
+            context={context}
+            error={
+              errors.find((error) => error.effect === null && error.field === 'sceneType')?.message
+            }
+            onChange={(sceneType) => {
+              onChange({ ...entry, sceneType })
+            }}
+          />
+        )}
       </div>
+      {context !== null &&
+        (effectsEditable(entry.original) ? (
+          <EffectsEditor
+            label={`${label} effects`}
+            effects={entry.effects}
+            context={context}
+            allowSheet={false}
+            errors={errors.filter(aboutEffects)}
+            onChange={(effects) => {
+              onChange({ ...entry, effects })
+            }}
+          />
+        ) : (
+          <p className="text-sm text-destructive">
+            {label} effects are not a list; they are kept as stored.
+          </p>
+        ))}
       {problem !== null && (
         <p id={problemId} role="alert" className="text-sm text-destructive">
           {problem}
@@ -178,6 +272,7 @@ function EntryRow({
 export function EntriesEditor({
   entries,
   problems,
+  errors,
   onChange,
   onAdd,
   ...row
@@ -187,6 +282,8 @@ export function EntriesEditor({
   ranged: boolean
   withKey: boolean
   tables: string[]
+  context: StepContext | null
+  errors: Record<number, StepError[]>
   onChange: (entries: EntryDraft[]) => void
   onAdd: () => void
 }) {
@@ -200,6 +297,7 @@ export function EntriesEditor({
             entry={entry}
             index={index}
             problem={problems[index] ?? null}
+            errors={errors[index] ?? []}
             canRemove={entries.length > 1}
             onChange={(changed) => {
               onChange(entries.map((other) => (other === entry ? changed : other)))

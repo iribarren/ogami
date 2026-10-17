@@ -18,6 +18,8 @@ export interface ChaosDraft {
   max: string
   neutral: string
   shiftPerPoint: string
+  /** The key of the counter that holds the chaos factor; empty for none. Version 2 only. */
+  tracker: string
 }
 
 export interface LikelihoodDraft {
@@ -60,11 +62,18 @@ export function toDraft(oracle: LikelihoodOracle): LikelihoodDraft {
           max: number(chaos.max),
           neutral: number(chaos.neutral),
           shiftPerPoint: number(chaos.shiftPerPoint),
+          tracker: text(chaos.tracker),
         }
       : null,
     exceptionalPercent: number(oracle.exceptionalPercent),
     randomEvent: text(oracle.randomEvent?.table),
   }
+}
+
+/** Whether the stored chaos tracker is absent or text: anything else is kept as stored, not edited. */
+export const trackerEditable = (oracle: LikelihoodOracle) => {
+  const tracker = record(oracle.chaos).tracker
+  return tracker === undefined || typeof tracker === 'string'
 }
 
 /** The chaos factors the oracle accepts, when the draft has a chaos range that reads. */
@@ -118,8 +127,8 @@ function put(target: Stored, field: string, value: unknown) {
 
 /**
  * The oracle to save: the stored one with the edits laid over it, so every field the editor does
- * not know survives, and so does `chaos.tracker`, which is only sent from a version 2 draft, as
- * is the random event.
+ * not know survives. `chaos.tracker` and the random event are version 2 fields: only a version 2
+ * draft edits and sends them.
  */
 export function toOracle(
   original: LikelihoodOracle,
@@ -143,6 +152,8 @@ export function toOracle(
   }
   if (chaos && schemaVersion < 2) {
     delete chaos.tracker
+  } else if (chaos && trackerEditable(original)) {
+    put(chaos, 'tracker', draft.chaos?.tracker === '' ? undefined : draft.chaos?.tracker)
   }
   put(oracle, 'chaos', chaos ?? undefined)
   put(oracle, 'exceptionalPercent', parseInteger(draft.exceptionalPercent) ?? undefined)

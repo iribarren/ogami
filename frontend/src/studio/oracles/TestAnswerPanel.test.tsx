@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { fateAnswer, oracles, oraclesWithChaos } from '../fixtures'
+import { fateAnswer, oracles, oraclesWithChaos, narrativeScenes } from '../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 const put = `PUT ${base}/likelihood-oracles/fate`
@@ -22,6 +22,7 @@ async function openEditor(
   const rendered = renderAppAt('/studio/game-systems/my-draft/likelihood-oracles/fate', {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
     [`GET ${base}/oracles`]: json(stored),
+    [`GET ${base}/narrative`]: json(narrativeScenes),
     ...handlers,
   })
   await screen.findByRole('form', { name: 'Likelihood oracle' })

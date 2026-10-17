@@ -4,7 +4,13 @@ import { expect, userEvent, within } from 'storybook/test'
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { fateAnswer, oracles, oraclesV1Likelihood, oraclesWithChaos } from '../fixtures'
+import {
+  fateAnswer,
+  oracles,
+  oraclesV1Likelihood,
+  oraclesWithChaos,
+  narrativeScenes,
+} from '../fixtures'
 import { LikelihoodOracleEditorPage } from './LikelihoodOracleEditorPage'
 
 const json =
@@ -20,6 +26,7 @@ const meta = {
   args: { gameSystemKey: 'my-draft', oracle: 'fate' },
   parameters: {
     api: {
+      [`GET ${base}/narrative`]: json(narrativeScenes),
       [`GET ${base}/oracles`]: json(oraclesWithChaos),
       [`POST ${base}/likelihood-oracles/fate/test-answers`]: json(fateAnswer),
     },
@@ -41,7 +48,7 @@ export const WithChaos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByLabelText('Chaos max')).toHaveValue('9')
-    await expect(canvas.getByText(/not edited here/)).toBeVisible()
+    await expect(canvas.getByLabelText('Chaos tracker')).toBeVisible()
   },
 }
 

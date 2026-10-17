@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { oracles, oraclesV1Likelihood, oraclesWithChaos } from '../fixtures'
+import { oracles, oraclesV1Likelihood, oraclesWithChaos, narrativeScenes } from '../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 const put = `PUT ${base}/likelihood-oracles/fate`
@@ -22,6 +22,7 @@ async function openEditor(
   const rendered = renderAppAt(`/studio/game-systems/my-draft/likelihood-oracles/${oracle}`, {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
     [`GET ${base}/oracles`]: json(stored),
+    [`GET ${base}/narrative`]: json(narrativeScenes),
     ...handlers,
   })
   await screen.findByRole('form', { name: 'Likelihood oracle' })
@@ -42,6 +43,19 @@ const save = () => screen.getByRole('button', { name: 'Save' })
 const saved = (likelihood: unknown) => ({ ...oracles, version: 8, likelihood })
 const [fate] = oracles.likelihood as [(typeof oracles.likelihood)[number]]
 const [chaosFate] = oraclesWithChaos.likelihood as [(typeof oraclesWithChaos.likelihood)[number]]
+/** The stored oracle with a chaos factor whose tracker is `tracker`, or has none. */
+const withTracker = (tracker: string | undefined) => ({
+  ...oraclesWithChaos,
+  likelihood: [
+    {
+      ...chaosFate,
+      definition: {
+        ...chaosFate.definition,
+        chaos: { min: 1, max: 9, neutral: 5, shiftPerPoint: 5, ...(tracker && { tracker }) },
+      },
+    },
+  ],
+})
 const conflict = json({ error: 'GameSystem "my-draft" was changed by another request.' }, 409)
 
 /** Records the body of every save. */
@@ -62,6 +76,7 @@ describe('the likelihood oracle editor', () => {
     renderAppAt('/studio/game-systems/my-draft/likelihood-oracles/nope', {
       'GET /api/auth/me': signedInAs('GAME_MANAGER'),
       [`GET ${base}/oracles`]: json(oracles),
+      [`GET ${base}/narrative`]: json(narrativeScenes),
     })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('no likelihood oracle “nope”')
@@ -95,7 +110,7 @@ describe('the likelihood oracle editor', () => {
     expect(save()).toBeDisabled()
   })
 
-  it('shows chaos, exceptional percent, random event table and the read-only tracker', async () => {
+  it('shows chaos, exceptional percent, random event table and the chaos tracker, flagged when the draft has none like it', async () => {
     await openEditor('fate', {}, oraclesWithChaos)
 
     expect(screen.getByLabelText('Has a chaos factor')).toBeChecked()
@@ -105,8 +120,57 @@ describe('the likelihood oracle editor', () => {
     expect(screen.getByLabelText('Chaos shift per point')).toHaveValue('5')
     expect(screen.getByLabelText('Exceptional percent')).toHaveValue('20')
     expect(screen.getByLabelText('Random event table')).toHaveValue('storm-kind')
-    expect(screen.getByText('chaos')).toBeInTheDocument()
-    expect(screen.getByText(/not edited here/)).toBeInTheDocument()
+    // The stored tracker is not one of the draft's: it stays selected, flagged.
+    const tracker = screen.getByLabelText('Chaos tracker')
+    expect(tracker).toHaveValue('chaos')
+    expect(tracker).toBeInvalid()
+    expect(screen.getByText('The draft has no tracker "chaos".')).toBeInTheDocument()
+  })
+
+  it('offers the counters of the draft as chaos trackers, and flags a stored one that is not a counter', async () => {
+    const stored = withTracker('alarm')
+    await openEditor('fate', {}, stored)
+
+    expect(
+      within(screen.getByLabelText('Chaos tracker'))
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['None', 'alarm (not a counter)', 'Heat'])
+    expect(screen.getByLabelText('Chaos tracker')).toHaveValue('alarm')
+    expect(screen.getByText('The tracker "alarm" is not a counter.')).toBeInTheDocument()
+  })
+
+  it('picks a chaos tracker, and sends none when None is picked', async () => {
+    const bodies: unknown[] = []
+    const stored = withTracker(undefined)
+    const { user } = await openEditor(
+      'fate',
+      { [put]: recording(bodies, { ...stored, version: 8 }) },
+      stored,
+    )
+
+    expect(screen.getByLabelText('Chaos tracker')).toHaveValue('')
+    await user.selectOptions(screen.getByLabelText('Chaos tracker'), 'heat')
+    await user.click(save())
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1)
+    })
+    expect(bodies[0]).toMatchObject({
+      oracle: { chaos: { min: 1, max: 9, neutral: 5, shiftPerPoint: 5, tracker: 'heat' } },
+    })
+
+    await user.selectOptions(await screen.findByLabelText('Chaos tracker'), '')
+    await user.click(save())
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2)
+    })
+    expect((bodies[1] as { oracle: { chaos: object } }).oracle.chaos).not.toHaveProperty('tracker')
+  })
+
+  it('has no chaos tracker field without a chaos factor', async () => {
+    await openEditor('fate')
+
+    expect(screen.queryByLabelText('Chaos tracker')).not.toBeInTheDocument()
   })
 
   it('hides the version 2 fields of a version 1 draft and never sends them', async () => {
@@ -119,7 +183,7 @@ describe('the likelihood oracle editor', () => {
     )
 
     expect(screen.queryByLabelText('Random event table')).not.toBeInTheDocument()
-    expect(screen.queryByText(/not edited here/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Chaos tracker')).not.toBeInTheDocument()
     await replace(user, 'Name', 'Luck')
     await user.click(save())
 
@@ -265,6 +329,32 @@ describe('the likelihood oracle editor', () => {
       expect(row.queryByRole('alert')).not.toBeInTheDocument()
       await replace(user, 'Name', 'Luck!')
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('attaches a message about the chaos tracker to its field, and keeps the edits', async () => {
+      const stored = withTracker('heat')
+      const { user } = await openEditor(
+        'fate',
+        {
+          [put]: json(
+            {
+              error:
+                'oracles.likelihood[0].chaos.tracker: counter "heat" must range 1..9 like the chaos factor, 0..10 given',
+            },
+            422,
+          ),
+        },
+        stored,
+      )
+
+      await replace(user, 'Name', 'Luck')
+      await user.click(save())
+
+      const field = screen.getByLabelText('Chaos tracker')
+      expect(await screen.findByRole('alert')).toHaveTextContent('must range 1..9')
+      expect(field).toBeInvalid()
+      expect(field).toHaveValue('heat')
+      expect(screen.getByLabelText('Name')).toHaveValue('Luck')
     })
 
     it('lists where the draft uses the oracle when a rename is refused', async () => {

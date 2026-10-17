@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
+import { useGameSystemNarrative } from '../narrative/useGameSystemNarrative'
 import { StudioError } from '../useGameSystems'
 import { LikelihoodOracleEditor } from './LikelihoodOracleEditor'
 import { useRollHistory } from './useRollHistory'
@@ -15,6 +16,7 @@ export function LikelihoodOracleEditorPage({
   oracle: string
 }) {
   const oracles = useGameSystemOracles(gameSystemKey)
+  const narrative = useGameSystemNarrative(gameSystemKey)
   const [reloads, setReloads] = useState(0)
   const [reloadFailed, setReloadFailed] = useState(false)
   // The key a save is renaming the oracle to: the cache answers with it before the URL does.
@@ -44,6 +46,18 @@ export function LikelihoodOracleEditorPage({
     )
   }
 
+  // A version 2 chaos factor picks its tracker from the narrative, so it is read first.
+  const withNarrative = oracles.data.schemaVersion >= 2
+  if (withNarrative && narrative.data === undefined) {
+    return narrative.isPending ? (
+      <p className="text-muted-foreground">Loading the oracle…</p>
+    ) : (
+      <p role="alert" className="text-sm text-destructive">
+        {narrative.error.message}
+      </p>
+    )
+  }
+
   const find = (key: string) =>
     oracles.data.likelihood.find(({ definition }) => definition.key === key)
   // Until the URL follows the rename, the editor stays on the renamed oracle, mounted.
@@ -67,6 +81,7 @@ export function LikelihoodOracleEditorPage({
         key={`${oracle}-${String(reloads)}`}
         gameSystemKey={gameSystemKey}
         oracles={oracles.data}
+        trackers={withNarrative && narrative.data ? narrative.data.trackers : null}
         item={item}
         history={history}
         onRenaming={setRenaming}

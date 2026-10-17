@@ -269,6 +269,8 @@ final class GameSystemSheetApiTest extends WebTestCase
         yield 'DELETE expectedVersion not a number' => ['DELETE /mine/sheet/fields/pow?expectedVersion=abc', null, null];
         yield 'DELETE expectedVersion a float' => ['DELETE /mine/sheet/fields/pow?expectedVersion=1.5', null, null];
         yield 'DELETE expectedVersion empty' => ['DELETE /mine/sheet/fields/pow?expectedVersion=', null, null];
+        yield 'DELETE expectedVersion an array' => ['DELETE /mine/sheet/fields/pow?expectedVersion[]=1', null, null];
+        yield 'DELETE expectedVersion a keyed array' => ['DELETE /mine/sheet/fields/pow?expectedVersion[a]=1', null, null];
     }
 
     /**

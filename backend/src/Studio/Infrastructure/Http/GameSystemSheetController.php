@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Infrastructure\Http;
 
 use App\Identity\Application\AuthenticatedUser;
+use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -41,6 +42,7 @@ final readonly class GameSystemSheetController
 
     private const string MALFORMED_SAVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and a "field" object, such as {"expectedVersion": 3, "field": {"key": "luck", "label": "Luck", "type": "number"}}.';
     private const string MALFORMED_MOVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and an integer "index", the field\'s new position, such as {"expectedVersion": 3, "index": 0}.';
+    private const string CHANGED_AFTER_SAVE = 'The draft changed after this request saved it; reload it.';
     private const string MALFORMED_DELETE = 'Send the draft version you read as an integer "expectedVersion" query parameter, such as ?expectedVersion=3.';
 
     public function __construct(
@@ -108,18 +110,12 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 422, description: 'The draft reads the field (the paths say where), or has schema version 1; nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function delete(string $key, string $field, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
-        $expectedVersion = $request->query->filter('expectedVersion', null, \FILTER_VALIDATE_INT, ['flags' => \FILTER_NULL_ON_FAILURE]);
+        $expectedVersion = $this->expectedVersionParameter($request);
         if (!\is_int($expectedVersion)) {
             return $this->error(self::MALFORMED_DELETE, Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $this->commandBus->dispatch(new DeleteSheetField($user->id(), $key, $expectedVersion, $field));
-
-            return $this->sheetOf($user, $key, Response::HTTP_OK);
-        } catch (GameSystemNotFound|SheetFieldNotFound|GameSystemModifiedConcurrently|SheetFieldInUse|InvalidReleaseContent $exception) {
-            return $this->refusal($exception);
-        }
+        return $this->write(new DeleteSheetField($user->id(), $key, $expectedVersion, $field), $user, $key, Response::HTTP_OK);
     }
 
     #[Route('/api/studio/game-systems/{key}/sheet/fields/{field}/move', name: 'api_studio_game_systems_sheet_field_move', methods: ['POST'])]
@@ -146,13 +142,7 @@ final readonly class GameSystemSheetController
             return $this->error(self::MALFORMED_MOVE, Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $this->commandBus->dispatch(new MoveSheetField($user->id(), $key, $expectedVersion, $field, $index));
-
-            return $this->sheetOf($user, $key, Response::HTTP_OK);
-        } catch (GameSystemNotFound|SheetFieldNotFound|GameSystemModifiedConcurrently|InvalidReleaseContent $exception) {
-            return $this->refusal($exception);
-        }
+        return $this->write(new MoveSheetField($user->id(), $key, $expectedVersion, $field, $index), $user, $key, Response::HTTP_OK);
     }
 
     /**
@@ -171,13 +161,43 @@ final readonly class GameSystemSheetController
             return $this->error(self::MALFORMED_SAVE, Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $this->commandBus->dispatch(new SaveSheetField($user->id(), $key, $expectedVersion, $originalKey, $field));
+        return $this->write(new SaveSheetField($user->id(), $key, $expectedVersion, $originalKey, $field), $user, $key, $status);
+    }
 
-            return $this->sheetOf($user, $key, $status);
+    /**
+     * Dispatches a sheet command and answers with the sheet as it is now. The refusals of the command
+     * map as usual; a draft that is gone when the sheet is read back was changed after the command
+     * saved it, which is a conflict, not a missing draft.
+     */
+    private function write(Command $command, AuthenticatedUser $user, string $key, int $status): JsonResponse
+    {
+        try {
+            $this->commandBus->dispatch($command);
         } catch (GameSystemNotFound|SheetFieldNotFound|GameSystemModifiedConcurrently|SheetFieldKeyTaken|SheetFieldInUse|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
+
+        try {
+            return $this->sheetOf($user, $key, $status);
+        } catch (GameSystemNotFound) {
+            return $this->error(self::CHANGED_AFTER_SAVE, Response::HTTP_CONFLICT);
+        }
+    }
+
+    /**
+     * The "expectedVersion" query parameter of a DELETE, which has no body; null unless it is one
+     * integer (an array-shaped parameter, a missing or an empty one is not).
+     */
+    private function expectedVersionParameter(Request $request): ?int
+    {
+        $raw = $request->query->all()['expectedVersion'] ?? null;
+        if (!\is_string($raw)) {
+            return null;
+        }
+
+        $version = filter_var($raw, \FILTER_VALIDATE_INT, ['flags' => \FILTER_NULL_ON_FAILURE]);
+
+        return \is_int($version) ? $version : null;
     }
 
     /**

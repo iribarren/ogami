@@ -117,6 +117,7 @@ final class GameSystemReleaseTranslatorSheetLayoutTest extends TestCase
         yield 'twenty-one groups' => [['groups' => array_map(static fn (int $i): array => ['name' => 'G'.$i], range(1, 21))], 'sheet.groups: at most 20 groups.'];
         yield 'group not an object' => [['groups' => ['Stats']], 'sheet.groups[0]: must be an object.'];
         yield 'group without name' => [['groups' => [['columns' => 2]]], 'sheet.groups[0].name: must be a string.'];
+        yield 'group name not a string' => [['groups' => [['name' => 5]]], 'sheet.groups[0].name: must be a string.'];
         yield 'group name blank' => [['groups' => [['name' => ' ']]], 'sheet.groups[0].name: must not be blank.'];
         yield 'group name 61 characters' => [['groups' => [['name' => str_repeat('n', 61)]]], 'sheet.groups[0].name: must be at most 60 characters.'];
         yield 'duplicate group name' => [['groups' => [...$stats, ...$stats]], 'sheet.groups[1].name: duplicate group name "Stats".'];
@@ -133,6 +134,8 @@ final class GameSystemReleaseTranslatorSheetLayoutTest extends TestCase
         yield 'field span string' => [['groups' => $stats, 'fields' => [$field(['span' => '1'])]], 'sheet.fields[0].span: must be an integer.'];
         yield 'field span above its group columns' => [['groups' => [['name' => 'Stats', 'columns' => 2]], 'fields' => [$field(['span' => 3])]], 'sheet.fields[0].span: must be at most the columns of group "Stats" (2).'];
         yield 'field span above the default group columns' => [['groups' => $stats, 'fields' => [$field(['span' => 2])]], 'sheet.fields[0].span: must be at most the columns of group "Stats" (1).'];
+        yield 'derived field span above its group columns' => [['groups' => $stats, 'fields' => [$field(), $field(['key' => 'bonus', 'type' => 'derived', 'formula' => '{str}', 'span' => 2])]], 'sheet.fields[1].span: must be at most the columns of group "Stats" (1).'];
+        yield 'second field in an undeclared group' => [['groups' => $stats, 'fields' => [$field(), $field(['key' => 'dex', 'group' => 'Other'])]], 'sheet.fields[1].group: unknown group "Other".'];
         yield 'field without group' => [['groups' => $stats, 'fields' => [$field(['group' => null])]], 'sheet.fields[0].group: needs one of the declared groups.'];
         yield 'field in an undeclared group' => [['groups' => $stats, 'fields' => [$field(['group' => 'stats'])]], 'sheet.fields[0].group: unknown group "stats".'];
     }

@@ -1,7 +1,7 @@
 # Feature: studio-check-editor
 
 - **Locator:** `odd/tasks/studio-check-editor.md` · Engram topic `odd/studio-check-editor/tasks`
-- **Issue:** #177 · **Branch:** `feat/studio-check-editor-3-test-roll` · **Status:** in progress
+- **Issue:** #177 · **Branch:** `feat/studio-check-editor-4-checks-tab` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-sheet-builder` (PRs #167–#176)
@@ -83,7 +83,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | Domain: `DraftReferences` check-key and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` (rename/delete of a referenced check and dropping a referenced band refused with every path) with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse` | delegated writer (slice 1) | [x] | 00484b1 |
 | T3 | 1 | Application: `SaveCheck`, `DeleteCheck`, `MoveCheck` and handlers; `GetGameSystemChecks` query and read model (version, schemaVersion, checks, reference catalog, usage paths per check) | delegated writer (slice 1) | [x] | 87731d9 |
 | T4 | 2 | HTTP: `GameSystemCheckController` (`GET /checks`, create, replace/rename, delete, move), DTOs, error mapping, API tests for every 400/404/409/415/422, `make api` | delegated writer (slice 2) | [x] | ab9cb85, d253a9d |
-| T5 | 3 | Test roll: Studio domain evaluation in Play's order with an injected RNG (unit tests mirroring `Check::perform`), sample-values validation, `TestRollCheck` query, `POST /checks/{check}/test-rolls`, API tests, `make api` | delegated writer (slice 3) | [x] | |
+| T5 | 3 | Test roll: Studio domain evaluation in Play's order with an injected RNG (unit tests mirroring `Check::perform`), sample-values validation, `TestRollCheck` query, `POST /checks/{check}/test-rolls`, API tests, `make api` | delegated writer (slice 3) | [x] | 0636f30, 417a21a, a4f8c13 |
 | T6 | 4 | Checks tab: `useGameSystemChecks`, `checkDraft.ts`, `checkError.ts`, list with move/delete, editor for key/label/hint/dice/modifier/difficulty, 409 handling, tests, stories | delegated writer (slice 4) | [ ] | |
 | T7 | 5 | Bands editor (add/remove/reorder, `upTo` kinds) and check-scope formula diagnostics in `FormulaInput` for modifier and band formulas; tests, stories | delegated writer (slice 5) | [ ] | |
 | T8 | 6 | Sandbox: lift `useSheetSamples` to `GameSystemPage`; sample inputs, difficulty, situational, live band bounds with a non-increasing warning, Roll with the last 5 results; tests, stories | delegated writer (slice 6) | [ ] | |
@@ -100,6 +100,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-17: Slice 2 review fix. The v1-draft API test pins 422 for every command (the version 1 refusal runs before the check lookup, so even an unknown key is not a 404) and the schemaVersion path in the message. Test-only; the pinned behaviour was already green.
 - 2026-10-17: T5 part 1 (domain and application). `Studio/Domain/Check/` (`CheckTestRoll`, `SampleSheet`, `OutcomeBand`, `CheckDifficultyRange`, `CheckFormulaValues`, `CheckTestRollResult`, `InvalidTestRoll`, `CheckTestRollFailed`), `GameSystem::check()`, `TestRollCheck` query and handler. RED observed for the domain and handler unit tests (classes missing), then GREEN (76 domain, 16 handler, 3 `GameSystem::check()` tests). Decisions: a missing number reads Play's `NumberField::initial()` (default, else 0 clamped into min..max); a track without a fixed max takes 0..999 and its sample as max; tracker samples are range-checked (counter min..max, clock 0..segments); derived values are computed lazily with a cycle guard (same results as Play's dependency order); a null `sheet` or `trackers` is absent. The endpoint follows in the next commit.
 - 2026-10-17: T5 done (part 2). `POST /checks/{check}/test-rolls` on `GameSystemCheckController` with `CheckTestRollRequest`, `CheckTestRollResponse` (dice as `RollResponse`) and `CheckTestRollBandResponse`; `InvalidTestRoll`, `CheckTestRollFailed` and `InvalidReleaseContent` are 422, unknown draft or check 404. 38 API tests cover 401, 403, 200 (scripted RNG), 400, 404, 415 and every 422 path, and assert the draft is unchanged. The API tests were written after the controller, so there is no RED run for them. ADR 0032 states the sample defaults and ranges. The OpenAPI spec and types are regenerated in the next commit.
+- 2026-10-17: Slice 3 review fixes. `SampleSheet` reads a null `sheet`/`trackers` as absent and a non-empty list as an object keyed by its indexes, so `{"sheet": [5]}` is a 422 on `sheet.0` (it was `sheet`); `{}` and `[]` stay accepted. The derived-cycle marker is cleared in a `finally`. RED observed for the null and list unit tests (3 failures, 1 error); the `finally` has no observable RED (only `FormulaEvaluationFailed` escapes the evaluation, which the catch already handled), so its test pins the behaviour. API tests for null, empty lists and the `sheet.0`/`trackers.0` paths were written after the code (green on first run).
 
 ## Reviews
 
@@ -107,7 +108,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `review-3d1bc1b721f46afc` | c0a9852, 00484b1, 87731d9 | Approved and acknowledged. R3 suggestion: replacing a referenced check with a body whose key is missing or not a string is refused as `CheckInUse` (rename) instead of `InvalidReleaseContent` on the key path (`GameSystem.php:342`); fixed in slice 2 | [#178](https://github.com/iribarren/ogami/pull/178) |
 | 2 | `review-a13fa73365bf49ab` | 2f3de19, ab9cb85 (generated d253a9d: review skipped) | Approved and acknowledged. R3 suggestion: the v1-draft API test accepts 404 or 422 for every command (`GameSystemCheckApiTest.php:145`); pin the documented status per command; fixed in slice 3 | [#179](https://github.com/iribarren/ogami/pull/179) |
+| 3 | `review-04bbd05d07b30cd6` (0636f30), `review-6efc262584c6aeaf` (417a21a) | 0bed2c0, 0636f30, 417a21a (generated a4f8c13: review skipped) | Approved and acknowledged, reviewed per commit (user accepted ~2,480 lines in one PR). Suggestions: `SampleSheet` refuses a null `sheet`/`trackers` though the decision treats null as absent (the controller maps `?? []`); the derived-cycle marker is not cleared on failure (`SampleSheet.php:127`); `{"sheet": []}` is accepted while `{"sheet": {"0": 1}}` is refused (nested list/object gap of `Request::toArray()`); fixed in slice 4 | [#180](https://github.com/iribarren/ogami/pull/180) |
 
 ## Next step
 
-Slice 3: slice 2 review fix, then T5 on `feat/studio-check-editor-3-test-roll`.
+Slice 4: slice 3 review fixes, then T6 on `feat/studio-check-editor-4-checks-tab`. The editor keeps a check's bands as they are and shows them read-only; slice 5 adds the bands editor.

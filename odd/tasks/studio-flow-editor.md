@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `fix/studio-flow-editor-14-review-fixes` · **Status:** in progress (slice 13 review fixes)
+- **Issue:** #151 · **Branch:** `fix/studio-flow-editor-14-review-fixes` · **Status:** done (PRs #152–#165)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -173,8 +173,9 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | 10 | `review-2be7d8d85bebe0c9` (main..a52a8c9) | 64d5c34, a52a8c9 (1,329 lines) | approved, acknowledged; WARNING R3-001 (`FlowsTab.tsx:68`: issue counts are joined to rows by index across the narrative and validation queries; a stale validation after a create or delete puts counts on the wrong rows; untested), WARNING R3-002 (`FlowsTab.test.tsx:214-235`: the 409 reload test only checks the button is gone; assert the reloaded Scene Types in the select and version 6 on the next create), SUGGESTION R3-003 (`fixtures.ts:445-450`: the `flowIssues` fixture comment mentions warnings it lacks); fixed in slice 11 | #161 |
 | 11 | `review-2717d0985b4beb5c` (main..cf67848) | 039878f, cf67848 (1,596 lines) | approved, acknowledged; WARNING R3-001 (`FlowEditor.tsx:73-79`: a 422 is mapped by the submitted draft's phase positions but applied to the current draft; phase add/move/delete stay enabled while a save is pending, so messages can land on the wrong card or be dropped), SUGGESTION R3-002 (`FlowsTab.tsx:85-89`: counts flicker off on every background validation refetch; gate on freshness against the narrative query instead), SUGGESTION R3-003 (`PhaseOutline.tsx:192`: the 20-phase limit's disabled Add and its reason are untested); fixed in slice 12 | #162 |
 | 12 | `review-72000f081fbc73bc` (main..4c7171b) | 3771e83, 4c7171b (1,305 lines) | approved, acknowledged; WARNING R3-001 (`FlowsTab.tsx:30-40`: `useChangedAt` starts its freshness mark at 0 on mount, so a remount whose narrative is newer than the cached validation shows stale counts on the wrong rows; the base hid counts while the validation was fetching; remount untested); fixed in slice 13 | #163 |
-| 13 | `review-50519f0c086f7c25` (main..755740d) | 3c1544a, 812b512, 755740d (862 lines) | approved, acknowledged; WARNING R3-001 (`LikelihoodOracleEditor.tsx:336-338`: a 422 naming `chaos.tracker` moves to the tracker field, but with a non-text stored tracker the field renders only its "kept as stored" note, so the refused save shows no error; untested), SUGGESTION R3-002 (`OracleTableEditorPage.tsx:51-60`: both oracle editor pages gate a version 2 draft on the narrative query; its loading and error states are untested); fixed on `fix/studio-flow-editor-14-review-fixes` | #164 |
+| 13 | `review-50519f0c086f7c25` (main..755740d) | 3c1544a, 812b512, 755740d (862 lines) | approved, acknowledged; WARNING R3-001 (`LikelihoodOracleEditor.tsx:336-338`: a 422 naming `chaos.tracker` moves to the tracker field, but with a non-text stored tracker the field renders only its "kept as stored" note, so the refused save shows no error; untested), SUGGESTION R3-002 (`OracleTableEditorPage.tsx:51-60`: both oracle editor pages gate a version 2 draft on the narrative query; its loading and error states are untested); fixed in 0dee464 | #164 |
+| 13 fixes | none: review offered (medium, 92 lines) and skipped by the user | 0dee464 | declined for this candidate; fixes of the slice 13 findings, mostly tests | #165 |
 
 ## Next step
 
-Slice 13 review fixes on `fix/studio-flow-editor-14-review-fixes`: writer, native review, PR (`Closes #151`); a last doc commit on the same branch records that review and PR and marks the feature done.
+Feature done: PR #165 closes #151 on merge. Roadmap item 18 is done; `studio-library` (18b) and the M4 items follow in the roadmap.

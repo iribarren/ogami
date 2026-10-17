@@ -244,9 +244,9 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 
 | Part | Shape | Rules |
 |---|---|---|
-| `sheet` | object | Exactly `fields`; any other property is rejected. `{}`, `{"fields": []}` and `{"fields": null}` are the same sheet and canonicalize to `{}` |
+| `sheet` | object | Exactly `fields`, `columns` and `groups`; any other property is rejected. `{}`, `{"fields": []}` and `{"fields": null}` are the same sheet and canonicalize to `{}` |
 | `sheet.fields` | optional list of Field | At most 100; keys unique (domain check) |
-| Field (all types) | `{key, label (1–100), hint? (≤500), group? (1–60), type}` | `key` follows the key rule. `label` is not blank once trimmed. Consecutive fields with the same `group` render together |
+| Field (all types) | `{key, label (1–100), hint? (≤500), group? (1–60), span? (1–4), type}` | `key` follows the key rule. `label` is not blank once trimmed. Without declared `sheet.groups`, consecutive fields with the same `group` render together; with them, see [Sheet layout](#sheet-layout-adr-0031) |
 | `number` | `min?`, `max?`, `default?` | Integers from −1,000,000 to 1,000,000; `min ≤ default ≤ max` when given (domain check). A missing `default` reads as 0, or the nearest bound when 0 is outside `min..max` |
 | `text` | `multiline?` (boolean), `maxLength?` (1–2000) | `maxLength` defaults to 200, or 2000 when `multiline` |
 | `list` | `itemLabel?` (1–60), `maxItems?` (1–100) | Items are trimmed strings of 1–200 characters; `maxItems` defaults to 50. For inventory, cyberware and the like |
@@ -256,6 +256,30 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. Sheet fields change through [sheet effects](#sheet-effects-adr-0027), which are also additive in schema version 2. Checks are described in [Checks](#checks-additive-in-schema-version-2). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
 
 The `character` step kind and `of: character` in `pick` and `condition` counts are part of the same additive change (see [Steps](#steps)).
+
+#### Sheet layout (ADR 0031)
+
+A sheet may declare **groups** laid out in a grid ([ADR 0031](../adr/0031-sheet-layout-and-studio-sheet-builder.md)). It is additive in schema version 2: every release valid before stays valid with the same hash.
+
+| Part | Shape | Rules |
+|---|---|---|
+| `sheet.columns` | optional integer | 1–2: the columns of groups. Defaults to 1 |
+| `sheet.groups` | optional list of Group, or `null` | At most 20, declared in render order |
+| Group | `{name, columns?, span?}` | Exactly these properties. `name` is a string of 1–60 characters, not blank once trimmed, unique by exact match. `columns` is an integer 1–4 (the columns of fields, default 1). `span` is an integer 1–2 (the sheet columns it covers, default 1) |
+| Field `span` | optional integer | 1–4: the group columns the field covers. Defaults to 1 |
+
+Domain checks (item rules, so they also hold on a draft), each failing with its path, such as `sheet.columns`, `sheet.groups[1].span` or `sheet.fields[3].group`:
+
+- `sheet.columns` and a field `span` need declared groups. `groups: []` and `groups: null` count as no groups.
+- A group `span` is at most the sheet's columns.
+- A field `span` is at most the `columns` of its group.
+- With declared groups every field has a `group` naming a declared group (exact match). An empty declared group is valid and renders nothing.
+
+Rendering: groups appear in declared order, filling the sheet's columns left to right, a group of `span` 2 taking a full row; fields appear in list order within their group, each taking `span` of the group's columns. Without declared groups, the consecutive-group rendering stays. Phones show one column.
+
+Canonical form: `sheet.columns` of 1, a group `columns` or `span` of 1, a field `span` of 1, `columns: null`, `span: null`, `groups: []` and `groups: null` are omitted, so a release without layout keeps its canonical JSON and hash. Canonical order is `fields`, `columns`, `groups`.
+
+Play's translator reads the layout into the snapshot (none without groups), re-checks every rule above and fails closed on anything malformed; a release stored without layout reads as before, every field spanning 1.
 
 ### Sheet effects (ADR 0027)
 

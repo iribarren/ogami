@@ -199,7 +199,7 @@ function GameSystemView({
       {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
       {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
       {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
-      {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} />}
+      {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
       {tab === 'releases' && (
         <ReleasesTab

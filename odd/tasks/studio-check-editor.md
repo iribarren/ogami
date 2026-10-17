@@ -80,7 +80,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0032 (Studio check editor and test-roll sandbox) and ADR index row; glossary only if a new term appears | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain: `DraftReferences` check-key and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` (rename/delete of a referenced check and dropping a referenced band refused with every path) with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse` | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Domain: `DraftReferences` check-key and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` (rename/delete of a referenced check and dropping a referenced band refused with every path) with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse` | delegated writer (slice 1) | [x] | |
 | T3 | 1 | Application: `SaveCheck`, `DeleteCheck`, `MoveCheck` and handlers; `GetGameSystemChecks` query and read model (version, schemaVersion, checks, reference catalog, usage paths per check) | delegated writer (slice 1) | [ ] | |
 | T4 | 2 | HTTP: `GameSystemCheckController` (`GET /checks`, create, replace/rename, delete, move), DTOs, error mapping, API tests for every 400/404/409/415/422, `make api` | delegated writer (slice 2) | [ ] | |
 | T5 | 3 | Test roll: Studio domain evaluation in Play's order with an injected RNG (unit tests mirroring `Check::perform`), sample-values validation, `TestRollCheck` query, `POST /checks/{check}/test-rolls`, API tests, `make api` | delegated writer (slice 3) | [ ] | |
@@ -93,6 +93,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-17: Feature started. Explored the check contract, Play's `Check::perform`, Studio's sheet and oracle editor patterns and `FormulaInput`. User chose a server test roll and dice validation on save. Issue #177.
 - 2026-10-17: T1 done. ADR 0032 and its index row added; glossary Test roll entry extended to checks.
+- 2026-10-17: T2 done. `DraftReferences::checkPathsTo` and `bandPathsTo`; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse`. RED observed (undefined methods, 25 + 9 errors), then GREEN (267 Domain/GameSystem tests).
 
 ## Reviews
 

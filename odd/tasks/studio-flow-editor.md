@@ -1,7 +1,7 @@
 # Feature: studio-flow-editor
 
 - **Locator:** `odd/tasks/studio-flow-editor.md` · Engram topic `odd/studio-flow-editor/tasks`
-- **Issue:** #151 · **Branch:** `feat/studio-flow-editor-13-oracle-fields-e2e` · **Status:** in progress (slice 13)
+- **Issue:** #151 · **Branch:** `fix/studio-flow-editor-14-review-fixes` · **Status:** in progress (slice 13 review fixes)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-oracle-editor` (PRs #142–#150)
@@ -119,8 +119,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | T10 | 10 | Typed flow drafts (flow fields, phases with selection and hooks, unknown fields round-trip, unreadable shapes read-only); Flows tab (list in stored order, default flag, phase count, validation issue count, create, delete); Vitest; stories | delegated writer (slice 10) | [x] | a52a8c9 |
 | T10b | 11 | Flow editor route (fields, default flag, default view, oracles/trackers selects, phase outline: add/move/delete, key, name, act, description, mode; selection and hooks kept as stored and summarised; rename; 409/422); Flows tab rows link to it; Vitest; stories | delegated writer (slice 11) | [x] | cf67848 |
 | T10c | 12 | Phase selection editor (`sequence`/`player`/`oracle`), hooks and world turn step lists in the phase outline; 422 paths for them; Vitest; stories | delegated writer (slice 12) | [x] | 4c7171b |
-| T11 | 13 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | delegated writer (slice 13) | [x] | |
-| T12 | 13 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | delegated writer (slice 13) | [x] | |
+| T11 | 13 | Oracle editors: table entry Scene Type picker and effects editor; likelihood `chaos.tracker` picker (counters only); Vitest; stories | delegated writer (slice 13) | [x] | 812b512 |
+| T12 | 13 | e2e: a GAME_MANAGER copies `night-job`, edits a Scene Type step and a flow phase, publishes; wrap-up: roadmap 18 done, feature doc closed | delegated writer (slice 13) | [x] | 755740d |
 
 ## Progress
 
@@ -155,6 +155,7 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 - 2026-10-17: Slice 12 review fix R3-001 (route: delegated writer, slice 13): `useChangedAt` starts from the narrative's update time when the tab mounts on a cached narrative, so counts show only once the validation was read after it; a background refetch with the same narrative still keeps them. RED observed: the remount test failed against the old code; GREEN after.
 - 2026-10-17: T11 done (route: delegated writer, trigger: 2+ non-trivial files): a table entry has a Scene Type picker (options from the narrative; none omits the field) and an `EffectsEditor` (no sheet effects: the publisher calls `Effects::list` without `sheet` for entries; at most 10) in place of the read-only badges; a likelihood chaos factor has a tracker picker of counters (none omits it, the publisher allows that; the counter's range must equal the chaos range, which the 422 reports on the field). A stored Scene Type or tracker the draft lacks, or a tracker that is not a counter, stays selected and is flagged; a value that is not text (Scene Type, tracker) or not a list (effects) is kept as stored and noted. The two editor pages read the narrative of a version 2 draft first. 422 paths `entries[n].sceneType`, `entries[n].effects[m]…` and `chaos.tracker` land on their fields; schema 1 drafts show and send none. Tests written after the code: RED not observed.
 - 2026-10-17: T12 done (route: delegated writer): `e2e/studio-flow-editor.spec.ts` (a GAME_MANAGER copies `night-job` into a unique draft, edits the title of the first play step of `social` and the name and act of the first phase of `heist`, saves each, reloads to see it stored, publishes version 1 and sees it in Releases; `night-job` is already published by `make e2e-seed` through `make presets`, so the Makefile is unchanged); `make e2e ARGS=studio-flow-editor`: 1 passed. Roadmap item 18 marked done and the item 15 note updated.
+- 2026-10-17: Slice 13 review fixes (route: delegated writer): R3-001 `TrackerField` shows a refused `chaos.tracker` message also when the stored tracker is not text (RED observed, GREEN); R3-002 page tests for both editors: loading state while the narrative loads, error instead of the form when `GET /narrative` fails (tests of existing behaviour, RED not observed).
 
 ## Reviews
 
@@ -172,7 +173,8 @@ Shippable: slices 1–3 add backend unused by the UI (the oracle commands accept
 | 10 | `review-2be7d8d85bebe0c9` (main..a52a8c9) | 64d5c34, a52a8c9 (1,329 lines) | approved, acknowledged; WARNING R3-001 (`FlowsTab.tsx:68`: issue counts are joined to rows by index across the narrative and validation queries; a stale validation after a create or delete puts counts on the wrong rows; untested), WARNING R3-002 (`FlowsTab.test.tsx:214-235`: the 409 reload test only checks the button is gone; assert the reloaded Scene Types in the select and version 6 on the next create), SUGGESTION R3-003 (`fixtures.ts:445-450`: the `flowIssues` fixture comment mentions warnings it lacks); fixed in slice 11 | #161 |
 | 11 | `review-2717d0985b4beb5c` (main..cf67848) | 039878f, cf67848 (1,596 lines) | approved, acknowledged; WARNING R3-001 (`FlowEditor.tsx:73-79`: a 422 is mapped by the submitted draft's phase positions but applied to the current draft; phase add/move/delete stay enabled while a save is pending, so messages can land on the wrong card or be dropped), SUGGESTION R3-002 (`FlowsTab.tsx:85-89`: counts flicker off on every background validation refetch; gate on freshness against the narrative query instead), SUGGESTION R3-003 (`PhaseOutline.tsx:192`: the 20-phase limit's disabled Add and its reason are untested); fixed in slice 12 | #162 |
 | 12 | `review-72000f081fbc73bc` (main..4c7171b) | 3771e83, 4c7171b (1,305 lines) | approved, acknowledged; WARNING R3-001 (`FlowsTab.tsx:30-40`: `useChangedAt` starts its freshness mark at 0 on mount, so a remount whose narrative is newer than the cached validation shows stale counts on the wrong rows; the base hid counts while the validation was fetching; remount untested); fixed in slice 13 | #163 |
+| 13 | `review-50519f0c086f7c25` (main..755740d) | 3c1544a, 812b512, 755740d (862 lines) | approved, acknowledged; WARNING R3-001 (`LikelihoodOracleEditor.tsx:336-338`: a 422 naming `chaos.tracker` moves to the tracker field, but with a non-text stored tracker the field renders only its "kept as stored" note, so the refused save shows no error; untested), SUGGESTION R3-002 (`OracleTableEditorPage.tsx:51-60`: both oracle editor pages gate a version 2 draft on the narrative query; its loading and error states are untested); fixed on `fix/studio-flow-editor-14-review-fixes` | #164 |
 
 ## Next step
 
-Slice 13 review and PR; then a doc-only commit records them and closes the feature.
+Slice 13 review fixes on `fix/studio-flow-editor-14-review-fixes`: writer, native review, PR (`Closes #151`); a last doc commit on the same branch records that review and PR and marks the feature done.

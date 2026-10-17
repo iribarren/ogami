@@ -653,3 +653,29 @@ describe('the table editor', () => {
     })
   })
 })
+
+describe('the oracle table editor page', () => {
+  const route = '/studio/game-systems/my-draft/oracle-tables/weather'
+  const handlers = (narrative: FakeHandler) => ({
+    'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+    [`GET ${base}/oracles`]: json(oracles),
+    [`GET ${base}/narrative`]: narrative,
+  })
+
+  it('shows the loading state, not the form, while the narrative loads', async () => {
+    renderAppAt(
+      route,
+      handlers(() => new Promise<Response>(() => undefined)),
+    )
+
+    expect(await screen.findByText('Loading the table…')).toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'Oracle table' })).not.toBeInTheDocument()
+  })
+
+  it('shows the error, not the form, when the narrative fails to load', async () => {
+    renderAppAt(route, handlers(json({ error: 'Narrative down' }, 404)))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Narrative down')
+    expect(screen.queryByRole('form', { name: 'Oracle table' })).not.toBeInTheDocument()
+  })
+})

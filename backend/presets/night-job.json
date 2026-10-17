@@ -418,6 +418,13 @@
     }
   ],
   "sheet": {
+    "columns": 2,
+    "groups": [
+      {"name": "Identity", "span": 2},
+      {"name": "Stats", "columns": 3, "span": 2},
+      {"name": "Condition", "columns": 2},
+      {"name": "Kit"}
+    ],
     "fields": [
       {"key": "role", "label": "Role", "hint": "Your trade on a job: what the crew calls you for.", "group": "Identity", "type": "text", "maxLength": 60},
       {"key": "nerve", "label": "Nerve", "hint": "Staying cool when it goes wrong.", "group": "Stats", "type": "number", "min": 1, "max": 8, "default": 4},

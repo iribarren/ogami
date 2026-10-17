@@ -1,7 +1,7 @@
 # Feature: studio-sheet-builder
 
 - **Locator:** `odd/tasks/studio-sheet-builder.md` · Engram topic `odd/studio-sheet-builder/tasks`
-- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-9-formula-input-e2e` · **Status:** in progress (slice 9)
+- **Issue:** #166 · **Branch:** `feat/studio-sheet-builder-9-formula-input-e2e` · **Status:** done (slice 9 in review)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-flow-editor` (PRs #152–#165)
@@ -112,7 +112,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | delegated writer (slice 8) | [x] | 6f40753 (slice 7 fixes), 3797aeb |
 | T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | delegated writer (slice 8) | [x] | d4f0de7 |
 | T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | delegated writer (slice 9) | [x] | |
-| T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | | [ ] | |
+| T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | delegated writer (slice 9) | [x] | |
 
 ## Progress
 
@@ -139,6 +139,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 - 2026-10-17: T12a done (logic only). TS `InvalidFormula.position` (1-based in the trimmed text, only where the PHP message names a position; none for end of formula, arguments, depth, size); `formulaDiagnostics` returns the syntax error, the first reference a derived field may not read (unknown field or tracker, text/list field, `.max` of a non-track, check), a cycle through the field with the closing reference's position, else the value as `computeDerived`; unit tests per branch. Not mirrored: other fields' own errors and cycles elsewhere (the publisher reports them on those fields). RED observed for the position tests; the diagnostics tests were written with the module.
 - 2026-10-17: Slice 8 review fixes (R3): tests pin that a refused or cycle reference position counts in the trimmed text (`  {pow} + {ghost}` → 9; no bug); the preview template reads a stored field span that is not a whole number from 1 to its group's columns as 1.
 - 2026-10-17: T12b done. Sample values lifted from the preview into `useSheetSamples` (Sheet tab), shared with the field dialog; `FormulaInput` (props: diagnostics and reference options) marks the error position (offset by leading whitespace), inserts `{key}` at the caret, shows the value over the samples; diagnostics never block Save and a server 422 still shows. Written after the code, tests then green; the new Vitest files pass alone (the radio-not-found timeouts of the full `src/studio/sheet` run are load-dependent).
+- 2026-10-17: T13 done. `night-job` declares a layout (2 sheet columns; Identity span 2, Stats 3 columns span 2, Condition 2 columns, Kit); `make presets` published it as v6. `studio-sheet-builder.spec.ts`: copy the preset, add a fifth group, a number field and a derived field (bad reference diagnosed, insert reference, computed value), save, preview shows the value, reload keeps it. Passed on the first run, written after the feature.
 
 ## Reviews
 
@@ -155,4 +156,4 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 
 ## Next step
 
-Slice 9 (last): commit 1 fixes the slice 8 findings; T12b `FormulaInput` (sample values lifted from the preview to the Sheet tab, so the dialog computes over them); T13 Playwright and a preset layout, feature doc close; native review; PR (`Closes #166`); then one doc-only commit on its own branch with the slice 9 review and PR.
+Record the slice 9 review and PR in a doc-only commit on its own branch.

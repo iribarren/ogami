@@ -3,10 +3,22 @@ import userEvent from '@testing-library/user-event'
 
 import { sheet } from '../fixtures'
 import { readLayout, type LayoutDraft } from './layoutDraft'
-import { SheetPreview } from './SheetPreview'
+import { SheetPreview as Preview } from './SheetPreview'
 import type { GameSystemSheet } from './useGameSystemSheet'
+import { useSheetSamples } from './useSheetSamples'
 
 const stored = sheet as GameSystemSheet
+
+/** The preview with the sample values the Sheet tab keeps for it. */
+function SheetPreview({
+  sheet: shown,
+  layoutDraft,
+}: {
+  sheet: GameSystemSheet
+  layoutDraft: LayoutDraft | null
+}) {
+  return <Preview sheet={shown} samples={useSheetSamples(shown, layoutDraft)} />
+}
 
 const preview = () => within(screen.getByRole('region', { name: 'Preview' }))
 

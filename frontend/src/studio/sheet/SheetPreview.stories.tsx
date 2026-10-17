@@ -3,12 +3,19 @@ import { expect, userEvent, within } from 'storybook/test'
 
 import { sheet } from '../fixtures'
 import { SheetPreview } from './SheetPreview'
+import { useSheetSamples } from './useSheetSamples'
+import type { GameSystemSheet } from './useGameSystemSheet'
+
+/** The preview with the sample values the Sheet tab keeps for it. */
+function WithSamples({ sheet }: { sheet: GameSystemSheet }) {
+  return <SheetPreview sheet={sheet} samples={useSheetSamples(sheet, null)} />
+}
 
 const meta = {
   title: 'Studio/SheetPreview',
-  component: SheetPreview,
-  args: { sheet, layoutDraft: null },
-} satisfies Meta<typeof SheetPreview>
+  component: WithSamples,
+  args: { sheet },
+} satisfies Meta<typeof WithSamples>
 
 export default meta
 type Story = StoryObj<typeof meta>

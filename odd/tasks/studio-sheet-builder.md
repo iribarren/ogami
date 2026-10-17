@@ -111,7 +111,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 | T10 | 7 | Layout panel: declare, rename, reorder, delete groups; sheet/group columns; group and field spans; tests, stories | delegated writer (slice 7) | [x] | 127971e (slice 6 fixes), f98c591 |
 | T11 | 8 | Live preview: shared `SheetFields` over unsaved state, editable sample values, sample tracker values; tests, stories | delegated writer (slice 8) | [x] | 6f40753 (slice 7 fixes), 3797aeb |
 | T12a | 8 | Formula diagnostics logic: TS `InvalidFormula.position`, sheet-scope reference and cycle checks, computed value over sample values; unit tests | delegated writer (slice 8) | [x] | d4f0de7 |
-| T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | | [ ] | |
+| T12b | 9 | `FormulaInput`: highlighted error, insert reference, computed value; used for derived fields; tests, stories | delegated writer (slice 9) | [x] | |
 | T13 | 9 | Playwright: build a sheet with groups, a derived field and a preview; one preset gains a layout (`make presets`); feature doc close | | [ ] | |
 
 ## Progress
@@ -138,6 +138,7 @@ Slice 7 (2026-10-17): T10 landed at ~1,668 on top of ~195 of fixes (~1,863); the
 - 2026-10-17: T11 done. `SheetPreview` at the end of the Sheet tab: shared `SheetFields` and `computeDerived` over `previewTemplate` (defensive read-model mapping in `previewTemplate.ts`); "unsaved state" is the layout dialog's draft, lifted through `SheetLayoutPanel`'s `onDraftChange` (an invalid draft shows the saved layout, fields follow a renamed group); editable sample values (reset when a field changes type or goes) and one integer input per tracker; tests and a story. Tests were written after the component, not RED first.
 - 2026-10-17: T12a done (logic only). TS `InvalidFormula.position` (1-based in the trimmed text, only where the PHP message names a position; none for end of formula, arguments, depth, size); `formulaDiagnostics` returns the syntax error, the first reference a derived field may not read (unknown field or tracker, text/list field, `.max` of a non-track, check), a cycle through the field with the closing reference's position, else the value as `computeDerived`; unit tests per branch. Not mirrored: other fields' own errors and cycles elsewhere (the publisher reports them on those fields). RED observed for the position tests; the diagnostics tests were written with the module.
 - 2026-10-17: Slice 8 review fixes (R3): tests pin that a refused or cycle reference position counts in the trimmed text (`  {pow} + {ghost}` → 9; no bug); the preview template reads a stored field span that is not a whole number from 1 to its group's columns as 1.
+- 2026-10-17: T12b done. Sample values lifted from the preview into `useSheetSamples` (Sheet tab), shared with the field dialog; `FormulaInput` (props: diagnostics and reference options) marks the error position (offset by leading whitespace), inserts `{key}` at the caret, shows the value over the samples; diagnostics never block Save and a server 422 still shows. Written after the code, tests then green; the new Vitest files pass alone (the radio-not-found timeouts of the full `src/studio/sheet` run are load-dependent).
 
 ## Reviews
 

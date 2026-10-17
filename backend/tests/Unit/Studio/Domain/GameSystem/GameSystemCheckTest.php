@@ -111,6 +111,33 @@ final class GameSystemCheckTest extends TestCase
     }
 
     #[Test]
+    public function aSavedCheckIsReadAsStoredAndTheReadChangesNothing(): void
+    {
+        $gameSystem = $this->draft();
+        $document = $gameSystem->document();
+
+        self::assertSame($this->check($gameSystem, 1), $gameSystem->check('luck'));
+        $this->assertUntouched($gameSystem, $document);
+    }
+
+    #[Test]
+    public function aCheckTheDraftLacksCannotBeRead(): void
+    {
+        $this->expectException(CheckNotFound::class);
+
+        $this->draft()->check('ghost');
+    }
+
+    #[Test]
+    public function aVersion1DraftHasNoChecksToRead(): void
+    {
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains('schemaVersion: checks need schema version 2');
+
+        $this->draft('valid/contract-doc-example')->check('skill');
+    }
+
+    #[Test]
     public function aNewCheckIsAppendedAsGivenAndUpdatesTheDraft(): void
     {
         $gameSystem = $this->draft();

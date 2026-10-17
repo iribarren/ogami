@@ -494,6 +494,30 @@ describe('the formula of a derived field', () => {
     expect(inDialog().getByLabelText('Formula')).toHaveValue('1 + {tracker:heat}')
   })
 
+  it('reads a field being renamed by its typed key, in the menu and the diagnostics alike', async () => {
+    const { user } = await editBonus()
+    const key = inDialog().getByLabelText('Key', { exact: true })
+    const options = () =>
+      within(inDialog().getByLabelText('Insert reference'))
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('value'))
+
+    await user.clear(key)
+    await user.type(key, 'bonus2')
+    expect(options()).toEqual(['', 'pow', 'hp', 'hp.max', 'dex', 'tracker:heat'])
+    await retype(user, '{bonus} + 1')
+    expect(inDialog().getByText('{bonus}: unknown field "bonus"')).toBeVisible()
+    await retype(user, '{bonus2} + 1')
+    expect(inDialog().getByText(/depend on each other in a cycle: bonus2 -> bonus2/)).toBeVisible()
+
+    // Taking another field's key: neither offers it as a field this one may read.
+    await user.clear(key)
+    await user.type(key, 'pow')
+    expect(options()).toEqual(['', 'hp', 'hp.max', 'dex', 'tracker:heat'])
+    await retype(user, '{pow} + 1')
+    expect(inDialog().getByText(/depend on each other in a cycle: pow -> pow/)).toBeVisible()
+  })
+
   it('does not block saving: the server answers, and its refusal shows on the input', async () => {
     const { sent, handler } = recorder(
       Response.json({ error: 'sheet.fields[3].formula: unknown field "ghost"' }, { status: 422 }),

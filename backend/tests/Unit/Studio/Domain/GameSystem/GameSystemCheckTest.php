@@ -207,6 +207,26 @@ final class GameSystemCheckTest extends TestCase
     }
 
     #[Test]
+    public function aReplacementOfAReferencedCheckWithoutAStringKeyFailsOnTheKeyPath(): void
+    {
+        $gameSystem = $this->draft();
+        $document = $gameSystem->document();
+        $skill = $this->check($gameSystem, 0);
+        unset($skill['key']);
+
+        foreach ([$skill, [...$skill, 'key' => 7], [...$skill, 'key' => ['skill']]] as $replacement) {
+            try {
+                $gameSystem->saveCheck('skill', $replacement, $this->now);
+                self::fail('Expected InvalidReleaseContent');
+            } catch (InvalidReleaseContent $invalid) {
+                self::assertStringStartsWith('checks[0].key:', $invalid->getMessage());
+            }
+        }
+
+        $this->assertUntouched($gameSystem, $document);
+    }
+
+    #[Test]
     public function aBandRenameWhileAnOutcomeNamesItIsRefusedWithTheOutcomePaths(): void
     {
         $gameSystem = $this->draft();

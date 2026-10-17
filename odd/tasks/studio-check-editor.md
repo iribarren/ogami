@@ -1,7 +1,7 @@
 # Feature: studio-check-editor
 
 - **Locator:** `odd/tasks/studio-check-editor.md` · Engram topic `odd/studio-check-editor/tasks`
-- **Issue:** #177 · **Branch:** `feat/studio-check-editor-1-check-commands` · **Status:** in progress
+- **Issue:** #177 · **Branch:** `feat/studio-check-editor-2-check-api` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-sheet-builder` (PRs #167–#176)
@@ -79,10 +79,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0032 (Studio check editor and test-roll sandbox) and ADR index row; glossary only if a new term appears | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain: `DraftReferences` check-key and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` (rename/delete of a referenced check and dropping a referenced band refused with every path) with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse` | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Application: `SaveCheck`, `DeleteCheck`, `MoveCheck` and handlers; `GetGameSystemChecks` query and read model (version, schemaVersion, checks, reference catalog, usage paths per check) | delegated writer (slice 1) | [x] | |
-| T4 | 2 | HTTP: `GameSystemCheckController` (`GET /checks`, create, replace/rename, delete, move), DTOs, error mapping, API tests for every 400/404/409/415/422, `make api` | delegated writer (slice 2) | [ ] | |
+| T1 | 1 | Docs: this feature doc; ADR 0032 (Studio check editor and test-roll sandbox) and ADR index row; glossary only if a new term appears | delegated writer (slice 1) | [x] | c0a9852 |
+| T2 | 1 | Domain: `DraftReferences` check-key and band-key paths; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` (rename/delete of a referenced check and dropping a referenced band refused with every path) with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse` | delegated writer (slice 1) | [x] | 00484b1 |
+| T3 | 1 | Application: `SaveCheck`, `DeleteCheck`, `MoveCheck` and handlers; `GetGameSystemChecks` query and read model (version, schemaVersion, checks, reference catalog, usage paths per check) | delegated writer (slice 1) | [x] | 87731d9 |
+| T4 | 2 | HTTP: `GameSystemCheckController` (`GET /checks`, create, replace/rename, delete, move), DTOs, error mapping, API tests for every 400/404/409/415/422, `make api` | delegated writer (slice 2) | [x] | |
 | T5 | 3 | Test roll: Studio domain evaluation in Play's order with an injected RNG (unit tests mirroring `Check::perform`), sample-values validation, `TestRollCheck` query, `POST /checks/{check}/test-rolls`, API tests, `make api` | delegated writer (slice 3) | [ ] | |
 | T6 | 4 | Checks tab: `useGameSystemChecks`, `checkDraft.ts`, `checkError.ts`, list with move/delete, editor for key/label/hint/dice/modifier/difficulty, 409 handling, tests, stories | delegated writer (slice 4) | [ ] | |
 | T7 | 5 | Bands editor (add/remove/reorder, `upTo` kinds) and check-scope formula diagnostics in `FormulaInput` for modifier and band formulas; tests, stories | delegated writer (slice 5) | [ ] | |
@@ -95,12 +95,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-17: T1 done. ADR 0032 and its index row added; glossary Test roll entry extended to checks.
 - 2026-10-17: T2 done. `DraftReferences::checkPathsTo` and `bandPathsTo`; `GameSystem::saveCheck`, `deleteCheck`, `moveCheck` with `CheckKeyTaken`, `CheckNotFound`, `CheckInUse`. RED observed (undefined methods, 25 + 9 errors), then GREEN (267 Domain/GameSystem tests).
 - 2026-10-17: T3 done. `SaveCheck`, `DeleteCheck`, `MoveCheck` with handlers; `GetGameSystemChecks` returns `GameSystemChecksView` (checks as stored, `CheckFieldView` and `CheckTrackerView` catalog, usages per check key), read defensively. No HTTP layer yet.
+- 2026-10-17: Slice 1 review fix. `GameSystem::saveCheck` runs the rename and band in-use refusals only for a string key, so a replacement without one fails on `checks[i].key` through the item rules. RED observed (`CheckInUse`), then GREEN (26 check tests).
+- 2026-10-17: T4 done. `GameSystemCheckController` (read, create 201, replace/rename, delete, move) with `SaveCheckRequest`, `MoveCheckRequest`, `GameSystemChecksResponse` and the check schemas; `CheckInUse` answered as `OracleInUseResponse` (422), `CheckKeyTaken` 409 as for oracles and the sheet. 54 API tests covering every status, including a concurrent save. The API contract is regenerated in the next commit.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-3d1bc1b721f46afc` | c0a9852, 00484b1, 87731d9 | Approved and acknowledged. R3 suggestion: replacing a referenced check with a body whose key is missing or not a string is refused as `CheckInUse` (rename) instead of `InvalidReleaseContent` on the key path (`GameSystem.php:342`); fixed in slice 2 | [#178](https://github.com/iribarren/ogami/pull/178) |
 
 ## Next step
 
-Slice 1: T1–T3 on `feat/studio-check-editor-1-check-commands`.
+Slice 2: slice 1 review fix, then T4 on `feat/studio-check-editor-2-check-api`.

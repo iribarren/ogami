@@ -339,7 +339,7 @@ final class GameSystem
             throw CheckKeyTaken::withKey($key);
         }
 
-        if (null !== $originalKey) {
+        if (null !== $originalKey && \is_string($key)) {
             if ($key !== $originalKey) {
                 $this->refuseWhenCheckReferenced($originalKey);
             }

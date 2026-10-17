@@ -8,13 +8,23 @@ import { ItemDialog } from '../ItemDialog'
 import { flowForm } from '../itemForms'
 import { NarrativeGate } from '../NarrativeGate'
 import { DeleteItemDialog, UsedBy } from '../NarrativeTab'
-import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarrative'
-import { flowToDraft, newFlow } from './flowDraft'
+import {
+  useGameSystemNarrative,
+  type GameSystemNarrative,
+  type NarrativeItem,
+} from '../useGameSystemNarrative'
+import { flowToDraft, newFlow, refreshNewFlow } from './flowDraft'
 import { flowIssueCount } from './flowIssues'
+
+const sceneTypeOptions = (data: GameSystemNarrative) =>
+  data.sceneTypes.map(({ key, definition }) => ({
+    key,
+    name: typeof definition.name === 'string' && definition.name !== '' ? definition.name : key,
+  }))
 
 /**
  * The flows of a draft in stored order, with their phases, the validation issues about each and
- * where each is used. The rows are not linked yet: the flow editor comes with its own route.
+ * where each is used; each opens its editor page.
  */
 export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
@@ -24,11 +34,7 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
   return (
     <NarrativeGate narrative={narrative}>
       {(data) => {
-        const sceneTypes = data.sceneTypes.map(({ key, definition }) => ({
-          key,
-          name:
-            typeof definition.name === 'string' && definition.name !== '' ? definition.name : key,
-        }))
+        const sceneTypes = sceneTypeOptions(data)
         return (
           <section aria-label="Flows" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -49,6 +55,7 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                   version={data.version}
                   original={null}
                   initial={newFlow(sceneTypes)}
+                  refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}
                   trigger={<Button size="sm">New flow</Button>}
                 />
               )}
@@ -64,8 +71,14 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                     item={item}
                     version={data.version}
                     // The validation numbers flows by their stored position, which is the order
-                    // the narrative read model lists them in.
-                    issues={validation.data ? flowIssueCount(validation.data, index) : 0}
+                    // the narrative read model lists them in. A save refreshes both reads, the
+                    // validation after the narrative: while it is on its way its positions are
+                    // the old ones, so no row shows a count then.
+                    issues={
+                      validation.data && !validation.isFetching
+                        ? flowIssueCount(validation.data, index)
+                        : 0
+                    }
                   />
                 ))}
               </ul>

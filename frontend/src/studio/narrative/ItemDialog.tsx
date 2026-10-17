@@ -59,6 +59,7 @@ export function ItemDialog<Draft>({
   initial,
   trigger,
   onSaved,
+  refresh,
 }: {
   gameSystemKey: string
   form: ItemForm<Draft>
@@ -68,6 +69,8 @@ export function ItemDialog<Draft>({
   trigger: ReactNode
   /** Told the item as it was saved, once the API has accepted it. */
   onSaved?: (item: StoredItem) => void
+  /** For a new item: what its draft becomes when a reload brings the latest narrative. */
+  refresh?: (draft: Draft, narrative: GameSystemNarrative) => Draft
 }) {
   const [open, setOpen] = useState(false)
   const save = useSaveNarrativeItem(gameSystemKey)
@@ -96,6 +99,7 @@ export function ItemDialog<Draft>({
           original={original}
           initial={initial}
           save={save}
+          refresh={refresh}
           onSaved={(item) => {
             setOpen(false)
             onSaved?.(item)
@@ -114,6 +118,7 @@ function ItemFormBody<Draft>({
   initial,
   save,
   onSaved,
+  refresh,
 }: {
   gameSystemKey: string
   form: ItemForm<Draft>
@@ -122,6 +127,7 @@ function ItemFormBody<Draft>({
   initial: Draft
   save: ReturnType<typeof useSaveNarrativeItem>
   onSaved: (item: StoredItem) => void
+  refresh?: (draft: Draft, narrative: GameSystemNarrative) => Draft
 }) {
   const [draft, setDraft] = useState(initial)
   // The form is filled once, when the dialog opens, so the version it was read at is kept with
@@ -203,9 +209,13 @@ function ItemFormBody<Draft>({
                   )
                   return
                 }
-                // A new item keeps its draft: there is nothing to overwrite.
+                // A new item keeps its draft: there is nothing to overwrite. What it picks from
+                // may have changed, so a form that has pickers brings them up to date.
                 if (reloaded !== null) {
                   setDraft(reloaded)
+                } else if (refresh !== undefined) {
+                  const latestData = result.data
+                  setDraft((current) => refresh(current, latestData))
                 }
                 setReloadNote(null)
                 setReadAt(result.data.version)

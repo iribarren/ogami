@@ -243,6 +243,15 @@ export const newFlow = (sceneTypes: NewFlowDraft['sceneTypes']): NewFlowDraft =>
   sceneTypes,
 })
 
+/** The dialog after a reload: it offers the latest Scene Types and keeps the chosen one while it exists. */
+export function refreshNewFlow(
+  draft: NewFlowDraft,
+  sceneTypes: NewFlowDraft['sceneTypes'],
+): NewFlowDraft {
+  const kept = sceneTypes.some(({ key }) => key === draft.sceneType)
+  return { ...draft, sceneType: kept ? draft.sceneType : (sceneTypes[0]?.key ?? ''), sceneTypes }
+}
+
 /**
  * The smallest flow the publisher accepts: `oracles` and `trackers` may be empty, a flow needs one
  * phase, and a phase needs a selection of at least one Scene Type.

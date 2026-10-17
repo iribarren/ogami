@@ -1,4 +1,4 @@
-import { flowToDraft, flowToItem, newFlow, newFlowToItem } from './flowDraft'
+import { flowToDraft, flowToItem, newFlow, newFlowToItem, refreshNewFlow } from './flowDraft'
 
 // The shapes of the three preset flows: Kingsport (introduction, a player phase with hooks),
 // Night job (sceneOpening hooks) and Mythic-style (journal view, no introduction).
@@ -185,5 +185,17 @@ describe('a new flow', () => {
         ],
       },
     })
+  })
+
+  it('offers the reloaded Scene Types and keeps the chosen one only while it exists', () => {
+    const chosen = { ...newFlow(choices), key: 'heist', sceneType: 'quiet' }
+
+    expect(refreshNewFlow(chosen, choices.slice(1))).toMatchObject({
+      key: 'heist',
+      sceneType: 'quiet',
+      sceneTypes: choices.slice(1),
+    })
+    expect(refreshNewFlow(chosen, choices.slice(0, 1)).sceneType).toBe('ambush')
+    expect(refreshNewFlow(chosen, []).sceneType).toBe('')
   })
 })

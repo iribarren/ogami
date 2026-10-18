@@ -838,7 +838,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals(['reflexes' => 5, 'hp' => ['current' => 10, 'max' => 10], 'gear' => ['a', 'b'], 'role' => ''], $loaded->character(CharacterId::fromString('c-1'))?->values());
         self::assertSame(6, $loaded->trackerValuesOf($target)['heat']);
         self::assertSame('Ashford', $loaded->fact(FactId::fromString('fact-city'))?->text());
-        self::assertNull($loaded->fact(FactId::fromString('fact-city'))?->slot());
+        self::assertNull($loaded->fact(FactId::fromString('fact-city'))->slot());
         self::assertNull($loaded->flowRun()?->scene(), 'The restarted FlowRun is in no scene.');
     }
 

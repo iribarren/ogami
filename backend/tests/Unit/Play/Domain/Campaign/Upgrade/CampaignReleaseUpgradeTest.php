@@ -244,11 +244,13 @@ final class CampaignReleaseUpgradeTest extends TestCase
         $campaign->upgradeRelease($pinned, $target, $campaign->planReleaseUpgrade($pinned, $target)->fingerprint(), $this->at);
 
         self::assertEquals($guided, $campaign->currentScene(), 'The scene stays as it was.');
-        self::assertNull($campaign->flowRun()?->scene(), 'The restarted FlowRun is in no scene.');
-        self::assertSame(FlowRunStage::ScenePick, $campaign->flowRun()->stage());
+        $restarted = $campaign->flowRun();
+        self::assertInstanceOf(FlowRun::class, $restarted);
+        self::assertNull($restarted->scene(), 'The restarted FlowRun is in no scene.');
+        self::assertSame(FlowRunStage::ScenePick, $restarted->stage());
         $campaign->pickSceneType('legwork', $target, $this->at);
         self::assertSame([1, 2], array_map(static fn (Scene $scene): int => $scene->number(), $campaign->currentSession()?->scenes() ?? []), 'Guidance goes on with a new scene; the old one is not guided any more.');
-        self::assertSame($campaign->currentScene()?->number(), $campaign->flowRun()->scene()[1] ?? null);
+        self::assertSame($campaign->currentScene()?->number(), $campaign->flowRun()?->scene()[1] ?? null);
     }
 
     /**

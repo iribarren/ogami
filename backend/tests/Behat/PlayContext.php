@@ -918,7 +918,7 @@ final class PlayContext implements Context
     #[When('I confirm the previewed release upgrade')]
     public function iConfirmThePreviewedReleaseUpgrade(): void
     {
-        $plan = $this->preview?->plan ?? throw new \LogicException('No upgrade was previewed.');
+        $plan = $this->preview->plan ?? throw new \LogicException('No upgrade was previewed.');
         $this->attempt(fn () => ($this->upgradeCampaignRelease)(new UpgradeCampaignRelease($this->campaignId(), self::ME, $plan->to->releaseVersion(), $plan->fingerprint())));
     }
 
@@ -931,11 +931,11 @@ final class PlayContext implements Context
     #[Then('the preview upgrades release :from to release :to and changes:')]
     public function thePreviewChanges(int $from, int $to, TableNode $table): void
     {
-        $plan = $this->preview?->plan ?? throw new \LogicException('The preview has no plan.');
+        $plan = $this->preview->plan ?? throw new \LogicException('The preview has no plan.');
         Assert::assertSame([$from, $to], [$plan->from->releaseVersion(), $plan->to->releaseVersion()]);
         $changes = [];
         foreach ($plan->characters as $character) {
-            array_push($changes, ...array_map(static fn (FieldChange $change): array => [$character->name, $change->fieldName, $change->kind->value, (string) $change->before, (string) $change->after], $character->changes));
+            array_push($changes, ...array_map(static fn (FieldChange $change): array => [$character->name, $change->fieldName, $change->kind->value, (string) json_encode($change->before), (string) json_encode($change->after)], $character->changes));
         }
 
         Assert::assertSame(array_map(array_values(...), $table->getColumnsHash()), $changes);

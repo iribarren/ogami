@@ -93,6 +93,7 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 ## Progress
 
+- 2026-10-18: T6 HTTP done, generated API commit not made: `CampaignReleaseUpgradeController` (GET/POST `release-upgrade`), 10 response classes, `CampaignReleaseUpgradeApiTest` (24 tests, every status); slice stopped at the size budget (regenerated `openapi.json` + `schema.d.ts` add ~906 lines, total would be ~2,230 vs the 1,700 ceiling), waiting for the parent to decide the split. Also fixed PHPStan findings in T4/T5 files.
 - 2026-10-18: T5 done: `PreviewReleaseUpgrade` (view = domain plan + current version), `UpgradeCampaignRelease` (latest only: unknown or older-than-latest target is `ReleaseUpgradeChanged`, not newer is `CampaignUpToDate`); Doctrine round trip of an upgraded campaign; `release-upgrade.feature` (5 scenarios). Handlers were written before their Behat scenarios (no RED).
 - 2026-10-18: T4 done: R3-001 planner compares fitted values key-normalized (no RED reachable: `Character::of` already normalizes track key order, so the test is a regression guard); R3-002 test that an open guided Scene goes on free after the upgrade and guidance picks the next Scene (no bug found).
 - 2026-10-18: T1 done: ADR 0035, index, ADR 0010/0014 pointers, glossary, context map, contract paragraph.

@@ -184,7 +184,7 @@ final readonly class ReleaseUpgradePlanner
         }
 
         if ($this->normalized($valid) === $this->normalized($value)) {
-            return [$value, null];
+            return [$valid, null];
         }
 
         return [$valid, $kind ?? FieldChangeKind::Reset];

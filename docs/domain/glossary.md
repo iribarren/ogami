@@ -12,7 +12,9 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | `SOLO_PLAYER` | Role that plays campaigns in Play | Identity & Access |
 | `GAME_MANAGER` | Role that authors game content in Studio. Game and oracle topics only | Identity & Access |
 | `OWNER` | Role that manages the app in Admin: users, roles, settings | Identity & Access |
-| User | A person with an account and one or more roles | Identity & Access |
+| User | A person with an account and one or more roles. *Active* or *disabled*: a disabled user cannot sign in; accounts are never deleted ([ADR 0034](../adr/0034-admin-user-management.md)) | Identity & Access |
+| Invitation | The owner's emailed offer of an account with given roles. *Pending*, *accepted* or *revoked*; expires after 7 days. Accepting it sets a password and creates the user. The only way to get an account besides the console ([ADR 0034](../adr/0034-admin-user-management.md)) | Identity & Access |
+| Password reset | A one-hour emailed link that sets a new password, asked for from the login page or sent by the owner ([ADR 0034](../adr/0034-admin-user-management.md)) | Identity & Access |
 
 ## Game authoring
 

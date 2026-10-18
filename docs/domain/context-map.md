@@ -109,9 +109,9 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 
 | Aspect | Detail |
 |---|---|
-| Responsibilities | User accounts, authentication (session cookie), role assignment |
-| Aggregates / concepts | User, Role (`OWNER`, `GAME_MANAGER`, `SOLO_PLAYER`) |
-| Published API | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` (session cookie, [ADR 0006](../adr/0006-session-cookie-auth-roles.md)); console `app:user:create` |
+| Responsibilities | User accounts, authentication (session cookie), role assignment, invitations, password reset, account emails |
+| Aggregates / concepts | User (active or disabled), Role (`OWNER`, `GAME_MANAGER`, `SOLO_PLAYER`), Invitation, Password reset ([ADR 0034](../adr/0034-admin-user-management.md)) |
+| Published API | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` (session cookie, [ADR 0006](../adr/0006-session-cookie-auth-roles.md)); public invitation and password reset endpoints under `/api/auth/…` ([ADR 0034](../adr/0034-admin-user-management.md)); application services for user management, used by Admin; console `app:user:create` |
 | Depends on | Nothing domain-specific |
 | Roles | All |
 
@@ -120,7 +120,7 @@ Rule edits are safe by design: see [ADR 0010](../adr/0010-versioned-gamesystem-r
 | Aspect | Detail |
 |---|---|
 | Responsibilities | App settings and user management for the owner. Nothing about game content |
-| Aggregates / concepts | App settings |
+| Aggregates / concepts | App settings; user management through Identity & Access application services, exposed under `/api/admin/…` |
 | Depends on | Identity & Access |
 | Roles | `OWNER` |
 

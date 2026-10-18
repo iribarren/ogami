@@ -14,6 +14,7 @@ use App\Identity\Application\RequestPasswordReset;
 use App\Identity\Application\ResetPassword;
 use App\Identity\Application\UserIdGenerator;
 use App\Identity\Application\WeakPassword;
+use App\Identity\Domain\Email;
 use App\Identity\Domain\InvalidEmail;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
@@ -73,17 +74,29 @@ final readonly class PublicAccountController
             return $this->error(self::MALFORMED_EMAIL, Response::HTTP_BAD_REQUEST);
         }
 
+        // Validated first: a malformed email answers 422 whatever the limiters say.
+        try {
+            $address = Email::fromString($email)->toString();
+        } catch (InvalidEmail $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         // Both limiters are always consumed, so flooding with fresh emails still fills the IP allowance.
-        $emailAllowed = $this->passwordResetEmailLimiter->create(strtolower(trim($email)))->consume()->isAccepted();
-        $ipAllowed = $this->passwordResetIpLimiter->create($request->getClientIp() ?? 'unknown')->consume()->isAccepted();
-        if (!$emailAllowed || !$ipAllowed) {
+        // The email allowance is per email and IP: keyed on the email alone, anyone could use up a victim's quota.
+        $ip = $request->getClientIp() ?? 'unknown';
+        $limited = array_keys(array_filter([
+            'password_reset_email' => !$this->passwordResetEmailLimiter->create($address.'|'.$ip)->consume()->isAccepted(),
+            'password_reset_ip' => !$this->passwordResetIpLimiter->create($ip)->consume()->isAccepted(),
+        ]));
+        if ([] !== $limited) {
+            // The limiter names only: no email, no IP, no token.
+            $this->logger->info('A password reset request was rate limited.', ['limiters' => $limited]);
+
             return new Response('', Response::HTTP_ACCEPTED);
         }
 
         try {
             $this->commandBus->dispatch(new RequestPasswordReset($this->resetIds->generate()->toString(), $email));
-        } catch (InvalidEmail $exception) {
-            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (MailUnavailable $exception) {
             // A 503 only for existing accounts would reveal which emails have one. The reset stays stored.
             $this->logger->warning('A password reset email could not be sent.', ['exception' => $exception]);

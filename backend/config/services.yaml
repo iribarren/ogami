@@ -31,3 +31,10 @@ services:
     App\Identity\Application\AccountLinks:
         arguments:
             $publicUrl: '%env(APP_PUBLIC_URL)%'
+
+when@test:
+    services:
+        # API tests assert what is logged (App\Tests\Support\Identity\PublicAccountApiTestCase).
+        logger:
+            class: App\Tests\Support\Identity\RecordingLogger
+            public: true

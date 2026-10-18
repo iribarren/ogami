@@ -1,8 +1,8 @@
 framework:
     rate_limiter:
         # Self-service password reset requests (Identity PublicAccountController). The limiters
-        # are consumed per normalized email and per client IP; over either, the endpoint still
-        # answers 202 and sends nothing, so the answer never reveals anything.
+        # are consumed per normalized email and client IP, and per client IP alone; over either,
+        # the endpoint still answers 202 and sends nothing, so the answer never reveals anything.
         password_reset_email:
             policy: sliding_window
             limit: 3

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Identity\Http;
 
 use App\Identity\Application\DisableUser;
+use App\Identity\Application\MailUnavailable;
 use App\Identity\Infrastructure\Http\PublicAccountController;
 use App\Shared\Application\Bus\CommandBus;
 use App\Tests\Support\Identity\PublicAccountApiTestCase;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\Exception\TransportException;
 
 /**
@@ -80,14 +82,79 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
     }
 
     #[Test]
-    public function aMalformedEmailIsLimitedToo(): void
+    public function aMalformedEmailIsUnprocessableAlsoPastTheLimits(): void
     {
-        foreach (['bad', 'bad', 'bad', 'bad'] as $email) {
-            $this->post(self::REQUESTS, ['email' => $email]);
+        foreach (range(1, 5) as $attempt) {
+            $this->post(self::REQUESTS, ['email' => 'bad']);
+
+            self::assertResponseStatusCodeSame(422, \sprintf('Request %d.', $attempt));
+            self::assertJsonStringEqualsJsonString('{"error":"\"bad\" is not a valid email address."}', $this->content());
         }
+        self::assertSame([], $this->logs());
+    }
+
+    #[Test]
+    public function theEmailAllowanceIsPerEmailAndClientIp(): void
+    {
+        $this->createUser('ada@example.com');
+        foreach (range(1, 4) as $unused) {
+            $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9');
+        }
+        self::assertCount(3, $this->mailer->sent);
+
+        // Someone else cannot use up Ada's allowance: another IP has its own.
+        $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.10');
 
         self::assertResponseStatusCodeSame(202);
-        self::assertSame('', $this->content());
+        self::assertCount(4, $this->mailer->sent);
+    }
+
+    #[Test]
+    public function aRateLimitedRequestIsLoggedWithTheLimiterNameOnly(): void
+    {
+        $this->createUser('ada@example.com');
+        foreach (range(1, 4) as $unused) {
+            $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9');
+        }
+
+        self::assertSame([['info', 'A password reset request was rate limited.', ['limiters' => ['password_reset_email']]]], $this->logs());
+        self::assertStringNotContainsString('ada@example.com', (string) json_encode($this->logs()));
+        self::assertStringNotContainsString('203.0.113.9', (string) json_encode($this->logs()));
+    }
+
+    #[Test]
+    public function aForwardedForHeaderFromAnUntrustedClientDoesNotChangeTheIpAllowance(): void
+    {
+        $this->createUser('ada@example.com');
+        // TRUSTED_PROXIES is unset: the header is ignored, so a spoofed one dodges nothing.
+        for ($i = 1; $i <= 10; ++$i) {
+            $this->post(self::REQUESTS, ['email' => \sprintf('nobody%d@example.com', $i)], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => \sprintf('198.51.100.%d', $i)]);
+        }
+
+        $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.200']);
+
+        self::assertResponseStatusCodeSame(202);
+        self::assertSame([], $this->mailer->sent);
+    }
+
+    #[Test]
+    public function behindATrustedProxyTheIpAllowanceIsPerForwardedClient(): void
+    {
+        $this->createUser('ada@example.com');
+        Request::setTrustedProxies(['203.0.113.9'], Request::HEADER_X_FORWARDED_FOR);
+        try {
+            for ($i = 1; $i <= 10; ++$i) {
+                $this->post(self::REQUESTS, ['email' => \sprintf('nobody%d@example.com', $i)], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.1']);
+            }
+
+            $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.1']);
+            self::assertSame([], $this->mailer->sent);
+
+            $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.2']);
+            self::assertCount(1, $this->mailer->sent);
+        } finally {
+            Request::setTrustedProxies([], Request::HEADER_X_FORWARDED_FOR);
+        }
     }
 
     #[Test]
@@ -118,6 +185,9 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
         self::assertResponseStatusCodeSame(202);
         self::assertSame('', $this->content());
         self::assertCount(1, self::getContainer()->get(Connection::class)->fetchFirstColumn('SELECT id FROM identity_password_reset'));
+        self::assertCount(1, $this->logs());
+        self::assertSame(['warning', 'A password reset email could not be sent.'], \array_slice($this->logs()[0], 0, 2));
+        self::assertInstanceOf(MailUnavailable::class, $this->logs()[0][2]['exception']);
     }
 
     #[Test]

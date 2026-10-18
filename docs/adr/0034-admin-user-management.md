@@ -23,4 +23,5 @@ Ogami is for one to a few people ([vision](../vision.md)). Today a user exists o
 - The first owner is still created with `app:user:create`. After that, every account comes from an invitation.
 - Identity gains its first email dependency and its first public, unauthenticated write endpoints, so it needs rate limits.
 - A user's roles or password changing ends their current session, as Symfony Security does today. A role change therefore signs the user out.
+- The self-service password reset sends its mail inside the request, and only for an existing account, so its response time can reveal whether an email has an account (accepted risk). Revisit it when an async mail transport lands.
 - Emails cannot be changed and accounts cannot be deleted. Either needs a new decision.

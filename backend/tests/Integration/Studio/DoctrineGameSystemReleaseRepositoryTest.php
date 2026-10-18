@@ -56,6 +56,44 @@ final class DoctrineGameSystemReleaseRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function itRoundTripsTheLibrarySourcesOutsideTheHashAndKeepsNoneAsNull(): void
+    {
+        $content = $this->contractDocExample();
+        $sources = [['section' => 'tags', 'key' => 'social', 'pack' => 'generic', 'hash' => str_repeat('ab', 32)]];
+        $at = new \DateTimeImmutable('2026-10-18T10:00:00');
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::FIRST_ID), $content, 1, $at, null, $sources));
+        $this->releases->add(GameSystemRelease::publish(ReleaseId::fromString(self::SECOND_ID), $content, 2, $at, null, []));
+        $this->entityManager->clear();
+
+        $with = $this->releases->ofId(ReleaseId::fromString(self::FIRST_ID));
+        $without = $this->releases->ofId(ReleaseId::fromString(self::SECOND_ID));
+
+        self::assertNotNull($with);
+        self::assertNotNull($without);
+        self::assertEquals($sources, $with->librarySources());
+        self::assertNull($without->librarySources());
+        self::assertSame($without->contentHash(), $with->contentHash());
+        self::assertSame($content->hash(), $with->contentHash());
+    }
+
+    #[Test]
+    public function aReleaseStoredBeforeLibrarySourcesReadsWithNone(): void
+    {
+        $content = $this->contractDocExample();
+        // The columns before the library migration only: library_sources stays NULL.
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO studio_gamesystem_release (id, game_system_key, version, schema_version, content, content_hash, published_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [self::FIRST_ID, $content->gameSystemKey(), 1, 1, json_encode($content->toArray(), \JSON_THROW_ON_ERROR), $content->hash(), '2026-10-05 10:00:00'],
+        );
+
+        $release = $this->releases->ofId(ReleaseId::fromString(self::FIRST_ID));
+
+        self::assertNotNull($release);
+        self::assertNull($release->librarySources());
+        self::assertSame($content->hash(), $release->contentHash());
+    }
+
+    #[Test]
     public function itRoundTripsTheWholeReleaseWithAndWithoutNotes(): void
     {
         $at = new \DateTimeImmutable('2026-10-16T09:30:00');

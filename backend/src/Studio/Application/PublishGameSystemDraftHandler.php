@@ -6,6 +6,7 @@ namespace App\Studio\Application;
 
 use App\Shared\Application\Bus\CommandHandler;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\LibraryImport;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\Release\GameSystemDraftUnchanged;
 use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
@@ -41,7 +42,7 @@ final readonly class PublishGameSystemDraftHandler implements CommandHandler
 
         $content = ReleaseContent::fromArray($gameSystem->document());
 
-        if (!$this->publisher->publish(ReleaseId::fromString($command->releaseId), $content, $command->notes, true)) {
+        if (!$this->publisher->publish(ReleaseId::fromString($command->releaseId), $content, $command->notes, true, array_map(static fn (LibraryImport $import): array => $import->toArray(), $gameSystem->libraryImports()))) {
             throw GameSystemDraftUnchanged::for($command->key, $this->releases->latestFor($command->key)?->version() ?? 0);
         }
     }

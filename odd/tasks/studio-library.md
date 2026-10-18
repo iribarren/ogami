@@ -1,7 +1,7 @@
 # Feature: studio-library
 
 - **Locator:** `odd/tasks/studio-library.md` · Engram topic `odd/studio-library/tasks`
-- **Issue:** #185 · **Branch:** `feat/studio-library-2-imports` · **Status:** in progress
+- **Issue:** #185 · **Branch:** `feat/studio-library-3-application` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-check-editor` (PRs #178–#184)
@@ -60,7 +60,7 @@ Out of scope:
 
 ## Design
 
-### Backend (slices 1–4)
+### Backend (slices 1–5)
 
 - ADR 0033, ADR index row, glossary (Library, Library import, Library pack), vision question closed.
 - `GameSystemKind`, migration (`kind`, `library_imports`), `GameSystem::createLibraryPack`, pack guards on every refused command, `CreateLibraryPack`, `ListLibraryPacks`; publish and restore handlers refuse a pack.
@@ -68,7 +68,7 @@ Out of scope:
 - Library pack controller and catalog; 409 mapping of `LibraryPackRefuses` on every existing Studio endpoint; `kind` on the GameSystem view; API tests; `make api`.
 - Library import controller; `libraryChanges` on the list and detail views; `librarySources` on release history; API tests; `make api`.
 
-### Frontend (slices 5–7)
+### Frontend (slices 6–8)
 
 - Library section on the Studio home, the new-pack dialog, kind-aware `GameSystemPage` for packs.
 - Import dialog (catalog browser, selection, preview, import) and the draft's Library tab (statuses, Update, Detach).
@@ -88,13 +88,16 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `feat/studio-library-1-library-packs` | `feat(studio): studio-library 1/7 library packs` | T1, T2, T3 | ~1,300 |
-| 2 | `feat/studio-library-2-imports` | `feat(studio): studio-library 2/7 library imports` | T4, T5 | ~1,500 |
-| 3 | `feat/studio-library-3-pack-api` | `feat(studio): studio-library 3/7 library pack API` | T6 | ~1,450 incl. ~350 generated |
-| 4 | `feat/studio-library-4-import-api` | `feat(studio): studio-library 4/7 library import API` | T7 | ~1,600 incl. ~450 generated |
-| 5 | `feat/studio-library-5-packs-ui` | `feat(studio): studio-library 5/7 library packs in Studio` | T8 | ~1,300 |
-| 6 | `feat/studio-library-6-import-ui` | `feat(studio): studio-library 6/7 import dialog and library tab` | T9 | ~1,600 |
-| 7 | `feat/studio-library-7-flags-e2e` | `feat(studio): studio-library 7/7 change flags, provenance and end to end` | T10, T11 | ~1,000 |
+| 1 | `feat/studio-library-1-library-packs` | `feat(studio): studio-library 1/8 library packs` | T1, T2, T3 | ~1,300 |
+| 2 | `feat/studio-library-2-imports` | `feat(studio): studio-library 2/8 library imports in the draft` | T4 | ~1,500 |
+| 3 | `feat/studio-library-3-application` | `feat(studio): studio-library 3/8 library import handlers` | T5 | ~1,100 |
+| 4 | `feat/studio-library-4-pack-api` | `feat(studio): studio-library 4/8 library pack API` | T6 | ~1,450 incl. ~350 generated |
+| 5 | `feat/studio-library-5-import-api` | `feat(studio): studio-library 5/8 library import API` | T7 | ~1,600 incl. ~450 generated |
+| 6 | `feat/studio-library-6-packs-ui` | `feat(studio): studio-library 6/8 library packs in Studio` | T8 | ~1,300 |
+| 7 | `feat/studio-library-7-import-ui` | `feat(studio): studio-library 7/8 import dialog and library tab` | T9 | ~1,600 |
+| 8 | `feat/studio-library-8-flags-e2e` | `feat(studio): studio-library 8/8 change flags, provenance and end to end` | T10, T11 | ~1,000 |
+
+Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8 slices.
 
 ## Tasks
 
@@ -103,14 +106,14 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | T1 | 1 | Docs: this feature doc; ADR 0033 (Studio library packs) and ADR index row; glossary Library, Library import, Library pack; vision question on generic flows closed | inline (parent: design authored this session) | [x] | cc9db7f |
 | T2 | 1 | Domain: `GameSystemKind`; `GameSystem::createLibraryPack`; `LibraryPackRefuses` on flows, sheet fields and layout, checks, theme, credits, restore (and later publish/imports); persistence `kind` column + migration (default `game-system`), `library_imports` column (default `[]`), repository mapping; legacy rows read as `game-system` | delegated writer (slice 1) | [x] | 117fa6a |
 | T3 | 1 | Application: `CreateLibraryPack` (draft key rules) and handler, `ListLibraryPacks` query (every pack, `mine`, counts per section, updatedAt); publish handler refuses a pack; the existing GameSystem list excludes packs | delegated writer (slice 1) | [x] | a77c28c |
-| T4 | 2 | Domain: `LibrarySection`, item hash, dependency closure via `DraftReferences`; `planLibraryImport`, `importFromLibrary`, `updateFromLibrary`, `detachLibraryImport`, pruning after every command; `LibraryItemNotFound`, `LibraryItemKeyTaken`, `LibraryImportNotFound`, `LibraryItemRemoved` | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Application: `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `PreviewLibraryImport`, `GetGameSystemLibraryImports` (statuses, editedLocally); publish stores `library_sources` on the release row (migration) | delegated writer (slice 2) | [ ] | |
-| T6 | 3 | Application `GetLibraryPack` (catalog with dependsOn, moved from T5 for slice 2's size); HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 3) | [ ] | |
-| T7 | 4 | HTTP: library import controller (list, preview, import, update, detach), `libraryChanges` on list/detail, `librarySources` on release history, API tests for every status (including 409 on a concurrent save), `make api` | delegated writer (slice 4) | [ ] | |
-| T8 | 5 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 5) | [ ] | |
-| T9 | 6 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 6) | [ ] | |
-| T10 | 7 | Frontend: `libraryChanges` badges on the draft list and Overview; library sources in release history; tests | delegated writer (slice 7) | [ ] | |
-| T11 | 7 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 7) | [ ] | |
+| T4 | 2 | Domain: `LibrarySection`, item hash, dependency closure via `DraftReferences`; `planLibraryImport`, `importFromLibrary`, `updateFromLibrary`, `detachLibraryImport`, pruning after every command; `LibraryItemNotFound`, `LibraryItemKeyTaken`, `LibraryImportNotFound`, `LibraryItemRemoved` | delegated writer (slice 2) | [x] | f0e2702 |
+| T5 | 3 | Application: `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `PreviewLibraryImport`, `GetGameSystemLibraryImports` (statuses, editedLocally); publish stores `library_sources` on the release row (migration) | delegated writer (slice 3) | [x] | |
+| T6 | 4 | Application `GetLibraryPack` (catalog with dependsOn, moved from T5 for slice 2's size); HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 4) | [ ] | |
+| T7 | 5 | HTTP: library import controller (list, preview, import, update, detach), `libraryChanges` on list/detail, `librarySources` on release history, API tests for every status (including 409 on a concurrent save), `make api` | delegated writer (slice 5) | [ ] | |
+| T8 | 6 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 6) | [ ] | |
+| T9 | 7 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 7) | [ ] | |
+| T10 | 8 | Frontend: `libraryChanges` badges on the draft list and Overview; library sources in release history; tests | delegated writer (slice 8) | [ ] | |
+| T11 | 8 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 8) | [ ] | |
 
 ## Progress
 
@@ -120,13 +123,16 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 - 2026-10-18: T2 done. `GameSystemKind`, `GameSystem::createLibraryPack` and `LibraryPackRefuses` (flows, sheet fields and layout, checks, theme, credits, restore); migration `Version20261018100000` adds `kind` and `library_imports`; `libraryImports` is `[]` until slice 2. Repository gained `libraryPacks()`; the in-memory test repository follows.
 - 2026-10-18: T3 done. `CreateLibraryPack`, `ListLibraryPacks` (every owner, `mine`, item counts, mine first then by name); the GameSystem list excludes packs; publish and restore refuse a pack in the handlers (a pack has no release, so restore refuses before the release lookup).
 - 2026-10-18: T4 done. `LibrarySection`, `LibraryItemRef`, `LibraryImport`, `LibraryImportPlan` and `LibraryItems` (closure through `DraftReferences` path prefixes); `ReleaseContent::itemHash` (sorted keys, normalized numbers); `GameSystem::planLibraryImport`, `importFromLibrary`, `updateFromLibrary`, `detachLibraryImport`; every command ends in one `commit()` that prunes vanished imports; the Doctrine repository reads imports fail-closed. Tests: 41 domain, 3 integration.
+- 2026-10-18: Slice 2 review fixes. `libraryPacks()` no longer parses a pack's imports (a pack never has any). The `list[1]` vs `list[10]` finding did not reproduce: the prefix includes the closing bracket (`sceneTypes[1]`), so it never matches `sceneTypes[10]`; a regression test with 12 items now pins it.
+- 2026-10-18: T5 done. Commands `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport` (return nothing, like every write command; the owner-only `OwnedGameSystems` and the optimistic lock apply), query `PreviewLibraryImport` (`LibraryImportPreview`: imports, overrides, conflicts, dry-run error `{path, message}` or null) and `GetGameSystemLibraryImports` (`LibraryImportView` with status current/changed/removed and editedLocally, each pack loaded once). `LibraryPacks` finds a pack of any owner; an unknown key or a GameSystem is `LibraryPackNotFound`. Publish stores the draft's imports as `library_sources` (migration `Version20261018110000`, nullable JSONB outside the hash; **null, never `[]`**, when none; legacy rows read null).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
-| 1 | `review-d6a850a27d4e8fc0` | cc9db7f..a77c28c | Approved, 2 suggestions: restore case for another owner's pack in `LibraryPackHandlersTest` (fixed in slice 2); map `LibraryPackRefuses` to 409 with API tests (slice 3, as planned) | #186 |
+| 1 | `review-d6a850a27d4e8fc0` | cc9db7f..a77c28c | Approved, 2 suggestions: restore case for another owner's pack in `LibraryPackHandlersTest` (fixed in slice 2); map `LibraryPackRefuses` to 409 with API tests (slice 4, as planned) | #186 |
+| 2 | `review-dc0d296433561739` | 2369c36..f0e2702 | Approved, 2 findings, fixed in slice 3: `LibraryItems::dependenciesOf` matched path prefix `list[1]` against `list[10]`…; `libraryPacks()` parsed every pack's imports, so one malformed row broke every GM's listing | #187 |
 
 ## Next step
 
-Slice 2: T4–T5 on `feat/studio-library-2-imports`. `GetLibraryPack` (catalog) moved to slice 3 (T6) to keep slice 2 under the size ceiling.
+Slice 3 is written; native review, then PR. Then slice 4 (T6, library pack API).

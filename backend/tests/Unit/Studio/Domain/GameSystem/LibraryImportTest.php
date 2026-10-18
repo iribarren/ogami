@@ -163,6 +163,25 @@ final class LibraryImportTest extends TestCase
     }
 
     #[Test]
+    public function aDependencyIsFoundInsideItsOwnItemOnlyNotInTheItemsWhoseIndexStartsTheSame(): void
+    {
+        $pack = GameSystem::createLibraryPack(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a61'), 'many', 'user-1', 'Many', null, $this->created);
+        for ($n = 0; $n <= 11; ++$n) {
+            $pack->saveNarrativeItem(NarrativeSection::Tags, null, ['key' => "tag-$n", 'label' => "Tag $n"], $this->now);
+            $pack->saveNarrativeItem(NarrativeSection::SceneTypes, null, [
+                'key' => "scene-$n", 'name' => "Scene $n", 'purpose' => 'Test.', 'oracles' => [], 'setup' => [], 'play' => [],
+                'closing' => [['key' => 'meet', 'kind' => 'choice', 'title' => 'Meet?', 'options' => [['key' => 'yes', 'label' => 'Yes', 'effects' => [['kind' => 'createNpc', 'name' => 'Npc', 'tags' => ["tag-$n"]]]], ['key' => 'no', 'label' => 'No']], 'skip' => 'no']],
+            ], $this->now);
+        }
+
+        $items = LibraryItems::of($pack->document());
+
+        self::assertSame(['tags/tag-1'], $this->ids($items->dependenciesOf($this->ref(LibrarySection::SceneTypes, 'scene-1'))));
+        self::assertSame(['tags/tag-10'], $this->ids($items->dependenciesOf($this->ref(LibrarySection::SceneTypes, 'scene-10'))));
+        self::assertSame(['tags/tag-11'], $this->ids($items->dependenciesOf($this->ref(LibrarySection::SceneTypes, 'scene-11'))));
+    }
+
+    #[Test]
     public function anItemHashDoesNotDependOnKeyOrderOrNumberSpelling(): void
     {
         $item = ['key' => 'chaos', 'name' => 'Chaos', 'levels' => [['upTo' => 1, 'label' => 'Low'], ['label' => 'High']], 'min' => 1, 'max' => 9];

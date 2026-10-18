@@ -24,14 +24,15 @@ final readonly class ReleasePublisher
     }
 
     /**
-     * @param bool $unlessUnchanged publish nothing when the latest release has the same content
+     * @param bool                                                                  $unlessUnchanged publish nothing when the latest release has the same content
+     * @param list<array{section: string, key: string, pack: string, hash: string}> $librarySources  the draft's library imports, kept beside the release (not in its hash)
      *
      * @return bool whether a release was published
      *
      * @throws InvalidGameSystemRelease       when the notes are blank or too long; nothing is published
      * @throws GameSystemReleaseAlreadyExists when another publish took the version first
      */
-    public function publish(ReleaseId $id, ReleaseContent $content, ?string $notes, bool $unlessUnchanged): bool
+    public function publish(ReleaseId $id, ReleaseContent $content, ?string $notes, bool $unlessUnchanged, array $librarySources = []): bool
     {
         $latest = $this->releases->latestFor($content->gameSystemKey());
         if ($unlessUnchanged && $latest?->contentHash() === $content->hash()) {
@@ -44,6 +45,7 @@ final readonly class ReleasePublisher
             ($latest?->version() ?? 0) + 1,
             $this->clock->now(),
             $notes,
+            $librarySources,
         ));
 
         return true;

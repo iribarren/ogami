@@ -501,6 +501,7 @@ final class LibraryImportApiTest extends WebTestCase
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         $listener = new class($entityManager) {
             public bool $armed = true;
+            public int $fired = 0;
 
             public function __construct(private readonly EntityManagerInterface $entityManager)
             {
@@ -513,6 +514,7 @@ final class LibraryImportApiTest extends WebTestCase
             public function postFlush(): void
             {
                 if ($this->armed) {
+                    ++$this->fired;
                     $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '\"corrupt\"'::jsonb WHERE game_system_key = 'my-game'");
                     $this->entityManager->clear();
                 }
@@ -532,6 +534,7 @@ final class LibraryImportApiTest extends WebTestCase
             $this->client->catchExceptions(true);
         }
 
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
         self::assertTrue($failed, 'The corrupted imports make the read fail.');
         self::assertSame($before, $this->imports(), 'The write was rolled back with the failed read.');
     }

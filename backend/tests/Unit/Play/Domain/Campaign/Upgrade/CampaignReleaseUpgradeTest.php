@@ -15,18 +15,22 @@ use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradeChanged;
 use App\Play\Domain\Campaign\Upgrade\UpgradeToAnotherGameSystem;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
+use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -222,6 +226,29 @@ final class CampaignReleaseUpgradeTest extends TestCase
         self::assertSame(['role' => ''], $campaign->character(CharacterId::fromString('c-1'))?->values());
         $edited = $campaign->editCharacter(CharacterId::fromString('c-1'), 'Vi', ['ally'], [], ['role' => 'Fixer'], $target);
         self::assertSame(['role' => 'Fixer'], $edited->values());
+    }
+
+    #[Test]
+    public function aGuidedSceneOpenAtUpgradeTimeGoesOnAsAFreeSceneAndTheRestartedFlowRunIsNotInIt(): void
+    {
+        $legwork = new SceneType('legwork', 'Legwork', 'A purpose.', null, [], new StepList(), new StepList(), new StepList());
+        $flow = UpgradeFixtures::flow('main', true);
+        $pinned = UpgradeFixtures::release(1, flows: [$flow], sceneTypes: [$legwork]);
+        $target = UpgradeFixtures::release(2, flows: [$flow], sceneTypes: [$legwork]);
+        $campaign = UpgradeFixtures::campaign($pinned, $flow);
+        $campaign->startSession($this->at, $pinned);
+        $guided = $campaign->currentScene();
+        self::assertInstanceOf(Scene::class, $guided);
+        self::assertNotNull($campaign->flowRun()?->scene(), 'The scene is guided before the upgrade.');
+
+        $campaign->upgradeRelease($pinned, $target, $campaign->planReleaseUpgrade($pinned, $target)->fingerprint(), $this->at);
+
+        self::assertEquals($guided, $campaign->currentScene(), 'The scene stays as it was.');
+        self::assertNull($campaign->flowRun()?->scene(), 'The restarted FlowRun is in no scene.');
+        self::assertSame(FlowRunStage::ScenePick, $campaign->flowRun()->stage());
+        $campaign->pickSceneType('legwork', $target, $this->at);
+        self::assertSame([1, 2], array_map(static fn (Scene $scene): int => $scene->number(), $campaign->currentSession()?->scenes() ?? []), 'Guidance goes on with a new scene; the old one is not guided any more.');
+        self::assertSame($campaign->currentScene()?->number(), $campaign->flowRun()->scene()[1] ?? null);
     }
 
     /**

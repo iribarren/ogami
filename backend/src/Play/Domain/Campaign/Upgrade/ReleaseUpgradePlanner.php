@@ -183,11 +183,24 @@ final readonly class ReleaseUpgradePlanner
             return [CharacterValues::initial($field), FieldChangeKind::Reset];
         }
 
-        if ($valid === $value) {
+        if ($this->normalized($valid) === $this->normalized($value)) {
             return [$value, null];
         }
 
         return [$valid, $kind ?? FieldChangeKind::Reset];
+    }
+
+    /**
+     * A track's keys sorted, so the same {current, max} stored in another key order is the same value;
+     * a list keeps its order.
+     */
+    private function normalized(mixed $value): mixed
+    {
+        if (\is_array($value) && !array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
     }
 
     /**

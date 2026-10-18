@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Identity;
 
+use App\Identity\Application\InvitationAlreadyPending;
 use App\Identity\Domain\AccountToken;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\Invitation;
 use App\Identity\Domain\InvitationId;
 use App\Identity\Domain\InvitationMustHaveARole;
+use App\Identity\Domain\InvitationStatus;
 use App\Identity\Domain\Role;
 use App\Identity\Domain\UserId;
 use App\Identity\Infrastructure\Persistence\Doctrine\DoctrineInvitationRepository;
@@ -23,6 +25,8 @@ final class DoctrineInvitationRepositoryTest extends KernelTestCase
 {
     private const string FIRST_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
     private const string SECOND_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c';
+    private const string THIRD_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5e';
+    private const string FOURTH_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5f';
     private const string OWNER_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d';
 
     private DoctrineInvitationRepository $invitations;
@@ -68,6 +72,59 @@ final class DoctrineInvitationRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function itListsOnlyPendingInvitationsOrderedByEmail(): void
+    {
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'zoe@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+        $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T09:00:00+00:00'));
+        $revoked = $this->invitation(self::THIRD_ID, 'bob@example.com', 'three', '2026-10-18T09:00:00+00:00');
+        $revoked->revoke();
+        $this->invitations->save($revoked);
+        $accepted = $this->invitation(self::FOURTH_ID, 'eve@example.com', 'four', '2026-10-18T09:00:00+00:00');
+        $accepted->accept(new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+        $this->invitations->save($accepted);
+        $this->entityManager->clear();
+
+        self::assertSame(
+            ['ada@example.com', 'zoe@example.com'],
+            array_map(static fn (Invitation $invitation): string => $invitation->email()->toString(), $this->invitations->pending()),
+        );
+    }
+
+    #[Test]
+    public function itRoundTripsARenewedInvitation(): void
+    {
+        $saved = $this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00');
+        $this->invitations->save($saved);
+        $saved->renew(AccountToken::fromString('fresh'), new \DateTimeImmutable('2026-10-30T11:00:00.5+02:00'));
+        $this->invitations->save($saved);
+        $this->entityManager->clear();
+
+        $loaded = $this->invitations->ofTokenHash(AccountToken::fromString('fresh')->hash());
+
+        self::assertNotNull($loaded);
+        self::assertNotSame($saved, $loaded);
+        self::assertEquals($saved, $loaded);
+        self::assertNull($this->invitations->ofTokenHash(AccountToken::fromString('one')->hash()), 'The old token still works.');
+        self::assertEquals(new \DateTimeImmutable('2026-10-18T09:00:00+00:00'), $loaded->createdAt());
+    }
+
+    #[Test]
+    public function itRoundTripsAnAcceptedInvitation(): void
+    {
+        $saved = $this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00');
+        $saved->accept(new \DateTimeImmutable('2026-10-19T09:00:00+00:00'));
+        $this->invitations->save($saved);
+        $this->entityManager->clear();
+
+        $loaded = $this->invitations->ofId(InvitationId::fromString(self::FIRST_ID));
+
+        self::assertNotNull($loaded);
+        self::assertNotSame($saved, $loaded);
+        self::assertEquals($saved, $loaded);
+        self::assertSame(InvitationStatus::Accepted, $loaded->status());
+    }
+
+    #[Test]
     public function theDatabaseRejectsADuplicateTokenHash(): void
     {
         $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'same', '2026-10-18T09:00:00+00:00'));
@@ -75,6 +132,44 @@ final class DoctrineInvitationRepositoryTest extends KernelTestCase
         $this->expectException(UniqueConstraintViolationException::class);
 
         $this->invitations->save($this->invitation(self::SECOND_ID, 'bob@example.com', 'same', '2026-10-18T09:00:00+00:00'));
+    }
+
+    #[Test]
+    public function theDatabaseRefusesASecondPendingInvitationForTheSameEmail(): void
+    {
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+
+        try {
+            $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T10:00:00+00:00'));
+            self::fail('A second pending invitation was saved.');
+        } catch (InvitationAlreadyPending $exception) {
+            self::assertStringContainsString('ada@example.com', $exception->getMessage());
+        }
+    }
+
+    #[Test]
+    public function anEmailCanBeInvitedAgainOnceItsInvitationIsNoLongerPending(): void
+    {
+        $revoked = $this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00');
+        $revoked->revoke();
+        $this->invitations->save($revoked);
+        $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T10:00:00+00:00'));
+        $this->entityManager->clear();
+
+        self::assertSame(self::SECOND_ID, $this->invitations->pendingForEmail(Email::fromString('ada@example.com'))?->id()->toString());
+    }
+
+    #[Test]
+    public function theNewestPendingInvitationWinsWhenLegacyRowsHoldSeveral(): void
+    {
+        // Rows stored before the partial unique index can hold two pending invitations; the index is
+        // dropped here (rolled back with the test transaction) to build that state.
+        $this->entityManager->getConnection()->executeStatement('DROP INDEX uniq_identity_invitation_pending_email');
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+        $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T10:00:00+00:00'));
+        $this->entityManager->clear();
+
+        self::assertSame(self::SECOND_ID, $this->invitations->pendingForEmail(Email::fromString('ada@example.com'))?->id()->toString());
     }
 
     #[Test]

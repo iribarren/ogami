@@ -10,4 +10,14 @@ final class InvitationNotPending extends \DomainException
     {
         return new self(\sprintf('Only a pending invitation can be revoked, this one is %s.', $status->value));
     }
+
+    public static function cannotRenew(InvitationStatus $status): self
+    {
+        return new self(\sprintf('Only a pending invitation can be renewed, this one is %s.', $status->value));
+    }
+
+    public static function cannotAccept(InvitationStatus $status): self
+    {
+        return new self(\sprintf('Only a pending invitation can be accepted, this one is %s.', $status->value));
+    }
 }

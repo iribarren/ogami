@@ -104,10 +104,12 @@ final class User
 
     /**
      * @return list<Role>
+     *
+     * @throws UnknownStoredRole when a stored row holds a role that no longer exists
      */
     public function roles(): array
     {
-        return array_map(Role::from(...), $this->roles);
+        return array_map(Role::fromStored(...), $this->roles);
     }
 
     public function hasRole(Role $role): bool

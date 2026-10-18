@@ -11,6 +11,13 @@
         <unique-constraints>
             <!-- Only the sha256 hash of the link token is stored; lookups go through it. -->
             <unique-constraint name="uniq_identity_invitation_token_hash" columns="token_hash"/>
+            <!-- One pending invitation per email, even for two invitations saved at once (ADR 0034). The WHERE is
+                 written the way PostgreSQL reports it, so schema:validate sees no difference. -->
+            <unique-constraint name="uniq_identity_invitation_pending_email" columns="email">
+                <options>
+                    <option name="where">((status)::text = 'pending'::text)</option>
+                </options>
+            </unique-constraint>
         </unique-constraints>
 
         <id name="id" type="guid" column="id"/>

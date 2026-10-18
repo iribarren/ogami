@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support\Identity;
 
+use App\Identity\Application\InvitationAlreadyPending;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\Invitation;
 use App\Identity\Domain\InvitationId;
@@ -14,8 +15,16 @@ final class InMemoryInvitationRepository implements InvitationRepository
     /** @var array<string, Invitation> */
     private array $invitations = [];
 
+    /**
+     * @throws InvitationAlreadyPending like the database, whose partial unique index allows one pending invitation per email
+     */
     public function save(Invitation $invitation): void
     {
+        $other = $this->pendingForEmail($invitation->email());
+        if ($invitation->isPending() && $other instanceof Invitation && !$other->id()->equals($invitation->id())) {
+            throw InvitationAlreadyPending::for($invitation->email());
+        }
+
         $this->invitations[$invitation->id()->toString()] = $invitation;
     }
 
@@ -33,6 +42,14 @@ final class InMemoryInvitationRepository implements InvitationRepository
         }
 
         return null;
+    }
+
+    public function pending(): array
+    {
+        $pending = array_values(array_filter($this->invitations, static fn (Invitation $invitation): bool => $invitation->isPending()));
+        usort($pending, static fn (Invitation $a, Invitation $b): int => strcmp($a->email()->toString(), $b->email()->toString()));
+
+        return $pending;
     }
 
     public function ofTokenHash(string $tokenHash): ?Invitation

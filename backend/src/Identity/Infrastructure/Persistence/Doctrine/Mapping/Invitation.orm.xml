@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Identity\Domain\Invitation" table="identity_invitation">
+        <indexes>
+            <index name="idx_identity_invitation_email" columns="email"/>
+        </indexes>
+        <unique-constraints>
+            <!-- Only the sha256 hash of the link token is stored; lookups go through it. -->
+            <unique-constraint name="uniq_identity_invitation_token_hash" columns="token_hash"/>
+        </unique-constraints>
+
+        <id name="id" type="guid" column="id"/>
+
+        <field name="email" type="string" column="email" length="180"/>
+        <field name="roles" type="json" column="roles"/>
+        <field name="tokenHash" type="string" column="token_hash" length="64"/>
+        <field name="invitedBy" type="guid" column="invited_by"/>
+        <!-- Time zone aware, so an expiry never depends on the PHP or database time zone (ADR 0034). -->
+        <field name="createdAt" type="datetimetz_immutable_microseconds" column="created_at"/>
+        <field name="expiresAt" type="datetimetz_immutable_microseconds" column="expires_at"/>
+        <field name="status" type="string" column="status" length="16" enum-type="App\Identity\Domain\InvitationStatus"/>
+    </entity>
+</doctrine-mapping>

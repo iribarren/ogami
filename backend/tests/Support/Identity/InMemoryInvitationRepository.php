@@ -44,6 +44,14 @@ final class InMemoryInvitationRepository implements InvitationRepository
         return null;
     }
 
+    public function pending(): array
+    {
+        $pending = array_values(array_filter($this->invitations, static fn (Invitation $invitation): bool => $invitation->isPending()));
+        usort($pending, static fn (Invitation $a, Invitation $b): int => strcmp($a->email()->toString(), $b->email()->toString()));
+
+        return $pending;
+    }
+
     public function ofTokenHash(string $tokenHash): ?Invitation
     {
         foreach ($this->invitations as $invitation) {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Behat;
 
+use App\Identity\Application\AcceptInvitation;
+use App\Identity\Application\AcceptInvitationHandler;
 use App\Identity\Application\AccountLinks;
 use App\Identity\Application\ChangeUserRoles;
 use App\Identity\Application\ChangeUserRolesHandler;
@@ -16,19 +18,33 @@ use App\Identity\Application\EnableUser;
 use App\Identity\Application\EnableUserHandler;
 use App\Identity\Application\GetUser;
 use App\Identity\Application\GetUserHandler;
+use App\Identity\Application\InvalidAccountLink;
 use App\Identity\Application\InvitationAlreadyPending;
+use App\Identity\Application\InvitationLoader;
+use App\Identity\Application\InvitationLookupView;
+use App\Identity\Application\InvitationNotFound;
+use App\Identity\Application\InvitationView;
 use App\Identity\Application\InviteUser;
 use App\Identity\Application\InviteUserHandler;
 use App\Identity\Application\LastActiveOwner;
+use App\Identity\Application\ListInvitations;
+use App\Identity\Application\ListInvitationsHandler;
 use App\Identity\Application\ListUsers;
 use App\Identity\Application\ListUsersHandler;
+use App\Identity\Application\LookupInvitation;
+use App\Identity\Application\LookupInvitationHandler;
 use App\Identity\Application\OwnAccountProtected;
+use App\Identity\Application\ResendInvitation;
+use App\Identity\Application\ResendInvitationHandler;
+use App\Identity\Application\RevokeInvitation;
+use App\Identity\Application\RevokeInvitationHandler;
 use App\Identity\Application\UnknownRole;
 use App\Identity\Application\UserLoader;
 use App\Identity\Application\UserNotFound;
 use App\Identity\Application\UserView;
+use App\Identity\Application\WeakPassword;
 use App\Identity\Domain\Email;
-use App\Identity\Domain\Invitation;
+use App\Identity\Domain\Invitation as InvitationAggregate;
 use App\Identity\Domain\InvitationMustHaveARole;
 use App\Identity\Domain\InvitationStatus;
 use App\Identity\Domain\User;
@@ -62,7 +78,12 @@ final class IdentityContext implements Context
     private readonly SequentialInvitationIdGenerator $invitationIds;
     private readonly SpyAccountMailer $mailer;
     private readonly FixedClock $clock;
+    private readonly FakePasswordHasher $hasher;
     private readonly InviteUserHandler $inviteUser;
+    private readonly InvitationLoader $invitationLoader;
+    private readonly SequentialTokenGenerator $tokens;
+    private readonly AccountLinks $links;
+    private ?InvitationLookupView $lookup = null;
     private ?\Throwable $rejection = null;
 
     public function __construct()
@@ -70,19 +91,16 @@ final class IdentityContext implements Context
         $this->users = new InMemoryUserRepository();
         $this->ids = new SequentialUserIdGenerator();
         $this->clock = new FixedClock();
-        $this->createUser = new CreateUserHandler($this->users, new FakePasswordHasher(), $this->clock);
+        $this->hasher = new FakePasswordHasher();
+        $this->createUser = new CreateUserHandler($this->users, $this->hasher, $this->clock);
         $this->loader = new UserLoader($this->users);
         $this->invitations = new InMemoryInvitationRepository();
         $this->invitationIds = new SequentialInvitationIdGenerator();
         $this->mailer = new SpyAccountMailer();
-        $this->inviteUser = new InviteUserHandler(
-            $this->invitations,
-            $this->users,
-            new SequentialTokenGenerator(),
-            new AccountLinks('http://localhost:8080'),
-            $this->mailer,
-            $this->clock,
-        );
+        $this->tokens = new SequentialTokenGenerator();
+        $this->links = new AccountLinks('http://localhost:8080');
+        $this->invitationLoader = new InvitationLoader($this->invitations, $this->clock);
+        $this->inviteUser = new InviteUserHandler($this->invitations, $this->users, $this->tokens, $this->links, $this->mailer, $this->clock);
     }
 
     #[Given('a user exists with email :email')]
@@ -261,14 +279,14 @@ final class IdentityContext implements Context
     public function thePendingInvitationHasRoles(string $email, string $roles): void
     {
         $pending = $this->invitations->pendingForEmail(Email::fromString($email));
-        Assert::assertInstanceOf(Invitation::class, $pending, \sprintf('No pending invitation for "%s".', $email));
+        Assert::assertInstanceOf(InvitationAggregate::class, $pending, \sprintf('No pending invitation for "%s".', $email));
         Assert::assertSame(explode('" and "', $roles), array_map(static fn ($role): string => $role->value, $pending->roles()));
     }
 
     #[Then('/^there (?:is|are) (?P<pending>\d+) pending and (?P<revoked>\d+) revoked invitations?$/')]
     public function thereArePendingAndRevokedInvitations(int $pending, int $revoked): void
     {
-        $statuses = array_map(static fn (Invitation $invitation): InvitationStatus => $invitation->status(), $this->invitations->all());
+        $statuses = array_map(static fn (InvitationAggregate $invitation): InvitationStatus => $invitation->status(), $this->invitations->all());
 
         Assert::assertSame(
             [$pending, $revoked],
@@ -298,6 +316,113 @@ final class IdentityContext implements Context
     public function theInvitationIsRejectedBecauseItHasNoRole(): void
     {
         Assert::assertInstanceOf(InvitationMustHaveARole::class, $this->rejection);
+    }
+
+    #[When('/^the invitation of "(?P<email>[^"]+)" is (?P<action>resent|revoked)$/')]
+    public function theInvitationIs(string $email, string $action): void
+    {
+        $this->manageInvitation($this->invitationIdOf($email), $action);
+    }
+
+    #[When('/^an unknown invitation is (?P<action>resent|revoked)$/')]
+    public function anUnknownInvitationIs(string $action): void
+    {
+        $this->manageInvitation('unknown-invitation', $action);
+    }
+
+    #[When('/^"(?P<email>[^"]+)" accepts the invitation with the password "(?P<password>[^"]*)"$/')]
+    public function acceptsWithThePassword(string $email, string $password): void
+    {
+        $this->accept($this->tokenOfLastLinkTo($email), $password);
+    }
+
+    #[When('/^"(?P<email>[^"]+)" accepts the invitation with a password of (?P<length>\d+) characters$/')]
+    public function acceptsWithAPasswordOfLength(string $email, int $length): void
+    {
+        $this->accept($this->tokenOfLastLinkTo($email), str_repeat('a', $length));
+    }
+
+    #[When('/^someone accepts with the token "(?P<token>[^"]*)" and a password of (?P<length>\d+) characters$/')]
+    public function someoneAcceptsWithTheToken(string $token, int $length): void
+    {
+        $this->accept($token, str_repeat('a', $length));
+    }
+
+    #[When('/^the link of "(?P<email>[^"]+)" is looked up$/')]
+    public function theLinkIsLookedUp(string $email): void
+    {
+        $this->lookUp($this->tokenOfLastLinkTo($email));
+    }
+
+    #[When('/^the token "(?P<token>[^"]*)" is looked up$/')]
+    public function theTokenIsLookedUp(string $token): void
+    {
+        $this->lookUp($token);
+    }
+
+    #[Then('/^the link is for "(?P<email>[^"]+)" with roles? "(?P<roles>[A-Z_]+(?:" and "[A-Z_]+)*)" until "(?P<expiresAt>[^"]+)"$/')]
+    public function theLinkIsFor(string $email, string $roles, string $expiresAt): void
+    {
+        // After a resend the link is the one of the last email, as the owner would hand it over.
+        $view = $this->lookup ?? $this->lookUpLastLinkTo($email);
+        Assert::assertSame([$email, explode('" and "', $roles), $expiresAt], [$view->email, $view->roles, $view->expiresAt->format(\DATE_ATOM)]);
+    }
+
+    #[Then('the invitation is accepted')]
+    public function theInvitationIsAccepted(): void
+    {
+        Assert::assertNull($this->rejection, $this->rejection?->getMessage() ?? '');
+    }
+
+    #[Then('the link is rejected as invalid')]
+    public function theLinkIsRejectedAsInvalid(): void
+    {
+        Assert::assertInstanceOf(InvalidAccountLink::class, $this->rejection);
+    }
+
+    #[Then('the invitation is rejected because the password is weak')]
+    public function theInvitationIsRejectedBecauseThePasswordIsWeak(): void
+    {
+        Assert::assertInstanceOf(WeakPassword::class, $this->rejection);
+    }
+
+    #[Then('the invitation is rejected because it is not found')]
+    public function theInvitationIsRejectedBecauseItIsNotFound(): void
+    {
+        Assert::assertInstanceOf(InvitationNotFound::class, $this->rejection);
+    }
+
+    #[Then('the user :email has the password :password')]
+    public function theUserHasThePassword(string $email, string $password): void
+    {
+        $user = $this->users->ofEmail(Email::fromString($email));
+        Assert::assertInstanceOf(User::class, $user);
+        Assert::assertSame($this->hasher->hash($password), $user->passwordHash());
+    }
+
+    #[Then('no invitations are listed')]
+    public function noInvitationsAreListed(): void
+    {
+        Assert::assertSame([], $this->listedInvitations());
+    }
+
+    #[Then('/^the invitations listed are (?P<expected>"[^"]+" as "[^"]+"(?: and "[^"]+" as "[^"]+")*)$/')]
+    public function theInvitationsListedAre(string $expected): void
+    {
+        preg_match_all('/"([^"]+)" as "([^"]+)"/', $expected, $matches, \PREG_SET_ORDER);
+
+        Assert::assertSame(
+            array_map(static fn (array $match): array => [$match[1], $match[2]], $matches),
+            array_map(static fn (InvitationView $view): array => [$view->email, $view->expired ? 'expired' : 'valid'], $this->listedInvitations()),
+        );
+    }
+
+    #[Then('/^the invitation of "(?P<email>[^"]+)" is listed as "(?P<state>expired|valid)"$/')]
+    public function theInvitationIsListedAs(string $email, string $state): void
+    {
+        $listed = array_filter($this->listedInvitations(), static fn (InvitationView $view): bool => $view->email === $email);
+
+        Assert::assertSame([$state], array_values(array_map(static fn (InvitationView $view): string => $view->expired ? 'expired' : 'valid', $listed)));
     }
 
     private function idOf(string $email): string
@@ -334,6 +459,84 @@ final class IdentityContext implements Context
         try {
             $command();
         } catch (OwnAccountProtected|LastActiveOwner|UserNotFound|UserMustHaveARole|UnknownRole $rejection) {
+            $this->rejection = $rejection;
+        }
+    }
+
+    /**
+     * @return list<InvitationView>
+     */
+    private function listedInvitations(): array
+    {
+        return (new ListInvitationsHandler($this->invitations, $this->clock))(new ListInvitations());
+    }
+
+    /**
+     * The newest invitation for this email, whatever its status.
+     */
+    private function invitationIdOf(string $email): string
+    {
+        $found = array_values(array_filter(
+            $this->invitations->all(),
+            static fn (InvitationAggregate $invitation): bool => $invitation->email()->toString() === $email,
+        ));
+        Assert::assertNotSame([], $found, \sprintf('No invitation for "%s".', $email));
+
+        return end($found)->id()->toString();
+    }
+
+    /**
+     * The token in the link of the last invitation email sent to this address.
+     */
+    private function tokenOfLastLinkTo(string $email): string
+    {
+        foreach (array_reverse($this->mailer->invitations) as $sent) {
+            if ($sent['email'] === $email) {
+                return substr($sent['link'], (int) strpos($sent['link'], '#token=') + \strlen('#token='));
+            }
+        }
+
+        throw new \LogicException(\sprintf('No invitation email was sent to "%s".', $email));
+    }
+
+    private function lookUpLastLinkTo(string $email): InvitationLookupView
+    {
+        return (new LookupInvitationHandler($this->invitationLoader))(new LookupInvitation($this->tokenOfLastLinkTo($email)));
+    }
+
+    private function lookUp(string $token): void
+    {
+        $this->rejection = null;
+        $this->lookup = null;
+
+        try {
+            $this->lookup = (new LookupInvitationHandler($this->invitationLoader))(new LookupInvitation($token));
+        } catch (InvalidAccountLink $rejection) {
+            $this->rejection = $rejection;
+        }
+    }
+
+    private function accept(string $token, string $password): void
+    {
+        $this->rejection = null;
+        $handler = new AcceptInvitationHandler($this->invitations, $this->invitationLoader, $this->users, $this->hasher, $this->clock);
+
+        try {
+            $handler(new AcceptInvitation($token, $password, $this->ids->generate()->toString()));
+        } catch (InvalidAccountLink|WeakPassword|EmailAlreadyInUse $rejection) {
+            $this->rejection = $rejection;
+        }
+    }
+
+    private function manageInvitation(string $id, string $action): void
+    {
+        $this->rejection = null;
+
+        try {
+            'resent' === $action
+                ? (new ResendInvitationHandler($this->invitations, $this->invitationLoader, $this->tokens, $this->links, $this->mailer, $this->clock))(new ResendInvitation($id))
+                : (new RevokeInvitationHandler($this->invitations, $this->invitationLoader))(new RevokeInvitation($id));
+        } catch (InvitationNotFound $rejection) {
             $this->rejection = $rejection;
         }
     }

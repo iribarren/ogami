@@ -19,6 +19,13 @@ interface InvitationRepository
     public function pendingForEmail(Email $email): ?Invitation;
 
     /**
+     * Every pending invitation, expired or not, ordered by email.
+     *
+     * @return list<Invitation>
+     */
+    public function pending(): array;
+
+    /**
      * @param string $tokenHash see AccountToken::hash()
      */
     public function ofTokenHash(string $tokenHash): ?Invitation;

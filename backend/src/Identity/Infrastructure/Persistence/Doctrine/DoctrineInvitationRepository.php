@@ -64,6 +64,14 @@ final readonly class DoctrineInvitationRepository implements InvitationRepositor
         );
     }
 
+    public function pending(): array
+    {
+        return $this->entityManager->getRepository(Invitation::class)->findBy(
+            ['status' => InvitationStatus::Pending],
+            ['email' => 'ASC'],
+        );
+    }
+
     public function ofTokenHash(string $tokenHash): ?Invitation
     {
         return $this->entityManager->getRepository(Invitation::class)->findOneBy(['tokenHash' => $tokenHash]);

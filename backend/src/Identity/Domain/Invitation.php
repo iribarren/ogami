@@ -9,7 +9,8 @@ namespace App\Identity\Domain;
  * when, and by whom. It holds only the hash of the token sent in the link.
  *
  * It starts pending; later it is accepted (the account exists) or revoked. A pending
- * invitation past its expiry date stays pending but can no longer be used.
+ * invitation past its expiry date stays pending but can no longer be accepted; renewing
+ * it gives it a new token and a new expiry date.
  */
 final class Invitation
 {
@@ -24,10 +25,10 @@ final class Invitation
         private readonly string $id,
         private readonly string $email,
         private readonly array $roles,
-        private readonly string $tokenHash,
+        private string $tokenHash,
         private readonly string $invitedBy,
         private readonly \DateTimeImmutable $createdAt,
-        private readonly \DateTimeImmutable $expiresAt,
+        private \DateTimeImmutable $expiresAt,
         private InvitationStatus $status,
     ) {
     }
@@ -72,6 +73,42 @@ final class Invitation
         }
 
         $this->status = InvitationStatus::Revoked;
+    }
+
+    /**
+     * Resending: a new token replaces the old one, which stops working, and the
+     * invitation is valid again for VALIDITY from now. Allowed on an expired pending
+     * invitation; createdAt stays.
+     *
+     * @throws InvitationNotPending
+     */
+    public function renew(AccountToken $token, \DateTimeImmutable $now): void
+    {
+        if (InvitationStatus::Pending !== $this->status) {
+            throw InvitationNotPending::cannotRenew($this->status);
+        }
+
+        $this->tokenHash = $token->hash();
+        $this->expiresAt = $now->add(new \DateInterval(self::VALIDITY));
+    }
+
+    /**
+     * The invited person chose a password: the invitation is used up.
+     *
+     * @throws InvitationNotPending
+     * @throws InvitationExpired
+     */
+    public function accept(\DateTimeImmutable $now): void
+    {
+        if (InvitationStatus::Pending !== $this->status) {
+            throw InvitationNotPending::cannotAccept($this->status);
+        }
+
+        if ($this->isExpiredAt($now)) {
+            throw InvitationExpired::at($this->expiresAt);
+        }
+
+        $this->status = InvitationStatus::Accepted;
     }
 
     /**

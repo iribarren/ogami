@@ -75,6 +75,8 @@ Items here come after every feature defined above. Their priority and order are 
 | `preset-cpr-campaign` | Preset | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)). After M3 and `play-items-economy` |
 | `preset-west-marches` | Preset | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)). Gaps: HP and spell slots as sheet effects, select fields for class, conditions. Items and shops come after `play-items-economy`. After 10 and the Places question |
 | `studio-atomic-write-read` | Studio | Run each Studio editor write and its read-back in one transaction, as `LibraryImportController` does, so an interleaved save's version never leaks into a response and a failing read rolls the write back ([#195](https://github.com/iribarren/ogami/issues/195)). One `fix/` slice, no API change |
+| `identity-account-error-codes` | Identity | Account-link errors (`InvalidAccountLink`, `WeakPassword`) answer a machine-readable code next to the message, so the public account pages stop matching the English text (`frontend/src/app/account/accountApi.ts`). Follow-up of `admin-users` (slice 8 review). One slice, API change |
+| `e2e-shared-sign-in` | Tooling | One shared Playwright sign-in helper next to `frontend/e2e/mailpit.ts` instead of a copy per spec. Follow-up of `admin-users` (slice 8 review). One `chore/` slice, no behaviour change |
 
 ## Starter prompts
 
@@ -370,14 +372,26 @@ Start feature `preset-cpr-campaign` (ODD). Hand-author a Cyberpunk RED campaign-
 Start feature `preset-west-marches` (ODD). Hand-author a West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0), following example 5 of docs/domain/flow-examples.md: a founding phase with a town and a roster of adventurers; an expeditions loop where each session picks a rumor and a party, travels, explores and returns to town before the session ends; encounter tables by distance. Name the gaps it hits: HP and spell slots as sheet effects, select fields for class, conditions. Items and shops come after `play-items-economy`. Open-license rule: credits carry the CC BY 4.0 attribution (ADR 0021). After 10 and the Places question.
 ```
 
-## Related
-
-- [Vision](vision.md)
-- [Context map](domain/context-map.md)
-- [Architecture decisions](adr/README.md)
-
 **studio-atomic-write-read**
 
 ```text
 Start feature `studio-atomic-write-read` (ODD), issue #195. Studio: run every editor write (narrative, oracle, sheet, check controllers and any other write-then-read endpoint) and its read-back query in one DBAL transaction, as `LibraryImportController` does, with an API test per controller where a failing read leaves the draft unchanged. Add the API test that a GameSystem row stored before the `kind` column reads as `game-system`. Out of scope: the 500 on a malformed library pack row. One slice, branch `fix/`.
 ```
+
+**identity-account-error-codes**
+
+```text
+Start feature `identity-account-error-codes` (ODD). Identity: the public account endpoints answer account-link errors with a machine-readable code next to the message (at least `invalid_account_link` and `weak_password`), documented in OpenAPI; the SPA account pages (`accountApi.ts`) branch on the code instead of matching "invalid or has expired". Decide whether the code joins the shared error shape for every endpoint or only these. API tests per code; `make api`. Out of scope: localizing messages. One slice.
+```
+
+**e2e-shared-sign-in**
+
+```text
+Start feature `e2e-shared-sign-in` (ODD). Tooling: replace the per-spec Playwright sign-in helpers with one shared helper in `frontend/e2e/` (exact label lookups, as the specs use now), next to `mailpit.ts`. No behaviour change; `make e2e` stays green. One `chore/` slice.
+```
+
+## Related
+
+- [Vision](vision.md)
+- [Context map](domain/context-map.md)
+- [Architecture decisions](adr/README.md)

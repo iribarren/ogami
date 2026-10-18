@@ -8,7 +8,8 @@ use App\Studio\Domain\GameSystem\GameSystemKind;
 
 /**
  * The owner's view of a GameSystem draft or library pack: its metadata and what its sections hold. The draft may
- * be invalid, so the counts are read defensively.
+ * be invalid, so the counts are read defensively. `libraryChanges` counts its library imports that changed or
+ * went away in their pack.
  */
 final readonly class GameSystemView
 {
@@ -27,6 +28,7 @@ final readonly class GameSystemView
         public array $sectionCounts,
         public ?int $latestReleaseVersion,
         public bool $hasUnpublishedChanges,
+        public int $libraryChanges,
         public \DateTimeImmutable $createdAt,
         public \DateTimeImmutable $updatedAt,
     ) {

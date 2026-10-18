@@ -140,7 +140,8 @@ final class GameSystemPublishApiTest extends WebTestCase
         $history = $this->json();
         self::assertSame([3, 2, 1], array_column($history, 'version'));
         self::assertIsArray($history[0]);
-        self::assertSame(['version', 'schemaVersion', 'publishedAt', 'notes', 'contentHash'], array_keys($history[0]));
+        self::assertSame(['version', 'schemaVersion', 'publishedAt', 'notes', 'contentHash', 'librarySources'], array_keys($history[0]));
+        self::assertSame([null, null, null], array_column($history, 'librarySources'));
     }
 
     /**

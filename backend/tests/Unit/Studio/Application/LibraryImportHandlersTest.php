@@ -12,15 +12,21 @@ use App\Studio\Application\DetachLibraryImport;
 use App\Studio\Application\DetachLibraryImportHandler;
 use App\Studio\Application\DiscardGameSystem;
 use App\Studio\Application\DiscardGameSystemHandler;
+use App\Studio\Application\GameSystemSummary;
+use App\Studio\Application\GetGameSystem;
+use App\Studio\Application\GetGameSystemHandler;
 use App\Studio\Application\GetGameSystemLibraryImports;
 use App\Studio\Application\GetGameSystemLibraryImportsHandler;
 use App\Studio\Application\ImportLibraryItems;
 use App\Studio\Application\ImportLibraryItemsHandler;
 use App\Studio\Application\LibraryImportPreview;
+use App\Studio\Application\LibraryImportStandings;
 use App\Studio\Application\LibraryImportStatus;
 use App\Studio\Application\LibraryImportView;
 use App\Studio\Application\LibraryPackNotFound;
 use App\Studio\Application\LibraryPacks;
+use App\Studio\Application\ListMyGameSystems;
+use App\Studio\Application\ListMyGameSystemsHandler;
 use App\Studio\Application\OwnedGameSystems;
 use App\Studio\Application\PreviewLibraryImport;
 use App\Studio\Application\PreviewLibraryImportHandler;
@@ -32,7 +38,6 @@ use App\Studio\Application\UpdateLibraryImportHandler;
 use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
-use App\Studio\Domain\GameSystem\GameSystemRepository;
 use App\Studio\Domain\GameSystem\LibraryImport;
 use App\Studio\Domain\GameSystem\LibraryImportNotFound;
 use App\Studio\Domain\GameSystem\LibraryItemKeyTaken;
@@ -62,6 +67,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(UpdateLibraryImportHandler::class)]
 #[CoversClass(DetachLibraryImportHandler::class)]
 #[CoversClass(GetGameSystemLibraryImportsHandler::class)]
+#[CoversClass(LibraryImportStandings::class)]
 #[CoversClass(LibraryPacks::class)]
 #[CoversClass(PublishGameSystemDraftHandler::class)]
 final class LibraryImportHandlersTest extends TestCase
@@ -99,7 +105,7 @@ final class LibraryImportHandlersTest extends TestCase
         self::assertSame(2, $draft->version());
         self::assertSame(['oracles/names', 'tags/social', 'scene-types/tavern'], array_map(static fn (LibraryImport $import): string => $import->ref()->id(), $draft->libraryImports()));
         self::assertSame(['names'], $this->keys($draft, 'oracles', 'tables'));
-        self::assertSame(2, (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($this->gameSystems)))(new GetGameSystemLibraryImports('bob', 'my-game'))->version);
+        self::assertSame(2, (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new GetGameSystemLibraryImports('bob', 'my-game'))->version);
     }
 
     #[Test]
@@ -419,53 +425,69 @@ final class LibraryImportHandlersTest extends TestCase
     {
         $this->import('bob', 'my-game', 1, 'generic', [['section' => 'scene-types', 'key' => 'tavern']]);
         $this->gameSystems->remove($this->get('generic'));
-        $counting = new class($this->gameSystems) implements GameSystemRepository {
-            public int $lookups = 0;
+        $counting = new LookupCountingGameSystemRepository($this->gameSystems, 'generic');
 
-            public function __construct(private readonly GameSystemRepository $inner)
-            {
-            }
-
-            public function add(GameSystem $gameSystem): void
-            {
-                $this->inner->add($gameSystem);
-            }
-
-            public function save(GameSystem $gameSystem): void
-            {
-                $this->inner->save($gameSystem);
-            }
-
-            public function ofKey(string $key): ?GameSystem
-            {
-                if ('generic' === $key) {
-                    ++$this->lookups;
-                }
-
-                return $this->inner->ofKey($key);
-            }
-
-            public function ofOwner(string $ownerId): array
-            {
-                return $this->inner->ofOwner($ownerId);
-            }
-
-            public function libraryPacks(): array
-            {
-                return $this->inner->libraryPacks();
-            }
-
-            public function remove(GameSystem $gameSystem): void
-            {
-                $this->inner->remove($gameSystem);
-            }
-        };
-
-        $views = (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($counting)))(new GetGameSystemLibraryImports('bob', 'my-game'))->imports;
+        $views = (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryImportStandings(new LibraryPacks($counting))))(new GetGameSystemLibraryImports('bob', 'my-game'))->imports;
 
         self::assertCount(3, $views);
         self::assertSame([LibraryImportStatus::Removed], array_values(array_unique(array_map(static fn (LibraryImportView $view): LibraryImportStatus => $view->status, $views), \SORT_REGULAR)));
         self::assertSame(1, $counting->lookups);
+    }
+
+    #[Test]
+    public function aDraftCountsItsChangedAndRemovedImportsAsLibraryChanges(): void
+    {
+        $this->import('bob', 'my-game', 1, 'generic', [['section' => 'scene-types', 'key' => 'tavern']]);
+        self::assertSame(0, $this->libraryChanges('bob', 'my-game'));
+
+        $pack = $this->get('generic');
+        $pack->saveNarrativeItem(NarrativeSection::Tags, 'social', ['key' => 'social', 'label' => 'Social v2'], $this->clock->now());
+        self::assertSame(1, $this->libraryChanges('bob', 'my-game'));
+
+        $pack->deleteNarrativeItem(NarrativeSection::SceneTypes, 'tavern', $this->clock->now());
+        self::assertSame(2, $this->libraryChanges('bob', 'my-game'));
+
+        $this->gameSystems->remove($pack);
+        self::assertSame(3, $this->libraryChanges('bob', 'my-game'));
+    }
+
+    #[Test]
+    public function aLocalEditAloneIsNotALibraryChange(): void
+    {
+        $this->import('bob', 'my-game', 1, 'generic', [['section' => 'tags', 'key' => 'social']]);
+        $this->get('my-game')->saveNarrativeItem(NarrativeSection::Tags, 'social', ['key' => 'social', 'label' => 'Mine'], $this->clock->now());
+
+        self::assertTrue($this->imports('bob', 'my-game')[0]->editedLocally);
+        self::assertSame(0, $this->libraryChanges('bob', 'my-game'));
+    }
+
+    #[Test]
+    public function aDraftWithoutImportsAndALibraryPackHaveNoLibraryChangesAndLoadNoPack(): void
+    {
+        $counting = new LookupCountingGameSystemRepository($this->gameSystems, 'generic');
+        $standings = new LibraryImportStandings(new LibraryPacks($counting));
+
+        self::assertSame(0, $standings->changesOf($this->get('my-game')));
+        self::assertSame(0, $standings->changesOf($this->get('generic')));
+        self::assertSame(0, $counting->lookups);
+        self::assertSame(0, $this->libraryChanges('ann', 'ann-game'));
+    }
+
+    #[Test]
+    public function theDraftListAndDetailAgreeAndLookEachPackUpOnce(): void
+    {
+        $this->import('bob', 'my-game', 1, 'generic', [['section' => 'tags', 'key' => 'social']]);
+        $this->createDraft('second', 'bob');
+        $this->import('bob', 'second', 1, 'generic', [['section' => 'tags', 'key' => 'social']]);
+        $this->createDraft('plain', 'bob');
+        $this->get('generic')->saveNarrativeItem(NarrativeSection::Tags, 'social', ['key' => 'social', 'label' => 'Social v2'], $this->clock->now());
+        $counting = new LookupCountingGameSystemRepository($this->gameSystems, 'generic');
+
+        $list = (new ListMyGameSystemsHandler($counting, $this->releases, new LibraryImportStandings(new LibraryPacks($counting))))(new ListMyGameSystems('bob'));
+
+        self::assertSame(1, $counting->lookups);
+        self::assertEqualsCanonicalizing(['my-game' => 1, 'second' => 1, 'plain' => 0], array_column(array_map(static fn (GameSystemSummary $summary): array => [$summary->key, $summary->libraryChanges], $list), 1, 0));
+        self::assertSame(1, $this->libraryChanges('bob', 'my-game'));
     }
 
     #[Test]
@@ -544,7 +566,12 @@ final class LibraryImportHandlersTest extends TestCase
      */
     private function imports(string $owner, string $key): array
     {
-        return (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($this->gameSystems)))(new GetGameSystemLibraryImports($owner, $key))->imports;
+        return (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new GetGameSystemLibraryImports($owner, $key))->imports;
+    }
+
+    private function libraryChanges(string $owner, string $key): int
+    {
+        return (new GetGameSystemHandler($this->owned(), $this->releases, new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new GetGameSystem($owner, $key))->libraryChanges;
     }
 
     private function publish(string $owner, string $key): void

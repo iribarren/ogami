@@ -16,6 +16,8 @@ use App\Studio\Application\GameSystemValidation;
 use App\Studio\Application\GameSystemView;
 use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemHandler;
+use App\Studio\Application\LibraryImportStandings;
+use App\Studio\Application\LibraryPacks;
 use App\Studio\Application\ListMyGameSystems;
 use App\Studio\Application\ListMyGameSystemsHandler;
 use App\Studio\Application\OwnedGameSystems;
@@ -337,7 +339,7 @@ final class GameSystemDraftHandlersTest extends TestCase
 
     private function get(string $owner, string $key): GameSystemView
     {
-        return (new GetGameSystemHandler($this->owned(), $this->releases))(new GetGameSystem($owner, $key));
+        return (new GetGameSystemHandler($this->owned(), $this->releases, new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new GetGameSystem($owner, $key));
     }
 
     /**
@@ -345,7 +347,7 @@ final class GameSystemDraftHandlersTest extends TestCase
      */
     private function list(string $owner): array
     {
-        return (new ListMyGameSystemsHandler($this->gameSystems, $this->releases))(new ListMyGameSystems($owner));
+        return (new ListMyGameSystemsHandler($this->gameSystems, $this->releases, new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new ListMyGameSystems($owner));
     }
 
     private function validate(string $owner, string $key): GameSystemValidation

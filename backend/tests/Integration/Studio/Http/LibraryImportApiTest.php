@@ -209,6 +209,62 @@ final class LibraryImportApiTest extends WebTestCase
     }
 
     #[Test]
+    public function theDraftListAndDetailCountTheImportsThatChangedOrWentAway(): void
+    {
+        $this->library();
+        self::assertSame([0, 0], $this->libraryChanges());
+        $this->importItem('scene-types', 'tavern');
+        self::assertSame([0, 0], $this->libraryChanges());
+
+        $this->as('ann');
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/generic/narrative/tags/social', ['expectedVersion' => $this->packVersion++, 'item' => ['key' => 'social', 'label' => 'Social v2']]);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', self::GAME_SYSTEMS.'/generic');
+        self::assertSame(0, $this->json()['libraryChanges']);
+        $this->as('bob');
+        self::assertSame([1, 1], $this->libraryChanges());
+
+        // A local edit alone is no library change: the pack's names table did not change.
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/my-game/oracle-tables/names', ['expectedVersion' => 2, 'table' => ['key' => 'names', 'name' => 'Mine', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'Bram']]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([1, 1], $this->libraryChanges());
+
+        $this->as('ann');
+        $this->deleteFromPack('narrative/scene-types/tavern');
+        $this->as('bob');
+        self::assertSame([2, 2], $this->libraryChanges());
+
+        $this->as('ann');
+        $this->deleteFromPack('oracle-tables/names');
+        $this->as('bob');
+        self::assertSame([3, 3], $this->libraryChanges());
+
+        $this->client->jsonRequest('DELETE', self::IMPORTS.'/tags/social?expectedVersion=3');
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 2], $this->libraryChanges());
+    }
+
+    #[Test]
+    public function theReleaseHistoryListsTheLibrarySourcesOfEachReleaseAndNullWhenThereAreNone(): void
+    {
+        $this->library();
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/releases', []);
+        self::assertResponseStatusCodeSame(201);
+        $this->importItem('scene-types', 'tavern', 1);
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/releases', ['notes' => 'With the tavern.']);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game/releases');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 1], array_column($this->json(), 'version'));
+        self::assertSame([
+            [['section' => 'oracles', 'key' => 'names', 'pack' => 'generic'], ['section' => 'tags', 'key' => 'social', 'pack' => 'generic'], ['section' => 'scene-types', 'key' => 'tavern', 'pack' => 'generic']],
+            null,
+        ], array_column($this->json(), 'librarySources'));
+    }
+
+    #[Test]
     public function updatingFromTheLibraryCopiesThePackItemAgainAndBumpsTheVersion(): void
     {
         $this->library();
@@ -640,6 +696,24 @@ final class LibraryImportApiTest extends WebTestCase
 
         $this->client->jsonRequest('POST', self::GAME_SYSTEMS, $body);
         self::assertResponseStatusCodeSame(201);
+    }
+
+    /**
+     * @return array{int, int} libraryChanges of the draft "my-game" in the list and in its detail
+     */
+    private function libraryChanges(): array
+    {
+        $this->client->request('GET', self::GAME_SYSTEMS);
+        self::assertResponseIsSuccessful();
+        $list = array_column($this->json(), 'libraryChanges', 'key');
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game');
+        self::assertResponseIsSuccessful();
+        $inList = $list['my-game'];
+        $inDetail = $this->json()['libraryChanges'];
+        self::assertIsInt($inList);
+        self::assertIsInt($inDetail);
+
+        return [$inList, $inDetail];
     }
 
     private function importItem(string $section, string $key, int $version = 1): void

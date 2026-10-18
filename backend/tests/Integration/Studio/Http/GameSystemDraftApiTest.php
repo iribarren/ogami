@@ -110,8 +110,8 @@ final class GameSystemDraftApiTest extends WebTestCase
         self::assertResponseHeaderSame('Location', self::BASE.'/my-system');
         $created = $this->json();
         self::assertSame(
-            ['my-system', 'My system', 'Mine.', null, null, 2, null, true],
-            [$created['key'], $created['name'], $created['description'], $created['credits'], $created['theme'], $created['schemaVersion'], $created['latestReleaseVersion'], $created['hasUnpublishedChanges']],
+            ['my-system', 'My system', 'Mine.', null, null, 2, null, true, 0],
+            [$created['key'], $created['name'], $created['description'], $created['credits'], $created['theme'], $created['schemaVersion'], $created['latestReleaseVersion'], $created['hasUnpublishedChanges'], $created['libraryChanges']],
         );
         self::assertSame(
             ['oracleTables' => 0, 'likelihoodOracles' => 0, 'trackers' => 0, 'factSlots' => 0, 'tags' => 0, 'sceneTypes' => 0, 'flows' => 0, 'sheetFields' => 0, 'checks' => 0],
@@ -273,7 +273,7 @@ final class GameSystemDraftApiTest extends WebTestCase
         $newer = $list[0];
         self::assertIsArray($newer);
         self::assertSame(
-            ['key' => 'newer', 'name' => 'newer', 'schemaVersion' => 2, 'latestReleaseVersion' => null, 'hasUnpublishedChanges' => true],
+            ['key' => 'newer', 'name' => 'newer', 'schemaVersion' => 2, 'latestReleaseVersion' => null, 'hasUnpublishedChanges' => true, 'libraryChanges' => 0],
             array_diff_key($newer, ['updatedAt' => true]),
         );
         self::assertIsString($newer['updatedAt']);

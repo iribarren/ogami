@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useId, type SubmitEvent } from 'react'
 
 import { useLogin } from '@/shared/auth/currentUser'
@@ -57,6 +57,12 @@ export function LoginPage({ redirectTo }: { redirectTo?: string }) {
         <Button type="submit" className="w-full" disabled={login.isPending}>
           Sign in
         </Button>
+        <Link
+          to="/forgot-password"
+          className="block text-center text-sm text-primary underline-offset-4 hover:underline"
+        >
+          Forgot your password?
+        </Link>
       </form>
     </section>
   )

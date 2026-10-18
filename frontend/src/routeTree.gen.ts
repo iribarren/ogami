@@ -10,9 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AcceptInvitationRouteImport } from './routes/accept-invitation'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlayRouteImport } from './routes/play'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as PlayIndexRouteImport } from './routes/play.index'
 import { Route as StudioIndexRouteImport } from './routes/studio.index'
@@ -29,9 +32,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AcceptInvitationRoute = AcceptInvitationRouteImport.update({
+  id: '/accept-invitation',
+  path: '/accept-invitation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -42,6 +55,11 @@ const LoginRoute = LoginRouteImport.update({
 const PlayRoute = PlayRouteImport.update({
   id: '/play',
   path: '/play',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StudioRoute = StudioRouteImport.update({
@@ -101,9 +119,12 @@ const StudioGameSystemsKeySceneTypesSceneTypeRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/admin': typeof AdminRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/play': typeof PlayRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/studio': typeof StudioRouteWithChildren
   '/play/': typeof PlayIndexRoute
   '/studio/': typeof StudioIndexRoute
@@ -117,8 +138,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/admin': typeof AdminRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/play': typeof PlayIndexRoute
   '/studio': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
@@ -132,9 +156,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/admin': typeof AdminRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/play': typeof PlayRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/studio': typeof StudioRouteWithChildren
   '/play/': typeof PlayIndexRoute
   '/studio/': typeof StudioIndexRoute
@@ -150,9 +177,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accept-invitation'
     | '/admin'
+    | '/forgot-password'
     | '/login'
     | '/play'
+    | '/reset-password'
     | '/studio'
     | '/play/'
     | '/studio/'
@@ -166,8 +196,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/accept-invitation'
     | '/admin'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/play'
     | '/studio'
     | '/play/campaigns/$campaignId'
@@ -180,9 +213,12 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/accept-invitation'
     | '/admin'
+    | '/forgot-password'
     | '/login'
     | '/play'
+    | '/reset-password'
     | '/studio'
     | '/play/'
     | '/studio/'
@@ -197,9 +233,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcceptInvitationRoute: typeof AcceptInvitationRoute
   AdminRoute: typeof AdminRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PlayRoute: typeof PlayRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
   StudioRoute: typeof StudioRouteWithChildren
 }
 
@@ -212,11 +251,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accept-invitation': {
+      id: '/accept-invitation'
+      path: '/accept-invitation'
+      fullPath: '/accept-invitation'
+      preLoaderRoute: typeof AcceptInvitationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -231,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/play'
       fullPath: '/play'
       preLoaderRoute: typeof PlayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/studio': {
@@ -346,9 +406,12 @@ const StudioRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcceptInvitationRoute: AcceptInvitationRoute,
   AdminRoute: AdminRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PlayRoute: PlayRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
   StudioRoute: StudioRouteWithChildren,
 }
 export const routeTree = rootRouteImport

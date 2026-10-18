@@ -30,6 +30,15 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password')
   })
 
+  it('links to the password reset request', async () => {
+    renderAppAt('/login')
+
+    expect(await screen.findByRole('link', { name: 'Forgot your password?' })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    )
+  })
+
   it('signs in and returns to the page the visitor asked for', async () => {
     const { router } = renderAppAt('/studio', {
       'POST /api/auth/login': loginAs('GAME_MANAGER'),

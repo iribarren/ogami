@@ -3,20 +3,8 @@ import { Link } from '@tanstack/react-router'
 import { Badge } from '@/shared/ui/badge'
 
 import { StudioError } from '../useGameSystems'
-import {
-  useLibraryPack,
-  type LibraryPackCatalog,
-  type LibraryPackCatalogSection,
-} from './useLibraryPacks'
-
-/** How the catalog's section names read. */
-const sectionTitles: Record<LibraryPackCatalogSection['section'], string> = {
-  oracles: 'Oracles',
-  trackers: 'Trackers',
-  tags: 'Tags',
-  'fact-slots': 'Fact slots',
-  'scene-types': 'Scene Types',
-}
+import { sectionTitles } from './sections'
+import { useLibraryPack, type LibraryPackCatalog } from './useLibraryPacks'
 
 const kindLabels = { table: 'Table', likelihood: 'Likelihood' } as const
 

@@ -31,11 +31,39 @@ final readonly class LibraryImportStandings
 
     /**
      * How many imports of the draft changed or went away in the library; the ones edited locally do
-     * not count.
+     * not count. A draft whose stored imports are malformed counts 0, so it does not break the list
+     * or the detail it appears in; the imports read itself stays fail-closed.
      */
     public function changesOf(GameSystem $gameSystem): int
     {
-        return self::countChanges($this->of($gameSystem));
+        return $this->changesOfEach([$gameSystem])[$gameSystem->key()];
+    }
+
+    /**
+     * The change counts of several drafts, each pack looked up once for all of them.
+     *
+     * @param iterable<GameSystem> $gameSystems
+     *
+     * @return array<string, int> by game system key
+     */
+    public function changesOfEach(iterable $gameSystems): array
+    {
+        $readable = [];
+        $counts = [];
+        foreach ($gameSystems as $gameSystem) {
+            try {
+                $gameSystem->libraryImports();
+                $readable[] = $gameSystem;
+            } catch (\UnexpectedValueException) {
+                $counts[$gameSystem->key()] = 0;
+            }
+        }
+
+        foreach ($this->ofEach($readable) as $key => $views) {
+            $counts[$key] = self::countChanges($views);
+        }
+
+        return $counts;
     }
 
     /**

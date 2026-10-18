@@ -25,12 +25,12 @@ final readonly class ListMyGameSystemsHandler implements QueryHandler
     {
         $drafts = array_values(array_filter($this->gameSystems->ofOwner($query->ownerId), static fn (GameSystem $gameSystem): bool => !$gameSystem->isLibraryPack()));
 
-        $standings = $this->standings->ofEach($drafts);
+        $changes = $this->standings->changesOfEach($drafts);
 
-        return array_map(function (GameSystem $gameSystem) use ($standings): GameSystemSummary {
+        return array_map(function (GameSystem $gameSystem) use ($changes): GameSystemSummary {
             $publication = GameSystemPublication::of($gameSystem, $this->releases);
 
-            return new GameSystemSummary($gameSystem->key(), $gameSystem->name(), $gameSystem->schemaVersion(), $publication->latestReleaseVersion, $publication->hasUnpublishedChanges, LibraryImportStandings::countChanges($standings[$gameSystem->key()]), $gameSystem->updatedAt());
+            return new GameSystemSummary($gameSystem->key(), $gameSystem->name(), $gameSystem->schemaVersion(), $publication->latestReleaseVersion, $publication->hasUnpublishedChanges, $changes[$gameSystem->key()], $gameSystem->updatedAt());
         }, $drafts);
     }
 }

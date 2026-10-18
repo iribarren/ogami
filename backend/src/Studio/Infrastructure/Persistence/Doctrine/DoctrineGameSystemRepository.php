@@ -71,13 +71,15 @@ final readonly class DoctrineGameSystemRepository implements GameSystemRepositor
     }
 
     /**
-     * @throws \UnexpectedValueException when the stored library imports are malformed
+     * The library imports are a JSONB column that Doctrine hydrates as it is, so a malformed value is
+     * not detected here: commands fail closed in the aggregate (`commit()`), publish through
+     * `libraryImports()`, and the imports read in `LibraryImportStandings`.
      */
     public function ofKey(string $key): ?GameSystem
     {
         $gameSystem = $this->entityManager->getRepository(GameSystem::class)->findOneBy(['key' => $key]);
 
-        return $gameSystem instanceof GameSystem ? $this->readable($gameSystem) : null;
+        return $gameSystem instanceof GameSystem ? $gameSystem : null;
     }
 
     public function ofOwner(string $ownerId): array
@@ -86,12 +88,11 @@ final readonly class DoctrineGameSystemRepository implements GameSystemRepositor
         $gameSystems = $this->entityManager->getRepository(GameSystem::class)
             ->findBy(['ownerId' => $ownerId], ['updatedAt' => 'DESC', 'key' => 'ASC']);
 
-        return array_map($this->readable(...), $gameSystems);
+        return $gameSystems;
     }
 
     /**
-     * A pack never holds imports (the domain refuses them), so its rows are not parsed for imports:
-     * one malformed row cannot break the listing every game manager sees.
+     * A pack never holds imports (the domain refuses them).
      */
     public function libraryPacks(): array
     {
@@ -105,18 +106,5 @@ final readonly class DoctrineGameSystemRepository implements GameSystemRepositor
     {
         $this->entityManager->remove($gameSystem);
         $this->entityManager->flush();
-    }
-
-    /**
-     * The library imports are a JSONB column that Doctrine hydrates as it is: a malformed value
-     * (never written by the model) fails here, closed, rather than being acted on later.
-     *
-     * @throws \UnexpectedValueException when the stored imports are malformed
-     */
-    private function readable(GameSystem $gameSystem): GameSystem
-    {
-        $gameSystem->libraryImports();
-
-        return $gameSystem;
     }
 }

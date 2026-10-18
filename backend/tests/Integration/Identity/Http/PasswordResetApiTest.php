@@ -117,7 +117,17 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
             $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9');
         }
 
-        self::assertSame([['info', 'A password reset request was rate limited.', ['limiters' => ['password_reset_email']]]], $this->logs());
+        self::assertSame([['info', 'A password reset request was rate limited.', ['limiters' => ['password_reset_email_ip']]]], $this->logs());
+
+        // The four requests above used the IP's allowance too: six more fill it, and the seventh names the per-IP limiter.
+        foreach (range(1, 7) as $i) {
+            $this->post(self::REQUESTS, ['email' => \sprintf('nobody%d@example.com', $i)], '203.0.113.9');
+        }
+
+        self::assertSame(
+            [['info', 'A password reset request was rate limited.', ['limiters' => ['password_reset_email_ip']]], ['info', 'A password reset request was rate limited.', ['limiters' => ['password_reset_ip']]]],
+            $this->logs(),
+        );
         self::assertStringNotContainsString('ada@example.com', (string) json_encode($this->logs()));
         self::assertStringNotContainsString('203.0.113.9', (string) json_encode($this->logs()));
     }
@@ -126,21 +136,32 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
     public function aForwardedForHeaderFromAnUntrustedClientDoesNotChangeTheIpAllowance(): void
     {
         $this->createUser('ada@example.com');
-        // TRUSTED_PROXIES is unset: the header is ignored, so a spoofed one dodges nothing.
-        for ($i = 1; $i <= 10; ++$i) {
-            $this->post(self::REQUESTS, ['email' => \sprintf('nobody%d@example.com', $i)], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => \sprintf('198.51.100.%d', $i)]);
+        $trustedProxies = Request::getTrustedProxies();
+        /** @var int<0, 63> $trustedHeaders */
+        $trustedHeaders = Request::getTrustedHeaderSet();
+        // No trusted proxies: the header is ignored, so a spoofed one dodges nothing.
+        Request::setTrustedProxies([], Request::HEADER_X_FORWARDED_FOR);
+        try {
+            for ($i = 1; $i <= 10; ++$i) {
+                $this->post(self::REQUESTS, ['email' => \sprintf('nobody%d@example.com', $i)], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => \sprintf('198.51.100.%d', $i)]);
+            }
+
+            $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.200']);
+
+            self::assertResponseStatusCodeSame(202);
+            self::assertSame([], $this->mailer->sent);
+        } finally {
+            Request::setTrustedProxies($trustedProxies, $trustedHeaders);
         }
-
-        $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.200']);
-
-        self::assertResponseStatusCodeSame(202);
-        self::assertSame([], $this->mailer->sent);
     }
 
     #[Test]
     public function behindATrustedProxyTheIpAllowanceIsPerForwardedClient(): void
     {
         $this->createUser('ada@example.com');
+        $trustedProxies = Request::getTrustedProxies();
+        /** @var int<0, 63> $trustedHeaders */
+        $trustedHeaders = Request::getTrustedHeaderSet();
         Request::setTrustedProxies(['203.0.113.9'], Request::HEADER_X_FORWARDED_FOR);
         try {
             for ($i = 1; $i <= 10; ++$i) {
@@ -153,7 +174,7 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
             $this->post(self::REQUESTS, ['email' => 'ada@example.com'], '203.0.113.9', ['HTTP_X_FORWARDED_FOR' => '198.51.100.2']);
             self::assertCount(1, $this->mailer->sent);
         } finally {
-            Request::setTrustedProxies([], Request::HEADER_X_FORWARDED_FOR);
+            Request::setTrustedProxies($trustedProxies, $trustedHeaders);
         }
     }
 

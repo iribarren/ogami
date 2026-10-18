@@ -86,6 +86,18 @@ abstract class AdminApiTestCase extends PublicAccountApiTestCase
     }
 
     /**
+     * @param list<string> $values
+     *
+     * @return list<string>
+     */
+    protected function sorted(array $values): array
+    {
+        sort($values);
+
+        return $values;
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function rows(): array

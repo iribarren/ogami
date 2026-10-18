@@ -290,6 +290,77 @@ describe('the Import dialog', () => {
     expect(imports).toBe(1)
   })
 
+  it('keeps the selection frozen while the import runs, so its outcome is shown', async () => {
+    let answer: (response: Response) => void = () => undefined
+    const { user, dialog } = await openDialog({
+      [`POST ${base}/library-imports/preview`]: json(previewClean),
+      [`POST ${base}/library-imports`]: () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve
+        }),
+    })
+    await pickTavern(user)
+    await user.click(dialog.getByRole('button', { name: 'Preview' }))
+    await dialog.findByRole('region', { name: 'Preview' })
+
+    await user.click(dialog.getByRole('button', { name: 'Import' }))
+
+    await waitFor(() => {
+      expect(dialog.getByRole('button', { name: 'Import' })).toBeDisabled()
+    })
+    expect(dialog.getByRole('checkbox', { name: /Tavern/ })).toBeDisabled()
+    expect(dialog.getByRole('checkbox', { name: /Fame/ })).toBeDisabled()
+    expect(dialog.getByRole('button', { name: 'Choose another pack' })).toBeDisabled()
+
+    answer(Response.json({ error: 'The draft already has these items.' }, { status: 409 }))
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent('already has these items')
+    expect(dialog.getByRole('checkbox', { name: /Tavern/ })).toBeEnabled()
+    expect(dialog.getByRole('button', { name: 'Choose another pack' })).toBeEnabled()
+  })
+
+  it('offers the reload only for a stale write, not for another 409', async () => {
+    const { user, dialog } = await openDialog({
+      [`POST ${base}/library-imports/preview`]: json(previewClean),
+      [`POST ${base}/library-imports`]: json(
+        { error: 'The draft already has these items: scene-types/tavern.' },
+        409,
+      ),
+    })
+    await pickTavern(user)
+    await user.click(dialog.getByRole('button', { name: 'Preview' }))
+    await dialog.findByRole('region', { name: 'Preview' })
+
+    await user.click(dialog.getByRole('button', { name: 'Import' }))
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent('already has these items')
+    expect(
+      dialog.queryByRole('button', { name: 'Reload the latest version' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the refusal and says so when the reload fails', async () => {
+    let reads = 0
+    const { user, dialog } = await openDialog({
+      [`GET ${base}/library-imports`]: () =>
+        ++reads === 1 ? Response.json(importsNone) : new Response('Oops', { status: 500 }),
+      [`POST ${base}/library-imports/preview`]: json(previewClean),
+      [`POST ${base}/library-imports`]: json(stale, 409),
+    })
+    await pickTavern(user)
+    await user.click(dialog.getByRole('button', { name: 'Preview' }))
+    await dialog.findByRole('region', { name: 'Preview' })
+    await user.click(dialog.getByRole('button', { name: 'Import' }))
+    await dialog.findByText(/was changed by another request/)
+
+    await user.click(dialog.getByRole('button', { name: 'Reload the latest version' }))
+
+    expect(
+      await dialog.findByText(/Couldn't reload the latest version/, {}, { timeout: 3000 }),
+    ).toBeVisible()
+    expect(dialog.getByText(/was changed by another request/)).toBeVisible()
+  })
+
   it('says when the library has no pack', async () => {
     const { dialog } = await openDialog({ 'GET /api/studio/library/packs': json([]) })
     expect(await dialog.findByText('The library has no packs yet.')).toBeVisible()

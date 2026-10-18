@@ -42,6 +42,16 @@ export function studioError(
   )
 }
 
+/**
+ * A write refused because another request saved the draft first: reloading helps. The API's
+ * ErrorResponse has no code, so this matches the message of `GameSystemModifiedConcurrently`;
+ * every other 409 (item removed, key taken, pack refuses) will not change by reloading.
+ */
+export const isStaleWrite = (error: unknown): boolean =>
+  error instanceof StudioError &&
+  error.status === 409 &&
+  error.message.includes('changed by another request')
+
 export const gameSystemsKey = ['studio', 'game-systems'] as const
 export const gameSystemKey = (key: string) => [...gameSystemsKey, key] as const
 /** The library packs list (`useLibraryPacks`); a discarded pack drops out of it. */

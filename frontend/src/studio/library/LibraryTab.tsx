@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from '@/shared/ui/dialog'
 
-import { gameSystemKey as draftKey, StudioError } from '../useGameSystems'
+import { gameSystemKey as draftKey, isStaleWrite, StudioError } from '../useGameSystems'
 import { ImportDialog } from './ImportDialog'
 import { sectionOrder, sectionTitles } from './sections'
 import {
@@ -82,8 +82,11 @@ function LibraryImportsPanel({ gameSystemKey }: { gameSystemKey: string }) {
       imports.refetch(),
       queryClient.invalidateQueries({ queryKey: draftKey(gameSystemKey), exact: true }),
     ])
-    update.reset()
-    detach.reset()
+    // A failed reload leaves the refusal in view: nothing was reloaded.
+    if (!result.isError) {
+      update.reset()
+      detach.reset()
+    }
     return !result.isError
   }
 
@@ -119,7 +122,7 @@ function LibraryImportsPanel({ gameSystemKey }: { gameSystemKey: string }) {
       {failure && (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
           <p>{failure.message}</p>
-          {failure instanceof StudioError && failure.status === 409 && (
+          {isStaleWrite(failure) && (
             <Button
               variant="outline"
               size="sm"

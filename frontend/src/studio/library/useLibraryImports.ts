@@ -19,6 +19,9 @@ export type LibraryItemRef = components['schemas']['LibraryItemRefRequest']
 
 const importsSegment = 'library-imports'
 
+/** Where the segment sits in a key: right after the draft's key. */
+const importsSegmentIndex = gameSystemKey('').length
+
 export const libraryImportsKey = (key: string) => [...gameSystemKey(key), importsSegment] as const
 
 /** `GET /api/studio/game-systems/{key}/library-imports`: what the draft imported, and its version. */
@@ -83,7 +86,9 @@ function useImportsWrite<Variables>(
       queryClient.setQueryData(libraryImportsKey(key), imports)
       void queryClient.invalidateQueries({
         queryKey: gameSystemKey(key),
-        predicate: (query) => query.queryKey[3] !== importsSegment,
+        // The imports query is set from the answer: it is the only one under the draft's key
+        // with the imports segment right after it.
+        predicate: (query) => query.queryKey[importsSegmentIndex] !== importsSegment,
       })
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
     },

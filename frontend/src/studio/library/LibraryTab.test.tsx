@@ -195,6 +195,66 @@ describe('the Library tab', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('offers the reload only for a stale write, not for another 409', async () => {
+    const { user } = await openLibrary({
+      [`POST ${base}/library-imports/tags/social/update`]: json(
+        { error: 'The pack or its item is gone.' },
+        409,
+      ),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Update social' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The pack or its item is gone.')
+    expect(
+      screen.queryByRole('button', { name: 'Reload the latest version' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the refusal visible when the reload fails', async () => {
+    let reads = 0
+    const { user } = await openLibrary({
+      [`GET ${base}/library-imports`]: () =>
+        ++reads === 1 ? Response.json(importsMixed) : new Response('Oops', { status: 500 }),
+      [`POST ${base}/library-imports/tags/social/update`]: json(stale, 409),
+    })
+    await user.click(await screen.findByRole('button', { name: 'Update social' }))
+    await screen.findByText(/was changed by another request/)
+
+    await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
+
+    expect(
+      await screen.findByText(/Couldn't refresh the library imports/, {}, { timeout: 3000 }),
+    ).toBeVisible()
+    expect(screen.getByText(/was changed by another request/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeVisible()
+  })
+
+  it('does not refetch the imports after a write: it is set from the answer', async () => {
+    let drafts = 0
+    let imports = 0
+    const { user } = await openLibrary({
+      [`GET ${base}`]: () => {
+        drafts += 1
+        return Response.json(draft)
+      },
+      [`GET ${base}/library-imports`]: () => {
+        imports += 1
+        return Response.json(importsMixed)
+      },
+      [`POST ${base}/library-imports/tags/social/update`]: () => Response.json(without('social')),
+    })
+    await user.click(await screen.findByRole('button', { name: 'Update social' }))
+
+    await waitFor(() => {
+      expect(drafts).toBe(2)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Social')).not.toBeInTheDocument()
+    })
+    expect(imports).toBe(1)
+  })
+
   it.each([
     [404, 'The draft did not import this item.'],
     [409, 'The pack or its item is gone.'],

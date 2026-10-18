@@ -89,10 +89,11 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [x] | 090d9d0 |
 | T6 | 2 | HTTP: preview and upgrade endpoints, API tests for every status, `make api` | delegated writer (slice 2) | [x] | 4d36ede, f477c0c (generated) |
 | T7 | 3 | Slice 2 review fixes: R3-001 test the planner's normalized compare with a raw reordered track value (not built through `Character::of`); R3-002 the upgrade endpoint runs the command and the follow-up read in separate `try` blocks, so a failed read after a saved upgrade no longer reports the upgrade as refused | delegated writer (slice 3) | [x] | |
-| T8 | 3 | Frontend: upgrade action and dialog, hooks, tests, stories; roadmap status | delegated writer (slice 3) | [ ] | |
+| T8 | 3 | Frontend: upgrade action and dialog, hooks, tests, stories; roadmap status | delegated writer (slice 3) | [x] | |
 
 ## Progress
 
+- 2026-10-18: T8 done: `useReleaseUpgrade.ts` (preview GET, confirm POST, 409 reloads the preview), `ReleaseUpgradeDialog.tsx` (header button only for a newer version of the campaign's own GameSystem; sections omitted when empty; Confirm disabled while the preview reloads), fixtures, 13 Vitest tests, 2 stories, roadmap feature 20 marked done. Component tests were written after the code (no RED).
 - 2026-10-18: T7 done: R3-001 planner test feeds a raw reordered track to `fitValue()` by reflection (`Character::of` normalizes, so no Character can carry one; RED observed by dropping `normalized()`, then GREEN); R3-002 the upgrade endpoint reads the campaign in its own `try` after the command, a failed read answers 500 "upgrade was saved" (no API test: the read cannot fail in a test without a new production seam).
 - 2026-10-18: slice 2 merged (PR #209); slice 3 started.
 - 2026-10-18: T6 HTTP done: `CampaignReleaseUpgradeController` (GET/POST `release-upgrade`), 10 response classes, `CampaignReleaseUpgradeApiTest` (24 tests, every status); the regenerated `openapi.json` + `schema.d.ts` (~906 lines) went in their own commit after the user approved a size exception. Decisions: malformed body 400, rule breaks 422; an unknown or not-latest `toVersion` is `ReleaseUpgradeChanged` (409), one not above the pinned version is `CampaignUpToDate` (409). Also fixed PHPStan findings in T4/T5 files.
@@ -112,4 +113,4 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 ## Next step
 
-Slice 3: T7 (slice 2 review fixes), T8 (frontend upgrade action and dialog); then review and PR (`Closes #207`).
+Slice 3: review and PR (`Closes #207`); then record the review outcome and PR link in one doc-only commit.

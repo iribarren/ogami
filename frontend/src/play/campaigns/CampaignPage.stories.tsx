@@ -8,10 +8,13 @@ import { lostMineJournal, recordedEntry } from '../journal/fixtures'
 import { CampaignPage } from './CampaignPage'
 import {
   freeJournal,
+  freeJournalV3,
   lostMine,
   lostMineCampaign,
   lostMineInNewSession,
+  lostMineUpgrade,
   newCampaign,
+  upToDateUpgrade,
 } from './fixtures'
 
 const created = newCampaign('The haunted keep', freeJournal)
@@ -28,6 +31,7 @@ function campaignApi(campaign: typeof lostMineCampaign, journal = lostMineJourna
   return {
     [`GET ${path}`]: json(campaign),
     [`GET ${path}/journal`]: json(journal),
+    'GET /api/play/game-systems': json([freeJournal]),
     [`POST ${path}/journal/notes`]: async (request: Request) => {
       const { text } = (await request.json()) as { text: string }
       return Response.json(
@@ -111,6 +115,43 @@ export const JournalUnavailable: Story = {
       ...campaignApi(lostMineCampaign),
       [`GET /api/campaigns/${lostMine.id}/journal`]: () => new Response('Oops', { status: 500 }),
     },
+  },
+}
+
+/** A newer release exists: the upgrade dialog lists everything the upgrade changes. */
+export const UpgradeWithChanges: Story = {
+  parameters: {
+    api: {
+      ...campaignApi(lostMineCampaign),
+      'GET /api/play/game-systems': json([freeJournalV3]),
+      [`GET /api/campaigns/${lostMine.id}/release-upgrade`]: json(lostMineUpgrade),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Upgrade to v3' }))
+    const dialog = within(await within(document.body).findByRole('dialog'))
+    await expect(await dialog.findByRole('region', { name: 'Characters' })).toBeInTheDocument()
+    await expect(dialog.getByRole('button', { name: 'Confirm upgrade' })).toBeEnabled()
+  },
+}
+
+/** The preview says the campaign already plays the latest release. */
+export const UpgradeUpToDate: Story = {
+  parameters: {
+    api: {
+      ...campaignApi(lostMineCampaign),
+      'GET /api/play/game-systems': json([freeJournalV3]),
+      [`GET /api/campaigns/${lostMine.id}/release-upgrade`]: json(upToDateUpgrade),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Upgrade to v3' }))
+    const dialog = within(await within(document.body).findByRole('dialog'))
+    await expect(
+      await dialog.findByText('This campaign already plays the latest release.'),
+    ).toBeInTheDocument()
   },
 }
 

@@ -23,6 +23,7 @@ import { TrackersPanel } from '../trackers/TrackersPanel'
 import { visibleTrackers } from '../trackers/useTrackers'
 import { CreditsNotice } from './CreditsNotice'
 import { PlayPanel } from './PlayPanel'
+import { ReleaseUpgradeAction } from './ReleaseUpgradeDialog'
 import { releaseLabel } from './releaseLabel'
 import { SessionControls } from './SessionControls'
 import { CampaignError, useCampaign, type Campaign } from './useCampaigns'
@@ -101,9 +102,12 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
     <>
       <header className="space-y-1">
         <h1 className="font-heading text-page-title break-words">{campaign.name}</h1>
-        <p className="text-muted-foreground">
-          {releaseLabel(campaign.pinnedRelease.gameSystemName, campaign.pinnedRelease.version)}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-muted-foreground">
+            {releaseLabel(campaign.pinnedRelease.gameSystemName, campaign.pinnedRelease.version)}
+          </p>
+          <ReleaseUpgradeAction campaign={campaign} />
+        </div>
         <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>
       <FlowIntroduction campaign={campaign} />

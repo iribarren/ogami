@@ -8,7 +8,7 @@ const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 test('derived values on the sheet follow the stats the player types', async ({ page }) => {
   await page.goto('/login')
   await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL('/play')
 

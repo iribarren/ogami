@@ -66,6 +66,10 @@ export const LoadError: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findAllByRole('alert')).toHaveLength(2)
+    // StoryProviders disables query retries, so each failure shows at once; the timeout only
+    // covers slow story startup.
+    await expect(
+      await within(canvasElement).findAllByRole('alert', {}, { timeout: 5000 }),
+    ).toHaveLength(2)
   },
 }

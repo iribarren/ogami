@@ -163,6 +163,7 @@ export E2E_PASSWORD ?= e2e-password-123
 e2e-seed: presets ## Migrate the dev database, publish the GameSystem presets and create the e2e users (idempotent)
 	$(PHP_EXEC) php bin/console app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
 	$(PHP_EXEC) php bin/console app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
+	$(PHP_EXEC) php bin/console app:user:create e2e-owner@example.test --role=OWNER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
 
 .PHONY: e2e
 e2e: frontend-install e2e-seed ## Seed the e2e users and presets, then run the Playwright tests against the running stack (ARGS="--grep smoke")

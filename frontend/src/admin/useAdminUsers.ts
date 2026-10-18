@@ -31,12 +31,16 @@ function useRefreshUsers() {
   return () => queryClient.invalidateQueries({ queryKey: adminUsersKey, exact: true })
 }
 
-/** `PUT /api/admin/users/{id}/roles`: replaces the roles. The API signs that user out. */
+/**
+ * `PUT /api/admin/users/{id}/roles`: replaces the roles. The API signs that user out, so when
+ * it is the signed-in owner (`isSelf`) a success skips the refetch (it would be a 401): the
+ * caller ends the session.
+ */
 export function useChangeRoles() {
   const api = useApiClient()
   const refresh = useRefreshUsers()
 
-  return useMutation<AdminUser, AdminError, { id: string; roles: Role[] }>({
+  return useMutation<AdminUser, AdminError, { id: string; roles: Role[]; isSelf: boolean }>({
     mutationFn: async ({ id, roles }) => {
       const { data, error, response } = await api.PUT('/api/admin/users/{id}/roles', {
         params: { path: { id } },
@@ -47,7 +51,13 @@ export function useChangeRoles() {
       }
       throw adminError(response, error, { subject: 'user', failure: 'Changing the roles' })
     },
-    onSettled: refresh,
+    onSettled: (_user, error, { isSelf }) => {
+      // Own roles saved: the session is gone and the caller leaves, so a refetch would be a 401.
+      if (isSelf && error === null) {
+        return
+      }
+      return refresh()
+    },
   })
 }
 

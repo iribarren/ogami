@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { bob, cleo, dan, erin, invitations, users } from './fixtures'
+import { ada, bob, cleo, dan, erin, invitations, users } from './fixtures'
 
 // Radix checkboxes render a hidden input whose size it measures.
 vi.stubGlobal(
@@ -120,6 +120,41 @@ describe('the own account', () => {
   })
 })
 
+describe('changing your own roles', () => {
+  it('goes to sign-in, since the API ended the session, instead of showing an error', async () => {
+    const { user, router, fakeApi } = await openAdmin({
+      [`PUT ${userPath(ada.id)}/roles`]: json({ ...ada, roles: ['OWNER'] }),
+    })
+
+    await user.click(userRow('ada@example.com').getByRole('button', { name: 'Edit roles' }))
+    await user.click(dialog().getByRole('checkbox', { name: 'Game manager' }))
+    await user.click(dialog().getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+    expect(router.state.location.search).toEqual({ redirect: '/admin' })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(fakeApi.requests.filter((key) => key === 'GET /api/admin/users')).toHaveLength(1)
+  })
+})
+
+describe('a failed save of your own roles', () => {
+  it('keeps the dialog with its error and still refetches the list', async () => {
+    const { user, fakeApi } = await openAdmin({
+      [`PUT ${userPath(ada.id)}/roles`]: refused('Could not save.', 422),
+    })
+
+    await user.click(userRow('ada@example.com').getByRole('button', { name: 'Edit roles' }))
+    await user.click(dialog().getByRole('checkbox', { name: 'Game manager' }))
+    await user.click(dialog().getByRole('button', { name: 'Save' }))
+
+    expect(await dialog().findByRole('alert')).toHaveTextContent('Could not save.')
+    await waitFor(() => {
+      expect(fakeApi.requests.filter((key) => key === 'GET /api/admin/users')).toHaveLength(2)
+    })
+  })
+})
+
 describe('the Edit roles dialog', () => {
   it('saves the selected roles and refreshes the list', async () => {
     let body: unknown
@@ -225,8 +260,10 @@ describe('disabling and enabling', () => {
     await user.click(dialog().getByRole('button', { name: 'Enable' }))
 
     await waitFor(() => {
-      expect(fakeApi.requests).toContain(`POST ${userPath(cleo.id)}/enable`)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+    expect(fakeApi.requests).toContain(`POST ${userPath(cleo.id)}/enable`)
+    expect(fakeApi.requests.filter((key) => key === 'GET /api/admin/users')).toHaveLength(2)
   })
 
   it('explains that the last active owner is protected', async () => {

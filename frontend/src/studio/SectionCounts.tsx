@@ -14,14 +14,34 @@ const sectionLabels: Record<string, string> = {
   flowSteps: 'Flow steps',
 }
 
-/** The items each section holds; the draft's list also says its editor is still to come. */
+/**
+ * The items each section holds; the draft's list also says its editor is still to come. The
+ * compact form is one line for a card, and leaves out the sections without items.
+ */
 export function SectionCounts({
   counts,
   editorComing = false,
+  compact = false,
 }: {
   counts: Record<string, number>
   editorComing?: boolean
+  compact?: boolean
 }) {
+  if (compact) {
+    const filled = Object.entries(counts).filter(([, count]) => count > 0)
+    return filled.length === 0 ? (
+      <p className="text-muted-foreground">No items yet</p>
+    ) : (
+      <ul className="flex flex-wrap gap-x-4 gap-y-1">
+        {filled.map(([name, count]) => (
+          <li key={name}>
+            <span className="text-muted-foreground">{sectionLabels[name] ?? name}</span>{' '}
+            <span className="font-medium">{count}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
   return (
     <ul className="max-w-md divide-y rounded-xl ring-1 ring-foreground/10">
       {Object.entries(counts).map(([name, count]) => (

@@ -44,6 +44,8 @@ export function studioError(
 
 export const gameSystemsKey = ['studio', 'game-systems'] as const
 export const gameSystemKey = (key: string) => [...gameSystemsKey, key] as const
+/** The library packs list (`useLibraryPacks`); a discarded pack drops out of it. */
+export const libraryPacksKey = ['studio', 'library', 'packs'] as const
 export const validationKey = (key: string) => [...gameSystemKey(key), 'validation'] as const
 
 /** A 404 (unknown key, or someone else's) will not change by asking again. */
@@ -159,8 +161,8 @@ export function useEditMetadata(key: string) {
 }
 
 /**
- * `DELETE /api/studio/game-systems/{key}`: discards a draft that was never published, then
- * goes back to Studio. A refusal (409: it has releases) is shown and nothing changes.
+ * `DELETE /api/studio/game-systems/{key}`: discards a draft (or a pack) that was never
+ * published, then goes back to Studio. A refusal (409: it has releases) is shown and nothing changes.
  */
 export function useDiscardGameSystem(key: string) {
   const api = useApiClient()
@@ -179,6 +181,7 @@ export function useDiscardGameSystem(key: string) {
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: gameSystemKey(key) })
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
+      void queryClient.invalidateQueries({ queryKey: libraryPacksKey, exact: true })
       await navigate({ to: '/studio' })
     },
   })

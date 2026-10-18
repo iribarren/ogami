@@ -22,7 +22,7 @@ const orNull = (text: string) => (text.trim() === '' ? null : text)
 
 /**
  * The metadata of a draft: name, description and, from schema version 2 on, credits and theme
- * (schema version 1 has neither, so they are hidden and not sent). Saving sends every field and
+ * (schema version 1 and a library pack have neither, so they are hidden and not sent). Saving sends every field and
  * replaces the cached GameSystem with the answer. A concurrent save (409) is explained with a
  * way to reload the latest version, which `onReload` provides.
  */
@@ -33,7 +33,8 @@ export function MetadataForm({
   gameSystem: GameSystem
   onReload: () => void
 }) {
-  const hasCreditsAndTheme = gameSystem.schemaVersion >= 2
+  // A library pack has neither credits nor a theme: the server refuses them.
+  const hasCreditsAndTheme = gameSystem.schemaVersion >= 2 && gameSystem.kind !== 'library-pack'
   const [name, setName] = useState(gameSystem.name)
   const [description, setDescription] = useState(gameSystem.description ?? '')
   const [notice, setNotice] = useState(gameSystem.credits?.notice ?? '')

@@ -4,10 +4,11 @@ import { Badge } from '@/shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
 import { LibraryChangesBadge } from './LibraryChangesBadge'
+import { LibraryPacks } from './library/LibraryPacks'
 import { NewGameSystemDialog } from './NewGameSystemDialog'
 import { useMyGameSystems, type GameSystemSummary } from './useGameSystems'
 
-/** `/studio`: my GameSystems and a way to start a new one. */
+/** `/studio`: my GameSystems, a way to start a new one, and the library of packs. */
 export function StudioHomePage() {
   return (
     <div className="space-y-8">
@@ -24,6 +25,7 @@ export function StudioHomePage() {
         </h2>
         <GameSystems />
       </section>
+      <LibraryPacks />
     </div>
   )
 }

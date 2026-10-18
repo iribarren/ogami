@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, draftWithLibraryChange, legacy, validDraft } from './fixtures'
+import { packSystem } from './library/fixtures'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -445,5 +446,88 @@ describe('discarding a draft', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('has releases')
     expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+  })
+})
+
+describe('a library pack', () => {
+  function renderPack(handlers: Record<string, FakeHandler> = {}) {
+    return renderPage('fantasy-basics', {
+      'GET /api/studio/game-systems/fantasy-basics': json(packSystem),
+      ...handlers,
+    })
+  }
+
+  it('is marked as a pack, with no release status, library badge or publish button', async () => {
+    renderPack()
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Fantasy basics' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Library pack')).toBeInTheDocument()
+    expect(screen.queryByText('Never published')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unpublished changes')).not.toBeInTheDocument()
+    expect(screen.queryByText(/library change/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Publish/ })).not.toBeInTheDocument()
+  })
+
+  it('offers only the tabs a pack has', async () => {
+    renderPack()
+
+    await metadataForm()
+
+    expect(
+      within(screen.getByRole('radiogroup', { name: 'GameSystem page' }))
+        .getAllByRole('radio')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Overview', 'Oracles', 'Trackers & tags', 'Scene Types', 'Validation'])
+  })
+
+  it('edits only the name and description, and saves them without credits or theme', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    renderPack({
+      'PUT /api/studio/game-systems/fantasy-basics/metadata': async (request) => {
+        sent.push(await request.json())
+        return Response.json({ ...packSystem, name: 'Fantasy basics 2' })
+      },
+    })
+
+    const form = within(await metadataForm())
+    expect(form.queryByLabelText('Theme')).not.toBeInTheDocument()
+    expect(form.queryByLabelText('Notice')).not.toBeInTheDocument()
+    await user.type(form.getByLabelText('Name'), ' 2')
+    await user.click(form.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        { name: 'Fantasy basics 2', description: 'Names, rumours and a tavern.' },
+      ])
+    })
+    expect(await form.findByText('Saved.')).toBeInTheDocument()
+  })
+
+  it('validates the pack without talking of a release', async () => {
+    const user = userEvent.setup()
+    renderPack()
+
+    await user.click(await screen.findByRole('radio', { name: 'Validation' }))
+
+    expect(await screen.findByText("The pack's items are valid.")).toBeInTheDocument()
+    expect(screen.queryByText(/published as a release/)).not.toBeInTheDocument()
+  })
+
+  it('can be discarded, and says pack', async () => {
+    const user = userEvent.setup()
+    const { router, fakeApi } = renderPack({
+      'DELETE /api/studio/game-systems/fantasy-basics': () => new Response(null, { status: 204 }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Discard pack' }))
+    await user.click(await screen.findByRole('button', { name: 'Discard the pack' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio')
+    })
+    expect(fakeApi.requests).toContain('DELETE /api/studio/game-systems/fantasy-basics')
   })
 })

@@ -21,6 +21,7 @@ describe('the Studio home page', () => {
     renderAppAt('/studio', {
       'GET /api/auth/me': gameManager,
       'GET /api/studio/game-systems': json([neverPublished, withChanges, published]),
+      'GET /api/studio/library/packs': json([]),
     })
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Studio' })).toBeInTheDocument()

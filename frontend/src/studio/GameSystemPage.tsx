@@ -126,6 +126,8 @@ function GameSystemView({
   onReload: () => Promise<GameSystem | undefined>
 }) {
   const [tab, setTab] = useState<Tab>('overview')
+  // A library pack is edited here like a draft, without anything about releases or publishing.
+  const pack = gameSystem.kind === 'library-pack'
   const [notice, setNotice] = useState<string | null>(null)
   // The sample values of the Sheet tab's preview and the Checks tab's sandbox: one set for both.
   const sampleValues = useSampleValues()
@@ -149,23 +151,31 @@ function GameSystemView({
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
             <span className="font-mono break-all">{gameSystem.key}</span>
             <span>Schema version {gameSystem.schemaVersion}</span>
-            <span>
-              {gameSystem.latestReleaseVersion === null
-                ? 'Never published'
-                : `Latest release v${String(gameSystem.latestReleaseVersion)}`}
-            </span>
-            {gameSystem.hasUnpublishedChanges && (
-              <Badge variant="warning">Unpublished changes</Badge>
+            {pack ? (
+              <Badge variant="secondary">Library pack</Badge>
+            ) : (
+              <>
+                <span>
+                  {gameSystem.latestReleaseVersion === null
+                    ? 'Never published'
+                    : `Latest release v${String(gameSystem.latestReleaseVersion)}`}
+                </span>
+                {gameSystem.hasUnpublishedChanges && (
+                  <Badge variant="warning">Unpublished changes</Badge>
+                )}
+                <LibraryChangesBadge count={gameSystem.libraryChanges} />
+              </>
             )}
-            <LibraryChangesBadge count={gameSystem.libraryChanges} />
           </p>
         </div>
-        <PublishDialog
-          gameSystem={gameSystem}
-          onPublished={(version) => {
-            setNotice(`Published version ${String(version)}.`)
-          }}
-        />
+        {!pack && (
+          <PublishDialog
+            gameSystem={gameSystem}
+            onPublished={(version) => {
+              setNotice(`Published version ${String(version)}.`)
+            }}
+          />
+        )}
       </header>
       {notice && (
         <p role="status" className="text-sm">
@@ -184,17 +194,19 @@ function GameSystemView({
         <SegmentedControlItem value="oracles">Oracles</SegmentedControlItem>
         <SegmentedControlItem value="narrative">Trackers &amp; tags</SegmentedControlItem>
         <SegmentedControlItem value="sceneTypes">Scene Types</SegmentedControlItem>
-        <SegmentedControlItem value="flows">Flows</SegmentedControlItem>
-        <SegmentedControlItem value="sheet">Sheet</SegmentedControlItem>
-        <SegmentedControlItem value="checks">Checks</SegmentedControlItem>
+        {!pack && <SegmentedControlItem value="flows">Flows</SegmentedControlItem>}
+        {!pack && <SegmentedControlItem value="sheet">Sheet</SegmentedControlItem>}
+        {!pack && <SegmentedControlItem value="checks">Checks</SegmentedControlItem>}
         <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
-        <SegmentedControlItem value="releases">Releases</SegmentedControlItem>
-        <SegmentedControlItem value="sections">Sections</SegmentedControlItem>
+        {!pack && <SegmentedControlItem value="releases">Releases</SegmentedControlItem>}
+        {!pack && <SegmentedControlItem value="sections">Sections</SegmentedControlItem>}
       </SegmentedControl>
       {/* Stays mounted while another tab shows, so typed and saved values survive tab switches. */}
       <div hidden={tab !== 'overview'} className="space-y-8">
         <MetadataForm key={formStart.reloads} gameSystem={formStart.gameSystem} onReload={reload} />
-        {gameSystem.latestReleaseVersion === null && <Discard gameSystemKey={gameSystem.key} />}
+        {(pack || gameSystem.latestReleaseVersion === null) && (
+          <Discard gameSystemKey={gameSystem.key} pack={pack} />
+        )}
       </div>
       {tab === 'oracles' && <OraclesTab gameSystemKey={gameSystem.key} />}
       {tab === 'narrative' && <NarrativeTab gameSystemKey={gameSystem.key} />}
@@ -202,7 +214,7 @@ function GameSystemView({
       {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
       {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
       {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
-      {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} />}
+      {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} pack={pack} />}
       {tab === 'releases' && (
         <ReleasesTab
           gameSystemKey={gameSystem.key}
@@ -228,10 +240,10 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function Validation({ gameSystemKey }: { gameSystemKey: string }) {
+function Validation({ gameSystemKey, pack }: { gameSystemKey: string; pack: boolean }) {
   const validation = useGameSystemValidation(gameSystemKey)
   if (validation.isPending) {
-    return <p className="text-muted-foreground">Validating the draft…</p>
+    return <p className="text-muted-foreground">Validating the {pack ? 'pack' : 'draft'}…</p>
   }
   if (validation.isError) {
     return (
@@ -244,10 +256,15 @@ function Validation({ gameSystemKey }: { gameSystemKey: string }) {
   return (
     <Panel title="Validation">
       {valid ? (
-        <p>The draft is valid: it could be published as a release.</p>
+        <p>
+          {pack
+            ? "The pack's items are valid."
+            : 'The draft is valid: it could be published as a release.'}
+        </p>
       ) : (
         <p role="alert" className="text-destructive">
-          The draft is not valid yet. The first error: {error?.message ?? 'unknown'}
+          The {pack ? 'pack' : 'draft'} is not valid yet. The first error:{' '}
+          {error?.message ?? 'unknown'}
         </p>
       )}
       {warnings.length > 0 && (
@@ -273,8 +290,13 @@ function Sections({ counts }: { counts: Record<string, number> }) {
   )
 }
 
-/** Only a never-published draft can be discarded; the server refuses one with releases (409). */
-function Discard({ gameSystemKey }: { gameSystemKey: string }) {
+/**
+ * Only a never-published draft can be discarded; the server refuses one with releases (409). A
+ * pack is never published, so it can always be discarded: the drafts that imported from it keep
+ * their copies.
+ */
+function Discard({ gameSystemKey, pack }: { gameSystemKey: string; pack: boolean }) {
+  const noun = pack ? 'pack' : 'draft'
   const [open, setOpen] = useState(false)
   const discard = useDiscardGameSystem(gameSystemKey)
 
@@ -287,13 +309,15 @@ function Discard({ gameSystemKey }: { gameSystemKey: string }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="destructive">Discard draft</Button>
+        <Button variant="destructive">Discard {noun}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Discard this draft?</DialogTitle>
+          <DialogTitle>Discard this {noun}?</DialogTitle>
           <DialogDescription>
-            It was never published, so it is deleted for good, with its key.
+            {pack
+              ? 'It is deleted for good, with its key. GameSystems that imported from it keep their copies.'
+              : 'It was never published, so it is deleted for good, with its key.'}
           </DialogDescription>
         </DialogHeader>
         {discard.error && (
@@ -308,7 +332,7 @@ function Discard({ gameSystemKey }: { gameSystemKey: string }) {
             discard.mutate()
           }}
         >
-          Discard the draft
+          Discard the {noun}
         </Button>
       </DialogContent>
     </Dialog>

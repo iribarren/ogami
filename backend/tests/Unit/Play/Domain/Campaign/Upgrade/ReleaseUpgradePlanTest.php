@@ -6,11 +6,14 @@ namespace App\Tests\Unit\Play\Domain\Campaign\Upgrade;
 
 use App\Formula\Domain\Formula;
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
+use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
 use App\Play\Domain\Campaign\Upgrade\FieldChange;
 use App\Play\Domain\Campaign\Upgrade\FieldChangeKind;
@@ -300,6 +303,33 @@ final class ReleaseUpgradePlanTest extends TestCase
         $reordered = UpgradeFixtures::campaign($pinned);
         $reordered->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['hp' => ['max' => 5, 'current' => 5]], $pinned);
 
+        self::assertSame($campaign->planReleaseUpgrade($pinned, $target)->fingerprint(), $reordered->planReleaseUpgrade($pinned, $target)->fingerprint());
+    }
+
+    #[Test]
+    public function aTrackWhoseStoredKeysCameBackReorderedAndIsUnchangedIsNotAChange(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [new TrackField('hp', 'Hit points')]);
+        $target = UpgradeFixtures::release(2, [new TrackField('hp', 'Hit points', max: 5)]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['hp' => ['current' => 4, 'max' => 5]], $pinned);
+        $reordered = Campaign::reconstitute(
+            CampaignId::fromString('campaign-1'),
+            'user-1',
+            'The job',
+            PinnedRelease::of('heist', 1, 'Heist'),
+            new \DateTimeImmutable('2026-10-12T09:00:00+00:00'),
+            [],
+            [],
+            null,
+            null,
+            [],
+            [],
+            [],
+            [Character::of(CharacterId::fromString('c-1'), 'Vi', [], [], ['hp' => ['max' => 5, 'current' => 4]])],
+        );
+
+        self::assertSame([], $reordered->planReleaseUpgrade($pinned, $target)->characters);
         self::assertSame($campaign->planReleaseUpgrade($pinned, $target)->fingerprint(), $reordered->planReleaseUpgrade($pinned, $target)->fingerprint());
     }
 

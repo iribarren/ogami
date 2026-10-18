@@ -1,7 +1,7 @@
 # Feature: play-release-upgrade
 
 - **Locator:** `odd/tasks/play-release-upgrade.md` · Engram topic `odd/play-release-upgrade/tasks`
-- **Issue:** #207 · **Branch:** `feat/play-release-upgrade-1-upgrade-plan` · **Status:** slice 1 done, awaiting review
+- **Issue:** #207 · **Branch:** `feat/play-release-upgrade-2-api` · **Status:** slice 1 merged (PR #208); slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `admin-users` (PRs #198–#205)
@@ -82,17 +82,20 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc (parent); ADR 0035 "Campaign release upgrade" and index row; ADR 0010 and 0014 point to it; glossary Release upgrade, Upgrade plan; context map Play note; contract "How Play consumes it" upgrade paragraph | delegated writer (slice 1; feature doc inline by parent) | [x] | |
-| T2 | 1 | Domain plan: `ReleaseUpgradePlan`, planner and `fingerprint()` with every rule of the Decisions table; unit tests per rule | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Apply: `Campaign::upgradeRelease` (mutable pin, fingerprint check, `ReleaseUpgradeChanged`, `CampaignUpToDate`, all-or-nothing, FlowRun restart keeping paused); unit tests incl. schema v1 → v2 and derived values | delegated writer (slice 1) | [x] | |
-| T4 | 2 | Slice 1 review fixes | delegated writer (slice 2) | [ ] | |
-| T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [ ] | |
+| T1 | 1 | Docs: this feature doc (parent); ADR 0035 "Campaign release upgrade" and index row; ADR 0010 and 0014 point to it; glossary Release upgrade, Upgrade plan; context map Play note; contract "How Play consumes it" upgrade paragraph | delegated writer (slice 1; feature doc inline by parent) | [x] | b5bfc1f |
+| T2 | 1 | Domain plan: `ReleaseUpgradePlan`, planner and `fingerprint()` with every rule of the Decisions table; unit tests per rule | delegated writer (slice 1) | [x] | 2879a47 |
+| T3 | 1 | Apply: `Campaign::upgradeRelease` (mutable pin, fingerprint check, `ReleaseUpgradeChanged`, `CampaignUpToDate`, all-or-nothing, FlowRun restart keeping paused); unit tests incl. schema v1 → v2 and derived values | delegated writer (slice 1) | [x] | f4380b9 |
+| T4 | 2 | Slice 1 review fixes: R3-001 compare a fitted track normalized (reordered JSONB keys are unchanged, not clamped) with a test; R3-002 test that an open guided Scene goes on as a free Scene consistent with the restarted FlowRun | delegated writer (slice 2) | [x] | |
+| T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [x] | |
 | T6 | 2 | HTTP: preview and upgrade endpoints, API tests for every status, `make api` | delegated writer (slice 2) | [ ] | |
 | T7 | 3 | Slice 2 review fixes | delegated writer (slice 3) | [ ] | |
 | T8 | 3 | Frontend: upgrade action and dialog, hooks, tests, stories; roadmap status | delegated writer (slice 3) | [ ] | |
 
 ## Progress
 
+- 2026-10-18: T6 HTTP done, generated API commit not made: `CampaignReleaseUpgradeController` (GET/POST `release-upgrade`), 10 response classes, `CampaignReleaseUpgradeApiTest` (24 tests, every status); slice stopped at the size budget (regenerated `openapi.json` + `schema.d.ts` add ~906 lines, total would be ~2,230 vs the 1,700 ceiling), waiting for the parent to decide the split. Also fixed PHPStan findings in T4/T5 files.
+- 2026-10-18: T5 done: `PreviewReleaseUpgrade` (view = domain plan + current version), `UpgradeCampaignRelease` (latest only: unknown or older-than-latest target is `ReleaseUpgradeChanged`, not newer is `CampaignUpToDate`); Doctrine round trip of an upgraded campaign; `release-upgrade.feature` (5 scenarios). Handlers were written before their Behat scenarios (no RED).
+- 2026-10-18: T4 done: R3-001 planner compares fitted values key-normalized (no RED reachable: `Character::of` already normalizes track key order, so the test is a regression guard); R3-002 test that an open guided Scene goes on free after the upgrade and guidance picks the next Scene (no bug found).
 - 2026-10-18: T1 done: ADR 0035, index, ADR 0010/0014 pointers, glossary, context map, contract paragraph.
 - 2026-10-18: T2 done: `Campaign\Upgrade` plan, planner, fingerprint, `Campaign::planReleaseUpgrade`; 36 unit tests (RED: undefined method, then GREEN).
 - 2026-10-18: T3 done: `Campaign::upgradeRelease` (all or nothing on a copy, re-pin, FlowRun restart keeping paused), `CampaignUpToDate`, `ReleaseUpgradeChanged`, `UpgradeToAnotherGameSystem`; 10 unit tests (RED: undefined method, then GREEN). Slice 1 verification: `make qa`, `make test`.
@@ -102,7 +105,8 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-72bd6dd5daf0f1cb` | b5bfc1f, 2879a47, f4380b9 | Approved and acknowledged; warnings R3-001 (reordered track reported as clamped), R3-002 (no test for an open guided Scene on upgrade), fixed in slice 2 (T4) | [#208](https://github.com/iribarren/ogami/pull/208) |
 
 ## Next step
 
-Slice 1 review, then PR; slice 2 starts with T4.
+Slice 2: T4 (slice 1 review fixes), T5 (application + persistence + Behat), T6 (HTTP + `make api`); then review and PR.

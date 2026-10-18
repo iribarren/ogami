@@ -59,6 +59,8 @@ use App\Play\Application\PauseGuidance;
 use App\Play\Application\PauseGuidanceHandler;
 use App\Play\Application\PickSceneType;
 use App\Play\Application\PickSceneTypeHandler;
+use App\Play\Application\PreviewReleaseUpgrade;
+use App\Play\Application\PreviewReleaseUpgradeHandler;
 use App\Play\Application\PromoteNpc;
 use App\Play\Application\PromoteNpcHandler;
 use App\Play\Application\RecordLikelihoodAnswer;
@@ -69,6 +71,7 @@ use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordOracleTableResultHandler;
 use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
+use App\Play\Application\ReleaseUpgradePreview;
 use App\Play\Application\ReopenNpc;
 use App\Play\Application\ReopenNpcHandler;
 use App\Play\Application\ReopenThread;
@@ -90,6 +93,8 @@ use App\Play\Application\SwitchSceneTypeHandler;
 use App\Play\Application\ThreadIdGenerator;
 use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerView;
+use App\Play\Application\UpgradeCampaignRelease;
+use App\Play\Application\UpgradeCampaignReleaseHandler;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\Facts\FactId;
@@ -106,6 +111,9 @@ use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
+use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
+use App\Play\Domain\Campaign\Upgrade\FieldChange;
+use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradeChanged;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -176,6 +184,8 @@ final class PlayContext implements Context
     private readonly EndFlowSceneHandler $endFlowScene;
     private readonly PauseGuidanceHandler $pauseGuidance;
     private readonly ResumeGuidanceHandler $resumeGuidance;
+    private readonly PreviewReleaseUpgradeHandler $previewReleaseUpgrade;
+    private readonly UpgradeCampaignReleaseHandler $upgradeCampaignRelease;
 
     private ?string $campaignId = null;
     private int $npcCount = 0;
@@ -183,6 +193,7 @@ final class PlayContext implements Context
     private int $threadCount = 0;
     private int $factCount = 0;
     private ?\Throwable $failure = null;
+    private ?ReleaseUpgradePreview $preview = null;
 
     public function __construct()
     {
@@ -269,6 +280,8 @@ final class PlayContext implements Context
         $this->endFlowScene = new EndFlowSceneHandler($owned, $campaigns, $this->releases, $clock);
         $this->pauseGuidance = new PauseGuidanceHandler($owned, $campaigns, $clock);
         $this->resumeGuidance = new ResumeGuidanceHandler($owned, $campaigns, $this->releases, $clock);
+        $this->previewReleaseUpgrade = new PreviewReleaseUpgradeHandler($owned, $this->releases);
+        $this->upgradeCampaignRelease = new UpgradeCampaignReleaseHandler($owned, $campaigns, $this->releases, $clock);
     }
 
     // Behat matches steps by text whatever the keyword, so one attribute serves Given and When.
@@ -417,6 +430,13 @@ final class PlayContext implements Context
     {
         // Tag "ally"; sheet fields "reflexes" (number 1 to 10, default 4) and "hp" (track, fixed max 40).
         $this->releases->add(new GameSystemSnapshot($key, $name, $version, null, [], [], tags: [new Tag('ally', 'Ally')], sheet: new SheetTemplate([new NumberField('reflexes', 'Reflexes', min: 1, max: 10, default: 4), new TrackField('hp', 'Hit points', max: 40)])));
+    }
+
+    #[Given('release version :version of the GameSystem :key named :name is published with Reflexes up to :max')]
+    public function aReleaseCapsReflexes(int $version, string $key, string $name, int $max): void
+    {
+        // The character sheet release, its Reflexes capped at the given maximum.
+        $this->releases->add(new GameSystemSnapshot($key, $name, $version, null, [], [], tags: [new Tag('ally', 'Ally')], sheet: new SheetTemplate([new NumberField('reflexes', 'Reflexes', min: 1, max: $max, default: 4), new TrackField('hp', 'Hit points', max: 40)])));
     }
 
     #[Given('I added the Character :name with Reflexes :reflexes')]
@@ -882,6 +902,52 @@ final class PlayContext implements Context
         Assert::assertSame($keys, implode(', ', array_map(static fn (SheetFieldView $field): string => $field->key, $this->myCampaign()->pinnedRelease->sheet)));
     }
 
+    #[Given('I previewed the release upgrade')]
+    #[When('I preview the release upgrade')]
+    public function iPreviewTheReleaseUpgrade(): void
+    {
+        $this->attempt(fn (): ReleaseUpgradePreview => $this->preview = ($this->previewReleaseUpgrade)(new PreviewReleaseUpgrade($this->campaignId(), self::ME)));
+    }
+
+    #[When('another player previews the release upgrade of my campaign')]
+    public function anotherPlayerPreviewsTheReleaseUpgrade(): void
+    {
+        $this->attempt(fn (): ReleaseUpgradePreview => ($this->previewReleaseUpgrade)(new PreviewReleaseUpgrade($this->campaignId(), self::ANOTHER_PLAYER)));
+    }
+
+    #[When('I confirm the previewed release upgrade')]
+    public function iConfirmThePreviewedReleaseUpgrade(): void
+    {
+        $plan = $this->preview->plan ?? throw new \LogicException('No upgrade was previewed.');
+        $this->attempt(fn () => ($this->upgradeCampaignRelease)(new UpgradeCampaignRelease($this->campaignId(), self::ME, $plan->to->releaseVersion(), $plan->fingerprint())));
+    }
+
+    #[Then('the preview says the campaign is up to date')]
+    public function thePreviewSaysTheCampaignIsUpToDate(): void
+    {
+        Assert::assertTrue($this->preview?->upToDate());
+    }
+
+    #[Then('the preview upgrades release :from to release :to and changes:')]
+    public function thePreviewChanges(int $from, int $to, TableNode $table): void
+    {
+        $plan = $this->preview->plan ?? throw new \LogicException('The preview has no plan.');
+        Assert::assertSame([$from, $to], [$plan->from->releaseVersion(), $plan->to->releaseVersion()]);
+        $changes = [];
+        foreach ($plan->characters as $character) {
+            array_push($changes, ...array_map(static fn (FieldChange $change): array => [$character->name, $change->fieldName, $change->kind->value, (string) json_encode($change->before), (string) json_encode($change->after)], $character->changes));
+        }
+
+        Assert::assertSame(array_map(array_values(...), $table->getColumnsHash()), $changes);
+    }
+
+    #[Then('I am told that the upgrade changed since the preview')]
+    public function iAmToldTheUpgradeChanged(): void
+    {
+        Assert::assertInstanceOf(ReleaseUpgradeChanged::class, $this->failure);
+        $this->failure = null;
+    }
+
     #[Then('my Characters are:')]
     public function myCharactersAre(TableNode $table): void
     {
@@ -1138,7 +1204,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate $failure) {
             $this->failure = $failure;
         }
     }

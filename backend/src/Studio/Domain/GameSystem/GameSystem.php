@@ -34,8 +34,9 @@ final class GameSystem
     private int $version = 1;
 
     /**
-     * What the draft imported from the library, kept outside the document (ADR 0033). Always empty
-     * for now; the import commands fill it.
+     * What the draft imported from the library, kept outside the document (ADR 0033), as stored:
+     * plain arrays, replaced as a whole so persistence sees the change. libraryImports() reads them
+     * as values.
      *
      * @var list<array<string, mixed>>
      */
@@ -134,8 +135,7 @@ final class GameSystem
             $document['theme'] = $metadata->theme;
         }
 
-        $this->document = $document;
-        $this->updatedAt = $now;
+        $this->commit($document, $now);
     }
 
     /**
@@ -574,8 +574,115 @@ final class GameSystem
     public function restore(array $releaseDocument, \DateTimeImmutable $now): void
     {
         $this->refuseOnPack('restore a release');
-        $this->document = self::withKey(self::plain($releaseDocument), $this->key);
-        $this->updatedAt = $now;
+        $this->commit(self::withKey(self::plain($releaseDocument), $this->key), $now);
+    }
+
+    /**
+     * What importing these items of a pack would do: see importFromLibrary(), which refuses what
+     * the plan reports as a conflict or an error. Nothing changes.
+     *
+     * @param list<LibraryItemRef> $items
+     *
+     * @throws LibraryPackRefuses        when this draft is a library pack
+     * @throws \InvalidArgumentException when $pack is not a library pack
+     * @throws InvalidReleaseContent     when the draft is schema version 1 or the items are empty
+     * @throws LibraryItemNotFound       when the pack has none of an item
+     */
+    public function planLibraryImport(self $pack, array $items): LibraryImportPlan
+    {
+        [$plan, $document] = $this->resolveLibraryImport($pack, $items);
+        if ([] !== $plan->conflicts) {
+            return $plan;
+        }
+
+        try {
+            ReleaseContent::checkItemRules($document);
+        } catch (InvalidReleaseContent $invalid) {
+            [$path, $message] = explode(': ', $invalid->getMessage(), 2) + [1 => ''];
+
+            return $plan->withError($path, $message);
+        }
+
+        return $plan;
+    }
+
+    /**
+     * Copies items of a library pack, and the pack items they need, into the draft (ADR 0033). A
+     * needed item the draft already has stays as it is (override); a requested item the draft
+     * already has, imported or authored, refuses the import. Copies are appended to their sections
+     * in pack order, the item rules judge the result, and each copy is remembered with the pack
+     * and the hash of the pack item. Nothing changes when it is refused.
+     *
+     * @param list<LibraryItemRef> $items
+     *
+     * @throws LibraryPackRefuses        when this draft is a library pack
+     * @throws \InvalidArgumentException when $pack is not a library pack
+     * @throws LibraryItemNotFound       when the pack has none of an item
+     * @throws LibraryItemKeyTaken       when the draft has requested items; lists every one
+     * @throws InvalidReleaseContent     when the draft is schema version 1, the items are empty or the result would break the item rules
+     */
+    public function importFromLibrary(self $pack, array $items, \DateTimeImmutable $now): void
+    {
+        [$plan, $document] = $this->resolveLibraryImport($pack, $items);
+        if ([] !== $plan->conflicts) {
+            throw LibraryItemKeyTaken::for($plan->conflicts);
+        }
+
+        ReleaseContent::checkItemRules($document);
+        $this->commit($document, $now, [...$this->libraryImports(), ...$this->importsOf($pack, $plan->imports)]);
+    }
+
+    /**
+     * Replaces an imported item, in place, with the pack's current one, and imports the pack items
+     * it now needs that the draft lacks (needed items the draft has are overrides, as in
+     * importFromLibrary()). The item rules judge the result; nothing changes when it is refused.
+     *
+     * @throws LibraryPackRefuses        when this draft is a library pack
+     * @throws \InvalidArgumentException when $pack is not a library pack
+     * @throws InvalidReleaseContent     when the draft is schema version 1 or the result would break the item rules
+     * @throws LibraryImportNotFound     when the item was not imported, or not from this pack
+     * @throws LibraryItemRemoved        when the pack no longer has the item
+     */
+    public function updateFromLibrary(self $pack, LibrarySection $section, string $key, \DateTimeImmutable $now): void
+    {
+        $this->assertLibraryImportable($pack, 'update from the library');
+        $ref = new LibraryItemRef($section, $key);
+        $import = $this->libraryImport($ref) ?? throw LibraryImportNotFound::for($ref);
+        if ($import->pack !== $pack->key) {
+            throw LibraryImportNotFound::for($ref, $pack->key);
+        }
+
+        $source = LibraryItems::of($pack->document);
+        $latest = $source->find($ref) ?? throw LibraryItemRemoved::from($ref, $pack->key);
+        $own = LibraryItems::of($this->document)->find($ref) ?? throw LibraryImportNotFound::for($ref);
+        [$closure] = $source->closure([$ref], LibraryItems::of($this->document));
+        $added = array_values(array_filter($closure, static fn (LibraryItemRef $item): bool => !$item->is($ref)));
+
+        $document = $own['list'] === $latest['list']
+            ? LibraryItems::replaced($this->document, $own['list'], $own['index'], $latest['item'])
+            : LibraryItems::appended(LibraryItems::removed($this->document, $own['list'], $own['index']), $latest['list'], $latest['item']);
+        $document = $this->withCopies($document, $source, $added);
+        ReleaseContent::checkItemRules($document);
+
+        $imports = array_map(static fn (LibraryImport $stored): LibraryImport => $stored->ref()->is($ref) ? new LibraryImport($section, $key, $pack->key, ReleaseContent::itemHash($latest['item'])) : $stored, $this->libraryImports());
+        $this->commit($document, $now, [...$imports, ...$this->importsOf($pack, $added)]);
+    }
+
+    /**
+     * Forgets that an item came from the library; the item stays a plain item of the draft.
+     *
+     * @throws LibraryPackRefuses    when this draft is a library pack
+     * @throws LibraryImportNotFound when the item was not imported
+     */
+    public function detachLibraryImport(LibrarySection $section, string $key, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('detach library imports');
+        $ref = new LibraryItemRef($section, $key);
+        if (!$this->libraryImport($ref) instanceof LibraryImport) {
+            throw LibraryImportNotFound::for($ref);
+        }
+
+        $this->commit($this->document, $now, array_values(array_filter($this->libraryImports(), static fn (LibraryImport $import): bool => !$import->ref()->is($ref))));
     }
 
     public function id(): GameSystemId
@@ -604,11 +711,13 @@ final class GameSystem
     }
 
     /**
-     * @return list<array<string, mixed>> what the draft imported from the library; empty until imports exist
+     * @return list<LibraryImport> what the draft imported from the library, in the order imported
+     *
+     * @throws \UnexpectedValueException when the stored imports are malformed
      */
     public function libraryImports(): array
     {
-        return $this->libraryImports;
+        return LibraryImport::listFromStored($this->libraryImports);
     }
 
     public function isOwnedBy(string $userId): bool
@@ -697,8 +806,7 @@ final class GameSystem
         $document = $this->document;
         $document['sheet'] = $sheet;
         ReleaseContent::checkItemRules($document);
-        $this->document = $document;
-        $this->updatedAt = $now;
+        $this->commit($document, $now);
     }
 
     /**
@@ -791,8 +899,7 @@ final class GameSystem
         $document = $this->document;
         $document['checks'] = $checks;
         ReleaseContent::checkItemRules($document);
-        $this->document = $document;
-        $this->updatedAt = $now;
+        $this->commit($document, $now);
     }
 
     /**
@@ -921,8 +1028,7 @@ final class GameSystem
         $document = $this->document;
         $document[$section->value] = $items;
         ReleaseContent::checkItemRules($document);
-        $this->document = $document;
-        $this->updatedAt = $now;
+        $this->commit($document, $now);
     }
 
     /**
@@ -1038,8 +1144,129 @@ final class GameSystem
         $document['oracles'] = $oracles;
         // The section is valid on its own; entry sceneType and effects and the chaos tracker also need the other sections (ADR 0030).
         ReleaseContent::checkItemRules($document);
+        $this->commit($document, $now);
+    }
+
+    /**
+     * Every command ends here: the document and the time change together, and the imports whose item
+     * is no longer in the document are dropped, so deleting or renaming an imported item forgets
+     * its import. $imports replaces the stored ones (the import commands); null keeps them.
+     *
+     * @param array<string, mixed>     $document
+     * @param list<LibraryImport>|null $imports
+     */
+    private function commit(array $document, \DateTimeImmutable $now, ?array $imports = null): void
+    {
+        $items = LibraryItems::of($document);
+        $stored = $imports ?? $this->libraryImports();
+        $kept = array_values(array_filter($stored, static fn (LibraryImport $import): bool => $items->has($import->ref())));
+
         $this->document = $document;
         $this->updatedAt = $now;
+        if (null !== $imports || \count($kept) !== \count($stored)) {
+            $this->libraryImports = array_map(static fn (LibraryImport $import): array => $import->toArray(), $kept);
+        }
+    }
+
+    /**
+     * The plan of an import, with the document it would produce (the items copied, not yet judged).
+     *
+     * @param list<LibraryItemRef> $refs
+     *
+     * @return array{LibraryImportPlan, array<string, mixed>}
+     */
+    private function resolveLibraryImport(self $pack, array $refs): array
+    {
+        $this->assertLibraryImportable($pack, 'import from the library');
+        if ([] === $refs) {
+            throw InvalidReleaseContent::at('items', 'must be a non-empty list');
+        }
+
+        $source = LibraryItems::of($pack->document);
+        $own = LibraryItems::of($this->document);
+        $requested = [];
+        $conflicts = [];
+        foreach ($refs as $ref) {
+            if (!$source->has($ref)) {
+                throw LibraryItemNotFound::inPack($ref, $pack->key);
+            }
+
+            if ($own->has($ref)) {
+                $conflicts[$ref->id()] = $ref;
+            } else {
+                $requested[$ref->id()] = $ref;
+            }
+        }
+
+        [$imports, $overrides] = $source->closure(array_values($requested), $own);
+        $overrides = array_values(array_filter($overrides, static fn (LibraryItemRef $ref): bool => !isset($conflicts[$ref->id()])));
+
+        return [new LibraryImportPlan($imports, $overrides, array_values($conflicts)), $this->withCopies($this->document, $source, $imports)];
+    }
+
+    /**
+     * @throws LibraryPackRefuses        when this draft is a library pack
+     * @throws \InvalidArgumentException when $pack is not a library pack
+     * @throws InvalidReleaseContent     when this draft is schema version 1
+     */
+    private function assertLibraryImportable(self $pack, string $operation): void
+    {
+        $this->refuseOnPack($operation);
+        if (!$pack->isLibraryPack()) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is not a library pack, so nothing can be imported from it.', $pack->key));
+        }
+
+        if (1 === $this->schemaVersion()) {
+            throw InvalidReleaseContent::at('schemaVersion', 'library imports need schema version 2, this draft is version 1');
+        }
+    }
+
+    private function libraryImport(LibraryItemRef $ref): ?LibraryImport
+    {
+        foreach ($this->libraryImports() as $import) {
+            if ($import->ref()->is($ref)) {
+                return $import;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<LibraryItemRef> $refs items of the pack
+     *
+     * @return list<LibraryImport> one for each item, with the hash of the pack item
+     */
+    private function importsOf(self $pack, array $refs): array
+    {
+        $source = LibraryItems::of($pack->document);
+        $imports = [];
+        foreach ($refs as $ref) {
+            $item = $source->find($ref)['item'] ?? [];
+            $imports[] = new LibraryImport($ref->section, $ref->key, $pack->key, ReleaseContent::itemHash($item));
+        }
+
+        return $imports;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     * @param list<LibraryItemRef> $refs     items of the pack, appended to the lists they live in
+     *
+     * @return array<string, mixed>
+     *
+     * @throws InvalidReleaseContent when a list of the document is not a list
+     */
+    private function withCopies(array $document, LibraryItems $source, array $refs): array
+    {
+        foreach ($refs as $ref) {
+            $located = $source->find($ref);
+            if (null !== $located) {
+                $document = LibraryItems::appended($document, $located['list'], $located['item']);
+            }
+        }
+
+        return $document;
     }
 
     /**

@@ -191,9 +191,15 @@ final class LibraryPackHandlersTest extends TestCase
     {
         $this->createPack('names', 'Names', 'ann');
 
+        try {
+            (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases))(new PublishGameSystemDraft('bob', 'names', 'release-1', null));
+            self::fail('Another owner published the pack.');
+        } catch (GameSystemNotFound) {
+        }
+
         $this->expectException(GameSystemNotFound::class);
 
-        (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases))(new PublishGameSystemDraft('bob', 'names', 'release-1', null));
+        (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock))(new RestoreGameSystemRelease('bob', 'names', 1));
     }
 
     #[Test]

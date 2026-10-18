@@ -15,7 +15,7 @@ Moving a campaign to a newer release can change oracles, flows and, later, sheet
 - The campaign stores only the **release reference** (GameSystem key and release version) and the GameSystem name for display. Releases are immutable, so no copy of the content is needed.
 - Play re-reads the pinned snapshot through its anti-corruption layer whenever it needs the release content (oracles, flow, sheet).
 - Publishing a newer release **never changes existing campaigns**.
-- Upgrading a campaign is a future, **explicit player action** (feature `play-release-upgrade`, M5) with a preview of the changes and a confirmation. Until then, a campaign keeps its release for its whole life.
+- Upgrading a campaign is a future, **explicit player action** (feature `play-release-upgrade`, M5) with a preview of the changes and a confirmation (→ [ADR 0035](0035-campaign-release-upgrade.md)). Until then, a campaign keeps its release for its whole life.
 
 ## Consequences
 

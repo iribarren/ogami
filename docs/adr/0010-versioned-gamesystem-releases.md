@@ -23,4 +23,4 @@ See the [context map](../domain/context-map.md).
 - Play and Studio models can evolve independently.
 - Releases duplicate data (acceptable at this scale).
 - Generic content from Studio's library is copied into each release at publish, so releases stay self-contained ([ADR 0017](0017-narrativeflow-model.md)).
-- Release validation and the campaign upgrade path need design work (open question).
+- Release validation and the campaign upgrade path need design work (open question; the upgrade path is decided in [ADR 0035](0035-campaign-release-upgrade.md)).

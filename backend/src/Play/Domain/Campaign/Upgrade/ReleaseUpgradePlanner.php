@@ -1,0 +1,337 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Play\Domain\Campaign\Upgrade;
+
+use App\Play\Domain\Campaign\Characters\Character;
+use App\Play\Domain\Campaign\Characters\CharacterValues;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactLinkKind;
+use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\Thread;
+use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
+use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\ListField;
+use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\TrackField;
+use App\Play\Domain\GameSystem\Tag;
+
+/**
+ * The rules of a release upgrade (ADR 0035), pure: how stored values fit the target release, and
+ * the plan that lists the result. The Campaign uses the same fitting methods to apply the plan, so
+ * what is previewed is what is applied. Validation is CharacterValues' own.
+ */
+final readonly class ReleaseUpgradePlanner
+{
+    public function __construct(
+        private GameSystemSnapshot $pinned,
+        private GameSystemSnapshot $target,
+    ) {
+    }
+
+    /**
+     * @param list<Character>    $characters    in campaign order
+     * @param list<Npc>          $npcs          in creation order
+     * @param list<Thread>       $threads       in creation order
+     * @param array<string, int> $trackerValues
+     * @param list<Fact>         $facts         in creation order
+     */
+    public function plan(array $characters, array $npcs, array $threads, array $trackerValues, array $facts, ?string $flowKey, bool $hasFlowRun): ReleaseUpgradePlan
+    {
+        $upgrades = [];
+        foreach ($characters as $character) {
+            $changes = $this->fit($character)->changes;
+            $dropped = $this->droppedTags($character->tags());
+            if ([] !== $changes || [] !== $dropped) {
+                $upgrades[] = new CharacterUpgrade($character->id()->toString(), $character->name(), $changes, $dropped);
+            }
+        }
+
+        return new ReleaseUpgradePlan(
+            PinnedRelease::of($this->pinned->gameSystemKey(), $this->pinned->releaseVersion(), $this->pinned->name()),
+            PinnedRelease::of($this->target->gameSystemKey(), $this->target->releaseVersion(), $this->target->name()),
+            $upgrades,
+            $this->droppedFrom($npcs),
+            $this->droppedFrom($threads),
+            $this->trackerChanges($trackerValues),
+            $this->unslotted($facts, $npcs, $threads),
+            $this->flowChange($flowKey, $hasFlowRun),
+        );
+    }
+
+    /**
+     * The Character's values on the target sheet: a kept value stays, the rest is changed as the
+     * decision table says. Derived fields hold no value and never appear.
+     */
+    public function fit(Character $character): FittedValues
+    {
+        $stored = $character->values();
+        $newSheet = $this->target->sheet();
+        $values = [];
+        $changes = [];
+        foreach ($newSheet->fields() as $field) {
+            if ($field instanceof DerivedField) {
+                if (\array_key_exists($field->key, $stored)) {
+                    $changes[] = new FieldChange($field->key, $field->label, FieldChangeKind::Removed, $stored[$field->key], null);
+                }
+
+                continue;
+            }
+
+            if (!\array_key_exists($field->key, $stored)) {
+                $values[$field->key] = CharacterValues::initial($field);
+                $changes[] = new FieldChange($field->key, $field->label, FieldChangeKind::Added, null, $values[$field->key]);
+
+                continue;
+            }
+
+            [$values[$field->key], $kind] = $this->fitValue($field, $stored[$field->key]);
+            if (null !== $kind) {
+                $changes[] = new FieldChange($field->key, $field->label, $kind, $stored[$field->key], $values[$field->key]);
+            }
+        }
+
+        foreach ($this->removedKeys($stored) as $key) {
+            $changes[] = new FieldChange($key, $this->pinned->sheet()->field($key)->label ?? $key, FieldChangeKind::Removed, $stored[$key], null);
+        }
+
+        return new FittedValues($values, $changes);
+    }
+
+    /**
+     * @param list<string> $tags release Tag keys
+     *
+     * @return list<string> those the target release still has, as stored
+     */
+    public function keptTags(array $tags): array
+    {
+        return array_values(array_filter($tags, fn (string $tag): bool => $this->target->tag($tag) instanceof Tag));
+    }
+
+    /**
+     * @param array<string, int> $trackerValues
+     *
+     * @return array<string, int> the values the target release's Trackers keep, by key
+     */
+    public function keptTrackerValues(array $trackerValues): array
+    {
+        $kept = [];
+        foreach ($trackerValues as $key => $value) {
+            $tracker = $this->target->tracker($key);
+            if ($tracker instanceof \App\Play\Domain\GameSystem\Tracker) {
+                $kept[$key] = $tracker->clamp($value);
+            }
+        }
+
+        return $kept;
+    }
+
+    /**
+     * The free fact a slot fact becomes when its slot is gone: its text (the subject's name for a
+     * subject fact, as it has no text) and its label (the old slot's name when it had none), with its
+     * links, plus the subject as a link when it fits.
+     *
+     * @param list<Npc>    $npcs
+     * @param list<Thread> $threads
+     */
+    public function freed(Fact $fact, array $npcs, array $threads): Fact
+    {
+        $subject = $fact->subject();
+        $links = $fact->links();
+        if ($subject instanceof \App\Play\Domain\Campaign\Facts\FactLink) {
+            $already = array_filter($links, static fn (\App\Play\Domain\Campaign\Facts\FactLink $link): bool => $link->equals($subject));
+            if ([] === $already && \count($links) < Fact::MAX_LINKS) {
+                $links[] = $subject;
+            }
+        }
+
+        return Fact::of($fact->id(), null, $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads), null, $links);
+    }
+
+    /**
+     * Same Flow when the target has it, else its default Flow, else its first; free play stays free
+     * and a target without Flows makes it free play.
+     */
+    public function targetFlowKey(?string $flowKey): ?string
+    {
+        if (null === $flowKey) {
+            return null;
+        }
+
+        return $this->target->flow($flowKey)->key ?? $this->target->defaultFlow()->key ?? array_first($this->target->flows())->key ?? null;
+    }
+
+    /**
+     * @return array{int|string|list<string>|array{current: int, max: int}, ?FieldChangeKind} the new value, and how it changed (null when kept)
+     */
+    private function fitValue(Field $field, mixed $value): array
+    {
+        $old = $this->pinned->sheet()->field($field->key);
+        if ($old instanceof Field && $old::class !== $field::class) {
+            return [CharacterValues::initial($field), FieldChangeKind::Reset];
+        }
+
+        [$candidate, $kind] = $this->adjusted($field, $value);
+        try {
+            $valid = CharacterValues::resolve($this->target->sheet(), [$field->key => $candidate])[$field->key];
+        } catch (InvalidCharacter) {
+            return [CharacterValues::initial($field), FieldChangeKind::Reset];
+        }
+
+        if ($valid === $value) {
+            return [$value, null];
+        }
+
+        return [$valid, $kind ?? FieldChangeKind::Reset];
+    }
+
+    /**
+     * Moves a number or track inside its bounds and cuts a list to its limit; anything else, or a
+     * value of the wrong shape, comes back unchanged for the validation to judge.
+     *
+     * @return array{mixed, ?FieldChangeKind}
+     */
+    private function adjusted(Field $field, mixed $value): array
+    {
+        if ($field instanceof NumberField && \is_int($value)) {
+            return [max($field->min ?? -NumberField::LIMIT, min($field->max ?? NumberField::LIMIT, $value)), FieldChangeKind::Clamped];
+        }
+
+        if ($field instanceof TrackField && \is_array($value) && \is_int($value['current'] ?? null) && \is_int($max = $field->max ?? $value['max'] ?? null)) {
+            $max = max(0, min(CharacterValues::MAX_TRACK, $max));
+
+            return [['current' => max(0, min($max, $value['current'])), 'max' => $max], FieldChangeKind::Clamped];
+        }
+
+        if ($field instanceof ListField && \is_array($value) && array_is_list($value) && \count($value) > $field->limit()) {
+            return [\array_slice($value, 0, $field->limit()), FieldChangeKind::Trimmed];
+        }
+
+        return [$value, null];
+    }
+
+    /**
+     * @param array<string, mixed> $stored
+     *
+     * @return list<string> stored keys the target sheet holds no value for: the old sheet's fields in
+     *                      its order, then any other stored key sorted
+     */
+    private function removedKeys(array $stored): array
+    {
+        $kept = [];
+        foreach ($this->target->sheet()->fields() as $field) {
+            $kept[$field->key] = true;
+        }
+
+        $oldOrder = array_map(static fn (Field $field): string => $field->key, $this->pinned->sheet()->fields());
+        $extra = array_diff(array_keys($stored), $oldOrder);
+        sort($extra);
+
+        return array_values(array_filter([...$oldOrder, ...$extra], static fn (string $key): bool => \array_key_exists($key, $stored) && !isset($kept[$key])));
+    }
+
+    /**
+     * @param list<string> $tags
+     *
+     * @return list<string>
+     */
+    private function droppedTags(array $tags): array
+    {
+        return array_values(array_diff($tags, $this->keptTags($tags)));
+    }
+
+    /**
+     * @param list<Npc|Thread> $items
+     *
+     * @return list<DroppedTags>
+     */
+    private function droppedFrom(array $items): array
+    {
+        $dropped = [];
+        foreach ($items as $item) {
+            $tags = $this->droppedTags($item->tags());
+            if ([] !== $tags) {
+                $dropped[] = new DroppedTags($item->id()->toString(), $item->name(), $tags);
+            }
+        }
+
+        return $dropped;
+    }
+
+    /**
+     * @param array<string, int> $trackerValues
+     *
+     * @return list<TrackerChange> by Tracker key
+     */
+    private function trackerChanges(array $trackerValues): array
+    {
+        ksort($trackerValues);
+        $changes = [];
+        foreach ($trackerValues as $key => $value) {
+            $key = (string) $key;
+            $tracker = $this->target->tracker($key);
+            if (!$tracker instanceof \App\Play\Domain\GameSystem\Tracker) {
+                $changes[] = new TrackerChange($key, $this->pinned->tracker($key)->name ?? $key, TrackerChangeKind::Removed, $value, null);
+            } elseif ($tracker->clamp($value) !== $value) {
+                $changes[] = new TrackerChange($key, $tracker->name, TrackerChangeKind::Clamped, $value, $tracker->clamp($value));
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @param list<Fact>   $facts
+     * @param list<Npc>    $npcs
+     * @param list<Thread> $threads
+     *
+     * @return list<UnslottedFact>
+     */
+    private function unslotted(array $facts, array $npcs, array $threads): array
+    {
+        $unslotted = [];
+        foreach ($facts as $fact) {
+            if (null !== $fact->slot() && !$this->target->factSlot($fact->slot()) instanceof FactSlot) {
+                $unslotted[] = new UnslottedFact($fact->id()->toString(), $fact->slot(), $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads));
+            }
+        }
+
+        return $unslotted;
+    }
+
+    private function flowChange(?string $flowKey, bool $hasFlowRun): FlowChange
+    {
+        $to = $this->targetFlowKey($flowKey);
+
+        return new FlowChange($flowKey, $to, $hasFlowRun || null !== $to);
+    }
+
+    private function freedLabel(Fact $fact): string
+    {
+        $label = $fact->label() ?? $this->pinned->factSlot((string) $fact->slot())->label ?? (string) $fact->slot();
+
+        return mb_substr($label, 0, Fact::MAX_LABEL_LENGTH);
+    }
+
+    /**
+     * @param list<Npc>    $npcs
+     * @param list<Thread> $threads
+     */
+    private function freedText(Fact $fact, array $npcs, array $threads): string
+    {
+        $subject = $fact->subject();
+        if (!$subject instanceof \App\Play\Domain\Campaign\Facts\FactLink || null !== $fact->text()) {
+            return (string) $fact->text();
+        }
+
+        $items = FactLinkKind::Npc === $subject->kind ? $npcs : $threads;
+        $named = array_find($items, static fn (Npc|Thread $item): bool => $item->id()->toString() === $subject->id);
+
+        return $named?->name() ?? $subject->id;
+    }
+}

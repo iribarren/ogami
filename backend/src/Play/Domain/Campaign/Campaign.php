@@ -52,6 +52,11 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
+use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
+use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradeChanged;
+use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlan;
+use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlanner;
+use App\Play\Domain\Campaign\Upgrade\UpgradeToAnotherGameSystem;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -132,13 +137,13 @@ final class Campaign
         private readonly string $id,
         private readonly string $ownerId,
         private readonly string $name,
-        private readonly string $gameSystemKey,
-        private readonly int $releaseVersion,
-        private readonly string $gameSystemName,
+        private string $gameSystemKey,
+        private int $releaseVersion,
+        private string $gameSystemName,
         private readonly \DateTimeImmutable $createdAt,
         private array $sessions,
         private array $trackerValues,
-        private readonly ?string $flowKey,
+        private ?string $flowKey,
         private array $npcs = [],
         private array $threads = [],
         private array $facts = [],
@@ -1364,6 +1369,70 @@ final class Campaign
         $draft = clone $this;
         $draft->guided()->resume($draft->flowContext($release, $at));
         $this->adopt($draft);
+    }
+
+    /**
+     * What upgrading to the target release would change (ADR 0035): the preview the player confirms.
+     * Nothing changes.
+     *
+     * @param GameSystemSnapshot $pinned the campaign's pinned release
+     * @param GameSystemSnapshot $target the release to upgrade to
+     *
+     * @throws \LogicException            when the first snapshot is not the pinned release
+     * @throws UpgradeToAnotherGameSystem when the target belongs to another GameSystem
+     * @throws CampaignUpToDate           when the target is not newer than the pinned release
+     */
+    public function planReleaseUpgrade(GameSystemSnapshot $pinned, GameSystemSnapshot $target): ReleaseUpgradePlan
+    {
+        $this->assertPinned($pinned);
+        if ($target->gameSystemKey() !== $this->gameSystemKey) {
+            throw UpgradeToAnotherGameSystem::of($this->gameSystemKey, $target->gameSystemKey());
+        }
+
+        if ($target->releaseVersion() <= $this->releaseVersion) {
+            throw CampaignUpToDate::at($this->releaseVersion, $target->releaseVersion());
+        }
+
+        return new ReleaseUpgradePlanner($pinned, $target)->plan($this->characters, $this->npcs, $this->threads, $this->trackerValues, $this->facts, $this->flowKey, $this->flowRun instanceof FlowRun);
+    }
+
+    /**
+     * Moves the campaign to the target release (ADR 0035), exactly as the confirmed plan says: the
+     * plan is computed again and its fingerprint must be the one the player confirmed. Character
+     * values, Tags, Tracker values and Campaign facts are fitted to the target release, guidance
+     * restarts on the target Flow (paused when it was paused), and the campaign is pinned to the
+     * target. All or nothing; sessions, scenes and the journal stay as they are.
+     *
+     * @param string             $fingerprint the fingerprint of the plan the player confirmed
+     * @param \DateTimeImmutable $at          when a paused guidance is paused again
+     *
+     * @throws \LogicException            when the first snapshot is not the pinned release
+     * @throws UpgradeToAnotherGameSystem when the target belongs to another GameSystem
+     * @throws CampaignUpToDate           when the target is not newer than the pinned release
+     * @throws ReleaseUpgradeChanged      when the plan is no longer the confirmed one
+     */
+    public function upgradeRelease(GameSystemSnapshot $pinned, GameSystemSnapshot $target, string $fingerprint, \DateTimeImmutable $at): void
+    {
+        if (!hash_equals($this->planReleaseUpgrade($pinned, $target)->fingerprint(), $fingerprint)) {
+            throw ReleaseUpgradeChanged::sincePreview();
+        }
+
+        $planner = new ReleaseUpgradePlanner($pinned, $target);
+        $draft = clone $this;
+        $draft->characters = array_map(static fn (Character $character): Character => Character::of($character->id(), $character->name(), $planner->keptTags($character->tags()), $character->freeTags(), $planner->fit($character)->values, $character->promotedFrom()), $this->characters);
+        $draft->npcs = array_map(static fn (Npc $npc): Npc => $npc->edited($npc->name(), $npc->agenda(), $planner->keptTags($npc->tags()), $npc->freeTags(), $npc->weight()), $this->npcs);
+        $draft->threads = array_map(static fn (Thread $thread): Thread => $thread->edited($thread->name(), $planner->keptTags($thread->tags()), $thread->freeTags(), $thread->weight()), $this->threads);
+        $draft->trackerValues = $planner->keptTrackerValues($this->trackerValues);
+        $draft->facts = array_map(fn (Fact $fact): Fact => null !== $fact->slot() && !$target->factSlot($fact->slot()) instanceof FactSlot ? $planner->freed($fact, $this->npcs, $this->threads) : $fact, $this->facts);
+        $draft->flowKey = $planner->targetFlowKey($this->flowKey);
+        $draft->flowRun = null === $draft->flowKey ? null : FlowRun::start();
+        if (FlowRunStatus::Paused === $this->flowRun?->status()) {
+            $draft->flowRun?->pause($at);
+        }
+
+        $draft->assertFactsConsistent();
+        $this->adopt($draft);
+        [$this->gameSystemKey, $this->releaseVersion, $this->gameSystemName, $this->flowKey] = [$target->gameSystemKey(), $target->releaseVersion(), $target->name(), $draft->flowKey];
     }
 
     /**

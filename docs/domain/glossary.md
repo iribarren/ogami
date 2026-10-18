@@ -88,6 +88,8 @@ The ubiquitous language of Ogami. Use these terms, spelled this way, in code, te
 | NPC | A non-player character the player tracks in a campaign, `open` or `closed`, with a weight (1–3). It may have an agenda, release tags and free tags (e.g. a faction `leader`). Flows create NPCs; the player adds, edits, closes and reopens them | Play |
 | Campaign fact | A statement about a campaign's world (e.g. "The Prince is Mithras"). It fills a fact slot or is free, and may link to NPCs, Threads or other facts | Play |
 | Free fact | A Campaign fact the player writes with a label and a text, outside any Fact slot. It may be edited, and linked like any fact | Play |
+| Release upgrade | An explicit player action that moves a campaign from its pinned GameSystem release to the latest one ([ADR 0035](../adr/0035-campaign-release-upgrade.md)). It fits stored Character values, Tags, tracker values and Campaign facts to the new release, restarts the guidance, and changes nothing until the player confirms the Upgrade plan | Play |
+| Upgrade plan | The preview of a Release upgrade: every Character value, Tag, tracker value, Campaign fact and guidance change, in a deterministic order, with a fingerprint the confirmation must match so the applied change is exactly the previewed one | Play |
 | Fact link | A reference from a Campaign fact to an NPC, a Thread or another fact, by id (so a rename shows everywhere). At most 20 per fact, each once, never the fact itself | Play |
 
 ## Randomness

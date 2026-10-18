@@ -118,7 +118,7 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 | T8 | 7 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 7) | [x] | 2e5509a (fixes 7fa4e0d, 5728541) |
 | T9 | 8 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 8) | [x] | 7986793, 4620b00 (fix 496ee7f) |
 | T10 | 6 | Frontend: `libraryChanges` badges on the draft list and Overview; library sources in release history; tests | delegated writer (slice 6) | [x] | d3420d7 |
-| T11 | 9 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 9) | [ ] | |
+| T11 | 9 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 9) | [x] | |
 
 ## Progress
 
@@ -143,6 +143,8 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 - 2026-10-18: Slice 7 review fix. `aMalformedStoredImportsRowDegradesTheCountAndStaysFailClosedElsewhere` gives the healthy draft an import of `tags/social` whose pack item then changes, and asserts its list `libraryChanges` is 1 next to the corrupt draft's 0 (test-only; GREEN on the existing code, a regression test, no RED to observe).
 - 2026-10-18: T9 done. `studio/library/` gains `useLibraryImports` (list, preview, import, update, detach; every write sets the imports query from the answer, so the next `expectedVersion` is right, and invalidates the draft's other queries and the draft list), `LibraryTab` (imports by section with pack, Current/Changed/Removed and Edited locally badges; Update, confirmed when edited locally; Detach, confirmed; a removed item can only be detached; 409 offers `Reload the latest version`; imports load only when the tab is open) and `ImportDialog` (pick a pack, tick catalog items with `Also brings …` hints, Preview, then Import once the preview has no conflicts or error). The tab is shown for drafts only; a schema 1 draft gets a notice and asks for no imports. `sectionTitles` moved to `sections.ts`. Tests (34 Vitest) and stories were written after the code, no RED observed.
 - 2026-10-18: Slice 8 measured 1,839 lines (user accepted the size as two T9 commits in one slice).
+- 2026-10-18: Slice 8 review fixes (commit 1 of slice 9). `ImportDialog` disables the catalog checkboxes and `Choose another pack` while a preview or import runs; `isStaleWrite` (`useGameSystems.ts`, matches the `GameSystemModifiedConcurrently` message, the API has no error code) gates `Reload the latest version` in `LibraryTab` and `ImportDialog`; `LibraryTab.reload()` keeps the update/detach refusal when the refetch fails; the invalidation predicate derives the imports segment index from `gameSystemKey('')`. RED first for the frozen dialog, both non-stale 409 cases and the tab's reload failure; the dialog's reload-failure test and the no-imports-refetch test passed on first run (regression tests).
+- 2026-10-18: T11 done. `frontend/e2e/studio-library.spec.ts`: as the seeded manager, author a pack (table + Scene Type that ticks it as an oracle shortcut), create a blank schema 2 draft with a table under the same key, import the Scene Type (preview shows the table as kept from the draft), change the pack's Scene Type, see `1 library change` and Changed, Update to Current, publish and read `Library: <pack> (<scene type>)` in the release history. Passes against the running stack; no production change.
 
 ## Reviews
 
@@ -159,4 +161,4 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 
 ## Next step
 
-Slice 9: slice 8 review fixes, then T11 (Playwright e2e). Then native review and PR #9/9, then a doc-only commit on the same branch recording the slice 9 review and PR and closing the feature.
+Slice 9: native review and PR 9/9, then the doc-only close commit.

@@ -8,6 +8,7 @@ export const published: GameSystemSummary = {
   schemaVersion: 2,
   latestReleaseVersion: 3,
   hasUnpublishedChanges: false,
+  libraryChanges: 0,
   updatedAt: '2026-10-14T09:00:00+00:00',
 }
 
@@ -17,6 +18,7 @@ export const withChanges: GameSystemSummary = {
   schemaVersion: 2,
   latestReleaseVersion: 1,
   hasUnpublishedChanges: true,
+  libraryChanges: 0,
   updatedAt: '2026-10-15T09:00:00+00:00',
 }
 
@@ -26,6 +28,7 @@ export const neverPublished: GameSystemSummary = {
   schemaVersion: 2,
   latestReleaseVersion: null,
   hasUnpublishedChanges: true,
+  libraryChanges: 0,
   updatedAt: '2026-10-16T09:00:00+00:00',
 }
 
@@ -41,6 +44,7 @@ export const draft: GameSystem = {
   sectionCounts: { oracleTables: 2, trackers: 1, flows: 0, checks: 3 },
   latestReleaseVersion: null,
   hasUnpublishedChanges: true,
+  libraryChanges: 0,
   createdAt: '2026-10-15T09:00:00+00:00',
   updatedAt: '2026-10-16T09:00:00+00:00',
 }
@@ -57,6 +61,7 @@ export const legacy: GameSystem = {
   sectionCounts: { oracles: 4, flowSteps: 0 },
   latestReleaseVersion: 2,
   hasUnpublishedChanges: false,
+  libraryChanges: 0,
   createdAt: '2026-09-01T09:00:00+00:00',
   updatedAt: '2026-09-02T09:00:00+00:00',
 }

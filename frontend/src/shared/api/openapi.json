@@ -12752,6 +12752,7 @@
                     "schemaVersion",
                     "latestReleaseVersion",
                     "hasUnpublishedChanges",
+                    "libraryChanges",
                     "updatedAt"
                 ],
                 "properties": {
@@ -12777,6 +12778,11 @@
                     "hasUnpublishedChanges": {
                         "description": "True when it has no release, the draft is invalid, or the draft differs from the latest release.",
                         "type": "boolean"
+                    },
+                    "libraryChanges": {
+                        "description": "How many of the draft's library imports changed or went away in their library pack.",
+                        "type": "integer",
+                        "example": 1
                     },
                     "updatedAt": {
                         "type": "string",
@@ -12874,6 +12880,7 @@
                     "sectionCounts",
                     "latestReleaseVersion",
                     "hasUnpublishedChanges",
+                    "libraryChanges",
                     "createdAt",
                     "updatedAt"
                 ],
@@ -12939,6 +12946,11 @@
                     "hasUnpublishedChanges": {
                         "description": "True when it has no release, the draft is invalid, or the draft differs from the latest release.",
                         "type": "boolean"
+                    },
+                    "libraryChanges": {
+                        "description": "How many of the draft's library imports changed or went away in their library pack; 0 for a library pack and a draft without imports.",
+                        "type": "integer",
+                        "example": 1
                     },
                     "createdAt": {
                         "type": "string",
@@ -13697,13 +13709,45 @@
                 },
                 "type": "object"
             },
+            "LibrarySourceResponse": {
+                "required": [
+                    "section",
+                    "key",
+                    "pack"
+                ],
+                "properties": {
+                    "section": {
+                        "description": "Which section the item is in: oracles, trackers, tags, fact slots or Scene Types.",
+                        "type": "string",
+                        "enum": [
+                            "oracles",
+                            "trackers",
+                            "tags",
+                            "fact-slots",
+                            "scene-types"
+                        ]
+                    },
+                    "key": {
+                        "description": "The item's key in the draft.",
+                        "type": "string",
+                        "example": "npc-name"
+                    },
+                    "pack": {
+                        "description": "The key of the library pack it came from.",
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemReleaseSummaryResponse": {
                 "required": [
                     "version",
                     "schemaVersion",
                     "publishedAt",
                     "notes",
-                    "contentHash"
+                    "contentHash",
+                    "librarySources"
                 ],
                 "properties": {
                     "version": {
@@ -13729,6 +13773,14 @@
                         "description": "The full sha256 of the canonical content; a UI shows a short form.",
                         "type": "string",
                         "example": "11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0"
+                    },
+                    "librarySources": {
+                        "description": "The library items the draft had imported when this release was published, for the history only (the release itself is self-contained); null when it recorded none, as for a release without imports.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibrarySourceResponse"
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"

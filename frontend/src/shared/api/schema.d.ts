@@ -3419,6 +3419,11 @@ export interface components {
             latestReleaseVersion: number | null;
             /** @description True when it has no release, the draft is invalid, or the draft differs from the latest release. */
             hasUnpublishedChanges: boolean;
+            /**
+             * @description How many of the draft's library imports changed or went away in their library pack.
+             * @example 1
+             */
+            libraryChanges: number;
             /** Format: date-time */
             updatedAt: string;
         };
@@ -3502,6 +3507,11 @@ export interface components {
             latestReleaseVersion: number | null;
             /** @description True when it has no release, the draft is invalid, or the draft differs from the latest release. */
             hasUnpublishedChanges: boolean;
+            /**
+             * @description How many of the draft's library imports changed or went away in their library pack; 0 for a library pack and a draft without imports.
+             * @example 1
+             */
+            libraryChanges: number;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3861,6 +3871,23 @@ export interface components {
             /** @description The roll on the random event table (nested tables followed); null when the roll signalled no random event. */
             randomEvent: components["schemas"]["OracleTableResultResponse"] | null;
         };
+        LibrarySourceResponse: {
+            /**
+             * @description Which section the item is in: oracles, trackers, tags, fact slots or Scene Types.
+             * @enum {string}
+             */
+            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+            /**
+             * @description The item's key in the draft.
+             * @example npc-name
+             */
+            key: string;
+            /**
+             * @description The key of the library pack it came from.
+             * @example fantasy-basics
+             */
+            pack: string;
+        };
         GameSystemReleaseSummaryResponse: {
             /** @example 3 */
             version: number;
@@ -3881,6 +3908,8 @@ export interface components {
              * @example 11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0
              */
             contentHash: string;
+            /** @description The library items the draft had imported when this release was published, for the history only (the release itself is self-contained); null when it recorded none, as for a release without imports. */
+            librarySources: components["schemas"]["LibrarySourceResponse"][] | null;
         };
         PublishGameSystemRequest: {
             /**

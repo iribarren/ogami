@@ -1,7 +1,7 @@
 # Feature: play-release-upgrade
 
 - **Locator:** `odd/tasks/play-release-upgrade.md` · Engram topic `odd/play-release-upgrade/tasks`
-- **Issue:** #207 · **Branch:** `feat/play-release-upgrade-3-upgrade-dialog` · **Status:** slices 1–2 merged (PRs #208, #209); slice 3 in progress
+- **Issue:** #207 · **Branch:** `docs/play-release-upgrade-wrap-up` · **Status:** done: slices 1–3 merged (PRs #208, #209, #210)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `admin-users` (PRs #198–#205)
@@ -88,12 +88,13 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | T4 | 2 | Slice 1 review fixes: R3-001 compare a fitted track normalized (reordered JSONB keys are unchanged, not clamped) with a test; R3-002 test that an open guided Scene goes on as a free Scene consistent with the restarted FlowRun | delegated writer (slice 2) | [x] | 8811eb5 |
 | T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [x] | 090d9d0 |
 | T6 | 2 | HTTP: preview and upgrade endpoints, API tests for every status, `make api` | delegated writer (slice 2) | [x] | 4d36ede, f477c0c (generated) |
-| T7 | 3 | Slice 2 review fixes: R3-001 test the planner's normalized compare with a raw reordered track value (not built through `Character::of`); R3-002 the upgrade endpoint runs the command and the follow-up read in separate `try` blocks, so a failed read after a saved upgrade no longer reports the upgrade as refused | delegated writer (slice 3) | [x] | |
-| T8 | 3 | Frontend: upgrade action and dialog, hooks, tests, stories; roadmap status | delegated writer (slice 3) | [x] | |
-| T9 | 3 | Slice 3 review fixes: R3-001 any failed upgrade POST reloads the campaign and the preview, and a 500 shows the API message (saved upgrade then reads as up to date); R3-002 API test for the post-commit read failure (500 "upgrade was saved", upgrade persisted); R3-003 planner regression guard through a persisted campaign reloaded from JSONB instead of reflection | delegated writer (slice 3) | [x] | |
+| T7 | 3 | Slice 2 review fixes: R3-001 test the planner's normalized compare with a raw reordered track value (not built through `Character::of`); R3-002 the upgrade endpoint runs the command and the follow-up read in separate `try` blocks, so a failed read after a saved upgrade no longer reports the upgrade as refused | delegated writer (slice 3) | [x] | 42128e1 |
+| T8 | 3 | Frontend: upgrade action and dialog, hooks, tests, stories; roadmap status | delegated writer (slice 3) | [x] | 7161998 |
+| T9 | 3 | Slice 3 review fixes: R3-001 any failed upgrade POST reloads the campaign and the preview, and a 500 shows the API message (saved upgrade then reads as up to date); R3-002 API test for the post-commit read failure (500 "upgrade was saved", upgrade persisted); R3-003 planner regression guard through a persisted campaign reloaded from JSONB instead of reflection | delegated writer (slice 3) | [x] | bfc8c3d |
 
 ## Progress
 
+- 2026-10-19: slice 3 merged (PR #210, closes #207); feature done.
 - 2026-10-19: T9 done: R3-001 `useUpgradeCampaignRelease` invalidates the campaign (and so the preview) on any error and explains a 500 (RED observed: generic "HTTP 500" shown, no reload); R3-002 API test makes the releases vanish in a `postFlush` listener, so the follow-up read fails after the commit (no production change; the command and the read already sit in separate `try` blocks; test fails if the read `catch` is narrowed); R3-003 reflection test replaced by a repository test that reloads a track from JSONB (keys come back `max`, `current`) and plans to the same bounds: no RED reachable, `Character::of` normalizes and bypassing `normalized()` still passes, so it is a regression guard. Note: once the campaign reloads at the new version the header action and dialog unmount.
 - 2026-10-18: T8 done: `useReleaseUpgrade.ts` (preview GET, confirm POST, 409 reloads the preview), `ReleaseUpgradeDialog.tsx` (header button only for a newer version of the campaign's own GameSystem; sections omitted when empty; Confirm disabled while the preview reloads), fixtures, 13 Vitest tests, 2 stories, roadmap feature 20 marked done. Component tests were written after the code (no RED).
 - 2026-10-18: T7 done: R3-001 planner test feeds a raw reordered track to `fitValue()` by reflection (`Character::of` normalizes, so no Character can carry one; RED observed by dropping `normalized()`, then GREEN); R3-002 the upgrade endpoint reads the campaign in its own `try` after the command, a failed read answers 500 "upgrade was saved" (no API test: the read cannot fail in a test without a new production seam).
@@ -112,7 +113,8 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 |---|---|---|---|---|
 | 1 | `review-72bd6dd5daf0f1cb` | b5bfc1f, 2879a47, f4380b9 | Approved and acknowledged; warnings R3-001 (reordered track reported as clamped), R3-002 (no test for an open guided Scene on upgrade), fixed in slice 2 (T4) | [#208](https://github.com/iribarren/ogami/pull/208) |
 | 2 | `review-811c569d45cf811e` | 8811eb5, 090d9d0, 4d36ede (f477c0c, generated, review skipped by the user) | Approved and acknowledged; warning R3-001 (the reordered-track test builds through `Character::of`, which already normalizes, so it never exercises the planner), suggestion R3-002 (a failed read after the upgrade reports an error although the upgrade saved), fixed in slice 3 (T7) | [#209](https://github.com/iribarren/ogami/pull/209) |
+| 3 | `review-3dc9d21dc5abe35f` | 42128e1, 7161998 (bfc8c3d, the review fixes, review skipped by the user) | Approved and acknowledged; warnings R3-001 (the upgrade mutation only reacted to 409, so a saved upgrade whose read failed looked failed and kept a stale Confirm), R3-002 (the post-commit read failure path had no test), suggestion R3-003 (the planner guard called a private method through reflection), fixed in slice 3 (T9) at the user's request | [#210](https://github.com/iribarren/ogami/pull/210) |
 
 ## Next step
 
-Slice 3: review and PR (`Closes #207`); then record the review outcome and PR link in one doc-only commit.
+None: the feature is done.

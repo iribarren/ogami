@@ -89,12 +89,16 @@ final readonly class DoctrineGameSystemRepository implements GameSystemRepositor
         return array_map($this->readable(...), $gameSystems);
     }
 
+    /**
+     * A pack never holds imports (the domain refuses them), so its rows are not parsed for imports:
+     * one malformed row cannot break the listing every game manager sees.
+     */
     public function libraryPacks(): array
     {
         /** @var list<GameSystem> $packs */
         $packs = $this->entityManager->getRepository(GameSystem::class)->findBy(['kind' => GameSystemKind::LibraryPack]);
 
-        return array_map($this->readable(...), $packs);
+        return $packs;
     }
 
     public function remove(GameSystem $gameSystem): void

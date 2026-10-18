@@ -135,6 +135,20 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function aPackWithMalformedStoredImportsStillListsWhileTheSameDataOnADraftFailsClosed(): void
+    {
+        $this->gameSystems->add($this->pack(self::FIRST_ID, 'names'));
+        $this->gameSystems->add($this->blank(self::SECOND_ID, 'corrupt', self::OWNER));
+        $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '[{\"section\": \"tags\"}]' WHERE game_system_key IN ('names', 'corrupt')");
+        $this->entityManager->clear();
+
+        // A pack never holds imports, so its listing does not parse them.
+        self::assertSame(['names'], array_map(static fn (GameSystem $pack): string => $pack->key(), $this->gameSystems->libraryPacks()));
+        $this->expectException(\UnexpectedValueException::class);
+        $this->gameSystems->ofKey('corrupt');
+    }
+
+    #[Test]
     public function aDraftRoundTripsAsAGameSystemWithNoImports(): void
     {
         $this->gameSystems->add($this->blank(self::FIRST_ID, 'plain', self::OWNER));

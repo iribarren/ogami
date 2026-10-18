@@ -26,3 +26,8 @@ services:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
+
+    # Account email links point at the SPA (ADR 0034).
+    App\Identity\Application\AccountLinks:
+        arguments:
+            $publicUrl: '%env(APP_PUBLIC_URL)%'

@@ -15,5 +15,12 @@
         <field name="email" type="string" column="email" length="180"/>
         <field name="passwordHash" type="string" column="password_hash" length="255"/>
         <field name="roles" type="json" column="roles"/>
+        <field name="status" type="string" column="status" length="16" enum-type="App\Identity\Domain\UserStatus">
+            <!-- Rows written before the column existed read as active. -->
+            <options>
+                <option name="default">active</option>
+            </options>
+        </field>
+        <field name="createdAt" type="datetime_immutable" column="created_at"/>
     </entity>
 </doctrine-mapping>

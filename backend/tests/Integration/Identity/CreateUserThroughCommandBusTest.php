@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Identity;
 
+use App\Identity\Application\Clock;
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\CreateUserHandler;
 use App\Identity\Application\EmailAlreadyInUse;
@@ -51,6 +52,7 @@ final class CreateUserThroughCommandBusTest extends KernelTestCase
             Email::fromString('ada@example.com'),
             'hash',
             [Role::Owner],
+            new \DateTimeImmutable('2026-10-18T09:00:00+00:00'),
         ));
 
         // A repository that misses the existing user, as a concurrent request would.
@@ -77,8 +79,13 @@ final class CreateUserThroughCommandBusTest extends KernelTestCase
 
                 return null;
             }
+
+            public function all(): array
+            {
+                return $this->inner->all();
+            }
         };
-        $container->set(CreateUserHandler::class, new CreateUserHandler($racing, $container->get(PasswordHasher::class)));
+        $container->set(CreateUserHandler::class, new CreateUserHandler($racing, $container->get(PasswordHasher::class), $container->get(Clock::class)));
 
         try {
             $container->get(CommandBus::class)->dispatch(

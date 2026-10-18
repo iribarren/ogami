@@ -58,4 +58,9 @@ final readonly class DoctrineUserRepository implements UserRepository
     {
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email->toString()]);
     }
+
+    public function all(): array
+    {
+        return $this->entityManager->getRepository(User::class)->findBy([], ['email' => 'ASC']);
+    }
 }

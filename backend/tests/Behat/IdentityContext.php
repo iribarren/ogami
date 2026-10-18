@@ -13,6 +13,7 @@ use App\Identity\Application\UnknownRole;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\UserMustHaveARole;
 use App\Tests\Support\Identity\FakePasswordHasher;
+use App\Tests\Support\Identity\FixedClock;
 use App\Tests\Support\Identity\InMemoryUserRepository;
 use App\Tests\Support\Identity\SequentialUserIdGenerator;
 use Behat\Behat\Context\Context;
@@ -37,7 +38,7 @@ final class IdentityContext implements Context
     {
         $this->users = new InMemoryUserRepository();
         $this->ids = new SequentialUserIdGenerator();
-        $this->createUser = new CreateUserHandler($this->users, new FakePasswordHasher());
+        $this->createUser = new CreateUserHandler($this->users, new FakePasswordHasher(), new FixedClock());
     }
 
     #[Given('a user exists with email :email')]

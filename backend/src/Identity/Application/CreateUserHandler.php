@@ -16,6 +16,7 @@ final readonly class CreateUserHandler implements CommandHandler
     public function __construct(
         private UserRepository $users,
         private PasswordHasher $hasher,
+        private Clock $clock,
     ) {
     }
 
@@ -49,6 +50,7 @@ final readonly class CreateUserHandler implements CommandHandler
             $email,
             $this->hasher->hash($command->plainPassword),
             $roles,
+            $this->clock->now(),
         ));
     }
 }

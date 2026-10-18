@@ -9,9 +9,9 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
- * A GameSystem draft as its owner sees it: its metadata and what its sections hold.
+ * A GameSystem draft or library pack as its owner sees it: its metadata and what its sections hold.
  */
-#[OA\Schema(required: ['key', 'name', 'description', 'credits', 'theme', 'schemaVersion', 'sectionCounts', 'latestReleaseVersion', 'hasUnpublishedChanges', 'createdAt', 'updatedAt'])]
+#[OA\Schema(required: ['key', 'kind', 'name', 'description', 'credits', 'theme', 'schemaVersion', 'sectionCounts', 'latestReleaseVersion', 'hasUnpublishedChanges', 'createdAt', 'updatedAt'])]
 final readonly class GameSystemResponse
 {
     /**
@@ -20,6 +20,8 @@ final readonly class GameSystemResponse
     private function __construct(
         #[OA\Property(example: 'my-system')]
         public string $key,
+        #[OA\Property(description: 'A GameSystem publishes releases; a library pack holds generic items that drafts import and is never published.', example: 'game-system', enum: ['game-system', 'library-pack'])]
+        public string $kind,
         #[OA\Property(example: 'My system')]
         public string $name,
         #[OA\Property(example: 'A game of my own.', nullable: true)]
@@ -52,6 +54,7 @@ final readonly class GameSystemResponse
     {
         return new self(
             $view->key,
+            $view->kind->value,
             $view->name,
             $view->description,
             GameSystemCreditsResponse::fromArray($view->credits),

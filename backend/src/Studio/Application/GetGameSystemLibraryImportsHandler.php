@@ -31,14 +31,18 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
         $packs = [];
         $views = [];
         foreach ($gameSystem->libraryImports() as $import) {
-            $packs[$import->pack] ??= ($pack = $this->packs->find($import->pack)) instanceof GameSystem ? [$pack, LibraryItems::of($pack->document())] : null;
+            if (!\array_key_exists($import->pack, $packs)) {
+                $pack = $this->packs->find($import->pack);
+                $packs[$import->pack] = $pack instanceof GameSystem ? [$pack, LibraryItems::of($pack->document())] : null;
+            }
+
             $source = null === $packs[$import->pack] ? null : $packs[$import->pack][1]->find($import->ref());
             $own = $draft->find($import->ref());
 
             $views[] = new LibraryImportView(
                 $import->section,
                 $import->key,
-                $this->label($own['item'] ?? null, $import->key),
+                LibraryItems::labelOf($own['item'] ?? null, $import->key),
                 null === $packs[$import->pack] ? null : ['key' => $import->pack, 'name' => $packs[$import->pack][0]->name()],
                 match (true) {
                     null === $source => LibraryImportStatus::Removed,
@@ -50,19 +54,5 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
         }
 
         return $views;
-    }
-
-    /**
-     * @param array<array-key, mixed>|null $item
-     */
-    private function label(?array $item, string $key): string
-    {
-        foreach (['name', 'label'] as $field) {
-            if (\is_string($item[$field] ?? null) && '' !== $item[$field]) {
-                return $item[$field];
-            }
-        }
-
-        return $key;
     }
 }

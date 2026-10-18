@@ -22,6 +22,7 @@ use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\InvalidGameSystemId;
 use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
+use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -146,7 +147,7 @@ final readonly class GameSystemController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or credits or a theme are given for a library pack, which has neither.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A field breaks the release contract\'s rules (the message names it), or credits or a theme are given for a schema version 1 draft; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function editMetadata(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -172,7 +173,7 @@ final readonly class GameSystemController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (InvalidGameSystemMetadata $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (GameSystemModifiedConcurrently $exception) {
+        } catch (GameSystemModifiedConcurrently|LibraryPackRefuses $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
     }

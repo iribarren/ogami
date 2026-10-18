@@ -18,6 +18,7 @@ use App\Studio\Application\ReleaseIdGenerator;
 use App\Studio\Application\RestoreGameSystemRelease;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\Release\GameSystemDraftUnchanged;
 use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\GameSystemReleaseNotFound;
@@ -84,7 +85,7 @@ final readonly class GameSystemReleaseController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The draft has no changes since the latest release, or another publish took the version first; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The draft has no changes since the latest release, another publish took the version first, or the GameSystem is a library pack, which is never published; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'A body was sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The draft breaks the release contract (the message names the path of the first error) or the notes are blank, contain NUL or invalid UTF-8, or are longer than 2,000 characters; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function publish(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -110,7 +111,7 @@ final readonly class GameSystemReleaseController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (InvalidReleaseContent|InvalidGameSystemRelease $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (GameSystemDraftUnchanged|GameSystemReleaseAlreadyExists $exception) {
+        } catch (GameSystemDraftUnchanged|GameSystemReleaseAlreadyExists|LibraryPackRefuses $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
@@ -142,7 +143,7 @@ final readonly class GameSystemReleaseController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which has no releases to restore.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The GameSystem has no release with that version; the draft is unchanged.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function restore(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -165,7 +166,7 @@ final readonly class GameSystemReleaseController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (GameSystemReleaseNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (GameSystemModifiedConcurrently $exception) {
+        } catch (GameSystemModifiedConcurrently|LibraryPackRefuses $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
     }

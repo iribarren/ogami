@@ -30,6 +30,7 @@ final readonly class GetGameSystemHandler implements QueryHandler
 
         return new GameSystemView(
             $gameSystem->key(),
+            $gameSystem->kind(),
             $gameSystem->name(),
             \is_string($metadata['description'] ?? null) ? $metadata['description'] : null,
             \is_array($credits) ? $credits : null,

@@ -21,6 +21,7 @@ use App\Studio\Domain\GameSystem\CheckKeyTaken;
 use App\Studio\Domain\GameSystem\CheckNotFound;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
@@ -78,7 +79,7 @@ final readonly class GameSystemCheckController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the key names another check.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the key names another check. A library pack refuses checks.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The check breaks the release contract\'s rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no checks); nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function create(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -94,7 +95,7 @@ final readonly class GameSystemCheckController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or it has no check with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the new key names another check.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the new key names another check. A library pack refuses checks.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The check breaks the release contract\'s rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a step names the check being renamed or a band the check drops (the paths say where); nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function replace(string $key, string $check, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -110,7 +111,7 @@ final readonly class GameSystemCheckController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or it has no check with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses checks.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A check step names the check (the paths say where), or the draft has schema version 1; nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function delete(string $key, string $check, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -130,7 +131,7 @@ final readonly class GameSystemCheckController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or it has no check with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses checks.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: '"index" is outside the check list (the message starts with "index"), the draft breaks the release contract\'s rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function move(string $key, string $check, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -210,7 +211,7 @@ final readonly class GameSystemCheckController
     {
         try {
             $this->commandBus->dispatch($command);
-        } catch (GameSystemNotFound|CheckNotFound|GameSystemModifiedConcurrently|CheckKeyTaken|CheckInUse|InvalidReleaseContent $exception) {
+        } catch (GameSystemNotFound|CheckNotFound|GameSystemModifiedConcurrently|CheckKeyTaken|CheckInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
 
@@ -249,7 +250,7 @@ final readonly class GameSystemCheckController
     {
         return match (true) {
             $exception instanceof GameSystemNotFound, $exception instanceof CheckNotFound => $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND),
-            $exception instanceof GameSystemModifiedConcurrently, $exception instanceof CheckKeyTaken => $this->error($exception->getMessage(), Response::HTTP_CONFLICT),
+            $exception instanceof GameSystemModifiedConcurrently, $exception instanceof CheckKeyTaken, $exception instanceof LibraryPackRefuses => $this->error($exception->getMessage(), Response::HTTP_CONFLICT),
             $exception instanceof CheckInUse => new JsonResponse(OracleInUseResponse::fromException($exception), Response::HTTP_UNPROCESSABLE_ENTITY),
             default => $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY),
         };

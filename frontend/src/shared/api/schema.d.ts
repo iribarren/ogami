@@ -1256,6 +1256,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/library/packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List every library pack, whoever wrote it */
+        get: operations["listLibraryPacks"];
+        put?: never;
+        /** Create a blank library pack */
+        post: operations["createLibraryPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/library/packs/{pack}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Browse one library pack, whoever wrote it */
+        get: operations["getLibraryPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3360,6 +3395,12 @@ export interface components {
         GameSystemResponse: {
             /** @example my-system */
             key: string;
+            /**
+             * @description A GameSystem publishes releases; a library pack holds generic items that drafts import and is never published.
+             * @example game-system
+             * @enum {string}
+             */
+            kind: "game-system" | "library-pack";
             /** @example My system */
             name: string;
             /** @example A game of my own. */
@@ -3963,6 +4004,93 @@ export interface components {
              * @example 3
              */
             expectedVersion: number;
+        };
+        LibraryPackSummaryResponse: {
+            /** @example fantasy-basics */
+            key: string;
+            /** @example Fantasy basics */
+            name: string;
+            /** @example Names, rumours and a tavern. */
+            description: string | null;
+            /** @description True when the signed-in game manager wrote the pack and may edit it. */
+            mine: boolean;
+            /**
+             * @description How many items each section holds: oracleTables, likelihoodOracles, trackers, tags, factSlots and sceneTypes.
+             * @example {
+             *       "oracleTables": 2,
+             *       "trackers": 1
+             *     }
+             */
+            itemCounts: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateLibraryPackRequest: {
+            /**
+             * @description Names the pack and never changes: lower case letters, digits and hyphens. Not used by a GameSystem, another pack or any release (presets included).
+             * @example fantasy-basics
+             */
+            key: string;
+            /**
+             * @description The pack's name, at most 100 characters.
+             * @example Fantasy basics
+             */
+            name: string;
+            /**
+             * @description What the pack offers; absent or null for none.
+             * @example Names, rumours and a tavern.
+             */
+            description?: string | null;
+        };
+        LibraryItemRefResponse: {
+            /**
+             * @description Oracle tables and likelihood oracles share the oracles section.
+             * @example tags
+             * @enum {string}
+             */
+            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+            /** @example social */
+            key: string;
+        };
+        LibraryPackCatalogItemResponse: {
+            /** @example tavern */
+            key: string;
+            /**
+             * @description The item's name or label; its key when it has none.
+             * @example Tavern
+             */
+            label: string;
+            /**
+             * @description What an oracle is; null for the other sections.
+             * @enum {string|null}
+             */
+            kind: "table" | "likelihood" | null;
+            /** @description The other items of the pack this one names directly, not their closure: importing it copies them too unless the draft has their keys. */
+            dependsOn: components["schemas"]["LibraryItemRefResponse"][];
+        };
+        LibraryPackCatalogSectionResponse: {
+            /**
+             * @example scene-types
+             * @enum {string}
+             */
+            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+            items: components["schemas"]["LibraryPackCatalogItemResponse"][];
+        };
+        LibraryPackCatalogResponse: {
+            /** @example fantasy-basics */
+            key: string;
+            /** @example Fantasy basics */
+            name: string;
+            /** @example Names, rumours and a tavern. */
+            description: string | null;
+            /** @description True when the signed-in game manager wrote the pack and may edit it. */
+            mine: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Every section, in order, even when it has no items. */
+            sections: components["schemas"]["LibraryPackCatalogSectionResponse"][];
         };
     };
     responses: never;
@@ -7482,7 +7610,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the key names another check. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key names another check. A library pack refuses checks. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7572,7 +7700,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key names another check. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key names another check. A library pack refuses checks. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7661,7 +7789,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses checks. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7742,7 +7870,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses checks. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8135,7 +8263,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or credits or a theme are given for a library pack, which has neither. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8324,7 +8452,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section. A library pack refuses flows. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8416,7 +8544,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section. A library pack refuses flows. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8507,7 +8635,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses flows. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9345,7 +9473,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The draft has no changes since the latest release, or another publish took the version first; nothing was published. */
+            /** @description The draft has no changes since the latest release, another publish took the version first, or the GameSystem is a library pack, which is never published; nothing was published. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9484,7 +9612,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which has no releases to restore. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9622,7 +9750,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the key names another field. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the key names another field. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9712,7 +9840,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key names another field. */
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the new key names another field. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9801,7 +9929,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9882,7 +10010,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9971,7 +10099,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10059,7 +10187,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10139,7 +10267,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile; reload it and try again. */
+            /** @description Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10159,6 +10287,173 @@ export interface operations {
             };
             /** @description The sheet already declares a layout or has no fields (the message starts with "sheet.groups" or "sheet.fields"), the groups break the release contract's rules (more than 20), or the draft has schema version 1; nothing changed. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLibraryPacks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every pack: the signed-in game manager's first, then by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryPackSummaryResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLibraryPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLibraryPackRequest"];
+            };
+        };
+        responses: {
+            /** @description The new pack, as the GameSystem endpoints show it (kind library-pack); the Location header is its catalog URL. */
+            201: {
+                headers: {
+                    /** @description The URL of the pack's catalog. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "key" or "name", or a "description" of the wrong type. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A GameSystem, another pack or a release already has the key. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The key, name or description breaks the release contract's rules (the message names the field). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLibraryPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pack: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack's items by section, with what each one names. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryPackCatalogResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No library pack has this key (a GameSystem's key is not a pack). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

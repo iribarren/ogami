@@ -4406,7 +4406,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key names another check.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key names another check. A library pack refuses checks.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4525,7 +4525,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key names another check.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key names another check. A library pack refuses checks.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4649,7 +4649,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses checks.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4765,7 +4765,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses checks.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5249,7 +5249,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or credits or a theme are given for a library pack, which has neither.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5499,7 +5499,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section. A library pack refuses flows.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5635,7 +5635,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section. A library pack refuses flows.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5776,7 +5776,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses flows.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6891,7 +6891,7 @@
                         }
                     },
                     "409": {
-                        "description": "The draft has no changes since the latest release, or another publish took the version first; nothing was published.",
+                        "description": "The draft has no changes since the latest release, another publish took the version first, or the GameSystem is a library pack, which is never published; nothing was published.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7072,7 +7072,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which has no releases to restore.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7244,7 +7244,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key names another field.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the key names another field. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7363,7 +7363,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key names another field.",
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the new key names another field. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7487,7 +7487,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7603,7 +7603,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7714,7 +7714,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7823,7 +7823,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7924,7 +7924,7 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile; reload it and try again.",
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7945,6 +7945,208 @@
                     },
                     "422": {
                         "description": "The sheet already declares a layout or has no fields (the message starts with \"sheet.groups\" or \"sheet.fields\"), the groups break the release contract's rules (more than 20), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/library/packs": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "List every library pack, whoever wrote it",
+                "operationId": "listLibraryPacks",
+                "responses": {
+                    "200": {
+                        "description": "Every pack: the signed-in game manager's first, then by name.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LibraryPackSummaryResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Create a blank library pack",
+                "operationId": "createLibraryPack",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateLibraryPackRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new pack, as the GameSystem endpoints show it (kind library-pack); the Location header is its catalog URL.",
+                        "headers": {
+                            "Location": {
+                                "description": "The URL of the pack's catalog.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"key\" or \"name\", or a \"description\" of the wrong type.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "A GameSystem, another pack or a release already has the key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The key, name or description breaks the release contract's rules (the message names the field).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/library/packs/{pack}": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Browse one library pack, whoever wrote it",
+                "operationId": "getLibraryPack",
+                "parameters": [
+                    {
+                        "name": "pack",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The pack's items by section, with what each one names.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibraryPackCatalogResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No library pack has this key (a GameSystem's key is not a pack).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12130,6 +12332,7 @@
             "GameSystemResponse": {
                 "required": [
                     "key",
+                    "kind",
                     "name",
                     "description",
                     "credits",
@@ -12145,6 +12348,15 @@
                     "key": {
                         "type": "string",
                         "example": "my-system"
+                    },
+                    "kind": {
+                        "description": "A GameSystem publishes releases; a library pack holds generic items that drafts import and is never published.",
+                        "type": "string",
+                        "example": "game-system",
+                        "enum": [
+                            "game-system",
+                            "library-pack"
+                        ]
                     },
                     "name": {
                         "type": "string",
@@ -13300,6 +13512,204 @@
                         "description": "The draft version the client read; another save since then is refused (409).",
                         "type": "integer",
                         "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryPackSummaryResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "mine",
+                    "itemCounts",
+                    "updatedAt"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fantasy basics"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Names, rumours and a tavern.",
+                        "nullable": true
+                    },
+                    "mine": {
+                        "description": "True when the signed-in game manager wrote the pack and may edit it.",
+                        "type": "boolean"
+                    },
+                    "itemCounts": {
+                        "description": "How many items each section holds: oracleTables, likelihoodOracles, trackers, tags, factSlots and sceneTypes.",
+                        "type": "object",
+                        "example": {
+                            "oracleTables": 2,
+                            "trackers": 1
+                        },
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "CreateLibraryPackRequest": {
+                "required": [
+                    "key",
+                    "name"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "Names the pack and never changes: lower case letters, digits and hyphens. Not used by a GameSystem, another pack or any release (presets included).",
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    },
+                    "name": {
+                        "description": "The pack's name, at most 100 characters.",
+                        "type": "string",
+                        "example": "Fantasy basics"
+                    },
+                    "description": {
+                        "description": "What the pack offers; absent or null for none.",
+                        "type": "string",
+                        "example": "Names, rumours and a tavern.",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryItemRefResponse": {
+                "required": [
+                    "section",
+                    "key"
+                ],
+                "properties": {
+                    "section": {
+                        "description": "Oracle tables and likelihood oracles share the oracles section.",
+                        "type": "string",
+                        "example": "tags",
+                        "enum": [
+                            "oracles",
+                            "trackers",
+                            "tags",
+                            "fact-slots",
+                            "scene-types"
+                        ]
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "social"
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryPackCatalogItemResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "kind",
+                    "dependsOn"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "tavern"
+                    },
+                    "label": {
+                        "description": "The item's name or label; its key when it has none.",
+                        "type": "string",
+                        "example": "Tavern"
+                    },
+                    "kind": {
+                        "description": "What an oracle is; null for the other sections.",
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "table",
+                            "likelihood"
+                        ]
+                    },
+                    "dependsOn": {
+                        "description": "The other items of the pack this one names directly, not their closure: importing it copies them too unless the draft has their keys.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryItemRefResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryPackCatalogSectionResponse": {
+                "required": [
+                    "section",
+                    "items"
+                ],
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "example": "scene-types",
+                        "enum": [
+                            "oracles",
+                            "trackers",
+                            "tags",
+                            "fact-slots",
+                            "scene-types"
+                        ]
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryPackCatalogItemResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryPackCatalogResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "mine",
+                    "updatedAt",
+                    "sections"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fantasy basics"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Names, rumours and a tavern.",
+                        "nullable": true
+                    },
+                    "mine": {
+                        "description": "True when the signed-in game manager wrote the pack and may edit it.",
+                        "type": "boolean"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "sections": {
+                        "description": "Every section, in order, even when it has no items.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryPackCatalogSectionResponse"
+                        }
                     }
                 },
                 "type": "object"

@@ -72,6 +72,22 @@ final class LibraryItems
         return null;
     }
 
+    /**
+     * What an item is called to a reader: its name, else its label, else its key.
+     *
+     * @param array<array-key, mixed>|null $item
+     */
+    public static function labelOf(?array $item, string $key): string
+    {
+        foreach (['name', 'label'] as $field) {
+            if (\is_string($item[$field] ?? null) && '' !== $item[$field]) {
+                return $item[$field];
+            }
+        }
+
+        return $key;
+    }
+
     public function has(LibraryItemRef $ref): bool
     {
         return null !== $this->find($ref);

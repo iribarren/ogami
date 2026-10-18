@@ -32,6 +32,7 @@ export const neverPublished: GameSystemSummary = {
 /** A schema version 2 draft that was never published. */
 export const draft: GameSystem = {
   key: 'my-draft',
+  kind: 'game-system',
   name: 'My draft',
   description: 'A game of my own.',
   credits: { notice: 'Unofficial fan content.', license: 'CC BY 4.0', url: null },
@@ -47,6 +48,7 @@ export const draft: GameSystem = {
 /** A published, unchanged schema version 1 GameSystem: no credits, no theme. */
 export const legacy: GameSystem = {
   key: 'free-journal',
+  kind: 'game-system',
   name: 'Free journal',
   description: null,
   credits: null,

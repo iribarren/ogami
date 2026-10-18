@@ -32,6 +32,7 @@ use App\Studio\Application\UpdateLibraryImportHandler;
 use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\GameSystemRepository;
 use App\Studio\Domain\GameSystem\LibraryImport;
 use App\Studio\Domain\GameSystem\LibraryImportNotFound;
 use App\Studio\Domain\GameSystem\LibraryItemKeyTaken;
@@ -40,6 +41,7 @@ use App\Studio\Domain\GameSystem\LibraryItemRemoved;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\GameSystem\LibrarySection;
 use App\Studio\Domain\GameSystem\NarrativeSection;
+use App\Studio\Domain\Release\GameSystemDraftUnchanged;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Tests\Support\Studio\FixedClock;
@@ -409,6 +411,82 @@ final class LibraryImportHandlersTest extends TestCase
         self::assertNotNull($plain);
         self::assertNull($plain->librarySources());
         self::assertNull($detached?->librarySources());
+    }
+
+    #[Test]
+    public function aMissingPackIsLookedUpOnceForAllItsImports(): void
+    {
+        $this->import('bob', 'my-game', 1, 'generic', [['section' => 'scene-types', 'key' => 'tavern']]);
+        $this->gameSystems->remove($this->get('generic'));
+        $counting = new class($this->gameSystems) implements GameSystemRepository {
+            public int $lookups = 0;
+
+            public function __construct(private readonly GameSystemRepository $inner)
+            {
+            }
+
+            public function add(GameSystem $gameSystem): void
+            {
+                $this->inner->add($gameSystem);
+            }
+
+            public function save(GameSystem $gameSystem): void
+            {
+                $this->inner->save($gameSystem);
+            }
+
+            public function ofKey(string $key): ?GameSystem
+            {
+                if ('generic' === $key) {
+                    ++$this->lookups;
+                }
+
+                return $this->inner->ofKey($key);
+            }
+
+            public function ofOwner(string $ownerId): array
+            {
+                return $this->inner->ofOwner($ownerId);
+            }
+
+            public function libraryPacks(): array
+            {
+                return $this->inner->libraryPacks();
+            }
+
+            public function remove(GameSystem $gameSystem): void
+            {
+                $this->inner->remove($gameSystem);
+            }
+        };
+
+        $views = (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($counting)))(new GetGameSystemLibraryImports('bob', 'my-game'));
+
+        self::assertCount(3, $views);
+        self::assertSame([LibraryImportStatus::Removed], array_values(array_unique(array_map(static fn (LibraryImportView $view): LibraryImportStatus => $view->status, $views), \SORT_REGULAR)));
+        self::assertSame(1, $counting->lookups);
+    }
+
+    #[Test]
+    public function detachingAfterPublishingChangesNothingAboutTheEarlierRelease(): void
+    {
+        $this->import('bob', 'my-game', 1, 'generic', [['section' => 'tags', 'key' => 'social']]);
+        $this->publish('bob', 'my-game');
+        $release = $this->releases->latestFor('my-game');
+        self::assertNotNull($release);
+        $sources = $release->librarySources();
+        self::assertNotNull($sources);
+
+        $this->detach('bob', 'my-game', 2, 'tags', 'social');
+
+        try {
+            $this->publish('bob', 'my-game');
+            self::fail('The unchanged draft was published again.');
+        } catch (GameSystemDraftUnchanged) {
+        }
+
+        self::assertSame(1, $this->releases->count());
+        self::assertSame($sources, $this->releases->latestFor('my-game')?->librarySources());
     }
 
     private function owned(): OwnedGameSystems

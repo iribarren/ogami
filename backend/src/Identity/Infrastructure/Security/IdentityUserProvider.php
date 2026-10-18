@@ -16,8 +16,10 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 /**
  * Loads users for Symfony Security from the Identity repository. Each request
- * reloads the signed-in user, so a deleted user loses the session and a role
- * change ends it (Symfony compares the roles of the session and fresh user).
+ * reloads the signed-in user, so a deleted or disabled user loses the session
+ * and a role change ends it (Symfony compares the roles of the session and
+ * fresh user). Loading by email still returns a disabled user: the login
+ * checks the password first, then IdentityUserChecker refuses.
  *
  * @implements UserProviderInterface<SecurityUser>
  */
@@ -45,7 +47,10 @@ final readonly class IdentityUserProvider implements UserProviderInterface
             throw new UnsupportedUserException(\sprintf('Unsupported user class "%s".', $user::class));
         }
 
-        return $this->securityUserOrFail($this->users->ofId(UserId::fromString($user->id())), $user->getUserIdentifier());
+        $current = $this->users->ofId(UserId::fromString($user->id()));
+
+        // A disabled user is treated like a deleted one: the session ends on the next request.
+        return $this->securityUserOrFail($current?->isDisabled() ? null : $current, $user->getUserIdentifier());
     }
 
     public function supportsClass(string $class): bool

@@ -26,6 +26,7 @@ final readonly class SecurityUser implements AuthenticatedUser, UserInterface, P
         private string $email,
         private string $passwordHash,
         private array $roles,
+        private bool $disabled,
     ) {
     }
 
@@ -39,12 +40,21 @@ final readonly class SecurityUser implements AuthenticatedUser, UserInterface, P
             $email,
             $user->passwordHash(),
             array_map(static fn (Role $role): string => 'ROLE_'.$role->value, $user->roles()),
+            $user->isDisabled(),
         );
     }
 
     public function id(): string
     {
         return $this->id;
+    }
+
+    /**
+     * A disabled user cannot sign in (see IdentityUserChecker).
+     */
+    public function isDisabled(): bool
+    {
+        return $this->disabled;
     }
 
     public function getUserIdentifier(): string

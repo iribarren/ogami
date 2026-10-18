@@ -59,6 +59,31 @@ describe('the releases tab', () => {
     expect(items[1]).not.toHaveTextContent('Library:')
   })
 
+  it('shows no library line for an empty list of sources, and the section of a key two sections share', async () => {
+    const [latest, older] = releaseHistory
+    await openReleases({
+      [`GET ${base}/releases`]: json([
+        {
+          ...latest,
+          librarySources: [
+            { section: 'tags', key: 'social', pack: 'fantasy-basics' },
+            { section: 'scene-types', key: 'social', pack: 'fantasy-basics' },
+            { section: 'tags', key: 'social', pack: 'wild-tales' },
+          ],
+        },
+        { ...older, librarySources: [] },
+      ]),
+    })
+
+    const items = within(await screen.findByRole('region', { name: 'Releases' })).getAllByRole(
+      'listitem',
+    )
+    expect(items[0]).toHaveTextContent(
+      'Library: fantasy-basics (social (tags), social (scene-types)); wild-tales (social)',
+    )
+    expect(items[1]).not.toHaveTextContent('Library:')
+  })
+
   it('has an empty state for a GameSystem that was never published', async () => {
     await openReleases({ [`GET ${base}/releases`]: json([]) })
 

@@ -18,8 +18,7 @@ final readonly class GetGameSystemHandler implements QueryHandler
     }
 
     /**
-     * @throws GameSystemNotFound        when the user has no such GameSystem
-     * @throws \UnexpectedValueException when the draft's stored imports are malformed
+     * @throws GameSystemNotFound when the user has no such GameSystem
      */
     public function __invoke(GetGameSystem $query): GameSystemView
     {

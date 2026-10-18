@@ -18,6 +18,7 @@ import { Route as PlayIndexRouteImport } from './routes/play.index'
 import { Route as StudioIndexRouteImport } from './routes/studio.index'
 import { Route as PlayCampaignsCampaignIdRouteImport } from './routes/play.campaigns.$campaignId'
 import { Route as StudioGameSystemsKeyRouteImport } from './routes/studio.game-systems.$key'
+import { Route as StudioLibraryPackRouteImport } from './routes/studio.library.$pack'
 import { Route as StudioGameSystemsKeyFlowsFlowRouteImport } from './routes/studio.game-systems.$key_.flows.$flow'
 import { Route as StudioGameSystemsKeyLikelihoodOraclesOracleRouteImport } from './routes/studio.game-systems.$key_.likelihood-oracles.$oracle'
 import { Route as StudioGameSystemsKeyOracleTablesTableRouteImport } from './routes/studio.game-systems.$key_.oracle-tables.$table'
@@ -68,6 +69,11 @@ const StudioGameSystemsKeyRoute = StudioGameSystemsKeyRouteImport.update({
   path: '/game-systems/$key',
   getParentRoute: () => StudioRoute,
 } as any)
+const StudioLibraryPackRoute = StudioLibraryPackRouteImport.update({
+  id: '/library/$pack',
+  path: '/library/$pack',
+  getParentRoute: () => StudioRoute,
+} as any)
 const StudioGameSystemsKeyFlowsFlowRoute =
   StudioGameSystemsKeyFlowsFlowRouteImport.update({
     id: '/game-systems/$key_/flows/$flow',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
   '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
+  '/studio/library/$pack': typeof StudioLibraryPackRoute
   '/studio/game-systems/$key/flows/$flow': typeof StudioGameSystemsKeyFlowsFlowRoute
   '/studio/game-systems/$key/likelihood-oracles/$oracle': typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   '/studio/game-systems/$key/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/studio': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
   '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
+  '/studio/library/$pack': typeof StudioLibraryPackRoute
   '/studio/game-systems/$key/flows/$flow': typeof StudioGameSystemsKeyFlowsFlowRoute
   '/studio/game-systems/$key/likelihood-oracles/$oracle': typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   '/studio/game-systems/$key/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
   '/studio/game-systems/$key': typeof StudioGameSystemsKeyRoute
+  '/studio/library/$pack': typeof StudioLibraryPackRoute
   '/studio/game-systems/$key_/flows/$flow': typeof StudioGameSystemsKeyFlowsFlowRoute
   '/studio/game-systems/$key_/likelihood-oracles/$oracle': typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   '/studio/game-systems/$key_/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/studio/'
     | '/play/campaigns/$campaignId'
     | '/studio/game-systems/$key'
+    | '/studio/library/$pack'
     | '/studio/game-systems/$key/flows/$flow'
     | '/studio/game-systems/$key/likelihood-oracles/$oracle'
     | '/studio/game-systems/$key/oracle-tables/$table'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/play/campaigns/$campaignId'
     | '/studio/game-systems/$key'
+    | '/studio/library/$pack'
     | '/studio/game-systems/$key/flows/$flow'
     | '/studio/game-systems/$key/likelihood-oracles/$oracle'
     | '/studio/game-systems/$key/oracle-tables/$table'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/studio/'
     | '/play/campaigns/$campaignId'
     | '/studio/game-systems/$key'
+    | '/studio/library/$pack'
     | '/studio/game-systems/$key_/flows/$flow'
     | '/studio/game-systems/$key_/likelihood-oracles/$oracle'
     | '/studio/game-systems/$key_/oracle-tables/$table'
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioGameSystemsKeyRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/studio/library/$pack': {
+      id: '/studio/library/$pack'
+      path: '/library/$pack'
+      fullPath: '/studio/library/$pack'
+      preLoaderRoute: typeof StudioLibraryPackRouteImport
+      parentRoute: typeof StudioRoute
+    }
     '/studio/game-systems/$key_/flows/$flow': {
       id: '/studio/game-systems/$key_/flows/$flow'
       path: '/game-systems/$key/flows/$flow'
@@ -302,6 +321,7 @@ const PlayRouteWithChildren = PlayRoute._addFileChildren(PlayRouteChildren)
 interface StudioRouteChildren {
   StudioIndexRoute: typeof StudioIndexRoute
   StudioGameSystemsKeyRoute: typeof StudioGameSystemsKeyRoute
+  StudioLibraryPackRoute: typeof StudioLibraryPackRoute
   StudioGameSystemsKeyFlowsFlowRoute: typeof StudioGameSystemsKeyFlowsFlowRoute
   StudioGameSystemsKeyLikelihoodOraclesOracleRoute: typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   StudioGameSystemsKeyOracleTablesTableRoute: typeof StudioGameSystemsKeyOracleTablesTableRoute
@@ -311,6 +331,7 @@ interface StudioRouteChildren {
 const StudioRouteChildren: StudioRouteChildren = {
   StudioIndexRoute: StudioIndexRoute,
   StudioGameSystemsKeyRoute: StudioGameSystemsKeyRoute,
+  StudioLibraryPackRoute: StudioLibraryPackRoute,
   StudioGameSystemsKeyFlowsFlowRoute: StudioGameSystemsKeyFlowsFlowRoute,
   StudioGameSystemsKeyLikelihoodOraclesOracleRoute:
     StudioGameSystemsKeyLikelihoodOraclesOracleRoute,

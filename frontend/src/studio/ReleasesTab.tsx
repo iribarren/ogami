@@ -28,13 +28,23 @@ const publishedAtFormat = new Intl.DateTimeFormat('en-GB', {
 /** The short form of a content hash a UI shows. */
 const shortHash = (hash: string) => hash.slice(0, 8)
 
-/** The library items a release was imported with, by pack: `fantasy-basics (npc-name, social)`. */
+/**
+ * The library items a release was imported with, by pack: `fantasy-basics (npc-name, social)`. A
+ * key two sections of a pack share shows its section, so it is not read as a duplicate.
+ */
 function sourcesByPack(sources: NonNullable<ReleaseSummary['librarySources']>): string {
-  const byPack = new Map<string, string[]>()
-  for (const { pack, key } of sources) {
-    byPack.set(pack, [...(byPack.get(pack) ?? []), key])
+  const byPack = new Map<string, typeof sources>()
+  for (const source of sources) {
+    byPack.set(source.pack, [...(byPack.get(source.pack) ?? []), source])
   }
-  return [...byPack].map(([pack, keys]) => `${pack} (${keys.join(', ')})`).join('; ')
+  return [...byPack]
+    .map(([pack, items]) => {
+      const labels = items.map(({ section, key }) =>
+        items.filter((item) => item.key === key).length > 1 ? `${key} (${section})` : key,
+      )
+      return `${pack} (${labels.join(', ')})`
+    })
+    .join('; ')
 }
 
 /**
@@ -131,7 +141,7 @@ function ReleaseRow({
         <p className={release.notes === null ? 'text-muted-foreground' : 'break-words'}>
           {release.notes ?? 'No notes'}
         </p>
-        {release.librarySources !== null && (
+        {release.librarySources !== null && release.librarySources.length > 0 && (
           <p className="text-sm break-words text-muted-foreground">
             Library: {sourcesByPack(release.librarySources)}
           </p>

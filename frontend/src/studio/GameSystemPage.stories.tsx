@@ -6,6 +6,7 @@ import { StoryProviders } from '@/test/StoryProviders'
 
 import { draft, draftWithLibraryChange, legacy, validDraft } from './fixtures'
 import { GameSystemPage } from './GameSystemPage'
+import { packSystem } from './library/fixtures'
 
 const json =
   (body: unknown, status = 200): FakeHandler =>
@@ -48,6 +49,21 @@ export const WithLibraryChange: Story = {
   },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('1 library change')).toBeInTheDocument()
+  },
+}
+
+export const LibraryPack: Story = {
+  args: { gameSystemKey: 'fantasy-basics' },
+  parameters: {
+    api: {
+      'GET /api/studio/game-systems/fantasy-basics': json(packSystem),
+      'GET /api/studio/game-systems/fantasy-basics/validation': json(validDraft),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Library pack')).toBeInTheDocument()
+    await expect(canvas.queryByRole('radio', { name: 'Releases' })).not.toBeInTheDocument()
   },
 }
 

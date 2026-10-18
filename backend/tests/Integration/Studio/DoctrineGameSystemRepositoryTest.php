@@ -117,35 +117,32 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     }
 
     #[Test]
-    public function malformedStoredImportsFailClosedWhenTheGameSystemIsRead(): void
+    public function aMalformedStoredImportsRowStillLoadsAndFailsClosedWhenItsImportsAreRead(): void
     {
         $this->gameSystems->add($this->blank(self::FIRST_ID, 'corrupt', self::OWNER));
         $this->gameSystems->add($this->blank(self::SECOND_ID, 'fine', self::OWNER));
         $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '[{\"section\": \"tags\"}]' WHERE game_system_key = 'corrupt'");
         $this->entityManager->clear();
 
-        foreach ([fn (): mixed => $this->gameSystems->ofKey('corrupt'), fn (): mixed => $this->gameSystems->ofOwner(self::OWNER)] as $read) {
-            try {
-                $read();
-                self::fail('The malformed imports were read.');
-            } catch (\UnexpectedValueException $malformed) {
-                self::assertStringContainsString('library import 0', $malformed->getMessage());
-            }
-        }
+        // The reads do not parse the imports, so one corrupt row cannot break a list or a detail.
+        self::assertCount(2, $this->gameSystems->ofOwner(self::OWNER));
+        $corrupt = $this->gameSystems->ofKey('corrupt');
+        self::assertInstanceOf(GameSystem::class, $corrupt);
+
+        // Whatever acts on the imports fails closed.
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessageIsOrContains('library import 0');
+        $corrupt->libraryImports();
     }
 
     #[Test]
-    public function aPackWithMalformedStoredImportsStillListsWhileTheSameDataOnADraftFailsClosed(): void
+    public function aPackWithMalformedStoredImportsStillLists(): void
     {
         $this->gameSystems->add($this->pack(self::FIRST_ID, 'names'));
-        $this->gameSystems->add($this->blank(self::SECOND_ID, 'corrupt', self::OWNER));
-        $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '[{\"section\": \"tags\"}]' WHERE game_system_key IN ('names', 'corrupt')");
+        $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '[{\"section\": \"tags\"}]' WHERE game_system_key = 'names'");
         $this->entityManager->clear();
 
-        // A pack never holds imports, so its listing does not parse them.
         self::assertSame(['names'], array_map(static fn (GameSystem $pack): string => $pack->key(), $this->gameSystems->libraryPacks()));
-        $this->expectException(\UnexpectedValueException::class);
-        $this->gameSystems->ofKey('corrupt');
     }
 
     #[Test]

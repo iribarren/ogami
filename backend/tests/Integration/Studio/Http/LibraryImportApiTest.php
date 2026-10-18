@@ -494,6 +494,43 @@ final class LibraryImportApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aMalformedStoredImportsRowDegradesTheCountAndStaysFailClosedElsewhere(): void
+    {
+        $this->library();
+        $this->importItem('tags', 'social');
+        $this->draft('healthy');
+        $this->corruptImports();
+
+        $this->client->request('GET', self::GAME_SYSTEMS);
+        self::assertResponseIsSuccessful();
+        $changes = array_column($this->json(), 'libraryChanges', 'key');
+        self::assertSame(0, $changes['my-game'] ?? null, 'The corrupt draft is listed with no changes.');
+        self::assertSame(0, $changes['healthy'] ?? null, 'The healthy draft is listed too.');
+
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game');
+        self::assertResponseIsSuccessful();
+        self::assertSame(0, $this->json()['libraryChanges']);
+
+        // The imports endpoint and the commands do not act on a guess.
+        $this->client->catchExceptions(false);
+        try {
+            $this->client->request('GET', self::IMPORTS);
+            self::fail('The imports read is fail-closed.');
+        } catch (\UnexpectedValueException) {
+            // Not turned into a 404 or 409: it surfaces as a server error.
+        }
+
+        try {
+            $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/my-game/metadata', ['name' => 'Renamed', 'description' => null]);
+            self::fail('A save on the corrupt draft is fail-closed.');
+        } catch (\UnexpectedValueException) {
+            // The command refuses to write over imports it cannot read.
+        } finally {
+            $this->client->catchExceptions(true);
+        }
+    }
+
+    #[Test]
     public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
     {
         $this->library();
@@ -501,6 +538,7 @@ final class LibraryImportApiTest extends WebTestCase
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         $listener = new class($entityManager) {
             public bool $armed = true;
+            public int $fired = 0;
 
             public function __construct(private readonly EntityManagerInterface $entityManager)
             {
@@ -513,6 +551,7 @@ final class LibraryImportApiTest extends WebTestCase
             public function postFlush(): void
             {
                 if ($this->armed) {
+                    ++$this->fired;
                     $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '\"corrupt\"'::jsonb WHERE game_system_key = 'my-game'");
                     $this->entityManager->clear();
                 }
@@ -532,6 +571,7 @@ final class LibraryImportApiTest extends WebTestCase
             $this->client->catchExceptions(true);
         }
 
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
         self::assertTrue($failed, 'The corrupted imports make the read fail.');
         self::assertSame($before, $this->imports(), 'The write was rolled back with the failed read.');
     }
@@ -714,6 +754,13 @@ final class LibraryImportApiTest extends WebTestCase
         self::assertIsInt($inDetail);
 
         return [$inList, $inDetail];
+    }
+
+    private function corruptImports(): void
+    {
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '{\"a\":1}'::jsonb WHERE game_system_key = 'my-game'");
+        $entityManager->clear();
     }
 
     private function importItem(string $section, string $key, int $version = 1): void

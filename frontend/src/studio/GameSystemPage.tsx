@@ -13,6 +13,7 @@ import {
 } from '@/shared/ui/dialog'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
+import { LibraryChangesBadge } from './LibraryChangesBadge'
 import { MetadataForm } from './MetadataForm'
 import { NarrativeTab } from './narrative/NarrativeTab'
 import { FlowsTab } from './narrative/flows/FlowsTab'
@@ -156,6 +157,7 @@ function GameSystemView({
             {gameSystem.hasUnpublishedChanges && (
               <Badge variant="warning">Unpublished changes</Badge>
             )}
+            <LibraryChangesBadge count={gameSystem.libraryChanges} />
           </p>
         </div>
         <PublishDialog

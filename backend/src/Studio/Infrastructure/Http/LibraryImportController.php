@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Infrastructure\Http;
 
 use App\Identity\Application\AuthenticatedUser;
+use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -23,6 +24,7 @@ use App\Studio\Domain\GameSystem\LibraryItemRemoved;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\GameSystem\LibrarySection;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -59,6 +61,7 @@ final readonly class LibraryImportController
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private Connection $connection,
     ) {
     }
 
@@ -132,9 +135,7 @@ final readonly class LibraryImportController
         }
 
         try {
-            $this->commandBus->dispatch(new ImportLibraryItems($user->id(), $key, $expectedVersion, $pack, $body['items'] ?? null));
-
-            return $this->importsOf($user, $key);
+            return $this->writeThenRead($user, $key, new ImportLibraryItems($user->id(), $key, $expectedVersion, $pack, $body['items'] ?? null));
         } catch (\Throwable $exception) {
             return $this->refusal($exception);
         }
@@ -165,9 +166,7 @@ final readonly class LibraryImportController
         }
 
         try {
-            $this->commandBus->dispatch(new UpdateLibraryImport($user->id(), $key, $expectedVersion, LibrarySection::from($section), $item));
-
-            return $this->importsOf($user, $key);
+            return $this->writeThenRead($user, $key, new UpdateLibraryImport($user->id(), $key, $expectedVersion, LibrarySection::from($section), $item));
         } catch (\Throwable $exception) {
             return $this->refusal($exception);
         }
@@ -191,12 +190,25 @@ final readonly class LibraryImportController
         }
 
         try {
-            $this->commandBus->dispatch(new DetachLibraryImport($user->id(), $key, $expectedVersion, LibrarySection::from($section), $item));
-
-            return $this->importsOf($user, $key);
+            return $this->writeThenRead($user, $key, new DetachLibraryImport($user->id(), $key, $expectedVersion, LibrarySection::from($section), $item));
         } catch (\Throwable $exception) {
             return $this->refusal($exception);
         }
+    }
+
+    /**
+     * Runs the command and reads the imports back in one transaction. The command's UPDATE holds the
+     * draft's row until the commit, so the read sees exactly this write, never a save that
+     * interleaved, and a read that fails rolls the write back, so the error answered is honest. The
+     * command bus's own transaction nests inside this one, and a refusal rolls both back.
+     */
+    private function writeThenRead(AuthenticatedUser $user, string $key, Command $command): JsonResponse
+    {
+        return $this->connection->transactional(function () use ($user, $key, $command): JsonResponse {
+            $this->commandBus->dispatch($command);
+
+            return $this->importsOf($user, $key);
+        });
     }
 
     /**

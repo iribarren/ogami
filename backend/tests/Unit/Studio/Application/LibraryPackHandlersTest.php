@@ -13,6 +13,7 @@ use App\Studio\Application\DiscardGameSystemHandler;
 use App\Studio\Application\GameSystemSummary;
 use App\Studio\Application\GetLibraryPack;
 use App\Studio\Application\GetLibraryPackHandler;
+use App\Studio\Application\LibraryImportStandings;
 use App\Studio\Application\LibraryPackCatalog;
 use App\Studio\Application\LibraryPackNotFound;
 use App\Studio\Application\LibraryPacks;
@@ -163,7 +164,7 @@ final class LibraryPackHandlersTest extends TestCase
         $this->createPack('names', 'Names', 'ann');
         $this->createDraft('a-draft', 'ann');
 
-        $drafts = (new ListMyGameSystemsHandler($this->gameSystems, $this->releases))(new ListMyGameSystems('ann'));
+        $drafts = (new ListMyGameSystemsHandler($this->gameSystems, $this->releases, new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new ListMyGameSystems('ann'));
 
         self::assertSame(['a-draft'], array_map(static fn (GameSystemSummary $summary): string => $summary->key, $drafts));
     }

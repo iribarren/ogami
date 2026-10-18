@@ -12,6 +12,8 @@ use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemHandler;
 use App\Studio\Application\GetGameSystemRelease;
 use App\Studio\Application\GetGameSystemReleaseHandler;
+use App\Studio\Application\LibraryImportStandings;
+use App\Studio\Application\LibraryPacks;
 use App\Studio\Application\ListGameSystemReleases;
 use App\Studio\Application\ListGameSystemReleasesHandler;
 use App\Studio\Application\OwnedGameSystems;
@@ -82,7 +84,7 @@ final class GameSystemPublicationHandlersTest extends TestCase
         self::assertSame([null, 2, 'Mine, revised'], [$second->notes(), $second->version(), $name['name']]);
         self::assertSame('First cut.', $this->releases->get('mine', 1)?->notes());
         self::assertEquals(new \DateTimeImmutable('2026-10-17T10:00:00+00:00'), $second->publishedAt());
-        $view = (new GetGameSystemHandler($this->owned(), $this->releases))(new GetGameSystem('ann', 'mine'));
+        $view = (new GetGameSystemHandler($this->owned(), $this->releases, new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new GetGameSystem('ann', 'mine'));
         self::assertSame([2, false], [$view->latestReleaseVersion, $view->hasUnpublishedChanges]);
     }
 
@@ -238,7 +240,7 @@ final class GameSystemPublicationHandlersTest extends TestCase
         $draft = $this->owned()->get('ann', 'mine');
         self::assertSame(['mine', 'Mine'], [$draft->key(), $draft->name()]);
         self::assertEquals(new \DateTimeImmutable('2026-10-18T10:00:00+00:00'), $draft->updatedAt());
-        $view = (new GetGameSystemHandler($this->owned(), $this->releases))(new GetGameSystem('ann', 'mine'));
+        $view = (new GetGameSystemHandler($this->owned(), $this->releases, new LibraryImportStandings(new LibraryPacks($this->gameSystems))))(new GetGameSystem('ann', 'mine'));
         self::assertFalse($view->hasUnpublishedChanges, 'The restored latest release leaves nothing unpublished.');
     }
 

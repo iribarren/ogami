@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, neverPublished, published, withChanges } from './fixtures'
+import { draft, neverPublished, published, withChanges, withLibraryChanges } from './fixtures'
 
 const gameManager = signedInAs('GAME_MANAGER')
 
@@ -38,6 +38,24 @@ describe('the Studio home page', () => {
       'href',
       '/studio/game-systems/noir-detective',
     )
+  })
+
+  it('warns of the library changes of a draft and says nothing at 0', async () => {
+    renderAppAt('/studio', {
+      'GET /api/auth/me': gameManager,
+      'GET /api/studio/game-systems': json([
+        published,
+        withLibraryChanges,
+        { ...withLibraryChanges, key: 'one', name: 'One', libraryChanges: 1 },
+      ]),
+    })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Studio' })).toBeInTheDocument()
+    const items = await within(list()).findAllByRole('listitem')
+    expect(items[0]).not.toHaveTextContent('library change')
+    expect(items[1]).toHaveTextContent('3 library changes')
+    expect(items[2]).toHaveTextContent('1 library change')
+    expect(items[2]).not.toHaveTextContent('1 library changes')
   })
 
   it('says when I have no GameSystem yet', async () => {

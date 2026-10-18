@@ -99,7 +99,7 @@ export function usePublishGameSystem(key: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (body: PublishRequest): Promise<ReleaseSummary> => {
+    mutationFn: async (body: PublishRequest): Promise<Release> => {
       const { data, error, response } = await api.POST('/api/studio/game-systems/{key}/releases', {
         params: { path: { key } },
         body,

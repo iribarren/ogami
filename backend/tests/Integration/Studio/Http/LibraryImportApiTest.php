@@ -209,6 +209,62 @@ final class LibraryImportApiTest extends WebTestCase
     }
 
     #[Test]
+    public function theDraftListAndDetailCountTheImportsThatChangedOrWentAway(): void
+    {
+        $this->library();
+        self::assertSame([0, 0], $this->libraryChanges());
+        $this->importItem('scene-types', 'tavern');
+        self::assertSame([0, 0], $this->libraryChanges());
+
+        $this->as('ann');
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/generic/narrative/tags/social', ['expectedVersion' => $this->packVersion++, 'item' => ['key' => 'social', 'label' => 'Social v2']]);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', self::GAME_SYSTEMS.'/generic');
+        self::assertSame(0, $this->json()['libraryChanges']);
+        $this->as('bob');
+        self::assertSame([1, 1], $this->libraryChanges());
+
+        // A local edit alone is no library change: the pack's names table did not change.
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/my-game/oracle-tables/names', ['expectedVersion' => 2, 'table' => ['key' => 'names', 'name' => 'Mine', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'Bram']]]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([1, 1], $this->libraryChanges());
+
+        $this->as('ann');
+        $this->deleteFromPack('narrative/scene-types/tavern');
+        $this->as('bob');
+        self::assertSame([2, 2], $this->libraryChanges());
+
+        $this->as('ann');
+        $this->deleteFromPack('oracle-tables/names');
+        $this->as('bob');
+        self::assertSame([3, 3], $this->libraryChanges());
+
+        $this->client->jsonRequest('DELETE', self::IMPORTS.'/tags/social?expectedVersion=3');
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 2], $this->libraryChanges());
+    }
+
+    #[Test]
+    public function theReleaseHistoryListsTheLibrarySourcesOfEachReleaseAndNullWhenThereAreNone(): void
+    {
+        $this->library();
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/releases', []);
+        self::assertResponseStatusCodeSame(201);
+        $this->importItem('scene-types', 'tavern', 1);
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/releases', ['notes' => 'With the tavern.']);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game/releases');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 1], array_column($this->json(), 'version'));
+        self::assertSame([
+            [['section' => 'oracles', 'key' => 'names', 'pack' => 'generic'], ['section' => 'tags', 'key' => 'social', 'pack' => 'generic'], ['section' => 'scene-types', 'key' => 'tavern', 'pack' => 'generic']],
+            null,
+        ], array_column($this->json(), 'librarySources'));
+    }
+
+    #[Test]
     public function updatingFromTheLibraryCopiesThePackItemAgainAndBumpsTheVersion(): void
     {
         $this->library();
@@ -409,6 +465,78 @@ final class LibraryImportApiTest extends WebTestCase
     }
 
     #[Test]
+    public function anUpdateThatBreaksAnItemRuleIsUnprocessableAndChangesNothing(): void
+    {
+        $this->library();
+        $this->as('ann');
+        $this->addItem('narrative/fact-slots', 'item', ['key' => 'secret', 'label' => 'Secret', 'type' => 'text']);
+        $this->as('bob');
+        $this->importItem('fact-slots', 'secret');
+        // The draft's own Scene Type fills the slot with a text, which only a text slot takes.
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/narrative/scene-types', ['expectedVersion' => 2, 'item' => [
+            'key' => 'whisper', 'name' => 'Whisper', 'purpose' => 'Hush.', 'oracles' => [], 'setup' => [], 'play' => [],
+            'closing' => [['key' => 'tell', 'kind' => 'choice', 'title' => 'Tell?', 'options' => [['key' => 'yes', 'label' => 'Yes', 'effects' => [['kind' => 'fillFact', 'slot' => 'secret', 'text' => 'Hush']]], ['key' => 'no', 'label' => 'No']], 'skip' => 'no']],
+        ]]);
+        self::assertResponseStatusCodeSame(201);
+        $this->as('ann');
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/generic/narrative/fact-slots/secret', ['expectedVersion' => $this->packVersion++, 'item' => ['key' => 'secret', 'label' => 'Secret', 'type' => 'npc']]);
+        self::assertResponseIsSuccessful();
+        $this->as('bob');
+        $imports = $this->imports();
+        $document = $this->document();
+
+        $this->client->jsonRequest('POST', self::IMPORTS.'/fact-slots/secret/update', ['expectedVersion' => $imports['version']]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertNotSame('', $this->error());
+        self::assertSame($imports, $this->imports());
+        self::assertSame($document, $this->document());
+    }
+
+    #[Test]
+    public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
+    {
+        $this->library();
+        $before = $this->imports();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored imports and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '\"corrupt\"'::jsonb WHERE game_system_key = 'my-game'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::IMPORTS, ['expectedVersion' => 1, 'pack' => 'generic', 'items' => [['section' => 'tags', 'key' => 'social']]]);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertTrue($failed, 'The corrupted imports make the read fail.');
+        self::assertSame($before, $this->imports(), 'The write was rolled back with the failed read.');
+    }
+
+    #[Test]
     public function anotherGameManagerDoesNotFindTheDraft(): void
     {
         $this->library();
@@ -568,6 +696,24 @@ final class LibraryImportApiTest extends WebTestCase
 
         $this->client->jsonRequest('POST', self::GAME_SYSTEMS, $body);
         self::assertResponseStatusCodeSame(201);
+    }
+
+    /**
+     * @return array{int, int} libraryChanges of the draft "my-game" in the list and in its detail
+     */
+    private function libraryChanges(): array
+    {
+        $this->client->request('GET', self::GAME_SYSTEMS);
+        self::assertResponseIsSuccessful();
+        $list = array_column($this->json(), 'libraryChanges', 'key');
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game');
+        self::assertResponseIsSuccessful();
+        $inList = $list['my-game'];
+        $inDetail = $this->json()['libraryChanges'];
+        self::assertIsInt($inList);
+        self::assertIsInt($inDetail);
+
+        return [$inList, $inDetail];
     }
 
     private function importItem(string $section, string $key, int $version = 1): void

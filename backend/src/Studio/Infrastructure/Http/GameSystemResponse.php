@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
 /**
  * A GameSystem draft or library pack as its owner sees it: its metadata and what its sections hold.
  */
-#[OA\Schema(required: ['key', 'kind', 'name', 'description', 'credits', 'theme', 'schemaVersion', 'sectionCounts', 'latestReleaseVersion', 'hasUnpublishedChanges', 'createdAt', 'updatedAt'])]
+#[OA\Schema(required: ['key', 'kind', 'name', 'description', 'credits', 'theme', 'schemaVersion', 'sectionCounts', 'latestReleaseVersion', 'hasUnpublishedChanges', 'libraryChanges', 'createdAt', 'updatedAt'])]
 final readonly class GameSystemResponse
 {
     /**
@@ -43,6 +43,8 @@ final readonly class GameSystemResponse
         public ?int $latestReleaseVersion,
         #[OA\Property(description: 'True when it has no release, the draft is invalid, or the draft differs from the latest release.')]
         public bool $hasUnpublishedChanges,
+        #[OA\Property(description: 'How many of the draft\'s library imports changed or went away in their library pack; 0 for a library pack and a draft without imports.', example: 1)]
+        public int $libraryChanges,
         #[OA\Property(format: 'date-time')]
         public string $createdAt,
         #[OA\Property(format: 'date-time')]
@@ -63,6 +65,7 @@ final readonly class GameSystemResponse
             $view->sectionCounts,
             $view->latestReleaseVersion,
             $view->hasUnpublishedChanges,
+            $view->libraryChanges,
             $view->createdAt->format(\DATE_ATOM),
             $view->updatedAt->format(\DATE_ATOM),
         );

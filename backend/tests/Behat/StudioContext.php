@@ -31,6 +31,8 @@ use App\Studio\Application\GetGameSystemRelease;
 use App\Studio\Application\GetGameSystemReleaseHandler;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\GetPublishedReleaseHandler;
+use App\Studio\Application\LibraryImportStandings;
+use App\Studio\Application\LibraryPacks;
 use App\Studio\Application\LikelihoodTestView;
 use App\Studio\Application\ListGameSystemReleases;
 use App\Studio\Application\ListGameSystemReleasesHandler;
@@ -436,7 +438,7 @@ final class StudioContext implements Context
     #[Then('/^(?P<user>\w+) has no GameSystems$/')]
     public function hasNoGameSystems(string $user): void
     {
-        Assert::assertSame([], (new ListMyGameSystemsHandler($this->drafts, $this->releases))(new ListMyGameSystems($user)));
+        Assert::assertSame([], (new ListMyGameSystemsHandler($this->drafts, $this->releases, new LibraryImportStandings(new LibraryPacks($this->drafts))))(new ListMyGameSystems($user)));
     }
 
     #[Then('bob cannot find the GameSystem :key')]
@@ -731,6 +733,6 @@ final class StudioContext implements Context
 
     private function draft(string $user, string $key): \App\Studio\Application\GameSystemView
     {
-        return (new GetGameSystemHandler($this->owned, $this->releases))(new GetGameSystem($user, $key));
+        return (new GetGameSystemHandler($this->owned, $this->releases, new LibraryImportStandings(new LibraryPacks($this->drafts))))(new GetGameSystem($user, $key));
     }
 }

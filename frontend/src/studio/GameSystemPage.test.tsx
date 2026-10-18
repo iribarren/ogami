@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, legacy, validDraft } from './fixtures'
+import { draft, draftWithLibraryChange, legacy, validDraft } from './fixtures'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -47,6 +47,19 @@ describe('the GameSystem page', () => {
 
     expect(await screen.findByText('Latest release v2')).toBeInTheDocument()
     expect(screen.queryByText('Unpublished changes')).not.toBeInTheDocument()
+  })
+
+  it('warns of the library changes of the draft, and says nothing without any', async () => {
+    renderDraft({ 'GET /api/studio/game-systems/my-draft': json(draftWithLibraryChange) })
+
+    expect(await screen.findByText('1 library change')).toBeInTheDocument()
+  })
+
+  it('shows no library badge for a draft without library changes', async () => {
+    renderDraft()
+
+    await screen.findByRole('heading', { level: 1, name: 'My draft' })
+    expect(screen.queryByText(/library change/)).not.toBeInTheDocument()
   })
 
   it('shows a not-found state for an unknown or foreign key', async () => {

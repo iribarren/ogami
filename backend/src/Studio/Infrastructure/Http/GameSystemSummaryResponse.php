@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * One GameSystem in the game manager's list.
  */
-#[OA\Schema(required: ['key', 'name', 'schemaVersion', 'latestReleaseVersion', 'hasUnpublishedChanges', 'updatedAt'])]
+#[OA\Schema(required: ['key', 'name', 'schemaVersion', 'latestReleaseVersion', 'hasUnpublishedChanges', 'libraryChanges', 'updatedAt'])]
 final readonly class GameSystemSummaryResponse
 {
     private function __construct(
@@ -24,6 +24,8 @@ final readonly class GameSystemSummaryResponse
         public ?int $latestReleaseVersion,
         #[OA\Property(description: 'True when it has no release, the draft is invalid, or the draft differs from the latest release.')]
         public bool $hasUnpublishedChanges,
+        #[OA\Property(description: 'How many of the draft\'s library imports changed or went away in their library pack.', example: 1)]
+        public int $libraryChanges,
         #[OA\Property(format: 'date-time')]
         public string $updatedAt,
     ) {
@@ -31,6 +33,6 @@ final readonly class GameSystemSummaryResponse
 
     public static function fromSummary(GameSystemSummary $summary): self
     {
-        return new self($summary->key, $summary->name, $summary->schemaVersion, $summary->latestReleaseVersion, $summary->hasUnpublishedChanges, $summary->updatedAt->format(\DATE_ATOM));
+        return new self($summary->key, $summary->name, $summary->schemaVersion, $summary->latestReleaseVersion, $summary->hasUnpublishedChanges, $summary->libraryChanges, $summary->updatedAt->format(\DATE_ATOM));
     }
 }

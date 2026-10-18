@@ -13,11 +13,13 @@ final readonly class GetGameSystemHandler implements QueryHandler
     public function __construct(
         private OwnedGameSystems $owned,
         private GameSystemReleaseRepository $releases,
+        private LibraryImportStandings $standings,
     ) {
     }
 
     /**
-     * @throws GameSystemNotFound when the user has no such GameSystem
+     * @throws GameSystemNotFound        when the user has no such GameSystem
+     * @throws \UnexpectedValueException when the draft's stored imports are malformed
      */
     public function __invoke(GetGameSystem $query): GameSystemView
     {
@@ -39,6 +41,7 @@ final readonly class GetGameSystemHandler implements QueryHandler
             SectionCounts::of($gameSystem->document(), $gameSystem->schemaVersion()),
             $publication->latestReleaseVersion,
             $publication->hasUnpublishedChanges,
+            $this->standings->changesOf($gameSystem),
             $gameSystem->createdAt(),
             $gameSystem->updatedAt(),
         );

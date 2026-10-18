@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 
-import { StudioError } from '../useGameSystems'
+import { isStaleWrite } from '../useGameSystems'
 import { sectionTitles } from './sections'
 import {
   useImportLibraryItems,
@@ -186,9 +186,7 @@ function ItemPicker({
 
   return (
     <div className="space-y-4">
-      <Button variant="outline" size="sm" onClick={onBack}>
-        Choose another pack
-      </Button>
+      {catalog.data === undefined && <BackButton onBack={onBack} disabled={false} />}
       {catalog.isPending && <p className="text-muted-foreground">Loading the pack…</p>}
       {catalog.isError && <Alert>{catalog.error.message}</Alert>}
       {catalog.data && (
@@ -196,6 +194,7 @@ function ItemPicker({
           gameSystemKey={gameSystemKey}
           version={version}
           catalog={catalog.data}
+          onBack={onBack}
           onImported={onImported}
           onReload={onReload}
         />
@@ -204,16 +203,26 @@ function ItemPicker({
   )
 }
 
+function BackButton({ onBack, disabled }: { onBack: () => void; disabled: boolean }) {
+  return (
+    <Button variant="outline" size="sm" disabled={disabled} onClick={onBack}>
+      Choose another pack
+    </Button>
+  )
+}
+
 function Selection({
   gameSystemKey,
   version,
   catalog,
+  onBack,
   onImported,
   onReload,
 }: {
   gameSystemKey: string
   version: number
   catalog: LibraryPackCatalog
+  onBack: () => void
   onImported: () => void
   onReload: () => Promise<boolean>
 }) {
@@ -237,6 +246,7 @@ function Selection({
 
   return (
     <div className="space-y-4">
+      <BackButton onBack={onBack} disabled={pending} />
       <p className="text-sm text-muted-foreground">
         <span className="font-medium text-foreground">{catalog.name}</span>{' '}
         <span className="font-mono">{catalog.key}</span>
@@ -252,6 +262,8 @@ function Selection({
                   <input
                     type="checkbox"
                     className="mt-1"
+                    // A running request must reach its outcome: changing the selection resets it.
+                    disabled={pending}
                     checked={selected.some((other) => idOf(other) === idOf(ref))}
                     onChange={(event) => {
                       toggle(ref, event.target.checked)
@@ -286,7 +298,7 @@ function Selection({
       {failure && <Alert>{failure.message}</Alert>}
       {reloadFailed && <Alert>Couldn&apos;t reload the latest version. Try again.</Alert>}
       <div className="flex flex-wrap gap-2">
-        {failure instanceof StudioError && failure.status === 409 && (
+        {isStaleWrite(failure) && (
           <Button
             variant="outline"
             disabled={pending}

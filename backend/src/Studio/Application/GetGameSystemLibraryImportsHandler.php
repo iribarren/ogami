@@ -31,7 +31,11 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
         $packs = [];
         $views = [];
         foreach ($gameSystem->libraryImports() as $import) {
-            $packs[$import->pack] ??= ($pack = $this->packs->find($import->pack)) instanceof GameSystem ? [$pack, LibraryItems::of($pack->document())] : null;
+            if (!\array_key_exists($import->pack, $packs)) {
+                $pack = $this->packs->find($import->pack);
+                $packs[$import->pack] = $pack instanceof GameSystem ? [$pack, LibraryItems::of($pack->document())] : null;
+            }
+
             $source = null === $packs[$import->pack] ? null : $packs[$import->pack][1]->find($import->ref());
             $own = $draft->find($import->ref());
 

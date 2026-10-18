@@ -1,7 +1,7 @@
 # Feature: studio-library
 
 - **Locator:** `odd/tasks/studio-library.md` · Engram topic `odd/studio-library/tasks`
-- **Issue:** #185 · **Branch:** `feat/studio-library-9-e2e` · **Status:** in progress
+- **Issue:** #185 · **Branch:** `feat/studio-library-9-e2e` · **Status:** done (PRs #186–#194)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-check-editor` (PRs #178–#184)
@@ -118,7 +118,7 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 | T8 | 7 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 7) | [x] | 2e5509a (fixes 7fa4e0d, 5728541) |
 | T9 | 8 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 8) | [x] | 7986793, 4620b00 (fix 496ee7f) |
 | T10 | 6 | Frontend: `libraryChanges` badges on the draft list and Overview; library sources in release history; tests | delegated writer (slice 6) | [x] | d3420d7 |
-| T11 | 9 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 9) | [x] | |
+| T11 | 9 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 9) | [x] | 2a15c2a (fixes cbb020b) |
 
 ## Progress
 
@@ -145,6 +145,7 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 - 2026-10-18: Slice 8 measured 1,839 lines (user accepted the size as two T9 commits in one slice).
 - 2026-10-18: Slice 8 review fixes (commit 1 of slice 9). `ImportDialog` disables the catalog checkboxes and `Choose another pack` while a preview or import runs; `isStaleWrite` (`useGameSystems.ts`, matches the `GameSystemModifiedConcurrently` message, the API has no error code) gates `Reload the latest version` in `LibraryTab` and `ImportDialog`; `LibraryTab.reload()` keeps the update/detach refusal when the refetch fails; the invalidation predicate derives the imports segment index from `gameSystemKey('')`. RED first for the frozen dialog, both non-stale 409 cases and the tab's reload failure; the dialog's reload-failure test and the no-imports-refetch test passed on first run (regression tests).
 - 2026-10-18: T11 done. `frontend/e2e/studio-library.spec.ts`: as the seeded manager, author a pack (table + Scene Type that ticks it as an oracle shortcut), create a blank schema 2 draft with a table under the same key, import the Scene Type (preview shows the table as kept from the draft), change the pack's Scene Type, see `1 library change` and Changed, Update to Current, publish and read `Library: <pack> (<scene type>)` in the release history. Passes against the running stack; no production change.
+- 2026-10-18: Slice 9 native review declined by the user; PR #194. Feature closed.
 
 ## Reviews
 
@@ -158,7 +159,8 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 | 6 | `review-b9e21d6a1e6d8db4` | main..d3420d7 (fix 8a947e2, T12 5855bc2, generated 9c2f02d, T10 d3420d7; 813 lines) | Approved, 4 findings, fixed in slice 7: (warning ×2) `ListMyGameSystemsHandler` and `GetGameSystemHandler` read `libraryImports()` through `LibraryImportStandings`, so one malformed `library_imports` row breaks the whole list / the Overview (degrade to 0 changes and test with a malformed row); (suggestion) `LibraryImportApiTest::aReadThatFailsAfterAWriteRollsTheWriteBack` should assert the `postFlush` listener fired; (suggestion) `ReleasesTab` shows a dangling `Library:` for an empty `librarySources` list, and `sourcesByPack` drops the section (the same key in two sections renders twice) | #191 |
 | 7 | `review-bce05def2c67229a` | main..5728541 (fixes 7fa4e0d, T8 2e5509a, fix 5728541; 1,301 lines) | Approved, 1 finding, fixed in slice 8: (suggestion) the malformed-row list test in `LibraryImportApiTest` has a healthy draft with no imports, so it does not prove a readable draft next to a corrupt one keeps a non-zero `libraryChanges` (give it a changed import and assert 1, or unit-test `changesOfEach` with mixed drafts) | #192 |
 | 8 | `review-48b7ac406e5866c5` | main..4620b00 (fix 496ee7f, T9 7986793, 4620b00; 1,839 lines, size accepted by the user) | Approved, 4 findings, fixed in slice 9: (warning) `ImportDialog` checkboxes and `Choose another pack` stay enabled during an in-flight import; toggling resets the mutation, so a success never closes the dialog and a 4xx/409 never shows (disable them while pending, test it); (suggestion) `LibraryTab` and `ImportDialog` offer `Reload the latest version` for every 409, including non-stale refusals (item gone, keys taken): only for a stale version, pinned in tests; (suggestion) `LibraryTab` `reload()` clears the update/detach errors even when the refetch failed; reload-failure paths untested; (suggestion) `useLibraryImports` invalidation predicate hardcodes `queryKey[3]`: derive it from `libraryImportsKey(key).length` and test that a write does not refetch the imports | #193 |
+| 9 | — (declined by the user: fixes of earlier findings plus an e2e test) | main..2a15c2a (fixes cbb020b, T11 2a15c2a; 335 lines) | Not reviewed | #194 |
 
 ## Next step
 
-Slice 9: native review and PR 9/9, then the doc-only close commit.
+Feature done: PR #194 closes #185 once merged. Known follow-ups outside this feature: the narrative, oracle, sheet and check controllers share the non-atomic write-then-read pattern fixed in `LibraryImportController` (slice 5 review); a malformed pack row makes its catalog 500.

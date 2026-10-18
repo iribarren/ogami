@@ -7956,6 +7956,539 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/library-imports": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "List what one of my GameSystem drafts imported from the library, with where each import stands against its pack",
+                "operationId": "listLibraryImports",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The imports in the order imported, and the draft version. A draft that imported nothing, a schema version 1 draft included, has none.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibraryImportsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Copy items of a library pack, and the pack items they need, into one of my GameSystem drafts",
+                "operationId": "importLibraryItems",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImportLibraryItemsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's imports with the new ones appended and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibraryImportsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"expectedVersion\" or no string \"pack\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, no library pack has the pack key (a GameSystem's key is not a pack), or the pack has none of an item.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the draft already has a requested item (the message lists every one), or the GameSystem is a library pack, which imports nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The \"items\" are not a non-empty list of {section, key} objects, the result would break the release contract's item rules (the message starts with the path), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/library-imports/preview": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Show what importing items of a library pack would do to one of my GameSystem drafts, without changing it",
+                "operationId": "previewLibraryImport",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PreviewLibraryImportRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The items the import copies, the needed ones the draft keeps, the requested ones it already has, and the item rule the result would break.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibraryImportPreviewResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"pack\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, no library pack has the pack key (a GameSystem's key is not a pack), or the pack has none of an item.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The GameSystem is a library pack, which imports nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The \"items\" are not a non-empty list of {section, key} objects (the message names the path), or the draft has schema version 1.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/library-imports/{section}/{item}/update": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace an imported item of one of my GameSystem drafts with the library pack's current one",
+                "operationId": "updateLibraryImport",
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "description": "Which section the item is in: oracles, trackers, tags, fact slots or Scene Types.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "oracles|trackers|tags|fact-slots|scene-types",
+                            "enum": [
+                                "oracles",
+                                "trackers",
+                                "tags",
+                                "fact-slots",
+                                "scene-types"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateLibraryImportRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's imports, the updated one current again, and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibraryImportsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no integer \"expectedVersion\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, the section is not one of those listed, or the draft did not import the item.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), the pack or its item is gone, or the GameSystem is a library pack, which imports nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The result would break the release contract's item rules (the message starts with the path), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/library-imports/{section}/{item}": {
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Forget that an item of one of my GameSystem drafts came from the library; the item stays",
+                "operationId": "detachLibraryImport",
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "description": "Which section the item is in: oracles, trackers, tags, fact slots or Scene Types.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "oracles|trackers|tags|fact-slots|scene-types",
+                            "enum": [
+                                "oracles",
+                                "trackers",
+                                "tags",
+                                "fact-slots",
+                                "scene-types"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's imports without the item and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibraryImportsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, the section is not one of those listed, or the draft did not import the item.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which imports nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/library/packs": {
             "get": {
                 "tags": [
@@ -13516,6 +14049,270 @@
                 },
                 "type": "object"
             },
+            "LibraryImportPackResponse": {
+                "required": [
+                    "key",
+                    "name"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fantasy basics"
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryImportResponse": {
+                "required": [
+                    "section",
+                    "key",
+                    "label",
+                    "pack",
+                    "status",
+                    "editedLocally"
+                ],
+                "properties": {
+                    "section": {
+                        "type": "string",
+                        "example": "scene-types",
+                        "enum": [
+                            "oracles",
+                            "trackers",
+                            "tags",
+                            "fact-slots",
+                            "scene-types"
+                        ]
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "tavern"
+                    },
+                    "label": {
+                        "description": "What the draft's item is called now.",
+                        "type": "string",
+                        "example": "Tavern"
+                    },
+                    "pack": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LibraryImportPackResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The pack the item came from; null when the pack is gone."
+                    },
+                    "status": {
+                        "description": "current: the pack item is the one imported; changed: it differs; removed: the pack or its item is gone.",
+                        "type": "string",
+                        "example": "current",
+                        "enum": [
+                            "current",
+                            "changed",
+                            "removed"
+                        ]
+                    },
+                    "editedLocally": {
+                        "description": "Whether the draft's item differs from the one imported.",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryImportsResponse": {
+                "required": [
+                    "version",
+                    "imports"
+                ],
+                "properties": {
+                    "version": {
+                        "description": "The draft's version: send it as \"expectedVersion\" with the next write.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "imports": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryImportResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryItemRefRequest": {
+                "required": [
+                    "section",
+                    "key"
+                ],
+                "properties": {
+                    "section": {
+                        "description": "Oracle tables and likelihood oracles share the oracles section.",
+                        "type": "string",
+                        "example": "scene-types",
+                        "enum": [
+                            "oracles",
+                            "trackers",
+                            "tags",
+                            "fact-slots",
+                            "scene-types"
+                        ]
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "tavern"
+                    }
+                },
+                "type": "object"
+            },
+            "ImportLibraryItemsRequest": {
+                "required": [
+                    "expectedVersion",
+                    "pack",
+                    "items"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "pack": {
+                        "description": "The key of the library pack to copy from.",
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    },
+                    "items": {
+                        "description": "The items to import, at least one; what they need comes along.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryItemRefRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "PreviewLibraryImportRequest": {
+                "required": [
+                    "pack",
+                    "items"
+                ],
+                "properties": {
+                    "pack": {
+                        "description": "The key of the library pack to copy from.",
+                        "type": "string",
+                        "example": "fantasy-basics"
+                    },
+                    "items": {
+                        "description": "The items to import, at least one.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryItemRefRequest"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryItemRefResponse": {
+                "required": [
+                    "section",
+                    "key"
+                ],
+                "properties": {
+                    "section": {
+                        "description": "Oracle tables and likelihood oracles share the oracles section.",
+                        "type": "string",
+                        "example": "tags",
+                        "enum": [
+                            "oracles",
+                            "trackers",
+                            "tags",
+                            "fact-slots",
+                            "scene-types"
+                        ]
+                    },
+                    "key": {
+                        "type": "string",
+                        "example": "social"
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryImportPreviewErrorResponse": {
+                "required": [
+                    "path",
+                    "message"
+                ],
+                "properties": {
+                    "path": {
+                        "description": "The offending part of the draft after the import.",
+                        "type": "string",
+                        "example": "sceneTypes[0].closing[0].options[0].effects[0]"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "tracker \"missing\" is not a tracker of the draft"
+                    }
+                },
+                "type": "object"
+            },
+            "LibraryImportPreviewResponse": {
+                "required": [
+                    "imports",
+                    "overrides",
+                    "conflicts",
+                    "error"
+                ],
+                "properties": {
+                    "imports": {
+                        "description": "The items the import copies: the requested ones and what they need, in pack order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryItemRefResponse"
+                        }
+                    },
+                    "overrides": {
+                        "description": "The needed items the draft already has and keeps, in pack order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryItemRefResponse"
+                        }
+                    },
+                    "conflicts": {
+                        "description": "The requested items the draft already has; any of them refuses the import (409).",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LibraryItemRefResponse"
+                        }
+                    },
+                    "error": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LibraryImportPreviewErrorResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "When nothing conflicts, the item rule the result would break (the import would be refused with 422); otherwise null."
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateLibraryImportRequest": {
+                "required": [
+                    "expectedVersion"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    }
+                },
+                "type": "object"
+            },
             "LibraryPackSummaryResponse": {
                 "required": [
                     "key",
@@ -13582,31 +14379,6 @@
                         "type": "string",
                         "example": "Names, rumours and a tavern.",
                         "nullable": true
-                    }
-                },
-                "type": "object"
-            },
-            "LibraryItemRefResponse": {
-                "required": [
-                    "section",
-                    "key"
-                ],
-                "properties": {
-                    "section": {
-                        "description": "Oracle tables and likelihood oracles share the oracles section.",
-                        "type": "string",
-                        "example": "tags",
-                        "enum": [
-                            "oracles",
-                            "trackers",
-                            "tags",
-                            "fact-slots",
-                            "scene-types"
-                        ]
-                    },
-                    "key": {
-                        "type": "string",
-                        "example": "social"
                     }
                 },
                 "type": "object"

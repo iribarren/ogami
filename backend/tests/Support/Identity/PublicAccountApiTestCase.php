@@ -13,7 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * What the API tests of the public account endpoints share: an anonymous client, a recording
- * mail transport behind the after-commit mail handler, and a clean rate limiter.
+ * mail transport behind the after-commit mail handler, a log recorder, and a clean rate limiter.
  */
 abstract class PublicAccountApiTestCase extends WebTestCase
 {
@@ -35,6 +35,22 @@ abstract class PublicAccountApiTestCase extends WebTestCase
     }
 
     /**
+     * @param string $messagePrefix the framework logs its own routing and bus messages: keep the application's
+     *
+     * @return list<array{string, string, array<mixed>}> the log records so far: level, message, context
+     */
+    protected function logs(string $messagePrefix = 'A password reset'): array
+    {
+        /** @var RecordingLogger $logger the test environment's `logger` service (config/services.yaml) */
+        $logger = self::getContainer()->get('logger');
+
+        return array_values(array_filter(
+            $logger->records,
+            static fn (array $record): bool => str_starts_with($record[1], $messagePrefix),
+        ));
+    }
+
+    /**
      * @param list<string> $roles
      */
     protected function createUser(string $email, array $roles = ['SOLO_PLAYER']): string
@@ -47,11 +63,12 @@ abstract class PublicAccountApiTestCase extends WebTestCase
     }
 
     /**
-     * @param array<string, mixed> $body
+     * @param array<string, mixed>  $body
+     * @param array<string, string> $headers server parameters, e.g. HTTP_X_FORWARDED_FOR
      */
-    protected function post(string $path, array $body, string $ip = '127.0.0.1'): void
+    protected function post(string $path, array $body, string $ip = '127.0.0.1', array $headers = []): void
     {
-        $this->client->jsonRequest('POST', $path, $body, ['REMOTE_ADDR' => $ip]);
+        $this->client->jsonRequest('POST', $path, $body, ['REMOTE_ADDR' => $ip, ...$headers]);
     }
 
     protected function login(string $email, string $password): void

@@ -49,6 +49,8 @@ security:
         - { path: ^/api/(campaigns|play)(/|$), roles: ROLE_SOLO_PLAYER }
         # Studio is for game managers only (roles have no hierarchy, so an OWNER does not get it: ADR 0006).
         - { path: ^/api/studio(/|$), roles: ROLE_GAME_MANAGER }
+        # Admin is for the owner only: a game manager or solo player gets a 403 (ADR 0006, ADR 0034).
+        - { path: ^/api/admin(/|$), roles: ROLE_OWNER }
         - { path: ^/api(/|$), roles: IS_AUTHENTICATED }
 
 when@test:

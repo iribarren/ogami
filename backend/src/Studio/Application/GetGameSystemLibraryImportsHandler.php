@@ -19,11 +19,9 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
     }
 
     /**
-     * @return list<LibraryImportView> in the order imported
-     *
      * @throws GameSystemNotFound when the user has no such GameSystem
      */
-    public function __invoke(GetGameSystemLibraryImports $query): array
+    public function __invoke(GetGameSystemLibraryImports $query): LibraryImportsView
     {
         $gameSystem = $this->owned->get($query->ownerId, $query->key);
         $draft = LibraryItems::of($gameSystem->document());
@@ -53,6 +51,6 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
             );
         }
 
-        return $views;
+        return new LibraryImportsView($gameSystem->version(), $views);
     }
 }

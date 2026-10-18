@@ -99,6 +99,7 @@ final class LibraryImportHandlersTest extends TestCase
         self::assertSame(2, $draft->version());
         self::assertSame(['oracles/names', 'tags/social', 'scene-types/tavern'], array_map(static fn (LibraryImport $import): string => $import->ref()->id(), $draft->libraryImports()));
         self::assertSame(['names'], $this->keys($draft, 'oracles', 'tables'));
+        self::assertSame(2, (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($this->gameSystems)))(new GetGameSystemLibraryImports('bob', 'my-game'))->version);
     }
 
     #[Test]
@@ -460,7 +461,7 @@ final class LibraryImportHandlersTest extends TestCase
             }
         };
 
-        $views = (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($counting)))(new GetGameSystemLibraryImports('bob', 'my-game'));
+        $views = (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($counting)))(new GetGameSystemLibraryImports('bob', 'my-game'))->imports;
 
         self::assertCount(3, $views);
         self::assertSame([LibraryImportStatus::Removed], array_values(array_unique(array_map(static fn (LibraryImportView $view): LibraryImportStatus => $view->status, $views), \SORT_REGULAR)));
@@ -543,7 +544,7 @@ final class LibraryImportHandlersTest extends TestCase
      */
     private function imports(string $owner, string $key): array
     {
-        return (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($this->gameSystems)))(new GetGameSystemLibraryImports($owner, $key));
+        return (new GetGameSystemLibraryImportsHandler($this->owned(), new LibraryPacks($this->gameSystems)))(new GetGameSystemLibraryImports($owner, $key))->imports;
     }
 
     private function publish(string $owner, string $key): void

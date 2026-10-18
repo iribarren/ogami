@@ -1256,6 +1256,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/library-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List what one of my GameSystem drafts imported from the library, with where each import stands against its pack */
+        get: operations["listLibraryImports"];
+        put?: never;
+        /** Copy items of a library pack, and the pack items they need, into one of my GameSystem drafts */
+        post: operations["importLibraryItems"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/library-imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Show what importing items of a library pack would do to one of my GameSystem drafts, without changing it */
+        post: operations["previewLibraryImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/library-imports/{section}/{item}/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace an imported item of one of my GameSystem drafts with the library pack's current one */
+        post: operations["updateLibraryImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/library-imports/{section}/{item}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget that an item of one of my GameSystem drafts came from the library; the item stays */
+        delete: operations["detachLibraryImport"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/library/packs": {
         parameters: {
             query?: never;
@@ -4005,6 +4074,116 @@ export interface components {
              */
             expectedVersion: number;
         };
+        LibraryImportPackResponse: {
+            /** @example fantasy-basics */
+            key: string;
+            /** @example Fantasy basics */
+            name: string;
+        };
+        LibraryImportResponse: {
+            /**
+             * @example scene-types
+             * @enum {string}
+             */
+            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+            /** @example tavern */
+            key: string;
+            /**
+             * @description What the draft's item is called now.
+             * @example Tavern
+             */
+            label: string;
+            /** @description The pack the item came from; null when the pack is gone. */
+            pack: components["schemas"]["LibraryImportPackResponse"] | null;
+            /**
+             * @description current: the pack item is the one imported; changed: it differs; removed: the pack or its item is gone.
+             * @example current
+             * @enum {string}
+             */
+            status: "current" | "changed" | "removed";
+            /**
+             * @description Whether the draft's item differs from the one imported.
+             * @example false
+             */
+            editedLocally: boolean;
+        };
+        LibraryImportsResponse: {
+            /**
+             * @description The draft's version: send it as "expectedVersion" with the next write.
+             * @example 3
+             */
+            version: number;
+            imports: components["schemas"]["LibraryImportResponse"][];
+        };
+        LibraryItemRefRequest: {
+            /**
+             * @description Oracle tables and likelihood oracles share the oracles section.
+             * @example scene-types
+             * @enum {string}
+             */
+            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+            /** @example tavern */
+            key: string;
+        };
+        ImportLibraryItemsRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description The key of the library pack to copy from.
+             * @example fantasy-basics
+             */
+            pack: string;
+            /** @description The items to import, at least one; what they need comes along. */
+            items: components["schemas"]["LibraryItemRefRequest"][];
+        };
+        PreviewLibraryImportRequest: {
+            /**
+             * @description The key of the library pack to copy from.
+             * @example fantasy-basics
+             */
+            pack: string;
+            /** @description The items to import, at least one. */
+            items: components["schemas"]["LibraryItemRefRequest"][];
+        };
+        LibraryItemRefResponse: {
+            /**
+             * @description Oracle tables and likelihood oracles share the oracles section.
+             * @example tags
+             * @enum {string}
+             */
+            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+            /** @example social */
+            key: string;
+        };
+        LibraryImportPreviewErrorResponse: {
+            /**
+             * @description The offending part of the draft after the import.
+             * @example sceneTypes[0].closing[0].options[0].effects[0]
+             */
+            path: string;
+            /** @example tracker "missing" is not a tracker of the draft */
+            message: string;
+        };
+        LibraryImportPreviewResponse: {
+            /** @description The items the import copies: the requested ones and what they need, in pack order. */
+            imports: components["schemas"]["LibraryItemRefResponse"][];
+            /** @description The needed items the draft already has and keeps, in pack order. */
+            overrides: components["schemas"]["LibraryItemRefResponse"][];
+            /** @description The requested items the draft already has; any of them refuses the import (409). */
+            conflicts: components["schemas"]["LibraryItemRefResponse"][];
+            /** @description When nothing conflicts, the item rule the result would break (the import would be refused with 422); otherwise null. */
+            error: components["schemas"]["LibraryImportPreviewErrorResponse"] | null;
+        };
+        UpdateLibraryImportRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+        };
         LibraryPackSummaryResponse: {
             /** @example fantasy-basics */
             key: string;
@@ -4043,16 +4222,6 @@ export interface components {
              * @example Names, rumours and a tavern.
              */
             description?: string | null;
-        };
-        LibraryItemRefResponse: {
-            /**
-             * @description Oracle tables and likelihood oracles share the oracles section.
-             * @example tags
-             * @enum {string}
-             */
-            section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
-            /** @example social */
-            key: string;
         };
         LibraryPackCatalogItemResponse: {
             /** @example tavern */
@@ -10287,6 +10456,398 @@ export interface operations {
             };
             /** @description The sheet already declares a layout or has no fields (the message starts with "sheet.groups" or "sheet.fields"), the groups break the release contract's rules (more than 20), or the draft has schema version 1; nothing changed. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLibraryImports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The imports in the order imported, and the draft version. A draft that imported nothing, a schema version 1 draft included, has none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryImportsResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importLibraryItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportLibraryItemsRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's imports with the new ones appended and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryImportsResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "expectedVersion" or no string "pack". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, no library pack has the pack key (a GameSystem's key is not a pack), or the pack has none of an item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the draft already has a requested item (the message lists every one), or the GameSystem is a library pack, which imports nothing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The "items" are not a non-empty list of {section, key} objects, the result would break the release contract's item rules (the message starts with the path), or the draft has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewLibraryImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewLibraryImportRequest"];
+            };
+        };
+        responses: {
+            /** @description The items the import copies, the needed ones the draft keeps, the requested ones it already has, and the item rule the result would break. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryImportPreviewResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "pack". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, no library pack has the pack key (a GameSystem's key is not a pack), or the pack has none of an item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The GameSystem is a library pack, which imports nothing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The "items" are not a non-empty list of {section, key} objects (the message names the path), or the draft has schema version 1. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLibraryImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which section the item is in: oracles, trackers, tags, fact slots or Scene Types. */
+                section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+                key: string;
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLibraryImportRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's imports, the updated one current again, and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryImportsResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no integer "expectedVersion". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, the section is not one of those listed, or the draft did not import the item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), the pack or its item is gone, or the GameSystem is a library pack, which imports nothing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The result would break the release contract's item rules (the message starts with the path), or the draft has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    detachLibraryImport: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                /** @description Which section the item is in: oracles, trackers, tags, fact slots or Scene Types. */
+                section: "oracles" | "trackers" | "tags" | "fact-slots" | "scene-types";
+                key: string;
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's imports without the item and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryImportsResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, the section is not one of those listed, or the draft did not import the item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which imports nothing. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

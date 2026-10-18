@@ -21,6 +21,14 @@ final readonly class LibraryItemRefResponse
     ) {
     }
 
+    /**
+     * @param array{section: string, key: string} $ref
+     */
+    public static function fromArray(array $ref): self
+    {
+        return new self($ref['section'], $ref['key']);
+    }
+
     public static function fromRef(LibraryItemRef $ref): self
     {
         return new self($ref->section->value, $ref->key);

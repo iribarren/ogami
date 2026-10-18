@@ -10,7 +10,7 @@ test.use({ viewport: { width: 360, height: 740 } })
 test('the Play screen fits a phone and its panels collapse', async ({ page }) => {
   await page.goto('/login')
   await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL('/play')
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Identity;
 
+use App\Identity\Application\InvitationAlreadyPending;
 use App\Identity\Domain\AccountToken;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\Invitation;
@@ -75,6 +76,44 @@ final class DoctrineInvitationRepositoryTest extends KernelTestCase
         $this->expectException(UniqueConstraintViolationException::class);
 
         $this->invitations->save($this->invitation(self::SECOND_ID, 'bob@example.com', 'same', '2026-10-18T09:00:00+00:00'));
+    }
+
+    #[Test]
+    public function theDatabaseRefusesASecondPendingInvitationForTheSameEmail(): void
+    {
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+
+        try {
+            $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T10:00:00+00:00'));
+            self::fail('A second pending invitation was saved.');
+        } catch (InvitationAlreadyPending $exception) {
+            self::assertStringContainsString('ada@example.com', $exception->getMessage());
+        }
+    }
+
+    #[Test]
+    public function anEmailCanBeInvitedAgainOnceItsInvitationIsNoLongerPending(): void
+    {
+        $revoked = $this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00');
+        $revoked->revoke();
+        $this->invitations->save($revoked);
+        $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T10:00:00+00:00'));
+        $this->entityManager->clear();
+
+        self::assertSame(self::SECOND_ID, $this->invitations->pendingForEmail(Email::fromString('ada@example.com'))?->id()->toString());
+    }
+
+    #[Test]
+    public function theNewestPendingInvitationWinsWhenLegacyRowsHoldSeveral(): void
+    {
+        // Rows stored before the partial unique index can hold two pending invitations; the index is
+        // dropped here (rolled back with the test transaction) to build that state.
+        $this->entityManager->getConnection()->executeStatement('DROP INDEX uniq_identity_invitation_pending_email');
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+        $this->invitations->save($this->invitation(self::SECOND_ID, 'ada@example.com', 'two', '2026-10-18T10:00:00+00:00'));
+        $this->entityManager->clear();
+
+        self::assertSame(self::SECOND_ID, $this->invitations->pendingForEmail(Email::fromString('ada@example.com'))?->id()->toString());
     }
 
     #[Test]

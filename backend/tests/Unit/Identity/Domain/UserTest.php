@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Identity\Domain;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\InvalidPasswordHash;
 use App\Identity\Domain\Role;
+use App\Identity\Domain\UnknownStoredRole;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserId;
 use App\Identity\Domain\UserMustHaveARole;
@@ -20,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(UserStatus::class)]
 #[CoversClass(UserMustHaveARole::class)]
 #[CoversClass(InvalidPasswordHash::class)]
+#[CoversClass(UnknownStoredRole::class)]
+#[CoversClass(Role::class)]
 final class UserTest extends TestCase
 {
     private function createdAt(): \DateTimeImmutable
@@ -175,6 +178,18 @@ final class UserTest extends TestCase
         } catch (InvalidPasswordHash) {
             self::assertSame('hash', $user->passwordHash());
         }
+    }
+
+    #[Test]
+    public function aStoredRoleThatIsNoLongerKnownIsADomainErrorNotAValueError(): void
+    {
+        $user = $this->ada();
+        new \ReflectionProperty(User::class, 'roles')->setValue($user, ['SOLO_PLAYER', 'DUNGEON_MASTER']);
+
+        $this->expectException(UnknownStoredRole::class);
+        $this->expectExceptionMessageIsOrContains('DUNGEON_MASTER');
+
+        $user->roles();
     }
 
     /**

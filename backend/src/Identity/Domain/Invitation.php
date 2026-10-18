@@ -101,6 +101,7 @@ final class Invitation
      * @return non-empty-list<Role>
      *
      * @throws InvitationMustHaveARole when a stored row has no role: it must not load silently
+     * @throws UnknownStoredRole       when a stored row holds a role that no longer exists
      */
     public function roles(): array
     {
@@ -108,7 +109,7 @@ final class Invitation
             throw InvitationMustHaveARole::none();
         }
 
-        return array_map(Role::from(...), $this->roles);
+        return array_map(Role::fromStored(...), $this->roles);
     }
 
     public function tokenHash(): string

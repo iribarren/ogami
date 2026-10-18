@@ -12,6 +12,7 @@ use App\Identity\Domain\InvitationMustHaveARole;
 use App\Identity\Domain\InvitationNotPending;
 use App\Identity\Domain\InvitationStatus;
 use App\Identity\Domain\Role;
+use App\Identity\Domain\UnknownStoredRole;
 use App\Identity\Domain\UserId;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -22,6 +23,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(InvitationStatus::class)]
 #[CoversClass(InvitationMustHaveARole::class)]
 #[CoversClass(InvitationNotPending::class)]
+#[CoversClass(UnknownStoredRole::class)]
+#[CoversClass(Role::class)]
 final class InvitationTest extends TestCase
 {
     private const string NOW = '2026-10-18T09:00:00+00:00';
@@ -80,6 +83,23 @@ final class InvitationTest extends TestCase
         $this->expectException(InvitationNotPending::class);
 
         $invitation->revoke();
+    }
+
+    #[Test]
+    public function aStoredRoleThatIsNoLongerKnownIsADomainErrorNotAValueError(): void
+    {
+        // Unserialising is the way to hold a stored role the domain no longer knows: the property is readonly.
+        $invitation = unserialize(str_replace(
+            's:11:"SOLO_PLAYER"',
+            's:14:"DUNGEON_MASTER"',
+            serialize($this->invite([Role::SoloPlayer])),
+        ));
+        self::assertInstanceOf(Invitation::class, $invitation);
+
+        $this->expectException(UnknownStoredRole::class);
+        $this->expectExceptionMessageIsOrContains('DUNGEON_MASTER');
+
+        $invitation->roles();
     }
 
     /**

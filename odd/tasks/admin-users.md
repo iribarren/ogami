@@ -1,7 +1,7 @@
 # Feature: admin-users
 
 - **Locator:** `odd/tasks/admin-users.md` · Engram topic `odd/admin-users/tasks`
-- **Issue:** #197 · **Branch:** `feat/admin-users-2-invitations` · **Status:** in progress (slice 2)
+- **Issue:** #197 · **Branch:** `feat/admin-users-3-invitation-lifecycle` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-library` (PRs #186–#194)
@@ -54,6 +54,7 @@ Out of scope:
 | Clock (Claude) | Identity gets its own `Clock` port and adapter, like Play and Studio |
 | Timestamps (Claude, slice 1 review) | `identity_user.created_at` stays a naive UTC column (UTC `SystemClock`, display only, same as Studio). New Identity tables (`Invitation`, `PasswordReset`) use `datetimetz_immutable`, so expiry comparisons never depend on the PHP or database time zone |
 | After-commit mail (Claude) | Application stays framework-free: handlers call the `AccountMailer` port. Its Infrastructure adapter dispatches an Infrastructure `SendAccountMail` message on `command.bus` with `DispatchAfterCurrentBusStamp`, so the outer command's `doctrine_transaction` commits first; the message handler sends through Symfony Mailer. A transport failure surfaces from `MessengerCommandBus` (unwrapping `DelayedMessageHandlingException`) as `MailUnavailable`; the stored invitation stays |
+| Invitation lifecycle (Claude, slice 3) | A partial unique index keeps one pending invitation per email; `InvitationRepository::save` flushes and maps that violation to `InvitationAlreadyPending`, so `InviteUser` revokes an expired pending invitation and saves it before saving the new one. `ResendInvitation` replaces the token hash and sets `expiresAt` to now + 7 days; `createdAt` stays. `AcceptInvitation` checks the password policy first, then the link (`InvalidAccountLink` for unknown, accepted, revoked or expired), then refuses with `EmailAlreadyInUse` when an account was created for the email meanwhile. `ListInvitations` returns pending invitations ordered by email. A stored role that `Role` does not know (user or invitation) is a domain error, not `ValueError`. When several after-commit messages fail, the first surfaces and the others are logged |
 | Rate limits (Claude) | `RequestPasswordReset` endpoint: 3 per 15 minutes per normalized email and 10 per hour per IP (`framework.rate_limiter`); over the limit still answers 202 and sends nothing. Token endpoints need no limiter (256-bit tokens) |
 | Public API (Claude) | Identity `AuthController` (public in `access_control`): `POST /api/auth/password-reset-requests {email}` → 202; `POST /api/auth/password-resets {token, password}` → 204; `POST /api/auth/invitations/lookup {token}` → 200 `{email, roles, expiresAt}`; `POST /api/auth/invitations/accept {token, password}` → 204. The SPA then signs in with the email and password (accept) or shows the login page (reset). 400/415/422 follow the existing error shape |
 | Admin API (Claude) | New `backend/src/Admin/Infrastructure/Http/` controllers dispatching Identity commands and queries; `access_control` `^/api/admin` → `ROLE_OWNER`. `GET /api/admin/users`; `PUT /api/admin/users/{id}/roles {roles}`; `POST /api/admin/users/{id}/disable`, `/enable`; `POST /api/admin/users/{id}/password-reset` → 202; `GET /api/admin/invitations`; `POST /api/admin/invitations {email, roles}` → 201; `POST /api/admin/invitations/{id}/resend`; `DELETE /api/admin/invitations/{id}`. 404 unknown user/invitation, 409 `OwnAccountProtected`/`EmailAlreadyInUse`/`InvitationAlreadyPending`/`UserDisabled`, 422 unknown role or no role, 503 mail. No optimistic lock: user rows are tiny and last write wins |
@@ -62,18 +63,19 @@ Out of scope:
 
 ## Design
 
-### Backend (slices 1–5)
+### Backend (slices 1–6)
 
 - Slice 1: user lifecycle (status, roles, password, createdAt), migration, `all()`, `UserChecker`, provider refresh, `ListUsers`, `ChangeUserRoles`, `DisableUser`, `EnableUser`, Identity `Clock`; Behat scenarios.
-- Slice 2: slice 1 review fixes (last-active-owner guard); mailer install and port, `TokenGenerator`, `APP_PUBLIC_URL`, after-commit mail; `Invitation` aggregate and persistence, `InviteUser`; Behat scenarios.
-- Slice 3: the rest of the invitation lifecycle (resend, revoke, accept, list, lookup); `PasswordReset` aggregate and persistence.
-- Slice 4: password reset commands, rate limiters, the four public `/api/auth/…` endpoints, API tests, `make api`.
-- Slice 5: Admin controllers, `^/api/admin` access control, API tests for every status, `make api`.
+- Slice 2: slice 1 review fixes (last-active-owner guard); mailer install and port, `TokenGenerator`, `APP_PUBLIC_URL`, after-commit mail; `Invitation` aggregate and persistence.
+- Slice 3: slice 2 review fixes; `InviteUser`; the rest of the invitation lifecycle (resend, revoke, accept, list, lookup); Behat scenarios.
+- Slice 4: `PasswordReset` aggregate and persistence; password reset commands; Behat scenarios.
+- Slice 5: rate limiters, the four public `/api/auth/…` endpoints, API tests, `make api`.
+- Slice 6: Admin controllers, `^/api/admin` access control, API tests for every status, `make api`.
 
-### Frontend (slices 6–7)
+### Frontend (slices 7–8)
 
-- Slice 6: Admin Users page and Invitations section, hooks, tests, stories.
-- Slice 7: public forgot/reset/accept pages, login link, e2e seed owner, Mailpit helper, Playwright scenarios, feature close.
+- Slice 7: Admin Users page and Invitations section, hooks, tests, stories.
+- Slice 8: public forgot/reset/accept pages, login link, e2e seed owner, Mailpit helper, Playwright scenarios, feature close.
 
 ## Constraints
 
@@ -89,14 +91,17 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/admin-users-1-user-lifecycle` | `feat(identity): admin-users 1/6 user lifecycle` | T1, T2, T3 | ~1,200 |
-| 2 | `feat/admin-users-2-invitations` | `feat(identity): admin-users 2/7 mail and invitations` | T12, T4, T5 | ~1,650 incl. ~300 composer.lock |
-| 3 | `feat/admin-users-3-account-links` | `feat(identity): admin-users 3/7 invitation lifecycle and password reset model` | T13, T6 | ~1,500 |
-| 4 | `feat/admin-users-4-public-api` | `feat(identity): admin-users 4/7 password reset and public account endpoints` | T14, T7 | ~1,500 incl. ~350 generated |
-| 5 | `feat/admin-users-5-admin-api` | `feat(admin): admin-users 5/7 admin API` | T8 | ~1,500 incl. ~450 generated |
-| 6 | `feat/admin-users-6-admin-ui` | `feat(admin): admin-users 6/7 users and invitations in Admin` | T9 | ~1,500 |
-| 7 | `feat/admin-users-7-account-pages-e2e` | `feat(identity): admin-users 7/7 account pages and end to end` | T10, T11 | ~1,300 |
+| 2 | `feat/admin-users-2-invitations` | `feat(identity): admin-users 2/8 mail, tokens and invitation model` | T12, T4, T5 (part 1) | ~1,650 incl. ~300 composer.lock (actual 1,933) |
+| 3 | `feat/admin-users-3-invitation-lifecycle` | `feat(identity): admin-users 3/8 invitation lifecycle` | T15, T5 (rest), T13 | ~1,550 |
+| 4 | `feat/admin-users-4-password-reset` | `feat(identity): admin-users 4/8 password reset` | T6, T14 | ~1,300 |
+| 5 | `feat/admin-users-5-public-api` | `feat(identity): admin-users 5/8 public account endpoints` | T7 | ~1,400 incl. ~350 generated |
+| 6 | `feat/admin-users-6-admin-api` | `feat(admin): admin-users 6/8 admin API` | T8 | ~1,500 incl. ~450 generated |
+| 7 | `feat/admin-users-7-admin-ui` | `feat(admin): admin-users 7/8 users and invitations in Admin` | T9 | ~1,500 |
+| 8 | `feat/admin-users-8-account-pages-e2e` | `feat(identity): admin-users 8/8 account pages and end to end` | T10, T11 | ~1,300 |
 
 Replanned at slice 2 (2026-10-18): slice 1 came in at 1,514 lines against a 1,200 forecast, and mail plus the full invitation lifecycle forecast at ~2,200, so the backend moved from four slices to five.
+
+Replanned at slice 3 (2026-10-18): slice 2 came in at 1,933 lines without `InviteUser`, so `InviteUser` joins slice 3, the `PasswordReset` model moves to slice 4 with its commands, and the public endpoints get their own slice (8 slices).
 
 ## Tasks
 
@@ -105,17 +110,18 @@ Replanned at slice 2 (2026-10-18): slice 1 came in at 1,514 lines against a 1,20
 | T1 | 1 | Docs: this feature doc; ADR 0034 and index row; glossary User (active/disabled), Invitation, Password reset; context map Identity & Access and Admin | inline (parent: design authored this session) | [x] | 58e4837 |
 | T2 | 1 | Domain + persistence: mutable `User` with `UserStatus`, `createdAt`, `changeRoles`, `disable`/`enable`, `changePassword`; migration (`status` default active, `created_at`); mapping; `UserRepository::all()`; Identity `Clock` port + adapter; legacy rows read as active; fakes updated | delegated writer (slice 1) | [x] | 288ea9a |
 | T3 | 1 | Application + security: `ListUsers`, `ChangeUserRoles`, `DisableUser`, `EnableUser` (actor id, `OwnAccountProtected`, `UserNotFound`, `UnknownRole`); `UserView` gains status and createdAt; `UserChecker` refuses disabled users (generic 401); `refreshUser` drops disabled users; Behat scenarios; integration test that a disabled user's session ends | delegated writer (slice 1) | [x] | 35f83de |
-| T12 | 2 | Slice 1 review fixes: last-active-owner guard (`activeOwnersForUpdate`, `LastActiveOwner`); drop unused `EnableUser::actorId`; `User` docblock; test nits (`UserManagementHandlersTest` repository mismatch, `DisabledUserApiTest` owner fixture role) | delegated writer (slice 2) | [x] | |
-| T4 | 2 | Mail + tokens: install `symfony/mailer`, `AccountMailer` port and adapter (text + HTML), `APP_PUBLIC_URL`, `TokenGenerator` port and adapter, after-commit mail dispatch, `MailUnavailable` | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Invitations: `Invitation` aggregate (`InvitationStatus`), repository + migration (token hash unique, `datetimetz_immutable`), `InviteUser` (`InvitationAlreadyPending`, expired pending replaced); Behat scenarios with a spy mailer; integration test that the mail leaves after commit and that a transport failure gives `MailUnavailable` with the invitation kept | delegated writer (slice 2) | [ ] | |
+| T12 | 2 | Slice 1 review fixes: last-active-owner guard (`activeOwnersForUpdate`, `LastActiveOwner`); drop unused `EnableUser::actorId`; `User` docblock; test nits (`UserManagementHandlersTest` repository mismatch, `DisabledUserApiTest` owner fixture role) | delegated writer (slice 2) | [x] | ddac460 |
+| T4 | 2 | Mail + tokens: install `symfony/mailer`, `AccountMailer` port and adapter (text + HTML), `APP_PUBLIC_URL`, `TokenGenerator` port and adapter, after-commit mail dispatch, `MailUnavailable` | delegated writer (slice 2) | [x] | c8f7e89, a549942 |
+| T5 | 2 | Invitations: `Invitation` aggregate (`InvitationStatus`), repository + migration (token hash unique, `datetimetz_immutable`), `InviteUser` (`InvitationAlreadyPending`, expired pending replaced); Behat scenarios with a spy mailer; integration test that the mail leaves after commit and that a transport failure gives `MailUnavailable` with the invitation kept | delegated writer (slice 2: model and persistence; slice 3: `InviteUser`) | [ ] | 2930ca9 (part 1) |
+| T15 | 3 | Slice 2 review fixes: owner guard integration test through the real bus and database; every after-commit failure but the first is logged; partial unique index on pending invitation emails (concurrent invite → `InvitationAlreadyPending`) and ordering in `pendingForEmail`; an unknown stored role is a domain error, not `ValueError` | delegated writer (slice 3) | [x] | |
 | T13 | 3 | Invitation lifecycle: `ResendInvitation`, `RevokeInvitation`, `AcceptInvitation`, `ListInvitations`, `LookupInvitation`, `InvitationNotFound`, `InvalidAccountLink`, `WeakPassword`; Behat scenarios | delegated writer (slice 3) | [ ] | |
-| T6 | 3 | Password reset model: `PasswordReset` aggregate, repository + migration | delegated writer (slice 3) | [ ] | |
+| T6 | 4 | Password reset model: `PasswordReset` aggregate, repository + migration | delegated writer (slice 4) | [ ] | |
 | T14 | 4 | Password reset commands: `RequestPasswordReset`, `SendPasswordReset`, `ResetPassword`; Behat scenarios | delegated writer (slice 4) | [ ] | |
-| T7 | 4 | Public HTTP: `/api/auth/password-reset-requests`, `/password-resets`, `/invitations/lookup`, `/invitations/accept`; rate limiters; `access_control`; API tests for every status (incl. rate limit and disabled user); `make api` | delegated writer (slice 4) | [ ] | |
-| T8 | 5 | Admin HTTP: users (list, roles, disable, enable, password reset) and invitations (list, invite, resend, revoke) controllers; `^/api/admin` → `ROLE_OWNER`; API tests for every status incl. 403 for non-owners; `make api` | delegated writer (slice 5) | [ ] | |
-| T9 | 6 | Frontend Admin: Users page (table, roles dialog, disable/enable confirm, send reset link, own-row guards), Invitations section (list, invite dialog, resend, revoke), shadcn checkbox, hooks, tests, stories | delegated writer (slice 6) | [ ] | |
-| T10 | 7 | Frontend public pages: `/forgot-password`, `/reset-password`, `/accept-invitation` (token from the fragment), login page link; tests, stories | delegated writer (slice 7) | [ ] | |
-| T11 | 7 | e2e: seed owner, Mailpit helper, invite → accept → sign in, disable → refused, forgot → reset → sign in; feature doc close | delegated writer (slice 7) | [ ] | |
+| T7 | 5 | Public HTTP: `/api/auth/password-reset-requests`, `/password-resets`, `/invitations/lookup`, `/invitations/accept`; rate limiters; `access_control`; API tests for every status (incl. rate limit and disabled user); `make api` | delegated writer (slice 5) | [ ] | |
+| T8 | 6 | Admin HTTP: users (list, roles, disable, enable, password reset) and invitations (list, invite, resend, revoke) controllers; `^/api/admin` → `ROLE_OWNER`; API tests for every status incl. 403 for non-owners; `make api` | delegated writer (slice 6) | [ ] | |
+| T9 | 7 | Frontend Admin: Users page (table, roles dialog, disable/enable confirm, send reset link, own-row guards), Invitations section (list, invite dialog, resend, revoke), shadcn checkbox, hooks, tests, stories | delegated writer (slice 7) | [ ] | |
+| T10 | 8 | Frontend public pages: `/forgot-password`, `/reset-password`, `/accept-invitation` (token from the fragment), login page link; tests, stories | delegated writer (slice 8) | [ ] | |
+| T11 | 8 | e2e: seed owner, Mailpit helper, invite → accept → sign in, disable → refused, forgot → reset → sign in; feature doc close | delegated writer (slice 8) | [ ] | |
 
 ## Progress
 
@@ -126,13 +132,15 @@ Replanned at slice 2 (2026-10-18): slice 1 came in at 1,514 lines against a 1,20
 - 2026-10-18: T12 done. `UserRepository::activeOwnersForUpdate()` locks every user row and refreshes managed users; `DisableUser` and `ChangeUserRoles` refuse with `LastActiveOwner`; `EnableUser::actorId` dropped; `User` docblock and test nits fixed. `User::createdAt` is no longer readonly because Doctrine cannot refresh a readonly object property.
 - 2026-10-18: T4 done. `symfony/mailer`, `AccountMailer` port and adapter (queued with `DispatchAfterCurrentBusStamp`), `AccountToken`, `TokenGenerator`, `AccountLinks`, `MailUnavailable`; `MessengerCommandBus` unwraps `DelayedMessageHandlingException`.
 - 2026-10-18: T5 part 1. `Invitation` aggregate, `InvitationRepository` (Doctrine and in-memory), `identity_invitation` migration (`datetimetz_immutable_microseconds`, the app-wide timestamptz type). `InviteUser` pending.
+- 2026-10-18: T15 done. Owner guard integration test through the real bus and database; `MessengerCommandBus` logs every after-commit failure but the first; partial unique index on pending invitation emails with `InvitationAlreadyPending` and newest-first `pendingForEmail`; `UnknownStoredRole` for `User::roles()` and `Invitation::roles()`.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-b2f73d117f9d5f78` approved, acknowledged | 58e4837, 288ea9a, 35f83de | Non-blocking: concurrent owners can leave no active owner; naive `created_at` depends on a UTC runtime; stale `User` docblock; feature doc wording on the checker; unused `EnableUser::actorId`; test nits. Fixed in slice 2 (T12, Decisions) | [#198](https://github.com/iribarren/ogami/pull/198) |
+| 2 | `review-a682021be7686190` (recovered from `review-6764ec4af488408a` after the `createdAt` correction) approved, acknowledged; `review-44c26f92fc30b82e` approved, acknowledged | ddac460, c8f7e89, a549942 · 2930ca9 | Reviewed as two candidates (1,933 lines). Non-blocking: no owner guard test through the real bus and database; no test of mail after commit or of a transport failure; only the first of several after-commit failures surfaces; nothing enforces one pending invitation per email and `pendingForEmail` has no ordering; an unknown stored role fails with `ValueError`. Fixed in slice 3 (T15, T5) | [#199](https://github.com/iribarren/ogami/pull/199) |
 
 ## Next step
 
-Slice 2: T12, T4, T5 on `feat/admin-users-2-invitations`.
+Slice 3: T15, T5 (rest: `InviteUser`), T13 on `feat/admin-users-3-invitation-lifecycle`.

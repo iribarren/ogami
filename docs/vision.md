@@ -77,7 +77,7 @@ Policy: decide at the last responsible moment. Each question is answered when th
 |---|---|---|
 | Can a flow run a named, reusable list of steps (a procedure) from a step or the oracle panel? | When a preset repeats a step list | Chained steps and Scene Types until then |
 | Can the player add trackers linked to NPCs, Threads or facts (thread progress, faction power, disposition)? | When a preset needs them | Campaign facts and release trackers until then ([ADR 0018](adr/0018-narrativeflow-control-flow-and-cast.md)) |
-| How are places modeled (a map, regions, sites)? | When a map-focused preset needs them (West Marches) | Free Campaign facts until then |
+| How are places modeled (a map, regions, sites)? | Backlog `play-places`, before `preset-west-marches` | Free Campaign facts until then |
 | Which curated themes may a GameSystem release name? | `design-foundation` (8c) | A few app-defined, contrast-checked themes |
 | How does a player move a campaign's story to another flow? | Backlog `play-campaign-transfer` | A new campaign carrying over facts, NPCs and Threads; until then the flow is fixed |
 | What does the Narrative-assist port need as input and output? | When AI enters scope | Shape it from the real flow: structured input from the Scene Type, the current step, Campaign facts, NPC agendas, Threads and trackers ([ADR 0017](adr/0017-narrativeflow-model.md)); only the port exists until then |

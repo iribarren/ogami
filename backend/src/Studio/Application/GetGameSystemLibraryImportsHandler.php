@@ -42,7 +42,7 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
             $views[] = new LibraryImportView(
                 $import->section,
                 $import->key,
-                $this->label($own['item'] ?? null, $import->key),
+                LibraryItems::labelOf($own['item'] ?? null, $import->key),
                 null === $packs[$import->pack] ? null : ['key' => $import->pack, 'name' => $packs[$import->pack][0]->name()],
                 match (true) {
                     null === $source => LibraryImportStatus::Removed,
@@ -54,19 +54,5 @@ final readonly class GetGameSystemLibraryImportsHandler implements QueryHandler
         }
 
         return $views;
-    }
-
-    /**
-     * @param array<array-key, mixed>|null $item
-     */
-    private function label(?array $item, string $key): string
-    {
-        foreach (['name', 'label'] as $field) {
-            if (\is_string($item[$field] ?? null) && '' !== $item[$field]) {
-                return $item[$field];
-            }
-        }
-
-        return $key;
     }
 }

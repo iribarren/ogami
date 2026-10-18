@@ -13,6 +13,7 @@ use App\Studio\Application\GetGameSystemNarrative;
 use App\Studio\Application\SaveNarrativeItem;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\GameSystem\NarrativeItemInUse;
 use App\Studio\Domain\GameSystem\NarrativeItemNotFound;
 use App\Studio\Domain\GameSystem\NarrativeKeyTaken;
@@ -79,7 +80,7 @@ final readonly class GameSystemNarrativeController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or the section is not one of those listed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the key is already used in the section. A library pack refuses flows.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The item breaks the release contract\'s rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no narrative sections); nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function create(string $key, string $section, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -96,7 +97,7 @@ final readonly class GameSystemNarrativeController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, the section is not one of those listed, or it has no item with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the new key is already used in the section. A library pack refuses flows.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The item breaks the release contract\'s rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a rename is used by the draft (the paths say where); nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function replace(string $key, string $section, string $item, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -113,7 +114,7 @@ final readonly class GameSystemNarrativeController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, the section is not one of those listed, or it has no item with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses flows.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The draft uses the item (the paths say where), or has schema version 1; nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function delete(string $key, string $section, string $item, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -126,7 +127,7 @@ final readonly class GameSystemNarrativeController
             $this->commandBus->dispatch(new DeleteNarrativeItem($user->id(), $key, $expectedVersion, $this->sectionOf($section), $item));
 
             return $this->narrativeOf($user, $key, Response::HTTP_OK);
-        } catch (GameSystemNotFound|NarrativeItemNotFound|GameSystemModifiedConcurrently|NarrativeItemInUse|InvalidReleaseContent $exception) {
+        } catch (GameSystemNotFound|NarrativeItemNotFound|GameSystemModifiedConcurrently|NarrativeItemInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
     }
@@ -151,7 +152,7 @@ final readonly class GameSystemNarrativeController
             $this->commandBus->dispatch(new SaveNarrativeItem($user->id(), $key, $expectedVersion, $this->sectionOf($section), $originalKey, $item));
 
             return $this->narrativeOf($user, $key, $status);
-        } catch (GameSystemNotFound|NarrativeItemNotFound|GameSystemModifiedConcurrently|NarrativeKeyTaken|NarrativeItemInUse|InvalidReleaseContent $exception) {
+        } catch (GameSystemNotFound|NarrativeItemNotFound|GameSystemModifiedConcurrently|NarrativeKeyTaken|NarrativeItemInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
     }
@@ -183,7 +184,7 @@ final readonly class GameSystemNarrativeController
     {
         return match (true) {
             $exception instanceof GameSystemNotFound, $exception instanceof NarrativeItemNotFound => $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND),
-            $exception instanceof GameSystemModifiedConcurrently, $exception instanceof NarrativeKeyTaken => $this->error($exception->getMessage(), Response::HTTP_CONFLICT),
+            $exception instanceof GameSystemModifiedConcurrently, $exception instanceof NarrativeKeyTaken, $exception instanceof LibraryPackRefuses => $this->error($exception->getMessage(), Response::HTTP_CONFLICT),
             $exception instanceof NarrativeItemInUse => new JsonResponse(OracleInUseResponse::fromException($exception), Response::HTTP_UNPROCESSABLE_ENTITY),
             default => $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY),
         };

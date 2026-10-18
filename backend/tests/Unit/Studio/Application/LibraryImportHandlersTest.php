@@ -472,7 +472,9 @@ final class LibraryImportHandlersTest extends TestCase
     {
         $this->import('bob', 'my-game', 1, 'generic', [['section' => 'tags', 'key' => 'social']]);
         $this->publish('bob', 'my-game');
-        $sources = $this->releases->latestFor('my-game')?->librarySources();
+        $release = $this->releases->latestFor('my-game');
+        self::assertNotNull($release);
+        $sources = $release->librarySources();
         self::assertNotNull($sources);
 
         $this->detach('bob', 'my-game', 2, 'tags', 'social');
@@ -484,7 +486,7 @@ final class LibraryImportHandlersTest extends TestCase
         }
 
         self::assertSame(1, $this->releases->count());
-        self::assertSame($sources, $this->releases->latestFor('my-game')->librarySources());
+        self::assertSame($sources, $this->releases->latestFor('my-game')?->librarySources());
     }
 
     private function owned(): OwnedGameSystems

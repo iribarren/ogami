@@ -11,6 +11,11 @@ use App\Studio\Application\CreateLibraryPackHandler;
 use App\Studio\Application\DiscardGameSystem;
 use App\Studio\Application\DiscardGameSystemHandler;
 use App\Studio\Application\GameSystemSummary;
+use App\Studio\Application\GetLibraryPack;
+use App\Studio\Application\GetLibraryPackHandler;
+use App\Studio\Application\LibraryPackCatalog;
+use App\Studio\Application\LibraryPackNotFound;
+use App\Studio\Application\LibraryPacks;
 use App\Studio\Application\LibraryPackSummary;
 use App\Studio\Application\ListLibraryPacks;
 use App\Studio\Application\ListLibraryPacksHandler;
@@ -27,6 +32,7 @@ use App\Studio\Domain\GameSystem\GameSystemKind;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
+use App\Studio\Domain\GameSystem\LibrarySection;
 use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
@@ -41,6 +47,7 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CreateLibraryPackHandler::class)]
 #[CoversClass(ListLibraryPacksHandler::class)]
+#[CoversClass(GetLibraryPackHandler::class)]
 #[CoversClass(ListMyGameSystemsHandler::class)]
 #[CoversClass(PublishGameSystemDraftHandler::class)]
 #[CoversClass(RestoreGameSystemReleaseHandler::class)]
@@ -212,6 +219,56 @@ final class LibraryPackHandlersTest extends TestCase
         self::assertSame([], $this->gameSystems->libraryPacks());
     }
 
+    #[Test]
+    public function theCatalogListsEverySectionWithLabelsKindsAndDirectDependenciesOnly(): void
+    {
+        $this->createPack('names', 'Names', 'ann', 'Generic tables');
+        $pack = $this->gameSystems->ofKey('names');
+        self::assertNotNull($pack);
+        $now = $this->clock->now();
+        $pack->saveNarrativeItem(NarrativeSection::Tags, null, ['key' => 'social', 'label' => 'Social'], $now);
+        $pack->saveOracleTable(null, ['key' => 'people', 'name' => 'People', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'Aldric']]], $now);
+        $pack->saveNarrativeItem(NarrativeSection::SceneTypes, null, [
+            'key' => 'tavern', 'name' => 'Tavern', 'purpose' => 'Hear rumours.', 'oracles' => ['people'], 'setup' => [], 'play' => [],
+            'closing' => [['key' => 'meet', 'kind' => 'choice', 'title' => 'Meet?', 'options' => [['key' => 'yes', 'label' => 'Yes', 'effects' => [['kind' => 'createNpc', 'name' => 'Innkeeper', 'tags' => ['social']]]], ['key' => 'no', 'label' => 'No']], 'skip' => 'no']],
+        ], $now);
+        $pack->saveOracleTable(null, ['key' => 'rumours', 'name' => 'Rumours', 'dice' => '1d6', 'entries' => [['min' => 1, 'max' => 6, 'text' => 'Drinks', 'sceneType' => 'tavern']]], $now);
+
+        $catalog = $this->catalog('bob', 'names');
+
+        self::assertSame(['names', 'Names', 'Generic tables', false], [$catalog->key, $catalog->name, $catalog->description, $catalog->mine]);
+        self::assertTrue($this->catalog('ann', 'names')->mine);
+        self::assertSame(array_column(LibrarySection::cases(), 'value'), array_map(static fn (\App\Studio\Application\LibraryPackCatalogSection $section): string => $section->section->value, $catalog->sections));
+        $items = [];
+        foreach ($catalog->sections as $section) {
+            foreach ($section->items as $item) {
+                $items[$section->section->value.'/'.$item->key] = [$item->label, $item->kind, array_map(static fn (\App\Studio\Domain\GameSystem\LibraryItemRef $ref): string => $ref->id(), $item->dependsOn)];
+            }
+        }
+
+        self::assertSame([
+            'oracles/people' => ['People', 'table', []],
+            'oracles/rumours' => ['Rumours', 'table', ['scene-types/tavern']],
+            'tags/social' => ['Social', null, []],
+            'scene-types/tavern' => ['Tavern', null, ['oracles/people', 'tags/social']],
+        ], $items);
+    }
+
+    #[Test]
+    public function theCatalogOfAnUnknownKeyOrAGameSystemIsNotFound(): void
+    {
+        $this->createDraft('a-draft', 'ann');
+
+        foreach (['nowhere', 'a-draft'] as $key) {
+            try {
+                $this->catalog('ann', $key);
+                self::fail('A catalog was returned.');
+            } catch (LibraryPackNotFound $notFound) {
+                self::assertStringContainsString($key, $notFound->getMessage());
+            }
+        }
+    }
+
     private function owned(): OwnedGameSystems
     {
         return new OwnedGameSystems($this->gameSystems);
@@ -225,6 +282,11 @@ final class LibraryPackHandlersTest extends TestCase
     private function createDraft(string $key, string $owner): void
     {
         (new CreateGameSystemHandler($this->gameSystems, $this->releases, $this->clock))(new CreateGameSystem($this->ids->generate()->toString(), $owner, $key, ucfirst($key), null, null, null));
+    }
+
+    private function catalog(string $user, string $key): LibraryPackCatalog
+    {
+        return (new GetLibraryPackHandler(new LibraryPacks($this->gameSystems)))(new GetLibraryPack($user, $key));
     }
 
     /**

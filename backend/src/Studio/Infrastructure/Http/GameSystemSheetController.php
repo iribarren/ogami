@@ -18,6 +18,7 @@ use App\Studio\Application\SaveSheetField;
 use App\Studio\Application\SaveSheetLayout;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
+use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\GameSystem\SheetFieldInUse;
 use App\Studio\Domain\GameSystem\SheetFieldKeyTaken;
 use App\Studio\Domain\GameSystem\SheetFieldNotFound;
@@ -80,7 +81,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the key names another field.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the key names another field. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The field breaks the release contract\'s rules, or leaves another part of the draft breaking them (the message starts with the path), or the draft has schema version 1 (no sheet fields); nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function create(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -96,7 +97,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or the sheet has no field with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the new key names another field.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile (reload it and try again), or the new key names another field. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The field breaks the release contract\'s rules, or leaves another part of the draft breaking them (the message starts with the path), the draft has schema version 1, or a rename is read by the draft (the paths say where); nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function replace(string $key, string $field, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -112,7 +113,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or the sheet has no field with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The draft reads the field (the paths say where), or has schema version 1; nothing changed.', content: new OA\JsonContent(oneOf: [new OA\Schema(ref: new Model(type: ErrorResponse::class)), new OA\Schema(ref: new Model(type: OracleInUseResponse::class))]))]
     public function delete(string $key, string $field, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -132,7 +133,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or the sheet has no field with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: '"index" is outside the field list (the message starts with "index"), the draft breaks the release contract\'s rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function move(string $key, string $field, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -159,7 +160,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The sheet declares no layout yet (the message starts with "sheet.groups"), "groups" is empty or names a missing group or one twice (the message starts with "groups"), a group that holds fields is dropped, the layout breaks the release contract\'s rules (the message starts with the path), or the draft has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function saveLayout(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -186,7 +187,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The sheet already declares a layout or has no fields (the message starts with "sheet.groups" or "sheet.fields"), the groups break the release contract\'s rules (more than 20), or the draft has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function declareLayout(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -212,7 +213,7 @@ final readonly class GameSystemSheetController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields and layouts.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The sheet declares no layout (the message starts with "sheet.groups"), the draft breaks the release contract\'s rules elsewhere (the message starts with the path), or it has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function removeLayout(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -252,7 +253,7 @@ final readonly class GameSystemSheetController
     {
         try {
             $this->commandBus->dispatch($command);
-        } catch (GameSystemNotFound|SheetFieldNotFound|GameSystemModifiedConcurrently|SheetFieldKeyTaken|SheetFieldInUse|InvalidReleaseContent $exception) {
+        } catch (GameSystemNotFound|SheetFieldNotFound|GameSystemModifiedConcurrently|SheetFieldKeyTaken|SheetFieldInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
 
@@ -306,7 +307,7 @@ final readonly class GameSystemSheetController
     {
         return match (true) {
             $exception instanceof GameSystemNotFound, $exception instanceof SheetFieldNotFound => $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND),
-            $exception instanceof GameSystemModifiedConcurrently, $exception instanceof SheetFieldKeyTaken => $this->error($exception->getMessage(), Response::HTTP_CONFLICT),
+            $exception instanceof GameSystemModifiedConcurrently, $exception instanceof SheetFieldKeyTaken, $exception instanceof LibraryPackRefuses => $this->error($exception->getMessage(), Response::HTTP_CONFLICT),
             $exception instanceof SheetFieldInUse => new JsonResponse(OracleInUseResponse::fromException($exception), Response::HTTP_UNPROCESSABLE_ENTITY),
             default => $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY),
         };

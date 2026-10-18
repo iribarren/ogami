@@ -45,6 +45,7 @@ function renderPlayScreen(
     'GET /api/auth/me': soloPlayer,
     [`GET ${campaignPath(campaign)}`]: json(campaign),
     [`GET ${campaignPath(campaign)}/journal`]: json(journal),
+    'GET /api/play/game-systems': json([freeJournal]),
     ...handlers,
   })
 }

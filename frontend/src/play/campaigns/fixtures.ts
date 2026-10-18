@@ -1,4 +1,5 @@
 import type { Campaign, CampaignSummary, GameSystemSummary } from './useCampaigns'
+import type { ReleaseUpgrade } from './useReleaseUpgrade'
 
 // Shared by the campaign tests and stories.
 
@@ -337,3 +338,86 @@ export const luckCheck: CampaignCheck = {
   dice: 'd%',
   difficulty: null,
 }
+
+/** `freeJournal` as a release newer than the one `lostMineCampaign` is pinned to. */
+export const freeJournalV3: GameSystemSummary = { ...freeJournal, version: 3 }
+
+/** What upgrading `lostMineCampaign` (v2) to v3 changes: every section of the plan. */
+export const lostMineUpgrade: ReleaseUpgrade = {
+  upToDate: false,
+  currentVersion: 2,
+  plan: {
+    from: { version: 2, name: 'Free journal' },
+    to: { version: 3, name: 'Free journal' },
+    characters: [
+      {
+        id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001',
+        name: 'Vi',
+        changes: [
+          { fieldKey: 'luck', fieldName: 'Luck', kind: 'clamped', before: 9, after: 5 },
+          { fieldKey: 'grit', fieldName: 'Grit', kind: 'added', before: null, after: 1 },
+          {
+            fieldKey: 'hp',
+            fieldName: 'Hit points',
+            kind: 'clamped',
+            before: { current: 8, max: 8 },
+            after: { current: 6, max: 6 },
+          },
+          {
+            fieldKey: 'gear',
+            fieldName: 'Gear',
+            kind: 'trimmed',
+            before: ['rope', 'lamp', 'knife'],
+            after: ['rope', 'lamp'],
+          },
+          {
+            fieldKey: 'motto',
+            fieldName: 'Motto',
+            kind: 'reset',
+            before: 'Never again',
+            after: '',
+          },
+          { fieldKey: 'fame', fieldName: 'Fame', kind: 'removed', before: 3, after: null },
+        ],
+        droppedTags: ['thief'],
+      },
+    ],
+    npcs: [{ id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7002', name: 'Old Tam', tags: ['guard'] }],
+    threads: [
+      { id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7003', name: 'The missing map', tags: ['quest'] },
+    ],
+    trackers: [
+      { trackerKey: 'heat', name: 'Heat', kind: 'clamped', before: 9, after: 6 },
+      { trackerKey: 'luck-pool', name: 'Luck pool', kind: 'removed', before: 2, after: null },
+    ],
+    facts: [
+      {
+        id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7004',
+        slotKey: 'patron',
+        label: 'Patron',
+        text: 'A baron in debt.',
+      },
+    ],
+    flow: { fromFlowKey: 'full', toFlowKey: 'quick', restarted: true },
+    fingerprint: 'a'.repeat(64),
+  },
+}
+
+/** A plan with one Tracker change only: the other sections are omitted. */
+export const trackerOnlyUpgrade: ReleaseUpgrade = {
+  upToDate: false,
+  currentVersion: 2,
+  plan: {
+    from: { version: 2, name: 'Free journal' },
+    to: { version: 3, name: 'Free journal' },
+    characters: [],
+    npcs: [],
+    threads: [],
+    trackers: [{ trackerKey: 'heat', name: 'Heat', kind: 'clamped', before: 9, after: 6 }],
+    facts: [],
+    flow: { fromFlowKey: null, toFlowKey: null, restarted: false },
+    fingerprint: 'b'.repeat(64),
+  },
+}
+
+export const upToDateUpgrade: ReleaseUpgrade = { upToDate: true, currentVersion: 2, plan: null }

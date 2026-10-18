@@ -322,6 +322,8 @@ Start feature `admin-users` (ODD). Admin: the owner lists users, invites by emai
 Start feature `play-release-upgrade` (ODD). Play: let a player upgrade a campaign to a newer GameSystem release, with a preview of the character data migration; nothing changes without confirmation.
 ```
 
+Done: a player upgrades a campaign to the latest release of its GameSystem from the campaign header. A preview lists what changes (Character values fitted to the new sheet, dropped Tags, Tracker values, Campaign facts that lose their slot, guidance restarting at the first phase of the Flow); nothing changes until the player confirms, and the confirmed change is exactly the previewed one, checked by a fingerprint ([ADR 0035](adr/0035-campaign-release-upgrade.md)). See [odd/tasks/play-release-upgrade.md](../odd/tasks/play-release-upgrade.md). The prompt is kept for reference.
+
 ### Backlog
 
 **play-journal-attachments**

@@ -97,13 +97,19 @@ final readonly class CampaignReleaseUpgradeController
 
         try {
             $this->commandBus->dispatch(new UpgradeCampaignRelease($campaignId, $user->id(), $toVersion, $fingerprint));
-            $campaign = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignUpToDate|ReleaseUpgradeChanged|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();
+        }
+
+        // The upgrade is saved: a failed read now must not be reported as a refused upgrade.
+        try {
+            $campaign = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()));
+        } catch (\Throwable) {
+            return $this->error('The upgrade was saved, but the campaign cannot be read now. Reload the page.', Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         return new JsonResponse(CampaignResponse::fromView($campaign));

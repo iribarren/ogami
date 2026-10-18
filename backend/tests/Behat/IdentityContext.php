@@ -533,10 +533,11 @@ final class IdentityContext implements Context
     {
         $this->rejection = null;
         $this->acceptedInvitation = null;
-        $invitation = '' === $token ? null : $this->invitations->ofTokenHash(AccountToken::fromString($token)->hash());
         $handler = new AcceptInvitationHandler($this->invitations, $this->invitationLoader, $this->users, $this->hasher, $this->clock);
 
         try {
+            // A blank token has no invitation: the handler refuses it as an invalid link.
+            $invitation = '' === $token ? null : $this->invitations->ofTokenHash(AccountToken::fromString($token)->hash());
             $handler(new AcceptInvitation($token, $password, $this->ids->generate()->toString()));
             $this->acceptedInvitation = $invitation instanceof InvitationAggregate
                 ? ['email' => $invitation->email()->toString(), 'roles' => array_map(static fn (Role $role): string => $role->value, $invitation->roles())]

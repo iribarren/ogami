@@ -64,7 +64,7 @@ final class PasswordResetContext implements Context
         $this->clock = new FixedClock();
         $this->hasher = new FakePasswordHasher();
         $issuer = new PasswordResetIssuer($this->resets, new SequentialTokenGenerator(), new AccountLinks('http://localhost:8080'), $this->mailer, $this->clock);
-        $this->request = new RequestPasswordResetHandler($this->users, $issuer);
+        $this->request = new RequestPasswordResetHandler($this->users, $this->resets, $issuer);
         $this->send = new SendPasswordResetHandler(new UserLoader($this->users), $issuer);
         $this->reset = new ResetPasswordHandler($this->resets, $this->users, $this->hasher, $this->clock);
     }

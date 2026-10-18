@@ -11,7 +11,7 @@ use Symfony\Component\Mime\RawMessage;
 
 /**
  * Keeps the emails handed to the transport, and what a probe saw at that moment.
- * With a failure it refuses every email, like a transport that is down.
+ * With a failure (settable at any time) it refuses every email, like a transport that is down.
  */
 final class RecordingMailer implements MailerInterface
 {
@@ -26,7 +26,7 @@ final class RecordingMailer implements MailerInterface
      */
     public function __construct(
         private readonly ?\Closure $probe = null,
-        private readonly ?\Throwable $failure = null,
+        public ?\Throwable $failure = null,
     ) {
     }
 

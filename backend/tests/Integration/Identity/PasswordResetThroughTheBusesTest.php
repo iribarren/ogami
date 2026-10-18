@@ -7,11 +7,13 @@ namespace App\Tests\Integration\Identity;
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\InvalidAccountLink;
 use App\Identity\Application\MailUnavailable;
+use App\Identity\Application\PasswordResetIssuer;
 use App\Identity\Application\RequestPasswordReset;
 use App\Identity\Application\RequestPasswordResetHandler;
 use App\Identity\Application\ResetPassword;
 use App\Identity\Application\ResetPasswordHandler;
 use App\Identity\Application\SendPasswordReset;
+use App\Identity\Application\SendPasswordResetHandler;
 use App\Identity\Application\UserNotFound;
 use App\Identity\Domain\AccountToken;
 use App\Identity\Domain\Email;
@@ -36,6 +38,8 @@ use Symfony\Component\Mailer\Exception\TransportException;
  */
 #[CoversClass(RequestPasswordResetHandler::class)]
 #[CoversClass(ResetPasswordHandler::class)]
+#[CoversClass(SendPasswordResetHandler::class)]
+#[CoversClass(PasswordResetIssuer::class)]
 final class PasswordResetThroughTheBusesTest extends KernelTestCase
 {
     private const string FIRST_RESET_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';

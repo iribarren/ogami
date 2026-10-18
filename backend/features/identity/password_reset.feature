@@ -16,13 +16,18 @@ Feature: Password reset
     When a password reset is requested for "ADA@Example.com"
     Then one password reset email is sent to "ada@example.com"
 
-  Scenario: Requesting a reset for an unknown or disabled account does nothing
-    Given the account "bob@example.com" is disabled
+  Scenario: Requesting a reset for an unknown account does nothing
     When a password reset is requested for "nobody@example.com"
-    And a password reset is requested for "bob@example.com"
-    Then no password reset email is sent
+    Then the request is accepted
+    And no password reset email is sent
     And there are 0 stored password resets
-    And the request is accepted
+
+  Scenario: Requesting a reset for a disabled account does nothing
+    Given the account "bob@example.com" is disabled
+    When a password reset is requested for "bob@example.com"
+    Then the request is accepted
+    And no password reset email is sent
+    And there are 0 stored password resets
 
   Scenario: A malformed email is refused
     When a password reset is requested for "not an email"
@@ -56,6 +61,11 @@ Feature: Password reset
     When a password reset is requested again with the same id for "ada@example.com"
     Then the request is rejected because the reset id is in use
     And one password reset email is sent to "ada@example.com"
+
+  Scenario: A reused reset id is refused the same for an unknown email
+    Given a password reset is requested for "ada@example.com"
+    When a password reset is requested again with the same id for "nobody@example.com"
+    Then the request is rejected because the reset id is in use
 
   Scenario: Following the link changes the password
     Given a password reset is requested for "ada@example.com"

@@ -26,7 +26,7 @@ final class User
         private UserStatus $status,
         // Not readonly: Doctrine refreshes managed users in place (UserRepository::activeOwnersForUpdate)
         // and cannot re-assign a readonly object property, even to an equal date. No method changes it.
-        private readonly \DateTimeImmutable $createdAt,
+        private \DateTimeImmutable $createdAt,
     ) {
     }
 

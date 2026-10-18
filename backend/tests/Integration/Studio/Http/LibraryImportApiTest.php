@@ -409,6 +409,78 @@ final class LibraryImportApiTest extends WebTestCase
     }
 
     #[Test]
+    public function anUpdateThatBreaksAnItemRuleIsUnprocessableAndChangesNothing(): void
+    {
+        $this->library();
+        $this->as('ann');
+        $this->addItem('narrative/fact-slots', 'item', ['key' => 'secret', 'label' => 'Secret', 'type' => 'text']);
+        $this->as('bob');
+        $this->importItem('fact-slots', 'secret');
+        // The draft's own Scene Type fills the slot with a text, which only a text slot takes.
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/narrative/scene-types', ['expectedVersion' => 2, 'item' => [
+            'key' => 'whisper', 'name' => 'Whisper', 'purpose' => 'Hush.', 'oracles' => [], 'setup' => [], 'play' => [],
+            'closing' => [['key' => 'tell', 'kind' => 'choice', 'title' => 'Tell?', 'options' => [['key' => 'yes', 'label' => 'Yes', 'effects' => [['kind' => 'fillFact', 'slot' => 'secret', 'text' => 'Hush']]], ['key' => 'no', 'label' => 'No']], 'skip' => 'no']],
+        ]]);
+        self::assertResponseStatusCodeSame(201);
+        $this->as('ann');
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/generic/narrative/fact-slots/secret', ['expectedVersion' => $this->packVersion++, 'item' => ['key' => 'secret', 'label' => 'Secret', 'type' => 'npc']]);
+        self::assertResponseIsSuccessful();
+        $this->as('bob');
+        $imports = $this->imports();
+        $document = $this->document();
+
+        $this->client->jsonRequest('POST', self::IMPORTS.'/fact-slots/secret/update', ['expectedVersion' => $imports['version']]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertNotSame('', $this->error());
+        self::assertSame($imports, $this->imports());
+        self::assertSame($document, $this->document());
+    }
+
+    #[Test]
+    public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
+    {
+        $this->library();
+        $before = $this->imports();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored imports and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET library_imports = '\"corrupt\"'::jsonb WHERE game_system_key = 'my-game'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::IMPORTS, ['expectedVersion' => 1, 'pack' => 'generic', 'items' => [['section' => 'tags', 'key' => 'social']]]);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertTrue($failed, 'The corrupted imports make the read fail.');
+        self::assertSame($before, $this->imports(), 'The write was rolled back with the failed read.');
+    }
+
+    #[Test]
     public function anotherGameManagerDoesNotFindTheDraft(): void
     {
         $this->library();

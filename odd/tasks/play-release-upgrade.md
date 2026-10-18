@@ -86,13 +86,14 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | T2 | 1 | Domain plan: `ReleaseUpgradePlan`, planner and `fingerprint()` with every rule of the Decisions table; unit tests per rule | delegated writer (slice 1) | [x] | 2879a47 |
 | T3 | 1 | Apply: `Campaign::upgradeRelease` (mutable pin, fingerprint check, `ReleaseUpgradeChanged`, `CampaignUpToDate`, all-or-nothing, FlowRun restart keeping paused); unit tests incl. schema v1 → v2 and derived values | delegated writer (slice 1) | [x] | f4380b9 |
 | T4 | 2 | Slice 1 review fixes: R3-001 compare a fitted track normalized (reordered JSONB keys are unchanged, not clamped) with a test; R3-002 test that an open guided Scene goes on as a free Scene consistent with the restarted FlowRun | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [ ] | |
+| T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [x] | |
 | T6 | 2 | HTTP: preview and upgrade endpoints, API tests for every status, `make api` | delegated writer (slice 2) | [ ] | |
 | T7 | 3 | Slice 2 review fixes | delegated writer (slice 3) | [ ] | |
 | T8 | 3 | Frontend: upgrade action and dialog, hooks, tests, stories; roadmap status | delegated writer (slice 3) | [ ] | |
 
 ## Progress
 
+- 2026-10-18: T5 done: `PreviewReleaseUpgrade` (view = domain plan + current version), `UpgradeCampaignRelease` (latest only: unknown or older-than-latest target is `ReleaseUpgradeChanged`, not newer is `CampaignUpToDate`); Doctrine round trip of an upgraded campaign; `release-upgrade.feature` (5 scenarios). Handlers were written before their Behat scenarios (no RED).
 - 2026-10-18: T4 done: R3-001 planner compares fitted values key-normalized (no RED reachable: `Character::of` already normalizes track key order, so the test is a regression guard); R3-002 test that an open guided Scene goes on free after the upgrade and guidance picks the next Scene (no bug found).
 - 2026-10-18: T1 done: ADR 0035, index, ADR 0010/0014 pointers, glossary, context map, contract paragraph.
 - 2026-10-18: T2 done: `Campaign\Upgrade` plan, planner, fingerprint, `Campaign::planReleaseUpgrade`; 36 unit tests (RED: undefined method, then GREEN).

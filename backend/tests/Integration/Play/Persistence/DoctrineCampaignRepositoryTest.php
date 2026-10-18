@@ -41,6 +41,7 @@ use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
+use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignCharactersType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFactsType;
@@ -52,6 +53,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Tests\Support\Play\CampaignRepositoryContract;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\Snapshots;
+use App\Tests\Unit\Play\Domain\Campaign\Upgrade\UpgradeFixtures;
 use Doctrine\DBAL\Types\Exception\InvalidType;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -802,6 +804,42 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             ],
             $this->storedList($id->toString(), 'characters'),
         );
+    }
+
+    #[Test]
+    public function aReleaseUpgradeRoundTripsWithTheWholeCampaign(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $at = new \DateTimeImmutable('2026-10-18T10:00:00+00:00');
+        $heat = Tracker::counter('heat', 'Heat', null, 0, 10, 2);
+        $legwork = new SceneType('legwork', 'Legwork', 'A purpose.', null, [], new StepList(), new StepList(), new StepList());
+        $flow = UpgradeFixtures::flow('main', true);
+        $slots = [new FactSlot('city', 'City', FactSlotType::Text), new FactSlot('goal', 'Goal', FactSlotType::Text)];
+        $pinned = UpgradeFixtures::release(1, [new NumberField('reflexes', 'Reflexes', max: 10), new TrackField('hp', 'Hit points', max: 40), new ListField('gear', 'Gear', maxItems: 3)], ['ally', 'rival'], [$heat], $slots, [$flow], sceneTypes: [$legwork]);
+        $target = UpgradeFixtures::release(2, [new NumberField('reflexes', 'Reflexes', max: 5), new TrackField('hp', 'Hit points', max: 10), new ListField('gear', 'Gear', maxItems: 2), new TextField('role', 'Role')], ['ally'], [Tracker::counter('heat', 'Heat', null, 0, 6, 2)], [$slots[1]], [$flow], sceneTypes: [$legwork]);
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'), [$heat], $flow);
+        $campaign->setTrackerValue($heat, 9);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', ['rival', 'ally'], ['Fixer'], ['reflexes' => 8, 'hp' => ['current' => 40, 'max' => 40], 'gear' => ['a', 'b', 'c']], $pinned);
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, ['rival'], ['Fence'], 2, $pinned);
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Rob the vault', ['rival', 'ally'], [], 1, $pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-city'), 'city', FactFill::text('Ashford'), $pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-goal'), 'goal', FactFill::text('Rob the vault'), $pinned);
+        $campaign->startSession($at, $pinned);
+        $this->repository->add($campaign);
+
+        $campaign->upgradeRelease($pinned, $target, $campaign->planReleaseUpgrade($pinned, $target)->fingerprint(), $at);
+        $this->repository->save($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(2, $loaded?->pinnedRelease()->releaseVersion());
+        self::assertEquals(['reflexes' => 5, 'hp' => ['current' => 10, 'max' => 10], 'gear' => ['a', 'b'], 'role' => ''], $loaded->character(CharacterId::fromString('c-1'))?->values());
+        self::assertSame(6, $loaded->trackerValuesOf($target)['heat']);
+        self::assertSame('Ashford', $loaded->fact(FactId::fromString('fact-city'))?->text());
+        self::assertNull($loaded->fact(FactId::fromString('fact-city'))?->slot());
+        self::assertNull($loaded->flowRun()?->scene(), 'The restarted FlowRun is in no scene.');
     }
 
     #[Test]

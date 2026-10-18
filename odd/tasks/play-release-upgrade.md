@@ -83,7 +83,7 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc (parent); ADR 0035 "Campaign release upgrade" and index row; ADR 0010 and 0014 point to it; glossary Release upgrade, Upgrade plan; context map Play note; contract "How Play consumes it" upgrade paragraph | delegated writer (slice 1; feature doc inline by parent) | [x] | |
-| T2 | 1 | Domain plan: `ReleaseUpgradePlan`, planner and `fingerprint()` with every rule of the Decisions table; unit tests per rule | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Domain plan: `ReleaseUpgradePlan`, planner and `fingerprint()` with every rule of the Decisions table; unit tests per rule | delegated writer (slice 1) | [x] | |
 | T3 | 1 | Apply: `Campaign::upgradeRelease` (mutable pin, fingerprint check, `ReleaseUpgradeChanged`, `CampaignUpToDate`, all-or-nothing, FlowRun restart keeping paused); unit tests incl. schema v1 → v2 and derived values | delegated writer (slice 1) | [ ] | |
 | T4 | 2 | Slice 1 review fixes | delegated writer (slice 2) | [ ] | |
 | T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [ ] | |
@@ -94,6 +94,7 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 ## Progress
 
 - 2026-10-18: T1 done: ADR 0035, index, ADR 0010/0014 pointers, glossary, context map, contract paragraph.
+- 2026-10-18: T2 done: `Campaign\Upgrade` plan, planner, fingerprint, `Campaign::planReleaseUpgrade`; 36 unit tests (RED: undefined method, then GREEN).
 - 2026-10-18: exploration done; decisions taken with the user (fit values, always restart guidance, latest only, no journal entry); issue #207; slice 1 started.
 
 ## Reviews

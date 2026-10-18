@@ -52,6 +52,10 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
+use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
+use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlan;
+use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlanner;
+use App\Play\Domain\Campaign\Upgrade\UpgradeToAnotherGameSystem;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -132,13 +136,13 @@ final class Campaign
         private readonly string $id,
         private readonly string $ownerId,
         private readonly string $name,
-        private readonly string $gameSystemKey,
-        private readonly int $releaseVersion,
-        private readonly string $gameSystemName,
+        private string $gameSystemKey,
+        private int $releaseVersion,
+        private string $gameSystemName,
         private readonly \DateTimeImmutable $createdAt,
         private array $sessions,
         private array $trackerValues,
-        private readonly ?string $flowKey,
+        private ?string $flowKey,
         private array $npcs = [],
         private array $threads = [],
         private array $facts = [],
@@ -1364,6 +1368,31 @@ final class Campaign
         $draft = clone $this;
         $draft->guided()->resume($draft->flowContext($release, $at));
         $this->adopt($draft);
+    }
+
+    /**
+     * What upgrading to the target release would change (ADR 0035): the preview the player confirms.
+     * Nothing changes.
+     *
+     * @param GameSystemSnapshot $pinned the campaign's pinned release
+     * @param GameSystemSnapshot $target the release to upgrade to
+     *
+     * @throws \LogicException            when the first snapshot is not the pinned release
+     * @throws UpgradeToAnotherGameSystem when the target belongs to another GameSystem
+     * @throws CampaignUpToDate           when the target is not newer than the pinned release
+     */
+    public function planReleaseUpgrade(GameSystemSnapshot $pinned, GameSystemSnapshot $target): ReleaseUpgradePlan
+    {
+        $this->assertPinned($pinned);
+        if ($target->gameSystemKey() !== $this->gameSystemKey) {
+            throw UpgradeToAnotherGameSystem::of($this->gameSystemKey, $target->gameSystemKey());
+        }
+
+        if ($target->releaseVersion() <= $this->releaseVersion) {
+            throw CampaignUpToDate::at($this->releaseVersion, $target->releaseVersion());
+        }
+
+        return new ReleaseUpgradePlanner($pinned, $target)->plan($this->characters, $this->npcs, $this->threads, $this->trackerValues, $this->facts, $this->flowKey, $this->flowRun instanceof FlowRun);
     }
 
     /**

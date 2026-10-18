@@ -33,6 +33,11 @@ final class InMemoryInvitationRepository implements InvitationRepository
         return $this->invitations[$id->toString()] ?? null;
     }
 
+    public function ofIdForUpdate(InvitationId $id): ?Invitation
+    {
+        return $this->ofId($id);
+    }
+
     public function pendingForEmail(Email $email): ?Invitation
     {
         foreach ($this->invitations as $invitation) {
@@ -61,6 +66,11 @@ final class InMemoryInvitationRepository implements InvitationRepository
         }
 
         return null;
+    }
+
+    public function ofTokenHashForUpdate(string $tokenHash): ?Invitation
+    {
+        return $this->ofTokenHash($tokenHash);
     }
 
     /**

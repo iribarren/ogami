@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Identity;
 
 use App\Identity\Application\InvitationAlreadyPending;
+use App\Identity\Application\InvitationIdAlreadyInUse;
 use App\Identity\Domain\AccountToken;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\Invitation;
@@ -170,6 +171,51 @@ final class DoctrineInvitationRepositoryTest extends KernelTestCase
         $this->entityManager->clear();
 
         self::assertSame(self::SECOND_ID, $this->invitations->pendingForEmail(Email::fromString('ada@example.com'))?->id()->toString());
+    }
+
+    #[Test]
+    public function lockedLookupsRefreshAnInvitationThatAnotherTransactionChanged(): void
+    {
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+        $managed = $this->invitations->ofId(InvitationId::fromString(self::FIRST_ID));
+        self::assertNotNull($managed);
+        self::assertTrue($managed->isPending());
+
+        // What a concurrent revoke that committed meanwhile leaves behind.
+        $this->entityManager->getConnection()->executeStatement("UPDATE identity_invitation SET status = 'revoked' WHERE id = ?", [self::FIRST_ID]);
+
+        $byId = $this->entityManager->wrapInTransaction(fn (): ?Invitation => $this->invitations->ofIdForUpdate(InvitationId::fromString(self::FIRST_ID)));
+        self::assertSame($managed, $byId, 'The managed entity is refreshed, not duplicated.');
+        self::assertSame(InvitationStatus::Revoked, $byId->status());
+
+        $this->entityManager->getConnection()->executeStatement("UPDATE identity_invitation SET status = 'pending' WHERE id = ?", [self::FIRST_ID]);
+        $byToken = $this->entityManager->wrapInTransaction(fn (): ?Invitation => $this->invitations->ofTokenHashForUpdate(AccountToken::fromString('one')->hash()));
+        self::assertSame($managed, $byToken);
+        self::assertSame(InvitationStatus::Pending, $byToken->status());
+    }
+
+    #[Test]
+    public function lockedLookupsFindNothingForAnUnknownOrMalformedKey(): void
+    {
+        $this->entityManager->wrapInTransaction(function (): void {
+            self::assertNull($this->invitations->ofIdForUpdate(InvitationId::fromString('not-a-uuid')));
+            self::assertNull($this->invitations->ofIdForUpdate(InvitationId::fromString(self::SECOND_ID)));
+            self::assertNull($this->invitations->ofTokenHashForUpdate(AccountToken::fromString('unknown')->hash()));
+        });
+    }
+
+    #[Test]
+    public function theDatabaseRefusesAnInvitationIdThatIsAlreadyInUse(): void
+    {
+        $this->invitations->save($this->invitation(self::FIRST_ID, 'ada@example.com', 'one', '2026-10-18T09:00:00+00:00'));
+        $this->entityManager->clear();
+
+        try {
+            $this->invitations->save($this->invitation(self::FIRST_ID, 'bob@example.com', 'two', '2026-10-18T09:00:00+00:00'));
+            self::fail('A second invitation with the same id was saved.');
+        } catch (InvitationIdAlreadyInUse $exception) {
+            self::assertStringContainsString(self::FIRST_ID, $exception->getMessage());
+        }
     }
 
     #[Test]

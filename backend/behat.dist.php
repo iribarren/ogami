@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tests\Behat\IdentityContext;
+use App\Tests\Behat\PasswordResetContext;
 use App\Tests\Behat\PlayContext;
 use App\Tests\Behat\RandomnessContext;
 use App\Tests\Behat\StudioContext;
@@ -19,7 +20,7 @@ return new Config()
             ->withContexts(RandomnessContext::class))
         ->withSuite(new Suite('identity')
             ->withPaths('%paths.base%/features/identity')
-            ->withContexts(IdentityContext::class))
+            ->withContexts(IdentityContext::class, PasswordResetContext::class))
         ->withSuite(new Suite('studio')
             ->withPaths('%paths.base%/features/studio')
             ->withContexts(StudioContext::class))

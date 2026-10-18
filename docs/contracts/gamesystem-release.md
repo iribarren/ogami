@@ -423,6 +423,8 @@ Warnings never stop a publish and are not stored; the content hash ignores them.
 | 3 | Studio returns a `PublishedReleaseView {gameSystemKey, version, schemaVersion, publishedAt, content}`, or `PublishedReleaseNotFound` |
 | 4 | Play's translator turns the view into a `GameSystemSnapshot` (Play Domain). Unknown schema versions and missing releases fail with Play's own errors. The translator supports schema versions 1 and 2 and reads all of version 2, flows included; a version 1 release becomes a snapshot with no trackers, Scene Types or flows |
 
+A campaign upgrade ([ADR 0035](../adr/0035-campaign-release-upgrade.md)) reads the latest release the same way and fits stored values to it: a value that is still valid is kept; a new field gets its initial value; a removed or now `derived` field loses its value; `number` and `track` values are clamped to the new bounds, `list` values trimmed to `maxItems`, and a value whose type changed or that is still invalid is reset to the new initial value. Play matches by key, so a renamed key reads as one removed field plus one added field.
+
 Play never imports Studio `Domain/` or `Infrastructure/` (enforced by PHPat, [ADR 0012](../adr/0012-phpat-boundary-enforcement.md)).
 
 ## Evolving the contract

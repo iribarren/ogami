@@ -46,7 +46,7 @@ flowchart LR
 
 | Upstream | Downstream | Pattern | What crosses the boundary |
 |---|---|---|---|
-| Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release ([contract](../contracts/gamesystem-release.md)). Play translates it into its own model. A campaign pins one release by key and version and stays on it until the player chooses to upgrade ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) |
+| Studio | Play | Published Language + Anti-corruption layer (in Play) | An immutable, versioned GameSystem release ([contract](../contracts/gamesystem-release.md)). Play translates it into its own model. A campaign pins one release by key and version and stays on it until the player chooses to upgrade ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)). The upgrade is an explicit, previewed player action that fits stored values to the newest release ([ADR 0035](../adr/0035-campaign-release-upgrade.md)) |
 | Randomness | Play, Studio | Shared kernel | Pure domain types and services: `DiceExpression`, `Roll`, oracle resolution. Changes need agreement of both consumers |
 | Formula | Play, Studio | Shared kernel | Pure domain types: `Formula`, `Reference`, `ValueResolver`, `DependencyOrder`. Changes need agreement of both consumers ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)) |
 | Identity & Access | Play, Studio, Admin | Open host (conformist consumers) | Current user id and roles |
@@ -139,5 +139,5 @@ Answered when the first feature that needs them starts, not before (see [vision]
 | Question | Decide when |
 |---|---|
 | ~~Is Studio core or supporting?~~ | Resolved: core ([ADR 0013](../adr/0013-studio-is-a-core-context.md)) |
-| ~~Upgrade path for a campaign moving to a newer GameSystem release~~ | Resolved: a campaign stays pinned to its release; upgrading is an explicit player action in `play-release-upgrade` ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md)) |
+| ~~Upgrade path for a campaign moving to a newer GameSystem release~~ | Resolved: a campaign stays pinned to its release; upgrading is an explicit player action in `play-release-upgrade` ([ADR 0014](../adr/0014-campaigns-pinned-to-their-release.md), [ADR 0035](../adr/0035-campaign-release-upgrade.md)) |
 | ~~How context boundaries are enforced in code~~ | Resolved: PHPat ([ADR 0012](../adr/0012-phpat-boundary-enforcement.md)) |

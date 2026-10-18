@@ -24,7 +24,8 @@ final readonly class AcceptInvitationHandler implements CommandHandler
 
     /**
      * The user and the accepted invitation are saved in the command's transaction, so
-     * either both are or neither is.
+     * either both are or neither is. The clock is read once, so an invitation that expires
+     * mid-command is an invalid link, never an InvitationExpired.
      *
      * @throws WeakPassword
      * @throws InvalidAccountLink
@@ -35,7 +36,8 @@ final readonly class AcceptInvitationHandler implements CommandHandler
     {
         PasswordPolicy::assertAcceptable($command->password);
 
-        $invitation = $this->loader->usableForToken($command->token);
+        $now = $this->clock->now();
+        $invitation = $this->loader->usableForToken($command->token, $now);
         $id = UserId::fromString($command->userId);
         $email = $invitation->email();
 
@@ -47,7 +49,6 @@ final readonly class AcceptInvitationHandler implements CommandHandler
             throw UserIdAlreadyInUse::for($id);
         }
 
-        $now = $this->clock->now();
         $this->users->save(User::register($id, $email, $this->hasher->hash($command->password), $invitation->roles(), $now));
         $invitation->accept($now);
         $this->invitations->save($invitation);

@@ -8,7 +8,6 @@ use App\Identity\Application\InvitationLoader;
 use App\Identity\Application\InvitationNotFound;
 use App\Identity\Application\PasswordPolicy;
 use App\Identity\Application\WeakPassword;
-use App\Tests\Support\Identity\FixedClock;
 use App\Tests\Support\Identity\InMemoryInvitationRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -50,7 +49,7 @@ final class PasswordPolicyTest extends TestCase
     #[Test]
     public function aBlankInvitationIdIsNotFoundRatherThanAnInvalidArgument(): void
     {
-        $loader = new InvitationLoader(new InMemoryInvitationRepository(), new FixedClock());
+        $loader = new InvitationLoader(new InMemoryInvitationRepository());
 
         $this->expectException(InvitationNotFound::class);
 

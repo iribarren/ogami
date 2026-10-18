@@ -20,7 +20,7 @@ Feature: Invitation lifecycle
 
   Scenario: Resending an invitation replaces its link
     When the invitation of "ada@example.com" is resent
-    Then 2 invitation emails are sent
+    Then 2 invitation emails are sent to "ada@example.com"
     And the last invitation email links to "http://localhost:8080/accept-invitation#token=token-2"
     When the token "token-1" is looked up
     Then the link is rejected as invalid
@@ -99,6 +99,12 @@ Feature: Invitation lifecycle
 
   Scenario: An expired invitation cannot be accepted
     Given 8 days pass
+    When "ada@example.com" accepts the invitation with the password "correct horse"
+    Then the link is rejected as invalid
+    And there is 1 user
+
+  Scenario: An invitation expiring exactly now cannot be accepted
+    Given 7 days pass
     When "ada@example.com" accepts the invitation with the password "correct horse"
     Then the link is rejected as invalid
     And there is 1 user

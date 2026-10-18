@@ -119,6 +119,22 @@ final class InvitationLifecycleThroughTheBusesTest extends KernelTestCase
         self::assertNotNull(self::getContainer()->get(InvitationRepository::class)->ofId(InvitationId::fromString(self::INVITATION_ID)));
     }
 
+    #[Test]
+    public function aLinkStaysDeadOnceItsInvitationWasRevoked(): void
+    {
+        $this->bus->dispatch(new InviteUser(self::INVITATION_ID, 'ada@example.com', ['SOLO_PLAYER'], self::OWNER_ID));
+        $token = $this->lastToken();
+        $this->bus->dispatch(new RevokeInvitation(self::INVITATION_ID));
+
+        try {
+            $this->bus->dispatch(new AcceptInvitation($token, 'correct horse', self::USER_ID));
+            self::fail('A revoked invitation was accepted with its stale link.');
+        } catch (InvalidAccountLink) {
+            self::getContainer()->get(EntityManagerInterface::class)->clear();
+            self::assertNull(self::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString('ada@example.com')));
+        }
+    }
+
     private function lastToken(): string
     {
         $last = end($this->mailer->sent);

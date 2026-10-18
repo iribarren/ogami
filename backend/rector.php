@@ -16,8 +16,12 @@ return RectorConfig::configure()
         __DIR__.'/config/reference.php',
         __DIR__.'/config/bundles.php',
         __DIR__.'/config/preload.php',
-        // User::$createdAt must stay writable: Doctrine refreshes locked users in place.
-        ReadOnlyPropertyRector::class => [__DIR__.'/src/Identity/Domain/User.php'],
+        // The dates of these entities must stay writable: Doctrine refreshes locked rows in place.
+        ReadOnlyPropertyRector::class => [
+            __DIR__.'/src/Identity/Domain/User.php',
+            __DIR__.'/src/Identity/Domain/Invitation.php',
+            __DIR__.'/src/Identity/Domain/PasswordReset.php',
+        ],
     ])
     ->withCache(__DIR__.'/var/cache/rector')
     ->withPhpSets()

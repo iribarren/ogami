@@ -10,6 +10,7 @@ final readonly class LookupInvitationHandler implements QueryHandler
 {
     public function __construct(
         private InvitationLoader $loader,
+        private Clock $clock,
     ) {
     }
 
@@ -18,6 +19,6 @@ final readonly class LookupInvitationHandler implements QueryHandler
      */
     public function __invoke(LookupInvitation $query): InvitationLookupView
     {
-        return InvitationLookupView::fromInvitation($this->loader->usableForToken($query->token));
+        return InvitationLookupView::fromInvitation($this->loader->usableForLookup($query->token, $this->clock->now()));
     }
 }

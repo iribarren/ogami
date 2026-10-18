@@ -27,7 +27,9 @@ final class Invitation
         private readonly array $roles,
         private string $tokenHash,
         private readonly string $invitedBy,
-        private readonly \DateTimeImmutable $createdAt,
+        // Not readonly: Doctrine refreshes a locked invitation in place (InvitationRepository::ofIdForUpdate)
+        // and cannot re-assign a readonly object property, even to an equal date. No method changes it.
+        private \DateTimeImmutable $createdAt,
         private \DateTimeImmutable $expiresAt,
         private InvitationStatus $status,
     ) {

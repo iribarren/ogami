@@ -43,10 +43,12 @@ use App\Identity\Application\UserLoader;
 use App\Identity\Application\UserNotFound;
 use App\Identity\Application\UserView;
 use App\Identity\Application\WeakPassword;
+use App\Identity\Domain\AccountToken;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\Invitation as InvitationAggregate;
 use App\Identity\Domain\InvitationMustHaveARole;
 use App\Identity\Domain\InvitationStatus;
+use App\Identity\Domain\Role;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserMustHaveARole;
 use App\Tests\Support\Identity\FakePasswordHasher;
@@ -84,6 +86,8 @@ final class IdentityContext implements Context
     private readonly SequentialTokenGenerator $tokens;
     private readonly AccountLinks $links;
     private ?InvitationLookupView $lookup = null;
+    /** @var array{email: string, roles: list<string>}|null the invitation behind the last accepted link, as it was before */
+    private ?array $acceptedInvitation = null;
     private ?\Throwable $rejection = null;
 
     public function __construct()
@@ -99,7 +103,7 @@ final class IdentityContext implements Context
         $this->mailer = new SpyAccountMailer();
         $this->tokens = new SequentialTokenGenerator();
         $this->links = new AccountLinks('http://localhost:8080');
-        $this->invitationLoader = new InvitationLoader($this->invitations, $this->clock);
+        $this->invitationLoader = new InvitationLoader($this->invitations);
         $this->inviteUser = new InviteUserHandler($this->invitations, $this->users, $this->tokens, $this->links, $this->mailer, $this->clock);
     }
 
@@ -257,7 +261,11 @@ final class IdentityContext implements Context
     {
         Assert::assertCount(null === $count || '' === $count ? 1 : (int) $count, $this->mailer->invitations);
         if (null !== $email && '' !== $email) {
-            Assert::assertSame($email, $this->mailer->invitations[0]['email']);
+            // Every recorded email, not only the first.
+            Assert::assertSame(
+                array_fill(0, \count($this->mailer->invitations), $email),
+                array_column($this->mailer->invitations, 'email'),
+            );
         }
     }
 
@@ -372,6 +380,11 @@ final class IdentityContext implements Context
     public function theInvitationIsAccepted(): void
     {
         Assert::assertNull($this->rejection, $this->rejection?->getMessage() ?? '');
+        Assert::assertNotNull($this->acceptedInvitation, 'No invitation was accepted.');
+
+        $view = $this->viewOf($this->acceptedInvitation['email']);
+        Assert::assertSame($this->acceptedInvitation['roles'], $view->roles);
+        Assert::assertSame('active', $view->status);
     }
 
     #[Then('the link is rejected as invalid')]
@@ -501,7 +514,7 @@ final class IdentityContext implements Context
 
     private function lookUpLastLinkTo(string $email): InvitationLookupView
     {
-        return (new LookupInvitationHandler($this->invitationLoader))(new LookupInvitation($this->tokenOfLastLinkTo($email)));
+        return (new LookupInvitationHandler($this->invitationLoader, $this->clock))(new LookupInvitation($this->tokenOfLastLinkTo($email)));
     }
 
     private function lookUp(string $token): void
@@ -510,7 +523,7 @@ final class IdentityContext implements Context
         $this->lookup = null;
 
         try {
-            $this->lookup = (new LookupInvitationHandler($this->invitationLoader))(new LookupInvitation($token));
+            $this->lookup = (new LookupInvitationHandler($this->invitationLoader, $this->clock))(new LookupInvitation($token));
         } catch (InvalidAccountLink $rejection) {
             $this->rejection = $rejection;
         }
@@ -519,10 +532,15 @@ final class IdentityContext implements Context
     private function accept(string $token, string $password): void
     {
         $this->rejection = null;
+        $this->acceptedInvitation = null;
+        $invitation = '' === $token ? null : $this->invitations->ofTokenHash(AccountToken::fromString($token)->hash());
         $handler = new AcceptInvitationHandler($this->invitations, $this->invitationLoader, $this->users, $this->hasher, $this->clock);
 
         try {
             $handler(new AcceptInvitation($token, $password, $this->ids->generate()->toString()));
+            $this->acceptedInvitation = $invitation instanceof InvitationAggregate
+                ? ['email' => $invitation->email()->toString(), 'roles' => array_map(static fn (Role $role): string => $role->value, $invitation->roles())]
+                : null;
         } catch (InvalidAccountLink|WeakPassword|EmailAlreadyInUse $rejection) {
             $this->rejection = $rejection;
         }

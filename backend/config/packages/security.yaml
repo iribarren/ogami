@@ -41,6 +41,8 @@ security:
     # Non-API paths are the SPA, served by Vite/Caddy, and stay unguarded.
     access_control:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
+        # Account links: asking for a password reset, using it, and the invitation lookup and accept.
+        - { path: ^/api/auth/(password-reset-requests|password-resets|invitations/lookup|invitations/accept)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc\.json$, roles: PUBLIC_ACCESS }
         # Play is for solo players only: anyone else signed in gets a 403.

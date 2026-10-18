@@ -1,7 +1,7 @@
 # Feature: play-release-upgrade
 
 - **Locator:** `odd/tasks/play-release-upgrade.md` · Engram topic `odd/play-release-upgrade/tasks`
-- **Issue:** #207 · **Branch:** `feat/play-release-upgrade-1-upgrade-plan` · **Status:** slice 1 in progress
+- **Issue:** #207 · **Branch:** `feat/play-release-upgrade-1-upgrade-plan` · **Status:** slice 1 done, awaiting review
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `admin-users` (PRs #198–#205)
@@ -84,7 +84,7 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc (parent); ADR 0035 "Campaign release upgrade" and index row; ADR 0010 and 0014 point to it; glossary Release upgrade, Upgrade plan; context map Play note; contract "How Play consumes it" upgrade paragraph | delegated writer (slice 1; feature doc inline by parent) | [x] | |
 | T2 | 1 | Domain plan: `ReleaseUpgradePlan`, planner and `fingerprint()` with every rule of the Decisions table; unit tests per rule | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Apply: `Campaign::upgradeRelease` (mutable pin, fingerprint check, `ReleaseUpgradeChanged`, `CampaignUpToDate`, all-or-nothing, FlowRun restart keeping paused); unit tests incl. schema v1 → v2 and derived values | delegated writer (slice 1) | [ ] | |
+| T3 | 1 | Apply: `Campaign::upgradeRelease` (mutable pin, fingerprint check, `ReleaseUpgradeChanged`, `CampaignUpToDate`, all-or-nothing, FlowRun restart keeping paused); unit tests incl. schema v1 → v2 and derived values | delegated writer (slice 1) | [x] | |
 | T4 | 2 | Slice 1 review fixes | delegated writer (slice 2) | [ ] | |
 | T5 | 2 | Application: `PreviewReleaseUpgrade`, `UpgradeCampaignRelease`; persistence round trip; Behat scenarios | delegated writer (slice 2) | [ ] | |
 | T6 | 2 | HTTP: preview and upgrade endpoints, API tests for every status, `make api` | delegated writer (slice 2) | [ ] | |
@@ -95,6 +95,7 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 - 2026-10-18: T1 done: ADR 0035, index, ADR 0010/0014 pointers, glossary, context map, contract paragraph.
 - 2026-10-18: T2 done: `Campaign\Upgrade` plan, planner, fingerprint, `Campaign::planReleaseUpgrade`; 36 unit tests (RED: undefined method, then GREEN).
+- 2026-10-18: T3 done: `Campaign::upgradeRelease` (all or nothing on a copy, re-pin, FlowRun restart keeping paused), `CampaignUpToDate`, `ReleaseUpgradeChanged`, `UpgradeToAnotherGameSystem`; 10 unit tests (RED: undefined method, then GREEN). Slice 1 verification: `make qa`, `make test`.
 - 2026-10-18: exploration done; decisions taken with the user (fit values, always restart guidance, latest only, no journal entry); issue #207; slice 1 started.
 
 ## Reviews
@@ -104,4 +105,4 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 ## Next step
 
-Slice 1: T1–T3 on `feat/play-release-upgrade-1-upgrade-plan`.
+Slice 1 review, then PR; slice 2 starts with T4.

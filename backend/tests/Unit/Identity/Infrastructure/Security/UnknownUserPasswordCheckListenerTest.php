@@ -83,7 +83,7 @@ final class UnknownUserPasswordCheckListenerTest extends TestCase
     #[Test]
     public function aKnownUserIsLeftToTheRegularCredentialsCheck(): void
     {
-        $this->users->save(User::register(UserId::fromString('user-1'), Email::fromString('ada@example.com'), 'hash', [Role::SoloPlayer]));
+        $this->users->save(User::register(UserId::fromString('user-1'), Email::fromString('ada@example.com'), 'hash', [Role::SoloPlayer], new \DateTimeImmutable('2026-10-18T09:00:00+00:00')));
 
         ($this->listener)($this->checkPassport('ada@example.com', 'secret123'));
 

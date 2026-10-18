@@ -70,6 +70,20 @@ final class IdentityUserProviderTest extends TestCase
     }
 
     #[Test]
+    public function aDisabledUserIsLoadedForTheLoginButCannotBeRefreshed(): void
+    {
+        $ada = $this->ada([Role::SoloPlayer]);
+        $session = SecurityUser::fromUser($ada);
+        $ada->disable();
+        $this->users->save($ada);
+
+        self::assertTrue($this->provider->loadUserByIdentifier('ada@example.com')->isDisabled());
+
+        $this->expectException(UserNotFoundException::class);
+        $this->provider->refreshUser($session);
+    }
+
+    #[Test]
     public function itSupportsOnlyTheSecurityUser(): void
     {
         self::assertTrue($this->provider->supportsClass(SecurityUser::class));
@@ -81,6 +95,6 @@ final class IdentityUserProviderTest extends TestCase
      */
     private function ada(array $roles): User
     {
-        return User::register(UserId::fromString('user-1'), Email::fromString('ada@example.com'), 'hash', $roles);
+        return User::register(UserId::fromString('user-1'), Email::fromString('ada@example.com'), 'hash', $roles, new \DateTimeImmutable('2026-10-18T09:00:00+00:00'));
     }
 }

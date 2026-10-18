@@ -25,11 +25,11 @@ final class GetUserHandlerTest extends TestCase
     public function itReturnsTheUserView(): void
     {
         $users = new InMemoryUserRepository();
-        $users->save(User::register(UserId::fromString('user-1'), Email::fromString('ada@example.com'), 'hash', [Role::GameManager, Role::Owner]));
+        $users->save(User::register(UserId::fromString('user-1'), Email::fromString('ada@example.com'), 'hash', [Role::GameManager, Role::Owner], new \DateTimeImmutable('2026-10-18T09:00:00+00:00')));
 
         $view = (new GetUserHandler($users))(new GetUser('user-1'));
 
-        self::assertEquals(new UserView('user-1', 'ada@example.com', ['GAME_MANAGER', 'OWNER']), $view);
+        self::assertEquals(new UserView('user-1', 'ada@example.com', ['GAME_MANAGER', 'OWNER'], 'active', new \DateTimeImmutable('2026-10-18T09:00:00+00:00')), $view);
     }
 
     #[Test]

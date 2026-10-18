@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Identity\Domain;
 
 /**
- * Someone who can sign in: an email, a password hash and one or more
- * independent roles.
+ * Someone who can sign in: an email, a password hash, one or more independent
+ * roles and a status (active or disabled).
  *
  * State is kept as scalars (strings and a list of role values) so persistence
  * can map it without custom types; the getters expose value objects.
  */
-final readonly class User
+final class User
 {
     /**
      * @param non-empty-list<string> $roles Role values, without duplicates
      */
     private function __construct(
-        private string $id,
-        private string $email,
+        private readonly string $id,
+        private readonly string $email,
         private string $passwordHash,
         private array $roles,
+        private UserStatus $status,
+        private readonly \DateTimeImmutable $createdAt,
     ) {
     }
 
@@ -30,18 +32,55 @@ final readonly class User
      * @throws UserMustHaveARole
      * @throws InvalidPasswordHash
      */
-    public static function register(UserId $id, Email $email, string $passwordHash, array $roles): self
+    public static function register(UserId $id, Email $email, string $passwordHash, array $roles, \DateTimeImmutable $createdAt): self
     {
         if ('' === $passwordHash) {
             throw InvalidPasswordHash::blank();
         }
 
-        $values = array_values(array_unique(array_map(static fn (Role $role): string => $role->value, $roles)));
-        if ([] === $values) {
-            throw UserMustHaveARole::none();
+        return new self($id->toString(), $email->toString(), $passwordHash, self::roleValues($roles), UserStatus::Active, $createdAt);
+    }
+
+    /**
+     * Replaces all roles; an empty list is refused and the roles stay as they were.
+     *
+     * @param list<Role> $roles
+     *
+     * @throws UserMustHaveARole
+     */
+    public function changeRoles(array $roles): void
+    {
+        $this->roles = self::roleValues($roles);
+    }
+
+    /**
+     * Idempotent.
+     */
+    public function disable(): void
+    {
+        $this->status = UserStatus::Disabled;
+    }
+
+    /**
+     * Idempotent.
+     */
+    public function enable(): void
+    {
+        $this->status = UserStatus::Active;
+    }
+
+    /**
+     * @param string $hash an already hashed password
+     *
+     * @throws InvalidPasswordHash
+     */
+    public function changePassword(string $hash): void
+    {
+        if ('' === $hash) {
+            throw InvalidPasswordHash::blank();
         }
 
-        return new self($id->toString(), $email->toString(), $passwordHash, $values);
+        $this->passwordHash = $hash;
     }
 
     public function id(): UserId
@@ -70,5 +109,37 @@ final readonly class User
     public function hasRole(Role $role): bool
     {
         return \in_array($role->value, $this->roles, true);
+    }
+
+    public function status(): UserStatus
+    {
+        return $this->status;
+    }
+
+    public function isDisabled(): bool
+    {
+        return UserStatus::Disabled === $this->status;
+    }
+
+    public function createdAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    /**
+     * @param list<Role> $roles
+     *
+     * @return non-empty-list<string>
+     *
+     * @throws UserMustHaveARole
+     */
+    private static function roleValues(array $roles): array
+    {
+        $values = array_values(array_unique(array_map(static fn (Role $role): string => $role->value, $roles)));
+        if ([] === $values) {
+            throw UserMustHaveARole::none();
+        }
+
+        return $values;
     }
 }

@@ -14,4 +14,11 @@ interface UserRepository
     public function ofId(UserId $id): ?User;
 
     public function ofEmail(Email $email): ?User;
+
+    /**
+     * Every user, ordered by email.
+     *
+     * @return list<User>
+     */
+    public function all(): array;
 }

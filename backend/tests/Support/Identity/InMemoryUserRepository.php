@@ -35,6 +35,14 @@ final class InMemoryUserRepository implements UserRepository
         return null;
     }
 
+    public function all(): array
+    {
+        $users = array_values($this->users);
+        usort($users, static fn (User $a, User $b): int => strcmp($a->email()->toString(), $b->email()->toString()));
+
+        return $users;
+    }
+
     public function count(): int
     {
         return \count($this->users);

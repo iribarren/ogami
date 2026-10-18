@@ -17,6 +17,8 @@ security:
         main:
             lazy: true
             provider: identity
+            # Refuses disabled users after the password check, like a wrong password.
+            user_checker: App\Identity\Infrastructure\Security\IdentityUserChecker
             # JSON in, JSON out: never an HTML login form or redirect.
             entry_point: App\Identity\Infrastructure\Security\JsonAuthenticationEntryPoint
             access_denied_handler: App\Identity\Infrastructure\Security\JsonAccessDeniedHandler

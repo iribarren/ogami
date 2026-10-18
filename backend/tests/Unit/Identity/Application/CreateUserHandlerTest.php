@@ -15,7 +15,9 @@ use App\Identity\Domain\InvalidEmail;
 use App\Identity\Domain\Role;
 use App\Identity\Domain\UserId;
 use App\Identity\Domain\UserMustHaveARole;
+use App\Identity\Domain\UserStatus;
 use App\Tests\Support\Identity\FakePasswordHasher;
+use App\Tests\Support\Identity\FixedClock;
 use App\Tests\Support\Identity\InMemoryUserRepository;
 use App\Tests\Support\Identity\SequentialUserIdGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -38,7 +40,7 @@ final class CreateUserHandlerTest extends TestCase
     {
         $this->users = new InMemoryUserRepository();
         $this->ids = new SequentialUserIdGenerator();
-        $this->handler = new CreateUserHandler($this->users, new FakePasswordHasher());
+        $this->handler = new CreateUserHandler($this->users, new FakePasswordHasher(), new FixedClock('2026-10-18T09:30:00+00:00'));
     }
 
     #[Test]
@@ -53,6 +55,8 @@ final class CreateUserHandlerTest extends TestCase
         self::assertSame('ada@example.com', $user->email()->toString());
         self::assertSame('hashed:s3cret', $user->passwordHash());
         self::assertSame([Role::SoloPlayer, Role::Owner], $user->roles());
+        self::assertSame(UserStatus::Active, $user->status());
+        self::assertEquals(new \DateTimeImmutable('2026-10-18T09:30:00+00:00'), $user->createdAt());
     }
 
     #[Test]

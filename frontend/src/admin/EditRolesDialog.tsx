@@ -1,5 +1,7 @@
+import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import { useEndSession } from '@/shared/auth/currentUser'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -15,7 +17,8 @@ import { useChangeRoles } from './useAdminUsers'
 
 /**
  * Replaces a user's roles. Save stays disabled with none chosen; on the owner's own row OWNER
- * is locked. The API signs the user out when their roles change, which the text says.
+ * is locked. The API signs the user out when their roles change, which the text says; for the
+ * owner's own row that means going to sign-in (back to Admin afterwards).
  */
 export function EditRolesDialog({
   user,
@@ -28,6 +31,8 @@ export function EditRolesDialog({
 }) {
   const [roles, setRoles] = useState(user.roles)
   const changeRoles = useChangeRoles()
+  const navigate = useNavigate()
+  const endSession = useEndSession()
 
   return (
     <Dialog
@@ -50,7 +55,19 @@ export function EditRolesDialog({
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
-            changeRoles.mutate({ id: user.id, roles }, { onSuccess: onClose })
+            changeRoles.mutate(
+              { id: user.id, roles, isSelf },
+              {
+                onSuccess: () => {
+                  onClose()
+                  if (isSelf) {
+                    void endSession(() =>
+                      navigate({ to: '/login', search: { redirect: '/admin' }, replace: true }),
+                    )
+                  }
+                },
+              },
+            )
           }}
         >
           <RoleCheckboxes value={roles} onChange={setRoles} locked={isSelf ? 'OWNER' : undefined} />

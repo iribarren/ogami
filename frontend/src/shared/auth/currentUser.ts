@@ -73,13 +73,30 @@ export function useLogin() {
 }
 
 /**
+ * Ends the session on the client: the visitor is cached as anonymous at once, `leave` (a
+ * navigation away from user-scoped pages) runs, and only then is every cached query forgotten
+ * (all API data is user-scoped), so mounted pages never refetch into a 401. For when the
+ * session is gone, whether the user signed out or the API ended it.
+ */
+export function useEndSession() {
+  const queryClient = useQueryClient()
+
+  return async (leave?: () => Promise<unknown>) => {
+    queryClient.setQueryData(currentUserQueryKey, null)
+    await leave?.()
+    queryClient.clear()
+    queryClient.setQueryData(currentUserQueryKey, null)
+  }
+}
+
+/**
  * `POST /api/auth/logout`; on success forgets every cached query (all API data
  * is user-scoped) and caches the visitor as anonymous. A `401` means the session
  * is already gone, which counts as signed out.
  */
 export function useLogout() {
   const api = useApiClient()
-  const queryClient = useQueryClient()
+  const endSession = useEndSession()
 
   return useMutation({
     mutationFn: async () => {
@@ -88,9 +105,6 @@ export function useLogout() {
         throw new Error(`Sign-out failed with HTTP ${String(response.status)}`)
       }
     },
-    onSuccess: () => {
-      queryClient.clear()
-      queryClient.setQueryData(currentUserQueryKey, null)
-    },
+    onSuccess: () => endSession(),
   })
 }

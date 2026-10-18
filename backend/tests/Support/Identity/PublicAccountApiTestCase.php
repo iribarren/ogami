@@ -41,8 +41,11 @@ abstract class PublicAccountApiTestCase extends WebTestCase
      */
     protected function logs(string $messagePrefix = 'A password reset'): array
     {
+        /** @var RecordingLogger $logger the test environment's `logger` service (config/services.yaml) */
+        $logger = self::getContainer()->get('logger');
+
         return array_values(array_filter(
-            self::getContainer()->get('logger')->records,
+            $logger->records,
             static fn (array $record): bool => str_starts_with($record[1], $messagePrefix),
         ));
     }

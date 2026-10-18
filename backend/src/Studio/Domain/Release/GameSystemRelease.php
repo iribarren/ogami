@@ -11,6 +11,11 @@ namespace App\Studio\Domain\Release;
  * State is kept as scalars and the canonical content array so persistence can map it without
  * custom types; content() rebuilds the value object.
  *
+ * Library sources are Studio-only provenance (ADR 0033): the library items the draft had imported when
+ * it was published, as {section, key, pack, hash}. They are outside the content and its hash, so the
+ * Published Language is unchanged. They are null when the draft imported nothing and for releases
+ * published before library packs or from a file.
+ *
  * Release notes are what a game manager wrote when publishing from Studio. They are not part of the
  * content, so the Published Language and the content hash do not include them; releases published
  * from a file have none.
@@ -27,7 +32,8 @@ final readonly class GameSystemRelease
     public const int MAX_NOTES_LENGTH = 2000;
 
     /**
-     * @param array<string, mixed> $content canonical content, see ReleaseContent::toArray()
+     * @param array<string, mixed>                                                       $content        canonical content, see ReleaseContent::toArray()
+     * @param list<array{section: string, key: string, pack: string, hash: string}>|null $librarySources null, never an empty list, when there are none
      */
     private function __construct(
         private string $id,
@@ -38,13 +44,16 @@ final readonly class GameSystemRelease
         private string $contentHash,
         private \DateTimeImmutable $publishedAt,
         private ?string $notes,
+        private ?array $librarySources = null,
     ) {
     }
 
     /**
+     * @param list<array{section: string, key: string, pack: string, hash: string}> $librarySources the draft's library imports; an empty list is kept as null
+     *
      * @throws InvalidGameSystemRelease when the version is below 1, or the notes are blank, longer than MAX_NOTES_LENGTH, not valid UTF-8 or contain NUL
      */
-    public static function publish(ReleaseId $id, ReleaseContent $content, int $version, \DateTimeImmutable $publishedAt, ?string $notes = null): self
+    public static function publish(ReleaseId $id, ReleaseContent $content, int $version, \DateTimeImmutable $publishedAt, ?string $notes = null, array $librarySources = []): self
     {
         if ($version < 1) {
             throw InvalidGameSystemRelease::versionBelowOne($version);
@@ -63,6 +72,7 @@ final readonly class GameSystemRelease
             $content->hash(),
             $publishedAt,
             $notes,
+            [] === $librarySources ? null : $librarySources,
         );
     }
 
@@ -124,5 +134,13 @@ final readonly class GameSystemRelease
     public function notes(): ?string
     {
         return $this->notes;
+    }
+
+    /**
+     * @return list<array{section: string, key: string, pack: string, hash: string}>|null the library imports of the draft when it was published; null when none or not recorded
+     */
+    public function librarySources(): ?array
+    {
+        return $this->librarySources;
     }
 }

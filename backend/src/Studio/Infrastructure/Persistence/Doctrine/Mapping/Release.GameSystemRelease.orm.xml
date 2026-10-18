@@ -33,5 +33,11 @@
         <!-- Release notes written in Studio; null for releases published from a file. The migration adds
              a check constraint (not blank, at most 2,000 characters) that the mapping cannot express. -->
         <field name="notes" type="text" column="notes" nullable="true"/>
+        <!-- Studio-only provenance outside the hash (ADR 0033): the draft's library imports; null when none and for older rows. -->
+        <field name="librarySources" type="json" column="library_sources" nullable="true">
+            <options>
+                <option name="jsonb">true</option>
+            </options>
+        </field>
     </entity>
 </doctrine-mapping>

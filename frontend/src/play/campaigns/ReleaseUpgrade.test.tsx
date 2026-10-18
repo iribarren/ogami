@@ -235,10 +235,10 @@ describe('the release upgrade', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(message)
   })
 
-  it('shows a generic message when the upgrade fails unexpectedly', async () => {
+  it('shows a generic message when the upgrade fails without an explanation', async () => {
     renderPlayScreen([freeJournalV3], {
       [`GET ${upgradePath}`]: json(lostMineUpgrade),
-      [`POST ${upgradePath}`]: () => new Response('Oops', { status: 500 }),
+      [`POST ${upgradePath}`]: () => new Response('Oops', { status: 502 }),
     })
     const user = userEvent.setup()
 
@@ -246,8 +246,48 @@ describe('the release upgrade', () => {
     await user.click(await within(dialog).findByRole('button', { name: 'Confirm upgrade' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Upgrading the campaign failed with HTTP 500.',
+      'Upgrading the campaign failed with HTTP 502.',
     )
+  })
+
+  it('reloads the campaign and the preview when the saved upgrade cannot be read back', async () => {
+    const message = 'The upgrade was saved, but the campaign cannot be read now. Reload the page.'
+    let saved = false
+    let releaseCampaign: () => void = () => undefined
+    const campaignReadable = new Promise<void>((resolve) => {
+      releaseCampaign = resolve
+    })
+    const { fakeApi } = renderPlayScreen([freeJournalV3], {
+      [`GET ${campaignPath}`]: async () => {
+        if (!saved) {
+          return Response.json(lostMineCampaign)
+        }
+        await campaignReadable
+        return Response.json(upgraded)
+      },
+      [`GET ${upgradePath}`]: () => Response.json(saved ? upToDateUpgrade : lostMineUpgrade),
+      [`POST ${upgradePath}`]: () => {
+        saved = true
+        return Response.json({ error: message }, { status: 500 })
+      },
+    })
+    const user = userEvent.setup()
+
+    const dialog = await openDialog(user)
+    await user.click(await within(dialog).findByRole('button', { name: 'Confirm upgrade' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(message)
+    expect(
+      await within(dialog).findByText('This campaign already plays the latest release.'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'Confirm upgrade' }),
+    ).not.toBeInTheDocument()
+
+    releaseCampaign()
+
+    expect(await screen.findByText('Free journal v3')).toBeInTheDocument()
+    expect(fakeApi.requests.filter((request) => request === `GET ${campaignPath}`)).toHaveLength(2)
   })
 
   it('shows the failure when the preview cannot be loaded, with nothing to confirm', async () => {

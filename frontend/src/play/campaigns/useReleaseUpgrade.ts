@@ -3,18 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
-import {
-  CampaignError,
-  campaignError,
-  campaignKey,
-  explainedRefusals,
-  type Campaign,
-} from './useCampaigns'
+import { campaignError, campaignKey, explainedRefusals, type Campaign } from './useCampaigns'
 
 export type ReleaseUpgrade = components['schemas']['ReleaseUpgradeResponse']
 export type ReleaseUpgradePlan = components['schemas']['ReleaseUpgradePlanResponse']
 export type UpgradeFieldChange = components['schemas']['UpgradeFieldChangeResponse']
 export type UpgradeTrackerChange = components['schemas']['UpgradeTrackerChangeResponse']
+
+/** A 500 is explained too: after a saved upgrade the API says so and asks for a reload. */
+const explainedUpgradeFailures = [...explainedRefusals, 500]
 
 const previewKey = (campaignId: string) => [...campaignKey(campaignId), 'release-upgrade'] as const
 
@@ -50,8 +47,9 @@ export function useReleaseUpgradePreview(campaignId: string, enabled: boolean) {
 
 /**
  * `POST /api/campaigns/{campaignId}/release-upgrade`: upgrades to exactly the previewed change.
- * The answer is the upgraded campaign and replaces the cached one. A 409 means the preview is stale (or
- * the campaign is already up to date), so the preview is fetched again for the player to review.
+ * The answer is the upgraded campaign and replaces the cached one. Whatever the failure, the
+ * campaign and the preview are fetched again: a 409 means the preview is stale (or the campaign is
+ * already up to date), and a 500 may follow a saved upgrade, which then reads as up to date.
  */
 export function useUpgradeCampaignRelease(campaignId: string) {
   const api = useApiClient()
@@ -72,16 +70,14 @@ export function useUpgradeCampaignRelease(campaignId: string) {
       if (data !== undefined) {
         return data
       }
-      throw campaignError(response, error, explainedRefusals, 'Upgrading the campaign')
+      throw campaignError(response, error, explainedUpgradeFailures, 'Upgrading the campaign')
     },
     onSuccess: (campaign) => {
       queryClient.removeQueries({ queryKey: previewKey(campaignId) })
       queryClient.setQueryData(campaignKey(campaignId), campaign)
     },
-    onError: (error) => {
-      if (error instanceof CampaignError && error.status === 409) {
-        void queryClient.invalidateQueries({ queryKey: previewKey(campaignId) })
-      }
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
     },
   })
 }

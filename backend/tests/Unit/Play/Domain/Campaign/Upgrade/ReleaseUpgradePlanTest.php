@@ -333,31 +333,6 @@ final class ReleaseUpgradePlanTest extends TestCase
         self::assertSame($campaign->planReleaseUpgrade($pinned, $target)->fingerprint(), $reordered->planReleaseUpgrade($pinned, $target)->fingerprint());
     }
 
-    /**
-     * Character::of already normalizes track keys, so a Character cannot carry a raw reordered value:
-     * the planner's own comparison is tested where it receives the raw stored value, its private
-     * fitValue(), the lowest seam that does.
-     */
-    #[Test]
-    public function aRawTrackValueInAnotherKeyOrderIsKeptNotClamped(): void
-    {
-        $pinned = UpgradeFixtures::release(1, [new TrackField('hp', 'Hit points')]);
-        $field = new TrackField('hp', 'Hit points', max: 5);
-        $planner = new ReleaseUpgradePlanner($pinned, UpgradeFixtures::release(2, [$field]));
-
-        $fit = new \ReflectionMethod($planner, 'fitValue');
-        /** @var array{mixed, ?FieldChangeKind} $kept */
-        $kept = $fit->invoke($planner, $field, ['max' => 5, 'current' => 4]);
-        [$value, $kind] = $kept;
-
-        self::assertSame(['current' => 4, 'max' => 5], $value);
-        self::assertNull($kind);
-
-        /** @var array{mixed, ?FieldChangeKind} $moved */
-        $moved = $fit->invoke($planner, $field, ['max' => 9, 'current' => 7]);
-        self::assertSame(FieldChangeKind::Clamped, $moved[1]);
-    }
-
     #[Test]
     public function aTargetThatIsNotNewerIsRefused(): void
     {

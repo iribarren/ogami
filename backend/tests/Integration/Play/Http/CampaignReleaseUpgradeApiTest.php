@@ -266,6 +266,38 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
         self::assertSame(1, $this->connection()->fetchOne('SELECT release_version FROM play_campaign WHERE id = ?', [$id]));
     }
 
+    #[Test]
+    public function aCampaignThatCannotBeReadAfterASavedUpgradeIsAServerErrorSayingTheUpgradeWasSaved(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', $this->target());
+        $fingerprint = $this->fingerprintOf($id);
+        // Once the upgrade is committed, the releases vanish: the follow-up read of the campaign fails.
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $releasesVanish = new readonly class($this->connection()) {
+            public function __construct(private Connection $connection)
+            {
+            }
+
+            public function postFlush(): void
+            {
+                $this->connection->executeStatement('DELETE FROM studio_gamesystem_release');
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::postFlush], $releasesVanish);
+
+        try {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/release-upgrade', $id), ['toVersion' => 2, 'fingerprint' => $fingerprint]);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::postFlush], $releasesVanish);
+        }
+
+        self::assertResponseStatusCodeSame(500);
+        self::assertSame(['error' => 'The upgrade was saved, but the campaign cannot be read now. Reload the page.'], $this->json());
+        self::assertSame(2, $this->connection()->fetchOne('SELECT release_version FROM play_campaign WHERE id = ?', [$id]));
+    }
+
     /**
      * @return iterable<string, array{string, int}>
      */

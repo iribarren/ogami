@@ -843,6 +843,26 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function aTrackReloadedFromJsonbInAnotherKeyOrderIsUnchangedByAnUpgradeToTheSameBounds(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $pinned = UpgradeFixtures::release(1, [new TrackField('hp', 'Hit points')]);
+        $target = UpgradeFixtures::release(2, [new TrackField('hp', 'Hit points', max: 5)]);
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['hp' => ['current' => 4, 'max' => 5]], $pinned);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertNotNull($loaded);
+        /** @var array{values: array{hp: array<string, int>}} $stored */
+        $stored = $this->storedList($id->toString(), 'characters')[0];
+        self::assertSame(['max', 'current'], array_keys($stored['values']['hp']), 'JSONB stores the track keys in its own order.');
+        self::assertSame([], $loaded->planReleaseUpgrade($pinned, $target)->characters);
+    }
+
+    #[Test]
     public function aChangeToACharacterIsSaved(): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');

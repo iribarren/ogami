@@ -3100,6 +3100,196 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/release-upgrade": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Preview upgrading one of my campaigns to the latest release of its GameSystem",
+                "operationId": "previewReleaseUpgrade",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Whether the campaign is up to date and, when it is not, the plan: what the upgrade changes and the fingerprint to confirm it with. Nothing is changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReleaseUpgradeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "The pinned or the latest release cannot be read.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Upgrade one of my campaigns to the latest release of its GameSystem, as previewed",
+                "operationId": "upgradeCampaignRelease",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReleaseUpgradeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The upgraded campaign, pinned to the new release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no integer \"toVersion\" or no string \"fingerprint\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already plays this release or a newer one; the upgrade is not the previewed one any more (the campaign was edited, the version is not the latest release, or no such release exists), nothing changed; or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "\"toVersion\" is not positive or \"fingerprint\" is blank.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "The pinned or the target release cannot be read.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/threads": {
             "post": {
                 "tags": [
@@ -11906,6 +12096,393 @@
                         "type": "integer",
                         "example": 2,
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeReleaseResponse": {
+                "required": [
+                    "version",
+                    "name"
+                ],
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "name": {
+                        "description": "The GameSystem's name in that release.",
+                        "type": "string",
+                        "example": "Heist"
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeFieldChangeResponse": {
+                "required": [
+                    "fieldKey",
+                    "fieldName",
+                    "kind",
+                    "before",
+                    "after"
+                ],
+                "properties": {
+                    "fieldKey": {
+                        "type": "string",
+                        "example": "reflexes"
+                    },
+                    "fieldName": {
+                        "description": "The field's label in the release that has it (the target release, else the one the campaign plays).",
+                        "type": "string",
+                        "example": "Reflexes"
+                    },
+                    "kind": {
+                        "description": "\"added\" (a new field starts at its initial value), \"removed\" (the field is gone or now derived), \"clamped\" (a number or track moved inside its new bounds), \"trimmed\" (a list cut to its new limit) or \"reset\" (a type change or a value that still does not fit goes back to the initial value).",
+                        "type": "string",
+                        "enum": [
+                            "added",
+                            "removed",
+                            "clamped",
+                            "trimmed",
+                            "reset"
+                        ]
+                    },
+                    "before": {
+                        "description": "The stored value now: an integer, a string, an array of strings or {current, max}; null for an added field.",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "required": [
+                                    "current",
+                                    "max"
+                                ],
+                                "properties": {
+                                    "current": {
+                                        "type": "integer"
+                                    },
+                                    "max": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        ]
+                    },
+                    "after": {
+                        "description": "The value after the upgrade, of the same shapes as \"before\"; null for a removed field.",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "required": [
+                                    "current",
+                                    "max"
+                                ],
+                                "properties": {
+                                    "current": {
+                                        "type": "integer"
+                                    },
+                                    "max": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeCharacterResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "changes",
+                    "droppedTags"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Vi"
+                    },
+                    "changes": {
+                        "description": "The changed fields: the new sheet's fields in its order, then the removed ones.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeFieldChangeResponse"
+                        }
+                    },
+                    "droppedTags": {
+                        "description": "The release Tag keys the Character loses because the target release no longer has them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "leader"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeDroppedTagsResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "tags"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Mira"
+                    },
+                    "tags": {
+                        "description": "The release Tag keys it loses because the target release no longer has them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "rival"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeTrackerChangeResponse": {
+                "required": [
+                    "trackerKey",
+                    "name",
+                    "kind",
+                    "before",
+                    "after"
+                ],
+                "properties": {
+                    "trackerKey": {
+                        "type": "string",
+                        "example": "heat"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Heat"
+                    },
+                    "kind": {
+                        "description": "\"removed\" (the Tracker is gone) or \"clamped\" (the value moved inside the new bounds).",
+                        "type": "string",
+                        "enum": [
+                            "removed",
+                            "clamped"
+                        ]
+                    },
+                    "before": {
+                        "type": "integer",
+                        "example": 9
+                    },
+                    "after": {
+                        "description": "The value after the upgrade; null for a removed Tracker.",
+                        "type": "integer",
+                        "example": 6,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeUnslottedFactResponse": {
+                "required": [
+                    "id",
+                    "slotKey",
+                    "label",
+                    "text"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "slotKey": {
+                        "description": "The key of the Fact slot that is gone.",
+                        "type": "string",
+                        "example": "prince"
+                    },
+                    "label": {
+                        "description": "The label the free fact keeps: its own, else the old slot's name.",
+                        "type": "string",
+                        "example": "The Prince"
+                    },
+                    "text": {
+                        "description": "The text the free fact keeps; for a subject fact, the subject's name.",
+                        "type": "string",
+                        "example": "Mithras"
+                    }
+                },
+                "type": "object"
+            },
+            "UpgradeFlowChangeResponse": {
+                "required": [
+                    "fromFlowKey",
+                    "toFlowKey",
+                    "restarted"
+                ],
+                "properties": {
+                    "fromFlowKey": {
+                        "description": "The key of the Flow played now; null when played freely.",
+                        "type": "string",
+                        "example": "the-heist",
+                        "nullable": true
+                    },
+                    "toFlowKey": {
+                        "description": "The key of the Flow played after the upgrade: the same one when the target release has it, else its default Flow, else its first; null when played freely.",
+                        "type": "string",
+                        "example": "the-heist",
+                        "nullable": true
+                    },
+                    "restarted": {
+                        "description": "Whether guidance starts again at the first phase of the Flow (a guided scene open now goes on as a free scene).",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "ReleaseUpgradePlanResponse": {
+                "required": [
+                    "from",
+                    "to",
+                    "characters",
+                    "npcs",
+                    "threads",
+                    "trackers",
+                    "facts",
+                    "flow",
+                    "fingerprint"
+                ],
+                "properties": {
+                    "from": {
+                        "$ref": "#/components/schemas/UpgradeReleaseResponse"
+                    },
+                    "to": {
+                        "$ref": "#/components/schemas/UpgradeReleaseResponse"
+                    },
+                    "characters": {
+                        "description": "The Characters that change, in campaign order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeCharacterResponse"
+                        }
+                    },
+                    "npcs": {
+                        "description": "The NPCs that lose release Tags, in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeDroppedTagsResponse"
+                        }
+                    },
+                    "threads": {
+                        "description": "The Threads that lose release Tags, in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeDroppedTagsResponse"
+                        }
+                    },
+                    "trackers": {
+                        "description": "The Tracker values that change, by Tracker key.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeTrackerChangeResponse"
+                        }
+                    },
+                    "facts": {
+                        "description": "The slot facts that become free facts, in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeUnslottedFactResponse"
+                        }
+                    },
+                    "flow": {
+                        "$ref": "#/components/schemas/UpgradeFlowChangeResponse"
+                    },
+                    "fingerprint": {
+                        "description": "Stands for exactly this change (SHA-256 of the plan). The upgrade is refused when the campaign or the releases changed since, so the confirmed change is the previewed one.",
+                        "type": "string",
+                        "example": "9f2c4e0a7b1d3c5e8f6a0b2d4c6e8f1a3b5d7c9e0f2a4b6c8d0e1f3a5b7c9d1e"
+                    }
+                },
+                "type": "object"
+            },
+            "ReleaseUpgradeResponse": {
+                "required": [
+                    "upToDate",
+                    "currentVersion",
+                    "plan"
+                ],
+                "properties": {
+                    "upToDate": {
+                        "description": "Whether the campaign already plays the latest release of its GameSystem: then there is no plan.",
+                        "type": "boolean"
+                    },
+                    "currentVersion": {
+                        "description": "The release version the campaign plays.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "plan": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ReleaseUpgradePlanResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What upgrading to the latest release changes; null when up to date."
+                    }
+                },
+                "type": "object"
+            },
+            "ReleaseUpgradeRequest": {
+                "required": [
+                    "toVersion",
+                    "fingerprint"
+                ],
+                "properties": {
+                    "toVersion": {
+                        "description": "The release version to upgrade to: the \"version\" of the previewed plan's \"to\". Only the latest release is an upgrade target.",
+                        "type": "integer",
+                        "example": 3,
+                        "minimum": 1
+                    },
+                    "fingerprint": {
+                        "description": "The \"fingerprint\" of the previewed plan the player confirmed.",
+                        "type": "string",
+                        "example": "9f2c4e0a7b1d3c5e8f6a0b2d4c6e8f1a3b5d7c9e0f2a4b6c8d0e1f3a5b7c9d1e"
                     }
                 },
                 "type": "object"

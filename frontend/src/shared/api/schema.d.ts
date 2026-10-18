@@ -601,6 +601,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/release-upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview upgrading one of my campaigns to the latest release of its GameSystem */
+        get: operations["previewReleaseUpgrade"];
+        put?: never;
+        /** Upgrade one of my campaigns to the latest release of its GameSystem, as previewed */
+        post: operations["upgradeCampaignRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/threads": {
         parameters: {
             query?: never;
@@ -2677,6 +2695,161 @@ export interface components {
              * @example 2
              */
             weight?: number | null;
+        };
+        UpgradeReleaseResponse: {
+            /** @example 3 */
+            version: number;
+            /**
+             * @description The GameSystem's name in that release.
+             * @example Heist
+             */
+            name: string;
+        };
+        UpgradeFieldChangeResponse: {
+            /** @example reflexes */
+            fieldKey: string;
+            /**
+             * @description The field's label in the release that has it (the target release, else the one the campaign plays).
+             * @example Reflexes
+             */
+            fieldName: string;
+            /**
+             * @description "added" (a new field starts at its initial value), "removed" (the field is gone or now derived), "clamped" (a number or track moved inside its new bounds), "trimmed" (a list cut to its new limit) or "reset" (a type change or a value that still does not fit goes back to the initial value).
+             * @enum {string}
+             */
+            kind: "added" | "removed" | "clamped" | "trimmed" | "reset";
+            /** @description The stored value now: an integer, a string, an array of strings or {current, max}; null for an added field. */
+            before: (number | string | string[] | {
+                current: number;
+                max: number;
+            }) | null;
+            /** @description The value after the upgrade, of the same shapes as "before"; null for a removed field. */
+            after: (number | string | string[] | {
+                current: number;
+                max: number;
+            }) | null;
+        };
+        UpgradeCharacterResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example Vi */
+            name: string;
+            /** @description The changed fields: the new sheet's fields in its order, then the removed ones. */
+            changes: components["schemas"]["UpgradeFieldChangeResponse"][];
+            /**
+             * @description The release Tag keys the Character loses because the target release no longer has them.
+             * @example [
+             *       "leader"
+             *     ]
+             */
+            droppedTags: string[];
+        };
+        UpgradeDroppedTagsResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example Mira */
+            name: string;
+            /**
+             * @description The release Tag keys it loses because the target release no longer has them.
+             * @example [
+             *       "rival"
+             *     ]
+             */
+            tags: string[];
+        };
+        UpgradeTrackerChangeResponse: {
+            /** @example heat */
+            trackerKey: string;
+            /** @example Heat */
+            name: string;
+            /**
+             * @description "removed" (the Tracker is gone) or "clamped" (the value moved inside the new bounds).
+             * @enum {string}
+             */
+            kind: "removed" | "clamped";
+            /** @example 9 */
+            before: number;
+            /**
+             * @description The value after the upgrade; null for a removed Tracker.
+             * @example 6
+             */
+            after: number | null;
+        };
+        UpgradeUnslottedFactResponse: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description The key of the Fact slot that is gone.
+             * @example prince
+             */
+            slotKey: string;
+            /**
+             * @description The label the free fact keeps: its own, else the old slot's name.
+             * @example The Prince
+             */
+            label: string;
+            /**
+             * @description The text the free fact keeps; for a subject fact, the subject's name.
+             * @example Mithras
+             */
+            text: string;
+        };
+        UpgradeFlowChangeResponse: {
+            /**
+             * @description The key of the Flow played now; null when played freely.
+             * @example the-heist
+             */
+            fromFlowKey: string | null;
+            /**
+             * @description The key of the Flow played after the upgrade: the same one when the target release has it, else its default Flow, else its first; null when played freely.
+             * @example the-heist
+             */
+            toFlowKey: string | null;
+            /** @description Whether guidance starts again at the first phase of the Flow (a guided scene open now goes on as a free scene). */
+            restarted: boolean;
+        };
+        ReleaseUpgradePlanResponse: {
+            from: components["schemas"]["UpgradeReleaseResponse"];
+            to: components["schemas"]["UpgradeReleaseResponse"];
+            /** @description The Characters that change, in campaign order. */
+            characters: components["schemas"]["UpgradeCharacterResponse"][];
+            /** @description The NPCs that lose release Tags, in creation order. */
+            npcs: components["schemas"]["UpgradeDroppedTagsResponse"][];
+            /** @description The Threads that lose release Tags, in creation order. */
+            threads: components["schemas"]["UpgradeDroppedTagsResponse"][];
+            /** @description The Tracker values that change, by Tracker key. */
+            trackers: components["schemas"]["UpgradeTrackerChangeResponse"][];
+            /** @description The slot facts that become free facts, in creation order. */
+            facts: components["schemas"]["UpgradeUnslottedFactResponse"][];
+            flow: components["schemas"]["UpgradeFlowChangeResponse"];
+            /**
+             * @description Stands for exactly this change (SHA-256 of the plan). The upgrade is refused when the campaign or the releases changed since, so the confirmed change is the previewed one.
+             * @example 9f2c4e0a7b1d3c5e8f6a0b2d4c6e8f1a3b5d7c9e0f2a4b6c8d0e1f3a5b7c9d1e
+             */
+            fingerprint: string;
+        };
+        ReleaseUpgradeResponse: {
+            /** @description Whether the campaign already plays the latest release of its GameSystem: then there is no plan. */
+            upToDate: boolean;
+            /**
+             * @description The release version the campaign plays.
+             * @example 2
+             */
+            currentVersion: number;
+            /** @description What upgrading to the latest release changes; null when up to date. */
+            plan: components["schemas"]["ReleaseUpgradePlanResponse"] | null;
+        };
+        ReleaseUpgradeRequest: {
+            /**
+             * @description The release version to upgrade to: the "version" of the previewed plan's "to". Only the latest release is an upgrade target.
+             * @example 3
+             */
+            toVersion: number;
+            /**
+             * @description The "fingerprint" of the previewed plan the player confirmed.
+             * @example 9f2c4e0a7b1d3c5e8f6a0b2d4c6e8f1a3b5d7c9e0f2a4b6c8d0e1f3a5b7c9d1e
+             */
+            fingerprint: string;
         };
         ThreadRequest: {
             /**
@@ -7057,6 +7230,162 @@ export interface operations {
             };
             /** @description A Tag of the NPC is not in the pinned release. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewReleaseUpgrade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the campaign is up to date and, when it is not, the plan: what the upgrade changes and the fingerprint to confirm it with. Nothing is changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseUpgradeResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The pinned or the latest release cannot be read. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upgradeCampaignRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseUpgradeRequest"];
+            };
+        };
+        responses: {
+            /** @description The upgraded campaign, pinned to the new release. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no integer "toVersion" or no string "fingerprint". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already plays this release or a newer one; the upgrade is not the previewed one any more (the campaign was edited, the version is not the latest release, or no such release exists), nothing changed; or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description "toVersion" is not positive or "fingerprint" is blank. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The pinned or the target release cannot be read. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

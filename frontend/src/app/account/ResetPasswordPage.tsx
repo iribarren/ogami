@@ -9,6 +9,7 @@ import { useFragmentToken } from './useFragmentToken'
 export function ResetPasswordPage() {
   const token = useFragmentToken()
   const reset = useResetPassword()
+  // `invalidLink` covers a null token, so the form below only renders with one.
   const invalidLink =
     token === null || (reset.error instanceof AccountError && reset.error.invalidLink)
 

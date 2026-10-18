@@ -138,6 +138,23 @@ describe('changing your own roles', () => {
   })
 })
 
+describe('a failed save of your own roles', () => {
+  it('keeps the dialog with its error and still refetches the list', async () => {
+    const { user, fakeApi } = await openAdmin({
+      [`PUT ${userPath(ada.id)}/roles`]: refused('Could not save.', 422),
+    })
+
+    await user.click(userRow('ada@example.com').getByRole('button', { name: 'Edit roles' }))
+    await user.click(dialog().getByRole('checkbox', { name: 'Game manager' }))
+    await user.click(dialog().getByRole('button', { name: 'Save' }))
+
+    expect(await dialog().findByRole('alert')).toHaveTextContent('Could not save.')
+    await waitFor(() => {
+      expect(fakeApi.requests.filter((key) => key === 'GET /api/admin/users')).toHaveLength(2)
+    })
+  })
+})
+
 describe('the Edit roles dialog', () => {
   it('saves the selected roles and refreshes the list', async () => {
     let body: unknown

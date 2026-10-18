@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 
 import { latestLinkTo } from './mailpit.ts'
 
@@ -23,9 +23,17 @@ async function signIn(page: Page, email: string, secret: string) {
 }
 
 /** A fresh browser context (own cookies), so the owner and the invited user never share a session. */
+const contexts: BrowserContext[] = []
+
 async function newPage(browser: Browser): Promise<Page> {
-  return (await browser.newContext()).newPage()
+  const context = await browser.newContext()
+  contexts.push(context)
+  return context.newPage()
 }
+
+test.afterEach(async () => {
+  await Promise.all(contexts.splice(0).map((context) => context.close()))
+})
 
 async function signInAsOwner(browser: Browser): Promise<Page> {
   const page = await newPage(browser)
@@ -45,8 +53,10 @@ async function invite(page: Page, email: string) {
 }
 
 async function acceptInvitation(page: Page, email: string) {
-  await page.goto(await latestLinkTo(email))
+  await page.goto(await latestLinkTo(email, '/accept-invitation'))
   await expect(page.getByText(email)).toBeVisible()
+  // The token is gone from the address bar once the page has read it.
+  expect(page.url()).not.toContain('token')
   await page.getByLabel('New password', { exact: true }).fill(invitedPassword)
   await page.getByLabel('Confirm password').fill(invitedPassword)
   await page.getByRole('button', { name: 'Create account' }).click()
@@ -67,14 +77,7 @@ test('an invited user accepts the invitation and lands signed in', async ({ brow
   await invite(ownerPage, email)
 
   const page = await newPage(browser)
-  await page.goto(await latestLinkTo(email))
-
-  // The token is gone from the address bar once the page has read it.
-  await expect(page.getByText(email)).toBeVisible()
-  expect(page.url()).not.toContain('token')
-  await page.getByLabel('New password', { exact: true }).fill(invitedPassword)
-  await page.getByLabel('Confirm password').fill(invitedPassword)
-  await page.getByRole('button', { name: 'Create account' }).click()
+  await acceptInvitation(page, email)
 
   await expect(page).toHaveURL('/play')
   await expect(page.getByText(email)).toBeVisible()
@@ -110,7 +113,7 @@ test('a user resets a forgotten password and signs in with the new one', async (
   await page.getByRole('button', { name: 'Send reset link' }).click()
   await expect(page.getByRole('status')).toContainText('If an account exists')
 
-  await page.goto(await latestLinkTo(email))
+  await page.goto(await latestLinkTo(email, '/reset-password'))
   await page.getByLabel('New password', { exact: true }).fill(newPassword)
   await page.getByLabel('Confirm password').fill(newPassword)
   await page.getByRole('button', { name: 'Change password' }).click()

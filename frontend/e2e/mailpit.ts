@@ -17,29 +17,29 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 /**
- * The link of the latest email sent to `address`, as path plus fragment (for example
- * `/accept-invitation#token=…`). The link is built from APP_PUBLIC_URL (localhost:8080), which
- * the playwright container cannot reach, so only the part after the origin is returned and the
- * test opens it on its own baseURL. Polls for up to 10 seconds: mail is sent right after the
- * request commits, but the SMTP hop to Mailpit is not instant.
+ * The newest link in an email to `address` whose path is `path` (`/accept-invitation` or
+ * `/reset-password`), as path plus fragment (for example `/accept-invitation#token=…`). The
+ * link is built from APP_PUBLIC_URL (localhost:8080), which the playwright container cannot
+ * reach, so only the part after the origin is returned and the test opens it on its own
+ * baseURL. Asking for the path keeps a scenario from reading another kind of email to the same
+ * address. Polls for up to 10 seconds: the SMTP hop to Mailpit is not instant.
  */
-export async function latestLinkTo(address: string): Promise<string> {
+export async function latestLinkTo(address: string, path: string): Promise<string> {
   const query = encodeURIComponent(`to:"${address}"`)
+  const link = new RegExp(`https?://[^\\s/]+(${path}#token=[\\w-]+)`)
   for (let attempt = 0; attempt < 20; attempt++) {
     // Newest first.
     const { messages } = await getJson<{ messages: Summary[] }>(
-      `/api/v1/search?query=${query}&limit=1`,
+      `/api/v1/search?query=${query}&limit=10`,
     )
-    const latest = messages.at(0)
-    if (latest !== undefined) {
-      const { Text } = await getJson<Message>(`/api/v1/message/${latest.ID}`)
-      const link = /https?:\/\/[^\s/]+(\/[\w-]+#token=[\w-]+)/.exec(Text)
-      if (link?.[1] === undefined) {
-        throw new Error(`No account link in the email to ${address}`)
+    for (const { ID } of messages) {
+      const { Text } = await getJson<Message>(`/api/v1/message/${ID}`)
+      const found = link.exec(Text)?.[1]
+      if (found !== undefined) {
+        return found
       }
-      return link[1]
     }
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
-  throw new Error(`No email to ${address} reached Mailpit`)
+  throw new Error(`No ${path} link in an email to ${address} reached Mailpit`)
 }

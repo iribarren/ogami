@@ -51,7 +51,13 @@ export function useChangeRoles() {
       }
       throw adminError(response, error, { subject: 'user', failure: 'Changing the roles' })
     },
-    onSettled: (_user, error, { isSelf }) => (isSelf && error === null ? undefined : refresh()),
+    onSettled: (_user, error, { isSelf }) => {
+      // Own roles saved: the session is gone and the caller leaves, so a refetch would be a 401.
+      if (isSelf && error === null) {
+        return
+      }
+      return refresh()
+    },
   })
 }
 

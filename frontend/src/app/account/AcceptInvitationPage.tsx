@@ -22,8 +22,9 @@ const roleLabels: Record<Role, string> = {
  */
 export function AcceptInvitationPage() {
   const token = useFragmentToken()
-  const lookup = useInvitationLookup(token)
   const accept = useAcceptInvitation()
+  // The link is spent once accepted: stop looking it up (a refetch would answer 422).
+  const lookup = useInvitationLookup(accept.isSuccess ? null : token)
   const login = useLogin()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -36,14 +37,17 @@ export function AcceptInvitationPage() {
       { token, password },
       {
         onSuccess: () => {
+          // Whatever was cached belongs to a previous session, if any: forget it before the
+          // new user signs in. The current user stays, since the shell observes it and sign-in
+          // replaces it; clearing it would leave the shell on a removed query. Accepting never
+          // runs again: a failed sign-in is only reported.
+          queryClient.removeQueries({
+            predicate: ({ queryKey }) => queryKey[0] !== 'auth' && queryKey[0] !== 'account',
+          })
           login.mutate(
             { email, password },
             {
               onSuccess: (user) => {
-                // Data cached for a previous session is the old user's; the link itself is spent.
-                void queryClient.invalidateQueries({
-                  predicate: (query) => query.queryKey[0] !== 'account',
-                })
                 void navigate({ href: homePathFor(user), replace: true })
               },
             },
@@ -61,7 +65,21 @@ export function AcceptInvitationPage() {
   return (
     <section className="mx-auto max-w-sm space-y-6">
       <h1 className="font-heading text-3xl font-bold tracking-tight">Accept your invitation</h1>
-      {invalidLink ? (
+      {accept.isSuccess ? (
+        <>
+          <p role="status">Your account was created.</p>
+          {login.isError && (
+            <>
+              <p role="alert" className="text-sm text-destructive">
+                {`Your account was created, but signing in failed: ${login.error.message}`}
+              </p>
+              <Link to="/login" className={accountLinkClass}>
+                Go to sign in
+              </Link>
+            </>
+          )}
+        </>
+      ) : invalidLink ? (
         <p role="alert">This link is invalid or has expired. Ask the owner for a new invitation.</p>
       ) : lookup.isError ? (
         <p role="alert" className="text-sm text-destructive">
@@ -78,23 +96,12 @@ export function AcceptInvitationPage() {
           </p>
           <PasswordFields
             submitLabel="Create account"
-            pending={accept.isPending || login.isPending || login.isSuccess}
-            error={
-              accept.isError
-                ? accept.error.message
-                : login.isError
-                  ? `Your account was created, but signing in failed: ${login.error.message}`
-                  : undefined
-            }
+            pending={accept.isPending}
+            error={accept.error?.message}
             onSubmit={(password) => {
               submit(lookup.data.email, password)
             }}
           />
-          {login.isError && (
-            <Link to="/login" className={accountLinkClass}>
-              Go to sign in
-            </Link>
-          )}
         </>
       )}
     </section>

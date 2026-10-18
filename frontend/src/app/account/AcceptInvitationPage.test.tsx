@@ -162,8 +162,8 @@ describe('AcceptInvitationPage', () => {
     expect(fakeApi.requests).not.toContain(accept)
   })
 
-  it('says so, with a link to sign in, when the account exists but sign-in fails', async () => {
-    const { user } = await openLink('#token=abc', {
+  it('keeps the account created state when sign-in fails and never accepts twice', async () => {
+    const { user, fakeApi } = await openLink('#token=abc', {
       [lookup]: invitation,
       [accept]: noContent,
       [login]: () => Response.json({ error: 'Too many login attempts.' }, { status: 429 }),
@@ -175,6 +175,9 @@ describe('AcceptInvitationPage', () => {
       'Your account was created, but signing in failed: Too many login attempts.',
     )
     expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute('href', '/login')
+    expect(screen.queryByLabelText('New password')).not.toBeInTheDocument()
+    expect(screen.queryByText(/This link is invalid or has expired/)).not.toBeInTheDocument()
+    expect(fakeApi.requests.filter((key) => key === accept)).toHaveLength(1)
   })
 
   it('signs in as the invited user even when someone else is signed in', async () => {

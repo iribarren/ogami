@@ -5,7 +5,12 @@ import { useApiClient } from '@/shared/api/useApiClient'
 
 export type InvitationLookup = components['schemas']['InvitationLookupResponse']
 
-/** The API's one answer for an unknown, expired or used link; pages show their own wording. */
+/**
+ * The API's one answer for an unknown, expired or used link; pages show their own wording.
+ * The 422 body is only `{ error }` (no code), so this matches its English text. The wording is
+ * pinned by `INVALID_LINK` in backend `PasswordResetApiTest` and `InvitationApiTest`: change
+ * both sides together.
+ */
 const INVALID_LINK = 'invalid or has expired'
 
 /** A refused or failed call of the public account endpoints; `message` is ready to show. */

@@ -74,6 +74,7 @@ Items here come after every feature defined above. Their priority and order are 
 | `preset-pbta` | Preset | A Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording, or Ironsworn (CC BY 4.0). Exercises 2d6 + stat moves; Ironsworn adds challenge dice (an action score against two d10), momentum below zero and vow progress tracks. After M3 |
 | `preset-cpr-campaign` | Preset | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)). After M3 and `play-items-economy` |
 | `preset-west-marches` | Preset | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)). Gaps: HP and spell slots as sheet effects, select fields for class, conditions. Items and shops come after `play-items-economy`. After 10 and the Places question |
+| `studio-atomic-write-read` | Studio | Run each Studio editor write and its read-back in one transaction, as `LibraryImportController` does, so an interleaved save's version never leaks into a response and a failing read rolls the write back ([#195](https://github.com/iribarren/ogami/issues/195)). One `fix/` slice, no API change |
 
 ## Starter prompts
 
@@ -374,3 +375,9 @@ Start feature `preset-west-marches` (ODD). Hand-author a West Marches preset on 
 - [Vision](vision.md)
 - [Context map](domain/context-map.md)
 - [Architecture decisions](adr/README.md)
+
+**studio-atomic-write-read**
+
+```text
+Start feature `studio-atomic-write-read` (ODD), issue #195. Studio: run every editor write (narrative, oracle, sheet, check controllers and any other write-then-read endpoint) and its read-back query in one DBAL transaction, as `LibraryImportController` does, with an API test per controller where a failing read leaves the draft unchanged. Add the API test that a GameSystem row stored before the `kind` column reads as `game-system`. Out of scope: the 500 on a malformed library pack row. One slice, branch `fix/`.
+```

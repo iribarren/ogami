@@ -47,6 +47,18 @@ describe('the releases tab', () => {
     expect(items[1]).toHaveTextContent('Rebalanced the oracles.')
   })
 
+  it('shows the library sources of a release by pack, and nothing when it has none', async () => {
+    await openReleases()
+
+    const items = within(await screen.findByRole('region', { name: 'Releases' })).getAllByRole(
+      'listitem',
+    )
+    expect(items[0]).toHaveTextContent(
+      'Library: fantasy-basics (npc-name, social); wild-tales (noble)',
+    )
+    expect(items[1]).not.toHaveTextContent('Library:')
+  })
+
   it('has an empty state for a GameSystem that was never published', async () => {
     await openReleases({ [`GET ${base}/releases`]: json([]) })
 

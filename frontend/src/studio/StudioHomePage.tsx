@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Badge } from '@/shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
+import { LibraryChangesBadge } from './LibraryChangesBadge'
 import { NewGameSystemDialog } from './NewGameSystemDialog'
 import { useMyGameSystems, type GameSystemSummary } from './useGameSystems'
 
@@ -79,6 +80,7 @@ function GameSystemCard({ gameSystem }: { gameSystem: GameSystemSummary }) {
             : `Latest release v${String(gameSystem.latestReleaseVersion)}`}
         </span>
         {gameSystem.hasUnpublishedChanges && <Badge variant="warning">Unpublished changes</Badge>}
+        <LibraryChangesBadge count={gameSystem.libraryChanges} />
       </CardContent>
     </Card>
   )

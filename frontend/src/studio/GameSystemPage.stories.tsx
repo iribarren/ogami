@@ -4,7 +4,7 @@ import { expect, userEvent, within } from 'storybook/test'
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { draft, legacy, validDraft } from './fixtures'
+import { draft, draftWithLibraryChange, legacy, validDraft } from './fixtures'
 import { GameSystemPage } from './GameSystemPage'
 
 const json =
@@ -39,6 +39,15 @@ export const NeverPublishedDraft: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('button', { name: 'Discard draft' })).toBeInTheDocument()
+  },
+}
+
+export const WithLibraryChange: Story = {
+  parameters: {
+    api: { ...draftApi, 'GET /api/studio/game-systems/my-draft': json(draftWithLibraryChange) },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('1 library change')).toBeInTheDocument()
   },
 }
 

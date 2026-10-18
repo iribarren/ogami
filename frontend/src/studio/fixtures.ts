@@ -32,6 +32,14 @@ export const neverPublished: GameSystemSummary = {
   updatedAt: '2026-10-16T09:00:00+00:00',
 }
 
+/** A published draft whose imports changed in the library: 1 changed and 2 removed. */
+export const withLibraryChanges: GameSystemSummary = {
+  ...published,
+  key: 'wild-tales',
+  name: 'Wild tales',
+  libraryChanges: 3,
+}
+
 /** A schema version 2 draft that was never published. */
 export const draft: GameSystem = {
   key: 'my-draft',
@@ -66,6 +74,9 @@ export const legacy: GameSystem = {
   updatedAt: '2026-09-02T09:00:00+00:00',
 }
 
+/** A schema version 2 draft with one library import that changed in its pack. */
+export const draftWithLibraryChange: GameSystem = { ...draft, libraryChanges: 1 }
+
 export const validDraft = { valid: true, error: null, warnings: [] }
 
 /** A published, changed GameSystem: the next publish creates version 4. */
@@ -76,7 +87,7 @@ export const published3: GameSystem = {
   latestReleaseVersion: 3,
 }
 
-/** The history of `published3`'s line, newest first; version 2 has notes, version 3 has none. */
+/** The history of `published3`'s line, newest first; version 2 has notes, version 3 has none but library sources. */
 export const releaseHistory = [
   {
     version: 3,
@@ -84,6 +95,11 @@ export const releaseHistory = [
     publishedAt: '2026-10-14T12:00:00+00:00',
     notes: null,
     contentHash: '11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0',
+    librarySources: [
+      { section: 'oracles', key: 'npc-name', pack: 'fantasy-basics' },
+      { section: 'scene-types', key: 'social', pack: 'fantasy-basics' },
+      { section: 'tags', key: 'noble', pack: 'wild-tales' },
+    ],
   },
   {
     version: 2,
@@ -91,6 +107,7 @@ export const releaseHistory = [
     publishedAt: '2026-10-10T12:00:00+00:00',
     notes: 'Rebalanced the oracles.',
     contentHash: '22d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0',
+    librarySources: null,
   },
 ]
 

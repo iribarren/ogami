@@ -28,6 +28,15 @@ const publishedAtFormat = new Intl.DateTimeFormat('en-GB', {
 /** The short form of a content hash a UI shows. */
 const shortHash = (hash: string) => hash.slice(0, 8)
 
+/** The library items a release was imported with, by pack: `fantasy-basics (npc-name, social)`. */
+function sourcesByPack(sources: NonNullable<ReleaseSummary['librarySources']>): string {
+  const byPack = new Map<string, string[]>()
+  for (const { pack, key } of sources) {
+    byPack.set(pack, [...(byPack.get(pack) ?? []), key])
+  }
+  return [...byPack].map(([pack, keys]) => `${pack} (${keys.join(', ')})`).join('; ')
+}
+
 /**
  * The Releases tab: the history of a GameSystem, newest first, with a read-only view of one
  * release and a way to restore it into the draft.
@@ -122,6 +131,11 @@ function ReleaseRow({
         <p className={release.notes === null ? 'text-muted-foreground' : 'break-words'}>
           {release.notes ?? 'No notes'}
         </p>
+        {release.librarySources !== null && (
+          <p className="text-sm break-words text-muted-foreground">
+            Library: {sourcesByPack(release.librarySources)}
+          </p>
+        )}
       </div>
       <Button
         variant="outline"

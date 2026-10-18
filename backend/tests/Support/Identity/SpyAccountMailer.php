@@ -15,6 +15,9 @@ final class SpyAccountMailer implements AccountMailer
     /** @var list<array{email: string, link: string, roles: list<string>, expiresAt: \DateTimeImmutable}> */
     public array $invitations = [];
 
+    /** @var list<array{email: string, link: string, expiresAt: \DateTimeImmutable}> */
+    public array $passwordResets = [];
+
     public function sendInvitation(Email $email, string $link, array $roles, \DateTimeImmutable $expiresAt): void
     {
         $this->invitations[] = [
@@ -27,6 +30,6 @@ final class SpyAccountMailer implements AccountMailer
 
     public function sendPasswordReset(Email $email, string $link, \DateTimeImmutable $expiresAt): void
     {
-        throw new \LogicException('Password reset mail is not part of this slice.');
+        $this->passwordResets[] = ['email' => $email->toString(), 'link' => $link, 'expiresAt' => $expiresAt];
     }
 }

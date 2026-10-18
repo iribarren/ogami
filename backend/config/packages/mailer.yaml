@@ -1,0 +1,6 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+        # Mail is sent from a command.bus handler after the command's transaction
+        # commits (Identity SendAccountMailHandler); do not queue it a second time.
+        message_bus: false

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Application;
 
+use App\Identity\Domain\Role;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Bus\CommandHandler;
 
@@ -18,12 +19,17 @@ final readonly class DisableUserHandler implements CommandHandler
     /**
      * @throws UserNotFound
      * @throws OwnAccountProtected when the acting user targets themselves
+     * @throws LastActiveOwner     when the target is the only active owner
      */
     public function __invoke(DisableUser $command): void
     {
         $user = $this->loader->load($command->userId);
         if (UserLoader::isSelf($command->actorId, $user)) {
             throw OwnAccountProtected::cannotDisable();
+        }
+
+        if (!$user->isDisabled() && $user->hasRole(Role::Owner) && $this->loader->isLastActiveOwner($user)) {
+            throw LastActiveOwner::cannotDisable();
         }
 
         $user->disable();

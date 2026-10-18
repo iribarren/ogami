@@ -15,6 +15,7 @@ use App\Identity\Application\EnableUser;
 use App\Identity\Application\EnableUserHandler;
 use App\Identity\Application\GetUser;
 use App\Identity\Application\GetUserHandler;
+use App\Identity\Application\LastActiveOwner;
 use App\Identity\Application\ListUsers;
 use App\Identity\Application\ListUsersHandler;
 use App\Identity\Application\OwnAccountProtected;
@@ -76,10 +77,10 @@ final class IdentityContext implements Context
         $this->manage(fn () => (new DisableUserHandler($this->users, $this->loader))(new DisableUser($this->idOf($actor), $this->idOf($email))));
     }
 
-    #[When('/^"(?P<actor>[^"]+)" enables "(?P<email>[^"]+)"$/')]
-    public function enables(string $actor, string $email): void
+    #[When('/^"[^"]+" enables "(?P<email>[^"]+)"$/')]
+    public function enables(string $email): void
     {
-        $this->manage(fn () => (new EnableUserHandler($this->users, $this->loader))(new EnableUser($this->idOf($actor), $this->idOf($email))));
+        $this->manage(fn () => (new EnableUserHandler($this->users, $this->loader))(new EnableUser($this->idOf($email))));
     }
 
     #[When('/^"(?P<actor>[^"]+)" (?P<action>disables|enables) an unknown user$/')]
@@ -88,7 +89,7 @@ final class IdentityContext implements Context
         $actorId = $this->idOf($actor);
         $this->manage(fn () => 'disables' === $action
             ? (new DisableUserHandler($this->users, $this->loader))(new DisableUser($actorId, 'unknown-user'))
-            : (new EnableUserHandler($this->users, $this->loader))(new EnableUser($actorId, 'unknown-user')));
+            : (new EnableUserHandler($this->users, $this->loader))(new EnableUser('unknown-user')));
     }
 
     #[When('/^"(?P<actor>[^"]+)" changes the roles of an unknown user to '.self::ROLE_LIST.'$/')]
@@ -148,6 +149,12 @@ final class IdentityContext implements Context
     public function rejectedBecauseTheOwnAccountIsProtected(): void
     {
         Assert::assertInstanceOf(OwnAccountProtected::class, $this->rejection);
+    }
+
+    #[Then('the change is rejected because it would leave no active owner')]
+    public function rejectedBecauseItWouldLeaveNoActiveOwner(): void
+    {
+        Assert::assertInstanceOf(LastActiveOwner::class, $this->rejection);
     }
 
     #[Then('the change is rejected because the user is not found')]
@@ -213,7 +220,7 @@ final class IdentityContext implements Context
 
         try {
             $command();
-        } catch (OwnAccountProtected|UserNotFound|UserMustHaveARole|UnknownRole $rejection) {
+        } catch (OwnAccountProtected|LastActiveOwner|UserNotFound|UserMustHaveARole|UnknownRole $rejection) {
             $this->rejection = $rejection;
         }
     }

@@ -12,7 +12,6 @@ use App\Shared\Application\Bus\Command;
 final readonly class EnableUser implements Command
 {
     public function __construct(
-        public string $actorId,
         public string $userId,
     ) {
     }

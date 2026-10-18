@@ -22,6 +22,7 @@ final readonly class ChangeUserRolesHandler implements CommandHandler
      * @throws UserNotFound
      * @throws UserMustHaveARole
      * @throws OwnAccountProtected when the acting user would drop their own OWNER role
+     * @throws LastActiveOwner     when the only active owner would lose the OWNER role
      */
     public function __invoke(ChangeUserRoles $command): void
     {
@@ -34,6 +35,10 @@ final readonly class ChangeUserRolesHandler implements CommandHandler
         // An empty list is left to the domain, which refuses it with its own error.
         if ([] !== $roles && UserLoader::isSelf($command->actorId, $user) && !\in_array(Role::Owner, $roles, true)) {
             throw OwnAccountProtected::cannotLoseOwnerRole();
+        }
+
+        if ([] !== $roles && !\in_array(Role::Owner, $roles, true) && !$user->isDisabled() && $user->hasRole(Role::Owner) && $this->loader->isLastActiveOwner($user)) {
+            throw LastActiveOwner::cannotLoseOwnerRole();
         }
 
         $user->changeRoles($roles);

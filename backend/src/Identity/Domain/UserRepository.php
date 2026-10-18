@@ -21,4 +21,13 @@ interface UserRepository
      * @return list<User>
      */
     public function all(): array;
+
+    /**
+     * Every active user holding OWNER, read with a write lock (ordered by id, so
+     * concurrent callers lock in the same order) and with fresh state even for
+     * users already loaded. Needs an open transaction.
+     *
+     * @return list<User>
+     */
+    public function activeOwnersForUpdate(): array;
 }

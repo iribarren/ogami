@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
+use Rector\Php81\Rector\Property\ReadOnlyPropertyRector;
 
 return RectorConfig::configure()
     ->withPaths([
@@ -15,6 +16,8 @@ return RectorConfig::configure()
         __DIR__.'/config/reference.php',
         __DIR__.'/config/bundles.php',
         __DIR__.'/config/preload.php',
+        // User::$createdAt must stay writable: Doctrine refreshes locked users in place.
+        ReadOnlyPropertyRector::class => [__DIR__.'/src/Identity/Domain/User.php'],
     ])
     ->withCache(__DIR__.'/var/cache/rector')
     ->withPhpSets()

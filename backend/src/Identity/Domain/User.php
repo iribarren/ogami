@@ -6,10 +6,12 @@ namespace App\Identity\Domain;
 
 /**
  * Someone who can sign in: an email, a password hash, one or more independent
- * roles and a status (active or disabled).
+ * roles, a status (active or disabled) and the date it was created.
  *
- * State is kept as scalars (strings and a list of role values) so persistence
- * can map it without custom types; the getters expose value objects.
+ * Roles can be replaced, the account disabled or enabled and the password
+ * changed; id, email and creation date never change. Identifiers and roles are
+ * kept as scalars (strings and a list of role values) so persistence can map
+ * them without custom types; the getters expose value objects.
  */
 final class User
 {
@@ -22,7 +24,9 @@ final class User
         private string $passwordHash,
         private array $roles,
         private UserStatus $status,
-        private readonly \DateTimeImmutable $createdAt,
+        // Not readonly: Doctrine refreshes managed users in place (UserRepository::activeOwnersForUpdate)
+        // and cannot re-assign a readonly object property, even to an equal date. No method changes it.
+        private \DateTimeImmutable $createdAt,
     ) {
     }
 

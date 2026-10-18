@@ -41,7 +41,7 @@ final class DisabledUserApiTest extends WebTestCase
     public function aDisabledUserGetsTheSameAnswerAsAWrongPassword(): void
     {
         $id = $this->createUser('ada@example.com');
-        $this->dispatch(new DisableUser($this->createUser('owner@example.com'), $id));
+        $this->dispatch(new DisableUser($this->createUser('owner@example.com', 'OWNER'), $id));
 
         $this->login('ada@example.com', 'wrong-password');
         self::assertResponseStatusCodeSame(401);
@@ -63,7 +63,7 @@ final class DisabledUserApiTest extends WebTestCase
     public function aSessionEndsOnTheNextRequestOnceTheAccountIsDisabled(): void
     {
         $id = $this->createUser('ada@example.com');
-        $ownerId = $this->createUser('owner@example.com');
+        $ownerId = $this->createUser('owner@example.com', 'OWNER');
         $this->login('ada@example.com', self::PASSWORD);
         $this->client->request('GET', '/api/auth/me');
         self::assertResponseIsSuccessful();
@@ -78,12 +78,12 @@ final class DisabledUserApiTest extends WebTestCase
     public function aReEnabledUserCanSignInAgain(): void
     {
         $id = $this->createUser('ada@example.com');
-        $ownerId = $this->createUser('owner@example.com');
+        $ownerId = $this->createUser('owner@example.com', 'OWNER');
         $this->dispatch(new DisableUser($ownerId, $id));
         $this->login('ada@example.com', self::PASSWORD);
         self::assertResponseStatusCodeSame(401);
 
-        $this->dispatch(new EnableUser($ownerId, $id));
+        $this->dispatch(new EnableUser($id));
         $this->login('ada@example.com', self::PASSWORD);
 
         self::assertResponseStatusCodeSame(200);
@@ -91,11 +91,11 @@ final class DisabledUserApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
     }
 
-    private function createUser(string $email): string
+    private function createUser(string $email, string $role = 'SOLO_PLAYER'): string
     {
         $container = self::getContainer();
         $id = $container->get(UserIdGenerator::class)->generate()->toString();
-        $this->dispatch(new CreateUser($id, $email, self::PASSWORD, ['SOLO_PLAYER']));
+        $this->dispatch(new CreateUser($id, $email, self::PASSWORD, [$role]));
 
         return $id;
     }

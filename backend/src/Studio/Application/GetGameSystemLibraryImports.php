@@ -9,7 +9,7 @@ use App\Shared\Application\Bus\Query;
 /**
  * Lists what the owner's GameSystem draft imported from the library, with each import's status.
  *
- * @implements Query<list<LibraryImportView>>
+ * @implements Query<LibraryImportsView>
  */
 final readonly class GetGameSystemLibraryImports implements Query
 {

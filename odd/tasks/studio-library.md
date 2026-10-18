@@ -1,7 +1,7 @@
 # Feature: studio-library
 
 - **Locator:** `odd/tasks/studio-library.md` · Engram topic `odd/studio-library/tasks`
-- **Issue:** #185 · **Branch:** `feat/studio-library-4-pack-api` · **Status:** in progress
+- **Issue:** #185 · **Branch:** `feat/studio-library-5-import-api` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-check-editor` (PRs #178–#184)
@@ -61,19 +61,21 @@ Out of scope:
 
 ## Design
 
-### Backend (slices 1–5)
+### Backend (slices 1–6)
 
 - ADR 0033, ADR index row, glossary (Library, Library import, Library pack), vision question closed.
 - `GameSystemKind`, migration (`kind`, `library_imports`), `GameSystem::createLibraryPack`, pack guards on every refused command, `CreateLibraryPack`, `ListLibraryPacks`; publish and restore handlers refuse a pack.
 - `LibrarySection`, the item hash and dependency closure (via `DraftReferences`), plan/import/update/detach, pruning imports after each command; `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `GetGameSystemLibraryImports` (statuses), `PreviewLibraryImport`, `GetLibraryPack` (catalog); publish stores `library_sources` on the release row (migration).
 - Library pack controller and catalog; 409 mapping of `LibraryPackRefuses` on every existing Studio endpoint; `kind` on the GameSystem view; API tests; `make api`.
-- Library import controller; `libraryChanges` on the list and detail views; `librarySources` on release history; API tests; `make api`.
+- Library import controller; API tests; `make api`.
+- `libraryChanges` on the list and detail views; `librarySources` on release history; API tests; `make api` (slice 6, with their frontend).
 
-### Frontend (slices 6–8)
+### Frontend (slices 6–9)
 
+- `libraryChanges` badges and library sources in release history (slice 6, with their API).
 - Library section on the Studio home, the new-pack dialog, kind-aware `GameSystemPage` for packs.
 - Import dialog (catalog browser, selection, preview, import) and the draft's Library tab (statuses, Update, Detach).
-- `libraryChanges` badges, library sources in release history, Playwright e2e.
+- Playwright e2e.
 
 ## Constraints
 
@@ -93,12 +95,13 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | 2 | `feat/studio-library-2-imports` | `feat(studio): studio-library 2/8 library imports in the draft` | T4 | ~1,500 |
 | 3 | `feat/studio-library-3-application` | `feat(studio): studio-library 3/8 library import handlers` | T5 | ~1,100 |
 | 4 | `feat/studio-library-4-pack-api` | `feat(studio): studio-library 4/8 library pack API` | T6 | ~1,450 incl. ~350 generated |
-| 5 | `feat/studio-library-5-import-api` | `feat(studio): studio-library 5/8 library import API` | T7 | ~1,600 incl. ~450 generated |
-| 6 | `feat/studio-library-6-packs-ui` | `feat(studio): studio-library 6/8 library packs in Studio` | T8 | ~1,300 |
-| 7 | `feat/studio-library-7-import-ui` | `feat(studio): studio-library 7/8 import dialog and library tab` | T9 | ~1,600 |
-| 8 | `feat/studio-library-8-flags-e2e` | `feat(studio): studio-library 8/8 change flags, provenance and end to end` | T10, T11 | ~1,000 |
+| 5 | `feat/studio-library-5-import-api` | `feat(studio): studio-library 5/9 library import API` | T7 | ~1,800 incl. ~700 generated |
+| 6 | `feat/studio-library-6-change-flags` | `feat(studio): studio-library 6/9 library change flags and provenance` | T12, T10 | ~1,300 incl. ~250 generated |
+| 7 | `feat/studio-library-7-packs-ui` | `feat(studio): studio-library 7/9 library packs in Studio` | T8 | ~1,300 |
+| 8 | `feat/studio-library-8-import-ui` | `feat(studio): studio-library 8/9 import dialog and library tab` | T9 | ~1,600 |
+| 9 | `feat/studio-library-9-e2e` | `feat(studio): studio-library 9/9 end to end` | T11 | ~500 |
 
-Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8 slices.
+Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8 slices. Slice 4 measured 773 generated lines for three endpoints, so the five import endpoints alone fill slice 5: `libraryChanges` and `librarySources` (T12) moved to slice 6 with their frontend (T10), and the plan grew to 9 slices.
 
 ## Tasks
 
@@ -109,12 +112,13 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 | T3 | 1 | Application: `CreateLibraryPack` (draft key rules) and handler, `ListLibraryPacks` query (every pack, `mine`, counts per section, updatedAt); publish handler refuses a pack; the existing GameSystem list excludes packs | delegated writer (slice 1) | [x] | a77c28c |
 | T4 | 2 | Domain: `LibrarySection`, item hash, dependency closure via `DraftReferences`; `planLibraryImport`, `importFromLibrary`, `updateFromLibrary`, `detachLibraryImport`, pruning after every command; `LibraryItemNotFound`, `LibraryItemKeyTaken`, `LibraryImportNotFound`, `LibraryItemRemoved` | delegated writer (slice 2) | [x] | f0e2702 |
 | T5 | 3 | Application: `ImportLibraryItems`, `UpdateLibraryImport`, `DetachLibraryImport`, `PreviewLibraryImport`, `GetGameSystemLibraryImports` (statuses, editedLocally); publish stores `library_sources` on the release row (migration) | delegated writer (slice 3) | [x] | bdd35da |
-| T6 | 4 | Application `GetLibraryPack` (catalog with dependsOn, moved from T5 for slice 2's size); HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 4) | [x] | |
-| T7 | 5 | HTTP: library import controller (list, preview, import, update, detach), `libraryChanges` on list/detail, `librarySources` on release history, API tests for every status (including 409 on a concurrent save), `make api` | delegated writer (slice 5) | [ ] | |
-| T8 | 6 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 6) | [ ] | |
-| T9 | 7 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 7) | [ ] | |
-| T10 | 8 | Frontend: `libraryChanges` badges on the draft list and Overview; library sources in release history; tests | delegated writer (slice 8) | [ ] | |
-| T11 | 8 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 8) | [ ] | |
+| T6 | 4 | Application `GetLibraryPack` (catalog with dependsOn, moved from T5 for slice 2's size); HTTP: library pack controller (list, create, catalog), `LibraryPackRefuses` → 409 on every existing Studio endpoint, `kind` on the GameSystem view, API tests for every status, `make api` | delegated writer (slice 4) | [x] | a2d87fa, 19d12ab |
+| T7 | 5 | HTTP: library import controller (list, preview, import, update, detach), API tests for every status (including 409 on a concurrent save), `make api` | delegated writer (slice 5) | [x] | |
+| T12 | 6 | Application + HTTP: `libraryChanges` on the GameSystem list and detail views, `librarySources` on release history, API tests, `make api` (moved from T7 for slice 5's size) | delegated writer (slice 6) | [ ] | |
+| T8 | 7 | Frontend: Library section on the Studio home, new-pack dialog, kind-aware `GameSystemPage` for packs (tabs, no publish/releases), hooks, tests, stories | delegated writer (slice 6) | [ ] | |
+| T9 | 8 | Frontend: Import dialog (pack picker, catalog by section, selection, preview with imports/overrides/conflicts/error) and the draft's Library tab (statuses, Update with confirm over local edits, Detach), 409 reload, tests, stories | delegated writer (slice 7) | [ ] | |
+| T10 | 6 | Frontend: `libraryChanges` badges on the draft list and Overview; library sources in release history; tests | delegated writer (slice 8) | [ ] | |
+| T11 | 9 | Playwright: author a pack (table + Scene Type naming it), import the Scene Type into a draft that overrides the table, change the pack, see the flag, update, publish; feature doc close | delegated writer (slice 8) | [ ] | |
 
 ## Progress
 
@@ -129,6 +133,7 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 - 2026-10-18: Slice 3 review fixes. `GetGameSystemLibraryImportsHandler` caches a missing pack with `array_key_exists`, so it is looked up once (counting-repository test; RED first). `libraryPacks()` deliberately skips `readable()`: that method only parses a row's imports and a pack never has any, so the two are equivalent for a well-formed pack and the skip is what keeps one malformed row from breaking the listing (bf22b4f); unchanged. A test pins the provenance decision: import, publish, detach, publish again is refused as unchanged and the earlier release keeps its `library_sources` (green on first run, no production change).
 - 2026-10-18: T6 done (backend). `GetLibraryPack` (`LibraryPackCatalog`: every `LibrarySection` in order, items in document order with `label` = name, else label, else key (`LibraryItems::labelOf`, shared with the imports view), `kind` table/likelihood for oracles only, and `dependsOn` = direct dependencies from `LibraryItems::dependenciesOf`). `LibraryPackController`: `GET`/`POST /api/studio/library/packs` and `GET /{pack}`; `POST` answers 201 with the GameSystem view (`GameSystemResponse`, `kind: library-pack`) and `Location` = the catalog URL. `GameSystemView`/`GameSystemResponse` gain `kind`. `LibraryPackRefuses` maps to 409 in the narrative (flows), sheet (fields, layout), check, release (publish, restore) and metadata (credits, theme) endpoints, each with an API test (RED first: 18 refusals failed before the mapping). API tests: 43 in `LibraryPackApiTest`; 2 handler tests.
 - 2026-10-18: Regenerated `openapi.json` and `schema.d.ts` (`make api`); `GameSystem.kind` is required in TypeScript, so the two `GameSystem` fixtures gained `kind: 'game-system'` and `tsc` passes.
+- 2026-10-18: T7 done (backend). `LibraryImportController` under `/api/studio/game-systems/{key}/library-imports`: `GET` (list), `POST /preview`, `POST` (import), `POST /{section}/{item}/update`, `DELETE /{section}/{item}?expectedVersion=N`. Every write answers 200 with `{version, imports}` (command, then `GetGameSystemLibraryImports`, which now returns `LibraryImportsView` = draft version + views, like the narrative read); detach returns the view too, as the narrative DELETE does. Statuses: malformed body or non-integer version 400, non-JSON 415, bad `items` (not a list, unknown section, key not a text) 422 with the path, unknown draft/pack/item/import 404 (an unknown section in the path never matches the route: 404), `LibraryItemKeyTaken`, `LibraryItemRemoved`, `LibraryPackRefuses`, stale or concurrent version 409, item-rule failure and schema 1 draft 422. A pack target answers 409 to import, preview and detach, but update is 404: a pack has no imports to update. RED: 44 API tests failed on the missing route; GREEN after the controller and DTOs (`LibraryImportApiTest`, 44 tests).
 
 ## Reviews
 
@@ -137,7 +142,8 @@ Slice 2 stopped at T4 (1,562 lines), so T5 became slice 3 and the plan grew to 8
 | 1 | `review-d6a850a27d4e8fc0` | cc9db7f..a77c28c | Approved, 2 suggestions: restore case for another owner's pack in `LibraryPackHandlersTest` (fixed in slice 2); map `LibraryPackRefuses` to 409 with API tests (slice 4, as planned) | #186 |
 | 2 | `review-dc0d296433561739` | 2369c36..f0e2702 | Approved, 2 findings, fixed in slice 3: `LibraryItems::dependenciesOf` matched path prefix `list[1]` against `list[10]`…; `libraryPacks()` parsed every pack's imports, so one malformed row broke every GM's listing | #187 |
 | 3 | `review-8163438989572aec` | bf22b4f..bdd35da | Approved, 3 findings, handled in slice 4: (warning) `library_sources` is only recorded on a new release, so a detach-only change keeps the last release's sources (decided: publish-time record, pinned by a test); (suggestion) `GetGameSystemLibraryImportsHandler` pack cache `??=` looks up a missing pack again (use `array_key_exists`); (suggestion) `libraryPacks()` bypasses `readable()` (verify equivalence) | #188 |
+| 4 | `review-e1f289f825a00d01` | f3bc6c0..a2d87fa (generated 19d12ab not reviewed, user choice) | Approved, no findings. Known for later: a malformed pack row makes its catalog 500 (same as a malformed draft); no API test reads a row stored before the `kind` column (defaults to `game-system`) | #189 |
 
 ## Next step
 
-Slice 4 (T6, library pack API) is being written on `feat/studio-library-4-pack-api`. Then native review and PR, then slice 5 (T7, library import API).
+Slice 5 (T7, library import API) is being written on `feat/studio-library-5-import-api`. Then native review and PR, then slice 6 (T12 + T10, change flags and provenance).

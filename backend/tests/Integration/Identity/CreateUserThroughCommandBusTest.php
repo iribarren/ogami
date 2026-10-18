@@ -84,6 +84,11 @@ final class CreateUserThroughCommandBusTest extends KernelTestCase
             {
                 return $this->inner->all();
             }
+
+            public function activeOwnersForUpdate(): array
+            {
+                return $this->inner->activeOwnersForUpdate();
+            }
         };
         $container->set(CreateUserHandler::class, new CreateUserHandler($racing, $container->get(PasswordHasher::class), $container->get(Clock::class)));
 

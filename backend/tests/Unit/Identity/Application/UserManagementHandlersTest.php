@@ -10,6 +10,7 @@ use App\Identity\Application\DisableUser;
 use App\Identity\Application\DisableUserHandler;
 use App\Identity\Application\EnableUser;
 use App\Identity\Application\EnableUserHandler;
+use App\Identity\Application\LastActiveOwner;
 use App\Identity\Application\ListUsers;
 use App\Identity\Application\ListUsersHandler;
 use App\Identity\Application\OwnAccountProtected;
@@ -40,6 +41,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(UserLoader::class)]
 #[CoversClass(UserView::class)]
 #[CoversClass(OwnAccountProtected::class)]
+#[CoversClass(LastActiveOwner::class)]
 #[CoversClass(UserNotFound::class)]
 final class UserManagementHandlersTest extends TestCase
 {
@@ -127,7 +129,7 @@ final class UserManagementHandlersTest extends TestCase
         (new DisableUserHandler($this->users, new UserLoader($this->users)))(new DisableUser(self::OWNER, self::ADA));
         self::assertSame(UserStatus::Disabled, $this->user(self::ADA)->status());
 
-        (new EnableUserHandler($this->users, new UserLoader($this->users)))(new EnableUser(self::OWNER, self::ADA));
+        (new EnableUserHandler($this->users, new UserLoader($this->users)))(new EnableUser(self::ADA));
         self::assertSame(UserStatus::Active, $this->user(self::ADA)->status());
     }
 
@@ -140,6 +142,65 @@ final class UserManagementHandlersTest extends TestCase
         } catch (OwnAccountProtected) {
             self::assertSame(UserStatus::Active, $this->user(self::OWNER)->status());
         }
+    }
+
+    #[Test]
+    public function itRefusesToDisableTheOnlyActiveOwner(): void
+    {
+        try {
+            $this->disable(self::ADA, self::OWNER);
+            self::fail('The only active owner was disabled.');
+        } catch (LastActiveOwner) {
+            self::assertSame(UserStatus::Active, $this->user(self::OWNER)->status());
+        }
+    }
+
+    #[Test]
+    public function itRefusesToDemoteTheOnlyActiveOwner(): void
+    {
+        try {
+            $this->changeRoles(self::ADA, self::OWNER, ['GAME_MANAGER']);
+            self::fail('The only active owner was demoted.');
+        } catch (LastActiveOwner) {
+            self::assertSame([Role::Owner], $this->user(self::OWNER)->roles());
+        }
+    }
+
+    #[Test]
+    public function anOwnerWhoseColleagueIsDisabledIsStillTheLastActiveOwner(): void
+    {
+        $this->add('owner-2', 'other@example.com', [Role::Owner]);
+        $this->user('owner-2')->disable();
+
+        $this->expectException(LastActiveOwner::class);
+
+        $this->disable(self::ADA, self::OWNER);
+    }
+
+    #[Test]
+    public function itAllowsRemovingAnOwnerWhenAnotherOwnerIsActive(): void
+    {
+        $this->add('owner-2', 'other@example.com', [Role::Owner]);
+
+        $this->changeRoles(self::ADA, 'owner-2', ['SOLO_PLAYER']);
+        self::assertSame([Role::SoloPlayer], $this->user('owner-2')->roles());
+
+        $this->user('owner-2')->changeRoles([Role::Owner]);
+        $this->disable(self::ADA, self::OWNER);
+        self::assertSame(UserStatus::Disabled, $this->user(self::OWNER)->status());
+    }
+
+    #[Test]
+    public function itLocksTheOwnersOnlyWhenOwnershipIsAtStake(): void
+    {
+        $this->disable(self::OWNER, self::ADA);
+        $this->changeRoles(self::OWNER, self::ADA, ['GAME_MANAGER']);
+        $this->changeRoles(self::ADA, self::OWNER, ['OWNER', 'GAME_MANAGER']);
+        self::assertSame(0, $this->users->ownerLocks);
+
+        $this->add('owner-2', 'other@example.com', [Role::Owner]);
+        $this->disable(self::ADA, 'owner-2');
+        self::assertSame(1, $this->users->ownerLocks);
     }
 
     /**
@@ -158,9 +219,9 @@ final class UserManagementHandlersTest extends TestCase
     {
         $loader = new UserLoader($this->users);
         $commands = [
-            static fn () => (new ChangeUserRolesHandler(new InMemoryUserRepository(), $loader))(new ChangeUserRoles(self::OWNER, $id, ['OWNER'])),
+            fn () => (new ChangeUserRolesHandler($this->users, $loader))(new ChangeUserRoles(self::OWNER, $id, ['OWNER'])),
             fn () => (new DisableUserHandler($this->users, $loader))(new DisableUser(self::OWNER, $id)),
-            fn () => (new EnableUserHandler($this->users, $loader))(new EnableUser(self::OWNER, $id)),
+            fn () => (new EnableUserHandler($this->users, $loader))(new EnableUser($id)),
         ];
 
         foreach ($commands as $command) {
@@ -171,6 +232,11 @@ final class UserManagementHandlersTest extends TestCase
                 self::assertStringContainsString($id, $exception->getMessage());
             }
         }
+    }
+
+    private function disable(string $actorId, string $userId): void
+    {
+        (new DisableUserHandler($this->users, new UserLoader($this->users)))(new DisableUser($actorId, $userId));
     }
 
     /**

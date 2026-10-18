@@ -11,6 +11,7 @@ use App\Identity\Domain\UserRepository;
 
 /**
  * Finds the user a command targets: an unknown or malformed id is "not found".
+ * Also tells whether a change would remove the last active owner.
  */
 final readonly class UserLoader
 {
@@ -39,5 +40,18 @@ final readonly class UserLoader
     public static function isSelf(string $actorId, User $target): bool
     {
         return $actorId === $target->id()->toString();
+    }
+
+    /**
+     * Whether the target is an active owner and no other active owner remains.
+     * Locks every active user row (see UserRepository::activeOwnersForUpdate),
+     * so call it only when the change removes the target's owner standing.
+     */
+    public function isLastActiveOwner(User $target): bool
+    {
+        $owners = $this->users->activeOwnersForUpdate();
+        $others = array_filter($owners, static fn (User $owner): bool => !$owner->id()->equals($target->id()));
+
+        return [] === $others && \count($owners) > 0;
     }
 }

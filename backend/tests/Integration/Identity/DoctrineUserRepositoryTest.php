@@ -99,6 +99,44 @@ final class DoctrineUserRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function activeOwnersForUpdateReadsFreshStateOfManagedUsers(): void
+    {
+        $ada = $this->user(self::ADA_ID, 'ada@example.com', [Role::Owner]);
+        $bob = $this->user(self::BOB_ID, 'bob@example.com', [Role::Owner]);
+        $this->users->save($ada);
+        $this->users->save($bob);
+
+        // Another transaction changes the rows behind the loaded entities.
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement("UPDATE identity_user SET status = 'disabled' WHERE id = ?", [self::ADA_ID]);
+        $connection->executeStatement("UPDATE identity_user SET roles = '[\"SOLO_PLAYER\"]' WHERE id = ?", [self::BOB_ID]);
+        self::assertSame(UserStatus::Active, $ada->status());
+
+        self::assertSame([], $this->entityManager->wrapInTransaction($this->users->activeOwnersForUpdate(...)));
+        self::assertSame(UserStatus::Disabled, $ada->status());
+        self::assertSame([Role::SoloPlayer], $bob->roles());
+    }
+
+    #[Test]
+    public function activeOwnersForUpdateListsActiveOwnersOrderedById(): void
+    {
+        $this->users->save($this->user(self::BOB_ID, 'bob@example.com', [Role::SoloPlayer, Role::Owner]));
+        $this->users->save($this->user(self::ADA_ID, 'ada@example.com', [Role::Owner]));
+        $this->users->save($this->user('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d', 'cy@example.com', [Role::GameManager]));
+        $disabled = $this->user('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5e', 'di@example.com', [Role::Owner]);
+        $disabled->disable();
+        $this->users->save($disabled);
+        $this->entityManager->clear();
+
+        $ids = array_map(
+            static fn (User $user): string => $user->id()->toString(),
+            $this->entityManager->wrapInTransaction($this->users->activeOwnersForUpdate(...)),
+        );
+
+        self::assertSame([self::ADA_ID, self::BOB_ID], $ids);
+    }
+
+    #[Test]
     public function itFindsNothingForUnknownUsers(): void
     {
         self::assertNull($this->users->ofId(UserId::fromString(self::BOB_ID)));

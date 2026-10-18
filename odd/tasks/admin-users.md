@@ -1,7 +1,7 @@
 # Feature: admin-users
 
 - **Locator:** `odd/tasks/admin-users.md` · Engram topic `odd/admin-users/tasks`
-- **Issue:** #197 · **Branch:** `feat/admin-users-1-user-lifecycle` · **Status:** in progress (slice 1)
+- **Issue:** #197 · **Branch:** `feat/admin-users-2-invitations` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-library` (PRs #186–#194)
@@ -43,7 +43,8 @@ Out of scope:
 | Removal (user, 2026-10-18) | **Disable only.** No delete; a disabled user's content stays |
 | User lifecycle (Claude) | `User` stops being readonly. New fields `status` (`UserStatus` enum `active`/`disabled`) and `createdAt`. Methods `changeRoles(list<Role>)` (at least one, de-duplicated, `UserMustHaveARole`), `disable()`, `enable()` (idempotent), `changePassword(string $hash)` (non-empty). Migration adds `status` (default `active`) and `created_at` (existing rows get the migration time); legacy rows read as active |
 | Own account (Claude) | `ChangeUserRoles` and `DisableUser` take the acting user's id. The owner cannot disable themselves or remove their own `OWNER` role: `OwnAccountProtected` (409). That keeps at least one active owner |
-| Disabled sign-in (Claude) | An Identity `UserChecker` refuses a disabled user before authentication with the same generic 401 as bad credentials. `IdentityUserProvider::refreshUser` treats a disabled user as gone, so the session ends on the next request |
+| Last active owner (Claude, slice 1 review) | Two owners can disable or demote each other at the same time. `DisableUser` and `ChangeUserRoles`, when the target is an active owner losing that standing, lock every user row (`SELECT … FOR UPDATE`, ordered by id, refreshing managed entities; the table is small) through `UserRepository::activeOwnersForUpdate()` and refuse with `LastActiveOwner` (409) when the target is the only active owner left |
+| Disabled sign-in (Claude) | An Identity `UserChecker` refuses a disabled user after the password check (`checkPostAuth`) with the same generic 401 as bad credentials. `IdentityUserProvider::refreshUser` treats a disabled user as gone, so the session ends on the next request |
 | User queries (Claude) | `UserRepository::all()` (ordered by email). `ListUsers` returns `UserView` gaining `status` and `createdAt`. `GET /api/auth/me` is unchanged |
 | Invitation (Claude) | Aggregate `Invitation` in Identity: id, email, roles, tokenHash, invitedBy (UserId), createdAt, expiresAt (createdAt + 7 days), status `pending`/`accepted`/`revoked`. Commands `InviteUser {email, roles, invitedBy}` (refuses an email with an account: `EmailAlreadyInUse` 409; with a pending, unexpired invitation: `InvitationAlreadyPending` 409; an expired pending one is replaced), `ResendInvitation` (new token and expiry; only pending, else `InvitationNotFound` 404), `RevokeInvitation` (pending → revoked; else 404), `AcceptInvitation {token, password}` (creates the active user with the roles, marks accepted, all in one transaction). Queries `ListInvitations` (pending, with `expired` flag), `LookupInvitation {token}` (email, roles, expiresAt) |
 | Password reset (Claude) | Aggregate `PasswordReset`: id, userId, tokenHash, createdAt, expiresAt (1 hour), usedAt. `RequestPasswordReset {email}` (self-service; unknown or disabled email does nothing, silently), `SendPasswordReset {userId}` (owner; 404 unknown, `UserDisabled` 409). A new reset deletes the user's older ones. `ResetPassword {token, password}` changes the hash, marks it used, deletes the user's other resets; refused for a disabled user |
@@ -51,6 +52,8 @@ Out of scope:
 | Password policy (Claude) | Through a link: 8–4,096 characters, else `WeakPassword` (422). `app:user:create` keeps its current rule |
 | Mail (Claude) | Install `symfony/mailer` only (no Twig). Identity Application port `AccountMailer` (`sendInvitation(email, link, roles, expiresAt)`, `sendPasswordReset(email, link, expiresAt)`); Infrastructure adapter builds `Symfony\Component\Mime\Email` text + inline HTML. Links use env `APP_PUBLIC_URL` (default `http://localhost:8080`): `/accept-invitation#token=…`, `/reset-password#token=…`. Mail is sent after the command's transaction commits (handler dispatches a mail message with `DispatchAfterCurrentBusStamp`, or equivalent). A transport failure answers 503 `MailUnavailable`; the invitation or reset stays |
 | Clock (Claude) | Identity gets its own `Clock` port and adapter, like Play and Studio |
+| Timestamps (Claude, slice 1 review) | `identity_user.created_at` stays a naive UTC column (UTC `SystemClock`, display only, same as Studio). New Identity tables (`Invitation`, `PasswordReset`) use `datetimetz_immutable`, so expiry comparisons never depend on the PHP or database time zone |
+| After-commit mail (Claude) | Application stays framework-free: handlers call the `AccountMailer` port. Its Infrastructure adapter dispatches an Infrastructure `SendAccountMail` message on `command.bus` with `DispatchAfterCurrentBusStamp`, so the outer command's `doctrine_transaction` commits first; the message handler sends through Symfony Mailer. A transport failure surfaces from `MessengerCommandBus` (unwrapping `DelayedMessageHandlingException`) as `MailUnavailable`; the stored invitation stays |
 | Rate limits (Claude) | `RequestPasswordReset` endpoint: 3 per 15 minutes per normalized email and 10 per hour per IP (`framework.rate_limiter`); over the limit still answers 202 and sends nothing. Token endpoints need no limiter (256-bit tokens) |
 | Public API (Claude) | Identity `AuthController` (public in `access_control`): `POST /api/auth/password-reset-requests {email}` → 202; `POST /api/auth/password-resets {token, password}` → 204; `POST /api/auth/invitations/lookup {token}` → 200 `{email, roles, expiresAt}`; `POST /api/auth/invitations/accept {token, password}` → 204. The SPA then signs in with the email and password (accept) or shows the login page (reset). 400/415/422 follow the existing error shape |
 | Admin API (Claude) | New `backend/src/Admin/Infrastructure/Http/` controllers dispatching Identity commands and queries; `access_control` `^/api/admin` → `ROLE_OWNER`. `GET /api/admin/users`; `PUT /api/admin/users/{id}/roles {roles}`; `POST /api/admin/users/{id}/disable`, `/enable`; `POST /api/admin/users/{id}/password-reset` → 202; `GET /api/admin/invitations`; `POST /api/admin/invitations {email, roles}` → 201; `POST /api/admin/invitations/{id}/resend`; `DELETE /api/admin/invitations/{id}`. 404 unknown user/invitation, 409 `OwnAccountProtected`/`EmailAlreadyInUse`/`InvitationAlreadyPending`/`UserDisabled`, 422 unknown role or no role, 503 mail. No optimistic lock: user rows are tiny and last write wins |
@@ -59,17 +62,18 @@ Out of scope:
 
 ## Design
 
-### Backend (slices 1–4)
+### Backend (slices 1–5)
 
 - Slice 1: user lifecycle (status, roles, password, createdAt), migration, `all()`, `UserChecker`, provider refresh, `ListUsers`, `ChangeUserRoles`, `DisableUser`, `EnableUser`, Identity `Clock`; Behat scenarios.
-- Slice 2: mailer install and port, `TokenGenerator`, `APP_PUBLIC_URL`, `Invitation` aggregate and persistence, invitation commands and queries; Behat scenarios.
-- Slice 3: `PasswordReset` aggregate and persistence, reset commands, rate limiters, the four public `/api/auth/…` endpoints, API tests, `make api`.
-- Slice 4: Admin controllers, `^/api/admin` access control, API tests for every status, `make api`.
+- Slice 2: slice 1 review fixes (last-active-owner guard); mailer install and port, `TokenGenerator`, `APP_PUBLIC_URL`, after-commit mail; `Invitation` aggregate and persistence, `InviteUser`; Behat scenarios.
+- Slice 3: the rest of the invitation lifecycle (resend, revoke, accept, list, lookup); `PasswordReset` aggregate and persistence.
+- Slice 4: password reset commands, rate limiters, the four public `/api/auth/…` endpoints, API tests, `make api`.
+- Slice 5: Admin controllers, `^/api/admin` access control, API tests for every status, `make api`.
 
-### Frontend (slices 5–6)
+### Frontend (slices 6–7)
 
-- Slice 5: Admin Users page and Invitations section, hooks, tests, stories.
-- Slice 6: public forgot/reset/accept pages, login link, e2e seed owner, Mailpit helper, Playwright scenarios, feature close.
+- Slice 6: Admin Users page and Invitations section, hooks, tests, stories.
+- Slice 7: public forgot/reset/accept pages, login link, e2e seed owner, Mailpit helper, Playwright scenarios, feature close.
 
 ## Constraints
 
@@ -85,27 +89,33 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/admin-users-1-user-lifecycle` | `feat(identity): admin-users 1/6 user lifecycle` | T1, T2, T3 | ~1,200 |
-| 2 | `feat/admin-users-2-invitations` | `feat(identity): admin-users 2/6 invitations and mail` | T4, T5 | ~1,500 |
-| 3 | `feat/admin-users-3-password-reset` | `feat(identity): admin-users 3/6 password reset and public account links` | T6, T7 | ~1,600 incl. ~350 generated |
-| 4 | `feat/admin-users-4-admin-api` | `feat(admin): admin-users 4/6 admin API` | T8 | ~1,500 incl. ~450 generated |
-| 5 | `feat/admin-users-5-admin-ui` | `feat(admin): admin-users 5/6 users and invitations in Admin` | T9 | ~1,500 |
-| 6 | `feat/admin-users-6-account-pages-e2e` | `feat(identity): admin-users 6/6 account pages and end to end` | T10, T11 | ~1,300 |
+| 2 | `feat/admin-users-2-invitations` | `feat(identity): admin-users 2/7 mail and invitations` | T12, T4, T5 | ~1,650 incl. ~300 composer.lock |
+| 3 | `feat/admin-users-3-account-links` | `feat(identity): admin-users 3/7 invitation lifecycle and password reset model` | T13, T6 | ~1,500 |
+| 4 | `feat/admin-users-4-public-api` | `feat(identity): admin-users 4/7 password reset and public account endpoints` | T14, T7 | ~1,500 incl. ~350 generated |
+| 5 | `feat/admin-users-5-admin-api` | `feat(admin): admin-users 5/7 admin API` | T8 | ~1,500 incl. ~450 generated |
+| 6 | `feat/admin-users-6-admin-ui` | `feat(admin): admin-users 6/7 users and invitations in Admin` | T9 | ~1,500 |
+| 7 | `feat/admin-users-7-account-pages-e2e` | `feat(identity): admin-users 7/7 account pages and end to end` | T10, T11 | ~1,300 |
+
+Replanned at slice 2 (2026-10-18): slice 1 came in at 1,514 lines against a 1,200 forecast, and mail plus the full invitation lifecycle forecast at ~2,200, so the backend moved from four slices to five.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0034 and index row; glossary User (active/disabled), Invitation, Password reset; context map Identity & Access and Admin | inline (parent: design authored this session) | [x] | |
-| T2 | 1 | Domain + persistence: mutable `User` with `UserStatus`, `createdAt`, `changeRoles`, `disable`/`enable`, `changePassword`; migration (`status` default active, `created_at`); mapping; `UserRepository::all()`; Identity `Clock` port + adapter; legacy rows read as active; fakes updated | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Application + security: `ListUsers`, `ChangeUserRoles`, `DisableUser`, `EnableUser` (actor id, `OwnAccountProtected`, `UserNotFound`, `UnknownRole`); `UserView` gains status and createdAt; `UserChecker` refuses disabled users (generic 401); `refreshUser` drops disabled users; Behat scenarios; integration test that a disabled user's session ends | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0034 and index row; glossary User (active/disabled), Invitation, Password reset; context map Identity & Access and Admin | inline (parent: design authored this session) | [x] | 58e4837 |
+| T2 | 1 | Domain + persistence: mutable `User` with `UserStatus`, `createdAt`, `changeRoles`, `disable`/`enable`, `changePassword`; migration (`status` default active, `created_at`); mapping; `UserRepository::all()`; Identity `Clock` port + adapter; legacy rows read as active; fakes updated | delegated writer (slice 1) | [x] | 288ea9a |
+| T3 | 1 | Application + security: `ListUsers`, `ChangeUserRoles`, `DisableUser`, `EnableUser` (actor id, `OwnAccountProtected`, `UserNotFound`, `UnknownRole`); `UserView` gains status and createdAt; `UserChecker` refuses disabled users (generic 401); `refreshUser` drops disabled users; Behat scenarios; integration test that a disabled user's session ends | delegated writer (slice 1) | [x] | 35f83de |
+| T12 | 2 | Slice 1 review fixes: last-active-owner guard (`activeOwnersForUpdate`, `LastActiveOwner`); drop unused `EnableUser::actorId`; `User` docblock; test nits (`UserManagementHandlersTest` repository mismatch, `DisabledUserApiTest` owner fixture role) | delegated writer (slice 2) | [ ] | |
 | T4 | 2 | Mail + tokens: install `symfony/mailer`, `AccountMailer` port and adapter (text + HTML), `APP_PUBLIC_URL`, `TokenGenerator` port and adapter, after-commit mail dispatch, `MailUnavailable` | delegated writer (slice 2) | [ ] | |
-| T5 | 2 | Invitations: `Invitation` aggregate, repository + migration (token hash unique), `InviteUser`, `ResendInvitation`, `RevokeInvitation`, `AcceptInvitation`, `ListInvitations`, `LookupInvitation`, `InvalidAccountLink`, `WeakPassword`; Behat scenarios; Mailpit-free mailer test with a spy | delegated writer (slice 2) | [ ] | |
-| T6 | 3 | Password reset: `PasswordReset` aggregate, repository + migration, `RequestPasswordReset`, `SendPasswordReset`, `ResetPassword`; rate limiters; Behat scenarios | delegated writer (slice 3) | [ ] | |
-| T7 | 3 | Public HTTP: `/api/auth/password-reset-requests`, `/password-resets`, `/invitations/lookup`, `/invitations/accept`; `access_control`; API tests for every status (incl. rate limit and disabled user); `make api` | delegated writer (slice 3) | [ ] | |
-| T8 | 4 | Admin HTTP: users (list, roles, disable, enable, password reset) and invitations (list, invite, resend, revoke) controllers; `^/api/admin` → `ROLE_OWNER`; API tests for every status incl. 403 for non-owners; `make api` | delegated writer (slice 4) | [ ] | |
-| T9 | 5 | Frontend Admin: Users page (table, roles dialog, disable/enable confirm, send reset link, own-row guards), Invitations section (list, invite dialog, resend, revoke), shadcn checkbox, hooks, tests, stories | delegated writer (slice 5) | [ ] | |
-| T10 | 6 | Frontend public pages: `/forgot-password`, `/reset-password`, `/accept-invitation` (token from the fragment), login page link; tests, stories | delegated writer (slice 6) | [ ] | |
-| T11 | 6 | e2e: seed owner, Mailpit helper, invite → accept → sign in, disable → refused, forgot → reset → sign in; feature doc close | delegated writer (slice 6) | [ ] | |
+| T5 | 2 | Invitations: `Invitation` aggregate (`InvitationStatus`), repository + migration (token hash unique, `datetimetz_immutable`), `InviteUser` (`InvitationAlreadyPending`, expired pending replaced); Behat scenarios with a spy mailer; integration test that the mail leaves after commit and that a transport failure gives `MailUnavailable` with the invitation kept | delegated writer (slice 2) | [ ] | |
+| T13 | 3 | Invitation lifecycle: `ResendInvitation`, `RevokeInvitation`, `AcceptInvitation`, `ListInvitations`, `LookupInvitation`, `InvitationNotFound`, `InvalidAccountLink`, `WeakPassword`; Behat scenarios | delegated writer (slice 3) | [ ] | |
+| T6 | 3 | Password reset model: `PasswordReset` aggregate, repository + migration | delegated writer (slice 3) | [ ] | |
+| T14 | 4 | Password reset commands: `RequestPasswordReset`, `SendPasswordReset`, `ResetPassword`; Behat scenarios | delegated writer (slice 4) | [ ] | |
+| T7 | 4 | Public HTTP: `/api/auth/password-reset-requests`, `/password-resets`, `/invitations/lookup`, `/invitations/accept`; rate limiters; `access_control`; API tests for every status (incl. rate limit and disabled user); `make api` | delegated writer (slice 4) | [ ] | |
+| T8 | 5 | Admin HTTP: users (list, roles, disable, enable, password reset) and invitations (list, invite, resend, revoke) controllers; `^/api/admin` → `ROLE_OWNER`; API tests for every status incl. 403 for non-owners; `make api` | delegated writer (slice 5) | [ ] | |
+| T9 | 6 | Frontend Admin: Users page (table, roles dialog, disable/enable confirm, send reset link, own-row guards), Invitations section (list, invite dialog, resend, revoke), shadcn checkbox, hooks, tests, stories | delegated writer (slice 6) | [ ] | |
+| T10 | 7 | Frontend public pages: `/forgot-password`, `/reset-password`, `/accept-invitation` (token from the fragment), login page link; tests, stories | delegated writer (slice 7) | [ ] | |
+| T11 | 7 | e2e: seed owner, Mailpit helper, invite → accept → sign in, disable → refused, forgot → reset → sign in; feature doc close | delegated writer (slice 7) | [ ] | |
 
 ## Progress
 
@@ -118,7 +128,8 @@ Forecasts include tests, docs and generated files. The hard ceiling is about 1,7
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-b2f73d117f9d5f78` approved, acknowledged | 58e4837, 288ea9a, 35f83de | Non-blocking: concurrent owners can leave no active owner; naive `created_at` depends on a UTC runtime; stale `User` docblock; feature doc wording on the checker; unused `EnableUser::actorId`; test nits. Fixed in slice 2 (T12, Decisions) | [#198](https://github.com/iribarren/ogami/pull/198) |
 
 ## Next step
 
-Slice 1: T2–T3 on `feat/admin-users-1-user-lifecycle`.
+Slice 2: T12, T4, T5 on `feat/admin-users-2-invitations`.

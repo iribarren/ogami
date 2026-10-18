@@ -39,6 +39,21 @@ Feature: User management
     Then the change is rejected because the own account is protected
     And the user "owner@example.com" is "active"
 
+  Scenario: The only active owner cannot be disabled by someone else
+    When "ada@example.com" disables "owner@example.com"
+    Then the change is rejected because it would leave no active owner
+    And the user "owner@example.com" is "active"
+
+  Scenario: The only active owner cannot lose the OWNER role through someone else
+    When "ada@example.com" changes the roles of "owner@example.com" to "GAME_MANAGER"
+    Then the change is rejected because it would leave no active owner
+    And the user "owner@example.com" has roles "OWNER"
+
+  Scenario: An owner can be disabled while another owner is active
+    Given an owner exists with email "second@example.com"
+    When "second@example.com" disables "owner@example.com"
+    Then the user "owner@example.com" is "disabled"
+
   Scenario: Disabling and enabling a user
     When "owner@example.com" disables "ada@example.com"
     Then the user "ada@example.com" is "disabled"

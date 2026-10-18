@@ -12,6 +12,7 @@ use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\BrowserKit\Cookie;
 use Symfony\Component\Mailer\Exception\TransportException;
 
 /**
@@ -128,8 +129,13 @@ final class AdminUsersApiTest extends AdminApiTestCase
     #[Test]
     public function disablingEndsTheSessionAndEnablingRestoresSignIn(): void
     {
-        $this->signInAs();
         $adaId = $this->createUser('ada@example.com');
+        $this->login('ada@example.com', self::PASSWORD);
+        self::assertResponseStatusCodeSame(200);
+        $adaSession = $this->client->getCookieJar()->all();
+        $this->client->getCookieJar()->clear();
+        $this->signInAs();
+        $ownerSession = $this->client->getCookieJar()->all();
 
         foreach (range(1, 2) as $unused) {
             $this->send('POST', self::USERS."/$adaId/disable");
@@ -138,10 +144,26 @@ final class AdminUsersApiTest extends AdminApiTestCase
         }
         self::assertSame('disabled', $this->users()[0]['status']);
 
+        // Ada's open session ends, and a new sign-in is refused while she is disabled.
+        $this->useSession($adaSession);
+        $this->client->request('GET', '/api/auth/me');
+        self::assertResponseStatusCodeSame(401);
+        $this->useSession([]);
+        $this->login('ada@example.com', self::PASSWORD);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->useSession($ownerSession);
         $this->send('POST', self::USERS."/$adaId/enable");
         self::assertResponseStatusCodeSame(204);
         self::assertSame('', $this->content());
         self::assertSame('active', $this->users()[0]['status']);
+
+        $this->useSession([]);
+        $this->login('ada@example.com', self::PASSWORD);
+        self::assertResponseStatusCodeSame(200);
+        $this->client->request('GET', '/api/auth/me');
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame('ada@example.com', $this->json()['email']);
     }
 
     #[Test]
@@ -235,14 +257,13 @@ final class AdminUsersApiTest extends AdminApiTestCase
     }
 
     /**
-     * @param list<string> $values
-     *
-     * @return list<string>
+     * @param array<Cookie> $cookies
      */
-    private function sorted(array $values): array
+    private function useSession(array $cookies): void
     {
-        sort($values);
-
-        return $values;
+        $this->client->getCookieJar()->clear();
+        foreach ($cookies as $cookie) {
+            $this->client->getCookieJar()->set($cookie);
+        }
     }
 }

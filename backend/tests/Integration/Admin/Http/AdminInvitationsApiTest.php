@@ -217,16 +217,4 @@ final class AdminInvitationsApiTest extends AdminApiTestCase
         }
         self::assertSame([], $this->mailer->sent);
     }
-
-    /**
-     * @param list<string> $values
-     *
-     * @return list<string>
-     */
-    private function sorted(array $values): array
-    {
-        sort($values);
-
-        return $values;
-    }
 }

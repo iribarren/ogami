@@ -49,7 +49,7 @@ final readonly class PublicAccountController
         private QueryBus $queryBus,
         private PasswordResetIdGenerator $resetIds,
         private UserIdGenerator $userIds,
-        private RateLimiterFactoryInterface $passwordResetEmailLimiter,
+        private RateLimiterFactoryInterface $passwordResetEmailIpLimiter,
         private RateLimiterFactoryInterface $passwordResetIpLimiter,
         private LoggerInterface $logger,
     ) {
@@ -85,7 +85,7 @@ final readonly class PublicAccountController
         // The email allowance is per email and IP: keyed on the email alone, anyone could use up a victim's quota.
         $ip = $request->getClientIp() ?? 'unknown';
         $limited = array_keys(array_filter([
-            'password_reset_email' => !$this->passwordResetEmailLimiter->create($address.'|'.$ip)->consume()->isAccepted(),
+            'password_reset_email_ip' => !$this->passwordResetEmailIpLimiter->create($address.'|'.$ip)->consume()->isAccepted(),
             'password_reset_ip' => !$this->passwordResetIpLimiter->create($ip)->consume()->isAccepted(),
         ]));
         if ([] !== $limited) {

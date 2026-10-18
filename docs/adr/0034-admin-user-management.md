@@ -24,4 +24,5 @@ Ogami is for one to a few people ([vision](../vision.md)). Today a user exists o
 - Identity gains its first email dependency and its first public, unauthenticated write endpoints, so it needs rate limits.
 - A user's roles or password changing ends their current session, as Symfony Security does today. A role change therefore signs the user out.
 - The self-service password reset sends its mail inside the request, and only for an existing account, so its response time can reveal whether an email has an account (accepted risk). Revisit it when an async mail transport lands.
+- The reset request limiter is keyed on email and client IP, so someone rotating IPs can send many reset mails to one address (accepted risk, decided 2026-10-18). There is no email-only cap: it would let anyone block a victim's own resets.
 - Emails cannot be changed and accounts cannot be deleted. Either needs a new decision.

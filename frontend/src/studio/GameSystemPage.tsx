@@ -14,6 +14,7 @@ import {
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { LibraryChangesBadge } from './LibraryChangesBadge'
+import { LibraryTab } from './library/LibraryTab'
 import { MetadataForm } from './MetadataForm'
 import { NarrativeTab } from './narrative/NarrativeTab'
 import { FlowsTab } from './narrative/flows/FlowsTab'
@@ -41,6 +42,7 @@ type Tab =
   | 'flows'
   | 'sheet'
   | 'checks'
+  | 'library'
   | 'validation'
   | 'releases'
   | 'sections'
@@ -197,6 +199,7 @@ function GameSystemView({
         {!pack && <SegmentedControlItem value="flows">Flows</SegmentedControlItem>}
         {!pack && <SegmentedControlItem value="sheet">Sheet</SegmentedControlItem>}
         {!pack && <SegmentedControlItem value="checks">Checks</SegmentedControlItem>}
+        {!pack && <SegmentedControlItem value="library">Library</SegmentedControlItem>}
         <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
         {!pack && <SegmentedControlItem value="releases">Releases</SegmentedControlItem>}
         {!pack && <SegmentedControlItem value="sections">Sections</SegmentedControlItem>}
@@ -214,6 +217,9 @@ function GameSystemView({
       {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
       {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
       {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
+      {tab === 'library' && (
+        <LibraryTab gameSystemKey={gameSystem.key} schemaVersion={gameSystem.schemaVersion} />
+      )}
       {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} pack={pack} />}
       {tab === 'releases' && (
         <ReleasesTab

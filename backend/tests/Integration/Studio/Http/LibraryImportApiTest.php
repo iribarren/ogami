@@ -499,13 +499,19 @@ final class LibraryImportApiTest extends WebTestCase
         $this->library();
         $this->importItem('tags', 'social');
         $this->draft('healthy');
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/healthy/library-imports', ['expectedVersion' => 1, 'pack' => 'generic', 'items' => [['section' => 'tags', 'key' => 'social']]]);
+        self::assertResponseIsSuccessful();
+        $this->as('ann');
+        $this->client->jsonRequest('PUT', self::GAME_SYSTEMS.'/generic/narrative/tags/social', ['expectedVersion' => $this->packVersion++, 'item' => ['key' => 'social', 'label' => 'Social v2']]);
+        self::assertResponseIsSuccessful();
+        $this->as('bob');
         $this->corruptImports();
 
         $this->client->request('GET', self::GAME_SYSTEMS);
         self::assertResponseIsSuccessful();
         $changes = array_column($this->json(), 'libraryChanges', 'key');
         self::assertSame(0, $changes['my-game'] ?? null, 'The corrupt draft is listed with no changes.');
-        self::assertSame(0, $changes['healthy'] ?? null, 'The healthy draft is listed too.');
+        self::assertSame(1, $changes['healthy'] ?? null, 'A readable draft next to the corrupt one keeps its changes.');
 
         $this->client->request('GET', self::GAME_SYSTEMS.'/my-game');
         self::assertResponseIsSuccessful();

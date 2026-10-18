@@ -1,4 +1,5 @@
 import type { GameSystem } from '../useGameSystems'
+import type { LibraryImportPreview, LibraryImports } from './useLibraryImports'
 import type { LibraryPackCatalog, LibraryPackSummary } from './useLibraryPacks'
 
 // Shared by the library tests and stories.
@@ -92,4 +93,87 @@ export const packSystem: GameSystem = {
   libraryChanges: 0,
   createdAt: '2026-10-15T09:00:00+00:00',
   updatedAt: '2026-10-16T09:00:00+00:00',
+}
+
+const fantasyBasics = { key: 'fantasy-basics', name: 'Fantasy basics' }
+
+/** What a draft imported: one of each status, one edited locally, one whose pack is gone. */
+export const importsMixed: LibraryImports = {
+  version: 4,
+  imports: [
+    {
+      section: 'oracles',
+      key: 'names',
+      label: 'Names',
+      pack: fantasyBasics,
+      status: 'current',
+      editedLocally: false,
+    },
+    {
+      section: 'trackers',
+      key: 'fame',
+      label: 'Fame',
+      pack: null,
+      status: 'removed',
+      editedLocally: false,
+    },
+    {
+      section: 'tags',
+      key: 'social',
+      label: 'Social',
+      pack: fantasyBasics,
+      status: 'changed',
+      editedLocally: false,
+    },
+    {
+      section: 'scene-types',
+      key: 'tavern',
+      label: 'Tavern',
+      pack: fantasyBasics,
+      status: 'changed',
+      editedLocally: true,
+    },
+  ],
+}
+
+/** A draft that imported nothing yet. */
+export const importsNone: LibraryImports = { version: 4, imports: [] }
+
+/** The Scene Type and what it needs: nothing is kept, nothing conflicts. */
+export const previewClean: LibraryImportPreview = {
+  imports: [
+    { section: 'oracles', key: 'names' },
+    { section: 'tags', key: 'social' },
+    { section: 'scene-types', key: 'tavern' },
+  ],
+  overrides: [],
+  conflicts: [],
+  error: null,
+}
+
+/** The draft already has the tag `social`: it keeps its own. */
+export const previewWithOverride: LibraryImportPreview = {
+  ...previewClean,
+  imports: [
+    { section: 'oracles', key: 'names' },
+    { section: 'scene-types', key: 'tavern' },
+  ],
+  overrides: [{ section: 'tags', key: 'social' }],
+}
+
+/** The draft already has the requested Scene Type: the import would be refused. */
+export const previewConflict: LibraryImportPreview = {
+  imports: [],
+  overrides: [],
+  conflicts: [{ section: 'scene-types', key: 'tavern' }],
+  error: null,
+}
+
+/** The result would break an item rule. */
+export const previewError: LibraryImportPreview = {
+  ...previewClean,
+  error: {
+    path: 'sceneTypes[0].closing[0]',
+    message: 'tracker "fame" is not a tracker of the draft',
+  },
 }

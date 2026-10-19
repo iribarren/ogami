@@ -63,7 +63,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 
 ## Backlog
 
-Items here come after every feature defined above. Build them in this order: fixes and tooling first, then guided-play polish before the next playtests, then each rules feature right before the presets that need it. Only `preset-cpr-campaign` needs `play-items-economy`; `preset-west-marches` uses it for shops only.
+Items here come after every feature defined above. Build them in this order: fixes and tooling first, then guided-play and theme polish before the next playtests, then each rules feature right before the presets that need it. Only `preset-cpr-campaign` needs `play-items-economy`; `preset-west-marches` uses it for shops only.
 
 | # | Item | Area | Depends on | Idea |
 |---|---|---|---|---|
@@ -71,17 +71,18 @@ Items here come after every feature defined above. Build them in this order: fix
 | B2 | `identity-account-error-codes` | Identity | — | Account-link errors (`InvalidAccountLink`, `WeakPassword`) answer a machine-readable code next to the message, so the public account pages stop matching the English text (`frontend/src/app/account/accountApi.ts`). Follow-up of `admin-users` (slice 8 review). One slice, API change |
 | B3 | `e2e-shared-sign-in` | Tooling | — | One shared Playwright sign-in helper next to `frontend/e2e/mailpit.ts` instead of a copy per spec. Follow-up of `admin-users` (slice 8 review). One `chore/` slice, no behaviour change |
 | B4 | `play-guided-polish` | Play | — | Fix the open playtest findings of features 9 and 9b ([P7–P13](../odd/tasks/preset-mythic-flow.md#playtest-findings), [N8–N13](../odd/tasks/preset-guided-sample.md#playtest-findings)): roll outcomes not interpreted, silent tracker effects, "Next:" previews of branch-only steps, scene numbering across sessions and world turns, stale guide tips, steps that should show only on a condition. Before the next preset playtests, so they find new gaps instead of the same ones |
-| B5 | `play-journal-attachments` | Play | — | Write a note and attach hand-picked roll and oracle results from the current scene. `play-campaign-journal` records each result as its own entry |
-| B6 | `preset-pbta` | Preset | B4 | A Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands fit the contract today: no contract change. Authored in Studio, as the first end-to-end proof of M4 on a new system |
-| B7 | `rules-dice-pools` | Rules | B4 | Close the pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md) once, across the contract, Play, the Studio check editor and the release upgrade planner: a dice count read from the sheet, counting successes per die, pushed rolls (re-roll the dice that did not succeed) and conditions as sheet effects |
-| B8 | `preset-vaesen` | Preset | B7 | A Vaesen preset on the Year Zero SRD, under Free League's free license: d6 pools, sixes as successes, pushed rolls and conditions from B7 |
-| B9 | `preset-vtm-chronicle` | Preset | B7 | A Vampire: the Masquerade night-court sandbox fan preset ([example 1](domain/flow-examples.md#1-vtm-chronicle-sandbox)): d10 pools from B7, plus critical pairs and Hunger dice. The Dark Pack license is non-commercial: check it fits before starting |
-| B10 | `play-items-economy` | Play | — | Structured items with quantity, cost and slots, a currency and a `shop` step kind. Until then gear is a flat sheet `list` and money a tracker or a `number` field ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). Built right before the first preset that needs it, B11 |
-| B11 | `preset-cpr-campaign` | Preset | B10 | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)), preferably a second Flow in the `night-job` GameSystem, so the heist one-shot can grow into a campaign through B12 |
-| B12 | `play-campaign-transfer` | Play | B11 | Start a new campaign with another flow of the same GameSystem, carrying over Campaign facts, NPCs and Threads (e.g. a one-shot that grows into a campaign). Until then a campaign's flow is fixed, with only guidance pause and resume ([ADR 0017](adr/0017-narrativeflow-model.md)). After B11, the first GameSystem with a one-shot and a campaign Flow |
-| B13 | `play-places` | Play | — | Settle the vision question "How are places modeled?" and add a `select` sheet field type: the two West Marches gaps no other item closes |
-| B14 | `preset-west-marches` | Preset | B7, B10, B13 | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)): conditions from B7, shops from B10, places and a class `select` field from B13; HP and spell slots as sheet effects ([ADR 0027](adr/0027-sheet-effects.md)) |
-| B15 | `preset-ironsworn` | Preset | B6 | Optional. Ironsworn under CC BY 4.0: challenge dice (an action score against two d10), momentum below zero and vow progress tracks |
+| B5 | `ui-theme-polish` | UI | — | Give the UI depth and a game feel, following the [design canvas](https://claude.ai/artifact/6MWYwPaXvQVUJYb7cXGiSo) (private): a `--well` token so inputs sit sunken instead of matching their card, layered card shadows and a background texture per theme, lucide icons on panel headers, dice buttons and actions, and per-theme embellishments (title mark, label style, divider ornament, panel frame, drop cap, tracker pip shape) so every campaign theme feels as distinct as Neon. Before the preset playtests, so they judge the finished look |
+| B6 | `play-journal-attachments` | Play | — | Write a note and attach hand-picked roll and oracle results from the current scene. `play-campaign-journal` records each result as its own entry |
+| B7 | `preset-pbta` | Preset | B4 | A Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands fit the contract today: no contract change. Authored in Studio, as the first end-to-end proof of M4 on a new system |
+| B8 | `rules-dice-pools` | Rules | B4 | Close the pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md) once, across the contract, Play, the Studio check editor and the release upgrade planner: a dice count read from the sheet, counting successes per die, pushed rolls (re-roll the dice that did not succeed) and conditions as sheet effects |
+| B9 | `preset-vaesen` | Preset | B8 | A Vaesen preset on the Year Zero SRD, under Free League's free license: d6 pools, sixes as successes, pushed rolls and conditions from B8 |
+| B10 | `preset-vtm-chronicle` | Preset | B8 | A Vampire: the Masquerade night-court sandbox fan preset ([example 1](domain/flow-examples.md#1-vtm-chronicle-sandbox)): d10 pools from B8, plus critical pairs and Hunger dice. The Dark Pack license is non-commercial: check it fits before starting |
+| B11 | `play-items-economy` | Play | — | Structured items with quantity, cost and slots, a currency and a `shop` step kind. Until then gear is a flat sheet `list` and money a tracker or a `number` field ([ADR 0025](adr/0025-items-and-shops-after-the-mvp.md)). Built right before the first preset that needs it, B12 |
+| B12 | `preset-cpr-campaign` | Preset | B11 | A Cyberpunk RED campaign in acts fan preset ([example 4](domain/flow-examples.md#4-cyberpunk-red-campaign-in-acts)), preferably a second Flow in the `night-job` GameSystem, so the heist one-shot can grow into a campaign through B13 |
+| B13 | `play-campaign-transfer` | Play | B12 | Start a new campaign with another flow of the same GameSystem, carrying over Campaign facts, NPCs and Threads (e.g. a one-shot that grows into a campaign). Until then a campaign's flow is fixed, with only guidance pause and resume ([ADR 0017](adr/0017-narrativeflow-model.md)). After B12, the first GameSystem with a one-shot and a campaign Flow |
+| B14 | `play-places` | Play | — | Settle the vision question "How are places modeled?" and add a `select` sheet field type: the two West Marches gaps no other item closes |
+| B15 | `preset-west-marches` | Preset | B8, B11, B14 | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)): conditions from B8, shops from B11, places and a class `select` field from B14; HP and spell slots as sheet effects ([ADR 0027](adr/0027-sheet-effects.md)) |
+| B16 | `preset-ironsworn` | Preset | B7 | Optional. Ironsworn under CC BY 4.0: challenge dice (an action score against two d10), momentum below zero and vow progress tracks |
 
 ## Starter prompts
 
@@ -363,67 +364,73 @@ Start feature `e2e-shared-sign-in` (ODD). Tooling: replace the per-spec Playwrig
 Start feature `play-guided-polish` (ODD). Play: fix the open playtest findings of `preset-mythic-flow` (P7–P13) and `preset-guided-sample` (N8–N13), listed under "Playtest findings" in their feature docs. First check each one against the current code (later features fixed some in part, e.g. the New scene form hidden while a Flow guides) and drop the ones already fixed. Expected themes: interpret a roll step's outcome in the journal; journal lines for tracker effects and Scene Type switches; no "Next:" preview of a branch-only step or before the dice decide; scene numbers per session and none for world turns; guide tips and "So far" reset after a scene; links from list-update prompts to the Threads and NPCs panels; random events tied to their fate question; steps shown only when a condition holds. Decide per finding whether it is a Play fix or a contract change, and keep contract changes additive in schema version 2. Replay a short guided session in Chrome to confirm. Out of scope: new step kinds beyond what a finding needs.
 ```
 
-**B5. play-journal-attachments**
+**B5. ui-theme-polish**
+
+```text
+Start feature `ui-theme-polish` (ODD). Frontend only: give the app depth and a game feel, following the design canvas https://claude.ai/artifact/6MWYwPaXvQVUJYb7cXGiSo (the campaign Play screen in the default theme and the five campaign themes, plus an inputs now-vs-proposed board). 1) Depth: a `--well` token per palette in `index.css` (sunken background plus inset shadow) used by Input, Textarea, NativeSelect and read-out surfaces (last roll, oracle answer, empty tracker pips); layered card shadows; a subtle background texture per theme. 2) Icons: lucide-react icons in tiles on PlayPanel headers, the step card, the journal and icon-only buttons; dice buttons drawn as their die shapes. 3) Per-theme embellishments as theme tokens and CSS, not per-component branches: label style, title treatment and mark, a divider ornament, panel frame, a drop cap on journal prose, tracker pip and icon tile shapes. Storybook stories per theme for the touched components. Out of scope: new themes, layout changes.
+```
+
+**B6. play-journal-attachments**
 
 ```text
 Start feature `play-journal-attachments` (ODD). Play: write a journal note and attach hand-picked roll and oracle results from the current scene, shown together in the journal. Builds on the journal entries of `play-campaign-journal`, where each result is its own entry. Out of scope: attaching results from other scenes, editing entries.
 ```
 
-**B6. preset-pbta**
+**B7. preset-pbta**
 
 ```text
 Start feature `preset-pbta` (ODD). Author a Powered by the Apocalypse preset in Studio, not as hand-written JSON: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands (miss, partial, full) fit the contract today, so no contract change is planned; log every Studio friction as a finding. Export the published release into `backend/presets/` so `make presets` keeps it. Fan-content rule (ADR 0018) and credits with the publisher's notice (ADR 0021). Play a session and log findings. This is the first end-to-end proof of M4 on a new system.
 ```
 
-**B7. rules-dice-pools**
+**B8. rules-dice-pools**
 
 ```text
 Start feature `rules-dice-pools` (ODD). Close the dice pool gaps of ADR 0024 once, before the presets that need them (Vaesen, VtM, West Marches): a dice count read from the sheet (pools sized by a stat or a formula), counting successes per die against a face threshold, pushed rolls (re-roll the dice that did not succeed, once, with a cost the release declares), and conditions as sheet effects (ADR 0027). Additive in schema version 2 unless the design needs a new version; record the design as an ADR. Every layer: contract and publisher, anti-corruption layer, Play checks (panel and `check` step), the Studio check editor and its test-roll sandbox, and the release upgrade planner (ADR 0035). Leave room for VtM's critical pairs and Hunger dice (a second die colour in the pool) without building them. Out of scope: exploding dice, opposed rolls, scripting.
 ```
 
-**B8. preset-vaesen**
+**B9. preset-vaesen**
 
 ```text
 Start feature `preset-vaesen` (ODD). Author a Vaesen preset on the Year Zero SRD under Free League's free license, in original wording, in Studio where it can: attributes and skills, d6 pools with sixes as successes, pushed rolls and conditions from `rules-dice-pools`, a mystery investigation flow. Credits carry the license notice (ADR 0021). Play a session; fix the gaps it reveals and log UX findings.
 ```
 
-**B9. preset-vtm-chronicle**
+**B10. preset-vtm-chronicle**
 
 ```text
 Start feature `preset-vtm-chronicle` (ODD). First check that the Dark Pack license (non-commercial) fits; stop if it does not. Author a Vampire: the Masquerade night-court sandbox fan preset, following example 1 of docs/domain/flow-examples.md: a Session Zero that fills city, era, tone, ruling sect, prince and faction facts with tagged leader NPCs; ambition and desire Threads in fact slots, driven by session hooks; a chronicle loop with a night counter, a masquerade tracker and a hunters clock; world turns with night events. d10 pools come from `rules-dice-pools`; this feature adds critical pairs and Hunger dice to the check contract (every layer, as `rules-dice-pools` did). Fan-content rule (ADR 0018): no verbatim book text or page references; show the publisher's disclaimer.
 ```
 
-**B10. play-items-economy**
+**B11. play-items-economy**
 
 ```text
 Start feature `play-items-economy` (ODD). Play and Studio contract: structured items with quantity, cost and slots on a Character, a currency, and a `shop` step kind that buys and sells against it, replacing the flat sheet `list` for gear (ADR 0025). Design it for its first user, `preset-cpr-campaign` (rent, lifestyle, Night Market), and record the design as an ADR. Every layer: contract, anti-corruption layer, Play, a Studio editor, and the release upgrade planner (how a `list` gear field maps to items on upgrade). Out of scope: crafting, encumbrance rules beyond slots.
 ```
 
-**B11. preset-cpr-campaign**
+**B12. preset-cpr-campaign**
 
 ```text
 Start feature `preset-cpr-campaign` (ODD). Author a Cyberpunk RED campaign-in-acts fan preset, following example 4 of docs/domain/flow-examples.md: Act 1 making a name (gigs as nextScene chains, rep and heat, recruiting a crew), Act 2 the big job, Act 3 the twist and conclusion; acts as phases with an `act` label; a survival economy from `play-items-economy` (lifestyle and housing levels, Downtime, Night Market, Month's end). Prefer a second Flow in the `night-job` GameSystem (a new release), so `play-campaign-transfer` can carry a heist one-shot into it; decide during exploration. Fan-content rule (ADR 0018).
 ```
 
-**B12. play-campaign-transfer**
+**B13. play-campaign-transfer**
 
 ```text
 Start feature `play-campaign-transfer` (ODD). Play: start a new campaign from an existing one with another flow of the same GameSystem (e.g. the `night-job` heist one-shot that grows into the Cyberpunk RED campaign), carrying over Campaign facts, NPCs and Threads, and optionally Characters; the source campaign stays unchanged. Out of scope: moving between GameSystems.
 ```
 
-**B13. play-places**
+**B14. play-places**
 
 ```text
 Start feature `play-places` (ODD). Settle the vision question "How are places modeled (a map, regions, sites)?" for `preset-west-marches` and record it as an ADR: Campaign facts with a `place` slot, a places list beside NPCs and Threads, or regions with distance for encounter tables. Add a `select` sheet field type (options declared by the release) for a class or background. Every layer for both: contract, anti-corruption layer, Play, Studio and the release upgrade planner. Out of scope: a drawn map.
 ```
 
-**B14. preset-west-marches**
+**B15. preset-west-marches**
 
 ```text
 Start feature `preset-west-marches` (ODD). Author a West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0), following example 5 of docs/domain/flow-examples.md: a founding phase with a town and a roster of adventurers; an expeditions loop where each session picks a rumor and a party, travels, explores and returns to town before the session ends; encounter tables by distance. Uses places and a class `select` field (`play-places`), conditions (`rules-dice-pools`), shops (`play-items-economy`), and HP and spell slots as sheet effects (ADR 0027). Credits carry the CC BY 4.0 attribution (ADR 0021).
 ```
 
-**B15. preset-ironsworn**
+**B16. preset-ironsworn**
 
 ```text
 Start feature `preset-ironsworn` (ODD). Optional. Author an Ironsworn preset under CC BY 4.0: challenge dice (an action score against two d10, each compared on its own), momentum that goes below zero and burns, and vow progress tracks. Name which are contract gaps (ADR 0024) and close them in every layer. Credits carry the license notice (ADR 0021).

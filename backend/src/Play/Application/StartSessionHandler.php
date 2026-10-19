@@ -21,6 +21,7 @@ final readonly class StartSessionHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
         private Clock $clock,
+        private FlowOutcomes $outcomes,
     ) {
     }
 
@@ -40,6 +41,8 @@ final readonly class StartSessionHandler implements CommandHandler
         // Only a campaign along a Flow tells its FlowRun, which reads the pinned release.
         $release = null === $campaign->flowKey() ? null : PinnedReleases::of($this->releases, $campaign);
         $campaign->startSession($this->clock->now(), $release);
+        $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
+        $this->outcomes->record($outcome);
     }
 }

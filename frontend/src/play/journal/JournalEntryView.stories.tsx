@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import {
+  flowOutcomeEntry,
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
@@ -48,3 +49,5 @@ export const PickNoMatch: Story = { args: { entry: pickedNothing } }
 export const CheckAgainstDifficulty: Story = { args: { entry: skillCheckEntry } }
 
 export const CheckWithoutModifiersOrDifficulty: Story = { args: { entry: luckCheckEntry } }
+
+export const FlowOutcome: Story = { args: { entry: flowOutcomeEntry } }

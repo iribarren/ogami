@@ -305,3 +305,23 @@ export const sanityLossEntry: JournalEntry = {
   },
   flowStep: { key: 'shock', title: 'Does the sight break you?', prompt: null },
 }
+
+/** What the Flow decided on its own after a Chase roll: the band taken, a Tracker, a switch, the next scene and the end of the phase. */
+export const flowOutcomeEntry: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7011',
+  sessionNumber: 2,
+  sceneNumber: 1,
+  recordedAt: '2026-10-06T12:10:00+00:00',
+  kind: 'flowOutcome',
+  content: {
+    kind: 'flowOutcome',
+    notes: [
+      { kind: 'band', label: 'Strong hit' },
+      { kind: 'tracker', key: 'threat', name: 'Threat', from: 3, to: 4 },
+      { kind: 'switch', from: 'Chase', to: 'Combat' },
+      { kind: 'nextScene', sceneType: 'Briefing' },
+      { kind: 'phaseEnd', phase: 'Heist' },
+    ],
+  },
+  flowStep: { key: 'shock', title: 'Does the sight break you?', prompt: null },
+}

@@ -7,6 +7,7 @@ namespace App\Play\Infrastructure\Http;
 use App\Play\Application\JournalEntryView;
 use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\ChoiceContent;
+use App\Play\Domain\Journal\FlowOutcomeContent;
 use App\Play\Domain\Journal\JournalEntryContents;
 use App\Play\Domain\Journal\LikelihoodContent;
 use App\Play\Domain\Journal\NoteContent;
@@ -33,7 +34,7 @@ final readonly class JournalEntryResponse
         public int $sceneNumber,
         #[OA\Property(format: 'date-time')]
         public string $recordedAt,
-        #[OA\Property(description: 'The same as `content.kind`.', enum: [NoteContent::KIND, RollContent::KIND, OracleTableContent::KIND, LikelihoodContent::KIND, ChoiceContent::KIND, PickContent::KIND, CheckContent::KIND, SheetChangeContent::KIND])]
+        #[OA\Property(description: 'The same as `content.kind`.', enum: [NoteContent::KIND, RollContent::KIND, OracleTableContent::KIND, LikelihoodContent::KIND, ChoiceContent::KIND, PickContent::KIND, CheckContent::KIND, SheetChangeContent::KIND, FlowOutcomeContent::KIND])]
         public string $kind,
         #[OA\Property(discriminator: new OA\Discriminator(propertyName: 'kind', mapping: [
             NoteContent::KIND => '#/components/schemas/NoteContentResponse',
@@ -44,6 +45,7 @@ final readonly class JournalEntryResponse
             PickContent::KIND => '#/components/schemas/PickContentResponse',
             CheckContent::KIND => '#/components/schemas/CheckContentResponse',
             SheetChangeContent::KIND => '#/components/schemas/SheetChangeContentResponse',
+            FlowOutcomeContent::KIND => '#/components/schemas/FlowOutcomeContentResponse',
         ]), oneOf: [
             new OA\Schema(ref: new Model(type: NoteContentResponse::class)),
             new OA\Schema(ref: new Model(type: RollContentResponse::class)),
@@ -53,8 +55,9 @@ final readonly class JournalEntryResponse
             new OA\Schema(ref: new Model(type: PickContentResponse::class)),
             new OA\Schema(ref: new Model(type: CheckContentResponse::class)),
             new OA\Schema(ref: new Model(type: SheetChangeContentResponse::class)),
+            new OA\Schema(ref: new Model(type: FlowOutcomeContentResponse::class)),
         ])]
-        public NoteContentResponse|RollContentResponse|OracleTableContentResponse|LikelihoodContentResponse|ChoiceContentResponse|PickContentResponse|CheckContentResponse|SheetChangeContentResponse $content,
+        public NoteContentResponse|RollContentResponse|OracleTableContentResponse|LikelihoodContentResponse|ChoiceContentResponse|PickContentResponse|CheckContentResponse|SheetChangeContentResponse|FlowOutcomeContentResponse $content,
         #[OA\Property(ref: new Model(type: JournalFlowStepResponse::class), description: 'The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand.', nullable: true)]
         public ?JournalFlowStepResponse $flowStep,
     ) {
@@ -80,6 +83,7 @@ final readonly class JournalEntryResponse
                 $content instanceof PickContent => PickContentResponse::of($content),
                 $content instanceof CheckContent => CheckContentResponse::of($content),
                 $content instanceof SheetChangeContent => SheetChangeContentResponse::of($content),
+                $content instanceof FlowOutcomeContent => FlowOutcomeContentResponse::of($content),
                 default => throw new \LogicException(\sprintf('No response for journal entry content kind "%s".', $content->kind())),
             },
             null === $view->flowStep ? null : JournalFlowStepResponse::of($view->flowStep),

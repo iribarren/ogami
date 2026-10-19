@@ -23,6 +23,7 @@ final readonly class SkipFlowStepHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
         private Clock $clock,
+        private FlowOutcomes $outcomes,
     ) {
     }
 
@@ -43,6 +44,8 @@ final readonly class SkipFlowStepHandler implements CommandHandler
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
         $release = PinnedReleases::of($this->releases, $campaign);
         $campaign->skipFlowStep($command->stepKey, $release, $this->clock->now());
+        $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
+        $this->outcomes->record($outcome);
     }
 }

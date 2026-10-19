@@ -101,12 +101,14 @@ export function Journal({
                         ref={entry.id === latestRecordedId ? reveal : undefined}
                         className="space-y-1"
                       >
-                        {/* A sheet change follows its step's entry, which already names the step. */}
-                        {entry.flowStep !== null && entry.kind !== 'sheet-change' && (
-                          <p className="text-xs text-muted-foreground">
-                            Flow step · {entry.flowStep.title}
-                          </p>
-                        )}
+                        {/* A sheet change or a Flow outcome follows its step's entry, which already names the step. */}
+                        {entry.flowStep !== null &&
+                          entry.kind !== 'sheet-change' &&
+                          entry.kind !== 'flowOutcome' && (
+                            <p className="text-xs text-muted-foreground">
+                              Flow step · {entry.flowStep.title}
+                            </p>
+                          )}
                         <JournalEntryView entry={entry} tags={tags} sheet={sheet} />
                         {current?.session === session.number && current.scene === scene.number && (
                           <>

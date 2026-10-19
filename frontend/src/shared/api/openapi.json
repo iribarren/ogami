@@ -13290,6 +13290,178 @@
                 },
                 "type": "object"
             },
+            "FlowNoteBandResponse": {
+                "required": [
+                    "kind",
+                    "label"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "band"
+                        ]
+                    },
+                    "label": {
+                        "description": "The label of the band.",
+                        "type": "string",
+                        "example": "Strong hit"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowNoteTrackerResponse": {
+                "required": [
+                    "kind",
+                    "key",
+                    "name",
+                    "from",
+                    "to"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "tracker"
+                        ]
+                    },
+                    "key": {
+                        "description": "The key of the Tracker.",
+                        "type": "string",
+                        "example": "threat"
+                    },
+                    "name": {
+                        "description": "The name of the Tracker when it changed.",
+                        "type": "string",
+                        "example": "Threat"
+                    },
+                    "from": {
+                        "description": "The value before.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "to": {
+                        "description": "The value after, clamped to the Tracker.",
+                        "type": "integer",
+                        "example": 4
+                    }
+                },
+                "type": "object"
+            },
+            "FlowNoteSwitchResponse": {
+                "required": [
+                    "kind",
+                    "from",
+                    "to"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "switch"
+                        ]
+                    },
+                    "from": {
+                        "description": "The name of the Scene Type before.",
+                        "type": "string",
+                        "example": "Chase"
+                    },
+                    "to": {
+                        "description": "The name of the Scene Type after.",
+                        "type": "string",
+                        "example": "Combat"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowNoteNextSceneResponse": {
+                "required": [
+                    "kind",
+                    "sceneType"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "nextScene"
+                        ]
+                    },
+                    "sceneType": {
+                        "description": "The name of the Scene Type.",
+                        "type": "string",
+                        "example": "Briefing"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowNotePhaseEndResponse": {
+                "required": [
+                    "kind",
+                    "phase"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "phaseEnd"
+                        ]
+                    },
+                    "phase": {
+                        "description": "The name of the phase.",
+                        "type": "string",
+                        "example": "Heist"
+                    }
+                },
+                "type": "object"
+            },
+            "FlowOutcomeContentResponse": {
+                "required": [
+                    "kind",
+                    "notes"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "flowOutcome"
+                        ]
+                    },
+                    "notes": {
+                        "description": "Every note, in the order the Flow decided; at least one.",
+                        "type": "array",
+                        "items": {
+                            "discriminator": {
+                                "propertyName": "kind",
+                                "mapping": {
+                                    "band": "#/components/schemas/FlowNoteBandResponse",
+                                    "tracker": "#/components/schemas/FlowNoteTrackerResponse",
+                                    "switch": "#/components/schemas/FlowNoteSwitchResponse",
+                                    "nextScene": "#/components/schemas/FlowNoteNextSceneResponse",
+                                    "phaseEnd": "#/components/schemas/FlowNotePhaseEndResponse"
+                                }
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/FlowNoteBandResponse"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/FlowNoteTrackerResponse"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/FlowNoteSwitchResponse"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/FlowNoteNextSceneResponse"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/FlowNotePhaseEndResponse"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "JournalFlowStepResponse": {
                 "required": [
                     "key",
@@ -13352,7 +13524,8 @@
                             "choice",
                             "pick",
                             "check",
-                            "sheet-change"
+                            "sheet-change",
+                            "flowOutcome"
                         ]
                     },
                     "content": {
@@ -13366,7 +13539,8 @@
                                 "choice": "#/components/schemas/ChoiceContentResponse",
                                 "pick": "#/components/schemas/PickContentResponse",
                                 "check": "#/components/schemas/CheckContentResponse",
-                                "sheet-change": "#/components/schemas/SheetChangeContentResponse"
+                                "sheet-change": "#/components/schemas/SheetChangeContentResponse",
+                                "flowOutcome": "#/components/schemas/FlowOutcomeContentResponse"
                             }
                         },
                         "oneOf": [
@@ -13393,6 +13567,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/SheetChangeContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/FlowOutcomeContentResponse"
                             }
                         ]
                     },

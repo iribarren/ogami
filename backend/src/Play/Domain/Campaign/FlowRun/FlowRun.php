@@ -1033,7 +1033,13 @@ final class FlowRun
             $context->applyTrackerEffect($effect);
         } elseif ($effect instanceof NextSceneEffect) {
             $this->forceNextSceneType($effect->sceneType);
+            $context->note(FlowNote::nextScene($context->sceneType($effect->sceneType)->name));
         } elseif ($effect instanceof EndPhaseEffect) {
+            // Only the first reason to end the phase counts, and so is told.
+            if (null === $this->phaseEnding) {
+                $context->note(FlowNote::phaseEnd($this->phase($context->flow)->name));
+            }
+
             $this->endPhaseAfterScene();
         } elseif ($effect instanceof SceneTitleEffect) {
             // Rendered when it applies, cut to the longest title; an empty title is ignored.
@@ -1158,6 +1164,10 @@ final class FlowRun
         $scene = (int) $context->sceneNumber();
         $from = $context->switchSceneType($context->sceneType($sceneTypeKey));
         $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, $scene, $from, $sceneTypeKey);
+        if (null !== $from) {
+            $context->note(FlowNote::switch($context->release->sceneType($from)->name ?? $from, $context->sceneType($sceneTypeKey)->name));
+        }
+
         $this->sceneType = $sceneTypeKey;
         ++$this->switchCount;
 
@@ -1176,6 +1186,10 @@ final class FlowRun
     {
         foreach ($bands as $band) {
             if (null === $band->upTo || $value <= $context->evaluate($band->upTo)) {
+                if (null !== $band->label) {
+                    $context->note(FlowNote::band($band->label));
+                }
+
                 return $band->outcome;
             }
         }

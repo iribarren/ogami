@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Play\Application;
 
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\FlowRun\FlowNote;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Play\Domain\Journal\FlowOutcomeContent;
 use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
 use App\Play\Domain\Journal\JournalEntry;
@@ -89,6 +91,39 @@ final readonly class CampaignJournal
         }
 
         return $entry->followedBy($id, $content);
+    }
+
+    /**
+     * Takes the notes of what the Flow decided on its own in the command that just ran on the
+     * campaign and builds the one flowOutcome entry they make, without recording it: right after
+     * the entry given (the step's own, in its scene), else in the current scene at the clock's time.
+     * Null when the command noted nothing, or when there is no scene to record in, in which case the
+     * notes are dropped: the journal belongs to a scene.
+     *
+     * @param JournalEntryIdGenerator $entryIds generates the id of the entry, only when there is one
+     * @param ?JournalEntry           $after    the entry the command recorded for its step, if any
+     *
+     * @throws InvalidJournalEntryId
+     * @throws JournalEntryAlreadyExists when the entry id is already taken (checked here, whatever the repository does)
+     */
+    public function flowOutcome(JournalEntryIdGenerator $entryIds, Campaign $campaign, ?JournalEntry $after = null): ?JournalEntry
+    {
+        $notes = $campaign->takeFlowNotes();
+        if ([] === $notes) {
+            return null;
+        }
+
+        $entryId = $entryIds->generate()->toString();
+        $content = FlowOutcomeContent::of(array_map(static fn (FlowNote $note): array => $note->toArray(), $notes));
+        if ($after instanceof JournalEntry) {
+            return $this->following($after, $entryId, $content);
+        }
+
+        try {
+            return $this->entry($entryId, $campaign, $content, $this->clock->now());
+        } catch (NoCurrentScene) {
+            return null;
+        }
     }
 
     public function add(JournalEntry $entry): void

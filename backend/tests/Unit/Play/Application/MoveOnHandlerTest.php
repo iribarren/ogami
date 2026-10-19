@@ -11,6 +11,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -76,6 +77,6 @@ final class MoveOnHandlerTest extends FlowRunHandlerTestCase
 
     private function moveOn(MoveOn $command): void
     {
-        new MoveOnHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock)($command);
+        new MoveOnHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
     }
 }

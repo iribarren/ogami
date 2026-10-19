@@ -112,8 +112,9 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         self::assertSame('after', self::at($campaign, 'flowRun', 'step', 'key'));
         self::assertSame([1], array_values(array_map(static fn (mixed $tracker): mixed => self::at($tracker, 'value'), array_filter($this->list($campaign, 'trackers'), static fn (mixed $tracker): bool => 'alarm' === self::at($tracker, 'key')))));
         $entries = $this->journal();
-        self::assertCount(1, $entries);
-        self::assertSame(['check', 'roll-it'], [self::at($entries[0], 'kind'), self::at($entries[0], 'flowStep', 'key')]);
+        // The band's Effect added an alarm: the Flow says so right after the check, in the same step.
+        self::assertSame([['check', 'roll-it'], ['flowOutcome', 'roll-it']], array_map(static fn (array $entry): array => [self::at($entry, 'kind'), self::at($entry, 'flowStep', 'key')], $entries));
+        self::assertSame(['kind' => 'flowOutcome', 'notes' => [['kind' => 'tracker', 'key' => 'alarm', 'name' => 'Alarm', 'from' => 0, 'to' => 1]]], self::at($entries[1], 'content'));
         self::assertSame(['char-ada', 'Ada', 'skill', 6, 10, 9, 'fail', 'Fail'], array_map(static fn (string $key): mixed => self::at($entries[0], 'content', $key), ['characterId', 'characterName', 'checkKey', 'modifier', 'difficulty', 'total', 'bandKey', 'bandLabel']));
     }
 

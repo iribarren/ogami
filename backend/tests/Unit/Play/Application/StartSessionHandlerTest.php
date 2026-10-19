@@ -12,7 +12,9 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Tests\Support\Play\FixedClock;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
+use App\Tests\Support\Play\InMemoryJournalEntryRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\Snapshots;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -35,7 +37,7 @@ final class StartSessionHandlerTest extends TestCase
         $this->campaigns = new InMemoryCampaignRepository();
         $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-1'), 'user-1', 'The lost mine', PinnedRelease::of('free-journal', 1, 'Free journal'), new \DateTimeImmutable('2026-10-05T10:00:00+00:00')));
         $this->clock = new FixedClock('2026-10-06T09:00:00+00:00');
-        $this->handler = new StartSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases = new InMemoryPublishedGameSystemReleases(), $this->clock);
+        $this->handler = new StartSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases = new InMemoryPublishedGameSystemReleases(), $this->clock, FlowOutcomesFor::of($this->campaigns, new InMemoryJournalEntryRepository(), $this->releases, $this->clock));
     }
 
     #[Test]

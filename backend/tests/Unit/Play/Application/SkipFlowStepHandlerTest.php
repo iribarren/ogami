@@ -11,6 +11,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -93,6 +94,6 @@ final class SkipFlowStepHandlerTest extends FlowRunHandlerTestCase
 
     private function skip(SkipFlowStep $command): void
     {
-        new SkipFlowStepHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock)($command);
+        new SkipFlowStepHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
     }
 }

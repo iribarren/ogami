@@ -17,7 +17,9 @@ use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\UnknownSceneType;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use App\Tests\Support\Play\FixedClock;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
+use App\Tests\Support\Play\InMemoryJournalEntryRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\Snapshots;
@@ -44,7 +46,7 @@ final class SwitchSceneTypeHandlerTest extends TestCase
         $campaign = Campaign::create(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
         $campaign->startSession(new \DateTimeImmutable('2026-10-10T09:05:00+00:00'));
         $this->campaigns->add($campaign);
-        $this->handler = new SwitchSceneTypeHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $releases, $this->clock = new FixedClock('2026-10-10T09:30:00+00:00'));
+        $this->handler = new SwitchSceneTypeHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $releases, $this->clock = new FixedClock('2026-10-10T09:30:00+00:00'), FlowOutcomesFor::of($this->campaigns, new InMemoryJournalEntryRepository(), $releases, $this->clock));
     }
 
     #[Test]

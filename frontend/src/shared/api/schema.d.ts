@@ -3299,6 +3299,95 @@ export interface components {
             /** @description Every change, in the order the effects applied; at least one. */
             changes: components["schemas"]["SheetChangeResponse"][];
         };
+        FlowNoteBandResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "band";
+            /**
+             * @description The label of the band.
+             * @example Strong hit
+             */
+            label: string;
+        };
+        FlowNoteTrackerResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "tracker";
+            /**
+             * @description The key of the Tracker.
+             * @example threat
+             */
+            key: string;
+            /**
+             * @description The name of the Tracker when it changed.
+             * @example Threat
+             */
+            name: string;
+            /**
+             * @description The value before.
+             * @example 3
+             */
+            from: number;
+            /**
+             * @description The value after, clamped to the Tracker.
+             * @example 4
+             */
+            to: number;
+        };
+        FlowNoteSwitchResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "switch";
+            /**
+             * @description The name of the Scene Type before.
+             * @example Chase
+             */
+            from: string;
+            /**
+             * @description The name of the Scene Type after.
+             * @example Combat
+             */
+            to: string;
+        };
+        FlowNoteNextSceneResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "nextScene";
+            /**
+             * @description The name of the Scene Type.
+             * @example Briefing
+             */
+            sceneType: string;
+        };
+        FlowNotePhaseEndResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "phaseEnd";
+            /**
+             * @description The name of the phase.
+             * @example Heist
+             */
+            phase: string;
+        };
+        FlowOutcomeContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "flowOutcome";
+            /** @description Every note, in the order the Flow decided; at least one. */
+            notes: (components["schemas"]["FlowNoteBandResponse"] | components["schemas"]["FlowNoteTrackerResponse"] | components["schemas"]["FlowNoteSwitchResponse"] | components["schemas"]["FlowNoteNextSceneResponse"] | components["schemas"]["FlowNotePhaseEndResponse"])[];
+        };
         JournalFlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -3323,8 +3412,8 @@ export interface components {
              * @description The same as `content.kind`.
              * @enum {string}
              */
-            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check" | "sheet-change";
-            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"] | components["schemas"]["SheetChangeContentResponse"];
+            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check" | "sheet-change" | "flowOutcome";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"] | components["schemas"]["SheetChangeContentResponse"] | components["schemas"]["FlowOutcomeContentResponse"];
             /** @description The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand. */
             flowStep: components["schemas"]["JournalFlowStepResponse"] | null;
         };

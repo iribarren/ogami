@@ -22,6 +22,7 @@ final readonly class SwitchSceneTypeHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
         private Clock $clock,
+        private FlowOutcomes $outcomes,
     ) {
     }
 
@@ -43,6 +44,8 @@ final readonly class SwitchSceneTypeHandler implements CommandHandler
         $release = PinnedReleases::of($this->releases, $campaign);
         // The release and the time put the switch in the FlowRun's history.
         $campaign->switchSceneType($release->sceneType($command->sceneType) ?? throw UnknownSceneType::withKey($command->sceneType), $release, $this->clock->now());
+        $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
+        $this->outcomes->record($outcome);
     }
 }

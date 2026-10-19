@@ -24,6 +24,7 @@ final readonly class PickSceneTypeHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
         private Clock $clock,
+        private FlowOutcomes $outcomes,
     ) {
     }
 
@@ -45,6 +46,8 @@ final readonly class PickSceneTypeHandler implements CommandHandler
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
         $release = PinnedReleases::of($this->releases, $campaign);
         $campaign->pickSceneType($command->sceneTypeKey, $release, $this->clock->now());
+        $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
+        $this->outcomes->record($outcome);
     }
 }

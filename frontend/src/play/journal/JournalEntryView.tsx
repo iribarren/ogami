@@ -5,6 +5,7 @@ import { Badge } from '@/shared/ui/badge'
 import { DiceGroups } from '../dice/DiceGroups'
 import type {
   CheckContent,
+  FlowOutcomeContent,
   JournalEntry,
   LikelihoodContent,
   NoteContent,
@@ -55,6 +56,8 @@ function entryLabel(content: JournalEntry['content']) {
       return `Check ${content.checkLabel}`
     case 'sheet-change':
       return `Sheet ${content.characterName}`
+    case 'flowOutcome':
+      return 'Flow outcome'
   }
 }
 
@@ -109,6 +112,8 @@ function EntryContent({
       return <CheckView content={content} />
     case 'sheet-change':
       return <SheetChangeView content={content} sheet={sheet} />
+    case 'flowOutcome':
+      return <FlowOutcomeView content={content} />
   }
 }
 
@@ -126,6 +131,34 @@ function SheetChangeView({ content, sheet }: { content: SheetChangeContent; shee
       ))}
     </ul>
   )
+}
+
+/** What the Flow decided on its own, one muted line per note, in the order it decided. */
+function FlowOutcomeView({ content }: { content: FlowOutcomeContent }) {
+  return (
+    <ul className="space-y-0.5 text-sm text-muted-foreground">
+      {content.notes.map((note, index) => (
+        <li key={index} className="tabular-nums">
+          {flowNoteLine(note)}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function flowNoteLine(note: FlowOutcomeContent['notes'][number]) {
+  switch (note.kind) {
+    case 'band':
+      return note.label
+    case 'tracker':
+      return `${note.name} ${String(note.from)} → ${String(note.to)}`
+    case 'switch':
+      return `Scene Type: ${note.from} → ${note.to}`
+    case 'nextScene':
+      return `Next scene: ${note.sceneType}`
+    case 'phaseEnd':
+      return 'The phase ends after this scene'
+  }
 }
 
 /** A check: who rolled which check, the band it landed in, then the dice and how the total adds up. */

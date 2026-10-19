@@ -132,6 +132,20 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function aMalformedStoredFlowOutcomeFailsToLoad(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00');
+        $this->repository->add($entry);
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_journal_entry SET content = ? WHERE id = ?', ['{"kind": "flowOutcome", "notes": [{"kind": "weather", "label": "Rain"}]}', $entry->id()->toString()]);
+        $this->forgetLoaded();
+
+        $this->expectExceptionMessageIsOrContains('Unknown journal entry content kind "flowOutcome note weather".');
+
+        $this->repository->ofId($entry->id());
+    }
+
+    #[Test]
     public function aReloadedEntryEqualsTheRecordedOneToTheMicrosecond(): void
     {
         $this->givenCampaign(self::CAMPAIGN);

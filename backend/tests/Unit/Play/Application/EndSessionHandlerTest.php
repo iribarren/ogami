@@ -18,8 +18,10 @@ use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Tests\Support\Play\FixedClock;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
+use App\Tests\Support\Play\InMemoryJournalEntryRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -47,7 +49,7 @@ final class EndSessionHandlerTest extends TestCase
         $guided = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The tour', PinnedRelease::of('guided', 1, 'Guided'), new \DateTimeImmutable('2026-10-05T10:00:00+00:00'), [], $this->release->flow('tour'));
         $guided->startSession(new \DateTimeImmutable('2026-10-06T09:00:00+00:00'), $this->release);
         $this->campaigns->add($guided);
-        $this->handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $releases, new FixedClock('2026-10-06T12:00:00+00:00'));
+        $this->handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $releases, $clock = new FixedClock('2026-10-06T12:00:00+00:00'), FlowOutcomesFor::of($this->campaigns, new InMemoryJournalEntryRepository(), $releases, $clock));
     }
 
     #[Test]
@@ -108,7 +110,7 @@ final class EndSessionHandlerTest extends TestCase
         $completed->moveOn('tour', $this->release, new \DateTimeImmutable('2026-10-06T09:30:00+00:00'));
         $this->campaigns->save($paused);
         $this->campaigns->add($completed);
-        $handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('guided', 1)), new FixedClock('2026-10-06T12:00:00+00:00'));
+        $handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $unreadable = new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('guided', 1)), $clock = new FixedClock('2026-10-06T12:00:00+00:00'), FlowOutcomesFor::of($this->campaigns, new InMemoryJournalEntryRepository(), $unreadable, $clock));
 
         foreach (['campaign-2' => FlowRunStatus::Paused, 'campaign-3' => FlowRunStatus::Completed] as $id => $status) {
             $handler(new EndSession($id, 'user-1', 1));
@@ -121,7 +123,7 @@ final class EndSessionHandlerTest extends TestCase
     #[Test]
     public function anActiveFlowRunWithAnUnreadableReleaseStillFailsToEndTheSession(): void
     {
-        $handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('guided', 1)), new FixedClock('2026-10-06T12:00:00+00:00'));
+        $handler = new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $unreadable = new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('guided', 1)), $clock = new FixedClock('2026-10-06T12:00:00+00:00'), FlowOutcomesFor::of($this->campaigns, new InMemoryJournalEntryRepository(), $unreadable, $clock));
 
         $this->expectException(GameSystemReleaseNotFound::class);
 

@@ -8,6 +8,7 @@ use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\ChoiceContent;
 use App\Play\Domain\Journal\ContentData;
+use App\Play\Domain\Journal\FlowOutcomeContent;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryContents;
@@ -37,6 +38,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(PickContent::class)]
 #[CoversClass(CheckContent::class)]
 #[CoversClass(SheetChangeContent::class)]
+#[CoversClass(FlowOutcomeContent::class)]
 #[CoversClass(InvalidJournalEntryContent::class)]
 final class JournalEntryContentsTest extends TestCase
 {
@@ -65,6 +67,7 @@ final class JournalEntryContentsTest extends TestCase
         yield 'pick' => [PickContent::of(ItemKind::Npc, ['rival'], [['id' => 'a', 'name' => 'Ana']])];
         yield 'check' => [CheckContentTest::edgeCheck()];
         yield 'pick of nothing' => [PickContent::of(ItemKind::Thread, [], [])];
+        yield 'flow outcome' => [FlowOutcomeContent::of([['kind' => 'band', 'label' => 'Strong hit'], ['kind' => 'tracker', 'key' => 'threat', 'name' => 'Threat', 'from' => 3, 'to' => 4], ['kind' => 'switch', 'from' => 'Chase', 'to' => 'Combat'], ['kind' => 'nextScene', 'sceneType' => 'Briefing'], ['kind' => 'phaseEnd', 'phase' => 'Heist']])];
         yield 'sheet change' => [SheetChangeContent::of('ida', 'Ida', [['field' => 'sanity', 'before' => 65, 'after' => 61, 'dice' => ['expression' => '1d6', 'total' => 4]], ['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => null]])];
     }
 

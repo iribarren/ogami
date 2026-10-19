@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -111,7 +113,7 @@ export function TagFields({
                     free.remove(index)
                   }}
                 >
-                  <span aria-hidden="true">×</span>
+                  <X aria-hidden="true" className="size-3" />
                 </button>
               </li>
             ))}

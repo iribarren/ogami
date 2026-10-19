@@ -23,7 +23,7 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
 {
     private const string REQUESTS = '/api/auth/password-reset-requests';
     private const string RESETS = '/api/auth/password-resets';
-    private const string INVALID_LINK = '{"error":"This link is invalid or has expired."}';
+    private const string INVALID_LINK = '{"error":"This link is invalid or has expired.","code":"invalid_account_link"}';
 
     #[Test]
     public function aKnownEmailGetsAnEmptyAcceptedAnswerAndALinkWithoutASession(): void
@@ -62,7 +62,7 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
         $this->post(self::REQUESTS, ['email' => 'not an email']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertJsonStringEqualsJsonString('{"error":"\"not an email\" is not a valid email address."}', $this->content());
+        self::assertJsonStringEqualsJsonString('{"error":"\"not an email\" is not a valid email address.","code":"invalid_email"}', $this->content());
         self::assertSame([], $this->mailer->sent);
     }
 
@@ -88,7 +88,7 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
             $this->post(self::REQUESTS, ['email' => 'bad']);
 
             self::assertResponseStatusCodeSame(422, \sprintf('Request %d.', $attempt));
-            self::assertJsonStringEqualsJsonString('{"error":"\"bad\" is not a valid email address."}', $this->content());
+            self::assertJsonStringEqualsJsonString('{"error":"\"bad\" is not a valid email address.","code":"invalid_email"}', $this->content());
         }
         self::assertSame([], $this->logs());
     }
@@ -258,7 +258,7 @@ final class PasswordResetApiTest extends PublicAccountApiTestCase
         $this->post(self::RESETS, ['token' => $token, 'password' => 'short']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertJsonStringEqualsJsonString('{"error":"The password must have between 8 and 4096 characters."}', $this->content());
+        self::assertJsonStringEqualsJsonString('{"error":"The password must have between 8 and 4096 characters.","code":"weak_password"}', $this->content());
         $this->post(self::RESETS, ['token' => $token, 'password' => 'a long enough password']);
         self::assertResponseStatusCodeSame(204);
     }

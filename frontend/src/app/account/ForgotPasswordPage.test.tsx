@@ -29,7 +29,11 @@ describe('ForgotPasswordPage', () => {
   })
 
   it('shows the API message for an address it refuses', async () => {
-    await ask(() => Response.json({ error: 'The email is not valid.' }, { status: 422 }), 'a@b')
+    await ask(
+      () =>
+        Response.json({ error: 'The email is not valid.', code: 'invalid_email' }, { status: 422 }),
+      'a@b',
+    )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The email is not valid.')
     expect(screen.queryByText(neutral)).not.toBeInTheDocument()

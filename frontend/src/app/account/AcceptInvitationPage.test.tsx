@@ -90,7 +90,8 @@ describe('AcceptInvitationPage', () => {
 
   it('shows the invalid link state when the lookup refuses the token', async () => {
     await openLink('#token=old', {
-      [lookup]: () => Response.json({ error: invalid }, { status: 422 }),
+      [lookup]: () =>
+        Response.json({ error: invalid, code: 'invalid_account_link' }, { status: 422 }),
     })
 
     expect(await screen.findByText(/This link is invalid or has expired/)).toBeInTheDocument()
@@ -116,7 +117,7 @@ describe('AcceptInvitationPage', () => {
       [lookup]: invitation,
       [accept]: () =>
         Response.json(
-          { error: 'The password must have between 8 and 4096 characters.' },
+          { error: 'The password must have between 8 and 4096 characters.', code: 'weak_password' },
           { status: 422 },
         ),
     })
@@ -130,7 +131,8 @@ describe('AcceptInvitationPage', () => {
   it('shows the invalid link state when accepting is refused for the link', async () => {
     const { user } = await openLink('#token=abc', {
       [lookup]: invitation,
-      [accept]: () => Response.json({ error: invalid }, { status: 422 }),
+      [accept]: () =>
+        Response.json({ error: invalid, code: 'invalid_account_link' }, { status: 422 }),
     })
 
     await submit(user, 'a-new-password')
@@ -143,7 +145,10 @@ describe('AcceptInvitationPage', () => {
       [lookup]: invitation,
       [accept]: () =>
         Response.json(
-          { error: 'A user with email "dan@example.com" already exists.' },
+          {
+            error: 'A user with email "dan@example.com" already exists.',
+            code: 'email_already_in_use',
+          },
           { status: 409 },
         ),
     })

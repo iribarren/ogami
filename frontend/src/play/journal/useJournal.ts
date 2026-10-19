@@ -102,14 +102,19 @@ export function useRecordRoll(campaignId: string) {
 
 /**
  * `POST /api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}`: rolls on an oracle
- * table of the pinned release, following nested tables, and records the result.
+ * table of the pinned release, following nested tables, and records the result. A roll for a
+ * random event names the id of the fate question (`forEntry`) whose event it answers.
  */
 export function useRecordOracleTableResult(campaignId: string) {
   const api = useApiClient()
-  return useRecordEntry(campaignId, 'Rolling on the oracle table', (oracleKey: string) =>
-    api.POST('/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}', {
-      params: { path: { campaignId, oracleKey } },
-    }),
+  return useRecordEntry(
+    campaignId,
+    'Rolling on the oracle table',
+    ({ oracleKey, forEntry }: { oracleKey: string; forEntry?: string }) =>
+      api.POST('/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}', {
+        params: { path: { campaignId, oracleKey } },
+        body: forEntry === undefined ? undefined : { forEntry },
+      }),
   )
 }
 

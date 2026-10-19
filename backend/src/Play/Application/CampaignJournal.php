@@ -19,6 +19,10 @@ use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\JournalEntryRepository;
+use App\Play\Domain\Journal\LikelihoodContent;
+use App\Play\Domain\Journal\NotARandomEventQuestion;
+use App\Play\Domain\Journal\OracleTableContent;
+use App\Play\Domain\Journal\RandomEventAlreadyRolled;
 
 /**
  * Records journal entries on behalf of a player: what every Record* handler shares. A handler
@@ -123,6 +127,36 @@ final readonly class CampaignJournal
             return $this->entry($entryId, $campaign, $content, $this->clock->now());
         } catch (NoCurrentScene) {
             return null;
+        }
+    }
+
+    /**
+     * The likelihood answer whose random event a roll on the oracle table answers, checked before
+     * anything is recorded: it is an entry of this campaign, its random event is that table, and
+     * no oracle table entry is tied to it yet. (The repository guards the last rule again against
+     * a roll recorded at the same time.).
+     *
+     * @throws InvalidJournalEntryId    when the id is blank
+     * @throws JournalEntryNotFound     when no entry of the campaign has this id
+     * @throws NotARandomEventQuestion  when the entry is no likelihood answer with this random event
+     * @throws RandomEventAlreadyRolled when an oracle table entry is already tied to the entry
+     */
+    public function assertRandomEventQuestion(string $entryId, Campaign $campaign, string $oracleKey): void
+    {
+        $entry = $this->entries->ofId(JournalEntryId::fromString($entryId));
+        if (!$entry instanceof JournalEntry || !$entry->campaignId()->equals($campaign->id())) {
+            throw JournalEntryNotFound::withId($entryId);
+        }
+
+        $content = $entry->content();
+        if (!$content instanceof LikelihoodContent || $content->randomEvent() !== $oracleKey) {
+            throw NotARandomEventQuestion::of($entryId, $oracleKey);
+        }
+
+        foreach ($this->entries->ofCampaign($campaign->id()) as $recorded) {
+            if ($recorded->content() instanceof OracleTableContent && $recorded->content()->forEntry() === $entryId) {
+                throw RandomEventAlreadyRolled::forEntry($entryId);
+            }
         }
     }
 

@@ -9,7 +9,8 @@ use App\Shared\Application\Bus\Command;
 /**
  * Rolls on an oracle table of the campaign's pinned release (and on the tables it nests) and
  * records the result in the current scene. The caller generates the entry id with
- * JournalEntryIdGenerator.
+ * JournalEntryIdGenerator. A roll made for a random event names the likelihood entry whose event it
+ * answers.
  */
 final readonly class RecordOracleTableResult implements Command
 {
@@ -18,6 +19,7 @@ final readonly class RecordOracleTableResult implements Command
         public string $campaignId,
         public string $userId,
         public string $oracleKey,
+        public ?string $forEntry = null,
     ) {
     }
 }

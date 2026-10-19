@@ -50,6 +50,7 @@ export const stormyWeather: JournalEntry = {
     kind: 'oracle-table',
     oracleKey: 'weather',
     oracleName: 'Weather',
+    forEntry: null,
     steps: [
       {
         tableKey: 'weather',
@@ -141,6 +142,33 @@ export const fateDouble: JournalEntry = {
     likelihoodLabel: 'Likely',
     chaosFactor: 7,
     randomEvent: 'weather',
+  },
+}
+
+/** The roll of the random event of `fateDouble`: the weather table, tied to that question. */
+export const fateDoubleEvent: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7050',
+  sessionNumber: 2,
+  sceneNumber: 1,
+  recordedAt: '2026-10-06T12:10:00+00:00',
+  kind: 'oracle-table',
+  flowStep: null,
+  content: {
+    kind: 'oracle-table',
+    oracleKey: 'weather',
+    oracleName: 'Weather',
+    forEntry: fateDouble.id,
+    steps: [
+      {
+        tableKey: 'weather',
+        tableName: 'Weather',
+        dice: '1d6',
+        total: 3,
+        text: 'Dense fog',
+        nestedTableKey: null,
+        sceneType: null,
+      },
+    ],
   },
 }
 
@@ -241,6 +269,7 @@ export function sceneShiftRoll(
       kind: 'oracle-table',
       oracleKey: 'scene-shift',
       oracleName: 'Scene shift',
+      forEntry: null,
       steps: [
         {
           tableKey: 'scene-shift',

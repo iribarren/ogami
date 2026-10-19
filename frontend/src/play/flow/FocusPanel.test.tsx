@@ -7,7 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { fateDouble, gateNote, lostMineJournal } from '../journal/fixtures'
+import { fateDouble, fateDoubleEvent, gateNote, lostMineJournal } from '../journal/fixtures'
 import { atStep, atTheScenePick, guided, inOpenPlay, promptStep, rollStep } from './fixtures'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
@@ -175,6 +175,16 @@ describe('focus mode', () => {
     const soFar = within(await focus.findByRole('region', { name: 'So far' }))
     expect(soFar.getByText('Random event')).toBeInTheDocument()
     expect(soFar.getByRole('button', { name: 'Roll Weather' })).toBeEnabled()
+  })
+
+  it('shows the random event under its question in the scene so far, with no roll offer', async () => {
+    renderPlay(guided(atStep(promptStep), 'focus'), {}, [fateDouble, fateDoubleEvent])
+
+    const focus = within(await focusRegion())
+    const soFar = within(await focus.findByRole('region', { name: 'So far' }))
+    expect(soFar.getAllByText('Dense fog')).toHaveLength(1)
+    expect(soFar.queryByRole('button', { name: 'Roll Weather' })).not.toBeInTheDocument()
+    expect(soFar.getByRole('textbox', { name: 'What does it mean?' })).toBeInTheDocument()
   })
 
   it('shows no summary at the scene pick, where the last scene has ended', async () => {

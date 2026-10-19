@@ -9,6 +9,8 @@ use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\JournalEntryRepository;
+use App\Play\Domain\Journal\OracleTableContent;
+use App\Play\Domain\Journal\RandomEventAlreadyRolled;
 
 /**
  * Entries are immutable, so keeping the instances is as safe as keeping copies.
@@ -20,12 +22,22 @@ final class InMemoryJournalEntryRepository implements JournalEntryRepository
 
     /**
      * @throws JournalEntryAlreadyExists on a duplicate id, like the primary key
+     * @throws RandomEventAlreadyRolled  on a second roll for one question, like the unique index
      */
     public function add(JournalEntry $entry): void
     {
         $id = $entry->id()->toString();
         if (isset($this->entries[$id])) {
             throw JournalEntryAlreadyExists::withId($entry->id());
+        }
+
+        $content = $entry->content();
+        if ($content instanceof OracleTableContent && null !== $content->forEntry()) {
+            foreach ($this->entries as $kept) {
+                if ($kept->content() instanceof OracleTableContent && $kept->content()->forEntry() === $content->forEntry()) {
+                    throw RandomEventAlreadyRolled::forEntry($content->forEntry());
+                }
+            }
         }
 
         $this->entries[$id] = $entry;

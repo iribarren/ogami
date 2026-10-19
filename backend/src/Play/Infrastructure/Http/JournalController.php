@@ -27,7 +27,10 @@ use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Check\UnknownCheck;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
+use App\Play\Domain\Journal\InvalidJournalEntryId;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
+use App\Play\Domain\Journal\NotARandomEventQuestion;
+use App\Play\Domain\Journal\RandomEventAlreadyRolled;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Shared\Application\Bus\Command;
@@ -56,6 +59,7 @@ final readonly class JournalController
     use ReadsJsonBodies;
 
     private const string MALFORMED_NOTE = 'Send a JSON object with a string "text", such as {"text": "The gate is open."}.';
+    private const string MALFORMED_ORACLE_TABLE = 'Send no body, or a JSON object with an optional string "forEntry", such as {"forEntry": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001"}.';
     private const string MALFORMED_ROLL = 'Send a JSON object with a string "expression", such as {"expression": "2d6+1"}.';
     private const string MALFORMED_LIKELIHOOD = 'Send a JSON object with a string "likelihood", and optionally an integer "chaosFactor" and a string "question", such as {"likelihood": "likely", "chaosFactor": 5, "question": "Is the door locked?"}.';
 
@@ -183,16 +187,33 @@ final readonly class JournalController
 
     #[Route('/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}', name: 'api_campaigns_journal_oracle_tables_record', methods: ['POST'])]
     #[OA\Post(operationId: 'recordOracleTableResult', summary: 'Roll on an oracle table of the pinned release and record the result in the current scene of one of my campaigns')]
+    #[OA\RequestBody(required: false, content: new OA\JsonContent(ref: new Model(type: RecordOracleTableResultRequest::class)))]
     #[OA\Response(response: 201, description: 'The new entry.', content: new OA\JsonContent(ref: new Model(type: JournalEntryResponse::class)))]
+    #[OA\Response(response: 400, description: 'The body is not valid JSON, or its "forEntry" is not a string.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no oracle table with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign has no current scene, or the generated entry id is already taken.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    public function recordOracleTableResult(string $campaignId, string $oracleKey, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, its pinned release has no oracle table with this key, or no entry of the campaign has the "forEntry" id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign has no current scene, the generated entry id is already taken, or the random event of the "forEntry" question was already rolled (also when two rolls arrive at once).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'A body is sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The "forEntry" id is blank, or that entry is not a likelihood answer whose random event is this oracle table.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function recordOracleTableResult(string $campaignId, string $oracleKey, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
+        $forEntry = null;
+        if ('' !== $request->getContent()) {
+            $body = $this->jsonBody($request, 'Send the roll as JSON, or without a body.', self::MALFORMED_ORACLE_TABLE);
+            if ($body instanceof JsonResponse) {
+                return $body;
+            }
+
+            $forEntry = $body['forEntry'] ?? null;
+            if (null !== $forEntry && !\is_string($forEntry)) {
+                return $this->error(self::MALFORMED_ORACLE_TABLE, Response::HTTP_BAD_REQUEST);
+            }
+        }
+
         $entryId = $this->entryIds->generate()->toString();
 
-        return $this->record(new RecordOracleTableResult($entryId, $campaignId, $user->id(), $oracleKey), $entryId, $campaignId, $user);
+        return $this->record(new RecordOracleTableResult($entryId, $campaignId, $user->id(), $oracleKey, $forEntry), $entryId, $campaignId, $user);
     }
 
     #[Route('/api/campaigns/{campaignId}/journal/likelihood-oracles/{oracleKey}', name: 'api_campaigns_journal_likelihood_oracles_record', methods: ['POST'])]
@@ -244,9 +265,9 @@ final readonly class JournalController
             );
         } catch (CampaignNotFound|UnknownGameSystemOracle|UnknownCampaignTracker|JournalEntryNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (NoCurrentScene|JournalEntryAlreadyExists $exception) {
+        } catch (NoCurrentScene|JournalEntryAlreadyExists|RandomEventAlreadyRolled $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
+        } catch (InvalidJournalEntryId|NotARandomEventQuestion|InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

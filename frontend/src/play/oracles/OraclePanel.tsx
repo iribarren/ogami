@@ -316,7 +316,7 @@ function OracleTables({
             aria-label={`Roll on ${table.name}`}
             disabled={disabled || roll.isPending}
             onClick={() => {
-              roll.mutate(table.key)
+              roll.mutate({ oracleKey: table.key })
             }}
           >
             {table.name}

@@ -147,6 +147,14 @@ final readonly class LikelihoodContent implements JournalEntryContent
         return $this->oracleName;
     }
 
+    /**
+     * The key of the oracle table to roll when the answer was a random event; null when it was not.
+     */
+    public function randomEvent(): ?string
+    {
+        return $this->randomEvent;
+    }
+
     public function question(): ?string
     {
         return $this->question;

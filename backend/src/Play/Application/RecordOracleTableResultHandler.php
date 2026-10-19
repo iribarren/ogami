@@ -11,7 +11,9 @@ use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
+use App\Play\Domain\Journal\NotARandomEventQuestion;
 use App\Play\Domain\Journal\OracleTableContent;
+use App\Play\Domain\Journal\RandomEventAlreadyRolled;
 use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandHandler;
 
@@ -27,6 +29,9 @@ final readonly class RecordOracleTableResultHandler implements CommandHandler
      * @throws CampaignNotFound
      * @throws InvalidJournalEntryId
      * @throws JournalEntryAlreadyExists
+     * @throws JournalEntryNotFound            when the roll is for a random event and no entry of the campaign has the id of its question
+     * @throws NotARandomEventQuestion         when that entry is no likelihood answer whose random event is this table
+     * @throws RandomEventAlreadyRolled        when that question's random event was already rolled
      * @throws UnknownGameSystemOracle         when the pinned release has no oracle table with this key
      * @throws GameSystemReleaseNotFound       when the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion
@@ -38,7 +43,11 @@ final readonly class RecordOracleTableResultHandler implements CommandHandler
         $campaign = $this->journal->campaign($command->campaignId, $command->userId);
         $snapshot = $this->journal->pinnedSnapshot($campaign);
         $result = $snapshot->resolveOracleTable($command->oracleKey, $this->random);
-        $content = OracleTableContent::fromResult($command->oracleKey, $snapshot->oracleTableNames()[$command->oracleKey], $result, $snapshot->rolledSceneTypes($result));
+        if (null !== $command->forEntry) {
+            $this->journal->assertRandomEventQuestion($command->forEntry, $campaign, $command->oracleKey);
+        }
+
+        $content = OracleTableContent::fromResult($command->oracleKey, $snapshot->oracleTableNames()[$command->oracleKey], $result, $snapshot->rolledSceneTypes($result), $command->forEntry);
 
         $this->journal->record($command->entryId, $campaign, $content);
     }

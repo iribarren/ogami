@@ -94,7 +94,7 @@ final class PlayCampaignJournalThroughTheBusesTest extends KernelTestCase
             $journal[1]->content,
         );
         self::assertSame(
-            ['kind' => 'oracle-table', 'oracleKey' => 'weather', 'oracleName' => 'Weather', 'steps' => [
+            ['kind' => 'oracle-table', 'oracleKey' => 'weather', 'oracleName' => 'Weather', 'forEntry' => null, 'steps' => [
                 ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => null],
             ]],
             $journal[2]->content,

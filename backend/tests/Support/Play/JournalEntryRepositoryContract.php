@@ -13,6 +13,9 @@ use App\Play\Domain\Journal\JournalEntryContents;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Domain\Journal\NoteContent;
+use App\Play\Domain\Journal\OracleTableContent;
+use App\Play\Domain\Journal\RandomEventAlreadyRolled;
+use App\Tests\Unit\Play\Domain\Journal\OracleTableContentTest;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -57,9 +60,19 @@ trait JournalEntryRepositoryContract
             'kind' => 'oracle-table',
             'oracleKey' => 'weather',
             'oracleName' => 'Weather',
+            'forEntry' => null,
             'steps' => [
                 ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 5, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
                 ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d3', 'total' => 3, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => 'getaway'],
+            ],
+        ]];
+        yield 'oracle table answering a random event' => [[
+            'kind' => 'oracle-table',
+            'oracleKey' => 'weather',
+            'oracleName' => 'Weather',
+            'forEntry' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001',
+            'steps' => [
+                ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => null],
             ],
         ]];
         yield 'likelihood with question and chaos' => [[
@@ -226,6 +239,26 @@ trait JournalEntryRepositoryContract
         $this->expectExceptionMessageIsOrContains('A journal entry with id "01890a5d-ac96-774b-bcce-b302099a9001" already exists.');
 
         $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::OTHER_CAMPAIGN, '2026-10-06 11:00:00'));
+    }
+
+    #[Test]
+    public function itRejectsASecondRollForTheSameRandomEventQuestion(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $roll = static fn (?string $forEntry): OracleTableContent => OracleTableContent::fromResult('weather', 'Weather', OracleTableContentTest::stormResult(), [], $forEntry);
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', $roll('01890a5d-ac96-774b-bcce-b302099a9000')));
+        // Rolls for no question, and for another one, are not limited.
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:01:00', $roll(null)));
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9003', self::CAMPAIGN, '2026-10-06 10:02:00', $roll(null)));
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9004', self::CAMPAIGN, '2026-10-06 10:03:00', $roll('01890a5d-ac96-774b-bcce-b302099a9005')));
+        $this->forgetLoaded();
+
+        try {
+            $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9006', self::CAMPAIGN, '2026-10-06 10:04:00', $roll('01890a5d-ac96-774b-bcce-b302099a9000')));
+            self::fail('A random event was rolled twice.');
+        } catch (RandomEventAlreadyRolled $exception) {
+            self::assertSame('The random event of journal entry "01890a5d-ac96-774b-bcce-b302099a9000" was already rolled.', $exception->getMessage());
+        }
     }
 
     #[Test]

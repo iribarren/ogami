@@ -107,12 +107,12 @@ Played on 2026-10-13 in Chrome by Claude (campaign "Playtest heist", `night-job`
 | N5 | The heist opening "Security is on edge… Guards walk faster, doors are watched" also opens a Firefight that has already started | Low | Fix (T7): neutral wording that fits every heist Scene Type |
 | N6 | The game system picker is labelled "GameSystem" (a code term) and the game system description ("…for players new to solo play.") is not shown in the form | Low | Fix (T7): label "Game system", description under the picker |
 | N7 | `make presets` warns that the guards world turn (`nextScene firefight`) does not lower the alarm. At alarm 4–5 every heist scene risks a forced Firefight | — | Accepted: rising pressure is the design; Grab or lockdown ends the phase |
-| N8 | Tracker effects are silent: a "No" that raises the alarm, an edge spent, the Getaway → Chase switch show no journal line, only the tracker panel changes | Medium | Backlog (engine: log effect outcomes) |
-| N9 | After End scene the guide keeps the previous scene's tips and "So far" entries; world-turn results appear in "So far" of the next phase | Low | Backlog |
-| N10 | The guide's "Next" previews branch-only steps ("Next: Double-cross! Who sold you out?" before the roll) and still reads "Next: Next scene: Briefing" | Low | Backlog |
-| N11 | World turns take a scene number: the Firefight was "Scene 9", and a skipped world turn leaves a gap (no scene 10) | Low | Backlog |
-| N12 | The Netrun "Which Black ICE is it?" step shows even when the floor rolled no Black ICE; losing the Chase has no consequence | Low | Backlog (needs conditions on table results) |
-| N13 | The new campaign form sits below the whole campaign list | Low | Backlog |
+| N8 | Tracker effects are silent: a "No" that raises the alarm, an edge spent, the Getaway → Chase switch show no journal line, only the tracker panel changes | Medium | → `play-guided-polish` (slice 3) |
+| N9 | After End scene the guide keeps the previous scene's tips and "So far" entries; world-turn results appear in "So far" of the next phase | Low | → `play-guided-polish` (slice 1) |
+| N10 | The guide's "Next" previews branch-only steps ("Next: Double-cross! Who sold you out?" before the roll) and still reads "Next: Next scene: Briefing" | Low | → `play-guided-polish` (slice 1) |
+| N11 | World turns take a scene number: the Firefight was "Scene 9", and a skipped world turn leaves a gap (no scene 10) | Low | → `play-guided-polish` (slice 1) |
+| N12 | The Netrun "Which Black ICE is it?" step shows even when the floor rolled no Black ICE; losing the Chase has no consequence | Low | → `play-guided-polish` (slice 2) |
+| N13 | The new campaign form sits below the whole campaign list | Low | → `play-guided-polish` (slice 1) |
 
 ## Progress
 

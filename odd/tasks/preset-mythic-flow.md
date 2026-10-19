@@ -121,13 +121,13 @@ Played on 2026-10-13 in Chrome by Claude (campaigns "The Salt Road" and "The Sal
 | P4 | The shared "What happens instead?" tip renders "Involve  if someone was picked." on no-pick paths and "Involve Find the lost caravan if someone was picked." for a Thread (slice 2 review suggestion) | Medium | Fix (T7): preset steps so pick branches and the others get their own wording; preset flow test covers both |
 | P5 | Before the first session the guide reads "Next: Next: Scene" (the pick label carries its own "Next:" and the UI adds one) | Low | Fix (T7) |
 | P6 | Premise uses Scene Type "Scene", described "Play out one scene of the adventure."; the scene check tip says "Roll under" while the band is "up to" (≤) | Low | Fix (T7): preset wording |
-| P7 | A roll step's outcome is not interpreted (no "as expected / altered / interrupted" line); the flow branches silently | Medium | Backlog |
-| P8 | "Update your lists" is a free-text prompt with no link to the Threads and NPCs panels | Low | Backlog |
-| P9 | A random event rolled from a fate-question offer lands at the end of the journal, not tied to its question, with no meaning prompt | Low | Backlog (procedures deferred) |
-| P10 | "Start session" and the "Start scene" form stay visible during guided play; using them mid-scene leaves empty scenes | Medium | Backlog |
-| P11 | Default scene titles count across sessions (session 2's first scene is "Scene 8") | Low | Backlog |
-| P12 | The "Next:" line after the scene check names the altered branch before the 1d6 decides | Low | Backlog |
-| P13 | Scene headings are the uppercased expectation, long titles wrap into shouting lines | Low | Backlog |
+| P7 | A roll step's outcome is not interpreted (no "as expected / altered / interrupted" line); the flow branches silently | Medium | → `play-guided-polish` (slices 2-3) |
+| P8 | "Update your lists" is a free-text prompt with no link to the Threads and NPCs panels | Low | → `play-guided-polish` (slice 2) |
+| P9 | A random event rolled from a fate-question offer lands at the end of the journal, not tied to its question, with no meaning prompt | Low | → `play-guided-polish` (slice 4) |
+| P10 | "Start session" and the "Start scene" form stay visible during guided play; using them mid-scene leaves empty scenes | Medium | Fixed in the UI; backend guard → `play-guided-polish` slice 1 |
+| P11 | Default scene titles count across sessions (session 2's first scene is "Scene 8") | Low | → `play-guided-polish` (slice 1) |
+| P12 | The "Next:" line after the scene check names the altered branch before the 1d6 decides | Low | → `play-guided-polish` (slice 1) |
+| P13 | Scene headings are the uppercased expectation, long titles wrap into shouting lines | Low | → `play-guided-polish` (slice 1) |
 
 ## Progress
 

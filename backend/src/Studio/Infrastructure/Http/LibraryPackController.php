@@ -17,6 +17,7 @@ use App\Studio\Application\ListLibraryPacks;
 use App\Studio\Domain\GameSystem\GameSystemKeyTaken;
 use App\Studio\Domain\GameSystem\InvalidGameSystemId;
 use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -43,6 +44,7 @@ final readonly class LibraryPackController
         private CommandBus $commandBus,
         private QueryBus $queryBus,
         private GameSystemIdGenerator $gameSystemIds,
+        private Connection $connection,
     ) {
     }
 
@@ -93,14 +95,17 @@ final readonly class LibraryPackController
         }
 
         try {
-            $this->commandBus->dispatch(new CreateLibraryPack($this->gameSystemIds->generate()->toString(), $user->id(), $key, $name, $description));
+            $response = $this->connection->transactional(function () use ($user, $key, $name, $description): JsonResponse {
+                $this->commandBus->dispatch(new CreateLibraryPack($this->gameSystemIds->generate()->toString(), $user->id(), $key, $name, $description));
+
+                return new JsonResponse(GameSystemResponse::fromView($this->queryBus->ask(new GetGameSystem($user->id(), $key))), Response::HTTP_CREATED);
+            });
         } catch (InvalidGameSystemMetadata|InvalidGameSystemId $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemKeyTaken $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
-        $response = new JsonResponse(GameSystemResponse::fromView($this->queryBus->ask(new GetGameSystem($user->id(), $key))), Response::HTTP_CREATED);
         $response->headers->set('Location', '/api/studio/library/packs/'.rawurlencode($key));
 
         return $response;

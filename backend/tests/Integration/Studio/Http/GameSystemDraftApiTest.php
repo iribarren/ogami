@@ -125,6 +125,51 @@ final class GameSystemDraftApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+            public int $fired = 0;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored document and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    ++$this->fired;
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET document = '\"corrupt\"'::jsonb WHERE game_system_key = 'mine'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::BASE, ['key' => 'mine', 'name' => 'Mine']);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
+        self::assertTrue($failed, 'The corrupted document makes the read fail.');
+        $this->assertNoGameSystems();
+    }
+
+    #[Test]
     public function aCopyTakesTheLatestOrAChosenVersionAndAGivenDescription(): void
     {
         $this->publishRelease(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-every-part'), 'gameSystem.description', 'First text'));

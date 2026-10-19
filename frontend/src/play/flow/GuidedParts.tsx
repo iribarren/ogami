@@ -23,11 +23,18 @@ const answersTheCard = (command: FlowRunCommand | undefined) =>
   command?.type === 'pick' ||
   command?.type === 'pickByRoll'
 
-/** The Scene Type of the scene under way; undefined before a scene starts. */
-function currentSceneType(campaign: Campaign) {
+/**
+ * The Scene Type of the scene the FlowRun is in; undefined outside a scene (at the scene pick,
+ * after End scene, in a hook), where the last scene's tips no longer apply.
+ */
+function currentSceneType(campaign: Campaign, flowRun: FlowRun) {
+  const sceneNumber = flowRun.progress?.sceneNumber ?? null
+  if (sceneNumber === null) {
+    return undefined
+  }
   const scene = campaign.sessions
     .find(({ number }) => number === campaign.currentSessionNumber)
-    ?.scenes.find(({ number }) => number === campaign.currentSceneNumber)
+    ?.scenes.find(({ number }) => number === sceneNumber)
   return campaign.sceneTypes.find(({ key }) => key === scene?.sceneType)
 }
 
@@ -38,7 +45,7 @@ function currentSceneType(campaign: Campaign) {
  */
 export function GuidedBody({ campaign, flowRun, command }: PartProps) {
   const active = flowRun.status === 'active'
-  const sceneType = currentSceneType(campaign)
+  const sceneType = currentSceneType(campaign, flowRun)
   const startSession = useStartSession(campaign.id)
   const onCommand = (next: FlowRunCommand) => {
     command.mutate(next)

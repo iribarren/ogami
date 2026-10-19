@@ -158,6 +158,13 @@ describe('focus mode', () => {
     expect(soFar.getByRole('button', { name: 'Roll Weather' })).toBeEnabled()
   })
 
+  it('shows no summary at the scene pick, where the last scene has ended', async () => {
+    renderPlay(guided(atTheScenePick(), 'focus'))
+
+    await focusRegion()
+    expect(screen.queryByRole('region', { name: 'So far' })).not.toBeInTheDocument()
+  })
+
   it('shows no summary while the scene has no entries', async () => {
     renderPlay(guided(atStep(promptStep), 'focus'), {}, [gateNote])
 

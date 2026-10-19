@@ -125,6 +125,13 @@ describe('Scene Type tips in guided play', () => {
     expect(help.getByText('Ask what the contact wants.')).toBeInTheDocument()
   })
 
+  it('shows no tips outside a scene, as at the scene pick after End scene', async () => {
+    renderCampaign(inATourScene(guided(atTheScenePick()), 'Ask what the contact wants.'))
+
+    const help = await guide()
+    expect(help.queryByRole('button', { name: /^Tips for/ })).not.toBeInTheDocument()
+  })
+
   it('shows nothing for a Scene Type without tips', async () => {
     renderCampaign(inATourScene(guided(atStep(promptStep)), null))
 

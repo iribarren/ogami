@@ -63,7 +63,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         $view = $this->view($campaign);
 
         self::assertSame([false, null, StepKind::Prompt, 'first', 'Who is your first crew member?', true], [$view->waitsForSession, $view->pick, $view->step?->kind, $view->step?->step->key, $view->step?->step->title, $view->step?->step->mandatory]);
-        self::assertEquals(new FlowRunProgress(null, 'the-job', 'The job', 'Crew', ScenePart::Setup, 1, 2), $view->progress);
+        self::assertEquals(new FlowRunProgress(null, 'the-job', 'The job', 'Crew', ScenePart::Setup, 1, 2, null, 1), $view->progress);
         self::assertSame('Setup: Who else is in?', $view->next);
 
         $campaign->completeFlowStep('first', self::prompt('Ada'), $this->heist, self::at());
@@ -72,6 +72,20 @@ final class FlowRunViewTest extends FlowRunTestCase
         // After open play, the sequence's next Scene Type.
         $campaign->skipFlowStep('second', $this->heist, self::at());
         self::assertSame([null, ScenePart::Open, 'Next scene: Briefing'], [$this->view($campaign)->step, $this->view($campaign)->progress?->part, $this->view($campaign)->next]);
+        self::assertSame(1, $this->view($campaign)->progress?->sceneNumber);
+    }
+
+    #[Test]
+    public function theProgressHoldsNoSceneNumberAtTheScenePickNorWhileWaitingForASession(): void
+    {
+        $campaign = self::guided($this->heist, 'heist');
+        self::assertNull($this->view($campaign)->progress?->sceneNumber);
+
+        $campaign->startSession(self::at(), $this->heist);
+        $this->playCrew($campaign);
+        $view = $this->view($campaign);
+
+        self::assertSame([null, null], [$view->progress?->part, $view->progress?->sceneNumber]);
     }
 
     #[Test]
@@ -166,7 +180,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         }
 
         $campaign->pickSceneType('gig-offer', $release, self::at());
-        self::assertEquals(new FlowRunProgress('Act 1: Making a name', 'making-a-name', 'Making a name', 'Gig offer', ScenePart::Setup, 1, 1), $this->view($campaign, $release)->progress);
+        self::assertEquals(new FlowRunProgress('Act 1: Making a name', 'making-a-name', 'Making a name', 'Gig offer', ScenePart::Setup, 1, 1, null, 4), $this->view($campaign, $release)->progress);
     }
 
     private function view(Campaign $campaign, ?GameSystemSnapshot $release = null): FlowRunView

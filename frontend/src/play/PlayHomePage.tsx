@@ -4,16 +4,16 @@ import { CampaignList } from './campaigns/CampaignList'
 import { NewCampaignForm } from './campaigns/NewCampaignForm'
 import { useCampaigns, useGameSystems } from './campaigns/useCampaigns'
 
-/** `/play`: my campaigns and a form to start a new one. */
+/** `/play`: a form to start a new campaign, then my campaigns. */
 export function PlayHomePage() {
   return (
     <div className="space-y-10">
       <h1 className="font-heading text-3xl font-bold tracking-tight">Play</h1>
-      <Section title="Your campaigns">
-        <Campaigns />
-      </Section>
       <Section title="New campaign">
         <NewCampaign />
+      </Section>
+      <Section title="Your campaigns">
+        <Campaigns />
       </Section>
     </div>
   )
@@ -49,7 +49,7 @@ function Campaigns() {
 function NewCampaign() {
   const gameSystems = useGameSystems()
   if (gameSystems.isPending) {
-    return <p className="text-muted-foreground">Loading the GameSystems…</p>
+    return <p className="text-muted-foreground">Loading the game systems…</p>
   }
   if (gameSystems.isError) {
     return (
@@ -61,7 +61,7 @@ function NewCampaign() {
   if (gameSystems.data.length === 0) {
     return (
       <p className="text-muted-foreground">
-        No GameSystem is published yet, so there is nothing to start a campaign from.
+        No game system is published yet, so there is nothing to start a campaign from.
       </p>
     )
   }

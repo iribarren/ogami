@@ -602,7 +602,7 @@ final class FlowRun
         return new FlowRunView(
             $this->status,
             null === $sessionNumber,
-            new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description),
+            new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description, $this->sceneNumber),
             $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,

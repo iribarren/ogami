@@ -5,7 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
-import { titleAddsToType } from '../journal/sceneLabels'
+import { playOrdinals, titleAddsToType } from '../journal/sceneLabels'
 import { PartyEditor } from './PartyEditor'
 import {
   useEndSession,
@@ -19,7 +19,7 @@ import {
 /** The API's limit on a scene title (`Scene::MAX_TITLE_LENGTH`), after trimming. */
 const MAX_SCENE_TITLE_LENGTH = 100
 
-/** "Session 2 · Scene 1: Into the dark", or where play stands before that. */
+/** "Session 2 · Scene 1: Into the dark" (numbering the scenes of play only), or where play stands before that. */
 function playPosition(campaign: Campaign) {
   const session = campaign.sessions.find(({ number }) => number === campaign.currentSessionNumber)
   if (session === undefined) {
@@ -34,7 +34,10 @@ function playPosition(campaign: Campaign) {
   const title = titleAddsToType(scene.title, scene.sceneTypeName)
     ? scene.title
     : (scene.sceneTypeName ?? scene.title)
-  return `${sessionLabel} · Scene ${String(scene.number)}: ${title}`
+  const ordinal = playOrdinals(session.scenes).get(scene.number)
+  return ordinal === undefined
+    ? `${sessionLabel} · ${title}`
+    : `${sessionLabel} · Scene ${String(ordinal)}: ${title}`
 }
 
 /** Where play stands, with the controls to start the next session or scene. */
@@ -140,7 +143,8 @@ function RenameScene({ campaign }: { campaign: Campaign }) {
     <RenameSceneForm
       key={`${String(campaign.currentSessionNumber)}-${String(scene.number)}`}
       campaignId={campaign.id}
-      title={scene.title}
+      // A default title ("Legwork 1") is not the player's own: the field starts empty.
+      title={titleAddsToType(scene.title, scene.sceneTypeName) ? scene.title : ''}
     />
   )
 }

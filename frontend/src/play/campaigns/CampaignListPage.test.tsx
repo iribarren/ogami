@@ -24,6 +24,10 @@ function campaignList() {
   return screen.getByRole('region', { name: 'Your campaigns' })
 }
 
+function newCampaignSection() {
+  return screen.getByRole('region', { name: 'New campaign' })
+}
+
 function newCampaignForm() {
   return screen.getByRole('form', { name: 'New campaign' })
 }
@@ -49,6 +53,22 @@ describe('the Play campaign list', () => {
     )
   })
 
+  it('puts the form to start a campaign before my campaigns', async () => {
+    renderAppAt('/play', {
+      'GET /api/auth/me': soloPlayer,
+      'GET /api/campaigns': json([lostMine]),
+      'GET /api/play/game-systems': json([freeJournal]),
+    })
+
+    await within(await screen.findByRole('region', { name: 'Your campaigns' })).findAllByRole(
+      'listitem',
+    )
+    expect(
+      newCampaignSection().compareDocumentPosition(campaignList()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
   it('says when I have no campaign yet', async () => {
     renderAppAt('/play', {
       'GET /api/auth/me': soloPlayer,
@@ -58,7 +78,7 @@ describe('the Play campaign list', () => {
 
     expect(
       await within(await screen.findByRole('region', { name: 'Your campaigns' })).findByText(
-        'You have no campaigns yet. Create one below to start playing.',
+        'You have no campaigns yet. Create one above to start playing.',
       ),
     ).toBeInTheDocument()
   })
@@ -209,7 +229,7 @@ describe('the Play campaign list', () => {
     const section = await screen.findByRole('region', { name: 'New campaign' })
     expect(
       await within(section).findByText(
-        'No GameSystem is published yet, so there is nothing to start a campaign from.',
+        'No game system is published yet, so there is nothing to start a campaign from.',
       ),
     ).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'New campaign' })).not.toBeInTheDocument()

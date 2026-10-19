@@ -69,7 +69,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
         'forced' => false,
     ];
 
-    private const array NO_PROGRESS = ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => null, 'part' => null, 'stepNumber' => null, 'stepCount' => null, 'phaseDescription' => 'Walk the tour, scene by scene.'];
+    private const array NO_PROGRESS = ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => null, 'part' => null, 'stepNumber' => null, 'stepCount' => null, 'phaseDescription' => 'Walk the tour, scene by scene.', 'sceneNumber' => null];
 
     private KernelBrowser $client;
     private CommandBus $commands;
@@ -143,7 +143,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
         self::assertSame([
             'status' => 'active',
             'waitsForSession' => false,
-            'progress' => ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => 'Tour', 'part' => 'setup', 'stepNumber' => $stepNumber, 'stepCount' => 6, 'phaseDescription' => 'Walk the tour, scene by scene.'],
+            'progress' => ['act' => null, 'phaseKey' => 'tour', 'phase' => 'Tour', 'sceneType' => 'Tour', 'part' => 'setup', 'stepNumber' => $stepNumber, 'stepCount' => 6, 'phaseDescription' => 'Walk the tour, scene by scene.', 'sceneNumber' => 1],
             'step' => $expectedStep,
             'pick' => null,
             'canMoveOn' => true,

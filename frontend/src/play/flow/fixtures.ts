@@ -157,6 +157,7 @@ const progress: FlowRun['progress'] = {
   stepNumber: 1,
   stepCount: 3,
   phaseDescription: null,
+  sceneNumber: 1,
 }
 
 /** A FlowRun waiting on `current`, in the scene "Into the dark" (the Scene Type Tour). */
@@ -186,7 +187,14 @@ export const describing = (flowRun: FlowRun): FlowRun => ({
 /** A FlowRun at the scene pick, in `rule`'s words. */
 export const atTheScenePick = (overrides: Partial<NonNullable<FlowRun['pick']>> = {}): FlowRun =>
   atStep(promptStep, {
-    progress: { ...progress, sceneType: null, part: null, stepNumber: null, stepCount: null },
+    progress: {
+      ...progress,
+      sceneType: null,
+      part: null,
+      stepNumber: null,
+      stepCount: null,
+      sceneNumber: null,
+    },
     step: null,
     pick: { rule: 'player', cards: [tour, quiet], table: null, forced: false, ...overrides },
     next: 'Next scene: choose a scene type',

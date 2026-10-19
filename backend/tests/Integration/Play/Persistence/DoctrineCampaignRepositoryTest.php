@@ -252,6 +252,27 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertFalse($this->repository->ofId($id)?->flowRun()?->autoPickDue());
     }
 
+    /**
+     * The progress holds the stored scene number; a FlowRun stored without one (outside a scene, or
+     * before it was kept) reads a null scene number, so the guide shows no scene tips.
+     */
+    #[Test]
+    public function theProgressOfAStoredFlowRunReadsItsSceneNumberAndALegacyOneReadsNull(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $release = Snapshots::withFlows('heist', 'Heist', 1);
+        $this->forgetLoaded();
+
+        self::assertSame(1, $this->repository->ofId($id)?->flowRunView($release)?->progress?->sceneNumber);
+
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['sceneNumber']));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        self::assertNull($this->repository->ofId($id)?->flowRunView($release)?->progress?->sceneNumber);
+    }
+
     #[Test]
     public function aDueAutoPickRoundTripsWithTheWholeFlowRun(): void
     {

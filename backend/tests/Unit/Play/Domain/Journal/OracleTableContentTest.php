@@ -29,6 +29,7 @@ final class OracleTableContentTest extends TestCase
             'kind' => 'oracle-table',
             'oracleKey' => 'weather',
             'oracleName' => 'Weather',
+            'forEntry' => null,
             'steps' => [
                 ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 6, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
                 ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d6', 'total' => 4, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => null],
@@ -71,6 +72,52 @@ final class OracleTableContentTest extends TestCase
             'oracleKey' => 'weather',
             'oracleName' => 'Weather',
             'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => 7]],
+        ]);
+    }
+
+    #[Test]
+    public function aRollKeepsTheQuestionWhoseRandomEventItAnswers(): void
+    {
+        $content = OracleTableContent::fromResult('weather', 'Weather', self::stormResult(), [], '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001');
+
+        self::assertSame('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', $content->forEntry());
+        self::assertSame('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', $content->toArray()['forEntry']);
+        self::assertEquals($content, OracleTableContent::fromArray($content->toArray()));
+    }
+
+    #[Test]
+    public function aRollAnswersNoQuestionByDefault(): void
+    {
+        self::assertNull(OracleTableContent::fromResult('weather', 'Weather', self::stormResult(), [])->forEntry());
+    }
+
+    #[Test]
+    public function aRowStoredBeforeTheQuestionWasKeptReadsAsAnsweringNone(): void
+    {
+        $legacy = [
+            'kind' => 'oracle-table',
+            'oracleKey' => 'weather',
+            'oracleName' => 'Weather',
+            'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => null]],
+        ];
+
+        $content = OracleTableContent::fromArray($legacy);
+
+        self::assertNull($content->forEntry());
+        self::assertNull($content->toArray()['forEntry']);
+        self::assertEquals($content, OracleTableContent::fromArray($content->toArray()));
+    }
+
+    #[Test]
+    public function aQuestionThatIsNeitherAStringNorNullFailsClosed(): void
+    {
+        $this->expectException(InvalidJournalEntryContent::class);
+
+        OracleTableContent::fromArray([
+            'oracleKey' => 'weather',
+            'oracleName' => 'Weather',
+            'forEntry' => 7,
+            'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => null]],
         ]);
     }
 

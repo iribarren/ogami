@@ -9,7 +9,8 @@ use App\Randomness\Domain\Oracle\OracleTableStep;
 
 /**
  * A roll on an oracle table of the pinned release: the oracle asked and every resolution step,
- * root first.
+ * root first. A roll made for a random event names the likelihood entry (the fate question) whose
+ * random event it answers.
  *
  * @phpstan-type StepData array{tableKey: string, tableName: string, dice: string, total: int, text: string, nestedTableKey: ?string, sceneType: ?string}
  */
@@ -24,15 +25,17 @@ final readonly class OracleTableContent implements JournalEntryContent
         private string $oracleKey,
         private string $oracleName,
         private array $steps,
+        private ?string $forEntry,
     ) {
     }
 
     /**
      * @param list<?string> $sceneTypes the Scene Type key each step's entry offers, in step order; a missing item is null
+     * @param ?string       $forEntry   the id of the likelihood entry whose random event this roll answers, null for any other roll
      *
      * @throws InvalidJournalEntryContent when the oracle key is blank
      */
-    public static function fromResult(string $oracleKey, string $oracleName, OracleTableResult $result, array $sceneTypes): self
+    public static function fromResult(string $oracleKey, string $oracleName, OracleTableResult $result, array $sceneTypes, ?string $forEntry = null): self
     {
         return self::of(
             $oracleKey,
@@ -50,11 +53,13 @@ final readonly class OracleTableContent implements JournalEntryContent
                 $result->steps(),
                 array_keys($result->steps()),
             ),
+            $forEntry,
         );
     }
 
     /**
-     * Rows stored before the Scene Type was kept have no `sceneType` and read as null.
+     * Rows stored before the Scene Type was kept have no `sceneType`, and rows stored before the
+     * question was kept have no `forEntry`: both read as null.
      *
      * @param array<mixed> $data
      *
@@ -78,19 +83,24 @@ final readonly class OracleTableContent implements JournalEntryContent
             throw InvalidJournalEntryContent::malformed('steps', 'a non-empty list');
         }
 
-        return self::of(ContentData::string($data, 'oracleKey'), ContentData::string($data, 'oracleName'), $steps);
+        return self::of(
+            ContentData::string($data, 'oracleKey'),
+            ContentData::string($data, 'oracleName'),
+            $steps,
+            \array_key_exists('forEntry', $data) ? ContentData::nullableString($data, 'forEntry') : null,
+        );
     }
 
     /**
      * @param non-empty-list<StepData> $steps
      */
-    private static function of(string $oracleKey, string $oracleName, array $steps): self
+    private static function of(string $oracleKey, string $oracleName, array $steps, ?string $forEntry): self
     {
         if ('' === trim($oracleKey)) {
             throw InvalidJournalEntryContent::blankOracleKey();
         }
 
-        return new self($oracleKey, $oracleName, $steps);
+        return new self($oracleKey, $oracleName, $steps, $forEntry);
     }
 
     public function kind(): string
@@ -109,6 +119,14 @@ final readonly class OracleTableContent implements JournalEntryContent
     }
 
     /**
+     * The id of the likelihood entry whose random event this roll answers; null for any other roll.
+     */
+    public function forEntry(): ?string
+    {
+        return $this->forEntry;
+    }
+
+    /**
      * @return non-empty-list<StepData> root first; nestedTableKey is null on the last step, sceneType when the entry offers none
      */
     public function steps(): array
@@ -117,10 +135,10 @@ final readonly class OracleTableContent implements JournalEntryContent
     }
 
     /**
-     * @return array{kind: string, oracleKey: string, oracleName: string, steps: non-empty-list<StepData>}
+     * @return array{kind: string, oracleKey: string, oracleName: string, forEntry: ?string, steps: non-empty-list<StepData>}
      */
     public function toArray(): array
     {
-        return ['kind' => self::KIND, 'oracleKey' => $this->oracleKey, 'oracleName' => $this->oracleName, 'steps' => $this->steps];
+        return ['kind' => self::KIND, 'oracleKey' => $this->oracleKey, 'oracleName' => $this->oracleName, 'forEntry' => $this->forEntry, 'steps' => $this->steps];
     }
 }

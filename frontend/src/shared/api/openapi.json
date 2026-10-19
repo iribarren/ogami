@@ -4942,6 +4942,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordOracleTableResultRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "The new entry.",
@@ -4949,6 +4959,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The body is not valid JSON, or its \"forEntry\" is not a string.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -4974,7 +4994,7 @@
                         }
                     },
                     "404": {
-                        "description": "No campaign of the player has this id, or its pinned release has no oracle table with this key.",
+                        "description": "No campaign of the player has this id, its pinned release has no oracle table with this key, or no entry of the campaign has the \"forEntry\" id.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4984,7 +5004,27 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign has no current scene, or the generated entry id is already taken.",
+                        "description": "The campaign has no current scene, the generated entry id is already taken, or the random event of the \"forEntry\" question was already rolled (also when two rolls arrive at once).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "A body is sent and it is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The \"forEntry\" id is blank, or that entry is not a likelihood answer whose random event is this oracle table.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12917,6 +12957,7 @@
                     "kind",
                     "oracleKey",
                     "oracleName",
+                    "forEntry",
                     "steps"
                 ],
                 "properties": {
@@ -12934,6 +12975,12 @@
                     "oracleName": {
                         "type": "string",
                         "example": "Weather"
+                    },
+                    "forEntry": {
+                        "description": "The id of the likelihood entry (the fate question) whose random event this roll answers; null for any other roll.",
+                        "type": "string",
+                        "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001",
+                        "nullable": true
                     },
                     "steps": {
                         "description": "Root table first, then each nested table rolled.",
@@ -13638,6 +13685,17 @@
                         "description": "The Situational modifier, from -100 to 100; omitted or null, 0.",
                         "type": "integer",
                         "example": -2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "RecordOracleTableResultRequest": {
+                "properties": {
+                    "forEntry": {
+                        "description": "The id of the likelihood journal entry (the fate question) whose random event this roll answers; omitted or null for any other roll. The entry must be of the campaign and its random event must be this oracle table, and the event is rolled only once.",
+                        "type": "string",
+                        "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001",
                         "nullable": true
                     }
                 },

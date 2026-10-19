@@ -9,6 +9,8 @@ use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\JournalEntryRepository;
+use App\Play\Domain\Journal\OracleTableContent;
+use App\Play\Domain\Journal\RandomEventAlreadyRolled;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -23,6 +25,12 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
     /** PostgreSQL's name for the primary key of play_journal_entry. */
     public const string PRIMARY_KEY_CONSTRAINT = 'play_journal_entry_pkey';
 
+    /**
+     * Name of the partial unique index on the question an oracle table entry answers
+     * (`content->>'forEntry'`), created by a migration: Doctrine cannot map an expression index.
+     */
+    public const string RANDOM_EVENT_UNIQUE_INDEX = 'uniq_play_journal_entry_random_event';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
     ) {
@@ -33,6 +41,7 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
      * entity manager is closed afterwards; the command bus transaction rolls back.
      *
      * @throws JournalEntryAlreadyExists when the id is taken, also by a concurrent record
+     * @throws RandomEventAlreadyRolled  when the question's random event is already rolled, also by a concurrent roll
      */
     public function add(JournalEntry $entry): void
     {
@@ -47,6 +56,11 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
         } catch (UniqueConstraintViolationException $exception) {
             if (str_contains($exception->getMessage(), self::PRIMARY_KEY_CONSTRAINT)) {
                 throw JournalEntryAlreadyExists::withId($entry->id());
+            }
+
+            $content = $entry->content();
+            if (str_contains($exception->getMessage(), self::RANDOM_EVENT_UNIQUE_INDEX) && $content instanceof OracleTableContent && null !== $content->forEntry()) {
+                throw RandomEventAlreadyRolled::forEntry($content->forEntry());
             }
 
             throw $exception;

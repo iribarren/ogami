@@ -3090,6 +3090,11 @@ export interface components {
             oracleKey: string;
             /** @example Weather */
             oracleName: string;
+            /**
+             * @description The id of the likelihood entry (the fate question) whose random event this roll answers; null for any other roll.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001
+             */
+            forEntry: string | null;
             /** @description Root table first, then each nested table rolled. */
             steps: components["schemas"]["JournalOracleTableStepResponse"][];
         };
@@ -3452,6 +3457,13 @@ export interface components {
              * @example -2
              */
             situational?: number | null;
+        };
+        RecordOracleTableResultRequest: {
+            /**
+             * @description The id of the likelihood journal entry (the fate question) whose random event this roll answers; omitted or null for any other roll. The entry must be of the campaign and its random event must be this oracle table, and the event is rolled only once.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001
+             */
+            forEntry?: string | null;
         };
         RecordLikelihoodAnswerRequest: {
             /**
@@ -8803,7 +8815,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RecordOracleTableResultRequest"];
+            };
+        };
         responses: {
             /** @description The new entry. */
             201: {
@@ -8812,6 +8828,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description The body is not valid JSON, or its "forEntry" is not a string. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description No session. */
@@ -8832,7 +8857,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id, or its pinned release has no oracle table with this key. */
+            /** @description No campaign of the player has this id, its pinned release has no oracle table with this key, or no entry of the campaign has the "forEntry" id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8841,8 +8866,26 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign has no current scene, or the generated entry id is already taken. */
+            /** @description The campaign has no current scene, the generated entry id is already taken, or the random event of the "forEntry" question was already rolled (also when two rolls arrive at once). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A body is sent and it is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The "forEntry" id is blank, or that entry is not a likelihood answer whose random event is this oracle table. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

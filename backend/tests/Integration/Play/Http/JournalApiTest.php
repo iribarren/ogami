@@ -126,12 +126,121 @@ final class JournalApiTest extends WebTestCase
                 'kind' => 'oracle-table',
                 'oracleKey' => 'weather',
                 'oracleName' => 'Weather',
+                'forEntry' => null,
                 'steps' => [
                     ['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 6, 'text' => 'Storm', 'nestedTableKey' => 'storm-kind', 'sceneType' => null],
                     ['tableKey' => 'storm-kind', 'tableName' => 'Storm kind', 'dice' => '1d3', 'total' => 3, 'text' => 'Hail', 'nestedTableKey' => null, 'sceneType' => null],
                 ],
             ],
         ]), $this->content());
+    }
+
+    #[Test]
+    public function aSoloPlayerRollsTheRandomEventOfAFateQuestionOnce(): void
+    {
+        $id = $this->campaignInAScene(randomEvent: true);
+        $question = $this->askFate($id, 22);
+
+        // Weather 1d6 shows 6 (Storm, nests storm-kind); storm-kind (weights 2 + 1) shows 3 (Hail).
+        $this->scriptRandomNumbers(6, 3);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), ['forEntry' => $question]);
+
+        self::assertResponseStatusCodeSame(201);
+        $content = $this->json()['content'] ?? null;
+        self::assertIsArray($content);
+        self::assertSame([$question, 'weather'], [$content['forEntry'] ?? null, $content['oracleKey'] ?? null]);
+
+        $this->scriptRandomNumbers(1);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), ['forEntry' => $question]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => \sprintf('The random event of journal entry "%s" was already rolled.', $question)], $this->json());
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        self::assertCount(2, $this->json());
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function refusedRandomEventRolls(): iterable
+    {
+        yield 'blank question id' => [' ', 422];
+        yield 'unknown question' => ['0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8777', 404];
+        yield 'not a uuid' => ['not-an-entry', 404];
+    }
+
+    #[Test]
+    #[DataProvider('refusedRandomEventRolls')]
+    public function aRollForAnEntryThatIsNoQuestionOfThisCampaignIsRefusedAndRecordsNothing(string $forEntry, int $status): void
+    {
+        $id = $this->campaignInAScene(randomEvent: true);
+        $this->askFate($id, 22);
+        $this->scriptRandomNumbers(6, 3);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), ['forEntry' => $forEntry]);
+
+        self::assertResponseStatusCodeSame($status);
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        self::assertCount(1, $this->json());
+    }
+
+    #[Test]
+    public function aRollForAnEntryThatIsNotARandomEventOfThatTableIsUnprocessable(): void
+    {
+        $id = $this->campaignInAScene(randomEvent: true);
+        // 30 is no double: the answer has no random event. 22 is one, of "weather" only.
+        $plain = $this->askFate($id, 30);
+        $this->record($id, 'notes', ['text' => 'A note.']);
+        $event = $this->askFate($id, 22);
+
+        foreach ([[$plain, 'weather'], [$this->entryId(2), 'weather'], [$event, 'storm-kind']] as [$forEntry, $table]) {
+            $this->scriptRandomNumbers(2);
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/%s', $id, $table), ['forEntry' => $forEntry]);
+
+            self::assertResponseStatusCodeSame(422);
+            self::assertSame(['error' => \sprintf('Journal entry "%s" is not a likelihood answer with the random event "%s".', $forEntry, $table)], $this->json());
+        }
+
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        self::assertCount(3, $this->json());
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function malformedOracleTableBodies(): iterable
+    {
+        yield 'invalid JSON' => ['{', null];
+        yield 'a number' => ['{"forEntry": 7}', null];
+        yield 'not JSON' => ['forEntry', 'text/plain'];
+    }
+
+    #[Test]
+    #[DataProvider('malformedOracleTableBodies')]
+    public function aMalformedBodyOnAnOracleTableRollIsRefusedAndRecordsNothing(string $body, ?string $contentType): void
+    {
+        $id = $this->campaignInAScene(randomEvent: true);
+        $this->scriptRandomNumbers(6, 3);
+
+        $this->client->request('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), server: ['CONTENT_TYPE' => $contentType ?? 'application/json'], content: $body);
+
+        self::assertResponseStatusCodeSame(null === $contentType ? 400 : 415);
+        $this->assertJournalIsEmpty($id);
+    }
+
+    #[Test]
+    public function aNullQuestionIsAnOrdinaryOracleTableRoll(): void
+    {
+        $id = $this->campaignInAScene();
+        $this->scriptRandomNumbers(2);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), ['forEntry' => null]);
+
+        self::assertResponseStatusCodeSame(201);
+        $content = $this->json()['content'] ?? null;
+        self::assertIsArray($content);
+        self::assertArrayHasKey('forEntry', $content);
+        self::assertNull($content['forEntry']);
     }
 
     #[Test]
@@ -252,6 +361,7 @@ final class JournalApiTest extends WebTestCase
                     'kind' => 'oracle-table',
                     'oracleKey' => 'weather',
                     'oracleName' => 'Weather',
+                    'forEntry' => null,
                     'steps' => [['tableKey' => 'weather', 'tableName' => 'Weather', 'dice' => '1d6', 'total' => 2, 'text' => 'Clear', 'nestedTableKey' => null, 'sceneType' => null]],
                 ],
             ],
@@ -603,9 +713,9 @@ final class JournalApiTest extends WebTestCase
      * Publishes the example release, signs the player in and creates a campaign in session 1,
      * scene 1 (started at 09:10); the clock is left at 09:20.
      */
-    private function campaignInAScene(string $email = 'ada@example.com', bool $fateWithoutChaos = false): string
+    private function campaignInAScene(string $email = 'ada@example.com', bool $fateWithoutChaos = false, bool $randomEvent = false): string
     {
-        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001', fateWithoutChaos: $fateWithoutChaos);
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001', fateWithoutChaos: $fateWithoutChaos, randomEvent: $randomEvent);
         $this->signIn($email, ['SOLO_PLAYER']);
         $id = $this->createCampaign();
         $this->clock->moveTo('2026-10-06T09:05:00+00:00');
@@ -662,7 +772,21 @@ final class JournalApiTest extends WebTestCase
         $this->random->script(...$numbers);
     }
 
-    private function publish(string $releaseId, bool $withoutLikelihoodOracles = false, bool $fateWithoutChaos = false): void
+    /**
+     * Asks "fate" at chaos 5 and answers the id of the recorded entry. A roll of 22 is a random
+     * event of the oracle's table when it has one, 30 is none.
+     */
+    private function askFate(string $campaignId, int $roll): string
+    {
+        $this->scriptRandomNumbers($roll);
+        $this->record($campaignId, 'likelihood-oracles/fate', ['likelihood' => 'even', 'chaosFactor' => 5]);
+        $id = $this->json()['id'] ?? null;
+        self::assertIsString($id);
+
+        return $id;
+    }
+
+    private function publish(string $releaseId, bool $withoutLikelihoodOracles = false, bool $fateWithoutChaos = false, bool $randomEvent = false): void
     {
         $content = ReleaseViews::contractDocExampleContent();
         if ($fateWithoutChaos) {
@@ -670,6 +794,17 @@ final class JournalApiTest extends WebTestCase
             $oracles = $content['oracles'];
             unset($oracles['likelihood'][0]['chaos']);
             $content['oracles'] = $oracles;
+        }
+
+        if ($randomEvent) {
+            /** @var array{likelihood: list<array<string, mixed>>} $oracles */
+            $oracles = $content['oracles'];
+            $oracles['likelihood'][0]['randomEvent'] = ['table' => 'weather'];
+            $content['oracles'] = $oracles;
+            // The random event is a schema version 2 field: the version 1 flow becomes no Flow.
+            $content['schemaVersion'] = 2;
+            unset($content['flow']);
+            $content += ['trackers' => [], 'factSlots' => [], 'sceneTypes' => [], 'flows' => []];
         }
 
         if ($withoutLikelihoodOracles) {

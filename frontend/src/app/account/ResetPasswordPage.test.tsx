@@ -69,7 +69,8 @@ describe('ResetPasswordPage', () => {
 
   it('shows the invalid link state when the API refuses the token', async () => {
     const { user } = await openLink('#token=old', {
-      [reset]: () => Response.json({ error: invalid }, { status: 422 }),
+      [reset]: () =>
+        Response.json({ error: invalid, code: 'invalid_account_link' }, { status: 422 }),
     })
 
     await submit(user, 'a-new-password')
@@ -82,7 +83,7 @@ describe('ResetPasswordPage', () => {
     const { user } = await openLink('#token=abc', {
       [reset]: () =>
         Response.json(
-          { error: 'The password must have between 8 and 4096 characters.' },
+          { error: 'The password must have between 8 and 4096 characters.', code: 'weak_password' },
           { status: 422 },
         ),
     })
@@ -92,6 +93,28 @@ describe('ResetPasswordPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The password must have between 8 and 4096 characters.',
     )
+    expect(screen.getByLabelText('New password')).toBeInTheDocument()
+  })
+
+  it('does not treat a 422 as a dead link by its wording: only the code decides', async () => {
+    const { user } = await openLink('#token=abc', {
+      [reset]: () => Response.json({ error: invalid, code: 'weak_password' }, { status: 422 }),
+    })
+
+    await submit(user, 'a-new-password')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(invalid)
+    expect(screen.getByLabelText('New password')).toBeInTheDocument()
+  })
+
+  it('fails closed on a 422 without a code: the message shows and the form stays', async () => {
+    const { user } = await openLink('#token=abc', {
+      [reset]: () => Response.json({ error: 'Something else.' }, { status: 422 }),
+    })
+
+    await submit(user, 'a-new-password')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something else.')
     expect(screen.getByLabelText('New password')).toBeInTheDocument()
   })
 

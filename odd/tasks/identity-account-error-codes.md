@@ -1,7 +1,7 @@
 # Feature: identity-account-error-codes
 
 - **Locator:** `odd/tasks/identity-account-error-codes.md` · Engram topic `odd/identity-account-error-codes/tasks`
-- **Issue:** #216 · **Branch:** `feat/identity-account-error-codes-1-codes` · **Status:** slice 1 in progress
+- **Issue:** #216 · **Branch:** `feat/identity-account-error-codes-1-codes` · **Status:** slice 1 implemented, awaiting review
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-atomic-write-read` (PR #214)
@@ -63,12 +63,13 @@ Out of scope:
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Backend: `AccountErrorCode` enum, `AccountErrorResponse` schema, every error of the four public account endpoints answers `{error, code}`; OpenAPI documented; API tests per code; `make api` | delegated writer (slice 1; feature doc inline by parent) | [x] | |
-| T2 | 1 | SPA: `AccountError.code`, dead-link branch on `invalid_account_link`, text matching removed; page tests and stories with codes | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | SPA: `AccountError.code`, dead-link branch on `invalid_account_link`, text matching removed; page tests and stories with codes | delegated writer (slice 1) | [x] | |
 
 ## Progress
 
 - 2026-10-19: feature doc created (parent); four endpoints and six error cases mapped; decision: account-only `AccountErrorResponse`; one slice.
 - 2026-10-19: T1 done (RED: 23 API test failures on the new bodies; GREEN: 35 tests); `AccountErrorCode` is rendered by NelmioApiDoc as its own string-enum schema, `AccountErrorResponse.code` references it; `openapi.json` lives in `frontend/src/shared/api/`.
+- 2026-10-19: T2 done (RED: 1 failing test, a 422 worded as a dead link with `weak_password` was treated as one; GREEN: 34 account tests); `accountApi.ts` keeps only codes it knows, an unknown or missing code is `null`.
 
 ## Reviews
 
@@ -77,4 +78,4 @@ Out of scope:
 
 ## Next step
 
-Slice 1: T1 then T2 (delegated writer).
+Slice 1 review.

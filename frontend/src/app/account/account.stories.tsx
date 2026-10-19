@@ -96,7 +96,7 @@ export const AcceptInvitationExpired: Story = {
   parameters: {
     api: {
       'POST /api/auth/invitations/lookup': json(
-        { error: 'This link is invalid or has expired.' },
+        { error: 'This link is invalid or has expired.', code: 'invalid_account_link' },
         422,
       ),
     },

@@ -5,13 +5,19 @@ import { useApiClient } from '@/shared/api/useApiClient'
 
 export type InvitationLookup = components['schemas']['InvitationLookupResponse']
 
-/**
- * The API's one answer for an unknown, expired or used link; pages show their own wording.
- * The 422 body is only `{ error }` (no code), so this matches its English text. The wording is
- * pinned by `INVALID_LINK` in backend `PasswordResetApiTest` and `InvitationApiTest`: change
- * both sides together.
- */
-const INVALID_LINK = 'invalid or has expired'
+export type AccountErrorCode = components['schemas']['AccountErrorCode']
+
+const INVALID_ACCOUNT_LINK: AccountErrorCode = 'invalid_account_link'
+
+// The codes the client understands; every value is checked against the generated union.
+const KNOWN_CODES: readonly AccountErrorCode[] = [
+  'invalid_account_link',
+  'weak_password',
+  'invalid_email',
+  'email_already_in_use',
+  'malformed_request',
+  'not_json',
+]
 
 /** A refused or failed call of the public account endpoints; `message` is ready to show. */
 export class AccountError extends Error {
@@ -19,30 +25,47 @@ export class AccountError extends Error {
 
   readonly status: number
 
-  /** The link is unknown, expired or already used (422). */
+  /** Why the API refused, or `null` for a generic failure and for a body without a known code. */
+  readonly code: AccountErrorCode | null
+
+  /** The link is unknown, expired or already used (422 `invalid_account_link`). */
   readonly invalidLink: boolean
 
-  constructor(message: string, status: number, invalidLink: boolean) {
+  constructor(message: string, status: number, code: AccountErrorCode | null) {
     super(message)
     this.status = status
-    this.invalidLink = invalidLink
+    this.code = code
+    this.invalidLink = status === 422 && code === INVALID_ACCOUNT_LINK
   }
+}
+
+/**
+ * The API's error body is `{ error, code }`. The code is the contract (pinned by the OpenAPI
+ * enum and the backend API tests), never the wording of `error`. A missing or unknown code,
+ * such as a body from an older API or a proxy, is `null`: never a dead link.
+ */
+function codeOf(error: { code?: unknown } | undefined): AccountErrorCode | null {
+  const known: readonly unknown[] = KNOWN_CODES
+  return known.includes(error?.code) ? (error?.code as AccountErrorCode) : null
 }
 
 /**
  * 422 (a weak password, a malformed email, an invalid link) and 409 (the email already has an
  * account) carry a message meant for people; anything else, including 400 and 5xx, is generic.
  */
-function accountError(response: Response, error: { error: string } | undefined): AccountError {
+function accountError(
+  response: Response,
+  error: { error: string; code?: unknown } | undefined,
+): AccountError {
   const reason = error?.error ?? ''
   const { status } = response
   if ((status === 422 || status === 409) && reason !== '') {
-    return new AccountError(reason, status, status === 422 && reason.includes(INVALID_LINK))
+    return new AccountError(reason, status, codeOf(error))
   }
   return new AccountError(
     `The request failed with HTTP ${String(status)}. Try again later.`,
     status,
-    false,
+    null,
   )
 }
 
@@ -117,7 +140,7 @@ export function useInvitationLookup(token: string | null) {
         throw accountError(response, error)
       }
       if (typeof data.email !== 'string' || !Array.isArray(data.roles)) {
-        throw new AccountError('The invitation could not be read. Try again later.', 200, false)
+        throw new AccountError('The invitation could not be read. Try again later.', 200, null)
       }
       return data
     },

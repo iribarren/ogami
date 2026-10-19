@@ -17,11 +17,14 @@ import { useFlowView, type FlowView } from '../flow/useFlowView'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
 import { useJournal, useRecordRoll } from '../journal/useJournal'
+import { OpenListProvider } from '../lists/ListLinks'
 import { ListPanel } from '../lists/ListPanel'
+import type { ListKind } from '../lists/useLists'
 import { OraclePanel } from '../oracles/OraclePanel'
 import { TrackersPanel } from '../trackers/TrackersPanel'
 import { visibleTrackers } from '../trackers/useTrackers'
 import { CreditsNotice } from './CreditsNotice'
+import { openPlayPanel } from './openPlayPanel'
 import { PlayPanel } from './PlayPanel'
 import { ReleaseUpgradeAction } from './ReleaseUpgradeDialog'
 import { releaseLabel } from './releaseLabel'
@@ -97,9 +100,12 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const focused = campaign.flowRun !== null && view === 'focus'
   // Shared by the step card and the controls below the composer, so one pending state covers both.
   const command = useFlowRunCommand(campaign.id)
+  const openList = (kind: ListKind) => {
+    openPlayPanel(kind === 'npc' ? 'npcs' : 'threads')
+  }
 
   return (
-    <>
+    <OpenListProvider value={openList}>
       <header className="space-y-1">
         <h1 className="font-heading text-page-title break-words">{campaign.name}</h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -211,7 +217,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           </PlayPanel>
         </aside>
       </div>
-    </>
+    </OpenListProvider>
   )
 }
 

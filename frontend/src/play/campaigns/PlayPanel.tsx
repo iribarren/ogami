@@ -1,8 +1,9 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Collapsible, CollapsibleTrigger } from '@/shared/ui/collapsible'
 
+import { openPlayPanelEvent } from './openPlayPanel'
 import { readPanelOpen, storePanelOpen } from './playPanelStorage'
 
 interface PlayPanelProps {
@@ -24,6 +25,30 @@ export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) 
   const headingId = useId()
   const bodyId = useId()
   const [open, setOpen] = useState(() => readPanelOpen(id))
+  const trigger = useRef<HTMLButtonElement>(null)
+
+  // openPlayPanel(id) expands this panel, brings it into view and puts the focus on its title.
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      if (!(event instanceof CustomEvent) || event.detail !== id) {
+        return
+      }
+      setOpen(true)
+      storePanelOpen(id, true)
+      const title = trigger.current
+      if (title !== null) {
+        // jsdom has no scrollIntoView.
+        if ('scrollIntoView' in title) {
+          title.scrollIntoView({ block: 'nearest' })
+        }
+        title.focus()
+      }
+    }
+    window.addEventListener(openPlayPanelEvent, onOpen)
+    return () => {
+      window.removeEventListener(openPlayPanelEvent, onOpen)
+    }
+  }, [id])
 
   return (
     <Collapsible
@@ -42,6 +67,7 @@ export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) 
           <h2 id={headingId} className="min-w-0 font-heading text-panel-title">
             {/* Radix points aria-controls at CollapsibleContent, which this panel does not render. */}
             <CollapsibleTrigger
+              ref={trigger}
               aria-controls={bodyId}
               className="group/trigger -m-1 flex items-center gap-2 rounded-md p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             >

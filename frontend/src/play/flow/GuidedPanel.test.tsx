@@ -85,6 +85,30 @@ describe('the guided panel', () => {
     expect(guide.getByText('Setup: Who walks in?')).toBeInTheDocument()
   })
 
+  it.each([
+    ['Threads', 'threads'],
+    ['NPCs', 'npcs'],
+  ])('opens the collapsed %s panel from its link in the guide', async (name, id) => {
+    const user = userEvent.setup()
+    window.localStorage.setItem(`ogami.playPanel.${id}`, 'closed')
+    renderGuided(guided(atStep(promptStep)))
+    const lists = within(await screen.findByRole('navigation', { name: 'Lists' }))
+    const trigger = within(screen.getByRole('region', { name })).getByRole('button', { name })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(lists.getByRole('button', { name }))
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toHaveFocus()
+  })
+
+  it('offers no list links to a campaign played freely', async () => {
+    renderGuided(lostMineCampaign)
+
+    await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
+    expect(screen.queryByRole('navigation', { name: 'Lists' })).not.toBeInTheDocument()
+  })
+
   it('lists the Fact slots a step fills, with their hints', async () => {
     const filling = {
       ...promptStep,

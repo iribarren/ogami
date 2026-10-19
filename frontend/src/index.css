@@ -2,13 +2,16 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
-/* Heading faces of the curated campaign themes; only the weights the title scale uses. */
+@import '@fontsource-variable/geist-mono';
+/* Faces of the curated campaign themes (headings, labels, prose, buttons); only the weights they use. */
+@import '@fontsource/eb-garamond/latin-400.css';
 @import '@fontsource/eb-garamond/latin-600.css';
 @import '@fontsource/eb-garamond/latin-700.css';
 @import '@fontsource/orbitron/latin-600.css';
 @import '@fontsource/orbitron/latin-700.css';
 @import '@fontsource/special-elite/latin-400.css';
 @import '@fontsource/im-fell-english/latin-400.css';
+@import '@fontsource/im-fell-english/latin-400-italic.css';
 @import '@fontsource/exo-2/latin-600.css';
 @import '@fontsource/exo-2/latin-700.css';
 
@@ -83,6 +86,7 @@
   --text-panel-title: 0.9375rem;
   --text-panel-title--line-height: 1.4;
   --text-panel-title--font-weight: 600;
+  --text-panel-title--letter-spacing: 0em;
 }
 
 /*
@@ -141,6 +145,27 @@
   --readout-shadow: none;
   --texture: radial-gradient(oklch(0.22 0.015 60 / 0.05) 1px, transparent 1.3px);
   --texture-size: 6px 6px;
+  --label-font: 'Geist Variable', sans-serif;
+  --label-size: 12px;
+  --label-weight: 500;
+  --label-case: none;
+  --label-tracking: 0em;
+  --label-style: normal;
+  --label-caps: normal;
+  --label-color: oklch(0.46 0.02 65);
+  --text-page-title--letter-spacing: -0.02em;
+  --page-title-case: none;
+  --page-title-shadow: none;
+  --text-panel-title: 0.9375rem;
+  --text-panel-title--font-weight: 600;
+  --text-panel-title--letter-spacing: 0em;
+  --panel-title-case: none;
+  --prose-font: 'Geist Variable', sans-serif;
+  --prose-size: 0.9375rem;
+  --button-font: 'Geist Variable', sans-serif;
+  --button-size: 0.875rem;
+  --button-case: none;
+  --button-tracking: 0em;
 }
 
 .dark {
@@ -190,6 +215,27 @@
   --readout-shadow: none;
   --texture: radial-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1.3px);
   --texture-size: 6px 6px;
+  --label-font: 'Geist Variable', sans-serif;
+  --label-size: 12px;
+  --label-weight: 500;
+  --label-case: none;
+  --label-tracking: 0em;
+  --label-style: normal;
+  --label-caps: normal;
+  --label-color: oklch(0.72 0.015 260);
+  --text-page-title--letter-spacing: -0.02em;
+  --page-title-case: none;
+  --page-title-shadow: none;
+  --text-panel-title: 0.9375rem;
+  --text-panel-title--font-weight: 600;
+  --text-panel-title--letter-spacing: 0em;
+  --panel-title-case: none;
+  --prose-font: 'Geist Variable', sans-serif;
+  --prose-size: 0.9375rem;
+  --button-font: 'Geist Variable', sans-serif;
+  --button-size: 0.875rem;
+  --button-case: none;
+  --button-tracking: 0em;
 }
 
 /*
@@ -246,6 +292,27 @@
   --readout-shadow: none;
   --texture: radial-gradient(ellipse at 50% 35%, transparent 50%, oklch(0.62 0.08 65 / 0.3) 100%);
   --texture-size: 100% 100%;
+  --label-font: 'EB Garamond', 'Geist Variable', serif;
+  --label-size: 15px;
+  --label-weight: 600;
+  --label-case: none;
+  --label-tracking: 0.05em;
+  --label-style: normal;
+  --label-caps: all-small-caps;
+  --label-color: oklch(0.43 0.05 60);
+  --text-page-title--letter-spacing: 0.005em;
+  --page-title-case: none;
+  --page-title-shadow: 0 1px 0 oklch(1 0 0 / 0.55);
+  --text-panel-title: 1.1875rem;
+  --text-panel-title--font-weight: 700;
+  --text-panel-title--letter-spacing: 0em;
+  --panel-title-case: none;
+  --prose-font: 'EB Garamond', 'Geist Variable', serif;
+  --prose-size: 1.125rem;
+  --button-font: 'EB Garamond', 'Geist Variable', serif;
+  --button-size: 1rem;
+  --button-case: none;
+  --button-tracking: 0.02em;
 }
 
 /* Cyberpunk: near-black violet, hot magenta primary, cyan accent. */
@@ -304,6 +371,27 @@
     transparent 3px
   );
   --texture-size: auto;
+  --label-font: 'Geist Mono Variable', monospace;
+  --label-size: 11px;
+  --label-weight: 500;
+  --label-case: uppercase;
+  --label-tracking: 0.14em;
+  --label-style: normal;
+  --label-caps: normal;
+  --label-color: oklch(0.82 0.13 205);
+  --text-page-title--letter-spacing: 0.05em;
+  --page-title-case: uppercase;
+  --page-title-shadow: 0 0 6px oklch(0.65 0.27 340 / 0.9), 0 0 22px oklch(0.65 0.27 340 / 0.55);
+  --text-panel-title: 0.8125rem;
+  --text-panel-title--font-weight: 600;
+  --text-panel-title--letter-spacing: 0.08em;
+  --panel-title-case: uppercase;
+  --prose-font: 'Geist Variable', sans-serif;
+  --prose-size: 0.9375rem;
+  --button-font: 'Orbitron', 'Geist Variable', sans-serif;
+  --button-size: 0.75rem;
+  --button-case: uppercase;
+  --button-tracking: 0.08em;
 }
 
 /* Crime, mystery: greyscale, high contrast, one desaturated amber accent. */
@@ -354,6 +442,27 @@
   --readout-shadow: none;
   --texture: radial-gradient(ellipse at 50% 25%, transparent 40%, oklch(0 0 0 / 0.6) 100%);
   --texture-size: 100% 100%;
+  --label-font: 'Special Elite', 'Geist Variable', monospace;
+  --label-size: 12px;
+  --label-weight: 400;
+  --label-case: uppercase;
+  --label-tracking: 0.1em;
+  --label-style: normal;
+  --label-caps: normal;
+  --label-color: oklch(0.72 0 0);
+  --text-page-title--letter-spacing: 0.02em;
+  --page-title-case: none;
+  --page-title-shadow: 1px 1px 0 oklch(0 0 0 / 0.6);
+  --text-panel-title: 0.9375rem;
+  --text-panel-title--font-weight: 400;
+  --text-panel-title--letter-spacing: 0.06em;
+  --panel-title-case: uppercase;
+  --prose-font: 'Special Elite', 'Geist Variable', monospace;
+  --prose-size: 0.9375rem;
+  --button-font: 'Special Elite', 'Geist Variable', monospace;
+  --button-size: 0.875rem;
+  --button-case: uppercase;
+  --button-tracking: 0.08em;
 }
 
 /* Horror: green-black, bone-white text, sickly green and deep teal. */
@@ -408,6 +517,27 @@
     radial-gradient(ellipse at 50% 0%, oklch(0.72 0.17 140 / 0.08), transparent 55%),
     radial-gradient(ellipse at 50% 45%, transparent 45%, oklch(0 0 0 / 0.5) 100%);
   --texture-size: 100% 100%;
+  --label-font: 'IM Fell English', 'Geist Variable', serif;
+  --label-size: 15px;
+  --label-weight: 400;
+  --label-case: none;
+  --label-tracking: 0.01em;
+  --label-style: italic;
+  --label-caps: normal;
+  --label-color: oklch(0.74 0.04 150);
+  --text-page-title--letter-spacing: 0.01em;
+  --page-title-case: none;
+  --page-title-shadow: 0 0 20px oklch(0.72 0.17 140 / 0.4);
+  --text-panel-title: 1.1875rem;
+  --text-panel-title--font-weight: 400;
+  --text-panel-title--letter-spacing: 0.01em;
+  --panel-title-case: none;
+  --prose-font: 'IM Fell English', 'Geist Variable', serif;
+  --prose-size: 1.0625rem;
+  --button-font: 'IM Fell English', 'Geist Variable', serif;
+  --button-size: 1rem;
+  --button-case: none;
+  --button-tracking: 0.02em;
 }
 
 /* Space sci-fi: cool white and blue-grey, teal primary. */
@@ -461,11 +591,63 @@
     linear-gradient(oklch(0.5 0.11 195 / 0.07) 1px, transparent 1px),
     linear-gradient(90deg, oklch(0.5 0.11 195 / 0.07) 1px, transparent 1px);
   --texture-size: 32px 32px;
+  --label-font: 'Geist Mono Variable', monospace;
+  --label-size: 11px;
+  --label-weight: 500;
+  --label-case: uppercase;
+  --label-tracking: 0.12em;
+  --label-style: normal;
+  --label-caps: normal;
+  --label-color: oklch(0.44 0.04 250);
+  --text-page-title--letter-spacing: 0.01em;
+  --page-title-case: none;
+  --page-title-shadow: none;
+  --text-panel-title: 0.9375rem;
+  --text-panel-title--font-weight: 600;
+  --text-panel-title--letter-spacing: 0.06em;
+  --panel-title-case: uppercase;
+  --prose-font: 'Geist Variable', sans-serif;
+  --prose-size: 0.9375rem;
+  --button-font: 'Exo 2', 'Geist Variable', sans-serif;
+  --button-size: 0.875rem;
+  --button-case: uppercase;
+  --button-tracking: 0.06em;
 }
 
 /* The glow of a read-out number (roll total, oracle answer); the theme decides whether it has one. */
 @utility readout-glow {
   text-shadow: var(--readout-shadow);
+}
+
+/*
+ * Theme-neutral type roles: each theme sets the --label-*, --prose-* and --button-* tokens in its
+ * palette block, so a role never needs a per-theme branch (nor does case: the theme decides it).
+ */
+@utility type-label {
+  font-family: var(--label-font);
+  font-size: var(--label-size);
+  font-weight: var(--label-weight);
+  text-transform: var(--label-case);
+  letter-spacing: var(--label-tracking);
+  font-style: var(--label-style);
+  font-variant-caps: var(--label-caps);
+  color: var(--label-color);
+}
+
+@utility type-prose {
+  font-family: var(--prose-font);
+  font-size: var(--prose-size);
+}
+
+@utility type-button {
+  font-family: var(--button-font);
+  text-transform: var(--button-case);
+  letter-spacing: var(--button-tracking);
+}
+
+/* Size and tracking of a panel title come from the --text-panel-title* tokens; only case is extra. */
+@utility panel-title-case {
+  text-transform: var(--panel-title-case);
 }
 
 @layer base {
@@ -481,5 +663,9 @@
   }
   html {
     @apply font-sans;
+  }
+  h1 {
+    text-transform: var(--page-title-case);
+    text-shadow: var(--page-title-shadow);
   }
 }

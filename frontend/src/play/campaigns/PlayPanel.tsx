@@ -64,7 +64,7 @@ export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) 
         className="rounded-xl border bg-card p-4 text-card-foreground shadow-card"
       >
         <div className="flex items-center justify-between gap-2">
-          <h2 id={headingId} className="min-w-0 font-heading text-panel-title">
+          <h2 id={headingId} className="min-w-0 font-heading text-panel-title panel-title-case">
             {/* Radix points aria-controls at CollapsibleContent, which this panel does not render. */}
             <CollapsibleTrigger
               ref={trigger}

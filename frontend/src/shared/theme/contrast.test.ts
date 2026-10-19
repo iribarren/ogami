@@ -88,6 +88,9 @@ const TEXT_PAIRS: [string, string][] = [
   ['muted-foreground', 'background'],
   ['muted-foreground', 'muted'],
   ['destructive', 'background'],
+  // Form and group labels sit on cards and on the page.
+  ['label-color', 'card'],
+  ['label-color', 'background'],
 ]
 const CONTROL_PAIRS: [string, string][] = [
   ['ring', 'background'],
@@ -116,6 +119,29 @@ const DEPTH_TOKENS = [
   'readout-shadow',
   'texture',
   'texture-size',
+]
+const TYPE_TOKENS = [
+  'label-font',
+  'label-size',
+  'label-weight',
+  'label-case',
+  'label-tracking',
+  'label-style',
+  'label-caps',
+  'label-color',
+  'text-page-title--letter-spacing',
+  'page-title-case',
+  'page-title-shadow',
+  'text-panel-title',
+  'text-panel-title--font-weight',
+  'text-panel-title--letter-spacing',
+  'panel-title-case',
+  'prose-font',
+  'prose-size',
+  'button-font',
+  'button-size',
+  'button-case',
+  'button-tracking',
 ]
 
 describe('palette contrast (WCAG AA)', () => {
@@ -157,8 +183,10 @@ describe('palette contrast (WCAG AA)', () => {
   })
 
   describe.each(parsePalettes(css))('$name', (palette) => {
-    it('declares every depth token itself', () => {
-      expect(DEPTH_TOKENS.filter((token) => palette.tokens[token] === undefined)).toEqual([])
+    it('declares every depth and type token itself', () => {
+      expect(
+        [...DEPTH_TOKENS, ...TYPE_TOKENS].filter((token) => palette.tokens[token] === undefined),
+      ).toEqual([])
     })
   })
 

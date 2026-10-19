@@ -49,7 +49,7 @@ export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
           </span>
         </p>
         <h4 className="font-heading text-base font-semibold">{step.title}</h4>
-        {step.prompt !== null && <p className="whitespace-pre-wrap">{step.prompt}</p>}
+        {step.prompt !== null && <p className="type-prose whitespace-pre-wrap">{step.prompt}</p>}
         {step.tip !== null && <p className="text-sm text-muted-foreground">Tip: {step.tip}</p>}
         {step.fills.length > 0 && (
           <div className="text-sm">

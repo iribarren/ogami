@@ -130,7 +130,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | |
 | T2 | 1 | Depth: `--well`, `--well-shadow`, `--card-shadow`, `--button-shadow`, `--readout-shadow`, texture tokens in all seven palette blocks; wells on Input, Textarea, NativeSelect and the journal read-outs; layered shadows on Card, PlayPanel, the step card and journal entries; body texture; primary button shadow; per-theme story helper and stories | delegated writer, direct | [x] | |
-| T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer (slice 1) | [ ] | |
+| T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer, direct | [x] | |
 | T4 | 2 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | | [ ] | |
 | T5 | 2 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | | [ ] | |
 | T6 | 3 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | | [ ] | |
@@ -142,6 +142,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-19: feature started; design canvas and theme code mapped by a read-only explorer, decisions taken, issue #227, 3 slices.
 - 2026-10-19: T1 feature doc committed by the slice 1 writer (no code, no RED/GREEN applicable).
 - 2026-10-19: T2 depth tokens in all seven blocks, wells on Input/Textarea/NativeSelect and journal read-outs, card and button shadows, body texture, `onTheme` story helper and per-theme stories (delegated writer, direct; contrast.test token-presence check GREEN only, CSS has no meaningful RED).
+- 2026-10-19: T3 per-theme label, page/panel title, prose and button type tokens in all seven blocks, `type-label`/`type-prose`/`type-button`/`panel-title-case` utilities, Geist Mono added, label contrast pairs (no design color changed), note stories per theme (delegated writer, direct; contrast.test token and pair checks GREEN only, tests came after the CSS).
 
 ## Reviews
 

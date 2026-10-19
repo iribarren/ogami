@@ -127,10 +127,7 @@ function OracleGroupView({
   return (
     <section aria-labelledby={group.title === '' ? undefined : headingId} className="space-y-6">
       {group.title !== '' && (
-        <h3
-          id={headingId}
-          className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-        >
+        <h3 id={headingId} className="type-label">
           {group.title}
         </h3>
       )}

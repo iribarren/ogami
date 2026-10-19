@@ -104,10 +104,7 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
   }
   return (
     <section aria-labelledby={headingId} className="space-y-2">
-      <h3
-        id={headingId}
-        className="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
-      >
+      <h3 id={headingId} className="type-label">
         So far
       </h3>
       <ol className="space-y-3">

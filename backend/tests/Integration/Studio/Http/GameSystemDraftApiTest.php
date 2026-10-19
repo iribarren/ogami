@@ -326,6 +326,26 @@ final class GameSystemDraftApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aGameSystemStoredBeforeTheKindColumnReadsAsAGameSystem(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('template');
+        // A row as stored before the kind column existed: the INSERT names no kind, so the migration's default applies.
+        self::getContainer()->get(EntityManagerInterface::class)->getConnection()->executeStatement(
+            'INSERT INTO studio_gamesystem (id, game_system_key, owner_id, document, created_at, updated_at, version) SELECT gen_random_uuid(), \'legacy\', owner_id, document, created_at, updated_at, 1 FROM studio_gamesystem WHERE game_system_key = \'template\'',
+        );
+
+        $this->client->request('GET', self::BASE.'/legacy');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('game-system', $this->json()['kind']);
+
+        $this->client->request('GET', self::BASE);
+        self::assertResponseIsSuccessful();
+        self::assertContains('legacy', array_column($this->json(), 'key'), 'The list reads the row too.');
+    }
+
+    #[Test]
     public function aGameManagerWithoutGameSystemsGetsAnEmptyList(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

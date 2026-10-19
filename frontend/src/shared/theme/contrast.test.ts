@@ -97,10 +97,18 @@ const CONTROL_PAIRS: [string, string][] = [
   ['input', 'background'],
 ]
 
-/** The tile background is translucent in some themes: composite it over `backdrop` first. */
-function flatten(palette: Palette, token: string, backdrop: string): string {
+function rgbOf(palette: Palette, token: string) {
   const color = rgb(parse(palette.tokens[token] ?? ''))
-  const under = rgb(parse(palette.tokens[backdrop] ?? ''))
+  if (color === undefined) {
+    throw new Error(`${palette.name}: --${token} is not a color`)
+  }
+  return color
+}
+
+/** The tile background is translucent in some themes: composite it over the card first. */
+function overCard(palette: Palette, token: string): string {
+  const color = rgbOf(palette, token)
+  const under = rgbOf(palette, 'card')
   const alpha = color.alpha ?? 1
   const mix = (a: number, b: number) => a * alpha + b * (1 - alpha)
   return formatHex({
@@ -111,11 +119,8 @@ function flatten(palette: Palette, token: string, backdrop: string): string {
   })
 }
 
-function tileRatio(palette: Palette, foreground: string, background: string | null): number {
-  const color = formatHex(parse(palette.tokens[foreground] ?? ''))
-  const backdrop =
-    background === null ? flatten(palette, 'card', 'card') : flatten(palette, background, 'card')
-  return wcagContrast(color, backdrop)
+function tileRatio(palette: Palette, foreground: string, background: string): number {
+  return wcagContrast(formatHex(rgbOf(palette, foreground)), overCard(palette, background))
 }
 
 const palettes = resolve(parsePalettes(css))
@@ -240,7 +245,7 @@ describe('palette contrast (WCAG AA)', () => {
     })
 
     it('--icon reaches 3:1 on --card', () => {
-      const actual = tileRatio(palette, 'icon', null)
+      const actual = tileRatio(palette, 'icon', 'card')
       expect(actual, `${palette.name}: icon is ${actual.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
     })
   })

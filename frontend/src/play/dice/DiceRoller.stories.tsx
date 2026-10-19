@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
+import { onTheme } from '@/shared/theme/themeStories'
+
 import { DiceRoller } from './DiceRoller'
 
 const meta = {
@@ -40,3 +42,9 @@ export const Refused: Story = {
 export const Disabled: Story = { args: { disabled: true } }
 
 export const WithoutPresets: Story = { args: { presets: [] } }
+
+export const Parchment: Story = onTheme('parchment', Empty)
+export const Neon: Story = onTheme('neon', Empty)
+export const Noir: Story = onTheme('noir', Empty)
+export const Eldritch: Story = onTheme('eldritch', Empty)
+export const Starship: Story = onTheme('starship', Empty)

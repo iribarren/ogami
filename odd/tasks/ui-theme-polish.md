@@ -131,7 +131,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 | T2 | 1 | Depth: `--well`, `--well-shadow`, `--card-shadow`, `--button-shadow`, `--readout-shadow`, texture tokens in all seven palette blocks; wells on Input, Textarea, NativeSelect and the journal read-outs; layered shadows on Card, PlayPanel, the step card and journal entries; body texture; primary button shadow; per-theme story helper and stories | delegated writer, direct | [x] | `5511ddb` |
 | T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer, direct | [x] | `542c729` |
 | T4 | 1 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | delegated writer, direct | [x] | |
-| T5 | 1 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | | [ ] | |
+| T5 | 1 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | delegated writer, direct | [x] | |
 | T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | | [ ] | |
 | T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | | [ ] | |
 | T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | | [ ] | |
@@ -144,6 +144,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-19: T3 per-theme label, page/panel title, prose and button type tokens in all seven blocks, `type-label`/`type-prose`/`type-button`/`panel-title-case` utilities, Geist Mono added, label contrast pairs (no design color changed), note stories per theme (delegated writer, direct; contrast.test token and pair checks GREEN only, tests came after the CSS).
 - 2026-10-19: T1–T3 came in at ~607 changed lines, so the plan went from 3 slices to 2: the icon tasks T4–T5 join slice 1, the embellishments T6–T8 become slice 2.
 - 2026-10-19: T4 tile tokens in all seven blocks (`.dark` keeps ogami shapes, colors from the dark primary), `IconTile`, `DieShape` (pulled forward for the Dice panel icon), tiles on panels, step card and journal entries, lucide chevrons, `X` on the fact link remove button, contrast pairs for `--tile-fg` and `--icon` (no design color changed; GREEN only, tests came after the code). The link remove `×` in `play/lists/TagFields.tsx` is outside the allowed surface and stays a glyph (delegated writer, direct).
+- 2026-10-19: T5 dice preset buttons draw `d20` hexagon, `2d6`/`4d6kh3` square and `d%` kite above their labels (56px, names unchanged; custom presets get no shape); `DieShape` itself landed in the T4 commit; per-theme DiceRoller and DieShape gallery stories (delegated writer, direct; DiceRoller shape tests RED first: 4 failed, then GREEN).
 
 ## Reviews
 

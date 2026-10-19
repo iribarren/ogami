@@ -35,6 +35,26 @@ describe('DiceRoller', () => {
     expect(screen.getByLabelText('Dice expression')).toHaveValue('d%')
   })
 
+  it.each([
+    ['d20', '20'],
+    ['2d6', '6'],
+    ['4d6kh3', '6'],
+    ['d%', '10'],
+  ])('draws the %s preset as a d%s and keeps its name', (preset, die) => {
+    render(<DiceRoller onRoll={() => undefined} />)
+
+    const button = screen.getByRole('button', { name: `Roll ${preset}` })
+
+    expect(button.querySelector(`svg[data-die="${die}"]`)).toHaveAttribute('aria-hidden', 'true')
+    expect(button).toHaveTextContent(preset)
+  })
+
+  it('draws no shape for a custom preset', () => {
+    render(<DiceRoller onRoll={() => undefined} presets={['3d8']} />)
+
+    expect(screen.getByRole('button', { name: 'Roll 3d8' }).querySelector('svg')).toBeNull()
+  })
+
   it('disables rolling while a roll is pending', () => {
     render(<DiceRoller initialExpression="d20" onRoll={() => undefined} pending />)
 

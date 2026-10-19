@@ -91,6 +91,107 @@ final class GameSystemPublishApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('mine');
+        $this->client->request('GET', self::BASE.'/mine');
+        $before = $this->json();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+            public int $fired = 0;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored document and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    ++$this->fired;
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET document = '\"corrupt\"'::jsonb WHERE game_system_key = 'mine'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::BASE.'/mine/releases', ['notes' => 'First cut.']);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
+        self::assertTrue($failed, 'The corrupted document makes the read fail.');
+        $this->assertNoReleases('mine');
+        $this->client->request('GET', self::BASE.'/mine');
+        self::assertSame($before, $this->json(), 'The draft is unchanged, version included.');
+    }
+
+    #[Test]
+    public function aReadThatFailsAfterARestoreRollsTheRestoreBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('mine');
+        $this->client->jsonRequest('POST', self::BASE.'/mine/releases', []);
+        $this->rename('mine', 'Renamed');
+        $this->client->request('GET', self::BASE.'/mine');
+        $before = $this->json();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+            public int $fired = 0;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored document and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    ++$this->fired;
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET document = '\"corrupt\"'::jsonb WHERE game_system_key = 'mine'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::BASE.'/mine/restore', ['version' => 1]);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
+        self::assertTrue($failed, 'The corrupted document makes the read fail.');
+        $this->client->request('GET', self::BASE.'/mine');
+        self::assertSame($before, $this->json(), 'The draft keeps its edits, version included.');
+    }
+
+    #[Test]
     public function aDraftIsPublishedWithNotesAndShowsInTheHistory(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

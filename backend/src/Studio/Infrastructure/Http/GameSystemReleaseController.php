@@ -24,6 +24,7 @@ use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\GameSystemReleaseNotFound;
 use App\Studio\Domain\Release\InvalidGameSystemRelease;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -51,6 +52,7 @@ final readonly class GameSystemReleaseController
         private CommandBus $commandBus,
         private QueryBus $queryBus,
         private ReleaseIdGenerator $releaseIds,
+        private Connection $connection,
     ) {
     }
 
@@ -103,10 +105,15 @@ final readonly class GameSystemReleaseController
         $releaseId = $this->releaseIds->generate()->toString();
 
         try {
-            $this->commandBus->dispatch(new PublishGameSystemDraft($user->id(), $key, $releaseId, $notes));
-            $published = $this->queryBus->ask(new GetPublishedReleaseById($releaseId));
-            \assert($published instanceof PublishedReleaseView);
-            $response = new JsonResponse(GameSystemReleaseResponse::fromView($this->queryBus->ask(new GetGameSystemRelease($user->id(), $key, $published->version))), Response::HTTP_CREATED);
+            // The command's own transaction nests inside this one, and a refusal rolls both back; a read
+            // that fails rolls the release back, so the error answered is honest.
+            [$response, $version] = $this->connection->transactional(function () use ($user, $key, $releaseId, $notes): array {
+                $this->commandBus->dispatch(new PublishGameSystemDraft($user->id(), $key, $releaseId, $notes));
+                $published = $this->queryBus->ask(new GetPublishedReleaseById($releaseId));
+                \assert($published instanceof PublishedReleaseView);
+
+                return [new JsonResponse(GameSystemReleaseResponse::fromView($this->queryBus->ask(new GetGameSystemRelease($user->id(), $key, $published->version))), Response::HTTP_CREATED), $published->version];
+            });
         } catch (GameSystemNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (InvalidReleaseContent|InvalidGameSystemRelease $exception) {
@@ -115,7 +122,7 @@ final readonly class GameSystemReleaseController
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
-        $response->headers->set('Location', \sprintf('/api/studio/game-systems/%s/releases/%d', rawurlencode($key), $published->version));
+        $response->headers->set('Location', \sprintf('/api/studio/game-systems/%s/releases/%d', rawurlencode($key), $version));
 
         return $response;
     }
@@ -159,9 +166,13 @@ final readonly class GameSystemReleaseController
         }
 
         try {
-            $this->commandBus->dispatch(new RestoreGameSystemRelease($user->id(), $key, $version));
+            // The command's own transaction nests inside this one, and a refusal rolls both back; a read
+            // that fails rolls the restore back, so the error answered is honest.
+            return $this->connection->transactional(function () use ($user, $key, $version): JsonResponse {
+                $this->commandBus->dispatch(new RestoreGameSystemRelease($user->id(), $key, $version));
 
-            return new JsonResponse(GameSystemResponse::fromView($this->queryBus->ask(new GetGameSystem($user->id(), $key))));
+                return new JsonResponse(GameSystemResponse::fromView($this->queryBus->ask(new GetGameSystem($user->id(), $key))));
+            });
         } catch (GameSystemNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (GameSystemReleaseNotFound $exception) {

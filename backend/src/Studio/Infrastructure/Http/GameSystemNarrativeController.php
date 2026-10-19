@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Infrastructure\Http;
 
 use App\Identity\Application\AuthenticatedUser;
+use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -19,6 +20,7 @@ use App\Studio\Domain\GameSystem\NarrativeItemNotFound;
 use App\Studio\Domain\GameSystem\NarrativeKeyTaken;
 use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -53,6 +55,7 @@ final readonly class GameSystemNarrativeController
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private Connection $connection,
     ) {
     }
 
@@ -124,9 +127,7 @@ final readonly class GameSystemNarrativeController
         }
 
         try {
-            $this->commandBus->dispatch(new DeleteNarrativeItem($user->id(), $key, $expectedVersion, $this->sectionOf($section), $item));
-
-            return $this->narrativeOf($user, $key, Response::HTTP_OK);
+            return $this->writeThenRead(new DeleteNarrativeItem($user->id(), $key, $expectedVersion, $this->sectionOf($section), $item), $user, $key, Response::HTTP_OK);
         } catch (GameSystemNotFound|NarrativeItemNotFound|GameSystemModifiedConcurrently|NarrativeItemInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
@@ -149,12 +150,25 @@ final readonly class GameSystemNarrativeController
         }
 
         try {
-            $this->commandBus->dispatch(new SaveNarrativeItem($user->id(), $key, $expectedVersion, $this->sectionOf($section), $originalKey, $item));
-
-            return $this->narrativeOf($user, $key, $status);
+            return $this->writeThenRead(new SaveNarrativeItem($user->id(), $key, $expectedVersion, $this->sectionOf($section), $originalKey, $item), $user, $key, $status);
         } catch (GameSystemNotFound|NarrativeItemNotFound|GameSystemModifiedConcurrently|NarrativeKeyTaken|NarrativeItemInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
+    }
+
+    /**
+     * Runs the command and reads the narrative back in one transaction. The command's UPDATE holds the
+     * draft's row until the commit, so the read sees exactly this write, never a save that
+     * interleaved, and a read that fails rolls the write back, so the error answered is honest. The
+     * command bus's own transaction nests inside this one, and a refusal rolls both back.
+     */
+    private function writeThenRead(Command $command, AuthenticatedUser $user, string $key, int $status): JsonResponse
+    {
+        return $this->connection->transactional(function () use ($command, $user, $key, $status): JsonResponse {
+            $this->commandBus->dispatch($command);
+
+            return $this->narrativeOf($user, $key, $status);
+        });
     }
 
     /**

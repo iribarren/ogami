@@ -125,6 +125,101 @@ final class GameSystemDraftApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+            public int $fired = 0;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored document and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    ++$this->fired;
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET document = '\"corrupt\"'::jsonb WHERE game_system_key = 'mine'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::BASE, ['key' => 'mine', 'name' => 'Mine']);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
+        self::assertTrue($failed, 'The corrupted document makes the read fail.');
+        $this->assertNoGameSystems();
+    }
+
+    #[Test]
+    public function aReadThatFailsAfterAMetadataEditRollsItBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->client->jsonRequest('POST', self::BASE, ['key' => 'mine', 'name' => 'Mine', 'description' => 'Text']);
+        self::assertResponseStatusCodeSame(201);
+        $this->client->request('GET', self::BASE.'/mine');
+        $before = $this->json();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+            public int $fired = 0;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored document and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    ++$this->fired;
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET document = '\"corrupt\"'::jsonb WHERE game_system_key = 'mine'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('PUT', self::BASE.'/mine/metadata', ['name' => 'Renamed', 'description' => 'Other']);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
+        self::assertTrue($failed, 'The corrupted document makes the read fail.');
+        $this->client->request('GET', self::BASE.'/mine');
+        self::assertSame($before, $this->json(), 'The metadata edit was rolled back, version included.');
+    }
+
+    #[Test]
     public function aCopyTakesTheLatestOrAChosenVersionAndAGivenDescription(): void
     {
         $this->publishRelease(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-every-part'), 'gameSystem.description', 'First text'));
@@ -278,6 +373,26 @@ final class GameSystemDraftApiTest extends WebTestCase
         );
         self::assertIsString($newer['updatedAt']);
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/', $newer['updatedAt']);
+    }
+
+    #[Test]
+    public function aGameSystemStoredBeforeTheKindColumnReadsAsAGameSystem(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('template');
+        // A row as stored before the kind column existed: the INSERT names no kind, so the migration's default applies.
+        self::getContainer()->get(EntityManagerInterface::class)->getConnection()->executeStatement(
+            'INSERT INTO studio_gamesystem (id, game_system_key, owner_id, document, created_at, updated_at, version) SELECT gen_random_uuid(), \'legacy\', owner_id, document, created_at, updated_at, 1 FROM studio_gamesystem WHERE game_system_key = \'template\'',
+        );
+
+        $this->client->request('GET', self::BASE.'/legacy');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('game-system', $this->json()['kind']);
+
+        $this->client->request('GET', self::BASE);
+        self::assertResponseIsSuccessful();
+        self::assertContains('legacy', array_column($this->json(), 'key'), 'The list reads the row too.');
     }
 
     #[Test]

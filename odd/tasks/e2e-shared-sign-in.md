@@ -1,7 +1,7 @@
 # Feature: e2e-shared-sign-in
 
 - **Locator:** `odd/tasks/e2e-shared-sign-in.md` · Engram topic `odd/e2e-shared-sign-in/tasks`
-- **Issue:** #219 · **Branch:** `chore/e2e-shared-sign-in-1-helper` · **Status:** slice 1 in progress
+- **Issue:** #219 · **Branch:** `docs/e2e-shared-sign-in-wrap-up` · **Status:** done: slice 1 merged (PR #220)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `identity-account-error-codes` (PR #217)
@@ -58,18 +58,20 @@ Lookups everywhere: `getByLabel('Email')`, `getByLabel('Password', { exact: true
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | `frontend/e2e/sign-in.ts` with the seeded users, `submitSignIn` and `signIn`; every signing-in spec uses it; local helpers and constants removed | delegated writer (slice 1; 20 files; feature doc inline by parent) | [x] | |
+| T1 | 1 | `frontend/e2e/sign-in.ts` with the seeded users, `submitSignIn` and `signIn`; every signing-in spec uses it; local helpers and constants removed | delegated writer (slice 1; 20 files; feature doc inline by parent) | [x] | afdca12 |
 
 ## Progress
 
 - 2026-10-19: feature doc created (parent); 20 specs and four sign-in variants mapped; one slice.
 - 2026-10-19: T1 done (refactor, no RED: existing e2e suite is the safety net; GREEN: make e2e 26 passed, 1 flaky failure in studio-flow-editor passed on its own rerun, baseline not run); `signIn` takes the `landing` URL as an optional third argument and asserts `not.toHaveURL(/\/login/)` otherwise, so each spec keeps its assertion.
+- 2026-10-19: parent spot check `make e2e` on `auth`, `admin-users` and `studio-flow-editor`: 9 passed. Slice 1 merged (PR #220, closes #219). From the next feature on, the last slice's doc wrap-up is pushed to that slice's PR before merge (CLAUDE.md, ADR 0015), not a separate branch.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | none (declined) | afdca12 | Review declined for this candidate (tests only); `make qa` and `make e2e` green apart from one flaky Studio spec | [#220](https://github.com/iribarren/ogami/pull/220) |
 
 ## Next step
 
-T1 (slice 1): delegated writer.
+None: the feature is done.

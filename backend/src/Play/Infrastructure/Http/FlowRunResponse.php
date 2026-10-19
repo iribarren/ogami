@@ -31,7 +31,7 @@ final readonly class FlowRunResponse
         public ?ScenePickResponse $pick,
         #[OA\Property(description: 'Whether "Move on" ends the phase now (a loop phase that is not ending yet, while guided).')]
         public bool $canMoveOn,
-        #[OA\Property(description: 'The next step named, such as "Closing: What changed?" or "Flow complete".', example: 'Next scene: choose a scene type')]
+        #[OA\Property(description: 'The next step named, such as "Closing: What changed?" or "Flow complete".', example: 'Scene: choose a Scene Type')]
         public string $next,
         #[OA\Property(description: 'Whether "End session" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first.')]
         public bool $canEndSession,

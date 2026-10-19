@@ -51,7 +51,7 @@ export function FocusPanel({
       )}
       <CurrentCast campaign={campaign} />
       <GuidedBody campaign={campaign} flowRun={flowRun} command={command} />
-      <SceneSoFar campaign={campaign} />
+      <SceneSoFar campaign={campaign} sceneNumber={flowRun.progress?.sceneNumber ?? null} />
     </section>
   )
 }
@@ -78,8 +78,11 @@ function CurrentCast({ campaign }: { campaign: Campaign }) {
   )
 }
 
-/** The journal entries of the current scene: the results the FlowRun has recorded there. */
-function SceneSoFar({ campaign }: { campaign: Campaign }) {
+/**
+ * The journal entries of the scene the FlowRun is in: the results it has recorded there. Nothing
+ * outside a scene, where the last scene's entries no longer apply.
+ */
+function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber: number | null }) {
   const journal = useJournal(campaign.id)
   const headingId = useId()
   if (journal.status === 'error') {
@@ -90,11 +93,10 @@ function SceneSoFar({ campaign }: { campaign: Campaign }) {
     )
   }
   const entries = (journal.data ?? []).filter(
-    ({ sessionNumber, sceneNumber }) =>
-      sessionNumber === campaign.currentSessionNumber &&
-      sceneNumber === campaign.currentSceneNumber,
+    (entry) =>
+      entry.sessionNumber === campaign.currentSessionNumber && entry.sceneNumber === sceneNumber,
   )
-  if (entries.length === 0) {
+  if (sceneNumber === null || entries.length === 0) {
     return null
   }
   return (

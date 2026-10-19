@@ -8,7 +8,7 @@ import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
 import { RandomEventOffer } from './RandomEventOffer'
-import { titleAddsToType } from './sceneLabels'
+import { playOrdinals, titleAddsToType, typeLabel } from './sceneLabels'
 import { recordEntryKey, type JournalEntry } from './useJournal'
 
 /** Brings an entry just recorded into view, without moving focus (jsdom cannot scroll). */
@@ -74,7 +74,11 @@ export function Journal({
               <Group
                 key={scene.number}
                 level={4}
-                title={sceneHeading(scene, listed(sessions, session.number, scene.number))}
+                title={sceneHeading(
+                  scene,
+                  listed(sessions, session.number, scene.number),
+                  ordinals(sessions, session.number),
+                )}
                 hook={listed(sessions, session.number, scene.number)?.kind === 'hook'}
               >
                 <SceneCastHeader
@@ -196,6 +200,11 @@ function listed(sessions: Campaign['sessions'], sessionNumber: number, sceneNumb
     ?.scenes.find(({ number }) => number === sceneNumber)
 }
 
+/** The ordinals of the scenes of play in a session, which skip the hook Scenes. */
+function ordinals(sessions: Campaign['sessions'], sessionNumber: number) {
+  return playOrdinals(sessions.find(({ number }) => number === sessionNumber)?.scenes ?? [])
+}
+
 const hookLabels: Record<NonNullable<ListedScene['hook']>, string> = {
   sessionOpening: 'Session opening',
   sessionClosing: 'Session closing',
@@ -204,8 +213,16 @@ const hookLabels: Record<NonNullable<ListedScene['hook']>, string> = {
   worldTurn: 'World turn',
 }
 
-/** "Scene 2 · Tour — Who walks in" (the title left out when it only repeats "Tour"), or "Session opening — Session 1 begins" for a hook Scene. */
-function sceneHeading(scene: { number: number; title: string | null }, listedScene?: ListedScene) {
+/**
+ * "Scene 2 · Tour — Who walks in" (the title left out when it only repeats "Tour", the type left
+ * out when it is just "Scene"), or "Session opening — Session 1 begins" for a hook Scene. Scenes
+ * of play are numbered by their ordinal in the session, not by their stored number.
+ */
+function sceneHeading(
+  scene: { number: number; title: string | null },
+  listedScene: ListedScene | undefined,
+  ordinals: Map<number, number>,
+) {
   const typeName = listedScene?.sceneTypeName ?? null
   // A title that only repeats the Scene Type (its numbered default) adds nothing.
   const title =
@@ -213,8 +230,9 @@ function sceneHeading(scene: { number: number; title: string | null }, listedSce
   if (listedScene?.hook) {
     return `${hookLabels[listedScene.hook]}${title}`
   }
-  const type = typeName ? ` · ${typeName}` : ''
-  return `Scene ${String(scene.number)}${type}${title}`
+  const label = typeLabel(typeName)
+  const type = label === null ? '' : ` · ${label}`
+  return `Scene ${String(ordinals.get(scene.number) ?? scene.number)}${type}${title}`
 }
 
 function Group({
@@ -235,12 +253,13 @@ function Group({
     <section aria-labelledby={headingId} className="space-y-3">
       <Heading
         id={headingId}
+        title={title}
         className={
           level === 3
             ? 'font-heading text-lg font-semibold'
             : hook
-              ? 'text-sm font-semibold tracking-wide text-primary uppercase'
-              : 'text-sm font-semibold tracking-wide text-muted-foreground uppercase'
+              ? 'line-clamp-2 text-sm font-semibold text-primary'
+              : 'line-clamp-2 text-sm font-semibold text-muted-foreground'
         }
       >
         {title}

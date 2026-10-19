@@ -7,7 +7,7 @@ namespace App\Play\Domain\Campaign\FlowRun;
 /**
  * What the player sees of a FlowRun: its status, where it stands, the step or scene pick it waits
  * on, whether "Move on" and "End session" are offered, and the next step named across boundaries ("Closing: What
- * changed?", "Next scene: choose a scene type", "Next scene: Briefing", "Session Zero complete →
+ * changed?", "Scene: choose a Scene Type", "Scene: Briefing", "Session Zero complete →
  * Adventure", "Flow complete").
  */
 final readonly class FlowRunView

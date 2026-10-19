@@ -24,6 +24,18 @@ function renderJournal(current: { session: number; scene: number } | null, entri
 }
 
 describe('Journal', () => {
+  it('writes a scene heading in normal case, clamped, with its full text as a tooltip', () => {
+    renderJournal({ session: 2, scene: 1 })
+
+    const headings = screen.getAllByRole('heading', { level: 4 })
+    expect(headings.length).toBeGreaterThan(0)
+    for (const heading of headings) {
+      expect(heading).toHaveAttribute('title', heading.textContent)
+      expect(heading).toHaveClass('line-clamp-2')
+      expect(heading).not.toHaveClass('uppercase')
+    }
+  })
+
   it('flags a random event and offers its table in the current scene', () => {
     renderJournal({ session: 2, scene: 1 })
 

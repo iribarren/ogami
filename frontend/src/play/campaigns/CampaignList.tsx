@@ -10,7 +10,7 @@ export function CampaignList({ campaigns }: { campaigns: CampaignSummary[] }) {
   if (campaigns.length === 0) {
     return (
       <p className="text-muted-foreground">
-        You have no campaigns yet. Create one below to start playing.
+        You have no campaigns yet. Create one above to start playing.
       </p>
     )
   }

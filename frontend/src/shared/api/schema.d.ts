@@ -2126,6 +2126,11 @@ export interface components {
              * @example Plan the job and gather your crew.
              */
             phaseDescription: string | null;
+            /**
+             * @description The number of the scene or hook Scene the FlowRun is in, in its session; null at the scene pick, while waiting for a session and when paused outside a scene.
+             * @example 1
+             */
+            sceneNumber: number | null;
         };
         FlowStepOptionResponse: {
             /** @example yes */
@@ -2307,7 +2312,7 @@ export interface components {
             canMoveOn: boolean;
             /**
              * @description The next step named, such as "Closing: What changed?" or "Flow complete".
-             * @example Next scene: choose a scene type
+             * @example Scene: choose a Scene Type
              */
             next: string;
             /** @description Whether "End session" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first. */
@@ -6146,7 +6151,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
+            /** @description The Flow guides the campaign (pause guidance to start a scene by hand), no session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

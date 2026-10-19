@@ -12,6 +12,7 @@ const progress: Progress = {
   stepNumber: null,
   stepCount: null,
   phaseDescription: null,
+  sceneNumber: 1,
 }
 
 describe('progressText', () => {

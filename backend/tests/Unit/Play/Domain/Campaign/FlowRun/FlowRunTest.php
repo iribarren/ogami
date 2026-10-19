@@ -15,6 +15,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
+use App\Play\Domain\Campaign\FlowRun\SceneCannotStartWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
@@ -111,7 +112,7 @@ final class FlowRunTest extends FlowRunTestCase
     {
         $campaign = $this->inASession();
         $view = $campaign->flowRunView($this->release);
-        self::assertSame(['Next scene: roll on Scene kinds', [], 'scene-kinds', false], [$view?->next, $view?->pick?->cards, $view?->pick?->table, $view?->canMoveOn]);
+        self::assertSame(['Scene: roll on Scene kinds', [], 'scene-kinds', false], [$view?->next, $view?->pick?->cards, $view?->pick?->table, $view?->canMoveOn]);
         foreach ([
             'pick by hand' => fn () => $campaign->pickSceneType('talk', $this->release, self::at()),
             'another table' => fn () => $campaign->pickSceneTypeByOracle($this->rolled('other', 2), $this->release, self::at()),
@@ -359,7 +360,7 @@ final class FlowRunTest extends FlowRunTestCase
     {
         $campaign = $this->inASession();
         $campaign->pickSceneTypeByOracle($this->rolled('scene-kinds', 2), $this->release, self::at());
-        $campaign->startScene('By hand', self::at());
+        $campaign = self::withScenesStartedByHand($campaign, $this->release);
 
         $this->expectException(FlowRunPositionMismatch::class);
         $this->expectExceptionMessageIsOrContains('The guided scene is no longer the current scene: pause and resume guidance to go on at the scene pick.');
@@ -397,6 +398,41 @@ final class FlowRunTest extends FlowRunTestCase
         $this->expectException(FlowRunNotActive::class);
         $this->expectExceptionMessageIsOrContains('Guidance is not paused.');
         $campaign->resumeGuidance($this->release, self::at());
+    }
+
+    #[Test]
+    public function aSceneCannotBeStartedByHandWhileTheFlowGuides(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $before = clone $campaign;
+
+        try {
+            $campaign->startScene('By hand', self::at());
+            self::fail('A scene started by hand during guided play.');
+        } catch (SceneCannotStartWhileGuided $refusal) {
+            self::assertSame('The Flow guides this campaign and starts its scenes: pause guidance to start a scene by hand.', $refusal->getMessage());
+        }
+
+        self::assertEquals($before, $campaign);
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $this->expectException(SceneCannotStartWhileGuided::class);
+        $campaign->startScene('By hand', self::at(), $this->release->sceneType('talk'));
+    }
+
+    #[Test]
+    public function aSceneCanBeStartedByHandOncePausedOrOnceTheFlowIsComplete(): void
+    {
+        $paused = $this->inPhase('roam');
+        $paused->pauseGuidance(self::at());
+        $paused->startScene('By hand', self::at());
+
+        $completed = $this->inPhase('duel');
+        $completed->pickSceneType('talk', $this->release, self::at());
+        $this->playTalk($completed);
+        self::assertSame(FlowRunStatus::Completed, self::flowRunOf($completed)->status());
+        $completed->startScene('By hand', self::at());
+
+        self::assertSame(['By hand', 'By hand'], [$paused->currentScene()?->title(), $completed->currentScene()?->title()]);
     }
 
     #[Test]
@@ -493,7 +529,7 @@ final class FlowRunTest extends FlowRunTestCase
         $fight = $this->release->sceneType('fight') ?? self::fail('No fight.');
         $campaign = $this->inPhase('roam');
         $campaign->pickSceneType('talk', $this->release, self::at());
-        $campaign->startScene('By hand', self::at());
+        $campaign = self::withScenesStartedByHand($campaign, $this->release);
         $campaign->switchSceneType($fight, $this->release, self::at());
 
         self::assertSame([[1, 2], 'talk', 'play', 'mood'], [self::flowRunOf($campaign)->scene(), self::flowRunOf($campaign)->sceneType(), ...self::position($campaign)]);
@@ -516,13 +552,13 @@ final class FlowRunTest extends FlowRunTestCase
         $this->assertStale('The FlowRun is at phase "roam", not at phase "draw".', fn () => $campaign->moveOn('draw', $this->release, self::at()));
 
         $campaign->pickSceneType('talk', $this->release, self::at());
-        $campaign->startScene('By hand', self::at());
+        $campaign = self::withScenesStartedByHand($campaign, $this->release);
         $this->assertStale('The guided scene is no longer the current scene: pause and resume guidance to go on at the scene pick.', fn () => $campaign->moveOn('roam', $this->release, self::at()));
         self::assertFalse(self::flowRunOf($campaign)->phaseEnding());
     }
 
     /**
-     * @return iterable<string, array{string, \Closure(Campaign, GameSystemSnapshot): (\Closure(): void)}>
+     * @return iterable<string, array{string, \Closure(Campaign, GameSystemSnapshot): (\Closure(): void)}|array{string, \Closure(Campaign, GameSystemSnapshot): (\Closure(): void), int}> the Scene Type, the preparation and the scenes started by hand (one scene short of full by default)
      */
     public static function commandsStartingTheNextScene(): iterable
     {
@@ -545,11 +581,7 @@ final class FlowRunTest extends FlowRunTestCase
 
             return static fn () => $campaign->endFlowScene(Session::MAX_SCENES, $release, self::at());
         }];
-        yield 'moving on' => ['talk', static function (Campaign $campaign, GameSystemSnapshot $release): \Closure {
-            $campaign->startScene('By hand', self::at());
-
-            return static fn () => $campaign->moveOn('alone', $release, self::at());
-        }];
+        yield 'moving on' => ['talk', static fn (Campaign $campaign, GameSystemSnapshot $release): \Closure => static fn () => $campaign->moveOn('alone', $release, self::at()), Session::MAX_SCENES];
     }
 
     /**
@@ -557,17 +589,16 @@ final class FlowRunTest extends FlowRunTestCase
      * one scene short of full.
      *
      * @param \Closure(Campaign, GameSystemSnapshot): (\Closure(): void) $prepare brings the campaign to the command
+     * @param int                                                        $byHand  the scenes started by hand
      */
     #[Test]
     #[DataProvider('commandsStartingTheNextScene')]
-    public function aCommandThatCannotStartTheNextSceneChangesNothing(string $sceneType, \Closure $prepare): void
+    public function aCommandThatCannotStartTheNextSceneChangesNothing(string $sceneType, \Closure $prepare, int $byHand = Session::MAX_SCENES - 1): void
     {
         $release = self::translate($this->content(array_map(static fn (string $key): array => ['key' => $key, 'name' => ucfirst($key), 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => [$sceneType]]], ['alone', 'again'])));
         $campaign = self::guided($release, 'test');
         $campaign->startSession(self::at());
-        for ($scene = 1; $scene < Session::MAX_SCENES; ++$scene) {
-            $campaign->startScene('By hand', self::at());
-        }
+        $campaign = self::withScenesStartedByHand($campaign, $release, $byHand);
 
         $command = $prepare($campaign, $release);
         $before = clone $campaign;

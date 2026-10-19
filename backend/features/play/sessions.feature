@@ -8,6 +8,7 @@ Feature: Play a campaign along a Flow, one session at a time
     When I create the campaign "The job" with the GameSystem "heist" playing the Flow "one-shot"
     Then my campaign plays the Flow "one-shot"
     When I start a session
+    And I pause the guidance
     And I start the scene "Casing the bank"
     And I end the session
     Then session 1 has ended

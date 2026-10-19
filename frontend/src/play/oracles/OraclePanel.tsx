@@ -85,7 +85,7 @@ export function OraclePanel({
   disabled = false,
 }: OraclePanelProps) {
   if (tables.length === 0 && likelihoodOracles.length === 0) {
-    return <p className="text-sm text-muted-foreground">This GameSystem release has no oracles.</p>
+    return <p className="text-sm text-muted-foreground">This game system release has no oracles.</p>
   }
   const { first, more } = grouped(tables, likelihoodOracles, sceneOracleKeys, flow)
   const everything = { title: '', tables, likelihoodOracles }

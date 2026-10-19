@@ -101,6 +101,15 @@ describe('renaming the current scene', () => {
     })
   })
 
+  it('starts empty on a default title, which is not the name the player gave', async () => {
+    const user = userEvent.setup()
+    renderScreen(withTitle(lostMineWithTypes, 'Legwork 3', { key: 'legwork', name: 'Legwork' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Rename scene' }))
+
+    expect(screen.getByLabelText('Scene name')).toHaveValue('')
+  })
+
   it("shows the API's reason and keeps the form open when the name is refused", async () => {
     const user = userEvent.setup()
     renderScreen(lostMineWithTypes, {

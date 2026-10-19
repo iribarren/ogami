@@ -666,10 +666,10 @@ describe('the guided panel', () => {
       await within(journal).findByRole('region', { name: 'Session opening — Session 1 begins' }),
     ).toBeInTheDocument()
     const sceneRegion = within(journal).getByRole('region', {
-      name: 'Scene 2 · Tour — Went Go right',
+      name: 'Scene 1 · Tour — Went Go right',
     })
     expect(within(sceneRegion).getByText('Flow step · Which way?')).toBeInTheDocument()
     // A title that only repeats the Scene Type (its default, numbered) is not shown twice.
-    expect(within(journal).getByRole('region', { name: 'Scene 3 · Tour' })).toBeInTheDocument()
+    expect(within(journal).getByRole('region', { name: 'Scene 2 · Tour' })).toBeInTheDocument()
   })
 })

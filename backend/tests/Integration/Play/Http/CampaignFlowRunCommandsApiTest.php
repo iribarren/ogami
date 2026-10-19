@@ -11,6 +11,7 @@ use App\Play\Application\CreateCampaign;
 use App\Play\Application\EndFlowScene;
 use App\Play\Application\PauseGuidance;
 use App\Play\Application\PickSceneType;
+use App\Play\Application\ResumeGuidance;
 use App\Play\Application\SkipFlowStep;
 use App\Play\Application\StartScene;
 use App\Play\Application\StartSession;
@@ -381,14 +382,53 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
     public function aSessionThatHoldsTheMostScenesItCanRefusesAnotherOne(): void
     {
         $this->prepare('pick');
-        for ($scene = 1; $scene <= 200; ++$scene) {
-            $this->dispatch(new StartScene(self::CAMPAIGN, $this->userId, 'Scene '.$scene));
-        }
+        $this->fillTheSessionByHand('Scene ');
 
         $this->post('pick', ['sceneType' => 'tour']);
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('200', $this->error());
+    }
+
+    #[Test]
+    #[DataProvider('guidedStates')]
+    public function aSceneCannotBeStartedByHandWhileTheFlowGuides(string $state): void
+    {
+        $this->prepare($state);
+        $before = $this->campaign();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/scenes', self::CAMPAIGN), ['title' => 'By hand']);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('The Flow guides this campaign and starts its scenes: pause guidance to start a scene by hand.', $this->error());
+        self::assertSame($before, $this->campaign());
+    }
+
+    /**
+     * @return iterable<string, array{string}> the states in which the Flow guides
+     */
+    public static function guidedStates(): iterable
+    {
+        yield 'at the scene pick' => ['pick'];
+        yield 'in open play' => ['open'];
+        yield 'at a step' => ['step:intro'];
+    }
+
+    #[Test]
+    public function aSceneCanBeStartedByHandWhileGuidanceIsPausedOrTheCampaignIsPlayedFreely(): void
+    {
+        $this->prepare('paused');
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/scenes', self::CAMPAIGN), ['title' => 'By hand']);
+        self::assertResponseStatusCodeSame(201);
+    }
+
+    #[Test]
+    public function aFreeCampaignStartsSceneByHand(): void
+    {
+        $this->prepare('free');
+        $this->dispatch(new StartSession(self::CAMPAIGN, $this->userId));
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/scenes', self::CAMPAIGN), ['title' => 'By hand']);
+        self::assertResponseStatusCodeSame(201);
     }
 
     /**
@@ -480,7 +520,7 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
         $campaign = $this->json();
         $cards = self::at($campaign, 'flowRun', 'pick', 'cards');
         self::assertIsArray($cards);
-        self::assertSame([null, ['solo'], true, 'Next scene: Solo'], [self::at($campaign, 'flowRun', 'step'), array_column($cards, 'key'), self::at($campaign, 'flowRun', 'canEndSession'), self::at($campaign, 'flowRun', 'next')]);
+        self::assertSame([null, ['solo'], true, 'Scene: Solo'], [self::at($campaign, 'flowRun', 'step'), array_column($cards, 'key'), self::at($campaign, 'flowRun', 'canEndSession'), self::at($campaign, 'flowRun', 'next')]);
 
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
         self::assertResponseStatusCodeSame(200);
@@ -512,9 +552,7 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
     {
         $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9303', GuidedReleases::content(sessionClosing: true) + ['sheet' => []], false));
         $this->prepare('pick');
-        for ($scene = 1; $scene <= 200; ++$scene) {
-            $this->dispatch(new StartScene(self::CAMPAIGN, $this->userId, 'By hand '.$scene));
-        }
+        $this->fillTheSessionByHand('By hand ');
 
         $before = $this->campaign();
 
@@ -562,6 +600,19 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
         if (\in_array($state, ['paused', 'paused-in-scene'], true)) {
             $this->dispatch(new PauseGuidance(self::CAMPAIGN, $this->userId));
         }
+    }
+
+    /**
+     * Fills the session with scenes started by hand, which only a paused Flow allows, then resumes it.
+     */
+    private function fillTheSessionByHand(string $titlePrefix): void
+    {
+        $this->dispatch(new PauseGuidance(self::CAMPAIGN, $this->userId));
+        for ($scene = 1; $scene <= 200; ++$scene) {
+            $this->dispatch(new StartScene(self::CAMPAIGN, $this->userId, $titlePrefix.$scene));
+        }
+
+        $this->dispatch(new ResumeGuidance(self::CAMPAIGN, $this->userId));
     }
 
     private function currentStepKey(): ?string

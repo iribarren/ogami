@@ -1689,7 +1689,7 @@
                         }
                     },
                     "409": {
-                        "description": "No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile.",
+                        "description": "The Flow guides the campaign (pause guidance to start a scene by hand), no session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10865,7 +10865,8 @@
                     "part",
                     "stepNumber",
                     "stepCount",
-                    "phaseDescription"
+                    "phaseDescription",
+                    "sceneNumber"
                 ],
                 "properties": {
                     "act": {
@@ -10926,6 +10927,12 @@
                         "description": "What the phase is for and when it is done; null when the release gives none.",
                         "type": "string",
                         "example": "Plan the job and gather your crew.",
+                        "nullable": true
+                    },
+                    "sceneNumber": {
+                        "description": "The number of the scene or hook Scene the FlowRun is in, in its session; null at the scene pick, while waiting for a session and when paused outside a scene.",
+                        "type": "integer",
+                        "example": 1,
                         "nullable": true
                     }
                 },
@@ -11337,7 +11344,7 @@
                     "next": {
                         "description": "The next step named, such as \"Closing: What changed?\" or \"Flow complete\".",
                         "type": "string",
-                        "example": "Next scene: choose a scene type"
+                        "example": "Scene: choose a Scene Type"
                     },
                     "canEndSession": {
                         "description": "Whether \"End session\" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first.",

@@ -188,7 +188,7 @@ describe('OraclePanel', () => {
   it('says when the release has no oracles', () => {
     renderWithApi(<OraclePanel campaignId={campaignId} tables={[]} likelihoodOracles={[]} />)
 
-    expect(screen.getByText('This GameSystem release has no oracles.')).toBeInTheDocument()
+    expect(screen.getByText('This game system release has no oracles.')).toBeInTheDocument()
   })
 
   describe('ordered by Scene Type and Flow', () => {

@@ -74,7 +74,7 @@ export function useGameSystems() {
       if (data !== undefined) {
         return data
       }
-      throw campaignError(response, error, [], 'Loading the GameSystems')
+      throw campaignError(response, error, [], 'Loading the game systems')
     },
   })
 }

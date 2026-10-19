@@ -26,6 +26,7 @@ use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
+use App\Play\Domain\Campaign\FlowRun\SceneCannotStartWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\HookSceneHasNoSceneType;
 use App\Play\Domain\Campaign\InvalidCampaignName;
@@ -221,7 +222,7 @@ final readonly class CampaignController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no Scene Type with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The Flow guides the campaign (pause guidance to start a scene by hand), no session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The title is blank or too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function startScene(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -241,7 +242,7 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new StartScene($campaignId, $user->id(), $title, $sceneType));
         } catch (CampaignNotFound|UnknownSceneType $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (NoCurrentSession|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
+        } catch (NoCurrentSession|SceneCannotStartWhileGuided|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InvalidSceneTitle $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);

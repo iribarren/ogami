@@ -1,7 +1,7 @@
 # Feature: play-guided-polish
 
 - **Locator:** `odd/tasks/play-guided-polish.md` · Engram topic `odd/play-guided-polish/tasks`
-- **Issue:** #222 · **Branch:** `fix/play-guided-polish-4-random-events` · **Status:** slice 4 in progress (slices 1–3 merged, PRs #223, #224, #225)
+- **Issue:** #222 · **Branch:** `fix/play-guided-polish-4-random-events` · **Status:** done (slices 1–3 merged, PRs #223, #224, #225; slice 4 in PR #226)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `e2e-shared-sign-in` (PR #220)
@@ -76,9 +76,9 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 | T7 | 2 | P8 Threads and NPCs quick links in guided play | delegated writer (slice 2) | [x] | `5569377` |
 | F2 | 3 | Slice 2 review fixes: a completed FlowRun hides the list links (test); the JSON schema rejects a whitespace-only band label (pattern + agreement case) | delegated writer (slice 3) | [x] | `05b53be` |
 | T8 | 3 | P7 / N8 flow notes journaled as `flowOutcome` entries | delegated writer (slice 3) | [x] | `30e20a4` |
-| F3 | 4 | Slice 3 review fix: handler-level tests that SkipFlowStep, MoveOn, EndFlowScene, ResumeGuidance, StartSession and PickSceneTypeByOracle write a `flowOutcome` entry when the command notes something | delegated writer (slice 4) | [x] | |
-| T9 | 4 | P9 random event tied to its fate question, meaning prompt, offer hidden once rolled | delegated writer (slice 4) | [x] | |
-| T10 | 4 | Replay a short guided session per preset in Chrome; fix small findings, log the rest | parent (Chrome replay + inline fix) | [x] | |
+| F3 | 4 | Slice 3 review fix: handler-level tests that SkipFlowStep, MoveOn, EndFlowScene, ResumeGuidance, StartSession and PickSceneTypeByOracle write a `flowOutcome` entry when the command notes something | delegated writer (slice 4) | [x] | `ac7bdec` |
+| T9 | 4 | P9 random event tied to its fate question, meaning prompt, offer hidden once rolled | delegated writer (slice 4) | [x] | `dec1ee7`, `66f58dc` |
+| T10 | 4 | Replay a short guided session per preset in Chrome; fix small findings, log the rest | parent (Chrome replay + inline fix) | [x] | `b3e8ff2` |
 
 ## Progress
 
@@ -96,6 +96,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 - 2026-10-19: F3 done. Test-only, GREEN only (the handlers already journal): `FlowOutcomeEveryHandlerTest` (6 cases, own release extending `FlowNotesReleases`) asserts the entry's notes, session, scene and no step for skip (lands on a condition step), end scene (closing), move on (phase closing hook scene), start session and resume (auto-picked scene setup) and pick by oracle; removing the `record()` call from `MoveOnHandler` failed its case, so the tests bite. No handler bug found. Route: delegated writer, direct.
 - 2026-10-19: T9 done. Backend: `OracleTableContent.forEntry` (legacy rows read null, non-string malformed), optional `{forEntry}` body on the oracle table endpoint, `CampaignJournal::assertRandomEventQuestion` (blank id 422, unknown or other campaign 404, not a likelihood answer with that table as random event 422 `NotARandomEventQuestion`, already rolled 409 `RandomEventAlreadyRolled`) checked before anything is recorded. Concurrency: partial unique index `uniq_play_journal_entry_random_event` on `content->>'forEntry'` (migration `Version20261019110000`; Doctrine cannot map an expression index, `schema:validate` stays in sync) turned into `RandomEventAlreadyRolled` by `DoctrineJournalEntryRepository::add`, tested through the shared repository contract (the in-memory double enforces the same rule); no API-level test of the race itself, the sequential 409 covers the controller mapping. Frontend: `RandomEventOffer` derives its state from the journal (button gone once an event references the question, event shown under it in the journal and focus mode, "What does it mean?" note input while the event is the journal's last entry in the current scene), `useRecordOracleTableResult` takes `{ oracleKey, forEntry? }`. RED: `OracleTableContent` forEntry cases and the offer tests were written with the code (GREEN only); the repository and API refusal cases were written after the code (GREEN only). Route: delegated writer, direct.
 - 2026-10-19: T10 done. Chrome replay on the dev stack (`make presets`: mythic-style v3, night-job v7). Mythic-style: form first (N13), session and premise steps, a fate question rolled a double (random event), "Roll Random event focus" recorded the event under its question and the button stayed gone after a reload and in focus view, the "What does it mean?" note recorded and the prompt went away; API refusals checked by hand (409 rolled twice, 422 other table, 404 unknown id); End scene started scene 2 with no stale tips (N9); the Scene check showed "Next: decided by the roll" (P12) and journaled "Expected scene" (P7). Night Job: campaign, session and the Crew scene start cleanly. Fixed: the meaning prompt saved only on Enter, so it gained a "Write note" button (RED then GREEN in `RandomEventOffer.test.tsx`). Logged, not fixed: Mythic's single Scene Type is named "Scene", so the guide reads "Next: Scene: Scene" (preset naming). Route: parent, inline (one component and its test).
+- 2026-10-19: slice 4 reviewed (approved, two non-blocking R3 suggestions logged as follow-ups) and opened as PR #226, which closes #222. Feature done.
 
 ## Reviews
 
@@ -104,7 +105,14 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 | 1 | `review-cb716070de79b851` | `05bf425`…`eb4aca0` | Approved, acknowledged. Non-blocking R3: check preview ignores unmapped results; paused FlowRun keeps its guided `sceneNumber`; refusal test compares a shallow clone. Fixed in slice 2 (F1) | #223 |
 | 2 | `review-f83003d7caa55060` | `76fb2e2`…`5569377` | Approved, acknowledged. Non-blocking R3: no test for hidden list links on a completed FlowRun; the JSON schema accepts a whitespace-only band label. Fixed in slice 3 (F2) | #224 |
 | 3 | `review-bdb938bf8875dc19` | `05b53be`…`30e20a4` | Approved, acknowledged. Non-blocking R3: six note-producing handlers have no handler-level `flowOutcome` test. Fixed in slice 4 (F3) | #225 |
+| 4 | `review-9868cff2ab040238` | `ac7bdec`…`b3e8ff2` | Approved, acknowledged. Non-blocking R3 suggestions, left as follow-ups below | #226 |
+
+## Follow-ups (not in this feature)
+
+- R3 (slice 4 review): after a 409 "already rolled", `RandomEventOffer` does not refetch the journal, so the roll button stays until something else refreshes it.
+- R3 (slice 4 review): the oracle-table `forEntry` rule does not require the question to be in the current scene; a direct API call can roll an older question's event into a later scene, which focus mode hides.
+- T10 replay: Mythic-style's single Scene Type is named "Scene", so the guide reads "Next: Scene: Scene" (preset naming).
 
 ## Next step
 
-Slice 4 (last): F3, T9 on `fix/play-guided-polish-4-random-events`, then T10 Chrome replay by the parent; PR closes #222.
+None. Feature done; slice 4 in PR #226 (closes #222).

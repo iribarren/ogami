@@ -69,7 +69,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 | T1 | 1 | This feature doc; preset-mythic-flow and preset-guided-sample findings rows point here | parent doc, writer commits | [x] | |
 | T2 | 1 | N9 FlowRun progress `sceneNumber`, tips and "So far" filter on it; N11 display ordinals; P11 display; P13 headings; N13 form first | delegated writer (slice 1) | [x] | |
 | T3 | 1 | P12 / N10 "Next:" preview of branching steps and pick labels | delegated writer (slice 1) | [x] | |
-| T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [ ] | |
+| T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [x] | |
 | T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | | [ ] | |
 | T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | | [ ] | |
 | T7 | 2 | P8 Threads and NPCs quick links in guided play | | [ ] | |
@@ -83,6 +83,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 - 2026-10-19: T1 done (doc committed, finding rows point here). Route: delegated writer, no tests (docs only).
 - 2026-10-19: T2 done. RED: `FlowRunViewTest` failed on the missing `progress.sceneNumber`, then GREEN; legacy row (no stored `sceneNumber`) tested in `DoctrineCampaignRepositoryTest`; `playOrdinals`/`typeLabel` helpers were written before their unit tests (GREEN only); Vitest `src/play` 412 passed. P11: rename field starts empty on a default title (detected with `titleAddsToType`; the API has no default-title flag). Route: delegated writer, direct.
 - 2026-10-19: T3 done. RED: `FlowRunNextPreviewTest` (21 cases) failed on the old default-path preview, GREEN after `FlowRun::nextOf` (shared `StepEffects::outcomes`); mythic `twist`/`check` and night-job `double-cross` preview tests; old "Next scene:" assertions updated; backend Play unit + integration 2,482 passed. Check-kind outcomes are covered through the shared helper only. Route: delegated writer, direct.
+- 2026-10-19: T4 done. Guard: `Campaign::startScene` refuses with `SceneCannotStartWhileGuided` (409) while the FlowRun is active; FlowRun starts scenes through the new `startGuidedScene`. RED: with the guard in, 10 existing tests that started scenes by hand mid-guidance failed (fixed with pause/resume or `withScenesStartedByHand`, a stored-before state); the new unit and API tests were written after the code (GREEN only). Paused and complete Flows still allow manual scenes. Route: delegated writer, direct.
 
 ## Reviews
 

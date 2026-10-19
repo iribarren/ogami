@@ -7,6 +7,7 @@ namespace App\Play\Application;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\FlowRun\SceneCannotStartWhileGuided;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -28,6 +29,7 @@ final readonly class StartSceneHandler implements CommandHandler
     /**
      * @throws CampaignNotFound
      * @throws UnknownSceneType                when the pinned release has no Scene Type with this key
+     * @throws SceneCannotStartWhileGuided     when the Flow guides the campaign
      * @throws NoCurrentSession
      * @throws CampaignLimitReached
      * @throws CampaignModifiedConcurrently    when another request saved the campaign meanwhile

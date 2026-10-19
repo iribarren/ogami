@@ -47,6 +47,22 @@ abstract class FlowRunTestCase extends TestCase
         return Campaign::create(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of($release->gameSystemKey(), $release->releaseVersion(), $release->name()), self::at(), $release->trackers(), $release->flow($flow));
     }
 
+    /**
+     * The campaign as stored before a scene could not be started by hand while the Flow guides: the
+     * FlowRun is active and where it was, and the scenes started by hand are in the session.
+     */
+    protected static function withScenesStartedByHand(Campaign $campaign, GameSystemSnapshot $release, int $count = 1): Campaign
+    {
+        $flowRun = clone self::flowRunOf($campaign);
+        $paused = clone $campaign;
+        $paused->pauseGuidance(self::at());
+        for ($scene = 1; $scene <= $count; ++$scene) {
+            $paused->startScene('By hand', self::at());
+        }
+
+        return Campaign::reconstitute($paused->id(), $paused->ownerId(), $paused->name(), $paused->pinnedRelease(), $paused->createdAt(), $paused->sessions(), $paused->trackerValuesOf($release), $paused->flowKey(), $flowRun, $paused->npcs(), $paused->threads(), $paused->facts($release), $paused->characters());
+    }
+
     protected static function flowRunOf(Campaign $campaign): FlowRun
     {
         return $campaign->flowRun() ?? self::fail('The campaign has no FlowRun.');

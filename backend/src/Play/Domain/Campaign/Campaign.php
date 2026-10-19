@@ -32,6 +32,7 @@ use App\Play\Domain\Campaign\FlowRun\PickCandidate;
 use App\Play\Domain\Campaign\FlowRun\PickCandidates;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
+use App\Play\Domain\Campaign\FlowRun\SceneCannotStartWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
@@ -356,14 +357,44 @@ final class Campaign
      * Without a title, a scene with a Scene Type is named after it, numbered per Scene Type across
      * the campaign ("Legwork 2" for the second Legwork scene); a title given wins.
      *
+     * This is the player's own way to start a scene: it is refused while the Flow guides (a FlowRun
+     * not paused and not complete), which starts its scenes itself (see startGuidedScene()).
+     *
      * @param ?SceneType $sceneType a Scene Type of the pinned release, or null
+     *
+     * @throws SceneCannotStartWhileGuided when the Flow guides the campaign
+     * @throws NoCurrentSession            when no session is under way
+     * @throws CampaignLimitReached        when the current session already holds 200 scenes
+     * @throws InvalidSceneTitle           when the trimmed title is blank or longer than 100 characters, or
+     *                                     there is neither a title nor a Scene Type
+     */
+    public function startScene(?string $title, \DateTimeImmutable $startedAt, ?SceneType $sceneType = null): Scene
+    {
+        if (FlowRunStatus::Active === $this->flowRun?->status()) {
+            throw SceneCannotStartWhileGuided::byHand();
+        }
+
+        return $this->addPlayScene($title, $startedAt, $sceneType);
+    }
+
+    /**
+     * Starts a scene of play for the FlowRun, which guides the campaign: the Scene Type with its
+     * default title.
      *
      * @throws NoCurrentSession     when no session is under way
      * @throws CampaignLimitReached when the current session already holds 200 scenes
-     * @throws InvalidSceneTitle    when the trimmed title is blank or longer than 100 characters, or
-     *                              there is neither a title nor a Scene Type
      */
-    public function startScene(?string $title, \DateTimeImmutable $startedAt, ?SceneType $sceneType = null): Scene
+    public function startGuidedScene(SceneType $sceneType, \DateTimeImmutable $startedAt): Scene
+    {
+        return $this->addPlayScene(null, $startedAt, $sceneType);
+    }
+
+    /**
+     * @throws NoCurrentSession
+     * @throws CampaignLimitReached
+     * @throws InvalidSceneTitle
+     */
+    private function addPlayScene(?string $title, \DateTimeImmutable $startedAt, ?SceneType $sceneType): Scene
     {
         $isDefault = null === $title;
         $title ??= $sceneType instanceof SceneType ? $this->defaultSceneTitle($sceneType) : throw InvalidSceneTitle::missing();

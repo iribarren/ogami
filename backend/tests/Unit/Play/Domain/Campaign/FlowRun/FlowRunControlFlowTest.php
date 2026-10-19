@@ -315,9 +315,7 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
         // and the next scene, picked on its own, does not fit the session.
         $campaign = self::guided($this->release, 'full');
         $campaign->startSession(self::at());
-        for ($scene = 1; $scene < 200; ++$scene) {
-            $campaign->startScene('Filler '.$scene, self::at());
-        }
+        $campaign = self::withScenesStartedByHand($campaign, $this->release, 199);
 
         $campaign->pickSceneType('wrap', $this->release, self::at());
         $campaign->endFlowScene(200, $this->release, self::at());

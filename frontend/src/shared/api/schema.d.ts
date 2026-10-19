@@ -6151,7 +6151,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
+            /** @description The Flow guides the campaign (pause guidance to start a scene by hand), no session is under way (none has started, or it has ended), the current session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

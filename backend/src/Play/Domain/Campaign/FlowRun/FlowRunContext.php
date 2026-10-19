@@ -74,7 +74,7 @@ final readonly class FlowRunContext
      */
     public function startScene(SceneType $sceneType): int
     {
-        return $this->campaign->startScene(null, $this->at, $sceneType)->number();
+        return $this->campaign->startGuidedScene($sceneType, $this->at)->number();
     }
 
     /**

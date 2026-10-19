@@ -2312,7 +2312,7 @@ export interface components {
             canMoveOn: boolean;
             /**
              * @description The next step named, such as "Closing: What changed?" or "Flow complete".
-             * @example Next scene: choose a scene type
+             * @example Scene: choose a Scene Type
              */
             next: string;
             /** @description Whether "End session" is offered between scenes: at the scene pick, guided, with a session under way. It runs the session closing first. */

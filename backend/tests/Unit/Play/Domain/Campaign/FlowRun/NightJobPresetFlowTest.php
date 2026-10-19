@@ -324,6 +324,9 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         $campaign->endFlowScene(6, $this->release, self::at());
         $campaign->completeFlowStep('paid', self::prompt('Barely'), $this->release, self::at());
 
+        // The roll decides between the betrayal and the end: the preview does not name the betrayal.
+        self::assertSame('decided by the roll', $campaign->flowRunView($this->release)?->next);
+
         $campaign->completeFlowStep('double-cross', self::roll('1d6', 1), $this->release, self::at());
 
         self::assertSame(['setup', 'betrayed'], self::position($campaign));

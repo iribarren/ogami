@@ -64,7 +64,7 @@ final class FlowRunHooksTest extends FlowRunTestCase
 
         $campaign->completeFlowStep('recap', self::prompt('Nothing yet'), $this->release, self::at());
         $this->assertHookScene($campaign, Hook::PhaseOpening, 'Act 1: The start');
-        self::assertSame('Next scene: choose a scene type', $this->view($campaign)->next);
+        self::assertSame('Scene: choose a Scene Type', $this->view($campaign)->next);
         $campaign->completeFlowStep('lure', self::prompt('gold'), $this->release, self::at());
 
         self::assertSame([FlowRunStage::ScenePick, null, true], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->hook(), self::flowRunOf($campaign)->phaseOpened()]);
@@ -87,7 +87,7 @@ final class FlowRunHooksTest extends FlowRunTestCase
 
         $this->assertHookScene($campaign, Hook::WorldTurn, 'The world moves');
         self::assertSame(['news', 'trouble'], [self::flowRunOf($campaign)->stepKey(), self::flowRunOf($campaign)->forcedNextSceneType()]);
-        self::assertSame('Next scene: Trouble', $this->view($campaign)->next);
+        self::assertSame('Scene: Trouble', $this->view($campaign)->next);
         $campaign->completeFlowStep('news', StepResult::choice('calm'), $this->release, self::at());
 
         self::assertSame([FlowRunStage::ScenePick, 2, ['trouble']], [self::flowRunOf($campaign)->stage(), $campaign->trackerValue($this->release->tracker('doom') ?? self::fail('No doom.')), array_map(static fn (SceneType $type): string => $type->key, $this->view($campaign)->pick->cards ?? [])]);

@@ -193,7 +193,7 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
 
         $view = $campaign->flowRunView($this->release);
         self::assertSame([FlowRunStage::ScenePick, null, 2], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->scene(), \count($campaign->currentSession()?->scenes() ?? [])]);
-        self::assertSame([['scene'], true, true, 'Next scene: Scene'], [array_map(static fn (SceneType $sceneType): string => $sceneType->key, $view?->pick->cards ?? []), $view?->canEndSession, $view?->canMoveOn, $view?->next]);
+        self::assertSame([['scene'], true, true, 'Scene: Scene'], [array_map(static fn (SceneType $sceneType): string => $sceneType->key, $view?->pick->cards ?? []), $view?->canEndSession, $view?->canMoveOn, $view?->next]);
 
         $campaign->endSession(self::at(), null, $this->release);
 
@@ -278,6 +278,21 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
         self::assertSame(['sceneOpening', 'interrupt'], self::position($campaign));
 
         return $campaign;
+    }
+
+    #[Test]
+    public function theSceneCheckAndTheTwistLeaveWhatFollowsToTheRoll(): void
+    {
+        $campaign = $this->firstAdventureScene();
+        $campaign->completeFlowStep('expected', self::prompt('A quiet market'), $this->release, self::at());
+
+        // The check ends the part on a pass and goes on to the twist otherwise.
+        self::assertSame(['check', 'decided by the roll'], [self::position($campaign)[1], $campaign->flowRunView($this->release)?->next]);
+
+        $campaign->completeFlowStep('check', self::roll('1d10', 5), $this->release, self::at());
+
+        // The twist (1d6) goes to the adjustment or to the interruption; neither is named before the roll.
+        self::assertSame(['twist', 'decided by the roll'], [self::position($campaign)[1], $campaign->flowRunView($this->release)?->next]);
     }
 
     private function focusRoll(int $total): OracleTableResult

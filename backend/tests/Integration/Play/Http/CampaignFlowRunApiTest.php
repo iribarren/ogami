@@ -200,7 +200,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
             'step' => null,
             'pick' => self::SCENE_PICK,
             'canMoveOn' => true,
-            'next' => 'Next scene: choose a scene type',
+            'next' => 'Scene: choose a Scene Type',
             'canEndSession' => !$waitsForSession,
         ];
     }

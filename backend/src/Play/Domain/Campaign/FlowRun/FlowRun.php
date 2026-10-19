@@ -1335,8 +1335,9 @@ final class FlowRun
     }
 
     /**
-     * The next step named: the step after the current one on its default path (condition steps
-     * are passed), across parts, past the scene or hook to the next hook, pick or phase.
+     * The next step named: the step after the current one when every Outcome of the current step
+     * leads to it (condition steps are passed), else what decides it ("decided by the roll" or
+     * "decided by your answer"; see nextOf()), across parts, past the scene or hook to the next hook, pick or phase.
      *
      * @param bool $sessionOpening whether the session opening comes before the scene pick
      */
@@ -1344,7 +1345,10 @@ final class FlowRun
     {
         if ($this->hook instanceof Hook) {
             $steps = $this->hook->steps($this->phase($flow));
-            $next = $this->effective($steps, $step instanceof Step ? $this->target($steps, $step, null) : ($steps->steps[0] ?? null));
+            $next = $step instanceof Step ? $this->nextOf($steps, $step) : $this->effective($steps, $steps->steps[0] ?? null);
+            if (false === $next) {
+                return $this->decidedBy($step);
+            }
 
             return $next instanceof Step ? $this->hook->label().': '.$placeholders->render($next->title) : $this->labelAfterHook($this->hook, $release, $flow, $placeholders);
         }
@@ -1355,7 +1359,11 @@ final class FlowRun
 
         $part = $this->part;
         $steps = $this->steps($part, $release, $flow);
-        $next = $step instanceof Step ? $this->effective($steps, $this->target($steps, $step, null)) : null;
+        $next = $step instanceof Step ? $this->nextOf($steps, $step) : null;
+        if (false === $next) {
+            return $this->decidedBy($step);
+        }
+
         while (!$next instanceof Step) {
             $part = $part->next();
             if (!$part instanceof ScenePart) {
@@ -1455,12 +1463,33 @@ final class FlowRun
         $selection = $this->phase($flow)->selection;
         $offered = $this->offered($release, $flow);
         if (1 === \count($offered)) {
-            return 'Next scene: '.$offered[0]->name;
+            return 'Scene: '.$offered[0]->name;
         }
 
         return SelectionRule::Oracle === $selection->rule
-            ? 'Next scene: roll on '.($release->oracleTableNames()[(string) $selection->table] ?? $selection->table)
-            : 'Next scene: choose a scene type';
+            ? 'Scene: roll on '.($release->oracleTableNames()[(string) $selection->table] ?? $selection->table)
+            : 'Scene: choose a Scene Type';
+    }
+
+    /**
+     * The step a player meets after this one, whichever way it is decided: the one every Outcome
+     * leads to (null when they all end the part), false when they lead to different ones.
+     */
+    private function nextOf(StepList $steps, Step $step): Step|false|null
+    {
+        $outcomes = StepEffects::outcomes($step);
+        $nexts = array_map(fn (?Outcome $outcome): ?Step => $this->effective($steps, $this->target($steps, $step, $outcome)), [] === $outcomes ? [null] : $outcomes);
+
+        return array_all($nexts, static fn (?Step $next): bool => $next === $nexts[0]) ? $nexts[0] : false;
+    }
+
+    /**
+     * What decides the next step of a step whose Outcomes lead different ways: the player's answer
+     * to a question, a choice or a pick, else the dice (or the table or check) rolled.
+     */
+    private function decidedBy(?Step $step): string
+    {
+        return $step instanceof OracleStep || $step instanceof ChoiceStep || $step instanceof PickStep ? 'decided by your answer' : 'decided by the roll';
     }
 
     /**

@@ -111,7 +111,7 @@ final class FlowRunTest extends FlowRunTestCase
     {
         $campaign = $this->inASession();
         $view = $campaign->flowRunView($this->release);
-        self::assertSame(['Next scene: roll on Scene kinds', [], 'scene-kinds', false], [$view?->next, $view?->pick?->cards, $view?->pick?->table, $view?->canMoveOn]);
+        self::assertSame(['Scene: roll on Scene kinds', [], 'scene-kinds', false], [$view?->next, $view?->pick?->cards, $view?->pick?->table, $view?->canMoveOn]);
         foreach ([
             'pick by hand' => fn () => $campaign->pickSceneType('talk', $this->release, self::at()),
             'another table' => fn () => $campaign->pickSceneTypeByOracle($this->rolled('other', 2), $this->release, self::at()),

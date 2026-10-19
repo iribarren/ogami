@@ -480,7 +480,7 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
         $campaign = $this->json();
         $cards = self::at($campaign, 'flowRun', 'pick', 'cards');
         self::assertIsArray($cards);
-        self::assertSame([null, ['solo'], true, 'Next scene: Solo'], [self::at($campaign, 'flowRun', 'step'), array_column($cards, 'key'), self::at($campaign, 'flowRun', 'canEndSession'), self::at($campaign, 'flowRun', 'next')]);
+        self::assertSame([null, ['solo'], true, 'Scene: Solo'], [self::at($campaign, 'flowRun', 'step'), array_column($cards, 'key'), self::at($campaign, 'flowRun', 'canEndSession'), self::at($campaign, 'flowRun', 'next')]);
 
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
         self::assertResponseStatusCodeSame(200);

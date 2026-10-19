@@ -49,7 +49,7 @@ final class FlowRunViewTest extends FlowRunTestCase
     {
         $view = $this->view(self::guided($this->heist, 'heist'));
 
-        self::assertSame([FlowRunStatus::Active, true, null, false, 'Next scene: Crew'], [$view->status, $view->waitsForSession, $view->step, $view->canMoveOn, $view->next]);
+        self::assertSame([FlowRunStatus::Active, true, null, false, 'Scene: Crew'], [$view->status, $view->waitsForSession, $view->step, $view->canMoveOn, $view->next]);
         self::assertEquals(new FlowRunProgress(null, 'the-job', 'The job', null, null, null, null), $view->progress);
         self::assertSame([SelectionRule::Sequence, ['crew'], null, false], [$view->pick?->rule, $this->keys($view->pick->cards ?? []), $view->pick?->table, $view->pick?->forced]);
     }
@@ -71,7 +71,7 @@ final class FlowRunViewTest extends FlowRunTestCase
 
         // After open play, the sequence's next Scene Type.
         $campaign->skipFlowStep('second', $this->heist, self::at());
-        self::assertSame([null, ScenePart::Open, 'Next scene: Briefing'], [$this->view($campaign)->step, $this->view($campaign)->progress?->part, $this->view($campaign)->next]);
+        self::assertSame([null, ScenePart::Open, 'Scene: Briefing'], [$this->view($campaign)->step, $this->view($campaign)->progress?->part, $this->view($campaign)->next]);
         self::assertSame(1, $this->view($campaign)->progress?->sceneNumber);
     }
 
@@ -104,7 +104,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         // A player pick with Move on; the phase's scene closing comes after the Scene Type's parts.
         $campaign->endFlowScene(2, $this->heist, self::at());
         $view = $this->view($campaign);
-        self::assertSame(['Next scene: choose a scene type', true, ['social', 'exploration', 'netrun']], [$view->next, $view->canMoveOn, $this->keys($view->pick->cards ?? [])]);
+        self::assertSame(['Scene: choose a Scene Type', true, ['social', 'exploration', 'netrun']], [$view->next, $view->canMoveOn, $this->keys($view->pick->cards ?? [])]);
         $campaign->pickSceneType('social', $this->heist, self::at());
         $campaign->skipFlowStep('talk', $this->heist, self::at());
         self::assertSame('Scene closing: Did you gain an edge?', $this->view($campaign)->next);
@@ -152,7 +152,7 @@ final class FlowRunViewTest extends FlowRunTestCase
         $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->forceNextSceneType('chase'));
         $view = $this->view($campaign);
 
-        self::assertSame([['chase'], true, 'Next scene: Chase'], [$this->keys($view->pick->cards ?? []), $view->pick?->forced, $view->next]);
+        self::assertSame([['chase'], true, 'Scene: Chase'], [$this->keys($view->pick->cards ?? []), $view->pick?->forced, $view->next]);
 
         $campaign->pauseGuidance(self::at());
         $campaign->endSession(self::at());

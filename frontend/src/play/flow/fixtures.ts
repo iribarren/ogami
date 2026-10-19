@@ -197,7 +197,7 @@ export const atTheScenePick = (overrides: Partial<NonNullable<FlowRun['pick']>> 
     },
     step: null,
     pick: { rule: 'player', cards: [tour, quiet], table: null, forced: false, ...overrides },
-    next: 'Next scene: choose a scene type',
+    next: 'Scene: choose a Scene Type',
     canEndSession: true,
   })
 

@@ -190,7 +190,7 @@ describe('focus mode', () => {
     renderPlay(guided(atTheScenePick(), 'focus'))
 
     expect(await screen.findByRole('region', { name: 'Scene pick' })).toBeInTheDocument()
-    expect(screen.getByText('Next scene: choose a scene type')).toBeInTheDocument()
+    expect(screen.getByText('Scene: choose a Scene Type')).toBeInTheDocument()
   })
 
   it('ends the scene like the journal view', async () => {

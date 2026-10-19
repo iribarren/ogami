@@ -92,7 +92,7 @@
           {"text": "A file cache"},
           {"text": "A control node"},
           {"text": "An empty floor"},
-          {"text": "Black ICE"},
+          {"key": "black-ice", "text": "Black ICE"},
           {"text": "A sleepy sentry program"},
           {"text": "A mirror maze of fake files"},
           {"text": "A camera feed archive"},
@@ -275,7 +275,7 @@
       "oracles": ["net-floors", "black-ice"],
       "setup": [],
       "play": [
-        {"key": "floor", "kind": "table", "title": "What waits on this floor?", "table": "net-floors"},
+        {"key": "floor", "kind": "table", "title": "What waits on this floor?", "table": "net-floors", "branches": [{"entry": "black-ice", "next": "ice"}], "otherwise": {"next": "jack"}},
         {"key": "ice", "kind": "table", "title": "Which Black ICE is it?", "tip": "Only when the floor holds Black ICE.", "table": "black-ice"},
         {"key": "jack", "kind": "prompt", "title": "What do you do here, and how does it go?"}
       ],
@@ -347,7 +347,9 @@
         {"key": "you-drive", "kind": "prompt", "title": "Nobody else can drive", "prompt": "You take the wheel."}
       ],
       "play": [
-        {"key": "lose-them", "kind": "check", "title": "Do you lose them?", "tip": "Roll Cool and set the difficulty from how good the pursuers are.", "check": "cool"}
+        {"key": "lose-them", "kind": "check", "title": "Do you lose them?", "tip": "Roll Cool and set the difficulty from how good the pursuers are.", "check": "cool", "next": "end", "outcomes": [{"band": "botch", "next": "boxed-in", "effects": [{"kind": "tracker", "tracker": "objective", "op": "set", "value": 0}]}, {"band": "fail", "next": "shaken", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": -1}]}]},
+        {"key": "boxed-in", "kind": "prompt", "title": "Boxed in", "prompt": "They box you in. You get away, but the score stays behind.", "next": "end"},
+        {"key": "shaken", "kind": "prompt", "title": "Shaken, not caught", "prompt": "Shaking them costs you. What do you leave behind?"}
       ],
       "closing": []
     },
@@ -361,7 +363,7 @@
         {"key": "delivered", "kind": "condition", "title": "Did you get the objective?", "tracker": "objective", "bands": [{"upTo": 0, "next": "no-pay"}, {"next": "paid"}]},
         {"key": "no-pay", "kind": "prompt", "title": "No job, no pay.", "tip": "Say what it costs you, and who you owe now.", "next": "end"},
         {"key": "paid", "kind": "prompt", "title": "The client pays up.", "prompt": "The client pays {fact:payout}. Was the job worth it?"},
-        {"key": "double-cross", "kind": "roll", "title": "Is it a double-cross?", "tip": "Roll 1d6. A 1 means the client sells you out.", "dice": "1d6", "bands": [{"upTo": 1, "next": "betrayed"}, {"next": "end"}]},
+        {"key": "double-cross", "kind": "roll", "title": "Is it a double-cross?", "tip": "Roll 1d6. A 1 means the client sells you out.", "dice": "1d6", "bands": [{"upTo": 1, "label": "Double-cross", "next": "betrayed"}, {"label": "The client pays clean", "next": "end"}]},
         {"key": "betrayed", "kind": "prompt", "title": "Double-cross! Who sold you out?"}
       ],
       "play": [],
@@ -389,7 +391,7 @@
             {"key": "gain-edge", "kind": "choice", "title": "Did you gain an edge?", "tip": "Choose Yes if the scene taught you something that will help in the heist.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
           ],
           "worldTurn": [
-            {"key": "word", "kind": "roll", "title": "Does word get around?", "tip": "Roll 1d6. A 1 raises the alarm by one before the heist even starts.", "dice": "1d6", "bands": [{"upTo": 1, "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {}]}
+            {"key": "word", "kind": "roll", "title": "Does word get around?", "tip": "Roll 1d6. A 1 raises the alarm by one before the heist even starts.", "dice": "1d6", "bands": [{"upTo": 1, "label": "Word gets around", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {"label": "Quiet"}]}
           ]
         },
         {
@@ -409,7 +411,7 @@
           ],
           "worldTurn": [
             {"key": "response", "kind": "condition", "title": "Does security respond?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {}]},
-            {"key": "guards", "kind": "roll", "title": "Do the guards find you?", "tip": "Roll 1d6. On 1 to 3 a firefight starts right now.", "dice": "1d6", "bands": [{"upTo": 3, "effects": [{"kind": "nextScene", "sceneType": "firefight"}]}, {}]}
+            {"key": "guards", "kind": "roll", "title": "Do the guards find you?", "tip": "Roll 1d6. On 1 to 3 a firefight starts right now.", "dice": "1d6", "bands": [{"upTo": 3, "label": "The guards find you", "effects": [{"kind": "nextScene", "sceneType": "firefight"}]}, {"label": "Unseen"}]}
           ]
         },
         {"key": "escape", "name": "Escape", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["getaway"]}},

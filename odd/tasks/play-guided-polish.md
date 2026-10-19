@@ -72,7 +72,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 | T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [x] | `eb4aca0` |
 | F1 | 2 | Slice 1 review fixes: check-step preview compares the default next for unmapped results; a paused FlowRun reports no guided `sceneNumber`; the refusal test compares a deep copy | delegated writer (slice 2) | [x] | |
 | T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | delegated writer (slice 2) | [x] | |
-| T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | | [ ] | |
+| T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | delegated writer (slice 2) | [x] | |
 | T7 | 2 | P8 Threads and NPCs quick links in guided play | | [ ] | |
 | T8 | 3 | P7 / N8 flow notes journaled as `flowOutcome` entries | | [ ] | |
 | T9 | 4 | P9 random event tied to its fate question, meaning prompt, offer hidden once rolled | | [ ] | |
@@ -87,6 +87,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 - 2026-10-19: T4 done. Guard: `Campaign::startScene` refuses with `SceneCannotStartWhileGuided` (409) while the FlowRun is active; FlowRun starts scenes through the new `startGuidedScene`. RED: with the guard in, 10 existing tests that started scenes by hand mid-guidance failed (fixed with pause/resume or `withScenesStartedByHand`, a stored-before state); the new unit and API tests were written after the code (GREEN only). Paused and complete Flows still allow manual scenes. Route: delegated writer, direct.
 - 2026-10-19: F1 done. RED: 2 new `FlowRunNextPreviewTest` check cases and the paused `FlowRunViewTest` case failed, GREEN after `nextOf` (adds the default next when the step maps fewer results than its Check has bands) and a null `sceneNumber` in the view while paused; the refusal test now compares `unserialize(serialize())`, GREEN only (test-only change). Route: delegated writer, direct.
 - 2026-10-19: T5 done. RED: validator, agreement and translator cases for `band.label` failed (unknown property), GREEN after `Bands::outcomes`, the schema, `Band::$label` and the translator (same 1-80 rule, null rejected on both sides; the old "unknown band property" case now uses `colour`); `stepDraft` round-trip and the Label input tests were written after the code (GREEN only). No endpoint changed, so no `make api`. Route: delegated writer, direct.
+- 2026-10-19: T6 done. RED: the `floor`→`ice` branch skip and both `lose-them` outcomes failed in `NightJobPresetFlowTest`, GREEN after the preset edits; `PresetBandLabelsTest` (every roll band labelled) was written after the labels (GREEN only). Decision: the Chase notes are prompt steps (`boxed-in`, `shaken`) the botch and fail outcomes branch to, since effects carry no note; the check step's own `next` is `end` so a success leaves the Chase. The Mythic `lists` tip (T7 text) landed here. Route: delegated writer, direct.
 
 ## Reviews
 

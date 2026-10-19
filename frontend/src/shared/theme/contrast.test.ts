@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 
-import { formatHex, parse, wcagContrast } from 'culori'
+import { formatHex, parse, rgb, wcagContrast } from 'culori'
 
 import { CAMPAIGN_THEME_NAMES, CAMPAIGN_THEMES } from './themes'
 
@@ -97,6 +97,27 @@ const CONTROL_PAIRS: [string, string][] = [
   ['input', 'background'],
 ]
 
+/** The tile background is translucent in some themes: composite it over `backdrop` first. */
+function flatten(palette: Palette, token: string, backdrop: string): string {
+  const color = rgb(parse(palette.tokens[token] ?? ''))
+  const under = rgb(parse(palette.tokens[backdrop] ?? ''))
+  const alpha = color.alpha ?? 1
+  const mix = (a: number, b: number) => a * alpha + b * (1 - alpha)
+  return formatHex({
+    mode: 'rgb',
+    r: mix(color.r, under.r),
+    g: mix(color.g, under.g),
+    b: mix(color.b, under.b),
+  })
+}
+
+function tileRatio(palette: Palette, foreground: string, background: string | null): number {
+  const color = formatHex(parse(palette.tokens[foreground] ?? ''))
+  const backdrop =
+    background === null ? flatten(palette, 'card', 'card') : flatten(palette, background, 'card')
+  return wcagContrast(color, backdrop)
+}
+
 const palettes = resolve(parsePalettes(css))
 
 // Prettier writes the attribute selector with single quotes.
@@ -120,6 +141,7 @@ const DEPTH_TOKENS = [
   'texture',
   'texture-size',
 ]
+const TILE_TOKENS = ['tile-radius', 'tile-bg', 'tile-border', 'tile-fg', 'icon']
 const TYPE_TOKENS = [
   'label-font',
   'label-size',
@@ -185,7 +207,9 @@ describe('palette contrast (WCAG AA)', () => {
   describe.each(parsePalettes(css))('$name', (palette) => {
     it('declares every depth and type token itself', () => {
       expect(
-        [...DEPTH_TOKENS, ...TYPE_TOKENS].filter((token) => palette.tokens[token] === undefined),
+        [...DEPTH_TOKENS, ...TYPE_TOKENS, ...TILE_TOKENS].filter(
+          (token) => palette.tokens[token] === undefined,
+        ),
       ).toEqual([])
     })
   })
@@ -205,6 +229,19 @@ describe('palette contrast (WCAG AA)', () => {
         actual,
         `${palette.name}: --${foreground} on --${background} is ${actual.toFixed(2)}:1, needs 3:1`,
       ).toBeGreaterThanOrEqual(3)
+    })
+
+    // Icons are non-text: 3:1 against what they sit on (the tile over the card, or the card).
+    it('--tile-fg reaches 3:1 on --tile-bg over --card', () => {
+      const actual = tileRatio(palette, 'tile-fg', 'tile-bg')
+      expect(actual, `${palette.name}: tile icon is ${actual.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+        3,
+      )
+    })
+
+    it('--icon reaches 3:1 on --card', () => {
+      const actual = tileRatio(palette, 'icon', null)
+      expect(actual, `${palette.name}: icon is ${actual.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
     })
   })
 })

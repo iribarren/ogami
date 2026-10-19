@@ -57,6 +57,7 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --color-well: var(--well);
+  --color-icon: var(--icon);
   --shadow-well: var(--well-shadow);
   --shadow-card: var(--card-shadow);
   --shadow-button: var(--button-shadow);
@@ -166,6 +167,11 @@
   --button-size: 0.875rem;
   --button-case: none;
   --button-tracking: 0em;
+  --tile-radius: 9px;
+  --tile-bg: oklch(0.55 0.19 33 / 0.09);
+  --tile-border: 1px solid oklch(0.55 0.19 33 / 0.22);
+  --tile-fg: oklch(0.5 0.19 33);
+  --icon: oklch(0.5 0.19 33);
 }
 
 .dark {
@@ -236,6 +242,11 @@
   --button-size: 0.875rem;
   --button-case: none;
   --button-tracking: 0em;
+  --tile-radius: 9px;
+  --tile-bg: oklch(0.7 0.17 35 / 0.12);
+  --tile-border: 1px solid oklch(0.7 0.17 35 / 0.3);
+  --tile-fg: oklch(0.78 0.14 35);
+  --icon: oklch(0.78 0.14 35);
 }
 
 /*
@@ -313,6 +324,11 @@
   --button-size: 1rem;
   --button-case: none;
   --button-tracking: 0.02em;
+  --tile-radius: 50%;
+  --tile-bg: oklch(0.8 0.1 88);
+  --tile-border: 1px solid oklch(0.6 0.1 80);
+  --tile-fg: oklch(0.3 0.06 60);
+  --icon: oklch(0.4 0.14 25);
 }
 
 /* Cyberpunk: near-black violet, hot magenta primary, cyan accent. */
@@ -392,6 +408,11 @@
   --button-size: 0.75rem;
   --button-case: uppercase;
   --button-tracking: 0.08em;
+  --tile-radius: 2px;
+  --tile-bg: oklch(0.82 0.13 205 / 0.08);
+  --tile-border: 1px solid oklch(0.82 0.13 205 / 0.55);
+  --tile-fg: oklch(0.82 0.13 205);
+  --icon: oklch(0.82 0.13 205);
 }
 
 /* Crime, mystery: greyscale, high contrast, one desaturated amber accent. */
@@ -463,6 +484,11 @@
   --button-size: 0.875rem;
   --button-case: uppercase;
   --button-tracking: 0.08em;
+  --tile-radius: 0;
+  --tile-bg: transparent;
+  --tile-border: 1.5px solid oklch(0.76 0.1 80);
+  --tile-fg: oklch(0.76 0.1 80);
+  --icon: oklch(0.76 0.1 80);
 }
 
 /* Horror: green-black, bone-white text, sickly green and deep teal. */
@@ -538,6 +564,11 @@
   --button-size: 1rem;
   --button-case: none;
   --button-tracking: 0.02em;
+  --tile-radius: 50%;
+  --tile-bg: oklch(0.35 0.07 185 / 0.55);
+  --tile-border: 1px solid oklch(0.72 0.17 140 / 0.4);
+  --tile-fg: oklch(0.72 0.17 140);
+  --icon: oklch(0.72 0.17 140);
 }
 
 /* Space sci-fi: cool white and blue-grey, teal primary. */
@@ -612,6 +643,11 @@
   --button-size: 0.875rem;
   --button-case: uppercase;
   --button-tracking: 0.06em;
+  --tile-radius: 4px;
+  --tile-bg: oklch(0.92 0.035 215);
+  --tile-border: 1px solid oklch(0.5 0.11 195 / 0.35);
+  --tile-fg: oklch(0.42 0.1 200);
+  --icon: oklch(0.48 0.11 198);
 }
 
 /* The glow of a read-out number (roll total, oracle answer); the theme decides whether it has one. */
@@ -646,6 +682,14 @@
 }
 
 /* Size and tracking of a panel title come from the --text-panel-title* tokens; only case is extra. */
+/* The tile behind a panel, step or journal icon; the theme decides its shape and colors. */
+@utility icon-tile {
+  border-radius: var(--tile-radius);
+  background: var(--tile-bg);
+  border: var(--tile-border);
+  color: var(--tile-fg);
+}
+
 @utility panel-title-case {
   text-transform: var(--panel-title-case);
 }

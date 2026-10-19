@@ -120,22 +120,21 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 
 | Slice | Branch | Tasks | Forecast |
 |---|---|---|---|
-| 1 | `feat/ui-theme-polish-1-depth` | T1–T3 | ~1,100–1,400 (doc ~200, tokens in 7 blocks ~250, primitives and read-outs ~150, type tokens and fonts ~200, story helper and stories ~300, tests ~100) |
-| 2 | `feat/ui-theme-polish-2-icons` | T4–T5 | ~900–1,200 (tile tokens ~100, `IconTile` and panel, step card and journal icons ~350, `DieShape` and dice buttons ~200, stories and tests ~350) |
-| 3 | `feat/ui-theme-polish-3-embellishments` | T6–T8 | ~1,100–1,400 (mark and divider ~400, panel frame ~250, drop cap and pips ~250, stories and tests ~350, Chrome pass fixes ~100) |
+| 1 | `feat/ui-theme-polish-1-depth` | T1–T5 | T1–T3 landed at ~607 changed lines (CSS tokens are compact), so the icon tasks joined this slice: ~1,200–1,500 in all (tile tokens ~100, `IconTile` and panel, step card and journal icons ~300, `DieShape` and dice buttons ~150, stories and tests ~250) |
+| 2 | `feat/ui-theme-polish-2-embellishments` | T6–T8 | ~1,100–1,400 (mark and divider ~400, panel frame ~250, drop cap and pips ~250, stories and tests ~350, Chrome pass fixes ~100) |
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | |
-| T2 | 1 | Depth: `--well`, `--well-shadow`, `--card-shadow`, `--button-shadow`, `--readout-shadow`, texture tokens in all seven palette blocks; wells on Input, Textarea, NativeSelect and the journal read-outs; layered shadows on Card, PlayPanel, the step card and journal entries; body texture; primary button shadow; per-theme story helper and stories | delegated writer, direct | [x] | |
-| T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer, direct | [x] | |
-| T4 | 2 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | | [ ] | |
-| T5 | 2 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | | [ ] | |
-| T6 | 3 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | | [ ] | |
-| T7 | 3 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | | [ ] | |
-| T8 | 3 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | | [ ] | |
+| T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | `dc86cf3` |
+| T2 | 1 | Depth: `--well`, `--well-shadow`, `--card-shadow`, `--button-shadow`, `--readout-shadow`, texture tokens in all seven palette blocks; wells on Input, Textarea, NativeSelect and the journal read-outs; layered shadows on Card, PlayPanel, the step card and journal entries; body texture; primary button shadow; per-theme story helper and stories | delegated writer, direct | [x] | `5511ddb` |
+| T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer, direct | [x] | `542c729` |
+| T4 | 1 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | delegated writer, direct | [x] | |
+| T5 | 1 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | | [ ] | |
+| T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | | [ ] | |
+| T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | | [ ] | |
+| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | | [ ] | |
 
 ## Progress
 
@@ -143,6 +142,8 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-19: T1 feature doc committed by the slice 1 writer (no code, no RED/GREEN applicable).
 - 2026-10-19: T2 depth tokens in all seven blocks, wells on Input/Textarea/NativeSelect and journal read-outs, card and button shadows, body texture, `onTheme` story helper and per-theme stories (delegated writer, direct; contrast.test token-presence check GREEN only, CSS has no meaningful RED).
 - 2026-10-19: T3 per-theme label, page/panel title, prose and button type tokens in all seven blocks, `type-label`/`type-prose`/`type-button`/`panel-title-case` utilities, Geist Mono added, label contrast pairs (no design color changed), note stories per theme (delegated writer, direct; contrast.test token and pair checks GREEN only, tests came after the CSS).
+- 2026-10-19: T1–T3 came in at ~607 changed lines, so the plan went from 3 slices to 2: the icon tasks T4–T5 join slice 1, the embellishments T6–T8 become slice 2.
+- 2026-10-19: T4 tile tokens in all seven blocks (`.dark` keeps ogami shapes, colors from the dark primary), `IconTile`, `DieShape` (pulled forward for the Dice panel icon), tiles on panels, step card and journal entries, lucide chevrons, `X` on the fact link remove button, contrast pairs for `--tile-fg` and `--icon` (no design color changed; GREEN only, tests came after the code). The link remove `×` in `play/lists/TagFields.tsx` is outside the allowed surface and stays a glyph (delegated writer, direct).
 
 ## Reviews
 
@@ -151,4 +152,4 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 
 ## Next step
 
-Slice 1 (T1–T3) on `feat/ui-theme-polish-1-depth`.
+Slice 1: T4–T5 on `feat/ui-theme-polish-1-depth`, then review and PR (1/2).

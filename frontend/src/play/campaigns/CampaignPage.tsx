@@ -1,11 +1,14 @@
 import { Link } from '@tanstack/react-router'
+import { Eye, Feather, HeartPulse, Route, ScrollText, UserRound, Users } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
 import { cn } from '@/shared/lib/utils'
 import { useCampaignTheme } from '@/shared/theme/useCampaignTheme'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { CharactersPanel } from '../characters/CharactersPanel'
+import { DieShape } from '../dice/DieShape'
 import { DiceRoller } from '../dice/DiceRoller'
 import { FactsPanel } from '../facts/FactsPanel'
 import { FlowIntroduction } from '../flow/FlowIntroduction'
@@ -130,7 +133,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           {campaign.flowRun !== null && focused ? (
             <FocusPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
           ) : (
-            <Section title="Journal">
+            <Section title="Journal" icon={<Feather />}>
               <CampaignJournal campaign={campaign} />
               {campaign.flowRun !== null && (
                 <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
@@ -150,13 +153,18 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:-mx-1 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:px-1 lg:pb-2"
         >
           {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
-          <PlayPanel id="dice" title="Dice">
+          <PlayPanel
+            id="dice"
+            title="Dice"
+            icon={<DieShape sides={20} inner className="text-current" />}
+          >
             <CampaignDice campaignId={campaign.id} disabled={!hasScene} />
           </PlayPanel>
           {trackers.length > 0 && (
             <PlayPanel
               id="trackers"
               title="Trackers"
+              icon={<HeartPulse />}
               count={trackers.length}
               help="Counters and clocks the flow reads to decide what happens next."
             >
@@ -166,6 +174,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           <PlayPanel
             id="facts"
             title="Facts"
+            icon={<ScrollText />}
             count={campaign.facts.length}
             help="What the story has settled. The flow asks for some; refill one when play changes it."
           >
@@ -174,6 +183,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           <PlayPanel
             id="threads"
             title="Threads"
+            icon={<Route />}
             count={campaign.threads.length}
             help="The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled."
           >
@@ -182,6 +192,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           <PlayPanel
             id="npcs"
             title="NPCs"
+            icon={<Users />}
             count={campaign.npcs.length}
             help="The people met in play. Add them as they appear; the flow adds some too."
           >
@@ -190,6 +201,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           <PlayPanel
             id="characters"
             title="Characters"
+            icon={<UserRound />}
             count={campaign.characters.length}
             help="Your characters and their sheets. Open one to read or edit it."
           >
@@ -198,6 +210,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           <PlayPanel
             id="oracles"
             title="Oracles"
+            icon={<Eye />}
             help="Ask a yes/no question or roll a table when you need ideas. The result is yours to interpret."
           >
             <OraclePanel
@@ -239,11 +252,20 @@ function ViewToggle({ view, onChange }: { view: FlowView; onChange: (view: FlowV
   )
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string
+  icon?: ReactNode
+  children: ReactNode
+}) {
   const headingId = useId()
   return (
     <section aria-labelledby={headingId} className="space-y-3">
-      <h2 id={headingId} className="font-heading text-section-title">
+      <h2 id={headingId} className="flex items-center gap-3 font-heading text-section-title">
+        {icon !== undefined && <IconTile size="sm">{icon}</IconTile>}
         {title}
       </h2>
       {children}

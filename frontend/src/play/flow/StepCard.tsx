@@ -1,6 +1,8 @@
+import { Target } from 'lucide-react'
 import { useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 import { Textarea } from '@/shared/ui/textarea'
@@ -48,7 +50,12 @@ export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
             {kindLabels[step.kind]}
           </span>
         </p>
-        <h4 className="font-heading text-base font-semibold">{step.title}</h4>
+        <h4 className="flex items-center gap-3 font-heading text-base font-semibold">
+          <IconTile size="lg">
+            <Target />
+          </IconTile>
+          {step.title}
+        </h4>
         {step.prompt !== null && <p className="type-prose whitespace-pre-wrap">{step.prompt}</p>}
         {step.tip !== null && <p className="text-sm text-muted-foreground">Tip: {step.tip}</p>}
         {step.fills.length > 0 && (

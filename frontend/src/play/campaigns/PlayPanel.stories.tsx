@@ -1,4 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { ScrollText } from 'lucide-react'
+
+import { onTheme } from '@/shared/theme/themeStories'
 
 import { PlayPanel } from './PlayPanel'
 
@@ -26,3 +29,11 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 export const WithoutCount: Story = { args: { id: 'story-dice', title: 'Dice', count: undefined } }
+
+export const WithIcon: Story = { args: { icon: <ScrollText /> } }
+
+export const WithIconParchment: Story = onTheme('parchment', WithIcon)
+export const WithIconNeon: Story = onTheme('neon', WithIcon)
+export const WithIconNoir: Story = onTheme('noir', WithIcon)
+export const WithIconEldritch: Story = onTheme('eldritch', WithIcon)
+export const WithIconStarship: Story = onTheme('starship', WithIcon)

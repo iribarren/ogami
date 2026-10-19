@@ -1,8 +1,11 @@
+import { ClipboardList, Eye, Feather, Flag, Split, Users } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { DiceGroups } from '../dice/DiceGroups'
+import { DieShape } from '../dice/DieShape'
 import type {
   CheckContent,
   FlowOutcomeContent,
@@ -61,6 +64,28 @@ function entryLabel(content: JournalEntry['content']) {
   }
 }
 
+/** The icon of an entry's tile: dice for rolls and checks, an eye for oracles, a quill for notes. */
+function entryIcon(content: JournalEntry['content']) {
+  switch (content.kind) {
+    case 'note':
+      return <Feather />
+    case 'roll':
+    case 'check':
+      return <DieShape sides={20} inner className="text-current" />
+    case 'oracle-table':
+    case 'likelihood':
+      return <Eye />
+    case 'choice':
+      return <Split />
+    case 'pick':
+      return <Users />
+    case 'sheet-change':
+      return <ClipboardList />
+    case 'flowOutcome':
+      return <Flag />
+  }
+}
+
 /** One journal entry, rendered by kind, with the time it was recorded. */
 export function JournalEntryView({
   entry,
@@ -76,12 +101,15 @@ export function JournalEntryView({
   return (
     <article
       aria-label={entryLabel(entry.content)}
-      className="space-y-2 rounded-xl p-3 shadow-card ring-1 ring-foreground/10"
+      className="flex items-start gap-3 rounded-xl p-3 shadow-card ring-1 ring-foreground/10"
     >
-      <EntryContent content={entry.content} tags={tags} sheet={sheet} />
-      <p className="text-xs text-muted-foreground">
-        <time dateTime={entry.recordedAt}>{recordedTime.format(new Date(entry.recordedAt))}</time>
-      </p>
+      <IconTile size="md">{entryIcon(entry.content)}</IconTile>
+      <div className="min-w-0 flex-1 space-y-2">
+        <EntryContent content={entry.content} tags={tags} sheet={sheet} />
+        <p className="text-xs text-muted-foreground">
+          <time dateTime={entry.recordedAt}>{recordedTime.format(new Date(entry.recordedAt))}</time>
+        </p>
+      </div>
     </article>
   )
 }

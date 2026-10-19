@@ -1,7 +1,9 @@
+import { ChevronDown } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Collapsible, CollapsibleTrigger } from '@/shared/ui/collapsible'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { openPlayPanelEvent } from './openPlayPanel'
 import { readPanelOpen, storePanelOpen } from './playPanelStorage'
@@ -10,6 +12,8 @@ interface PlayPanelProps {
   /** Stable key of the section (`dice`, `facts`…), under which its open state is remembered. */
   id: string
   title: string
+  /** Decorative icon shown in a themed tile before the title. */
+  icon?: ReactNode
   /** Shown next to the title when the number is cheap to know. */
   count?: number
   /** One line under the title saying what the tool is for. */
@@ -21,7 +25,7 @@ interface PlayPanelProps {
  * One tool of the Play sidebar: a titled card whose body the player can collapse. Open by
  * default; the choice is remembered per section in this browser.
  */
-export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) {
+export function PlayPanel({ id, title, icon, count, help, children }: PlayPanelProps) {
   const headingId = useId()
   const bodyId = useId()
   const [open, setOpen] = useState(() => readPanelOpen(id))
@@ -71,19 +75,12 @@ export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) 
               aria-controls={bodyId}
               className="group/trigger -m-1 flex items-center gap-2 rounded-md p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             >
+              {icon !== undefined && <IconTile size="sm">{icon}</IconTile>}
               {title}
-              <svg
+              <ChevronDown
                 aria-hidden="true"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
                 className="size-4 text-muted-foreground transition-transform group-data-[state=closed]/trigger:-rotate-90"
-              >
-                <path d="m4 6 4 4 4-4" />
-              </svg>
+              />
             </CollapsibleTrigger>
           </h2>
           {count !== undefined && <Badge variant="secondary">{count}</Badge>}

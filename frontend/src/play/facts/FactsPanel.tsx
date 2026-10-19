@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -480,7 +481,7 @@ function LinksForm({
                     setDraft(draft.filter((held) => held.id !== linkId))
                   }}
                 >
-                  <span aria-hidden="true">×</span>
+                  <X aria-hidden="true" className="size-3" />
                 </button>
               </li>
             ))}

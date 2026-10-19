@@ -1,17 +1,9 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+
+import { manager, signIn } from './sign-in.ts'
 
 // Users and the "free-journal" preset are seeded by `make e2e-seed`. Its "Action" table is the
 // first of the oracle tables.
-const manager = 'e2e-manager@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
-
-async function signIn(page: Page, email: string) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).not.toHaveURL(/\/login/)
-}
 
 test('a game manager edits an oracle table of a copied preset, test-rolls it and publishes', async ({
   page,

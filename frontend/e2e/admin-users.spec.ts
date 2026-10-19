@@ -1,10 +1,8 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 
 import { latestLinkTo } from './mailpit.ts'
+import { owner, signIn, submitSignIn } from './sign-in.ts'
 
-// Created by `make e2e-seed`.
-const owner = 'e2e-owner@example.test'
-const ownerPassword = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 const invitedPassword = 'invited-password-1'
 
 // Every scenario invites its own user (a unique email per run, so reruns on the same database
@@ -15,12 +13,6 @@ const invitedPassword = 'invited-password-1'
 test.setTimeout(90_000)
 
 const uniqueEmail = (label: string) => `e2e-${label}-${String(Date.now())}@example.test`
-
-async function signIn(page: Page, email: string, secret: string) {
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(secret)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-}
 
 /** A fresh browser context (own cookies), so the owner and the invited user never share a session. */
 const contexts: BrowserContext[] = []
@@ -37,9 +29,7 @@ test.afterEach(async () => {
 
 async function signInAsOwner(browser: Browser): Promise<Page> {
   const page = await newPage(browser)
-  await page.goto('/login')
-  await signIn(page, owner, ownerPassword)
-  await expect(page).toHaveURL('/admin')
+  await signIn(page, owner, '/admin')
   return page
 }
 
@@ -95,7 +85,7 @@ test('a disabled user cannot sign in', async ({ browser }) => {
 
   const page = await newPage(browser)
   await page.goto('/login')
-  await signIn(page, email, invitedPassword)
+  await submitSignIn(page, email, invitedPassword)
 
   await expect(page.getByRole('alert')).toHaveText('Invalid credentials.')
   await expect(page).toHaveURL('/login')
@@ -120,6 +110,6 @@ test('a user resets a forgotten password and signs in with the new one', async (
   await expect(page.getByText('Your password has been changed.')).toBeVisible()
 
   await page.getByRole('link', { name: 'Go to sign in' }).click()
-  await signIn(page, email, newPassword)
+  await submitSignIn(page, email, newPassword)
   await expect(page).toHaveURL('/play')
 })

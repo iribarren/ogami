@@ -1,16 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+import { player, signIn } from './sign-in.ts'
+
 // Users and the "Night Job" preset are seeded by `make e2e-seed`. Night Job's sheet has two
 // derived fields: Cool (Nerve minus half the Alarm) and Wounded at (half the HP maximum).
-const player = 'e2e-player@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 
 test('derived values on the sheet follow the stats the player types', async ({ page }) => {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/play')
+  await signIn(page, player, '/play')
 
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Derived ${String(Date.now())}`)

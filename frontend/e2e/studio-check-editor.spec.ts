@@ -1,17 +1,9 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+
+import { manager, signIn } from './sign-in.ts'
 
 // Users and the "night-job" preset are seeded by `make e2e-seed`. The copy is a schema 2 draft
 // with a sheet, trackers and checks of its own: the new check below reads none of them.
-const manager = 'e2e-manager@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
-
-async function signIn(page: Page, email: string) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).not.toHaveURL(/\/login/)
-}
 
 test('a game manager authors a check with two bands, rolls it in the sandbox and sees the band reached', async ({
   page,

@@ -1,17 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { manager, signIn } from './sign-in.ts'
+
 // Users and the "night-job" preset are seeded by `make e2e-seed`. Its "social" Scene Type opens
 // with a "talk" prompt step in its play steps, and its "heist" flow starts with the phase "The job".
-const manager = 'e2e-manager@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
-
-async function signIn(page: Page, email: string) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).not.toHaveURL(/\/login/)
-}
 
 /** Submits the form with Enter in `field` (a long form can have the dev badge over its Save button) and waits for the write. */
 async function saveWith(page: Page, field: ReturnType<Page['getByLabel']>, path: string) {

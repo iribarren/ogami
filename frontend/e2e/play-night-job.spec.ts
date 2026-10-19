@@ -1,18 +1,14 @@
 import { expect, test } from '@playwright/test'
 
+import { player, signIn } from './sign-in.ts'
+
 // Users and the "Night Job" preset, a fan preset with credits and a Flow introduction, are seeded
 // by `make e2e-seed`.
-const player = 'e2e-player@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 
 test('a solo player sees the disclaimer and the introduction, creates their Character, then completes the crew step', async ({
   page,
 }) => {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/play')
+  await signIn(page, player, '/play')
 
   // Choosing the preset shows the publisher's disclaimer and what the Flow is about.
   const form = page.getByRole('form', { name: 'New campaign' })

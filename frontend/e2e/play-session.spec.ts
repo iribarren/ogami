@@ -1,19 +1,11 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+
+import { player, signIn } from './sign-in.ts'
 
 // Users and the "Free journal" preset are seeded by `make e2e-seed`.
-const player = 'e2e-player@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
-
-async function signIn(page: Page) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/play')
-}
 
 test('a solo player plays a free-journal session end to end', async ({ page }) => {
-  await signIn(page)
+  await signIn(page, player, '/play')
 
   // A new campaign per run: the dev database keeps the campaigns of earlier runs.
   const form = page.getByRole('form', { name: 'New campaign' })

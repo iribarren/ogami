@@ -10865,7 +10865,8 @@
                     "part",
                     "stepNumber",
                     "stepCount",
-                    "phaseDescription"
+                    "phaseDescription",
+                    "sceneNumber"
                 ],
                 "properties": {
                     "act": {
@@ -10926,6 +10927,12 @@
                         "description": "What the phase is for and when it is done; null when the release gives none.",
                         "type": "string",
                         "example": "Plan the job and gather your crew.",
+                        "nullable": true
+                    },
+                    "sceneNumber": {
+                        "description": "The number of the scene or hook Scene the FlowRun is in, in its session; null at the scene pick, while waiting for a session and when paused outside a scene.",
+                        "type": "integer",
+                        "example": 1,
                         "nullable": true
                     }
                 },

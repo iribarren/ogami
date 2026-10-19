@@ -2126,6 +2126,11 @@ export interface components {
              * @example Plan the job and gather your crew.
              */
             phaseDescription: string | null;
+            /**
+             * @description The number of the scene or hook Scene the FlowRun is in, in its session; null at the scene pick, while waiting for a session and when paused outside a scene.
+             * @example 1
+             */
+            sceneNumber: number | null;
         };
         FlowStepOptionResponse: {
             /** @example yes */

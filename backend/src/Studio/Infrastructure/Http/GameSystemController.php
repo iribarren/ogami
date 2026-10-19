@@ -214,9 +214,6 @@ final readonly class GameSystemController
     }
 
     /**
-     * @throws GameSystemNotFound
-     */
-    /**
      * Runs the command and reads the GameSystem back in one transaction. The command's write holds the
      * draft's row until the commit, so the read sees exactly this write, never a save that
      * interleaved, and a read that fails rolls the write back, so the error answered is honest. The
@@ -231,6 +228,9 @@ final readonly class GameSystemController
         });
     }
 
+    /**
+     * @throws GameSystemNotFound
+     */
     private function gameSystem(AuthenticatedUser $user, string $key, int $status): JsonResponse
     {
         return new JsonResponse(GameSystemResponse::fromView($this->queryBus->ask(new GetGameSystem($user->id(), $key))), $status);

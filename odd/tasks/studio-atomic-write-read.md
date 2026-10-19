@@ -74,6 +74,7 @@ Likelihood is low (drafts are owner-only: same user, two tabs), but the fix is m
 | T1 | 1 | Editor controllers: check, sheet, narrative, oracle write + read in one transaction; one rollback API test each | delegated writer (slice 1; feature doc inline by parent) | [x] | |
 | T2 | 1 | GameSystem, release (publish, restore) and library pack controllers: write + read in one transaction; one rollback API test each | delegated writer (slice 1) | [x] | |
 | T3 | 1 | API test: a GameSystem row stored before the `kind` column reads as `game-system` | delegated writer (slice 1) | [x] | |
+| T4 | 1 | Slice 1 review fixes: R3-restore-rollback-unproved rollback tests for restore, edit metadata, an oracle delete and a narrative delete; R3-orphaned-throws-docblock moved back above its method | delegated writer (slice 1) | [x] | |
 
 ## Progress
 
@@ -81,6 +82,7 @@ Likelihood is low (drafts are owner-only: same user, two tabs), but the fix is m
 - 2026-10-19: T1 done: check, sheet, narrative and oracle writes run with their read-back in one transaction; four rollback API tests (RED: the write persisted and left the draft unreadable; GREEN after the change). The unreachable `CHANGED_AFTER_SAVE` branch of check and sheet is gone: the draft row is locked until the commit, so the read-back cannot miss it.
 - 2026-10-19: T2 done: GameSystem create and edit metadata, release publish and restore, and library pack create run with their read-back in one transaction; three rollback API tests (create GameSystem, publish, create pack). No post-commit hook, async transport or second connection in the publish path (sync Messenger transport, one entity manager).
 - 2026-10-19: T3 done: API test inserts a `studio_gamesystem` row without the `kind` column and reads `kind: game-system` from the GameSystem endpoint (and the list). Regression test, passes on arrival: the migration default already covers it.
+- 2026-10-19: T4 done: rollback API tests for restore, metadata edit, an oracle table delete and a narrative tag delete; the orphaned `@throws GameSystemNotFound` docblock in GameSystemController is back above `gameSystem()`.
 
 ## Reviews
 

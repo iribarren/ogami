@@ -204,6 +204,9 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-derived-with-min' => ['sheet.fields[0].min: unknown property', '/sheet/fields/0'],
         'generated: v2-band-formula-with-extra-property' => ['sceneTypes[0].play[0].bands[0].upTo.plus: unknown property', '/sceneTypes/0/play/0/bands/0/upTo'],
         'generated: v2-band-formula-empty' => ['sceneTypes[0].play[0].bands[0].upTo.formula: must not be empty', '/sceneTypes/0/play/0/bands/0/upTo/formula'],
+        'generated: v2-band-label-empty' => ['sceneTypes[0].play[0].bands[0].label: must not be empty', '/sceneTypes/0/play/0/bands/0/label'],
+        'generated: v2-band-label-too-long' => ['sceneTypes[0].play[0].bands[0].label: must be at most 80 characters', '/sceneTypes/0/play/0/bands/0/label'],
+        'generated: v2-band-label-not-a-string' => ['sceneTypes[0].play[0].bands[0].label: must be a string', '/sceneTypes/0/play/0/bands/0/label'],
         'generated: v2-effect-formula-with-extra-property' => ['sceneTypes[0].play[0].effects[0].value.plus: unknown property', '/sceneTypes/0/play/0/effects/0/value'],
         'generated: v2-effect-formula-too-long' => ['sceneTypes[0].play[0].effects[0].value.formula: must be at most 200 characters', '/sceneTypes/0/play/0/effects/0/value/formula'],
         'generated: v2-counter-level-formula' => ['trackers[0].levels[0].upTo: must be an integer', '/trackers/0/levels/0/upTo'],
@@ -553,6 +556,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         /** @param array<string, mixed> $extra */
         $derived = static fn (mixed $formula, array $extra = []): array => self::derivedSheet([['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => $formula] + $extra]);
         $upTo = static fn (mixed $upTo): array => ['trackers' => [$alarm], 'sceneTypes' => $sceneType([['key' => 'check', 'kind' => 'condition', 'title' => 'Check', 'tracker' => 'alarm', 'bands' => [['upTo' => $upTo], new \stdClass()]]])];
+        $label = static fn (mixed $label): array => ['trackers' => [$alarm], 'sceneTypes' => $sceneType([['key' => 'check', 'kind' => 'condition', 'title' => 'Check', 'tracker' => 'alarm', 'bands' => [['upTo' => 1, 'label' => $label], new \stdClass()]]])];
         $value = static fn (mixed $value): array => ['trackers' => [$alarm], 'sceneTypes' => $sceneType([['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => $value]]] + $prompt(1)])];
         $generatedV2 += [
             'v2-derived-without-formula' => self::derivedSheet([['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived']]),
@@ -562,6 +566,9 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-derived-with-min' => $derived('1', ['min' => 0]),
             'v2-band-formula-with-extra-property' => $upTo(['formula' => '1', 'plus' => 1]),
             'v2-band-formula-empty' => $upTo(['formula' => '']),
+            'v2-band-label-empty' => $label(''),
+            'v2-band-label-too-long' => $label(str_repeat('l', 81)),
+            'v2-band-label-not-a-string' => $label(7),
             'v2-effect-formula-with-extra-property' => $value(['formula' => '1', 'plus' => 1]),
             'v2-effect-formula-too-long' => $value(['formula' => str_repeat('1', 201)]),
             'v2-counter-level-formula' => ['trackers' => [['levels' => [['upTo' => ['formula' => '1'], 'label' => 'Low'], ['label' => 'Rest']]] + $counter]],

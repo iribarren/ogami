@@ -144,6 +144,40 @@ describe('the step list editor', () => {
     })
   })
 
+  it('edits the optional label of a band and drops the field when it is emptied', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={stepList} />)
+    const band = (number: number) =>
+      within(card(2).getByRole('group', { name: `Band ${String(number)}` }))
+
+    expect(band(1).getByLabelText('Label')).toHaveValue('')
+    expect(saved(1)).not.toMatchObject({ bands: [{ label: expect.anything() as unknown }] })
+
+    await user.type(band(1).getByLabelText('Label'), 'Quiet')
+    await user.type(band(3).getByLabelText('Label'), 'Loud')
+    expect(saved(1)).toMatchObject({ bands: [{ label: 'Quiet' }, {}, { label: 'Loud' }] })
+
+    await user.clear(band(1).getByLabelText('Label'))
+    expect(saved(1)).toMatchObject({ bands: [{}, {}, { label: 'Loud' }] })
+    expect((saved(1) as { bands: object[] }).bands[0]).not.toHaveProperty('label')
+  })
+
+  it('shows a server error about a band label on that band', () => {
+    const errors = [
+      mapStepError(
+        'sceneTypes[2].play',
+        'sceneTypes[2].play[1].bands[0].label: must be at most 80 characters, 81 given',
+      ),
+    ]
+    render(<Harness stored={stepList} errors={errors} />)
+
+    expect(
+      within(card(2).getByRole('group', { name: 'Band 1' })).getByText(
+        'must be at most 80 characters, 81 given',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('flags limits that do not increase, without blocking anything', async () => {
     const user = userEvent.setup()
     render(<Harness stored={stepList} />)

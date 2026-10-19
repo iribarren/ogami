@@ -245,6 +245,25 @@ final class GameSystemReleaseTranslatorFlowsTest extends TestCase
         yield 'second default' => ['flows.1.default', true, 'flows[1].default: only one flow may be the default.'];
         yield 'non-boolean default' => ['flows.0.default', 'yes', 'flows[0].default: must be a boolean.'];
         yield 'integer default' => ['flows.1.default', 1, 'flows[1].default: must be a boolean.'];
+        yield 'band label not a string' => ['flows.0.phases.0.worldTurn.0.bands.0.label', 7, 'flows[0].phases[0].worldTurn[0].bands[0].label: must be a string.'];
+        yield 'blank band label' => ['flows.0.phases.0.worldTurn.0.bands.0.label', '  ', 'flows[0].phases[0].worldTurn[0].bands[0].label: must not be blank.'];
+        yield 'empty band label' => ['flows.0.phases.0.worldTurn.0.bands.0.label', '', 'flows[0].phases[0].worldTurn[0].bands[0].label: must not be blank.'];
+        yield 'band label too long' => ['flows.0.phases.0.worldTurn.0.bands.0.label', str_repeat('a', 81), 'flows[0].phases[0].worldTurn[0].bands[0].label: must be at most 80 characters.'];
+    }
+
+    #[Test]
+    public function aBandReadsItsOptionalLabelAndReleasesWithoutOneReadNull(): void
+    {
+        $content = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-every-part'), 'flows.0.phases.0.worldTurn.0.bands.0.label', 'Rumour spreads');
+        $bands = static function (GameSystemSnapshot $snapshot): array {
+            $step = $snapshot->flow('heist')?->phases[0]->worldTurn?->steps[0];
+            self::assertInstanceOf(RollStep::class, $step);
+
+            return array_map(static fn (Band $band): ?string => $band->label, $step->bands);
+        };
+
+        self::assertSame(['Rumour spreads', null], $bands($this->translate($content)));
+        self::assertSame([null, null], $bands($this->snapshot()));
     }
 
     #[Test]

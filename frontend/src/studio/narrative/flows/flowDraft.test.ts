@@ -240,6 +240,7 @@ describe('the hooks of a phase', () => {
     }
     const bad: BandDraft = {
       upTo: { form: 'integer', text: '1.5' },
+      label: '',
       next: '',
       effects: [],
       extra: {},

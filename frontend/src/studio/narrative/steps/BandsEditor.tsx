@@ -137,6 +137,7 @@ export function ValueInput({
 export interface BandProblems {
   /** Per band: the guide or server message for each field. */
   upTo: Record<number, string>
+  label: Record<number, string>
   next: Record<number, string>
 }
 
@@ -218,6 +219,15 @@ export function BandsEditor({
                 Remove the limit of band {number}
               </Button>
             )}
+            <TextField
+              label="Label"
+              help="Optional. Names this outcome."
+              value={band.label}
+              error={problems.label[index]}
+              onChange={(label) => {
+                replace(index, { ...band, label })
+              }}
+            />
             <NextPicker
               label="Next"
               value={band.next}

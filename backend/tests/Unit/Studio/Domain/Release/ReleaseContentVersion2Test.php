@@ -166,6 +166,8 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'next naming end' => [self::scenes('sceneTypes.3.play.1.next', 'end')];
         yield 'a Scene Type without steps' => [self::scenes('sceneTypes.2.setup', [])];
         yield 'a band upTo of an integer-valued float' => [self::scenes('sceneTypes.3.closing.1.bands.0.upTo', 5.0)];
+        yield 'a band label on a condition band' => [self::scenes('sceneTypes.3.closing.0.bands.0.label', 'Low')];
+        yield 'a band label on a roll band' => [self::scenes('sceneTypes.3.setup.3.bands.0.label', str_repeat('a', 80))];
         yield 'a roll step without bands' => [self::unset('flows.0.phases.0.worldTurn.0.bands', self::example())];
 
         // Flows, references inside a flow and placeholders.
@@ -569,7 +571,11 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'band upTo with another property' => [$condition([['upTo' => ['tracker' => 'edge', 'plus' => 1]], []]), 'sceneTypes[3].closing[0].bands[0].upTo.plus: unknown property'];
         yield 'band upTo a string' => [$condition([['upTo' => '3'], []]), 'sceneTypes[3].closing[0].bands[0].upTo: must be an integer, {tracker: key} or {formula: string}'];
         yield 'band upTo a fractional number' => [$condition([['upTo' => 2.5], []]), 'sceneTypes[3].closing[0].bands[0].upTo: must be an integer, {tracker: key} or {formula: string}'];
-        yield 'unknown band property' => [$condition([['upTo' => 3, 'label' => 'Low'], []]), 'sceneTypes[3].closing[0].bands[0].label: unknown property'];
+        yield 'unknown band property' => [$condition([['upTo' => 3, 'colour' => 'Low'], []]), 'sceneTypes[3].closing[0].bands[0].colour: unknown property'];
+        yield 'band label a number' => [$condition([['upTo' => 3, 'label' => 7], []]), 'sceneTypes[3].closing[0].bands[0].label: must be a string'];
+        yield 'band label empty' => [$condition([['upTo' => 3, 'label' => ''], []]), 'sceneTypes[3].closing[0].bands[0].label: must not be empty'];
+        yield 'band label blank' => [$condition([['upTo' => 3, 'label' => '  '], []]), 'sceneTypes[3].closing[0].bands[0].label: must not be blank'];
+        yield 'band label too long' => [self::scenes('sceneTypes.3.setup.3.bands.0.label', str_repeat('a', 81)), 'sceneTypes[3].setup[3].bands[0].label: must be at most 80 characters, 81 given'];
 
         // Effects.
         yield 'too many effects' => [self::scenes('sceneTypes.2.setup.0.effects', array_fill(0, 11, ['kind' => 'endPhase'])), 'sceneTypes[2].setup[0].effects: at most 10 effects, 11 given'];

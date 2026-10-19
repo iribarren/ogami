@@ -71,7 +71,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 | T3 | 1 | P12 / N10 "Next:" preview of branching steps and pick labels | delegated writer (slice 1) | [x] | `d7f7cc7` |
 | T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [x] | `eb4aca0` |
 | F1 | 2 | Slice 1 review fixes: check-step preview compares the default next for unmapped results; a paused FlowRun reports no guided `sceneNumber`; the refusal test compares a deep copy | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | | [ ] | |
+| T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | delegated writer (slice 2) | [x] | |
 | T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | | [ ] | |
 | T7 | 2 | P8 Threads and NPCs quick links in guided play | | [ ] | |
 | T8 | 3 | P7 / N8 flow notes journaled as `flowOutcome` entries | | [ ] | |
@@ -86,6 +86,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 - 2026-10-19: T3 done. RED: `FlowRunNextPreviewTest` (21 cases) failed on the old default-path preview, GREEN after `FlowRun::nextOf` (shared `StepEffects::outcomes`); mythic `twist`/`check` and night-job `double-cross` preview tests; old "Next scene:" assertions updated; backend Play unit + integration 2,482 passed. Check-kind outcomes are covered through the shared helper only. Route: delegated writer, direct.
 - 2026-10-19: T4 done. Guard: `Campaign::startScene` refuses with `SceneCannotStartWhileGuided` (409) while the FlowRun is active; FlowRun starts scenes through the new `startGuidedScene`. RED: with the guard in, 10 existing tests that started scenes by hand mid-guidance failed (fixed with pause/resume or `withScenesStartedByHand`, a stored-before state); the new unit and API tests were written after the code (GREEN only). Paused and complete Flows still allow manual scenes. Route: delegated writer, direct.
 - 2026-10-19: F1 done. RED: 2 new `FlowRunNextPreviewTest` check cases and the paused `FlowRunViewTest` case failed, GREEN after `nextOf` (adds the default next when the step maps fewer results than its Check has bands) and a null `sceneNumber` in the view while paused; the refusal test now compares `unserialize(serialize())`, GREEN only (test-only change). Route: delegated writer, direct.
+- 2026-10-19: T5 done. RED: validator, agreement and translator cases for `band.label` failed (unknown property), GREEN after `Bands::outcomes`, the schema, `Band::$label` and the translator (same 1-80 rule, null rejected on both sides; the old "unknown band property" case now uses `colour`); `stepDraft` round-trip and the Label input tests were written after the code (GREEN only). No endpoint changed, so no `make api`. Route: delegated writer, direct.
 
 ## Reviews
 

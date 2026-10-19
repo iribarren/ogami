@@ -36,13 +36,17 @@ import { aboutEffects, type StepError } from './stepError'
 
 /** The bands' problems: what the guides and the server say about each band's limit and next. */
 function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
-  const problems: BandProblems = { upTo: {}, next: {} }
+  const problems: BandProblems = { upTo: {}, label: {}, next: {} }
   for (const [at, flags] of Object.entries(guide.bands)) {
     Object.assign(problems.upTo, flags.upTo === undefined ? {} : { [at]: flags.upTo })
     Object.assign(problems.next, flags.next === undefined ? {} : { [at]: flags.next })
   }
   for (const { band, effect, field, message } of mine) {
-    if (band !== null && effect === null && (field === 'upTo' || field === 'next')) {
+    if (
+      band !== null &&
+      effect === null &&
+      (field === 'upTo' || field === 'label' || field === 'next')
+    ) {
       problems[field][band] = message
     }
   }

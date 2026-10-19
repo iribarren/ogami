@@ -45,6 +45,8 @@ export type CountTarget = (typeof countTargets)[number]
 export interface BandDraft {
   /** Null for the last band, which catches the rest. */
   upTo: ValueDraft | null
+  /** Names the outcome of the band; '' leaves it unnamed (the field is not sent). */
+  label: string
   /** '' continues with the following step. */
   next: string
   effects: EffectDraft[]
@@ -156,7 +158,7 @@ export type EditedStep = Exclude<StepDraft, { kind: 'stored' }>
 export type StepsResult = { steps: StoredItem[] } | { errors: FieldErrors }
 
 const commonFields = ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'next', 'effects']
-const bandFields = ['upTo', 'next', 'effects']
+const bandFields = ['upTo', 'label', 'next', 'effects']
 const countFields = ['of', 'tags']
 const pickCountFields = ['min', 'max']
 const outcomeFields = ['next', 'effects']
@@ -169,12 +171,24 @@ function readBand(stored: unknown): BandDraft | null {
     return null
   }
   const upTo = stored.upTo === undefined ? null : readValue(stored.upTo, bandForms)
+  const label = textOf(stored, 'label')
   const next = textOf(stored, 'next')
   const effects = listOf(stored, 'effects')
-  if ((stored.upTo !== undefined && upTo === null) || next === null || effects === null) {
+  if (
+    (stored.upTo !== undefined && upTo === null) ||
+    label === null ||
+    next === null ||
+    effects === null
+  ) {
     return null
   }
-  return { upTo, next, effects: effectsToDrafts(effects), extra: unknownFields(stored, bandFields) }
+  return {
+    upTo,
+    label,
+    next,
+    effects: effectsToDrafts(effects),
+    extra: unknownFields(stored, bandFields),
+  }
 }
 
 /** Every band, or null when one of them cannot be read. */
@@ -442,7 +456,7 @@ function freeKey(kind: StepKind, steps: StepDraft[]): string {
 }
 
 export function newBand(): BandDraft {
-  return { upTo: { form: 'integer', text: '' }, next: '', effects: [], extra: {} }
+  return { upTo: { form: 'integer', text: '' }, label: '', next: '', effects: [], extra: {} }
 }
 
 export const newBranch = (): BranchDraft => ({ entry: '', ...emptyOutcome() })
@@ -568,6 +582,7 @@ function bandToStored(band: BandDraft, last: boolean, path: string, errors: Fiel
   return {
     ...band.extra,
     ...(band.upTo === null ? {} : { upTo: valueToStored(band.upTo, `${path}.upTo`, errors) }),
+    ...(band.label.trim() === '' ? {} : { label: band.label }),
     ...(band.next === '' ? {} : { next: band.next }),
     ...(band.effects.length === 0
       ? {}

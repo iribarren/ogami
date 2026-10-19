@@ -105,16 +105,26 @@ function MeaningPrompt({ campaignId }: { campaignId: string }) {
 
   return (
     <form aria-label="What does it mean?" className="space-y-1" onSubmit={handleSubmit}>
-      <Input
-        aria-label="What does it mean?"
-        placeholder="What does it mean?"
-        value={text}
-        maxLength={MAX_NOTE_LENGTH}
-        disabled={recordNote.isPending}
-        onChange={(event) => {
-          setText(event.target.value)
-        }}
-      />
+      <div className="flex gap-2">
+        <Input
+          aria-label="What does it mean?"
+          placeholder="What does it mean?"
+          value={text}
+          maxLength={MAX_NOTE_LENGTH}
+          disabled={recordNote.isPending}
+          onChange={(event) => {
+            setText(event.target.value)
+          }}
+        />
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          disabled={recordNote.isPending || text.trim() === ''}
+        >
+          Write note
+        </Button>
+      </div>
       {recordNote.error && (
         <p role="alert" className="text-sm text-destructive">
           {recordNote.error.message}

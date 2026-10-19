@@ -90,10 +90,10 @@ describe('RandomEventOffer', () => {
   describe('once an entry references the question', () => {
     const entries = [fateDouble, fateDoubleEvent]
 
-    it('has no button, and shows the event right there', () => {
+    it('has no roll button, and shows the event right there', () => {
       renderOffer(fateDouble, {}, { entries })
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Roll/ })).not.toBeInTheDocument()
       expect(screen.getByText('Dense fog')).toBeInTheDocument()
     })
 
@@ -140,6 +140,24 @@ describe('RandomEventOffer', () => {
 
       expect(fakeApi.requests).toEqual([notePath])
       expect(body).toEqual({ text: 'The guard hears nothing' })
+    })
+
+    it('records the meaning with its button too', async () => {
+      const { fakeApi } = renderOffer(
+        fateDouble,
+        { [notePath]: () => Response.json(gateNote, { status: 201 }) },
+        { entries },
+      )
+      const user = userEvent.setup()
+
+      expect(screen.getByRole('button', { name: 'Write note' })).toBeDisabled()
+      await user.type(
+        screen.getByRole('textbox', { name: 'What does it mean?' }),
+        'The guard hears nothing',
+      )
+      await user.click(screen.getByRole('button', { name: 'Write note' }))
+
+      expect(fakeApi.requests).toEqual([notePath])
     })
 
     it('records nothing for an empty answer', async () => {

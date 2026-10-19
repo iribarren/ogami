@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { onTheme } from '@/shared/theme/themeStories'
 import {
   flowOutcomeEntry,
   gateNote,
@@ -51,3 +52,9 @@ export const CheckAgainstDifficulty: Story = { args: { entry: skillCheckEntry } 
 export const CheckWithoutModifiersOrDifficulty: Story = { args: { entry: luckCheckEntry } }
 
 export const FlowOutcome: Story = { args: { entry: flowOutcomeEntry } }
+
+export const RollParchment: Story = onTheme('parchment', Roll)
+export const RollNeon: Story = onTheme('neon', Roll)
+export const RollNoir: Story = onTheme('noir', Roll)
+export const RollEldritch: Story = onTheme('eldritch', Roll)
+export const RollStarship: Story = onTheme('starship', Roll)

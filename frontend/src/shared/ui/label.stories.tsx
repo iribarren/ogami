@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { onTheme } from '@/shared/theme/themeStories'
 import { Input } from './input'
 import { Label } from './label'
 
@@ -19,3 +20,9 @@ export const WithInput: Story = {
     </div>
   ),
 }
+
+export const Parchment: Story = onTheme('parchment', WithInput)
+export const Neon: Story = onTheme('neon', WithInput)
+export const Noir: Story = onTheme('noir', WithInput)
+export const Eldritch: Story = onTheme('eldritch', WithInput)
+export const Starship: Story = onTheme('starship', WithInput)

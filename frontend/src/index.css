@@ -53,6 +53,10 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-well: var(--well);
+  --shadow-well: var(--well-shadow);
+  --shadow-card: var(--card-shadow);
+  --shadow-button: var(--button-shadow);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -126,6 +130,17 @@
   --sidebar-accent-foreground: oklch(0.25 0.015 60);
   --sidebar-border: oklch(0.88 0.012 80);
   --sidebar-ring: oklch(0.6 0.15 33);
+  --well: oklch(0.95 0.012 80);
+  --well-shadow: inset 0 1px 2px oklch(0.22 0.015 60 / 0.12);
+  --card-shadow:
+    inset 0 1px 0 oklch(1 0 0), 0 1px 2px oklch(0.22 0.015 60 / 0.06),
+    0 8px 18px -8px oklch(0.22 0.015 60 / 0.14);
+  --button-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.18), 0 1px 0 oklch(0.42 0.17 33),
+    0 4px 10px -3px oklch(0.55 0.19 33 / 0.45);
+  --readout-shadow: none;
+  --texture: radial-gradient(oklch(0.22 0.015 60 / 0.05) 1px, transparent 1.3px);
+  --texture-size: 6px 6px;
 }
 
 .dark {
@@ -166,6 +181,15 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 85);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.65 0.14 35);
+  --well: oklch(0.15 0.02 260);
+  --well-shadow: inset 0 2px 5px oklch(0 0 0 / 0.5);
+  --card-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04), 0 12px 26px -12px oklch(0 0 0 / 0.7);
+  --button-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.18), 0 1px 0 oklch(0.5 0.15 35),
+    0 4px 10px -3px oklch(0.7 0.17 35 / 0.35);
+  --readout-shadow: none;
+  --texture: radial-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1.3px);
+  --texture-size: 6px 6px;
 }
 
 /*
@@ -215,6 +239,13 @@
   --sidebar-accent-foreground: oklch(0.27 0.05 70);
   --sidebar-border: oklch(0.8 0.04 80);
   --sidebar-ring: oklch(0.5 0.12 30);
+  --well: oklch(0.975 0.018 90);
+  --well-shadow: inset 0 1px 3px oklch(0.4 0.06 60 / 0.2);
+  --card-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5), 0 10px 22px -12px oklch(0.35 0.06 55 / 0.4);
+  --button-shadow: inset 0 1px 0 oklch(1 0 0 / 0.18), 0 2px 0 oklch(0.3 0.12 25);
+  --readout-shadow: none;
+  --texture: radial-gradient(ellipse at 50% 35%, transparent 50%, oklch(0.62 0.08 65 / 0.3) 100%);
+  --texture-size: 100% 100%;
 }
 
 /* Cyberpunk: near-black violet, hot magenta primary, cyan accent. */
@@ -258,6 +289,21 @@
   --sidebar-accent-foreground: oklch(0.15 0.03 295);
   --sidebar-border: oklch(1 0 0 / 14%);
   --sidebar-ring: oklch(0.72 0.22 340);
+  --well: oklch(0.11 0.025 295);
+  --well-shadow: inset 0 2px 8px oklch(0 0 0 / 0.55), inset 0 -1px 0 oklch(0.82 0.13 205 / 0.35);
+  --card-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.05), 0 0 0 1px oklch(0 0 0 / 0.35),
+    0 0 28px -10px oklch(0.65 0.27 340 / 0.45);
+  --button-shadow: 0 0 0 1px oklch(0.78 0.2 340), 0 0 18px -2px oklch(0.65 0.27 340 / 0.75);
+  --readout-shadow: 0 0 6px oklch(0.82 0.13 205 / 0.8), 0 0 18px oklch(0.82 0.13 205 / 0.45);
+  --texture: repeating-linear-gradient(
+    0deg,
+    oklch(1 0 0 / 0.03) 0px,
+    oklch(1 0 0 / 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  --texture-size: auto;
 }
 
 /* Crime, mystery: greyscale, high contrast, one desaturated amber accent. */
@@ -301,6 +347,13 @@
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(1 0 0 / 16%);
   --sidebar-ring: oklch(0.76 0.1 80);
+  --well: oklch(0.11 0 0);
+  --well-shadow: inset 0 2px 5px oklch(0 0 0 / 0.65);
+  --card-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04), 0 12px 26px -12px oklch(0 0 0 / 0.85);
+  --button-shadow: 3px 3px 0 oklch(0.05 0 0);
+  --readout-shadow: none;
+  --texture: radial-gradient(ellipse at 50% 25%, transparent 40%, oklch(0 0 0 / 0.6) 100%);
+  --texture-size: 100% 100%;
 }
 
 /* Horror: green-black, bone-white text, sickly green and deep teal. */
@@ -344,6 +397,17 @@
   --sidebar-accent-foreground: oklch(0.95 0.02 95);
   --sidebar-border: oklch(0.85 0.08 150 / 20%);
   --sidebar-ring: oklch(0.72 0.17 140);
+  --well: oklch(0.12 0.025 170);
+  --well-shadow: inset 0 2px 10px oklch(0 0 0 / 0.6), inset 0 0 14px oklch(0.72 0.17 140 / 0.05);
+  --card-shadow:
+    inset 0 0 36px oklch(0.72 0.17 140 / 0.07), inset 0 1px 0 oklch(1 0 0 / 0.04),
+    0 14px 30px -14px oklch(0 0 0 / 0.85);
+  --button-shadow: 0 0 20px -4px oklch(0.72 0.17 140 / 0.65);
+  --readout-shadow: 0 0 16px oklch(0.72 0.17 140 / 0.55);
+  --texture:
+    radial-gradient(ellipse at 50% 0%, oklch(0.72 0.17 140 / 0.08), transparent 55%),
+    radial-gradient(ellipse at 50% 45%, transparent 45%, oklch(0 0 0 / 0.5) 100%);
+  --texture-size: 100% 100%;
 }
 
 /* Space sci-fi: cool white and blue-grey, teal primary. */
@@ -387,6 +451,21 @@
   --sidebar-accent-foreground: oklch(0.25 0.05 250);
   --sidebar-border: oklch(0.88 0.015 245);
   --sidebar-ring: oklch(0.55 0.12 200);
+  --well: oklch(0.945 0.014 240);
+  --well-shadow: inset 0 1px 3px oklch(0.22 0.04 255 / 0.13);
+  --card-shadow:
+    0 1px 2px oklch(0.22 0.04 255 / 0.06), 0 10px 22px -12px oklch(0.22 0.04 255 / 0.2);
+  --button-shadow: inset 0 1px 0 oklch(1 0 0 / 0.2), 0 4px 10px -4px oklch(0.5 0.11 195 / 0.6);
+  --readout-shadow: none;
+  --texture:
+    linear-gradient(oklch(0.5 0.11 195 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.5 0.11 195 / 0.07) 1px, transparent 1px);
+  --texture-size: 32px 32px;
+}
+
+/* The glow of a read-out number (roll total, oracle answer); the theme decides whether it has one. */
+@utility readout-glow {
+  text-shadow: var(--readout-shadow);
 }
 
 @layer base {
@@ -395,6 +474,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* The theme's texture sits on the page color; fixed so vignettes follow the viewport. */
+    background-image: var(--texture);
+    background-size: var(--texture-size);
+    background-attachment: fixed;
   }
   html {
     @apply font-sans;

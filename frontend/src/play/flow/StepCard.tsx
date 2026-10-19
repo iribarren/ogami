@@ -40,7 +40,7 @@ export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
   return (
     <section
       aria-label={`Current step: ${step.title}`}
-      className="space-y-3 rounded-xl p-4 ring-2 ring-primary/40"
+      className="space-y-3 rounded-xl p-4 shadow-card ring-2 ring-primary/40"
     >
       <div className="space-y-1">
         <p className="text-xs">

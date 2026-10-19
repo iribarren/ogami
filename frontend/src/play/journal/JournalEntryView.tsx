@@ -76,7 +76,7 @@ export function JournalEntryView({
   return (
     <article
       aria-label={entryLabel(entry.content)}
-      className="space-y-2 rounded-xl p-3 ring-1 ring-foreground/10"
+      className="space-y-2 rounded-xl p-3 shadow-card ring-1 ring-foreground/10"
     >
       <EntryContent content={entry.content} tags={tags} sheet={sheet} />
       <p className="text-xs text-muted-foreground">
@@ -172,7 +172,11 @@ function CheckView({ content }: { content: CheckContent }) {
         <span className="sr-only">Outcome:</span>
         <span className="text-2xl font-bold">{content.bandLabel}</span>
       </p>
-      <DiceGroups groups={content.groups} />
+      {content.groups.length > 0 && (
+        <div className="rounded-md bg-well p-2 shadow-well">
+          <DiceGroups groups={content.groups} />
+        </div>
+      )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <Detail term="Dice">
           <span className="font-mono">{content.expression}</span> = {content.diceTotal}
@@ -244,7 +248,10 @@ function RollView({ content }: { content: RollContent }) {
         <span id={totalLabelId} className="sr-only">
           total
         </span>
-        <span aria-describedby={totalLabelId} className="text-2xl font-bold tabular-nums">
+        <span
+          aria-describedby={totalLabelId}
+          className="rounded-md bg-well px-2 py-0.5 text-2xl font-bold tabular-nums shadow-well readout-glow"
+        >
           {content.total}
         </span>
       </p>
@@ -290,7 +297,9 @@ function LikelihoodView({ content }: { content: LikelihoodContent }) {
       <p className="font-medium">{content.oracleName}</p>
       {content.question !== null && <p className="italic">“{content.question}”</p>}
       <p className="flex flex-wrap items-center gap-2">
-        <span className="text-2xl font-bold">{answerLabels[content.answer]}</span>
+        <span className="rounded-md bg-well px-2 py-0.5 text-2xl font-bold shadow-well readout-glow">
+          {answerLabels[content.answer]}
+        </span>
         {content.randomEvent !== null && <Badge variant="warning">Random event</Badge>}
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">

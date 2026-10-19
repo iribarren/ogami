@@ -61,7 +61,7 @@ export function PlayPanel({ id, title, count, help, children }: PlayPanelProps) 
     >
       <section
         aria-labelledby={headingId}
-        className="rounded-xl border bg-card p-4 text-card-foreground"
+        className="rounded-xl border bg-card p-4 text-card-foreground shadow-card"
       >
         <div className="flex items-center justify-between gap-2">
           <h2 id={headingId} className="min-w-0 font-heading text-panel-title">

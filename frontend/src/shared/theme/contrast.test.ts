@@ -107,6 +107,17 @@ const EXPECTED_PALETTES = [
 // Layout tokens and the radius belong to the app, not to a palette.
 const NOT_PALETTE_TOKENS = ['radius', 'header-height', 'play-sidebar-width']
 
+// Non-color styling of a theme is declared per palette, so theme-neutral utilities can read it.
+const DEPTH_TOKENS = [
+  'well',
+  'well-shadow',
+  'card-shadow',
+  'button-shadow',
+  'readout-shadow',
+  'texture',
+  'texture-size',
+]
+
 describe('palette contrast (WCAG AA)', () => {
   it('finds exactly the expected palettes in index.css', () => {
     expect(palettes.map((palette) => palette.name)).toEqual(EXPECTED_PALETTES)
@@ -142,6 +153,12 @@ describe('palette contrast (WCAG AA)', () => {
 
     it(`declares color-scheme ${CAMPAIGN_THEMES[name]}, the mode the theme forces`, () => {
       expect(own?.colorScheme).toBe(CAMPAIGN_THEMES[name])
+    })
+  })
+
+  describe.each(parsePalettes(css))('$name', (palette) => {
+    it('declares every depth token itself', () => {
+      expect(DEPTH_TOKENS.filter((token) => palette.tokens[token] === undefined)).toEqual([])
     })
   })
 

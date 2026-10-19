@@ -9,6 +9,7 @@ use App\Play\Application\ResumeGuidance;
 use App\Play\Application\ResumeGuidanceHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -54,6 +55,6 @@ final class ResumeGuidanceHandlerTest extends FlowRunHandlerTestCase
 
     private function resume(ResumeGuidance $command): void
     {
-        new ResumeGuidanceHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock)($command);
+        new ResumeGuidanceHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
     }
 }

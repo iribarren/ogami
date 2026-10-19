@@ -15,6 +15,7 @@ use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
@@ -130,6 +131,6 @@ final class PickSceneTypeByOracleHandlerTest extends FlowRunHandlerTestCase
 
     private function pick(PickSceneTypeByOracle $command, int ...$rolls): void
     {
-        new PickSceneTypeByOracleHandler($this->ownedCampaigns, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(...$rolls), $this->clock)($command);
+        new PickSceneTypeByOracleHandler($this->ownedCampaigns, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(...$rolls), $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
     }
 }

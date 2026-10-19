@@ -1,7 +1,7 @@
 # Feature: play-guided-polish
 
 - **Locator:** `odd/tasks/play-guided-polish.md` · Engram topic `odd/play-guided-polish/tasks`
-- **Issue:** #222 · **Branch:** `fix/play-guided-polish-2-band-labels` · **Status:** slice 2 in progress (slice 1 merged, PR #223)
+- **Issue:** #222 · **Branch:** `fix/play-guided-polish-3-flow-outcomes` · **Status:** slice 3 in progress (slices 1–2 merged, PRs #223, #224)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `e2e-shared-sign-in` (PR #220)
@@ -59,7 +59,7 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 |---|---|---|---|
 | 1 | `fix/play-guided-polish-1-guide` | T1–T4 | ~1,300–1,600 (doc ~150, N9 progress field + `make api` ~450, display fixes ~350, Next preview ~350, guard ~150) |
 | 2 | `fix/play-guided-polish-2-band-labels` | T5–T7 | ~900–1,200 (contract ~400, Studio input ~200, presets + tests ~300, links ~150) |
-| 3 | `fix/play-guided-polish-3-flow-outcomes` | T8 | ~1,100–1,400 (flow notes, `flowOutcome` entry, ~10 handlers, `make api`, renderer) |
+| 3 | `fix/play-guided-polish-3-flow-outcomes` | F2, T8 | ~1,100–1,400 (flow notes, `flowOutcome` entry, ~10 handlers, `make api`, renderer) |
 | 4 | `fix/play-guided-polish-4-random-events` | T9–T10 | ~700–1,000 (P9 + `make api`, Chrome replay, small replay fixes) |
 
 ## Tasks
@@ -70,11 +70,12 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 | T2 | 1 | N9 FlowRun progress `sceneNumber`, tips and "So far" filter on it; N11 display ordinals; P11 display; P13 headings; N13 form first | delegated writer (slice 1) | [x] | `c2aa2f3`, `3e2f393` |
 | T3 | 1 | P12 / N10 "Next:" preview of branching steps and pick labels | delegated writer (slice 1) | [x] | `d7f7cc7` |
 | T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [x] | `eb4aca0` |
-| F1 | 2 | Slice 1 review fixes: check-step preview compares the default next for unmapped results; a paused FlowRun reports no guided `sceneNumber`; the refusal test compares a deep copy | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | delegated writer (slice 2) | [x] | |
-| T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | delegated writer (slice 2) | [x] | |
-| T7 | 2 | P8 Threads and NPCs quick links in guided play | delegated writer (slice 2) | [x] | |
-| T8 | 3 | P7 / N8 flow notes journaled as `flowOutcome` entries | | [ ] | |
+| F1 | 2 | Slice 1 review fixes: check-step preview compares the default next for unmapped results; a paused FlowRun reports no guided `sceneNumber`; the refusal test compares a deep copy | delegated writer (slice 2) | [x] | `76fb2e2` |
+| T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | delegated writer (slice 2) | [x] | `df08441` |
+| T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | delegated writer (slice 2) | [x] | `5b1db37` |
+| T7 | 2 | P8 Threads and NPCs quick links in guided play | delegated writer (slice 2) | [x] | `5569377` |
+| F2 | 3 | Slice 2 review fixes: a completed FlowRun hides the list links (test); the JSON schema rejects a whitespace-only band label (pattern + agreement case) | delegated writer (slice 3) | [x] | |
+| T8 | 3 | P7 / N8 flow notes journaled as `flowOutcome` entries | delegated writer (slice 3) | [x] | |
 | T9 | 4 | P9 random event tied to its fate question, meaning prompt, offer hidden once rolled | | [ ] | |
 | T10 | 4 | Replay a short guided session per preset in Chrome; fix small findings, log the rest | | [ ] | |
 
@@ -89,13 +90,16 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 - 2026-10-19: T5 done. RED: validator, agreement and translator cases for `band.label` failed (unknown property), GREEN after `Bands::outcomes`, the schema, `Band::$label` and the translator (same 1-80 rule, null rejected on both sides; the old "unknown band property" case now uses `colour`); `stepDraft` round-trip and the Label input tests were written after the code (GREEN only). No endpoint changed, so no `make api`. Route: delegated writer, direct.
 - 2026-10-19: T6 done. RED: the `floor`→`ice` branch skip and both `lose-them` outcomes failed in `NightJobPresetFlowTest`, GREEN after the preset edits; `PresetBandLabelsTest` (every roll band labelled) was written after the labels (GREEN only). Decision: the Chase notes are prompt steps (`boxed-in`, `shaken`) the botch and fail outcomes branch to, since effects carry no note; the check step's own `next` is `end` so a success leaves the Chase. The Mythic `lists` tip (T7 text) landed here. Route: delegated writer, direct.
 - 2026-10-19: T7 done. Tests written after the code (GREEN only): `ListLinks`, guide and focus mode open a collapsed Threads / NPCs panel and focus its title, none for a campaign played freely or a completed Flow. The release declares no lists (the panels always exist), so "has the lists" means the screen shows the panels: `CampaignPage` provides the opener (context), `GuidedBody` renders the links, which serves the guide and focus mode alike. The opener is a `play-panel` window event (`openPlayPanel`). Route: delegated writer, direct.
+- 2026-10-19: F2 done. RED: the new `v2-band-label-blank` agreement case failed without the schema `pattern` (the validator already said "must not be blank"), GREEN with `"pattern": "\\S"`; the completed-FlowRun test already existed as `say the Flow is complete`, which gained a no-Lists-navigation assertion (GREEN only; the hiding code was already in `GuidedParts`). Route: delegated writer, direct.
+- 2026-10-19: T8 done. RED: `FlowRunNotesTest` (9 cases) failed on the missing `Campaign::takeFlowNotes()`, GREEN after `FlowNote`, the context hook and the `band()` / `apply()` / switch notes; frontend `flowOutcome` view and Journal caption tests RED then GREEN; `FlowOutcomeContentTest`, `FlowOutcomeEntryHandlerTest`, the repository contract kind, the malformed stored content and the unstored-notes tests were written after the code (GREEN only). Mechanism: notes live in a transient `Campaign::$flowNotes` filled through `FlowRunContext::note()` on the command's draft copy (so a failing command keeps none) and drained once by `CampaignJournal::flowOutcome()` / `FlowOutcomes::take()` before the save (so no note is stored, even in the in-memory repository) and the entry added by `record()` after it; stored FlowRun JSON is unchanged. Entry lands right after the step's own (or sheet-change) entry, else in the scene left current; with no current scene (a session closing that ends the session) the notes are dropped (documented, tested). Handlers journaling it: complete step, skip step, move on, end scene, end session, pick Scene Type (table and oracle), resume, start session, hand switch of the Scene Type (its new setup can settle a condition step); StartScene is refused while guided and a hand tracker edit is no Flow decision, so neither. Direct tests: complete step, pick, hand switch, end session (dropped), failure; the other handlers share `FlowOutcomes`. A band note comes only from `band()` (roll and condition steps); check, table and oracle outcomes already show in their own entries. `CampaignFlowChecksApiTest` now sees the alarm note. Route: delegated writer, direct.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-cb716070de79b851` | `05bf425`…`eb4aca0` | Approved, acknowledged. Non-blocking R3: check preview ignores unmapped results; paused FlowRun keeps its guided `sceneNumber`; refusal test compares a shallow clone. Fixed in slice 2 (F1) | #223 |
+| 2 | `review-f83003d7caa55060` | `76fb2e2`…`5569377` | Approved, acknowledged. Non-blocking R3: no test for hidden list links on a completed FlowRun; the JSON schema accepts a whitespace-only band label. Fixed in slice 3 (F2) | #224 |
 
 ## Next step
 
-Slice 2: F1, T5–T7 on `fix/play-guided-polish-2-band-labels`.
+Slice 3: F2, T8 on `fix/play-guided-polish-3-flow-outcomes`.

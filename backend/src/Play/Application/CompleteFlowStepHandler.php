@@ -79,7 +79,8 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * rendered). It is built before the step completes, so it belongs to the scene the step was in even
      * when completing the step starts the next scene, and it is only added once the FlowRun accepts
      * the result: a refused step records nothing and leaves the campaign as it was. When the step's
-     * sheet Effects changed its Character, a second entry records the changes right after it.
+     * sheet Effects changed its Character, a second entry records the changes right after it, and when the
+     * Flow decided something on its own (a band label, a Tracker, a switch...) a last one tells it.
      *
      * @throws CampaignNotFound
      * @throws FlowRunNotActive                when the campaign plays freely, guidance is paused or the Flow is complete
@@ -121,6 +122,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
         $changes = $campaign->completeFlowStep($step->key, $result, $release, $at, $this->random);
         $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($result, $campaign, $changes));
+        $outcomeEntry = $this->journal->flowOutcome($this->entryIds, $campaign, $sheetEntry ?? $entry);
         // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent
         // save would surface there as a raw lock error instead of CampaignModifiedConcurrently. Every
         // write belongs to the command bus transaction, so either all persist or none does.
@@ -128,6 +130,10 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $this->journal->add($entry);
         if ($sheetEntry instanceof JournalEntry) {
             $this->journal->add($sheetEntry);
+        }
+
+        if ($outcomeEntry instanceof JournalEntry) {
+            $this->journal->add($outcomeEntry);
         }
     }
 

@@ -39,6 +39,7 @@ use App\Randomness\Domain\RandomNumberGenerator;
  * What a FlowRun command works with, handed over by its Campaign: the pinned release, the Flow
  * played, the command's time, the campaign's sessions and scenes, its Tracker values and its
  * Characters' sheets, which Effects change, and the random source sheet Effects roll their dice with.
+ * It also takes the notes of what the Flow decided on its own (see FlowNote).
  */
 final readonly class FlowRunContext
 {
@@ -253,7 +254,20 @@ final readonly class FlowRunContext
      */
     public function applyTrackerEffect(TrackerEffect $effect): void
     {
-        $this->campaign->applyTrackerChange($this->tracker($effect->tracker), $effect->op, $this->evaluate($effect->value));
+        $tracker = $this->tracker($effect->tracker);
+        $from = $this->campaign->trackerValue($tracker);
+        $to = $this->campaign->applyTrackerChange($tracker, $effect->op, $this->evaluate($effect->value));
+        if ($to !== $from) {
+            $this->note(FlowNote::tracker($tracker->key, $tracker->name, $from, $to));
+        }
+    }
+
+    /**
+     * Notes what the Flow decided on its own, for the journal to tell afterwards.
+     */
+    public function note(FlowNote $note): void
+    {
+        $this->campaign->noteFlow($note);
     }
 
     /**

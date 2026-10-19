@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 
 import {
   chosenWay,
+  flowOutcomeEntry,
   fateDouble,
   gateNote,
   keepThreeRoll,
@@ -161,6 +162,22 @@ describe('JournalEntryView check entries', () => {
       // A field the sheet does not name shows its key.
       'Vi: hp 12 → 11',
     ])
+  })
+
+  it('renders what the Flow decided as compact muted lines in normal case', () => {
+    render(<JournalEntryView entry={flowOutcomeEntry} />)
+
+    const entry = screen.getByRole('article', { name: 'Flow outcome' })
+    const lines = within(entry).getAllByRole('listitem')
+    expect(lines.map((line) => line.textContent)).toEqual([
+      'Strong hit',
+      'Threat 3 → 4',
+      'Scene Type: Chase → Combat',
+      'Next scene: Briefing',
+      'The phase ends after this scene',
+    ])
+    expect(within(entry).getByRole('list')).toHaveClass('text-muted-foreground')
+    expect(within(entry).getByRole('list')).not.toHaveClass('uppercase')
   })
 
   it('shows a penalty with its minus sign', () => {

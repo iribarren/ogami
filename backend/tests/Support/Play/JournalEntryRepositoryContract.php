@@ -120,6 +120,16 @@ trait JournalEntryRepositoryContract
                 ['field' => 'hp', 'before' => 12, 'after' => 11, 'dice' => null],
             ],
         ]];
+        yield 'flow outcome' => [[
+            'kind' => 'flowOutcome',
+            'notes' => [
+                ['kind' => 'band', 'label' => 'Strong hit'],
+                ['kind' => 'tracker', 'key' => 'threat', 'name' => 'Threat', 'from' => 3, 'to' => 4],
+                ['kind' => 'switch', 'from' => 'Chase', 'to' => 'Combat'],
+                ['kind' => 'nextScene', 'sceneType' => 'Briefing'],
+                ['kind' => 'phaseEnd', 'phase' => 'Heist'],
+            ],
+        ]];
     }
 
     #[Test]

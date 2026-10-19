@@ -15,6 +15,7 @@ use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\FactLink;
+use App\Play\Domain\Campaign\FlowRun\FlowNote;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
@@ -140,6 +141,21 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             'autoPickDue' => false, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
+    }
+
+    #[Test]
+    public function theNotesOfTheFlowAreNeverStored(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $campaign = $this->guidedCampaign($id->toString());
+        $campaign->noteFlow(FlowNote::band('Strong hit'));
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertSame([], $loaded?->takeFlowNotes());
+        self::assertEquals($this->guidedCampaign($id->toString())->flowRun(), $loaded->flowRun());
     }
 
     #[Test]

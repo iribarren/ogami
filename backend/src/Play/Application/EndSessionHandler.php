@@ -23,6 +23,7 @@ final readonly class EndSessionHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
         private Clock $clock,
+        private FlowOutcomes $outcomes,
     ) {
     }
 
@@ -44,6 +45,8 @@ final readonly class EndSessionHandler implements CommandHandler
         // and a paused or completed FlowRun end the session without reading it.
         $release = FlowRunStatus::Active === $campaign->flowRun()?->status() ? PinnedReleases::of($this->releases, $campaign) : null;
         $campaign->endSession($this->clock->now(), $command->sessionNumber, $release);
+        $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
+        $this->outcomes->record($outcome);
     }
 }

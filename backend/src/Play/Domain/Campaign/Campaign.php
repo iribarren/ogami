@@ -20,6 +20,7 @@ use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
+use App\Play\Domain\Campaign\FlowRun\FlowNote;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunContext;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -125,6 +126,15 @@ final class Campaign
     private int $version = 1;
 
     private ?FlowRun $flowRun = null;
+
+    /**
+     * What the Flow decided on its own during the FlowRun command that last ran, in apply order. It is
+     * transient: never stored, handed out once by takeFlowNotes(), and only kept from a command that
+     * succeeded (a command runs on a copy that is dropped when it fails).
+     *
+     * @var list<FlowNote>
+     */
+    private array $flowNotes = [];
 
     /**
      * @param list<Session>      $sessions      in number order
@@ -1537,6 +1547,31 @@ final class Campaign
         return FlowRunStatus::Active === $view->status ? $view : throw FlowRunNotActive::toPlay($view->status);
     }
 
+    /**
+     * Notes what the Flow decided on its own (called by the FlowRun's context while a command runs).
+     *
+     * @internal
+     */
+    public function noteFlow(FlowNote $note): void
+    {
+        $this->flowNotes[] = $note;
+    }
+
+    /**
+     * The notes the last FlowRun command collected, in apply order; they are handed out once.
+     *
+     * @return list<FlowNote>
+     *
+     * @phpstan-impure
+     */
+    public function takeFlowNotes(): array
+    {
+        $notes = $this->flowNotes;
+        $this->flowNotes = [];
+
+        return $notes;
+    }
+
     public function __clone()
     {
         if ($this->flowRun instanceof FlowRun) {
@@ -1559,7 +1594,7 @@ final class Campaign
      */
     private function adopt(self $draft): void
     {
-        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->facts, $this->characters] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->facts, $draft->characters];
+        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->facts, $this->characters, $this->flowNotes] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->facts, $draft->characters, $draft->flowNotes];
     }
 
     /**

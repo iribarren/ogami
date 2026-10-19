@@ -22,6 +22,7 @@ final readonly class EndFlowSceneHandler implements CommandHandler
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
         private Clock $clock,
+        private FlowOutcomes $outcomes,
     ) {
     }
 
@@ -41,6 +42,8 @@ final readonly class EndFlowSceneHandler implements CommandHandler
         $campaign = $this->ownedCampaigns->get($command->campaignId, $command->userId);
         $release = PinnedReleases::of($this->releases, $campaign);
         $campaign->endFlowScene($command->sceneNumber, $release, $this->clock->now());
+        $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
+        $this->outcomes->record($outcome);
     }
 }

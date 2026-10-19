@@ -10,6 +10,7 @@ use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Tests\Support\Play\FlowOutcomesFor;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -66,6 +67,6 @@ final class EndFlowSceneHandlerTest extends FlowRunHandlerTestCase
 
     private function end(EndFlowScene $command): void
     {
-        new EndFlowSceneHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock)($command);
+        new EndFlowSceneHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
     }
 }

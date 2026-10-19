@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { renderWithApi } from '@/test/renderWithApi'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
-import { fateDouble, sanityLossEntry, skillCheckEntry } from './fixtures'
+import { fateDouble, flowOutcomeEntry, sanityLossEntry, skillCheckEntry } from './fixtures'
 import { Journal } from './Journal'
 
 function renderJournal(current: { session: number; scene: number } | null, entries = [fateDouble]) {
@@ -62,5 +62,13 @@ describe('Journal', () => {
 
     expect(screen.getAllByText('Flow step · Does the sight break you?')).toHaveLength(1)
     expect(screen.getByRole('article', { name: 'Sheet Vi' })).toBeInTheDocument()
+  })
+
+  it('names the Flow step once for the step entry and the outcome the Flow added', () => {
+    const check = { ...skillCheckEntry, flowStep: flowOutcomeEntry.flowStep }
+    renderJournal(null, [check, flowOutcomeEntry])
+
+    expect(screen.getAllByText('Flow step · Does the sight break you?')).toHaveLength(1)
+    expect(screen.getByRole('article', { name: 'Flow outcome' })).toBeInTheDocument()
   })
 })

@@ -32,6 +32,18 @@ describe('PlayPanel', () => {
     expect(screen.getByText('The harbour master owes a favour.')).toBeInTheDocument()
   })
 
+  it('shows an optional icon that stays out of the title name', () => {
+    render(
+      <PlayPanel id="facts" title="Facts" icon={<svg data-testid="icon" />}>
+        <p>Body</p>
+      </PlayPanel>,
+    )
+
+    expect(screen.getByTestId('icon').closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(screen.getByRole('heading', { level: 2, name: 'Facts' })).toBeInTheDocument()
+    expect(trigger()).toBeInTheDocument()
+  })
+
   it('collapses and expands from its title', async () => {
     const user = userEvent.setup()
     renderPanel()

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { onTheme } from '@/shared/theme/themeStories'
 import { Textarea } from './textarea'
 
 const meta = {
@@ -23,3 +24,9 @@ export const Default: Story = {}
 export const Invalid: Story = { args: { 'aria-invalid': true, defaultValue: 'Too short' } }
 
 export const Disabled: Story = { args: { disabled: true } }
+
+export const Parchment: Story = onTheme('parchment', Default)
+export const Neon: Story = onTheme('neon', Default)
+export const Noir: Story = onTheme('noir', Default)
+export const Eldritch: Story = onTheme('eldritch', Default)
+export const Starship: Story = onTheme('starship', Default)

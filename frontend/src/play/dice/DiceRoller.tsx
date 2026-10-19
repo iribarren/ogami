@@ -4,7 +4,12 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
+import { DieShape, type DieSides } from './DieShape'
+
 const defaultPresets = ['d20', '2d6', '4d6kh3', 'd%'] as const
+
+/** The die each default preset is drawn as; a custom preset gets no shape. */
+const presetDice: Record<string, DieSides> = { d20: 20, '2d6': 6, '4d6kh3': 6, 'd%': 10 }
 
 export interface DiceRollerProps {
   /** Rolls a dice expression; the caller decides where it is rolled and where the result shows. */
@@ -78,12 +83,14 @@ export function DiceRoller({
               type="button"
               variant="outline"
               size="sm"
+              className="h-14 flex-col gap-0.5"
               aria-label={`Roll ${preset}`}
               disabled={blocked}
               onClick={() => {
                 rollPreset(preset)
               }}
             >
+              {presetDice[preset] !== undefined && <DieShape sides={presetDice[preset]} />}
               {preset}
             </Button>
           ))}

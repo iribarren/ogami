@@ -37,17 +37,20 @@ export function InspirationRolls({ campaign, keys }: { campaign: Campaign; keys:
             aria-label={`Roll on ${table.name}`}
             disabled={roll.isPending}
             onClick={() => {
-              roll.mutate(table.key, {
-                onSuccess: ({ content }) => {
-                  if (content.kind === 'oracle-table') {
-                    const text = content.steps
-                      .map((step) => step.text)
-                      .filter((part) => part !== '')
-                      .join(' › ')
-                    setResults((latest) => ({ ...latest, [table.key]: text }))
-                  }
+              roll.mutate(
+                { oracleKey: table.key },
+                {
+                  onSuccess: ({ content }) => {
+                    if (content.kind === 'oracle-table') {
+                      const text = content.steps
+                        .map((step) => step.text)
+                        .filter((part) => part !== '')
+                        .join(' › ')
+                      setResults((latest) => ({ ...latest, [table.key]: text }))
+                    }
+                  },
                 },
-              })
+              )
             }}
           >
             {table.name}

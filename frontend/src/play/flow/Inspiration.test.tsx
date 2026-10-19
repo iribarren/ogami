@@ -80,6 +80,7 @@ describe('inspiration tables of a prompt step', () => {
         kind: 'oracle-table',
         oracleKey: 'weather',
         oracleName: 'Weather',
+        forEntry: null,
         steps: [
           {
             tableKey: 'weather',

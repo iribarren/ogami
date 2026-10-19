@@ -3,6 +3,7 @@ import { useId } from 'react'
 import { SceneCast } from '../cast/SceneCast'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { JournalEntryView } from '../journal/JournalEntryView'
+import { isListedRandomEvent } from '../journal/randomEvents'
 import { RandomEventOffer } from '../journal/RandomEventOffer'
 import { useJournal } from '../journal/useJournal'
 import { GuidedBody } from './GuidedParts'
@@ -94,7 +95,9 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
   }
   const entries = (journal.data ?? []).filter(
     (entry) =>
-      entry.sessionNumber === campaign.currentSessionNumber && entry.sceneNumber === sceneNumber,
+      entry.sessionNumber === campaign.currentSessionNumber &&
+      entry.sceneNumber === sceneNumber &&
+      !isListedRandomEvent(journal.data ?? [], entry),
   )
   if (sceneNumber === null || entries.length === 0) {
     return null
@@ -114,7 +117,11 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
             <RandomEventOffer
               campaignId={campaign.id}
               entry={entry}
+              entries={journal.data ?? []}
               tables={campaign.oracleTables}
+              tags={campaign.tags}
+              sheet={campaign.pinnedRelease.sheet}
+              current
             />
           </li>
         ))}

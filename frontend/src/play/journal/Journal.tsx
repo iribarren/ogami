@@ -7,6 +7,7 @@ import { SceneCast } from '../cast/SceneCast'
 import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
+import { isListedRandomEvent } from './randomEvents'
 import { RandomEventOffer } from './RandomEventOffer'
 import { playOrdinals, titleAddsToType, typeLabel } from './sceneLabels'
 import { recordEntryKey, type JournalEntry } from './useJournal'
@@ -89,44 +90,52 @@ export function Journal({
                   scene={listed(sessions, session.number, scene.number)}
                   editable={current?.session === session.number && current.scene === scene.number}
                 />
-                {scene.entries.length === 0 ? (
+                {scene.entries.filter((entry) => !isListedRandomEvent(entries, entry)).length ===
+                0 ? (
                   <p className="text-sm text-muted-foreground">
                     Nothing recorded in this scene yet.
                   </p>
                 ) : (
                   <ol className="space-y-3">
-                    {scene.entries.map((entry) => (
-                      <li
-                        key={entry.id}
-                        ref={entry.id === latestRecordedId ? reveal : undefined}
-                        className="space-y-1"
-                      >
-                        {/* A sheet change or a Flow outcome follows its step's entry, which already names the step. */}
-                        {entry.flowStep !== null &&
-                          entry.kind !== 'sheet-change' &&
-                          entry.kind !== 'flowOutcome' && (
-                            <p className="text-xs text-muted-foreground">
-                              Flow step · {entry.flowStep.title}
-                            </p>
-                          )}
-                        <JournalEntryView entry={entry} tags={tags} sheet={sheet} />
-                        {current?.session === session.number && current.scene === scene.number && (
-                          <>
-                            <SceneTypeOffer
-                              campaignId={campaignId}
-                              entry={entry}
-                              scene={listed(sessions, session.number, scene.number)}
-                              sceneTypes={sceneTypes}
-                            />
-                            <RandomEventOffer
-                              campaignId={campaignId}
-                              entry={entry}
-                              tables={oracleTables}
-                            />
-                          </>
-                        )}
-                      </li>
-                    ))}
+                    {scene.entries
+                      .filter((entry) => !isListedRandomEvent(entries, entry))
+                      .map((entry) => (
+                        <li
+                          key={entry.id}
+                          ref={entry.id === latestRecordedId ? reveal : undefined}
+                          className="space-y-1"
+                        >
+                          {/* A sheet change or a Flow outcome follows its step's entry, which already names the step. */}
+                          {entry.flowStep !== null &&
+                            entry.kind !== 'sheet-change' &&
+                            entry.kind !== 'flowOutcome' && (
+                              <p className="text-xs text-muted-foreground">
+                                Flow step · {entry.flowStep.title}
+                              </p>
+                            )}
+                          <JournalEntryView entry={entry} tags={tags} sheet={sheet} />
+                          {current?.session === session.number &&
+                            current.scene === scene.number && (
+                              <SceneTypeOffer
+                                campaignId={campaignId}
+                                entry={entry}
+                                scene={listed(sessions, session.number, scene.number)}
+                                sceneTypes={sceneTypes}
+                              />
+                            )}
+                          <RandomEventOffer
+                            campaignId={campaignId}
+                            entry={entry}
+                            entries={entries}
+                            tables={oracleTables}
+                            tags={tags}
+                            sheet={sheet}
+                            current={
+                              current?.session === session.number && current.scene === scene.number
+                            }
+                          />
+                        </li>
+                      ))}
                   </ol>
                 )}
               </Group>

@@ -354,6 +354,8 @@ Done: every Studio write-then-read endpoint runs its write and read-back in one 
 Start feature `identity-account-error-codes` (ODD). Identity: the public account endpoints answer account-link errors with a machine-readable code next to the message (at least `invalid_account_link` and `weak_password`), documented in OpenAPI; the SPA account pages (`accountApi.ts`) branch on the code instead of matching "invalid or has expired". Decide whether the code joins the shared error shape for every endpoint or only these. API tests per code; `make api`. Out of scope: localizing messages. One slice.
 ```
 
+Done: the public account endpoints answer every error with `{error, code}` (`AccountErrorResponse`, six codes in an OpenAPI enum; the shared `ErrorResponse` is unchanged) and the account pages branch on `invalid_account_link` (PR #217, closes #216); see [odd/tasks/identity-account-error-codes.md](../odd/tasks/identity-account-error-codes.md). The prompt is kept for reference.
+
 **B3. e2e-shared-sign-in**
 
 ```text

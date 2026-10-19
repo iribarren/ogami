@@ -2,6 +2,7 @@ import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import { useStartSession } from '../campaigns/useCampaigns'
+import { ListLinks } from '../lists/ListLinks'
 import { visibleTrackers } from '../trackers/useTrackers'
 import { Disclosure } from './Disclosure'
 import { EndPhaseDialog } from './EndPhaseDialog'
@@ -114,6 +115,7 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
         <span className="text-muted-foreground">Next: </span>
         <span className="font-medium">{flowRun.next}</span>
       </p>
+      {flowRun.status !== 'completed' && <ListLinks />}
     </>
   )
 }

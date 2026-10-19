@@ -602,7 +602,7 @@ final class FlowRun
         return new FlowRunView(
             $this->status,
             null === $sessionNumber,
-            new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description, $this->sceneNumber),
+            new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description, FlowRunStatus::Paused === $this->status ? null : $this->sceneNumber),
             $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
@@ -1345,7 +1345,7 @@ final class FlowRun
     {
         if ($this->hook instanceof Hook) {
             $steps = $this->hook->steps($this->phase($flow));
-            $next = $step instanceof Step ? $this->nextOf($steps, $step) : $this->effective($steps, $steps->steps[0] ?? null);
+            $next = $step instanceof Step ? $this->nextOf($steps, $step, $release) : $this->effective($steps, $steps->steps[0] ?? null);
             if (false === $next) {
                 return $this->decidedBy($step);
             }
@@ -1359,7 +1359,7 @@ final class FlowRun
 
         $part = $this->part;
         $steps = $this->steps($part, $release, $flow);
-        $next = $step instanceof Step ? $this->nextOf($steps, $step) : null;
+        $next = $step instanceof Step ? $this->nextOf($steps, $step, $release) : null;
         if (false === $next) {
             return $this->decidedBy($step);
         }
@@ -1473,11 +1473,16 @@ final class FlowRun
 
     /**
      * The step a player meets after this one, whichever way it is decided: the one every Outcome
-     * leads to (null when they all end the part), false when they lead to different ones.
+     * leads to (null when they all end the part), false when they lead to different ones. A band of
+     * a check step without an Outcome falls back to the step's default next, so that counts too.
      */
-    private function nextOf(StepList $steps, Step $step): Step|false|null
+    private function nextOf(StepList $steps, Step $step, GameSystemSnapshot $release): Step|false|null
     {
         $outcomes = StepEffects::outcomes($step);
+        if ($step instanceof CheckStep && \count($outcomes) < \count($release->check($step->check)->bands ?? [])) {
+            $outcomes[] = null;
+        }
+
         $nexts = array_map(fn (?Outcome $outcome): ?Step => $this->effective($steps, $this->target($steps, $step, $outcome)), [] === $outcomes ? [null] : $outcomes);
 
         return array_all($nexts, static fn (?Step $next): bool => $next === $nexts[0]) ? $nexts[0] : false;

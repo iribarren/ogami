@@ -213,6 +213,69 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         self::assertSame([null, false, 'Failed'], [$view?->difficulty, $view->difficultyFixed ?? true, self::flowRunOf($campaign)->answers()['lose-them']]);
     }
 
+    /**
+     * @return iterable<string, array{int, string}> the net-floors roll (12 entries, the fifth is the Black ICE) and the step it leads to
+     */
+    public static function floors(): iterable
+    {
+        yield 'a password gate' => [1, 'jack'];
+        yield 'Black ICE' => [5, 'ice'];
+        yield 'a backdoor left by someone else' => [12, 'jack'];
+    }
+
+    #[Test]
+    #[DataProvider('floors')]
+    public function aNetFloorAsksForTheBlackIceOnlyWhenItHoldsBlackIce(int $roll, string $next): void
+    {
+        $campaign = $this->inTheHeist();
+        $campaign->pickSceneType('netrun', $this->release, self::at());
+
+        $campaign->completeFlowStep('floor', $this->rolled('net-floors', $roll), $this->release, self::at());
+
+        self::assertSame(['play', $next], self::position($campaign));
+    }
+
+    /**
+     * @return iterable<string, array{int, int, string, int, int}> the die, the difficulty, the step it leads to, the objective and the edge afterwards
+     */
+    public static function chases(): iterable
+    {
+        yield 'a botch loses the score' => [1, 20, 'boxed-in', 0, 2];
+        yield 'a fail costs an edge' => [9, 15, 'shaken', 1, 1];
+        yield 'a success costs nothing' => [10, 9, 'end', 1, 2];
+    }
+
+    #[Test]
+    #[DataProvider('chases')]
+    public function losingThemCostsTheScoreOnABotchAndAnEdgeOnAFail(int $die, int $difficulty, string $step, int $objective, int $edge): void
+    {
+        $campaign = $this->inTheHeist();
+        $this->grabIt($campaign);
+        $campaign->setTrackerValue($this->release->tracker('edge') ?? self::fail('No edge.'), 2, self::at());
+        $campaign->completeFlowStep('wheel', StepResult::pick(ItemKind::Npc, []), $this->release, self::at());
+        $campaign->skipFlowStep('you-drive', $this->release, self::at());
+
+        $campaign->completeFlowStep('lose-them', $this->checked($campaign, 'lose-them', 'cool', $die, $difficulty), $this->release, self::at());
+
+        $view = $campaign->flowRunView($this->release);
+        self::assertSame('end' === $step ? null : $step, $view?->step?->step->key);
+        self::assertSame([$objective, $edge], [$campaign->trackerValue($this->release->tracker('objective') ?? self::fail('No objective.')), $campaign->trackerValue($this->release->tracker('edge') ?? self::fail('No edge.'))]);
+    }
+
+    #[Test]
+    public function theBotchedChaseNamesWhatItCostsAndTheFailedOneAsksWhatYouLeaveBehind(): void
+    {
+        foreach ([[1, 20, 'They box you in. You get away, but the score stays behind.'], [9, 15, 'Shaking them costs you. What do you leave behind?']] as [$die, $difficulty, $prompt]) {
+            $campaign = $this->inTheHeist();
+            $this->grabIt($campaign);
+            $campaign->completeFlowStep('wheel', StepResult::pick(ItemKind::Npc, []), $this->release, self::at());
+            $campaign->skipFlowStep('you-drive', $this->release, self::at());
+            $campaign->completeFlowStep('lose-them', $this->checked($campaign, 'lose-them', 'cool', $die, $difficulty), $this->release, self::at());
+
+            self::assertSame($prompt, $campaign->flowRunView($this->release)?->step?->prompt);
+        }
+    }
+
     #[Test]
     public function theGrabEndsTheHeistPhaseWhenYouGetTheObjectiveAndTheComplicationMovesTheAlarm(): void
     {

@@ -150,8 +150,8 @@
           "key": "adventure", "name": "Adventure", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["scene"]},
           "sceneOpening": [
             {"key": "expected", "kind": "prompt", "title": "What scene do you expect?", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}]},
-            {"key": "check", "kind": "roll", "title": "Scene check", "tip": "Roll at or under the chaos factor ({tracker:chaos}) and the scene changes.", "dice": "1d10", "bands": [{"upTo": {"tracker": "chaos"}}, {"next": "end"}]},
-            {"key": "twist", "kind": "roll", "title": "Altered or interrupted?", "dice": "1d6", "bands": [{"upTo": 3}, {"next": "interrupt"}]},
+            {"key": "check", "kind": "roll", "title": "Scene check", "tip": "Roll at or under the chaos factor ({tracker:chaos}) and the scene changes.", "dice": "1d10", "bands": [{"upTo": {"tracker": "chaos"}, "label": "Scene changes"}, {"label": "Expected scene", "next": "end"}]},
+            {"key": "twist", "kind": "roll", "title": "Altered or interrupted?", "dice": "1d6", "bands": [{"upTo": 3, "label": "Altered scene"}, {"label": "Interrupted", "next": "interrupt"}]},
             {"key": "adjust", "kind": "table", "title": "How is it adjusted?", "table": "scene-adjustments"},
             {"key": "altered", "kind": "prompt", "title": "How is the scene altered?", "next": "end"},
             {"key": "interrupt", "kind": "table", "title": "What interrupts the scene?", "table": "random-event-focus", "branches": [
@@ -175,7 +175,7 @@
           ],
           "sceneClosing": [
             {"key": "control", "kind": "choice", "title": "Were you in control?", "mandatory": true, "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "chaos", "op": "add", "value": -1}]}, {"key": "no", "label": "No", "effects": [{"kind": "tracker", "tracker": "chaos", "op": "add", "value": 1}]}]},
-            {"key": "lists", "kind": "prompt", "title": "Update your lists"}
+            {"key": "lists", "kind": "prompt", "title": "Update your lists", "tip": "Open the Threads and NPCs links in the guide to add what the scene opened and close what it settled."}
           ]
         }
       ]

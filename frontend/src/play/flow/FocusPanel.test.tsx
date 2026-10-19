@@ -50,6 +50,25 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('the list links in focus mode', () => {
+  it.each([
+    ['Threads', 'threads'],
+    ['NPCs', 'npcs'],
+  ])('open the collapsed %s panel', async (name, id) => {
+    const user = userEvent.setup()
+    window.localStorage.setItem(`ogami.playPanel.${id}`, 'closed')
+    renderPlay(guided(atStep(promptStep), 'focus'))
+    const focus = within(await focusRegion())
+    const trigger = within(screen.getByRole('region', { name })).getByRole('button', { name })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(focus.getByRole('button', { name }))
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toHaveFocus()
+  })
+})
+
 describe('the view toggle', () => {
   it('is absent for a campaign played freely', async () => {
     renderPlay(lostMineCampaign)

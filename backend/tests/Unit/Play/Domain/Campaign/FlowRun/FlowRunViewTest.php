@@ -89,6 +89,21 @@ final class FlowRunViewTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aPausedFlowRunReportsNoSceneNumberAndResumingRestoresIt(): void
+    {
+        $campaign = self::guided($this->heist, 'heist');
+        $campaign->startSession(self::at(), $this->heist);
+        $campaign->pickSceneType('crew', $this->heist, self::at());
+        self::assertSame(1, $this->view($campaign)->progress?->sceneNumber);
+
+        $campaign->pauseGuidance(self::at());
+        self::assertNull($this->view($campaign)->progress?->sceneNumber);
+
+        $campaign->resumeGuidance($this->heist, self::at());
+        self::assertSame(1, $this->view($campaign)->progress?->sceneNumber);
+    }
+
+    #[Test]
     public function theNextStepIsNamedAfterTheSceneAtThePhaseEndAndAtTheFlowEnd(): void
     {
         $campaign = self::guided($this->heist, 'heist');

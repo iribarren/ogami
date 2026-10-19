@@ -157,7 +157,7 @@ describe('a step draft', () => {
       prompt: '',
       mandatory: false,
       effects: [],
-      bands: [{ upTo: null, next: '', effects: [], extra: {} }],
+      bands: [{ upTo: null, label: '', next: '', effects: [], extra: {} }],
     }
 
     expect(stepsToItems([{ ...emptied, bands: [] }])).toEqual({
@@ -189,12 +189,50 @@ describe('a step draft', () => {
     })
   })
 
+  it('reads a band label back and sends it only when it holds text', () => {
+    const labelled = {
+      key: 'roll',
+      kind: 'roll',
+      title: 'Heat check',
+      dice: '1d6',
+      bands: [{ upTo: 3, label: 'Quiet' }, { label: 'Loud' }],
+    }
+    const [draft] = stepsToDrafts([labelled])
+    if (draft?.kind !== 'roll') {
+      throw new Error('Expected a roll step.')
+    }
+
+    expect(draft.bands.map((band) => band.label)).toEqual(['Quiet', 'Loud'])
+    expect(stepsToItems([draft])).toEqual({ steps: [labelled] })
+
+    const [first, last] = draft.bands
+    const emptied = [
+      { ...first, label: '' },
+      { ...last, label: '  ' },
+    ] as BandDraft[]
+    expect(stepsToItems([{ ...draft, bands: emptied }])).toEqual({
+      steps: [{ ...labelled, bands: [{ upTo: 3 }, {}] }],
+    })
+  })
+
+  it('keeps a step whose band label is not text exactly as stored', () => {
+    const stored = {
+      key: 'roll',
+      kind: 'roll',
+      title: 'Heat check',
+      dice: '1d6',
+      bands: [{ label: 7 }],
+    }
+
+    expect(stepsToItems(stepsToDrafts([stored]))).toEqual({ steps: [stored] })
+  })
+
   it('refuses a band before the last that has no limit instead of saving it without one', () => {
     const [draft] = stepsToDrafts([roll])
     if (draft?.kind !== 'roll') {
       throw new Error('Expected a roll step.')
     }
-    const open: BandDraft = { upTo: null, next: '', effects: [], extra: {} }
+    const open: BandDraft = { upTo: null, label: '', next: '', effects: [], extra: {} }
 
     expect(stepsToItems([{ ...draft, bands: [open, ...draft.bands] }])).toEqual({
       errors: { '0.bands.0.upTo': 'Set a limit: only the last band catches the rest.' },
@@ -350,6 +388,7 @@ describe('a step draft', () => {
     }
     const bad: BandDraft = {
       upTo: { form: 'integer', text: '2x' },
+      label: '',
       next: '',
       effects: [],
       extra: {},

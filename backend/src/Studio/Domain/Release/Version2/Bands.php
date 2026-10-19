@@ -19,8 +19,9 @@ final class Bands
 {
     public const int MAX_BANDS = 20;
     public const int MAX_LEVEL_LABEL_LENGTH = 100;
+    public const int MAX_BAND_LABEL_LENGTH = 80;
 
-    private const array BAND = ['upTo' => false, 'next' => false, 'effects' => false];
+    private const array BAND = ['upTo' => false, 'label' => false, 'next' => false, 'effects' => false];
     private const array LEVEL = ['upTo' => false, 'label' => true];
 
     /**
@@ -38,6 +39,10 @@ final class Bands
                 $band['upTo'] = \is_int($band['upTo'])
                     ? $band['upTo']
                     : Effects::reference($band['upTo'], $bandPath.'.upTo', $catalog);
+            }
+
+            if (\array_key_exists('label', $band)) {
+                ReleaseFields::text($band['label'], $bandPath.'.label', 1, self::MAX_BAND_LABEL_LENGTH);
             }
 
             if (isset($band['next'])) {

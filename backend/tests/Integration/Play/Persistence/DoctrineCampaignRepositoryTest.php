@@ -254,14 +254,17 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
     /**
      * The progress holds the stored scene number; a FlowRun stored without one (outside a scene, or
-     * before it was kept) reads a null scene number, so the guide shows no scene tips.
+     * before it was kept) reads a null scene number, so the guide shows no scene tips. A paused
+     * FlowRun keeps the stored number but reports none (see FlowRunViewTest).
      */
     #[Test]
     public function theProgressOfAStoredFlowRunReadsItsSceneNumberAndALegacyOneReadsNull(): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
-        $this->repository->add($this->guidedCampaign($id->toString()));
         $release = Snapshots::withFlows('heist', 'Heist', 1);
+        $campaign = $this->guidedCampaign($id->toString());
+        $campaign->resumeGuidance($release, new \DateTimeImmutable('2026-10-10T09:03:00+00:00'));
+        $this->repository->add($campaign);
         $this->forgetLoaded();
 
         self::assertSame(1, $this->repository->ofId($id)?->flowRunView($release)?->progress?->sceneNumber);

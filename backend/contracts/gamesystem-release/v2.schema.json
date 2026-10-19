@@ -939,6 +939,7 @@
         "upTo": {
           "anyOf": [{ "type": "integer" }, { "$ref": "#/$defs/trackerRef" }, { "$ref": "#/$defs/formulaRef" }, { "type": "null" }]
         },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80, "description": "Names the outcome the band stands for." },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" }
       }

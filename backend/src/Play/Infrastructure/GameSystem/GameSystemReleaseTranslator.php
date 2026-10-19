@@ -121,6 +121,7 @@ final readonly class GameSystemReleaseTranslator
     // The check limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
     private const int MAX_CHECKS = 50;
     private const int MAX_CHECK_BANDS = 10;
+    private const int MAX_BAND_LABEL_LENGTH = 80;
     private const int MAX_CHECK_LABEL_LENGTH = 100;
     private const int MAX_CHECK_HINT_LENGTH = 500;
     private const int MAX_DIFFICULTY_LABEL_LENGTH = 60;
@@ -1320,8 +1321,10 @@ final readonly class GameSystemReleaseTranslator
         $snapshots = [];
         foreach ($this->list($view, $bands, $path) as $index => $band) {
             $bandPath = \sprintf('%s[%d]', $path, $index);
-            $upTo = $this->object($view, $band, $bandPath)['upTo'] ?? null;
-            $snapshots[] = new Band(null === $upTo ? null : $this->value($view, $upTo, $bandPath.'.upTo'), $this->outcome($view, $band, $bandPath));
+            $fields = $this->object($view, $band, $bandPath);
+            $upTo = $fields['upTo'] ?? null;
+            $label = \array_key_exists('label', $fields) ? $this->boundedString($view, $fields['label'], $bandPath.'.label', self::MAX_BAND_LABEL_LENGTH) : null;
+            $snapshots[] = new Band(null === $upTo ? null : $this->value($view, $upTo, $bandPath.'.upTo'), $this->outcome($view, $band, $bandPath), $label);
         }
 
         return $snapshots;

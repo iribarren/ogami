@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\GameSystem\Flow\Outcome;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -94,6 +95,36 @@ final class FlowRunNextPreviewTest extends FlowRunTestCase
         $view = $campaign->flowRunView($release);
         self::assertSame('x', $view?->step?->step->key);
         self::assertSame('decided by the roll', $view->next);
+    }
+
+    /**
+     * @param array<string, Outcome> $outcomes
+     */
+    #[Test]
+    #[DataProvider('checkPreviews')]
+    public function aCheckStepNamesTheDefaultNextWhenSomeBandsHaveNoOutcome(array $outcomes, ?string $next, string $expected): void
+    {
+        $release = CheckStepReleases::release(CheckStepReleases::step('flat', outcomes: $outcomes, next: $next));
+        $campaign = self::guided($release, 'play');
+        $campaign->startSession(self::at(), $release);
+
+        self::assertSame($expected, $campaign->flowRunView($release)?->next);
+    }
+
+    /**
+     * The check "flat" has the bands "low" and "high"; the prompts "pass" and "fumble" follow the step
+     * (a band without an Outcome continues with the step's own "next", else "pass").
+     *
+     * @return iterable<string, array{array<string, Outcome>, ?string, string}>
+     */
+    public static function checkPreviews(): iterable
+    {
+        yield 'one band goes elsewhere, the other falls back to the following step' => [['low' => new Outcome('fumble')], null, 'decided by the roll'];
+        yield 'one band goes to the step the other falls back to' => [['low' => new Outcome('fumble')], 'fumble', 'Setup: Fumble'];
+        yield 'one band ends the part, the other falls back to the following step' => [['low' => new Outcome('end')], null, 'decided by the roll'];
+        yield 'both bands go to the same step' => [['low' => new Outcome('fumble'), 'high' => new Outcome('fumble')], null, 'Setup: Fumble'];
+        yield 'the only mapped band agrees with the default' => [['low' => new Outcome('pass')], null, 'Setup: Pass'];
+        yield 'no band is mapped' => [[], 'fumble', 'Setup: Fumble'];
     }
 
     /**

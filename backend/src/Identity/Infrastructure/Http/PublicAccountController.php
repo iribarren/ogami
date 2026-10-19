@@ -18,7 +18,6 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\InvalidEmail;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
-use App\Shared\Infrastructure\Http\ErrorResponse;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerInterface;
@@ -59,9 +58,9 @@ final readonly class PublicAccountController
     #[OA\Post(operationId: 'requestPasswordReset', summary: 'Ask for a link to choose a new password')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(required: ['email'], properties: [new OA\Property(property: 'email', type: 'string', format: 'email', example: 'ada@example.com')]))]
     #[OA\Response(response: 202, description: 'Accepted. Says nothing about whether the email has an account: unknown, disabled, rate-limited and failed-mail requests answer the same.')]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses the email.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The email is not a valid address.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses the email. Code `malformed_request`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON. Code `not_json`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The email is not a valid address. Code `invalid_email`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
     public function requestPasswordReset(Request $request): Response
     {
         $body = $this->jsonBody($request, self::MALFORMED_EMAIL);
@@ -71,14 +70,14 @@ final readonly class PublicAccountController
 
         $email = $body['email'] ?? null;
         if (!\is_string($email)) {
-            return $this->error(self::MALFORMED_EMAIL, Response::HTTP_BAD_REQUEST);
+            return $this->error(AccountErrorCode::MalformedRequest, self::MALFORMED_EMAIL, Response::HTTP_BAD_REQUEST);
         }
 
         // Validated first: a malformed email answers 422 whatever the limiters say.
         try {
             $address = Email::fromString($email)->toString();
         } catch (InvalidEmail $exception) {
-            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->error(AccountErrorCode::InvalidEmail, $exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         // Both limiters are always consumed, so flooding with fresh emails still fills the IP allowance.
@@ -112,9 +111,9 @@ final readonly class PublicAccountController
         new OA\Property(property: 'password', type: 'string', format: 'password'),
     ]))]
     #[OA\Response(response: 204, description: 'The password is changed; the link no longer works. Does not sign in.')]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses a field.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The password is too weak, or the link is invalid or has expired.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses a field. Code `malformed_request`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON. Code `not_json`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The password is too weak, or the link is invalid or has expired. Code `weak_password` or `invalid_account_link`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
     public function resetPassword(Request $request): Response
     {
         $body = $this->jsonBody($request, self::MALFORMED_PASSWORD);
@@ -125,13 +124,15 @@ final readonly class PublicAccountController
         $token = $body['token'] ?? null;
         $password = $body['password'] ?? null;
         if (!\is_string($token) || !\is_string($password)) {
-            return $this->error(self::MALFORMED_PASSWORD, Response::HTTP_BAD_REQUEST);
+            return $this->error(AccountErrorCode::MalformedRequest, self::MALFORMED_PASSWORD, Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $this->commandBus->dispatch(new ResetPassword($token, $password));
-        } catch (WeakPassword|InvalidAccountLink $exception) {
-            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (WeakPassword $exception) {
+            return $this->error(AccountErrorCode::WeakPassword, $exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (InvalidAccountLink $exception) {
+            return $this->error(AccountErrorCode::InvalidAccountLink, $exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);
@@ -141,9 +142,9 @@ final readonly class PublicAccountController
     #[OA\Post(operationId: 'lookupInvitation', summary: 'Read what an invitation link is for')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(required: ['token'], properties: [new OA\Property(property: 'token', type: 'string')]))]
     #[OA\Response(response: 200, description: 'The invited email, its roles and when the link expires.', content: new OA\JsonContent(ref: new Model(type: InvitationLookupResponse::class)))]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses the token.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The link is invalid or has expired.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses the token. Code `malformed_request`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON. Code `not_json`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The link is invalid or has expired. Code `invalid_account_link`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
     public function lookupInvitation(Request $request): JsonResponse
     {
         $body = $this->jsonBody($request, self::MALFORMED_TOKEN);
@@ -153,13 +154,13 @@ final readonly class PublicAccountController
 
         $token = $body['token'] ?? null;
         if (!\is_string($token)) {
-            return $this->error(self::MALFORMED_TOKEN, Response::HTTP_BAD_REQUEST);
+            return $this->error(AccountErrorCode::MalformedRequest, self::MALFORMED_TOKEN, Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $view = $this->queryBus->ask(new LookupInvitation($token));
         } catch (InvalidAccountLink $exception) {
-            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->error(AccountErrorCode::InvalidAccountLink, $exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new JsonResponse(InvitationLookupResponse::fromView($view));
@@ -172,10 +173,10 @@ final readonly class PublicAccountController
         new OA\Property(property: 'password', type: 'string', format: 'password'),
     ]))]
     #[OA\Response(response: 204, description: 'The account is created. Does not sign in.')]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses a field.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'An account with the invited email already exists.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The password is too weak, or the link is invalid or has expired.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or misses a field. Code `malformed_request`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'An account with the invited email already exists. Code `email_already_in_use`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON. Code `not_json`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The password is too weak, or the link is invalid or has expired. Code `weak_password` or `invalid_account_link`.', content: new OA\JsonContent(ref: new Model(type: AccountErrorResponse::class)))]
     public function acceptInvitation(Request $request): Response
     {
         $body = $this->jsonBody($request, self::MALFORMED_PASSWORD);
@@ -186,15 +187,17 @@ final readonly class PublicAccountController
         $token = $body['token'] ?? null;
         $password = $body['password'] ?? null;
         if (!\is_string($token) || !\is_string($password)) {
-            return $this->error(self::MALFORMED_PASSWORD, Response::HTTP_BAD_REQUEST);
+            return $this->error(AccountErrorCode::MalformedRequest, self::MALFORMED_PASSWORD, Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $this->commandBus->dispatch(new AcceptInvitation($token, $password, $this->userIds->generate()->toString()));
-        } catch (WeakPassword|InvalidAccountLink $exception) {
-            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (WeakPassword $exception) {
+            return $this->error(AccountErrorCode::WeakPassword, $exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (InvalidAccountLink $exception) {
+            return $this->error(AccountErrorCode::InvalidAccountLink, $exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (EmailAlreadyInUse $exception) {
-            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+            return $this->error(AccountErrorCode::EmailAlreadyInUse, $exception->getMessage(), Response::HTTP_CONFLICT);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);
@@ -208,18 +211,18 @@ final readonly class PublicAccountController
     private function jsonBody(Request $request, string $malformed): array|JsonResponse
     {
         if ('json' !== $request->getContentTypeFormat()) {
-            return $this->error(self::NOT_JSON, Response::HTTP_UNSUPPORTED_MEDIA_TYPE);
+            return $this->error(AccountErrorCode::NotJson, self::NOT_JSON, Response::HTTP_UNSUPPORTED_MEDIA_TYPE);
         }
 
         try {
             return $request->toArray();
         } catch (JsonException) {
-            return $this->error($malformed, Response::HTTP_BAD_REQUEST);
+            return $this->error(AccountErrorCode::MalformedRequest, $malformed, Response::HTTP_BAD_REQUEST);
         }
     }
 
-    private function error(string $message, int $status): JsonResponse
+    private function error(AccountErrorCode $code, string $message, int $status): JsonResponse
     {
-        return new JsonResponse(ErrorResponse::withMessage($message), $status);
+        return new JsonResponse(AccountErrorResponse::with($code, $message), $status);
     }
 }

@@ -24,7 +24,7 @@ final class InvitationApiTest extends PublicAccountApiTestCase
     private const string ACCEPT = '/api/auth/invitations/accept';
     private const string INVITATION_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
     private const string OWNER_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c';
-    private const string INVALID_LINK = '{"error":"This link is invalid or has expired."}';
+    private const string INVALID_LINK = '{"error":"This link is invalid or has expired.","code":"invalid_account_link"}';
 
     #[Test]
     public function aLookupWithoutASessionReadsTheEmailRolesAndExpiry(): void
@@ -93,7 +93,7 @@ final class InvitationApiTest extends PublicAccountApiTestCase
         $this->post(self::ACCEPT, ['token' => $token, 'password' => 'short']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertJsonStringEqualsJsonString('{"error":"The password must have between 8 and 4096 characters."}', $this->content());
+        self::assertJsonStringEqualsJsonString('{"error":"The password must have between 8 and 4096 characters.","code":"weak_password"}', $this->content());
         $this->post(self::ACCEPT, ['token' => $token, 'password' => 'correct horse']);
         self::assertResponseStatusCodeSame(204);
     }
@@ -121,7 +121,7 @@ final class InvitationApiTest extends PublicAccountApiTestCase
         $this->post(self::ACCEPT, ['token' => $this->lastToken(), 'password' => 'correct horse']);
 
         self::assertResponseStatusCodeSame(409);
-        self::assertJsonStringEqualsJsonString('{"error":"A user with email \"ada@example.com\" already exists."}', $this->content());
+        self::assertJsonStringEqualsJsonString('{"error":"A user with email \"ada@example.com\" already exists.","code":"email_already_in_use"}', $this->content());
     }
 
     private function invite(string $email): void

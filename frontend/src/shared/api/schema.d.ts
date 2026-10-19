@@ -1661,6 +1661,13 @@ export interface components {
             /** @description Independent roles: none implies another (ADR 0006). */
             roles: components["schemas"]["Role"][];
         };
+        /** @enum {string} */
+        AccountErrorCode: "invalid_account_link" | "weak_password" | "invalid_email" | "email_already_in_use" | "malformed_request" | "not_json";
+        AccountErrorResponse: {
+            /** @description A human-readable message; never says whether an email has an account. */
+            error: string;
+            code: components["schemas"]["AccountErrorCode"];
+        };
         InvitationLookupResponse: {
             /** Format: email */
             email: string;
@@ -5393,31 +5400,31 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The JSON body is malformed or misses the email. */
+            /** @description The JSON body is malformed or misses the email. Code `malformed_request`. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The body is not JSON. */
+            /** @description The body is not JSON. Code `not_json`. */
             415: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The email is not a valid address. */
+            /** @description The email is not a valid address. Code `invalid_email`. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
         };
@@ -5446,31 +5453,31 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The JSON body is malformed or misses a field. */
+            /** @description The JSON body is malformed or misses a field. Code `malformed_request`. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The body is not JSON. */
+            /** @description The body is not JSON. Code `not_json`. */
             415: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The password is too weak, or the link is invalid or has expired. */
+            /** @description The password is too weak, or the link is invalid or has expired. Code `weak_password` or `invalid_account_link`. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
         };
@@ -5499,31 +5506,31 @@ export interface operations {
                     "application/json": components["schemas"]["InvitationLookupResponse"];
                 };
             };
-            /** @description The JSON body is malformed or misses the token. */
+            /** @description The JSON body is malformed or misses the token. Code `malformed_request`. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The body is not JSON. */
+            /** @description The body is not JSON. Code `not_json`. */
             415: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The link is invalid or has expired. */
+            /** @description The link is invalid or has expired. Code `invalid_account_link`. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
         };
@@ -5552,40 +5559,40 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The JSON body is malformed or misses a field. */
+            /** @description The JSON body is malformed or misses a field. Code `malformed_request`. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description An account with the invited email already exists. */
+            /** @description An account with the invited email already exists. Code `email_already_in_use`. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The body is not JSON. */
+            /** @description The body is not JSON. Code `not_json`. */
             415: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
-            /** @description The password is too weak, or the link is invalid or has expired. */
+            /** @description The password is too weak, or the link is invalid or has expired. Code `weak_password` or `invalid_account_link`. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AccountErrorResponse"];
                 };
             };
         };

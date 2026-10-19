@@ -761,31 +761,31 @@
                         "description": "Accepted. Says nothing about whether the email has an account: unknown, disabled, rate-limited and failed-mail requests answer the same."
                     },
                     "400": {
-                        "description": "The JSON body is malformed or misses the email.",
+                        "description": "The JSON body is malformed or misses the email. Code `malformed_request`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "415": {
-                        "description": "The body is not JSON.",
+                        "description": "The body is not JSON. Code `not_json`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "422": {
-                        "description": "The email is not a valid address.",
+                        "description": "The email is not a valid address. Code `invalid_email`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
@@ -828,31 +828,31 @@
                         "description": "The password is changed; the link no longer works. Does not sign in."
                     },
                     "400": {
-                        "description": "The JSON body is malformed or misses a field.",
+                        "description": "The JSON body is malformed or misses a field. Code `malformed_request`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "415": {
-                        "description": "The body is not JSON.",
+                        "description": "The body is not JSON. Code `not_json`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "422": {
-                        "description": "The password is too weak, or the link is invalid or has expired.",
+                        "description": "The password is too weak, or the link is invalid or has expired. Code `weak_password` or `invalid_account_link`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
@@ -897,31 +897,31 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed or misses the token.",
+                        "description": "The JSON body is malformed or misses the token. Code `malformed_request`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "415": {
-                        "description": "The body is not JSON.",
+                        "description": "The body is not JSON. Code `not_json`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "422": {
-                        "description": "The link is invalid or has expired.",
+                        "description": "The link is invalid or has expired. Code `invalid_account_link`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
@@ -964,41 +964,41 @@
                         "description": "The account is created. Does not sign in."
                     },
                     "400": {
-                        "description": "The JSON body is malformed or misses a field.",
+                        "description": "The JSON body is malformed or misses a field. Code `malformed_request`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "409": {
-                        "description": "An account with the invited email already exists.",
+                        "description": "An account with the invited email already exists. Code `email_already_in_use`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "415": {
-                        "description": "The body is not JSON.",
+                        "description": "The body is not JSON. Code `not_json`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
                     },
                     "422": {
-                        "description": "The password is too weak, or the link is invalid or has expired.",
+                        "description": "The password is too weak, or the link is invalid or has expired. Code `weak_password` or `invalid_account_link`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/AccountErrorResponse"
                                 }
                             }
                         }
@@ -9972,6 +9972,33 @@
                         "items": {
                             "$ref": "#/components/schemas/Role"
                         }
+                    }
+                },
+                "type": "object"
+            },
+            "AccountErrorCode": {
+                "type": "string",
+                "enum": [
+                    "invalid_account_link",
+                    "weak_password",
+                    "invalid_email",
+                    "email_already_in_use",
+                    "malformed_request",
+                    "not_json"
+                ]
+            },
+            "AccountErrorResponse": {
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message; never says whether an email has an account.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "$ref": "#/components/schemas/AccountErrorCode"
                     }
                 },
                 "type": "object"

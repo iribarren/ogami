@@ -39,7 +39,7 @@ final class PublicAccountRequestShapeApiTest extends PublicAccountApiTestCase
         $this->client->request('POST', $path, $valid);
 
         self::assertResponseStatusCodeSame(415);
-        self::assertJsonStringEqualsJsonString('{"error":"Send the request as JSON."}', $this->content());
+        self::assertJsonStringEqualsJsonString('{"error":"Send the request as JSON.","code":"not_json"}', $this->content());
     }
 
     /**
@@ -53,7 +53,7 @@ final class PublicAccountRequestShapeApiTest extends PublicAccountApiTestCase
             $this->client->request('POST', $path, server: ['CONTENT_TYPE' => 'application/json'], content: $body);
 
             self::assertResponseStatusCodeSame(400, $body);
-            self::assertStringStartsWith('{"error":"Send a JSON object', $this->content());
+            $this->assertMalformedRequestBody($path);
         }
     }
 
@@ -70,9 +70,27 @@ final class PublicAccountRequestShapeApiTest extends PublicAccountApiTestCase
                 $this->post($path, $body);
 
                 self::assertResponseStatusCodeSame(400, (string) json_encode($body));
-                self::assertStringStartsWith('{"error":"Send a JSON object', $this->content());
+                $this->assertMalformedRequestBody($path);
             }
         }
+    }
+
+    /**
+     * The 400 body is exactly the endpoint's message plus the `malformed_request` code.
+     */
+    private function assertMalformedRequestBody(string $path): void
+    {
+        $messages = [
+            '/api/auth/password-reset-requests' => 'Send a JSON object with a string "email", such as {"email": "ada@example.com"}.',
+            '/api/auth/password-resets' => 'Send a JSON object with a string "token" and a string "password".',
+            '/api/auth/invitations/lookup' => 'Send a JSON object with a string "token".',
+            '/api/auth/invitations/accept' => 'Send a JSON object with a string "token" and a string "password".',
+        ];
+
+        self::assertJsonStringEqualsJsonString(
+            (string) json_encode(['error' => $messages[$path], 'code' => 'malformed_request']),
+            $this->content(),
+        );
     }
 
     /**

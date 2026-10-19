@@ -633,6 +633,7 @@ describe('the guided panel', () => {
       expect(await guide.findByText('Flow complete. Play on freely.')).toBeInTheDocument()
       expect(guide.queryByRole('button')).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'Guided controls' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('navigation', { name: 'Lists' })).not.toBeInTheDocument()
     })
   })
 

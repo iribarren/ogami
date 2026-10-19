@@ -404,7 +404,7 @@ final class FlowRunTest extends FlowRunTestCase
     public function aSceneCannotBeStartedByHandWhileTheFlowGuides(): void
     {
         $campaign = $this->inPhase('roam');
-        $before = clone $campaign;
+        $before = unserialize(serialize($campaign));
 
         try {
             $campaign->startScene('By hand', self::at());

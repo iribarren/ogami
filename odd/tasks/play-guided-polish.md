@@ -1,7 +1,7 @@
 # Feature: play-guided-polish
 
 - **Locator:** `odd/tasks/play-guided-polish.md` · Engram topic `odd/play-guided-polish/tasks`
-- **Issue:** #222 · **Branch:** `fix/play-guided-polish-1-guide` · **Status:** slice 1 in progress
+- **Issue:** #222 · **Branch:** `fix/play-guided-polish-2-band-labels` · **Status:** slice 2 in progress (slice 1 merged, PR #223)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `e2e-shared-sign-in` (PR #220)
@@ -66,10 +66,11 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; preset-mythic-flow and preset-guided-sample findings rows point here | parent doc, writer commits | [x] | |
-| T2 | 1 | N9 FlowRun progress `sceneNumber`, tips and "So far" filter on it; N11 display ordinals; P11 display; P13 headings; N13 form first | delegated writer (slice 1) | [x] | |
-| T3 | 1 | P12 / N10 "Next:" preview of branching steps and pick labels | delegated writer (slice 1) | [x] | |
-| T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [x] | |
+| T1 | 1 | This feature doc; preset-mythic-flow and preset-guided-sample findings rows point here | parent doc, writer commits | [x] | `05bf425` |
+| T2 | 1 | N9 FlowRun progress `sceneNumber`, tips and "So far" filter on it; N11 display ordinals; P11 display; P13 headings; N13 form first | delegated writer (slice 1) | [x] | `c2aa2f3`, `3e2f393` |
+| T3 | 1 | P12 / N10 "Next:" preview of branching steps and pick labels | delegated writer (slice 1) | [x] | `d7f7cc7` |
+| T4 | 1 | P10 backend guard on a manual StartScene while a Flow guides | delegated writer (slice 1) | [x] | `eb4aca0` |
+| F1 | 2 | Slice 1 review fixes: check-step preview compares the default next for unmapped results; a paused FlowRun reports no guided `sceneNumber`; the refusal test compares a deep copy | delegated writer (slice 2) | [x] | |
 | T5 | 2 | Optional `band.label` in schema v2, Studio validator and bands editor, Play translator, contract doc | | [ ] | |
 | T6 | 2 | Preset band labels (both presets), N12 Night Job branches and Chase outcomes | | [ ] | |
 | T7 | 2 | P8 Threads and NPCs quick links in guided play | | [ ] | |
@@ -84,12 +85,14 @@ Table steps already branch per rolled entry, so N12 needs no condition kind (the
 - 2026-10-19: T2 done. RED: `FlowRunViewTest` failed on the missing `progress.sceneNumber`, then GREEN; legacy row (no stored `sceneNumber`) tested in `DoctrineCampaignRepositoryTest`; `playOrdinals`/`typeLabel` helpers were written before their unit tests (GREEN only); Vitest `src/play` 412 passed. P11: rename field starts empty on a default title (detected with `titleAddsToType`; the API has no default-title flag). Route: delegated writer, direct.
 - 2026-10-19: T3 done. RED: `FlowRunNextPreviewTest` (21 cases) failed on the old default-path preview, GREEN after `FlowRun::nextOf` (shared `StepEffects::outcomes`); mythic `twist`/`check` and night-job `double-cross` preview tests; old "Next scene:" assertions updated; backend Play unit + integration 2,482 passed. Check-kind outcomes are covered through the shared helper only. Route: delegated writer, direct.
 - 2026-10-19: T4 done. Guard: `Campaign::startScene` refuses with `SceneCannotStartWhileGuided` (409) while the FlowRun is active; FlowRun starts scenes through the new `startGuidedScene`. RED: with the guard in, 10 existing tests that started scenes by hand mid-guidance failed (fixed with pause/resume or `withScenesStartedByHand`, a stored-before state); the new unit and API tests were written after the code (GREEN only). Paused and complete Flows still allow manual scenes. Route: delegated writer, direct.
+- 2026-10-19: F1 done. RED: 2 new `FlowRunNextPreviewTest` check cases and the paused `FlowRunViewTest` case failed, GREEN after `nextOf` (adds the default next when the step maps fewer results than its Check has bands) and a null `sceneNumber` in the view while paused; the refusal test now compares `unserialize(serialize())`, GREEN only (test-only change). Route: delegated writer, direct.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-cb716070de79b851` | `05bf425`…`eb4aca0` | Approved, acknowledged. Non-blocking R3: check preview ignores unmapped results; paused FlowRun keeps its guided `sceneNumber`; refusal test compares a shallow clone. Fixed in slice 2 (F1) | #223 |
 
 ## Next step
 
-Slice 1: T1–T4 on `fix/play-guided-polish-1-guide`.
+Slice 2: F1, T5–T7 on `fix/play-guided-polish-2-band-labels`.

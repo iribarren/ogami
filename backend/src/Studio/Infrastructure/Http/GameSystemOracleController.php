@@ -8,6 +8,7 @@ use App\Identity\Application\AuthenticatedUser;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\InvalidOracleTable;
 use App\Randomness\Infrastructure\Http\OracleTableResultResponse;
+use App\Shared\Application\Bus\Command;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
@@ -24,6 +25,7 @@ use App\Studio\Domain\GameSystem\OracleInUse;
 use App\Studio\Domain\GameSystem\OracleKeyTaken;
 use App\Studio\Domain\GameSystem\OracleNotFound;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -53,6 +55,7 @@ final readonly class GameSystemOracleController
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private Connection $connection,
     ) {
     }
 
@@ -121,9 +124,7 @@ final readonly class GameSystemOracleController
         }
 
         try {
-            $this->commandBus->dispatch(new DeleteOracleTable($user->id(), $key, $table, $expectedVersion));
-
-            return $this->oraclesOf($user, $key, Response::HTTP_OK);
+            return $this->writeThenRead(new DeleteOracleTable($user->id(), $key, $table, $expectedVersion), $user, $key, Response::HTTP_OK);
         } catch (GameSystemNotFound|OracleNotFound|GameSystemModifiedConcurrently|OracleInUse $exception) {
             return $this->refusal($exception);
         }
@@ -197,9 +198,7 @@ final readonly class GameSystemOracleController
         }
 
         try {
-            $this->commandBus->dispatch(new DeleteLikelihoodOracle($user->id(), $key, $oracle, $expectedVersion));
-
-            return $this->oraclesOf($user, $key, Response::HTTP_OK);
+            return $this->writeThenRead(new DeleteLikelihoodOracle($user->id(), $key, $oracle, $expectedVersion), $user, $key, Response::HTTP_OK);
         } catch (GameSystemNotFound|OracleNotFound|GameSystemModifiedConcurrently|OracleInUse $exception) {
             return $this->refusal($exception);
         }
@@ -254,9 +253,7 @@ final readonly class GameSystemOracleController
         }
 
         try {
-            $this->commandBus->dispatch(new SaveOracleTable($user->id(), $key, $originalKey, $table, $expectedVersion));
-
-            return $this->oraclesOf($user, $key, $status);
+            return $this->writeThenRead(new SaveOracleTable($user->id(), $key, $originalKey, $table, $expectedVersion), $user, $key, $status);
         } catch (GameSystemNotFound|OracleNotFound|GameSystemModifiedConcurrently|OracleKeyTaken|OracleInUse|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
@@ -279,12 +276,25 @@ final readonly class GameSystemOracleController
         }
 
         try {
-            $this->commandBus->dispatch(new SaveLikelihoodOracle($user->id(), $key, $originalKey, $oracle, $expectedVersion));
-
-            return $this->oraclesOf($user, $key, $status);
+            return $this->writeThenRead(new SaveLikelihoodOracle($user->id(), $key, $originalKey, $oracle, $expectedVersion), $user, $key, $status);
         } catch (GameSystemNotFound|OracleNotFound|GameSystemModifiedConcurrently|OracleKeyTaken|OracleInUse|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
         }
+    }
+
+    /**
+     * Runs the command and reads the oracles back in one transaction. The command's UPDATE holds the
+     * draft's row until the commit, so the read sees exactly this write, never a save that
+     * interleaved, and a read that fails rolls the write back, so the error answered is honest. The
+     * command bus's own transaction nests inside this one, and a refusal rolls both back.
+     */
+    private function writeThenRead(Command $command, AuthenticatedUser $user, string $key, int $status): JsonResponse
+    {
+        return $this->connection->transactional(function () use ($command, $user, $key, $status): JsonResponse {
+            $this->commandBus->dispatch($command);
+
+            return $this->oraclesOf($user, $key, $status);
+        });
     }
 
     /**

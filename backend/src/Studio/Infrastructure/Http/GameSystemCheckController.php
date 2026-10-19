@@ -23,6 +23,7 @@ use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -48,11 +49,11 @@ final readonly class GameSystemCheckController
     private const string MALFORMED_MOVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and an integer "index", the check\'s new position, such as {"expectedVersion": 3, "index": 0}.';
     private const string MALFORMED_DELETE = 'Send the draft version you read as an integer "expectedVersion" query parameter, such as ?expectedVersion=3.';
     private const string MALFORMED_TEST_ROLL = 'Send a JSON object, optionally with "sheet" and "trackers" objects of integer samples and an integer "difficulty" and "situational", such as {"sheet": {"hands": 6}, "trackers": {"alarm": 2}, "difficulty": 13, "situational": -2}.';
-    private const string CHANGED_AFTER_SAVE = 'The draft changed after this request saved it; reload it.';
 
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private Connection $connection,
     ) {
     }
 
@@ -203,22 +204,22 @@ final readonly class GameSystemCheckController
     }
 
     /**
-     * Dispatches a check command and answers with the checks as they are now. The refusals of the
-     * command map as usual; a draft that is gone when the checks are read back was changed after
-     * the command saved it, which is a conflict, not a missing draft.
+     * Dispatches a check command and reads the checks back in one transaction, and answers with the
+     * checks as they are now. The command's UPDATE holds the draft's row until the commit, so the read
+     * sees exactly this write, never a save that interleaved, and a read that fails rolls the write
+     * back, so the error answered is honest. The command bus's own transaction nests inside this one;
+     * the refusals of the command roll both back and map as usual.
      */
     private function write(Command $command, AuthenticatedUser $user, string $key, int $status): JsonResponse
     {
         try {
-            $this->commandBus->dispatch($command);
+            return $this->connection->transactional(function () use ($command, $user, $key, $status): JsonResponse {
+                $this->commandBus->dispatch($command);
+
+                return $this->checksOf($user, $key, $status);
+            });
         } catch (GameSystemNotFound|CheckNotFound|GameSystemModifiedConcurrently|CheckKeyTaken|CheckInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
-        }
-
-        try {
-            return $this->checksOf($user, $key, $status);
-        } catch (GameSystemNotFound) {
-            return $this->error(self::CHANGED_AFTER_SAVE, Response::HTTP_CONFLICT);
         }
     }
 

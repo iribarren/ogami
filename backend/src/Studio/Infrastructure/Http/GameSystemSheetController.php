@@ -23,6 +23,7 @@ use App\Studio\Domain\GameSystem\SheetFieldInUse;
 use App\Studio\Domain\GameSystem\SheetFieldKeyTaken;
 use App\Studio\Domain\GameSystem\SheetFieldNotFound;
 use App\Studio\Domain\Release\InvalidReleaseContent;
+use Doctrine\DBAL\Connection;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -47,7 +48,6 @@ final readonly class GameSystemSheetController
 
     private const string MALFORMED_SAVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and a "field" object, such as {"expectedVersion": 3, "field": {"key": "luck", "label": "Luck", "type": "number"}}.';
     private const string MALFORMED_MOVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and an integer "index", the field\'s new position, such as {"expectedVersion": 3, "index": 0}.';
-    private const string CHANGED_AFTER_SAVE = 'The draft changed after this request saved it; reload it.';
     private const string MALFORMED_DELETE = 'Send the draft version you read as an integer "expectedVersion" query parameter, such as ?expectedVersion=3.';
     private const string MALFORMED_LAYOUT = 'Send a JSON object with an integer "expectedVersion", the draft version you read, an optional "columns" and a "groups" list of objects, such as {"expectedVersion": 3, "columns": 2, "groups": [{"name": "Stats", "columns": 2}]}.';
     private const string MALFORMED_DECLARE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, such as {"expectedVersion": 3}.';
@@ -55,6 +55,7 @@ final readonly class GameSystemSheetController
     public function __construct(
         private CommandBus $commandBus,
         private QueryBus $queryBus,
+        private Connection $connection,
     ) {
     }
 
@@ -245,22 +246,22 @@ final readonly class GameSystemSheetController
     }
 
     /**
-     * Dispatches a sheet command and answers with the sheet as it is now. The refusals of the command
-     * map as usual; a draft that is gone when the sheet is read back was changed after the command
-     * saved it, which is a conflict, not a missing draft.
+     * Dispatches a sheet command and reads the sheet back in one transaction, and answers with the
+     * sheet as they are now. The command's UPDATE holds the draft's row until the commit, so the read
+     * sees exactly this write, never a save that interleaved, and a read that fails rolls the write
+     * back, so the error answered is honest. The command bus's own transaction nests inside this one;
+     * the refusals of the command roll both back and map as usual.
      */
     private function write(Command $command, AuthenticatedUser $user, string $key, int $status): JsonResponse
     {
         try {
-            $this->commandBus->dispatch($command);
+            return $this->connection->transactional(function () use ($command, $user, $key, $status): JsonResponse {
+                $this->commandBus->dispatch($command);
+
+                return $this->sheetOf($user, $key, $status);
+            });
         } catch (GameSystemNotFound|SheetFieldNotFound|GameSystemModifiedConcurrently|SheetFieldKeyTaken|SheetFieldInUse|LibraryPackRefuses|InvalidReleaseContent $exception) {
             return $this->refusal($exception);
-        }
-
-        try {
-            return $this->sheetOf($user, $key, $status);
-        } catch (GameSystemNotFound) {
-            return $this->error(self::CHANGED_AFTER_SAVE, Response::HTTP_CONFLICT);
         }
     }
 

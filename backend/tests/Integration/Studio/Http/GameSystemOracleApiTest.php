@@ -18,6 +18,8 @@ use App\Studio\Infrastructure\Http\OracleInUseResponse;
 use App\Studio\Infrastructure\Http\OracleTableItemResponse;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use App\Tests\Support\Studio\ReleaseArrays;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -57,6 +59,53 @@ final class GameSystemOracleApiTest extends WebTestCase
     {
         $this->client = self::createClient();
         $this->client->disableReboot();
+    }
+
+    #[Test]
+    public function aReadThatFailsAfterAWriteRollsTheWriteBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $before = $this->oracles();
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $listener = new class($entityManager) {
+            public bool $armed = true;
+            public int $fired = 0;
+
+            public function __construct(private readonly EntityManagerInterface $entityManager)
+            {
+            }
+
+            /**
+             * Once the write is flushed, corrupts the stored document and forgets the loaded draft, so that
+             * the read after the write fails.
+             */
+            public function postFlush(): void
+            {
+                if ($this->armed) {
+                    ++$this->fired;
+                    $this->entityManager->getConnection()->executeStatement("UPDATE studio_gamesystem SET document = '\"corrupt\"'::jsonb WHERE game_system_key = 'mine'");
+                    $this->entityManager->clear();
+                }
+            }
+        };
+        $entityManager->getEventManager()->addEventListener(Events::postFlush, $listener);
+
+        $this->client->catchExceptions(false);
+        $failed = false;
+        try {
+            $this->client->jsonRequest('POST', self::BASE.'/mine/oracle-tables', ['expectedVersion' => 1, 'table' => $this->rumours()]);
+        } catch (\Throwable) {
+            // The failure is not turned into a 404 or 409.
+            $failed = true;
+        } finally {
+            $listener->armed = false;
+            $this->client->catchExceptions(true);
+        }
+
+        self::assertGreaterThan(0, $listener->fired, 'The write was flushed before the read failed.');
+        self::assertTrue($failed, 'The corrupted document makes the read fail.');
+        self::assertSame($before, $this->oracles(), 'The write was rolled back with the failed read, version included.');
     }
 
     /**

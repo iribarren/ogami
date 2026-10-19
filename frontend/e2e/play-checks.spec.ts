@@ -1,18 +1,14 @@
 import { expect, test } from '@playwright/test'
 
+import { player, signIn } from './sign-in.ts'
+
 // Users and the "Night Job" preset are seeded by `make e2e-seed`. Night Job defines six checks,
 // one per stat (1d10 + the stat against a difficulty). The step path (slip-past, lose-them) is
 // covered by the NightJobPresetFlowTest unit test and CampaignFlowChecksApiTest: reaching the
 // heist phase through the UI takes some twenty steps.
-const player = 'e2e-player@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 
 test('a solo player rolls a check from the sheet and finds it in the journal', async ({ page }) => {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/play')
+  await signIn(page, player, '/play')
 
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Checks ${String(Date.now())}`)

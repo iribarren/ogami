@@ -1,20 +1,16 @@
 import { expect, test } from '@playwright/test'
 
+import { player, signIn } from './sign-in.ts'
+
 // Users and the "Percentile Horror" preset are seeded by `make e2e-seed`. The first step of its
 // Flow sets the investigator's Sanity to their Power (a sheet effect, ADR 0027): this spec checks
 // that and nothing more, since the rest of the run is covered by the PercentileHorrorPresetFlowTest
 // unit test.
-const player = 'e2e-player@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 
 test('a solo player creates their investigator, chooses them at the first step and starts with Sanity equal to Power', async ({
   page,
 }) => {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(player)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/play')
+  await signIn(page, player, '/play')
 
   const form = page.getByRole('form', { name: 'New campaign' })
   await form.getByLabel('Campaign name').fill(`Horror ${String(Date.now())}`)

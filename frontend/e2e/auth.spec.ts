@@ -1,20 +1,12 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
-// Users created by `make e2e-seed`.
-const player = 'e2e-player@example.test'
-const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
-
-async function signIn(page: Page, email: string, secret: string) {
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(secret)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-}
+import { player, signIn, submitSignIn } from './sign-in.ts'
 
 test('an anonymous visitor signs in and returns to Play', async ({ page }) => {
   await page.goto('/play')
 
   await expect(page).toHaveURL('/login?redirect=%2Fplay')
-  await signIn(page, player, password)
+  await submitSignIn(page, player)
 
   await expect(page).toHaveURL('/play')
   await expect(page.getByRole('heading', { level: 1, name: 'Play' })).toBeVisible()
@@ -24,7 +16,7 @@ test('wrong credentials are rejected', async ({ page }) => {
   await page.goto('/login')
 
   // An unknown email: the answer is the same, and the seeded users stay unthrottled.
-  await signIn(page, 'nobody@example.test', 'not-the-password')
+  await submitSignIn(page, 'nobody@example.test', 'not-the-password')
 
   await expect(page.getByRole('alert')).toHaveText('Invalid credentials.')
   await expect(page).toHaveURL('/login')
@@ -32,9 +24,7 @@ test('wrong credentials are rejected', async ({ page }) => {
 
 test.describe('signed in as a solo player', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
-    await signIn(page, player, password)
-    await expect(page).toHaveURL('/play')
+    await signIn(page, player, '/play')
   })
 
   test('the navigation offers only Play', async ({ page }) => {

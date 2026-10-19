@@ -346,6 +346,8 @@ In build order; see the [Backlog](#backlog) table.
 Start feature `studio-atomic-write-read` (ODD), issue #195. Studio: run every editor write (narrative, oracle, sheet, check controllers and any other write-then-read endpoint) and its read-back query in one DBAL transaction, as `LibraryImportController` does, with an API test per controller where a failing read leaves the draft unchanged. Add the API test that a GameSystem row stored before the `kind` column reads as `game-system`. Out of scope: the 500 on a malformed library pack row. One slice, branch `fix/`.
 ```
 
+Done: every Studio write-then-read endpoint runs its write and read-back in one transaction, with a rollback API test per controller, and the legacy `kind` row test (PR #214, closes #195); see [odd/tasks/studio-atomic-write-read.md](../odd/tasks/studio-atomic-write-read.md). The prompt is kept for reference.
+
 **B2. identity-account-error-codes**
 
 ```text

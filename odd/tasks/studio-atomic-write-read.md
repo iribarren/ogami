@@ -1,7 +1,7 @@
 # Feature: studio-atomic-write-read
 
 - **Locator:** `odd/tasks/studio-atomic-write-read.md` · Engram topic `odd/studio-atomic-write-read/tasks`
-- **Issue:** #195 · **Branch:** `fix/studio-atomic-write-read-1-transactions` · **Status:** slice 1 in progress
+- **Issue:** #195 · **Branch:** `docs/studio-atomic-write-read-wrap-up` · **Status:** done: slice 1 merged (PR #214)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-release-upgrade` (PRs #208–#210)
@@ -71,10 +71,10 @@ Likelihood is low (drafts are owner-only: same user, two tabs), but the fix is m
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Editor controllers: check, sheet, narrative, oracle write + read in one transaction; one rollback API test each | delegated writer (slice 1; feature doc inline by parent) | [x] | |
-| T2 | 1 | GameSystem, release (publish, restore) and library pack controllers: write + read in one transaction; one rollback API test each | delegated writer (slice 1) | [x] | |
-| T3 | 1 | API test: a GameSystem row stored before the `kind` column reads as `game-system` | delegated writer (slice 1) | [x] | |
-| T4 | 1 | Slice 1 review fixes: R3-restore-rollback-unproved rollback tests for restore, edit metadata, an oracle delete and a narrative delete; R3-orphaned-throws-docblock moved back above its method | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Editor controllers: check, sheet, narrative, oracle write + read in one transaction; one rollback API test each | delegated writer (slice 1; feature doc inline by parent) | [x] | ae7c640 |
+| T2 | 1 | GameSystem, release (publish, restore) and library pack controllers: write + read in one transaction; one rollback API test each | delegated writer (slice 1) | [x] | c8d39b5 |
+| T3 | 1 | API test: a GameSystem row stored before the `kind` column reads as `game-system` | delegated writer (slice 1) | [x] | cda34ad |
+| T4 | 1 | Slice 1 review fixes: R3-restore-rollback-unproved rollback tests for restore, edit metadata, an oracle delete and a narrative delete; R3-orphaned-throws-docblock moved back above its method | delegated writer (slice 1) | [x] | 1483054 |
 
 ## Progress
 
@@ -83,12 +83,14 @@ Likelihood is low (drafts are owner-only: same user, two tabs), but the fix is m
 - 2026-10-19: T2 done: GameSystem create and edit metadata, release publish and restore, and library pack create run with their read-back in one transaction; three rollback API tests (create GameSystem, publish, create pack). No post-commit hook, async transport or second connection in the publish path (sync Messenger transport, one entity manager).
 - 2026-10-19: T3 done: API test inserts a `studio_gamesystem` row without the `kind` column and reads `kind: game-system` from the GameSystem endpoint (and the list). Regression test, passes on arrival: the migration default already covers it.
 - 2026-10-19: T4 done: rollback API tests for restore, metadata edit, an oracle table delete and a narrative tag delete; the orphaned `@throws GameSystemNotFound` docblock in GameSystemController is back above `gameSystem()`.
+- 2026-10-19: slice 1 merged (PR #214, closes #195); the obsolete unit test `GameSystemSheetControllerTest` (the removed 409 branch) was deleted in T1.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-5af98b33b464b8c9` | ae7c640, c8d39b5, cda34ad (1483054, the review fixes, review skipped by the user) | Approved and acknowledged; warning R3-restore-rollback-unproved (restore, edit metadata and the oracle and narrative deletes had no rollback test), suggestion R3-orphaned-throws-docblock (`@throws GameSystemNotFound` separated from `gameSystem()`), fixed in slice 1 (T4) at the user's request | [#214](https://github.com/iribarren/ogami/pull/214) |
 
 ## Next step
 
-Slice 1: writer implements T1–T3 on `fix/studio-atomic-write-read-1-transactions`.
+None: the feature is done.

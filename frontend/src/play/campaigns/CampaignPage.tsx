@@ -5,7 +5,9 @@ import { useId, type ReactNode } from 'react'
 import { cn } from '@/shared/lib/utils'
 import { useCampaignTheme } from '@/shared/theme/useCampaignTheme'
 import { IconTile } from '@/shared/ui/icon-tile'
+import { OrnamentDivider } from '@/shared/ui/ornament-divider'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
+import { TitleMark } from '@/shared/ui/title-mark'
 
 import { CharactersPanel } from '../characters/CharactersPanel'
 import { DieShape } from '../dice/DieShape'
@@ -110,7 +112,10 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   return (
     <OpenListProvider value={openList}>
       <header className="space-y-1">
-        <h1 className="font-heading text-page-title break-words">{campaign.name}</h1>
+        <div className="flex items-center gap-4">
+          <TitleMark name={campaign.name} />
+          <h1 className="font-heading text-page-title break-words">{campaign.name}</h1>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-muted-foreground">
             {releaseLabel(campaign.pinnedRelease.gameSystemName, campaign.pinnedRelease.version)}
@@ -119,6 +124,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
         </div>
         <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>
+      <OrnamentDivider />
       <FlowIntroduction campaign={campaign} />
       <SessionControls campaign={campaign} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_var(--play-sidebar-width)]">
@@ -155,6 +161,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
           <PlayPanel
             id="dice"
+            frame
             title="Dice"
             icon={<DieShape sides={20} inner className="text-current" />}
           >
@@ -209,6 +216,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           </PlayPanel>
           <PlayPanel
             id="oracles"
+            frame
             title="Oracles"
             icon={<Eye />}
             help="Ask a yes/no question or roll a table when you need ideas. The result is yours to interpret."

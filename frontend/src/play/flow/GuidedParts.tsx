@@ -96,6 +96,7 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
           step={flowRun.step}
           pending={command.isPending}
           onCommand={onCommand}
+          frame
         />
       )}
       {active && flowRun.pick !== null && (

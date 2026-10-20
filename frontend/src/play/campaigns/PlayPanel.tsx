@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
+import { cn } from '@/shared/lib/utils'
 import { Badge } from '@/shared/ui/badge'
 import { Collapsible, CollapsibleTrigger } from '@/shared/ui/collapsible'
 import { IconTile } from '@/shared/ui/icon-tile'
@@ -18,6 +19,8 @@ interface PlayPanelProps {
   count?: number
   /** One line under the title saying what the tool is for. */
   help?: string
+  /** Draws the theme's corner decorations (neon corner, starship brackets) on the card. */
+  frame?: boolean
   children: ReactNode
 }
 
@@ -25,7 +28,15 @@ interface PlayPanelProps {
  * One tool of the Play sidebar: a titled card whose body the player can collapse. Open by
  * default; the choice is remembered per section in this browser.
  */
-export function PlayPanel({ id, title, icon, count, help, children }: PlayPanelProps) {
+export function PlayPanel({
+  id,
+  title,
+  icon,
+  count,
+  help,
+  frame = false,
+  children,
+}: PlayPanelProps) {
   const headingId = useId()
   const bodyId = useId()
   const [open, setOpen] = useState(() => readPanelOpen(id))
@@ -65,7 +76,10 @@ export function PlayPanel({ id, title, icon, count, help, children }: PlayPanelP
     >
       <section
         aria-labelledby={headingId}
-        className="rounded-xl border bg-card p-4 text-card-foreground shadow-card"
+        className={cn(
+          'rounded-xl bg-card p-4 text-card-foreground shadow-card panel-border',
+          frame && 'frame-corners',
+        )}
       >
         <div className="flex items-center justify-between gap-2">
           <h2 id={headingId} className="min-w-0 font-heading text-panel-title panel-title-case">

@@ -124,7 +124,6 @@
   --chart-3: oklch(0.5 0.12 150);
   --chart-4: oklch(0.5 0.12 245);
   --chart-5: oklch(0.4 0.03 60);
-  --radius: 0.5rem;
   --header-height: 3.5rem;
   --play-sidebar-width: 24rem;
   --sidebar: oklch(0.96 0.01 82);
@@ -172,6 +171,32 @@
   --tile-border: 1px solid oklch(0.55 0.19 33 / 0.22);
   --tile-fg: oklch(0.5 0.19 33);
   --icon: oklch(0.5 0.19 33);
+  --radius: 0.5rem;
+  --panel-border: 1px solid oklch(0.88 0.012 80);
+  --frame-bracket: transparent;
+  --frame-bracket-width: 0px;
+  --frame-corner: transparent;
+  --frame-bar: transparent;
+  --frame-glow: none;
+  --mark-display: block;
+  --mark-initial-display: none;
+  --mark-rotate: -4deg;
+  --mark-radius: 10px;
+  --mark-ink: oklch(0.55 0.19 33);
+  --mark-fg: oklch(0.985 0.005 85);
+  --mark-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52' fill='none' stroke='%23fcfaf6' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='26' cy='26' r='9'/%3E%3Cpath d='M26 11v30M11 26h30'/%3E%3C/svg%3E");
+  --mark-mask: none;
+  --mark-shadow:
+    inset 0 0 0 3px oklch(0.985 0.005 85 / 0.28), 0 2px 6px -2px oklch(0.55 0.19 33 / 0.5);
+  --mark-glow: none;
+  --ornament-height: 12px;
+  --ornament-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 11 6 6 11 1 6z' fill='%23c83314'/%3E%3C/svg%3E"),
+    linear-gradient(oklch(0.82 0.015 80), oklch(0.82 0.015 80)),
+    linear-gradient(oklch(0.82 0.015 80), oklch(0.82 0.015 80));
+  --ornament-size: 12px 12px, calc(50% - 18px) 1px, calc(50% - 18px) 1px;
+  --ornament-position: center, left center, right center;
+  --ornament-glow: none;
 }
 
 .dark {
@@ -247,6 +272,32 @@
   --tile-border: 1px solid oklch(0.7 0.17 35 / 0.3);
   --tile-fg: oklch(0.78 0.14 35);
   --icon: oklch(0.78 0.14 35);
+  --radius: 0.5rem;
+  --panel-border: 1px solid oklch(1 0 0 / 12%);
+  --frame-bracket: transparent;
+  --frame-bracket-width: 0px;
+  --frame-corner: transparent;
+  --frame-bar: transparent;
+  --frame-glow: none;
+  --mark-display: block;
+  --mark-initial-display: none;
+  --mark-rotate: -4deg;
+  --mark-radius: 10px;
+  --mark-ink: oklch(0.7 0.17 35);
+  --mark-fg: oklch(0.18 0.02 260);
+  --mark-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52' fill='none' stroke='%230c121a' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='26' cy='26' r='9'/%3E%3Cpath d='M26 11v30M11 26h30'/%3E%3C/svg%3E");
+  --mark-mask: none;
+  --mark-shadow:
+    inset 0 0 0 3px oklch(0.18 0.02 260 / 0.28), 0 2px 6px -2px oklch(0.7 0.17 35 / 0.4);
+  --mark-glow: none;
+  --ornament-height: 12px;
+  --ornament-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1 11 6 6 11 1 6z' fill='%23f57050'/%3E%3C/svg%3E"),
+    linear-gradient(oklch(0.35 0.02 260), oklch(0.35 0.02 260)),
+    linear-gradient(oklch(0.35 0.02 260), oklch(0.35 0.02 260));
+  --ornament-size: 12px 12px, calc(50% - 18px) 1px, calc(50% - 18px) 1px;
+  --ornament-position: center, left center, right center;
+  --ornament-glow: none;
 }
 
 /*
@@ -329,6 +380,33 @@
   --tile-border: 1px solid oklch(0.6 0.1 80);
   --tile-fg: oklch(0.3 0.06 60);
   --icon: oklch(0.4 0.14 25);
+  --radius: 3px;
+  --panel-border: 3px double oklch(0.66 0.06 70);
+  --frame-bracket: transparent;
+  --frame-bracket-width: 0px;
+  --frame-corner: transparent;
+  --frame-bar: transparent;
+  --frame-glow: none;
+  --mark-display: block;
+  --mark-initial-display: block;
+  --mark-rotate: -8deg;
+  --mark-radius: 48% 52% 50% 46% / 50% 46% 54% 50%;
+  --mark-ink: oklch(0.4 0.14 25);
+  --mark-fg: oklch(0.86 0.06 45);
+  --mark-glyph: none;
+  --mark-mask: none;
+  --mark-shadow:
+    inset 0 0 0 3px oklch(0.32 0.12 25), inset 0 0 0 6px oklch(0.48 0.14 25 / 0.7),
+    0 3px 6px oklch(0.3 0.06 55 / 0.45);
+  --mark-glow: none;
+  --ornament-height: 18px;
+  --ornament-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 18'%3E%3Cpath d='M42 3l6 6-6 6-6-6z' fill='%23831a1d'/%3E%3Cpath d='M8 9C18 9 20 4 27 4S32 9 36 9M76 9C66 9 64 4 57 4S52 9 48 9' fill='none' stroke='%23831a1d' stroke-width='1.2'/%3E%3Ccircle cx='4' cy='9' r='2' fill='%23831a1d'/%3E%3Ccircle cx='80' cy='9' r='2' fill='%23831a1d'/%3E%3C/svg%3E"),
+    linear-gradient(oklch(0.58 0.06 65) 0 1px, transparent 1px 3px, oklch(0.58 0.06 65) 3px 4px),
+    linear-gradient(oklch(0.58 0.06 65) 0 1px, transparent 1px 3px, oklch(0.58 0.06 65) 3px 4px);
+  --ornament-size: 84px 18px, calc(50% - 50px) 4px, calc(50% - 50px) 4px;
+  --ornament-position: center, left center, right center;
+  --ornament-glow: none;
 }
 
 /* Cyberpunk: near-black violet, hot magenta primary, cyan accent. */
@@ -413,6 +491,31 @@
   --tile-border: 1px solid oklch(0.82 0.13 205 / 0.55);
   --tile-fg: oklch(0.82 0.13 205);
   --icon: oklch(0.82 0.13 205);
+  --radius: 2px;
+  --panel-border: 1px solid oklch(0.82 0.13 205 / 0.25);
+  --frame-bracket: transparent;
+  --frame-bracket-width: 0px;
+  --frame-corner: oklch(0.65 0.27 340);
+  --frame-bar: oklch(0.82 0.13 205);
+  --frame-glow: drop-shadow(0 0 4px oklch(0.82 0.13 205 / 0.8));
+  --mark-display: block;
+  --mark-initial-display: none;
+  --mark-rotate: 0deg;
+  --mark-radius: 0px;
+  --mark-ink: oklch(0.82 0.13 205);
+  --mark-fg: oklch(0.19 0.04 295);
+  --mark-glyph: none;
+  --mark-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M26 3 46 14.5v23L26 49 6 37.5v-23z'/%3E%3C/svg%3E");
+  --mark-shadow: none;
+  --mark-glow: drop-shadow(0 0 6px oklch(0.82 0.13 205 / 0.75));
+  --ornament-height: 8px;
+  --ornament-image:
+    linear-gradient(oklch(0.65 0.27 340), oklch(0.65 0.27 340)),
+    linear-gradient(oklch(0.82 0.13 205), oklch(0.82 0.13 205)),
+    linear-gradient(oklch(0.82 0.13 205), oklch(0.82 0.13 205));
+  --ornament-size: calc(100% - 124px) 2px, 12px 2px, 96px 2px;
+  --ornament-position: left center, right 104px center, right center;
+  --ornament-glow: drop-shadow(0 0 5px oklch(0.65 0.27 340 / 0.8));
 }
 
 /* Crime, mystery: greyscale, high contrast, one desaturated amber accent. */
@@ -489,6 +592,28 @@
   --tile-border: 1.5px solid oklch(0.76 0.1 80);
   --tile-fg: oklch(0.76 0.1 80);
   --icon: oklch(0.76 0.1 80);
+  --radius: 0px;
+  --panel-border: 1px solid oklch(1 0 0 / 0.16);
+  --frame-bracket: transparent;
+  --frame-bracket-width: 0px;
+  --frame-corner: transparent;
+  --frame-bar: transparent;
+  --frame-glow: none;
+  --mark-display: none;
+  --mark-initial-display: none;
+  --mark-rotate: 0deg;
+  --mark-radius: 0px;
+  --mark-ink: oklch(0.76 0.1 80);
+  --mark-fg: oklch(0.18 0 0);
+  --mark-glyph: none;
+  --mark-mask: none;
+  --mark-shadow: none;
+  --mark-glow: none;
+  --ornament-height: 1px;
+  --ornament-image: repeating-linear-gradient(90deg, oklch(0.55 0 0) 0 5px, transparent 5px 9px);
+  --ornament-size: 100% 1px;
+  --ornament-position: center;
+  --ornament-glow: none;
 }
 
 /* Horror: green-black, bone-white text, sickly green and deep teal. */
@@ -569,6 +694,31 @@
   --tile-border: 1px solid oklch(0.72 0.17 140 / 0.4);
   --tile-fg: oklch(0.72 0.17 140);
   --icon: oklch(0.72 0.17 140);
+  --radius: 6px;
+  --panel-border: 1px solid oklch(0.85 0.08 150 / 0.2);
+  --frame-bracket: transparent;
+  --frame-bracket-width: 0px;
+  --frame-corner: transparent;
+  --frame-bar: transparent;
+  --frame-glow: none;
+  --mark-display: block;
+  --mark-initial-display: none;
+  --mark-rotate: 0deg;
+  --mark-radius: 0px;
+  --mark-ink: oklch(0.72 0.17 140);
+  --mark-fg: oklch(0.19 0.03 170);
+  --mark-glyph: none;
+  --mark-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'%3E%3Ccircle cx='26' cy='26' r='25'/%3E%3Ccircle cx='26' cy='26' r='21' stroke-dasharray='2 4'/%3E%3Cpath d='M26 9 41 35H11z'/%3E%3Cpath d='M17 27c5-6 13-6 18 0-5 6-13 6-18 0z'/%3E%3Ccircle cx='26' cy='27' r='2.5' fill='black'/%3E%3C/svg%3E");
+  --mark-shadow: none;
+  --mark-glow: drop-shadow(0 0 8px oklch(0.72 0.17 140 / 0.55));
+  --ornament-height: 14px;
+  --ornament-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 14' fill='none' stroke='%23a9ddb2' stroke-opacity='.6'%3E%3Ccircle cx='6' cy='7' r='2'/%3E%3Ccircle cx='30' cy='7' r='5'/%3E%3Ccircle cx='54' cy='7' r='2'/%3E%3Ccircle cx='30' cy='7' r='1.5' fill='%23a9ddb2' stroke='none'/%3E%3C/svg%3E"),
+    linear-gradient(oklch(0.85 0.08 150 / 0.3), oklch(0.85 0.08 150 / 0.3)),
+    linear-gradient(oklch(0.85 0.08 150 / 0.3), oklch(0.85 0.08 150 / 0.3));
+  --ornament-size: 60px 14px, calc(50% - 40px) 1px, calc(50% - 40px) 1px;
+  --ornament-position: center, left center, right center;
+  --ornament-glow: none;
 }
 
 /* Space sci-fi: cool white and blue-grey, teal primary. */
@@ -648,6 +798,30 @@
   --tile-border: 1px solid oklch(0.5 0.11 195 / 0.35);
   --tile-fg: oklch(0.42 0.1 200);
   --icon: oklch(0.48 0.11 198);
+  --radius: 4px;
+  --panel-border: 1px solid oklch(0.85 0.02 245);
+  --frame-bracket: oklch(0.5 0.11 195);
+  --frame-bracket-width: 2px;
+  --frame-corner: transparent;
+  --frame-bar: transparent;
+  --frame-glow: none;
+  --mark-display: block;
+  --mark-initial-display: none;
+  --mark-rotate: 0deg;
+  --mark-radius: 0px;
+  --mark-ink: oklch(0.5 0.11 195);
+  --mark-fg: oklch(0.995 0.004 245);
+  --mark-glyph: none;
+  --mark-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='26' cy='26' r='22'/%3E%3Ccircle cx='26' cy='26' r='13' stroke-dasharray='3 3'/%3E%3Cpath d='M26 4v5M26 43v5M4 26h5M43 26h5M26 26 37 17'/%3E%3Ccircle cx='37' cy='17' r='2' fill='black'/%3E%3C/svg%3E");
+  --mark-shadow: none;
+  --mark-glow: none;
+  --ornament-height: 6px;
+  --ornament-image:
+    linear-gradient(oklch(0.5 0.11 195 / 0.5), oklch(0.5 0.11 195 / 0.5)),
+    repeating-linear-gradient(90deg, oklch(0.5 0.11 195 / 0.45) 0 1px, transparent 1px 12px);
+  --ornament-size: 100% 1px, 100% 5px;
+  --ornament-position: center top, center bottom;
+  --ornament-glow: none;
 }
 
 /* The glow of a read-out number (roll total, oracle answer); the theme decides whether it has one. */
@@ -688,6 +862,101 @@
   background: var(--tile-bg);
   border: var(--tile-border);
   color: var(--tile-fg);
+}
+
+/* The border of a panel, step card or Card: width, style and color are the theme's. */
+@utility panel-border {
+  border: var(--panel-border);
+}
+
+/*
+ * Decorative corners of a framed panel (a `frame` opt-in), drawn on ::before: brackets in two
+ * opposite corners and a triangle in the top right. A theme without them sets the colors to
+ * transparent. --frame-size is 12px on the sidebar panels and 16px on the step card.
+ */
+@utility frame-corners {
+  position: relative;
+  --frame-size: 12px;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    background:
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) left top / var(--frame-size)
+        var(--frame-bracket-width) no-repeat,
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) left top /
+        var(--frame-bracket-width) var(--frame-size) no-repeat,
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) right bottom / var(--frame-size)
+        var(--frame-bracket-width) no-repeat,
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) right bottom /
+        var(--frame-bracket-width) var(--frame-size) no-repeat,
+      linear-gradient(225deg, var(--frame-corner) 50%, transparent 50%) right top /
+        var(--frame-size) var(--frame-size) no-repeat;
+  }
+}
+
+/* The step card's extras, drawn on ::after: the other two brackets and a glowing bar. */
+@utility frame-extras {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    filter: var(--frame-glow);
+    background:
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) right top / var(--frame-size)
+        var(--frame-bracket-width) no-repeat,
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) right top /
+        var(--frame-bracket-width) var(--frame-size) no-repeat,
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) left bottom / var(--frame-size)
+        var(--frame-bracket-width) no-repeat,
+      linear-gradient(var(--frame-bracket), var(--frame-bracket)) left bottom /
+        var(--frame-bracket-width) var(--frame-size) no-repeat,
+      linear-gradient(var(--frame-bar), var(--frame-bar)) left 24px bottom 0 / 64px 2px no-repeat;
+  }
+}
+
+/*
+ * The campaign title mark. The outer box carries the glow (a filter is applied before a mask, so
+ * it cannot sit on the masked layer); the inner layer is the shape: a glyph on an ink-colored
+ * tile, a monochrome mask tinted by the ink, or the seal's initial.
+ */
+@utility title-mark {
+  display: var(--mark-display);
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  transform: rotate(var(--mark-rotate));
+  filter: var(--mark-glow);
+}
+
+@utility title-mark-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--mark-radius);
+  box-shadow: var(--mark-shadow);
+  color: var(--mark-fg);
+  background: var(--mark-glyph) center / 100% 100% no-repeat var(--mark-ink);
+  mask: var(--mark-mask) center / 100% 100% no-repeat;
+}
+
+@utility title-mark-initial {
+  display: var(--mark-initial-display);
+}
+
+/* The ornament between the campaign header and the panel grid, drawn from the theme's layers. */
+@utility ornament {
+  height: var(--ornament-height);
+  margin: 22px 0 26px;
+  background-image: var(--ornament-image);
+  background-size: var(--ornament-size);
+  background-position: var(--ornament-position);
+  background-repeat: no-repeat;
+  filter: var(--ornament-glow);
 }
 
 @utility panel-title-case {

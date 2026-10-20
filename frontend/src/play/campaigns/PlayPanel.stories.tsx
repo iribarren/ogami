@@ -37,3 +37,12 @@ export const WithIconNeon: Story = onTheme('neon', WithIcon)
 export const WithIconNoir: Story = onTheme('noir', WithIcon)
 export const WithIconEldritch: Story = onTheme('eldritch', WithIcon)
 export const WithIconStarship: Story = onTheme('starship', WithIcon)
+
+/** The frame opt-in of the Dice and Oracles panels: neon corner, starship brackets. */
+export const Framed: Story = { args: { id: 'story-dice', title: 'Dice', frame: true } }
+
+export const FramedParchment: Story = onTheme('parchment', Framed)
+export const FramedNeon: Story = onTheme('neon', Framed)
+export const FramedNoir: Story = onTheme('noir', Framed)
+export const FramedEldritch: Story = onTheme('eldritch', Framed)
+export const FramedStarship: Story = onTheme('starship', Framed)

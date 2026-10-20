@@ -133,7 +133,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 | T4 | 1 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | delegated writer, direct | [x] | `0d58319`, `4c581b1` |
 | T5 | 1 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | delegated writer, direct | [x] | `966d680` |
 | F1 | 2 | Slice 1 review fixes (R3): test CheckView's empty-dice-groups path against the well-wrapped path (`JournalEntryView.tsx:203-207`); test that journal article names stay unchanged with the entry `IconTile` (`JournalEntryView.tsx:68-87`) | delegated writer, direct | [x] | |
-| T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | | [ ] | |
+| T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | delegated writer, direct | [x] | |
 | T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | | [ ] | |
 | T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | parent, after the writer (browser) | [ ] | |
 
@@ -149,6 +149,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-19: T4 follow-up by the parent: the free-tag remove button in `TagFields.tsx` (outside the writer's surfaces) uses the lucide `X` like `FactsPanel`; `src/play/lists` Vitest 32 passed. Route: parent, inline (one mechanical file).
 - 2026-10-20: slice 1 merged (PR #228); slice 2 started, F1 added from the slice 1 review.
 - 2026-10-20: F1 CheckView well-versus-empty-groups test and journal article-name/tile tests added (delegated writer, direct; regression tests of existing behavior, so GREEN on first run, no RED applicable).
+- 2026-10-20: T6 title mark (`TitleMark`, wax-seal initial via `markInitial`) and `OrnamentDivider` in the campaign header, `--panel-border`, per-theme `--radius` (control radius; cards follow `rounded-xl` = 1.4x) and `frame` opt-in (corner brackets, neon corner and bar) in all seven blocks (delegated writer, direct; `markInitial` tests and contrast token/pair checks written first, contrast RED 26 failed then GREEN; CSS-only parts have no meaningful RED).
 
 ## Reviews
 

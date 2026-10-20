@@ -133,8 +133,8 @@ const EXPECTED_PALETTES = [
   ...CAMPAIGN_THEME_NAMES.map((name) => themeSelector(name)),
 ]
 
-// Layout tokens and the radius belong to the app, not to a palette.
-const NOT_PALETTE_TOKENS = ['radius', 'header-height', 'play-sidebar-width']
+// Layout tokens belong to the app, not to a palette; the radius is declared per theme.
+const NOT_PALETTE_TOKENS = ['header-height', 'play-sidebar-width']
 
 // Non-color styling of a theme is declared per palette, so theme-neutral utilities can read it.
 const DEPTH_TOKENS = [
@@ -147,6 +147,31 @@ const DEPTH_TOKENS = [
   'texture-size',
 ]
 const TILE_TOKENS = ['tile-radius', 'tile-bg', 'tile-border', 'tile-fg', 'icon']
+// Frame, title mark and divider ornament: decorations whose shapes each theme chooses.
+const EMBELLISHMENT_TOKENS = [
+  'radius',
+  'panel-border',
+  'frame-bracket',
+  'frame-bracket-width',
+  'frame-corner',
+  'frame-bar',
+  'frame-glow',
+  'mark-display',
+  'mark-initial-display',
+  'mark-rotate',
+  'mark-radius',
+  'mark-ink',
+  'mark-fg',
+  'mark-glyph',
+  'mark-mask',
+  'mark-shadow',
+  'mark-glow',
+  'ornament-height',
+  'ornament-image',
+  'ornament-size',
+  'ornament-position',
+  'ornament-glow',
+]
 const TYPE_TOKENS = [
   'label-font',
   'label-size',
@@ -212,7 +237,7 @@ describe('palette contrast (WCAG AA)', () => {
   describe.each(parsePalettes(css))('$name', (palette) => {
     it('declares every depth and type token itself', () => {
       expect(
-        [...DEPTH_TOKENS, ...TYPE_TOKENS, ...TILE_TOKENS].filter(
+        [...DEPTH_TOKENS, ...TYPE_TOKENS, ...TILE_TOKENS, ...EMBELLISHMENT_TOKENS].filter(
           (token) => palette.tokens[token] === undefined,
         ),
       ).toEqual([])
@@ -242,6 +267,20 @@ describe('palette contrast (WCAG AA)', () => {
       expect(actual, `${palette.name}: tile icon is ${actual.toFixed(2)}:1`).toBeGreaterThanOrEqual(
         3,
       )
+    })
+
+    // The title mark is non-text: its ink on the card, and its glyph or initial on its ink.
+    it('--mark-ink reaches 3:1 on --card', () => {
+      const actual = ratio(palette, 'mark-ink', 'card')
+      expect(actual, `${palette.name}: mark is ${actual.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+    })
+
+    it('--mark-fg reaches 3:1 on --mark-ink', () => {
+      const actual = ratio(palette, 'mark-fg', 'mark-ink')
+      expect(
+        actual,
+        `${palette.name}: mark glyph is ${actual.toFixed(2)}:1`,
+      ).toBeGreaterThanOrEqual(3)
     })
 
     it('--icon reaches 3:1 on --card', () => {

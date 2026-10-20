@@ -67,7 +67,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 | T7 | 2 | Slice 1 review fixes: unit and API tests attaching a `check` and a `likelihood` result; `NoteContent::fromArray` fails with `InvalidJournalEntryContent` (not `InvalidNoteAttachment`) on a malformed stored note; the 21-ids API test asserts its real message | delegated writer, direct | [x] | |
 | T4 | 2 | `NoteComposer` attachment picker for the current scene's attachable results; `useRecordNote` sends `attachments`; Vitest; stories | delegated writer, direct | [x] | |
 | T5 | 2 | Journal folding: attached entries hidden from their place and rendered inside their note (and in `FocusPanel` if it lists scene entries); Vitest; e2e in `play-session.spec.ts` | delegated writer, direct | [x] | |
-| T6 | 2 | Docs: glossary JournalEntry kinds and attachments; ADR 0016 note on folded results | | [ ] | |
+| T6 | 2 | Docs: glossary JournalEntry kinds and attachments; ADR 0016 note on folded results | delegated writer, direct | [x] | |
 
 ## Progress
 
@@ -78,6 +78,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 - 2026-10-20: T7 done: RED = 3 `NoteContentTest` malformed-stored-note cases threw `InvalidNoteAttachment` before the fix; GREEN = `tests/Unit/Play` + `JournalApiTest` + `JournalChecksApiTest` 1749 OK. The check and likelihood attachment tests passed first time (the rules were already generic).
 - 2026-10-20: T4 done: `NoteComposer` takes `current` and reads the journal itself (`useJournal`); `useRecordNote` already passed the request body through, so it needed no change. Picks are derived against the current scene's attachable results, so a scene change drops them. RED/GREEN: tests written with the implementation, one wrong-expectation fix, no separate RED; NoteComposer + CampaignPage tests OK.
 - 2026-10-20: T5 done: `isAttached` hides folded entries in `Journal` (emptiness check included) and `FocusPanel`; `NoteAttachments` renders them in the note's order through `JournalEntryView` children and `RandomEventOffer`, so an attached fate question keeps its event (and its roll button in the current scene). Tests written with the implementation (attachments helpers passed first run; one brittle assertion fixed); journal + FocusPanel Vitest 120 OK; e2e runs with the final checks. An attached table result no longer offers "Switch to <Scene Type>" (the offer stays on entries listed in place).
+- 2026-10-20: T6 done: glossary lists the nine JournalEntry kinds and defines Note attachment; ADR 0016 notes that attached results are folded under their note (display only). Doc-only, structural readback.
 
 ## Reviews
 

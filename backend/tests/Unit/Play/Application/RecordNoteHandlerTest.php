@@ -18,11 +18,14 @@ use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryId;
+use App\Play\Domain\Journal\LikelihoodContent;
 use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RollContent;
 use App\Randomness\Domain\DiceExpression;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
+use App\Tests\Unit\Play\Domain\Journal\CheckContentTest;
+use App\Tests\Unit\Play\Domain\Journal\LikelihoodContentTest;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -141,6 +144,19 @@ final class RecordNoteHandlerTest extends JournalTestCase
         ($this->handler)(new RecordNote('entry-1', 'campaign-1', 'user-1', 'Both.', ['roll-1', 'oracle-1']));
 
         self::assertCount(3, $this->journalOf('campaign-1'));
+    }
+
+    #[Test]
+    public function aCheckAndALikelihoodResultCanBeAttached(): void
+    {
+        $this->seed('check-1', 1, 2, CheckContentTest::edgeCheck());
+        $this->seed('likelihood-1', 1, 2, LikelihoodContent::fromAnswer('fate', 'Fate', 'Is the gate open?', LikelihoodContentTest::likelyAnswer()));
+
+        ($this->handler)(new RecordNote('entry-1', 'campaign-1', 'user-1', 'Both.', ['likelihood-1', 'check-1']));
+
+        $note = $this->entries->ofId(JournalEntryId::fromString('entry-1'));
+        self::assertInstanceOf(JournalEntry::class, $note);
+        self::assertEquals(NoteContent::of('Both.', ['likelihood-1', 'check-1']), $note->content());
     }
 
     /**

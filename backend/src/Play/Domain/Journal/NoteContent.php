@@ -71,14 +71,17 @@ final readonly class NoteContent implements JournalEntryContent
      * @param array<mixed> $data
      *
      * @throws InvalidJournalEntryContent
-     * @throws InvalidNoteAttachment
      */
     public static function fromArray(array $data): self
     {
-        return self::of(
-            ContentData::string($data, 'text'),
-            \array_key_exists('attachments', $data) ? ContentData::listOfStrings($data, 'attachments') : [],
-        );
+        try {
+            return self::of(
+                ContentData::string($data, 'text'),
+                \array_key_exists('attachments', $data) ? ContentData::listOfStrings($data, 'attachments') : [],
+            );
+        } catch (InvalidNoteAttachment) {
+            throw InvalidJournalEntryContent::malformed('attachments', 'a list of at most 20 distinct, non-blank entry ids');
+        }
     }
 
     public function kind(): string

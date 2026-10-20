@@ -9,6 +9,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\CheckGameSystemRelease;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\GetPublishedReleaseById;
+use App\Studio\Application\IsGameSystemManagedInStudio;
 use App\Studio\Application\PublishedReleaseView;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Application\ReleaseIdGenerator;
@@ -89,7 +90,13 @@ final class PublishGameSystemReleaseConsoleCommand extends Command
         \assert(\is_array($gameSystem) && \is_string($gameSystem['key']));
 
         $latest = $this->queryBus->ask(new GetPublishedRelease($gameSystem['key']));
-        $io->note(\sprintf('Unchanged %s (v%d)', $latest->gameSystemKey, $latest->version));
+        // A Studio-owned key got here only through the same-hash skip of its exported file (ADR 0036).
+        $io->note(\sprintf(
+            'Unchanged %s (v%d%s)',
+            $latest->gameSystemKey,
+            $latest->version,
+            $this->queryBus->ask(new IsGameSystemManagedInStudio($latest->gameSystemKey)) ? ', managed in Studio' : '',
+        ));
 
         return Command::SUCCESS;
     }

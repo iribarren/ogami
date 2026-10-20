@@ -21,7 +21,8 @@ final readonly class PublishGameSystemReleaseHandler implements CommandHandler
 
     /**
      * @throws InvalidReleaseContent     naming the path of the first offending value; nothing is published
-     * @throws GameSystemManagedInStudio when a Studio GameSystem has the key (also with onlyIfChanged); nothing is published
+     * @throws GameSystemManagedInStudio when a Studio GameSystem has the key, unless onlyIfChanged and its latest release has this
+     *                                   content (an exported preset file, ADR 0036); nothing is published
      */
     public function __invoke(PublishGameSystemRelease $command): void
     {
@@ -29,6 +30,11 @@ final readonly class PublishGameSystemReleaseHandler implements CommandHandler
         $content = ReleaseContent::fromArray($command->content);
 
         if ($this->gameSystems->ofKey($content->gameSystemKey()) instanceof \App\Studio\Domain\GameSystem\GameSystem) {
+            // The exported file of a Studio release: the Studio line already has exactly this content.
+            if ($command->onlyIfChanged && $this->publisher->latestHas($content)) {
+                return;
+            }
+
             throw GameSystemManagedInStudio::withKey($content->gameSystemKey());
         }
 

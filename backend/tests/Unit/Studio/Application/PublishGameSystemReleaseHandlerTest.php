@@ -171,6 +171,77 @@ final class PublishGameSystemReleaseHandlerTest extends TestCase
         self::assertSame(0, $this->releases->count());
     }
 
+    #[Test]
+    public function aStudioKeyWhoseLatestReleaseHasTheSameContentIsSkippedWhenOnlyIfChanged(): void
+    {
+        ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), false));
+        $this->studioOwns('free-journal');
+
+        // Same content, other key order: the canonical hash is the same.
+        ($this->handler)(new PublishGameSystemRelease('r-2', array_reverse($this->content(), true), true));
+
+        self::assertSame(1, $this->releases->count());
+        self::assertNull($this->releases->ofId(ReleaseId::fromString('r-2')));
+    }
+
+    #[Test]
+    public function aStudioKeyWhoseLatestReleaseHasOtherContentIsRefusedEvenWhenOnlyIfChanged(): void
+    {
+        ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), false));
+        $this->studioOwns('free-journal');
+
+        $this->assertManagedInStudio($this->content(name: 'Free journal, revised'), true);
+    }
+
+    #[Test]
+    public function aStudioKeyWhoseLatestReleaseHasTheSameContentIsRefusedWithoutOnlyIfChanged(): void
+    {
+        ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), false));
+        $this->studioOwns('free-journal');
+
+        $this->assertManagedInStudio($this->content(), false);
+    }
+
+    #[Test]
+    public function aStudioKeyIsComparedWithItsLatestReleaseOnly(): void
+    {
+        ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), false));
+        ($this->handler)(new PublishGameSystemRelease('r-2', $this->content(name: 'Free journal, revised'), false));
+        $this->studioOwns('free-journal');
+
+        $this->assertManagedInStudio($this->content(), true);
+    }
+
+    #[Test]
+    public function aStudioKeyWithoutAReleaseIsRefusedEvenWhenOnlyIfChanged(): void
+    {
+        $this->studioOwns('free-journal');
+
+        $this->assertManagedInStudio($this->content(), true);
+    }
+
+    private function studioOwns(string $key): void
+    {
+        $this->gameSystems->add(GameSystem::createBlank(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a52'), $key, 'Mine', null, 'ann', $this->clock->now()));
+    }
+
+    /**
+     * @param array<string, mixed> $content
+     */
+    private function assertManagedInStudio(array $content, bool $onlyIfChanged): void
+    {
+        $before = $this->releases->count();
+
+        try {
+            ($this->handler)(new PublishGameSystemRelease('r-9', $content, $onlyIfChanged));
+            self::fail('A Studio GameSystem line was published to.');
+        } catch (GameSystemManagedInStudio $refusal) {
+            self::assertStringContainsString('free-journal', $refusal->getMessage());
+        }
+
+        self::assertSame($before, $this->releases->count());
+    }
+
     /**
      * @return array<string, mixed>
      */

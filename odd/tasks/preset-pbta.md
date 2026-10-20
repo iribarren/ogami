@@ -67,7 +67,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0036 (export a release as a preset file; Studio-owned key with the same hash is skipped) and ADR index row; ADR 0028 status note; roadmap B7 in progress | delegated writer (slice 1) | [x] | |
 | T2 | 1 | Author `hearts-and-rapiers` in Studio from the outline, publish v1, log every Studio friction under Studio findings | parent (browser, worker) | [x] | — |
-| T3 | 1 | `app:gamesystem:export <key> [--release N] [--output path]` (canonical pretty JSON, fails closed on an unknown key or version); console publisher reports "Unchanged (managed in Studio)" for a Studio-owned key whose latest release has the file's hash; unit and integration tests | delegated writer (slice 1) | [ ] | |
+| T3 | 1 | `app:gamesystem:export <key> [--release N] [--output path]` (canonical pretty JSON, fails closed on an unknown key or version); console publisher reports "Unchanged (managed in Studio)" for a Studio-owned key whose latest release has the file's hash; unit and integration tests | delegated writer (slice 1) | [x] | |
 | T4 | 2 | Playtest a session in Play (browser); fix content gaps in Studio and republish; log Play findings | parent (browser) | [ ] | — |
 | T5 | 2 | Export the latest release to `backend/presets/hearts-and-rapiers.json` unedited; `PresetsTest`; flow unit test; move band edge tests; e2e spec | delegated writer (slice 2) | [ ] | |
 | T6 | 2 | Wrap-up: roadmap B7 done; this doc closed | delegated writer (slice 2) | [ ] | |
@@ -109,6 +109,7 @@ Authored 2026-10-20 by a Claude in Chrome worker as `pbta-author@ogami.test` (~3
 - 2026-10-20: explored ADR 0018/0021/0024/0028, prior preset features, `make presets`; licenses checked (TSL open CC BY-SA 4.0; Bluebeard's Bride none). Export decision taken with the user. Issue #234.
 - 2026-10-20: T2 done: `hearts-and-rapiers` v1 published from Studio; modifier `{grace} - 2 * {frightened}` accepted; 20 Studio findings logged (S1–S20).
 - 2026-10-20: T1 done: ADR 0036 (Accepted), index row, ADR 0028 amendment note, roadmap B7 marked in progress. Docs only, so no runnable RED; structural readback of the links and the index.
+- 2026-10-20: T3 done. RED: `PublishGameSystemReleaseHandlerTest::aStudioKeyWhoseLatestReleaseHasTheSameContentIsSkippedWhenOnlyIfChanged` threw `GameSystemManagedInStudio`; `ExportGameSystemReleaseConsoleCommandTest` failed on the missing `app:gamesystem:export`. GREEN: the skip lives in `PublishGameSystemReleaseHandler` (via `ReleasePublisher::latestHas`), the console says "managed in Studio" through the `IsGameSystemManagedInStudio` query; export reads `GetPublishedRelease`; round trip export, publish `--if-changed`, Unchanged passes for schema versions 1 and 2.
 
 ## Reviews
 

@@ -1,7 +1,7 @@
 # Feature: ui-theme-polish
 
 - **Locator:** `odd/tasks/ui-theme-polish.md` · Engram topic `odd/ui-theme-polish/tasks`
-- **Issue:** #227 · **Branch:** `feat/ui-theme-polish-2-embellishments` · **Status:** in progress (slice 2)
+- **Issue:** #227 · **Branch:** `feat/ui-theme-polish-2-embellishments` · **Status:** done (PR #229 awaiting merge)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-guided-polish` (PR #226)
@@ -132,10 +132,10 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 | T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer, direct | [x] | `542c729` |
 | T4 | 1 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | delegated writer, direct | [x] | `0d58319`, `4c581b1` |
 | T5 | 1 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | delegated writer, direct | [x] | `966d680` |
-| F1 | 2 | Slice 1 review fixes (R3): test CheckView's empty-dice-groups path against the well-wrapped path (`JournalEntryView.tsx:203-207`); test that journal article names stay unchanged with the entry `IconTile` (`JournalEntryView.tsx:68-87`) | delegated writer, direct | [x] | |
-| T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | delegated writer, direct | [x] | |
-| T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | delegated writer, direct | [x] | |
-| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | parent, inline (browser pass, two small fixes) | [x] | |
+| F1 | 2 | Slice 1 review fixes (R3): test CheckView's empty-dice-groups path against the well-wrapped path (`JournalEntryView.tsx:203-207`); test that journal article names stay unchanged with the entry `IconTile` (`JournalEntryView.tsx:68-87`) | delegated writer, direct | [x] || `62b878b` |
+| T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | delegated writer, direct | [x] || `730b74b` |
+| T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | delegated writer, direct | [x] || `0bbc2e8` |
+| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | parent, inline (browser pass, two small fixes) | [x] || `70210a7` |
 
 ## Progress
 
@@ -152,13 +152,15 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-20: T6 title mark (`TitleMark`, wax-seal initial via `markInitial`) and `OrnamentDivider` in the campaign header, `--panel-border`, per-theme `--radius` (control radius; cards follow `rounded-xl` = 1.4x) and `frame` opt-in (corner brackets, neon corner and bar) in all seven blocks (delegated writer, direct; `markInitial` tests and contrast token/pair checks written first, contrast RED 26 failed then GREEN; CSS-only parts have no meaningful RED).
 - 2026-10-20: T7 note drop cap (`drop-cap` utility, `--dropcap-*` tokens: parchment and eldritch only, neutral elsewhere) and tracker pip bar (`trackerPips`, `MAX_PIPS` 12, `--pip-*` tokens, `aria-hidden`), per-theme pip stories (delegated writer, direct; pip logic and panel tests RED first: 5 failed, then GREEN; drop cap and pip CSS have no meaningful RED, contrast pair for `--dropcap-color` added).
 - 2026-10-20: T8 Chrome pass on two campaigns in all six themes plus default light and dark: marks, divider, frames (neon corner and cyan bar, starship brackets), pips and drop cap render as specced. Fixes: the drop cap paragraph contains its float (`display: flow-root`), so a one-line note no longer pulls its timestamp beside the capital (CSS, no RED); tracker pips count from zero for ranges starting above it (`trackerPips` test RED 1 failed, then GREEN, trackers Vitest 17 passed). Nothing logged for later.
+- 2026-10-20: slice 2 reviewed (approved, two non-blocking suggestions logged) and in PR #229 (`Closes #227`); feature done.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-b12d0813f63c99bf` | `dc86cf3`…`4c581b1` (~1,017 lines) | approved and acknowledged; two R3 test suggestions, fixed in slice 2 (F1) | #228 |
+| 2 | `review-13c6a8babbc812cd` | `62b878b`…`70210a7` (~852 lines) | approved and acknowledged; two R3 suggestions logged as follow-ups: `markInitial` upper-cases with the runtime locale (Turkish dotted İ), and no test pins the 12-pip cutoff applying to `max` for a positive `min` | #229 |
 
 ## Next step
 
-Slice 2: F1, T6–T7 by the writer on `feat/ui-theme-polish-2-embellishments`, T8 Chrome pass by the parent, then review and PR (2/2, `Closes #227`) and the doc-only wrap-up commit on that PR.
+None. Optional follow-ups from the slice 2 review: a fixed locale in `markInitial`, and a `trackerPips` test for a positive `min` with `max` above 12.

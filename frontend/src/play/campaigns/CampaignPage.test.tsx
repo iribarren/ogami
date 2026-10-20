@@ -78,6 +78,10 @@ describe('the Play screen', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'The lost mine' }),
     ).toBeInTheDocument()
+    // The title mark and the divider are decorative: the heading keeps its plain name.
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).toHaveTextContent(/^The lost mine$/)
+    expect(heading.previousElementSibling).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText('Free journal v2')).toBeInTheDocument()
     expect(playPosition()).toHaveTextContent('Session 2 · Scene 1: Into the dark')
     expect(screen.getByRole('link', { name: 'Back to your campaigns' })).toHaveAttribute(

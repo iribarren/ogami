@@ -67,6 +67,32 @@ describe('the trackers panel', () => {
     expect(within(edge).getByLabelText('Edge value')).toHaveValue(1)
   })
 
+  it('draws a decorative pip bar under the name of each narrow Tracker, filled up to the value', async () => {
+    renderTrackers(lostMineWithTypes)
+
+    const items = (await panel()).getAllByRole('listitem')
+    const pips = items.map((item) => item.querySelector('[data-slot="tracker-pips"]'))
+    expect(pips.map((bar) => bar?.children.length)).toEqual([6, 10, 3])
+    expect(pips.map((bar) => bar?.querySelectorAll('[data-filled]').length)).toEqual([2, 5, 1])
+    for (const bar of pips) {
+      expect(bar).toHaveAttribute('aria-hidden', 'true')
+      // The name stays the first span, and the pips add no list items or text.
+      expect(bar?.querySelector('li')).toBeNull()
+      expect(bar?.textContent).toBe('')
+    }
+    expect(items).toHaveLength(3)
+  })
+
+  it('draws no pips for a Tracker with wide bounds', async () => {
+    const wide = { ...edgeTracker, min: 0, max: 100, value: 40 }
+    renderTrackers({ ...lostMineWithTypes, trackers: [wide] })
+
+    const trackers = await panel()
+    expect(trackers.getAllByRole('listitem')).toHaveLength(1)
+    expect(trackers.getByLabelText('Edge value')).toHaveValue(40)
+    expect(document.querySelector('[data-slot="tracker-pips"]')).toBeNull()
+  })
+
   it('is hidden when the release has no Trackers', async () => {
     renderTrackers({ ...lostMineWithTypes, trackers: [] })
 

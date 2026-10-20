@@ -23,6 +23,20 @@ describe('PlayPanel', () => {
     vi.restoreAllMocks()
   })
 
+  it('draws the theme frame only when asked to, without changing its accessible name', () => {
+    const { unmount } = renderPanel()
+    expect(screen.getByRole('region', { name: 'Facts' })).not.toHaveClass('frame-corners')
+    unmount()
+
+    render(
+      <PlayPanel id="dice" title="Dice" frame>
+        <p>Roll.</p>
+      </PlayPanel>,
+    )
+    expect(screen.getByRole('region', { name: 'Dice' })).toHaveClass('frame-corners')
+    expect(screen.getByRole('button', { name: 'Dice' })).toBeInTheDocument()
+  })
+
   it('is a titled region, open by default', () => {
     renderPanel()
 

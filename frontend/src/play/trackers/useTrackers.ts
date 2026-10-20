@@ -19,6 +19,23 @@ export function trackerValueText(tracker: Tracker) {
     : String(tracker.value)
 }
 
+/** Trackers wider than this draw no pips: a pip per point would no longer read at a glance. */
+export const MAX_PIPS = 12
+
+/**
+ * The pips under a Tracker's name: one per point above zero (or above its minimum when that is
+ * negative), `filled` of them up to the value, so a 1..9 scale at 5 fills 5 of 9. Null when the
+ * range has no points or the bar would be longer than MAX_PIPS.
+ */
+export function trackerPips(tracker: Tracker): { total: number; filled: number } | null {
+  const base = Math.min(tracker.min, 0)
+  const total = tracker.max - base
+  if (tracker.max <= tracker.min || total > MAX_PIPS) {
+    return null
+  }
+  return { total, filled: Math.min(total, Math.max(0, tracker.value - base)) }
+}
+
 /**
  * The Trackers to show: while the campaign's Flow guides it, the Flow's own in its order,
  * otherwise every Tracker of the release.

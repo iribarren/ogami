@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, userEvent, within } from 'storybook/test'
 
+import { onTheme } from '@/shared/theme/themeStories'
+
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { lostMineWithTypes } from '../campaigns/fixtures'
+import { edgeTracker, lostMineWithTypes } from '../campaigns/fixtures'
 import { atStep, promptStep } from '../flow/fixtures'
 import { TrackersPanel } from './TrackersPanel'
 
@@ -56,3 +58,19 @@ export const EditRefused: Story = {
     )
   },
 }
+
+/** A Tracker wider than twelve points draws no pips. */
+export const WideTracker: Story = {
+  args: {
+    campaign: {
+      ...lostMineWithTypes,
+      trackers: [{ ...edgeTracker, name: 'Gold', min: 0, max: 100, value: 40 }],
+    },
+  },
+}
+
+export const PipsParchment: Story = onTheme('parchment', AllTrackers)
+export const PipsNeon: Story = onTheme('neon', AllTrackers)
+export const PipsNoir: Story = onTheme('noir', AllTrackers)
+export const PipsEldritch: Story = onTheme('eldritch', AllTrackers)
+export const PipsStarship: Story = onTheme('starship', AllTrackers)

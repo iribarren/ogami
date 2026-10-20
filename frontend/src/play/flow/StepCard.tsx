@@ -1,6 +1,7 @@
 import { Target } from 'lucide-react'
 import { useId, useState, type SubmitEvent } from 'react'
 
+import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
@@ -31,6 +32,8 @@ interface StepProps {
   /** Whether a command is under way, which disables every control. */
   pending: boolean
   onCommand: (command: FlowRunCommand) => void
+  /** Draws the theme's corner decorations (neon bar, starship brackets) on the card. */
+  frame?: boolean
 }
 
 /**
@@ -38,11 +41,14 @@ interface StepProps {
  * the server) and "Skip" unless the step is mandatory. Key it by the step and its place (scene,
  * part), so the same step in the next scene of a loop starts with an empty form.
  */
-export function StepCard({ campaign, step, pending, onCommand }: StepProps) {
+export function StepCard({ campaign, step, pending, onCommand, frame = false }: StepProps) {
   return (
     <section
       aria-label={`Current step: ${step.title}`}
-      className="space-y-3 rounded-xl p-4 shadow-card ring-2 ring-primary/40"
+      className={cn(
+        'space-y-3 rounded-xl p-4 shadow-card ring-2 ring-primary/40 panel-border',
+        frame && 'frame-extras frame-corners [--frame-size:16px]',
+      )}
     >
       <div className="space-y-1">
         <p className="text-xs">

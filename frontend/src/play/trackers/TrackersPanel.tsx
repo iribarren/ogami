@@ -5,7 +5,13 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
 import type { Campaign } from '../campaigns/useCampaigns'
-import { trackerValueText, useSetTrackerValue, visibleTrackers, type Tracker } from './useTrackers'
+import {
+  trackerPips,
+  trackerValueText,
+  useSetTrackerValue,
+  visibleTrackers,
+  type Tracker,
+} from './useTrackers'
 
 /**
  * The Trackers of a campaign with their values, which the player edits by hand: one row per
@@ -51,6 +57,7 @@ function TrackerRow({
   onSet: (value: number) => void
 }) {
   const inputId = useId()
+  const pips = trackerPips(tracker)
   const clamp = (value: number) => Math.min(tracker.max, Math.max(tracker.min, value))
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -80,6 +87,17 @@ function TrackerRow({
           )}
         </span>
       </div>
+      {pips !== null && (
+        <div data-slot="tracker-pips" aria-hidden="true" className="flex gap-[5px] py-1">
+          {Array.from({ length: pips.total }, (_, index) =>
+            index < pips.filled ? (
+              <span key={index} data-filled className="pip bg-primary" />
+            ) : (
+              <span key={index} className="pip pip-empty" />
+            ),
+          )}
+        </div>
+      )}
       {tracker.hint !== null && <p className="text-sm text-muted-foreground">{tracker.hint}</p>}
       <form
         aria-label={`Edit ${tracker.name}`}

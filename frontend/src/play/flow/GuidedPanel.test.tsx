@@ -128,6 +128,13 @@ describe('the guided panel', () => {
     expect(card.getByText(/^Fills/)).toBeInTheDocument()
   })
 
+  it('draws the theme frame on the current step card without changing its name', async () => {
+    renderGuided(guided(atStep(promptStep)))
+
+    const card = (await panel()).getByRole('region', { name: 'Current step: Who walks in?' })
+    expect(card).toHaveClass('frame-corners', 'frame-extras')
+  })
+
   it('lists no slots for a step that fills none', async () => {
     renderGuided(guided(atStep(promptStep)))
 

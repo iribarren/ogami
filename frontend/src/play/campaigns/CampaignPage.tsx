@@ -148,7 +148,15 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           )}
           <div className="space-y-2">
             {!hasScene && <p className="text-sm text-muted-foreground">{noSceneHint}</p>}
-            <NoteComposer campaignId={campaign.id} disabled={!hasScene} />
+            <NoteComposer
+              campaignId={campaign.id}
+              disabled={!hasScene}
+              current={
+                campaign.currentSessionNumber === null || campaign.currentSceneNumber === null
+                  ? null
+                  : { session: campaign.currentSessionNumber, scene: campaign.currentSceneNumber }
+              }
+            />
           </div>
           {campaign.flowRun !== null && (
             <GuidedControls campaign={campaign} flowRun={campaign.flowRun} command={command} />

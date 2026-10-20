@@ -86,7 +86,7 @@ final class PlayCampaignJournalThroughTheBusesTest extends KernelTestCase
             ],
             array_map(static fn (JournalEntryView $entry): array => [$entry->id, $entry->sessionNumber, $entry->sceneNumber, $entry->kind], $journal),
         );
-        self::assertSame(['kind' => 'note', 'text' => 'The gate is open.'], $journal[0]->content);
+        self::assertSame(['kind' => 'note', 'text' => 'The gate is open.', 'attachments' => []], $journal[0]->content);
         self::assertSame(
             ['kind' => 'roll', 'expression' => '2d6+1', 'total' => 8, 'groups' => [
                 ['notation' => '2d6', 'sides' => 6, 'dice' => [['value' => 3, 'kept' => true], ['value' => 4, 'kept' => true]], 'subtotal' => 7],

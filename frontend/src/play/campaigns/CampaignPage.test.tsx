@@ -411,7 +411,11 @@ describe('the Play screen', () => {
 
   it('writes a note in the current scene, which appears in the journal', async () => {
     const sent: unknown[] = []
-    const note = recordedEntry({ kind: 'note', text: 'A cold wind.\nTorches flicker.' })
+    const note = recordedEntry({
+      kind: 'note',
+      text: 'A cold wind.\nTorches flicker.',
+      attachments: [],
+    })
     renderPlayScreen(lostMineCampaign, lostMineJournal, {
       [`POST ${campaignPath(lostMineCampaign)}/journal/notes`]: recording(note, sent),
     })

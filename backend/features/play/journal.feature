@@ -23,6 +23,24 @@ Feature: Keep the journal of a campaign
       | 1       | 2     | oracle-table | Weather: Storm, Hail                              |
       | 1       | 2     | likelihood   | Fate question: Is the mine flooded? Unlikely, chaos 7: yes (40 vs 45) |
 
+  Scenario: A note attaches results from its scene
+    Given release version 2 of the GameSystem "free-journal" named "Free journal, with oracles" is published with oracles
+    And I created the campaign "The lost mine" with the GameSystem "free-journal"
+    And I started a session
+    And I started the scene "At the gate"
+    And I roll "2d6+1" and the dice show "4, 5"
+    And I roll on the oracle table "weather" and the dice show "5, 2"
+    When I write the note "The gate answers." attaching the entries "entry-002, entry-001"
+    Then the note "The gate answers." attaches the entries "entry-002, entry-001"
+    When I start the scene "In the mine"
+    And I try to write the note "Old news." attaching the entries "entry-001"
+    Then I am told the entry cannot be attached
+    And my journal holds, in order:
+      | session | scene | kind         | summary              |
+      | 1       | 1     | roll         | 2d6+1 = 10           |
+      | 1       | 1     | oracle-table | Weather: Storm, Hail |
+      | 1       | 1     | note         | The gate answers.    |
+
   Scenario: An entry needs a scene
     Given I created the campaign "The lost mine" with the GameSystem "free-journal"
     And I started a session

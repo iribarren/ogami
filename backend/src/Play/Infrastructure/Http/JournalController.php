@@ -28,6 +28,7 @@ use App\Play\Domain\GameSystem\Check\UnknownCheck;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
+use App\Play\Domain\Journal\InvalidNoteAttachment;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\NotARandomEventQuestion;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
@@ -59,6 +60,7 @@ final readonly class JournalController
     use ReadsJsonBodies;
 
     private const string MALFORMED_NOTE = 'Send a JSON object with a string "text", such as {"text": "The gate is open."}.';
+    private const string MALFORMED_ATTACHMENTS = 'The "attachments" of a note must be a list of journal entry ids (strings), such as ["0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001"].';
     private const string MALFORMED_ORACLE_TABLE = 'Send no body, or a JSON object with an optional string "forEntry", such as {"forEntry": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001"}.';
     private const string MALFORMED_ROLL = 'Send a JSON object with a string "expression", such as {"expression": "2d6+1"}.';
     private const string MALFORMED_LIKELIHOOD = 'Send a JSON object with a string "likelihood", and optionally an integer "chaosFactor" and a string "question", such as {"likelihood": "likely", "chaosFactor": 5, "question": "Is the door locked?"}.';
@@ -103,7 +105,7 @@ final readonly class JournalController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign has no current scene, or the generated entry id is already taken.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The text is blank or too long.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The text is blank or too long, or "attachments" is not a list of strings or attaches a result that is unknown, from another campaign or scene, not a roll, oracle table, likelihood or check result, a random event result, repeated, or more than 20.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function recordNote(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the note as JSON.', self::MALFORMED_NOTE);
@@ -116,9 +118,15 @@ final readonly class JournalController
             return $this->error(self::MALFORMED_NOTE, Response::HTTP_BAD_REQUEST);
         }
 
+        $attachments = $body['attachments'] ?? [];
+        if (!\is_array($attachments) || !array_is_list($attachments) || [] !== array_filter($attachments, static fn (mixed $id): bool => !\is_string($id))) {
+            return $this->error(self::MALFORMED_ATTACHMENTS, Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        /** @var list<string> $attachments */
         $entryId = $this->entryIds->generate()->toString();
 
-        return $this->record(new RecordNote($entryId, $campaignId, $user->id(), $text), $entryId, $campaignId, $user);
+        return $this->record(new RecordNote($entryId, $campaignId, $user->id(), $text, $attachments), $entryId, $campaignId, $user);
     }
 
     #[Route('/api/campaigns/{campaignId}/journal/rolls', name: 'api_campaigns_journal_rolls_record', methods: ['POST'])]
@@ -267,7 +275,7 @@ final readonly class JournalController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (NoCurrentScene|JournalEntryAlreadyExists|RandomEventAlreadyRolled $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidJournalEntryId|NotARandomEventQuestion|InvalidJournalEntryContent|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
+        } catch (InvalidJournalEntryId|NotARandomEventQuestion|InvalidJournalEntryContent|InvalidNoteAttachment|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

@@ -19,6 +19,7 @@ use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
 use App\Tests\Support\Play\UuidSequenceJournalEntryIdGenerator;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -73,7 +74,7 @@ final class JournalApiTest extends WebTestCase
             'recordedAt' => '2026-10-06T09:30:00+00:00',
             'kind' => 'note',
             'flowStep' => null,
-            'content' => ['kind' => 'note', 'text' => 'The gate is open.'],
+            'content' => ['kind' => 'note', 'text' => 'The gate is open.', 'attachments' => []],
         ]), $this->content());
     }
 
@@ -348,7 +349,7 @@ final class JournalApiTest extends WebTestCase
                 'recordedAt' => '2026-10-06T09:30:00+00:00',
                 'kind' => 'note',
                 'flowStep' => null,
-                'content' => ['kind' => 'note', 'text' => 'The gate is open.'],
+                'content' => ['kind' => 'note', 'text' => 'The gate is open.', 'attachments' => []],
             ],
             [
                 'id' => $this->entryId(2),
@@ -702,6 +703,164 @@ final class JournalApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(403);
         self::assertSame(['error' => 'Access denied.'], $this->json());
+    }
+
+    #[Test]
+    public function aNoteAttachesTheResultsOfItsSceneInThePickOrder(): void
+    {
+        $id = $this->campaignInAScene();
+        $this->scriptRandomNumbers(3, 4);
+        $this->record($id, 'rolls', ['expression' => '2d6']);
+        $fate = $this->askFate($id, 30);
+        $roll = $this->entryId(1);
+
+        $this->record($id, 'notes', ['text' => 'The gate answers.', 'attachments' => [$fate, $roll]]);
+
+        $content = $this->json()['content'] ?? null;
+        self::assertSame(['kind' => 'note', 'text' => 'The gate answers.', 'attachments' => [$fate, $roll]], $content);
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        $journal = $this->json();
+        self::assertSame([$fate, $roll], $this->contentOf($journal[2] ?? null)['attachments'] ?? null);
+    }
+
+    #[Test]
+    public function aNoteWithoutAttachmentsReadsNone(): void
+    {
+        $id = $this->campaignInAScene();
+
+        $this->record($id, 'notes', ['text' => 'Nothing attached.']);
+        self::assertSame([], $this->contentOf($this->json())['attachments'] ?? null);
+
+        $this->record($id, 'notes', ['text' => 'Null attached.', 'attachments' => null]);
+        self::assertSame([], $this->contentOf($this->json())['attachments'] ?? null);
+    }
+
+    #[Test]
+    public function aNoteStoredBeforeAttachmentsReadsNone(): void
+    {
+        $id = $this->campaignInAScene();
+        $this->record($id, 'notes', ['text' => 'An old note.']);
+        $connection = self::getContainer()->get(EntityManagerInterface::class)->getConnection();
+        $connection->executeStatement("UPDATE play_journal_entry SET content = content - 'attachments'");
+        self::getContainer()->get(EntityManagerInterface::class)->clear();
+
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+
+        self::assertSame(['kind' => 'note', 'text' => 'An old note.', 'attachments' => []], $this->contentOf($this->json()[0] ?? null));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function refusedAttachments(): iterable
+    {
+        yield 'unknown id' => ['unknown', 'cannot be attached: it is not an entry of this campaign.'];
+        yield 'another campaign' => ['campaign', 'cannot be attached: it is not an entry of this campaign.'];
+        yield 'another scene' => ['scene', 'cannot be attached: it was recorded in another scene than the current one.'];
+        yield 'a note' => ['note', 'cannot be attached: a note result cannot be attached.'];
+        yield 'a random event result' => ['event', 'cannot be attached: a random event result already belongs to its question.'];
+        yield 'a duplicate' => ['duplicate', 'is attached twice.'];
+        yield 'twenty-one ids' => ['many', 'A note attaches at most 20 results, 21 given.'];
+        yield 'a malformed id' => ['malformed', 'cannot be attached: it is not an entry of this campaign.'];
+    }
+
+    #[Test]
+    #[DataProvider('refusedAttachments')]
+    public function anInvalidAttachmentIsUnprocessableAndRecordsNothing(string $case, string $reason): void
+    {
+        $id = $this->campaignInAScene(randomEvent: true);
+        $this->scriptRandomNumbers(3, 4);
+        $this->record($id, 'rolls', ['expression' => '2d6']);
+        $oldRoll = $this->entryId(1);
+        $this->startScene($id, 'In the mine');
+        $this->scriptRandomNumbers(2, 5);
+        $this->record($id, 'rolls', ['expression' => '2d6']);
+        $current = $this->entryId(2);
+        $this->record($id, 'notes', ['text' => 'A note.']);
+        $note = $this->entryId(3);
+        $question = $this->askFate($id, 22);
+        $this->scriptRandomNumbers(6, 3);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), ['forEntry' => $question]);
+        self::assertResponseStatusCodeSame(201);
+        $event = $this->entryId(5);
+
+        $otherCampaign = $this->createCampaign();
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $otherCampaign));
+        $this->startScene($otherCampaign, 'Elsewhere');
+        $this->scriptRandomNumbers(1, 1);
+        $this->record($otherCampaign, 'rolls', ['expression' => '2d6']);
+        $foreign = $this->entryId(6);
+
+        [$attachments, $needle] = match ($case) {
+            'unknown' => [[$current, '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8999'], '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8999'],
+            'campaign' => [[$foreign], $foreign],
+            'scene' => [[$oldRoll], $oldRoll],
+            'note' => [[$note], $note],
+            'event' => [[$event], $event],
+            'duplicate' => [[$current, $current], $current],
+            'many' => [array_fill(0, 21, $current), ''],
+            'malformed' => [['not-an-id'], 'not-an-id'],
+            default => throw new \LogicException(\sprintf('Unknown case "%s".', $case)),
+        };
+        $journalSize = $this->journalSize($id);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/notes', $id), ['text' => 'Attached.', 'attachments' => $attachments]);
+
+        self::assertResponseStatusCodeSame(422);
+        $error = $this->json()['error'] ?? null;
+        self::assertIsString($error);
+        self::assertStringContainsString($reason, $error);
+        self::assertStringContainsString($needle, $error);
+        self::assertSame($journalSize, $this->journalSize($id));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function malformedAttachments(): iterable
+    {
+        yield 'a string' => ['0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001'];
+        yield 'an object' => [['a' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001']];
+        yield 'a number in the list' => [[3]];
+        yield 'a nested list' => [[['0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001']]];
+        yield 'a boolean' => [false];
+    }
+
+    #[Test]
+    #[DataProvider('malformedAttachments')]
+    public function attachmentsThatAreNotAListOfStringsAreUnprocessable(mixed $attachments): void
+    {
+        $id = $this->campaignInAScene();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/notes', $id), ['text' => 'Attached.', 'attachments' => $attachments]);
+
+        self::assertResponseStatusCodeSame(422);
+        $error = $this->json()['error'] ?? null;
+        self::assertIsString($error);
+        self::assertStringContainsString('"attachments" of a note must be a list', $error);
+        $this->assertJournalIsEmpty($id);
+    }
+
+    private function journalSize(string $campaignId): int
+    {
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $campaignId));
+        self::assertResponseIsSuccessful();
+
+        return \count($this->json());
+    }
+
+    /**
+     * The content of a journal entry read from a response.
+     *
+     * @return array<mixed>
+     */
+    private function contentOf(mixed $entry): array
+    {
+        self::assertIsArray($entry);
+        $content = $entry['content'] ?? null;
+        self::assertIsArray($content);
+
+        return $content;
     }
 
     private function entryId(int $number): string

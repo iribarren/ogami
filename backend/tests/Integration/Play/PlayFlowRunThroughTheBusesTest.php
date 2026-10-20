@@ -69,7 +69,7 @@ final class PlayFlowRunThroughTheBusesTest extends KernelTestCase
 
         $journal = $this->queries->ask(new GetJournal(self::CAMPAIGN, self::PLAYER));
         self::assertCount(1, $journal);
-        self::assertSame([self::ENTRY_1, 1, 1, 'note', ['kind' => 'note', 'text' => 'Ada, a netrunner']], [$journal[0]->id, $journal[0]->sessionNumber, $journal[0]->sceneNumber, $journal[0]->kind, $journal[0]->content]);
+        self::assertSame([self::ENTRY_1, 1, 1, 'note', ['kind' => 'note', 'text' => 'Ada, a netrunner', 'attachments' => []]], [$journal[0]->id, $journal[0]->sessionNumber, $journal[0]->sceneNumber, $journal[0]->kind, $journal[0]->content]);
         self::assertSame('first', $journal[0]->flowStep['key'] ?? null);
         $campaign = $this->queries->ask(new GetCampaign(self::CAMPAIGN, self::PLAYER));
         self::assertSame('second', $campaign->flowRun?->step?->step->key);

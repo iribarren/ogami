@@ -27,7 +27,7 @@ final class PlayRequestSchemasTest extends WebTestCase
         yield 'set tracker value' => ['SetTrackerValueRequest', ['value'], []];
         yield 'NPC' => ['NpcRequest', ['name'], ['agenda', 'tags', 'freeTags', 'weight']];
         yield 'Thread' => ['ThreadRequest', ['name'], ['tags', 'freeTags', 'weight']];
-        yield 'record note' => ['RecordNoteRequest', ['text'], []];
+        yield 'record note' => ['RecordNoteRequest', ['text'], ['attachments']];
         yield 'record roll' => ['RecordRollRequest', ['expression'], []];
         yield 'complete FlowRun step' => ['CompleteFlowStepRequest', ['stepKey'], ['text', 'optionKey', 'likelihood', 'chaosFactor', 'pickedIds', 'characterId', 'difficulty', 'situational']];
         yield 'edit scene cast' => ['EditSceneCastRequest', ['npcIds'], ['characterIds']];

@@ -63,7 +63,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | |
 | T2 | 1 | Domain and application: `NoteContent` attachments (ordered ids, `fromArray` legacy `[]`), attachment rules in `CampaignJournal` (same campaign and scene, attachable kind, no random event, no duplicates, ≤ 20) with a domain error, `RecordNote` carries the ids; unit tests | delegated writer, direct | [x] | |
-| T3 | 1 | HTTP and contract: `RecordNoteRequest.attachments` (optional, nullable), 422 mapping, `NoteContentResponse.attachments`, API tests (every 422 case, round trip, legacy note), Behat scenario, `make api`, frontend fixtures and type fallout | delegated writer, direct | [ ] | |
+| T3 | 1 | HTTP and contract: `RecordNoteRequest.attachments` (optional, nullable), 422 mapping, `NoteContentResponse.attachments`, API tests (every 422 case, round trip, legacy note), Behat scenario, `make api`, frontend fixtures and type fallout | delegated writer, direct | [x] | |
 | T4 | 2 | `NoteComposer` attachment picker for the current scene's attachable results; `useRecordNote` sends `attachments`; Vitest; stories | | [ ] | |
 | T5 | 2 | Journal folding: attached entries hidden from their place and rendered inside their note (and in `FocusPanel` if it lists scene entries); Vitest; e2e in `play-session.spec.ts` | | [ ] | |
 | T6 | 2 | Docs: glossary JournalEntry kinds and attachments; ADR 0016 note on folded results | | [ ] | |
@@ -73,6 +73,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 - 2026-10-20: feature started; journal code mapped by a read-only explorer; display (fold under the note) and attachable kinds decided by the user; 2 slices.
 - 2026-10-20: T1 feature doc committed by the writer (doc-only, no test applicable).
 - 2026-10-20: T2 done: RED = fatal on missing `InvalidNoteAttachment`/`attachments` with src stashed; GREEN = `tests/Unit/Play` 1622 OK. Validation uses `ofId` per id (no new port method); stored-shape expectations updated incl. `JournalEntryRepositoryContract`.
+- 2026-10-20: T3 done: API/Behat tests written after the implementation (passed on first full run, no RED observed); JournalApiTest 90 OK, Integration/Play 998 OK, Behat 180 scenarios OK, `make qa` OK, `make api` regenerated; malformed `attachments` (not a list of strings) answers 422; Vitest first-render timeouts rerun per file: 188 OK.
 
 ## Reviews
 
@@ -81,4 +82,4 @@ A scene's journal reads as a list of loose results with notes between them. The 
 
 ## Next step
 
-Slice 1: T1–T3 by one writer on `feat/play-journal-attachments-1-api`.
+Slice 1 written; parent runs native review, opens the PR. Then slice 2 (T4–T6).

@@ -9,7 +9,7 @@ export const gateNote: JournalEntry = {
   recordedAt: '2026-10-05T12:11:00+00:00',
   kind: 'note',
   flowStep: null,
-  content: { kind: 'note', text: 'The gate is open.\nNobody guards it.' },
+  content: { kind: 'note', text: 'The gate is open.\nNobody guards it.', attachments: [] },
 }
 
 export const keepThreeRoll: JournalEntry = {

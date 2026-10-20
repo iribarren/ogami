@@ -35,7 +35,7 @@ function campaignApi(campaign: typeof lostMineCampaign, journal = lostMineJourna
     [`POST ${path}/journal/notes`]: async (request: Request) => {
       const { text } = (await request.json()) as { text: string }
       return Response.json(
-        recordedEntry({ kind: 'note', text: text.trim() }, crypto.randomUUID()),
+        recordedEntry({ kind: 'note', text: text.trim(), attachments: [] }, crypto.randomUUID()),
         {
           status: 201,
         },

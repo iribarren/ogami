@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * A note written by the player.
  */
-#[OA\Schema(required: ['kind', 'text'])]
+#[OA\Schema(required: ['kind', 'text', 'attachments'])]
 final readonly class NoteContentResponse
 {
     private function __construct(
@@ -18,11 +18,14 @@ final readonly class NoteContentResponse
         public string $kind,
         #[OA\Property(example: 'The gate is open.', maxLength: NoteContent::MAX_LENGTH)]
         public string $text,
+        /** @var list<string> */
+        #[OA\Property(description: 'Ids of the journal entries the note attaches, in the order picked; empty when none.', type: 'array', items: new OA\Items(type: 'string', format: 'uuid'))]
+        public array $attachments,
     ) {
     }
 
     public static function of(NoteContent $content): self
     {
-        return new self(NoteContent::KIND, $content->text());
+        return new self(NoteContent::KIND, $content->text(), $content->attachments());
     }
 }

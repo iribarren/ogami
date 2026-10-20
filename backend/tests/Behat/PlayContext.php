@@ -124,6 +124,7 @@ use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
+use App\Play\Domain\Journal\InvalidNoteAttachment;
 use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\GuidedReleases;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
@@ -700,6 +701,19 @@ final class PlayContext implements Context
         $this->attempt(fn () => ($this->recordNote)(new RecordNote($this->entryId(), $this->campaignId(), self::ME, $text)));
     }
 
+    #[When('I write the note :text attaching the entries :ids')]
+    public function iWriteTheNoteAttaching(string $text, string $ids): void
+    {
+        $this->iTryToWriteTheNoteAttaching($text, $ids);
+        $this->assertNoFailure();
+    }
+
+    #[When('I try to write the note :text attaching the entries :ids')]
+    public function iTryToWriteTheNoteAttaching(string $text, string $ids): void
+    {
+        $this->attempt(fn () => ($this->recordNote)(new RecordNote($this->entryId(), $this->campaignId(), self::ME, $text, array_map(trim(...), explode(',', $ids)))));
+    }
+
     #[When('I roll :expression and the dice show :numbers')]
     public function iRoll(string $expression, string $numbers): void
     {
@@ -837,6 +851,20 @@ final class PlayContext implements Context
                 $this->myJournal(),
             ),
         );
+    }
+
+    #[Then('the note :text attaches the entries :ids')]
+    public function theNoteAttaches(string $text, string $ids): void
+    {
+        $notes = array_values(array_filter($this->myJournal(), static fn (JournalEntryView $entry): bool => 'note' === $entry->kind && ($entry->content['text'] ?? null) === $text));
+        Assert::assertCount(1, $notes);
+        Assert::assertSame(array_map(trim(...), explode(',', $ids)), $notes[0]->content['attachments'] ?? null);
+    }
+
+    #[Then('I am told the entry cannot be attached')]
+    public function iAmToldTheEntryCannotBeAttached(): void
+    {
+        Assert::assertInstanceOf(InvalidNoteAttachment::class, $this->failure);
     }
 
     #[Then('my journal is empty')]
@@ -1206,7 +1234,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate|InvalidNoteAttachment $failure) {
             $this->failure = $failure;
         }
     }

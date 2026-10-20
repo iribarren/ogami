@@ -42,7 +42,7 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
         $entry = $this->onlyEntryOf('campaign-1');
         self::assertSame(['entry-1', 1, 1], [$entry->id()->toString(), $entry->sessionNumber(), $entry->sceneNumber()]);
         self::assertEquals(new \DateTimeImmutable(self::NOW), $entry->recordedAt());
-        self::assertSame(['kind' => 'note', 'text' => 'Ada, a fixer'], $entry->content()->toArray());
+        self::assertSame(['kind' => 'note', 'text' => 'Ada, a fixer', 'attachments' => []], $entry->content()->toArray());
         self::assertSame(['key' => 'intro', 'title' => 'Who walks in?', 'prompt' => 'Describe the first person.'], $entry->flowStep()?->toArray());
         $flowRun = $this->stored('campaign-1')->flowRun();
         self::assertSame([['intro' => 'Ada, a fixer'], 'dice'], [$flowRun?->answers(), $flowRun?->stepKey()]);

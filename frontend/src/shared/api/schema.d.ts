@@ -3004,6 +3004,8 @@ export interface components {
             kind: "note";
             /** @example The gate is open. */
             text: string;
+            /** @description Ids of the journal entries the note attaches, in the order picked; empty when none. */
+            attachments: string[];
         };
         JournalRolledDieResponse: {
             /**
@@ -3428,6 +3430,8 @@ export interface components {
              * @example The gate is open.
              */
             text: string;
+            /** @description Ids of the journal entries of the current scene the note attaches, in the order shown: rolls, oracle table results, likelihood answers and checks, not a random event result; at most 20, none twice. Missing or null attaches nothing. */
+            attachments?: string[] | null;
         };
         RecordRollRequest: {
             /**
@@ -8616,7 +8620,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The text is blank or too long. */
+            /** @description The text is blank or too long, or "attachments" is not a list of strings or attaches a result that is unknown, from another campaign or scene, not a roll, oracle table, likelihood or check result, a random event result, repeated, or more than 20. */
             422: {
                 headers: {
                     [name: string]: unknown;

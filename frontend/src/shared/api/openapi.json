@@ -4683,7 +4683,7 @@
                         }
                     },
                     "422": {
-                        "description": "The text is blank or too long.",
+                        "description": "The text is blank or too long, or \"attachments\" is not a list of strings or attaches a result that is unknown, from another campaign or scene, not a roll, oracle table, likelihood or check result, a random event result, repeated, or more than 20.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12803,7 +12803,8 @@
             "NoteContentResponse": {
                 "required": [
                     "kind",
-                    "text"
+                    "text",
+                    "attachments"
                 ],
                 "properties": {
                     "kind": {
@@ -12816,6 +12817,14 @@
                         "type": "string",
                         "example": "The gate is open.",
                         "maxLength": 10000
+                    },
+                    "attachments": {
+                        "description": "Ids of the journal entries the note attaches, in the order picked; empty when none.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
                     }
                 },
                 "type": "object"
@@ -13642,6 +13651,16 @@
                         "type": "string",
                         "example": "The gate is open.",
                         "maxLength": 10000
+                    },
+                    "attachments": {
+                        "description": "Ids of the journal entries of the current scene the note attaches, in the order shown: rolls, oracle table results, likelihood answers and checks, not a random event result; at most 20, none twice. Missing or null attaches nothing.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "nullable": true,
+                        "maxItems": 20
                     }
                 },
                 "type": "object"

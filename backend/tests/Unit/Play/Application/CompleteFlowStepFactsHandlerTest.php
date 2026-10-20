@@ -60,7 +60,7 @@ final class CompleteFlowStepFactsHandlerTest extends FlowRunHandlerTestCase
         $campaign = $this->stored('campaign-1');
         self::assertSame(['Prague', 'prince'], [$campaign->factValues($this->release)['city'], $campaign->flowRun()?->stepKey()]);
         self::assertSame(GeneratedItemId::fact('campaign-1', 0)->toString(), $campaign->facts($this->release)[0]->id()->toString());
-        self::assertSame(['kind' => 'note', 'text' => 'Prague'], $this->onlyEntryOf('campaign-1')->content()->toArray());
+        self::assertSame(['kind' => 'note', 'text' => 'Prague', 'attachments' => []], $this->onlyEntryOf('campaign-1')->content()->toArray());
     }
 
     #[Test]

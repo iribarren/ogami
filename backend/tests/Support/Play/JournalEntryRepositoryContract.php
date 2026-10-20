@@ -44,7 +44,7 @@ trait JournalEntryRepositoryContract
      */
     public static function contentOfEveryKind(): iterable
     {
-        yield 'note' => [['kind' => 'note', 'text' => 'The gate is open. Ünïcödé — "quoted".']];
+        yield 'note' => [['kind' => 'note', 'text' => 'The gate is open. Ünïcödé — "quoted".', 'attachments' => []]];
         yield 'roll' => [[
             'kind' => 'roll',
             'expression' => '4d6kh3+1',

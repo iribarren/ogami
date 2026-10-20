@@ -72,8 +72,8 @@ final class GetJournalHandlerTest extends JournalTestCase
                 'total' => 4,
                 'groups' => [['notation' => '1d6', 'sides' => 6, 'dice' => [['value' => 4, 'kept' => true]], 'subtotal' => 4]],
             ]),
-            new JournalEntryView('entry-a', 1, 2, new \DateTimeImmutable('2026-10-06T09:40:00+00:00'), 'note', ['kind' => 'note', 'text' => 'First at 09:40, smaller id.']),
-            new JournalEntryView('entry-b', 1, 2, new \DateTimeImmutable('2026-10-06T09:40:00+00:00'), 'note', ['kind' => 'note', 'text' => 'Second, same time, larger id.']),
+            new JournalEntryView('entry-a', 1, 2, new \DateTimeImmutable('2026-10-06T09:40:00+00:00'), 'note', ['kind' => 'note', 'text' => 'First at 09:40, smaller id.', 'attachments' => []]),
+            new JournalEntryView('entry-b', 1, 2, new \DateTimeImmutable('2026-10-06T09:40:00+00:00'), 'note', ['kind' => 'note', 'text' => 'Second, same time, larger id.', 'attachments' => []]),
         ], $journal);
     }
 
@@ -91,7 +91,7 @@ final class GetJournalHandlerTest extends JournalTestCase
         (new RecordNoteHandler($this->journal))(new RecordNote('entry-1', 'campaign-1', 'user-1', 'The gate is shut.'));
 
         self::assertEquals(
-            new JournalEntryView('entry-1', 1, 2, new \DateTimeImmutable(self::NOW), 'note', ['kind' => 'note', 'text' => 'The gate is shut.']),
+            new JournalEntryView('entry-1', 1, 2, new \DateTimeImmutable(self::NOW), 'note', ['kind' => 'note', 'text' => 'The gate is shut.', 'attachments' => []]),
             ($this->getEntry)(new GetJournalEntry('entry-1', 'campaign-1', 'user-1')),
         );
     }

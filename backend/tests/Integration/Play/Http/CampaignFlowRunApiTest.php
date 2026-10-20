@@ -182,9 +182,9 @@ final class CampaignFlowRunApiTest extends WebTestCase
         self::assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $handWritten['id']);
         $entries[2] = ['id' => 'hand-written'] + $handWritten;
         self::assertSame([
-            ['id' => self::ENTRY_1, 'sessionNumber' => 1, 'sceneNumber' => 1, 'recordedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'note', 'content' => ['kind' => 'note', 'text' => 'Ada, a fixer'], 'flowStep' => ['key' => 'intro', 'title' => 'Who walks in?', 'prompt' => 'Describe the first person.']],
+            ['id' => self::ENTRY_1, 'sessionNumber' => 1, 'sceneNumber' => 1, 'recordedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'note', 'content' => ['kind' => 'note', 'text' => 'Ada, a fixer', 'attachments' => []], 'flowStep' => ['key' => 'intro', 'title' => 'Who walks in?', 'prompt' => 'Describe the first person.']],
             ['id' => self::ENTRY_2, 'sessionNumber' => 1, 'sceneNumber' => 1, 'recordedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'choice', 'content' => ['kind' => 'choice', 'question' => 'Which way?', 'optionKey' => 'right', 'label' => 'Go right'], 'flowStep' => ['key' => 'fork', 'title' => 'Which way?', 'prompt' => null]],
-            ['id' => 'hand-written', 'sessionNumber' => 1, 'sceneNumber' => 1, 'recordedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'note', 'content' => ['kind' => 'note', 'text' => 'Written by hand'], 'flowStep' => null],
+            ['id' => 'hand-written', 'sessionNumber' => 1, 'sceneNumber' => 1, 'recordedAt' => '2026-10-10T09:00:00+00:00', 'kind' => 'note', 'content' => ['kind' => 'note', 'text' => 'Written by hand', 'attachments' => []], 'flowStep' => null],
         ], $entries);
     }
 

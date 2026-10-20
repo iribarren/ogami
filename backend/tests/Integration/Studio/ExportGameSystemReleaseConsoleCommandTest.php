@@ -61,16 +61,31 @@ final class ExportGameSystemReleaseConsoleCommandTest extends KernelTestCase
     }
 
     #[Test]
+    public function itWritesStyleTagShapedTextAndBackslashesToStdoutByteForByte(): void
+    {
+        $this->publishFile($this->variantOfV1('Mind the <info>tag</info>, <fg=red>red</>, and a \\<escaped bracket.'));
+
+        $exitCode = $this->export->execute(['key' => 'example-journal']);
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->export->getDisplay());
+        $content = json_decode($this->export->getDisplay(), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($content);
+        self::assertSame($this->releases()->latestFor('example-journal')?->contentHash(), ReleaseContent::fromArray($content)->hash());
+    }
+
+    #[Test]
     public function itWritesTheChosenReleaseToTheOutputFile(): void
     {
         $this->publishFile(self::V1);
-        $this->publishFile(self::V1);
+        $this->publishFile($this->variantOfV1('A different second release.'));
         $output = $this->temporaryFile();
 
         $exitCode = $this->export->execute(['key' => 'example-journal', '--release' => '1', '--output' => $output]);
 
         self::assertSame(Command::SUCCESS, $exitCode, $this->export->getDisplay());
-        self::assertSame($this->canonicalHashOf($output), $this->releases()->get('example-journal', 1)?->contentHash());
+        $first = $this->releases()->get('example-journal', 1)?->contentHash();
+        self::assertNotSame($first, $this->releases()->get('example-journal', 2)?->contentHash());
+        self::assertSame($first, $this->canonicalHashOf($output));
         self::assertStringContainsString('Exported example-journal v1', $this->display());
     }
 
@@ -84,6 +99,24 @@ final class ExportGameSystemReleaseConsoleCommandTest extends KernelTestCase
         $this->export->execute(['key' => 'example-journal', '--output' => $output]);
 
         self::assertStringContainsString('Exported example-journal v2', $this->display());
+    }
+
+    #[Test]
+    public function theExportedFileModeFollowsTheUmask(): void
+    {
+        $this->publishFile(self::V1);
+        $output = $this->temporaryFile();
+        unlink($output);
+        $previous = umask(0o022);
+
+        try {
+            $this->export->execute(['key' => 'example-journal', '--output' => $output]);
+            clearstatcache(true, $output);
+        } finally {
+            umask($previous);
+        }
+
+        self::assertSame(0o644, fileperms($output) & 0o777);
     }
 
     #[Test]
@@ -209,6 +242,20 @@ final class ExportGameSystemReleaseConsoleCommandTest extends KernelTestCase
     private function publishFile(string $file, array $options = []): int
     {
         return $this->publish->execute(['file' => $file] + $options);
+    }
+
+    /**
+     * A copy of the schema version 1 fixture with another description, so its hash differs.
+     */
+    private function variantOfV1(string $description): string
+    {
+        $content = json_decode((string) file_get_contents(self::V1), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($content);
+        $content['gameSystem'] = ['description' => $description] + (array) $content['gameSystem'];
+        $file = $this->temporaryFile();
+        file_put_contents($file, json_encode($content, \JSON_THROW_ON_ERROR));
+
+        return $file;
     }
 
     private function canonicalHashOf(string $file): string

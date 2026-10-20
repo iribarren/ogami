@@ -62,7 +62,8 @@ final class ExportGameSystemReleaseConsoleCommand extends Command
         $json = json_encode($release->content, self::JSON_FLAGS)."\n";
         $file = $input->getOption('output');
         if (null === $file) {
-            $output->write($json);
+            // Raw: the formatter would otherwise eat style-tag-shaped text and backslashes from the content.
+            $output->write($json, false, OutputInterface::OUTPUT_RAW);
 
             return Command::SUCCESS;
         }
@@ -106,7 +107,8 @@ final class ExportGameSystemReleaseConsoleCommand extends Command
             return false;
         }
 
-        if (false === @file_put_contents($temporary, $json) || !@rename($temporary, $file)) {
+        // tempnam creates the file 0600; a regular new file gets the mode the umask allows.
+        if (false === @file_put_contents($temporary, $json) || !@chmod($temporary, 0o666 & ~umask()) || !@rename($temporary, $file)) {
             @unlink($temporary);
 
             return false;

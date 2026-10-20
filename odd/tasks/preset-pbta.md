@@ -1,7 +1,7 @@
 # Feature: preset-pbta
 
 - **Locator:** `odd/tasks/preset-pbta.md` · Engram topic `odd/preset-pbta/tasks`
-- **Issue:** #234 · **Branch:** `feat/preset-pbta-1-export` · **Status:** in progress (slice 1)
+- **Issue:** #234 · **Branch:** `feat/preset-pbta-2-preset` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-journal-attachments` (PRs #232–#233)
@@ -65,9 +65,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; ADR 0036 (export a release as a preset file; Studio-owned key with the same hash is skipped) and ADR index row; ADR 0028 status note; roadmap B7 in progress | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: this feature doc; ADR 0036 (export a release as a preset file; Studio-owned key with the same hash is skipped) and ADR index row; ADR 0028 status note; roadmap B7 in progress | delegated writer (slice 1) | [x] | 84209a6 |
 | T2 | 1 | Author `hearts-and-rapiers` in Studio from the outline, publish v1, log every Studio friction under Studio findings | parent (browser, worker) | [x] | — |
-| T3 | 1 | `app:gamesystem:export <key> [--release N] [--output path]` (canonical pretty JSON, fails closed on an unknown key or version); console publisher reports "Unchanged (managed in Studio)" for a Studio-owned key whose latest release has the file's hash; unit and integration tests | delegated writer (slice 1) | [x] | |
+| T3 | 1 | `app:gamesystem:export <key> [--release N] [--output path]` (canonical pretty JSON, fails closed on an unknown key or version); console publisher reports "Unchanged (managed in Studio)" for a Studio-owned key whose latest release has the file's hash; unit and integration tests | delegated writer (slice 1) | [x] | 58d804d |
 | T4 | 2 | Playtest a session in Play (browser); fix content gaps in Studio and republish; log Play findings | parent (browser) | [ ] | — |
 | T5 | 2 | Export the latest release to `backend/presets/hearts-and-rapiers.json` unedited; `PresetsTest`; flow unit test; move band edge tests; e2e spec | delegated writer (slice 2) | [ ] | |
 | T6 | 2 | Wrap-up: roadmap B7 done; this doc closed | delegated writer (slice 2) | [ ] | |
@@ -78,7 +78,7 @@ Authored 2026-10-20 by a Claude in Chrome worker as `pbta-author@ogami.test` (~3
 
 | ID | Finding | Severity | Plan |
 |---|---|---|---|
-| S1 | Whole app: signed out mid-session with no message (session TTL?); keystrokes landed on /login. Bug candidate | High | → `studio-ui-polish` (investigate) |
+| S1 | Whole app: signed out mid-session, keystrokes landed on /login. Not a bug: the php log shows `POST /api/auth/logout` at 21:29:44 UTC followed by six more within a second (the automation activated the focused Sign out, key repeat), no expiry or deauthentication | — | None (automation) |
 | S2 | Checks: no duplicate; 12 moves ≈ 30–40 actions each; no miss/partial/full band preset | High | → `studio-ui-polish` |
 | S3 | Checks: new band defaults to key `outcome`; bound select must switch to "A number" first | Medium | → `studio-ui-polish` |
 | S4 | Checks: form stays open as "Edit …" after create; new-check form moves | Low | → `studio-ui-polish` |
@@ -86,10 +86,10 @@ Authored 2026-10-20 by a Claude in Chrome worker as `pbta-author@ogami.test` (~3
 | S6 | Oracle tables: only the first coverage error shows (clear message) | Low | — |
 | S7 | Tables, flows, checks: native selects not keyboard-friendly (typing doesn't select) | Medium | → `studio-ui-polish` |
 | S8 | Scene Types: create navigates to the editor, unlike other creates | Medium | → `studio-ui-polish` |
-| S9 | Flow editor: flow-level checkboxes set by synthetic input didn't persist; clicks did. Bug candidate | Low | → `studio-ui-polish` (investigate) |
+| S9 | Flow editor: flow-level checkboxes set by synthetic input didn't persist; real clicks did. Automation artifact (synthetic events skip React's change handler) | — | None (automation) |
 | S10 | Flow editor: new phase auto-adds a scene type; hooks are deep collapsed accordions; no step outline | High | → `studio-ui-polish` |
-| S11 | Flow editor: no `sheet` effect on choice/prompt steps (XP questions can't award XP); `{answer}` placeholders undocumented in UI | Medium | Contract gap + UI hint; backlog |
-| S12 | Flow editor: a check step binds one check, so "Defy Disaster with any stat" needs five steps | Medium | Contract gap; backlog |
+| S11 | Flow editor: no `sheet` effect on choice/prompt steps (XP questions can't award XP); `{answer}` placeholders undocumented in UI | Medium | Contract gap → `rules-flow-choices` (B8b); `{answer}` hint → `studio-ui-polish` |
+| S12 | Flow editor: a check step binds one check, so "Defy Disaster with any stat" needs five steps | Medium | Contract gap → `rules-flow-choices` (B8b) |
 | S13 | Flow editor: choice Skip error has no field link | Low | → `studio-ui-polish` |
 | S14 | Flow editor: Save gives no visible feedback near the button; a failed save only showed in Validation. Bug candidate | High | → `studio-ui-polish` |
 | S15 | Validation: only the first error, as a JSON path, no link to the field | High | → `studio-ui-polish` |
@@ -108,14 +108,17 @@ Authored 2026-10-20 by a Claude in Chrome worker as `pbta-author@ogami.test` (~3
 
 - 2026-10-20: explored ADR 0018/0021/0024/0028, prior preset features, `make presets`; licenses checked (TSL open CC BY-SA 4.0; Bluebeard's Bride none). Export decision taken with the user. Issue #234.
 - 2026-10-20: T2 done: `hearts-and-rapiers` v1 published from Studio; modifier `{grace} - 2 * {frightened}` accepted; 20 Studio findings logged (S1–S20).
+- 2026-10-21: slice 1 merged (#235). S1 traced to the automation (seven `POST /api/auth/logout` in one second in the php log), not a session expiry; S9 an automation artifact. S11 and S12 moved to new backlog row B8b `rules-flow-choices`.
 - 2026-10-20: T1 done: ADR 0036 (Accepted), index row, ADR 0028 amendment note, roadmap B7 marked in progress. Docs only, so no runnable RED; structural readback of the links and the index.
+- 2026-10-21: slice 1 review fixes (stdout OUTPUT_RAW, --release test with distinct content, export file mode follows umask); RED/GREEN: the style-tag/backslash stdout test failed with a JSON syntax error and the umask test saw 0600 instead of 0644, both pass after the fix; the --release test change is test-only (no RED).
 - 2026-10-20: T3 done. RED: `PublishGameSystemReleaseHandlerTest::aStudioKeyWhoseLatestReleaseHasTheSameContentIsSkippedWhenOnlyIfChanged` threw `GameSystemManagedInStudio`; `ExportGameSystemReleaseConsoleCommandTest` failed on the missing `app:gamesystem:export`. GREEN: the skip lives in `PublishGameSystemReleaseHandler` (via `ReleasePublisher::latestHas`), the console says "managed in Studio" through the `IsGameSystemManagedInStudio` query; export reads `GetPublishedRelease`; round trip export, publish `--if-changed`, Unchanged passes for schema versions 1 and 2.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-1bb45d588bb974f8` | 84209a6, 58d804d | approved; 1 warning (stdout export goes through the console formatter: use `OUTPUT_RAW`), 2 suggestions (`--release` test publishes identical content; temp file mode 0600 survives the rename), fixed in slice 2 | [#235](https://github.com/iribarren/ogami/pull/235) |
 
 ## Next step
 
-Brief the slice 1 writer (T1, T3) on `feat/preset-pbta-1-export`; this doc is uncommitted on `main` and goes in its first commit.
+Slice 2: T4 playtest in Play (browser), then T5 export and tests, T6 wrap-up.

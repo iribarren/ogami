@@ -39,6 +39,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0033 | [Studio library packs](0033-studio-library-packs.md) | Accepted |
 | 0034 | [Admin user management, invitations and password reset](0034-admin-user-management.md) | Accepted |
 | 0035 | [Campaign release upgrade](0035-campaign-release-upgrade.md) | Accepted |
+| 0036 | [Export releases as preset files](0036-export-releases-as-preset-files.md) | Accepted |
 
 ## Template
 

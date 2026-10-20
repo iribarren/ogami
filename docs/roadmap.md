@@ -63,7 +63,7 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 
 ## Backlog
 
-Items here come after every feature defined above. Build them in this order: fixes and tooling first, then guided-play and theme polish before the next playtests, then each rules feature right before the presets that need it. Only `preset-cpr-campaign` needs `play-items-economy`; `preset-west-marches` uses it for shops only.
+Items here come after every feature defined above. Build them in this order: fixes and tooling first, then guided-play and theme polish before the next playtests, then each rules feature right before the presets that need it. Studio polish follows the first preset authored in Studio (B7), so its findings shape the design. Only `preset-cpr-campaign` needs `play-items-economy`; `preset-west-marches` uses it for shops only.
 
 | # | Item | Area | Depends on | Idea |
 |---|---|---|---|---|
@@ -74,6 +74,7 @@ Items here come after every feature defined above. Build them in this order: fix
 | B5 | `ui-theme-polish` | UI | — | Give the UI depth and a game feel, following the [design canvas](https://claude.ai/artifact/6MWYwPaXvQVUJYb7cXGiSo) (private): a `--well` token so inputs sit sunken instead of matching their card, layered card shadows and a background texture per theme, lucide icons on panel headers, dice buttons and actions, and per-theme embellishments (title mark, label style, divider ornament, panel frame, drop cap, tracker pip shape) so every campaign theme feels as distinct as Neon. Before the preset playtests, so they judge the finished look |
 | B6 | `play-journal-attachments` | Play | — | Write a note and attach hand-picked roll and oracle results from the current scene. `play-campaign-journal` records each result as its own entry |
 | B7 | `preset-pbta` | Preset | B4 | A Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands fit the contract today: no contract change. Authored in Studio, as the first end-to-end proof of M4 on a new system |
+| B7b | `studio-ui-polish` | Studio | B7 | Design first: a design canvas of the Studio screens in the default light and dark themes, reviewed before any code. Then fix the Studio findings of B7 and apply the canvas: the B5 depth, type and icon tokens where they fit, icon tiles on tabs and editor sections, test results in wells, lucide icons on add, delete and reorder buttons, editor list density |
 | B8 | `rules-dice-pools` | Rules | B4 | Close the pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md) once, across the contract, Play, the Studio check editor and the release upgrade planner: a dice count read from the sheet, counting successes per die, pushed rolls (re-roll the dice that did not succeed) and conditions as sheet effects |
 | B9 | `preset-vaesen` | Preset | B8 | A Vaesen preset on the Year Zero SRD, under Free League's free license: d6 pools, sixes as successes, pushed rolls and conditions from B8 |
 | B10 | `preset-vtm-chronicle` | Preset | B8 | A Vampire: the Masquerade night-court sandbox fan preset ([example 1](domain/flow-examples.md#1-vtm-chronicle-sandbox)): d10 pools from B8, plus critical pairs and Hunger dice. The Dark Pack license is non-commercial: check it fits before starting |
@@ -362,17 +363,23 @@ Done: the public account endpoints answer every error with `{error, code}` (`Acc
 Start feature `e2e-shared-sign-in` (ODD). Tooling: replace the per-spec Playwright sign-in helpers with one shared helper in `frontend/e2e/` (exact label lookups, as the specs use now), next to `mailpit.ts`. No behaviour change; `make e2e` stays green. One `chore/` slice.
 ```
 
+Done: one shared Playwright sign-in helper next to `mailpit.ts` (PRs #220 and #221, closes #219); see [odd/tasks/e2e-shared-sign-in.md](../odd/tasks/e2e-shared-sign-in.md). The prompt is kept for reference.
+
 **B4. play-guided-polish**
 
 ```text
 Start feature `play-guided-polish` (ODD). Play: fix the open playtest findings of `preset-mythic-flow` (P7–P13) and `preset-guided-sample` (N8–N13), listed under "Playtest findings" in their feature docs. First check each one against the current code (later features fixed some in part, e.g. the New scene form hidden while a Flow guides) and drop the ones already fixed. Expected themes: interpret a roll step's outcome in the journal; journal lines for tracker effects and Scene Type switches; no "Next:" preview of a branch-only step or before the dice decide; scene numbers per session and none for world turns; guide tips and "So far" reset after a scene; links from list-update prompts to the Threads and NPCs panels; random events tied to their fate question; steps shown only when a condition holds. Decide per finding whether it is a Play fix or a contract change, and keep contract changes additive in schema version 2. Replay a short guided session in Chrome to confirm. Out of scope: new step kinds beyond what a finding needs.
 ```
 
+Done: the open playtest findings P7–P13 and N8–N13 in four slices (PRs #223–#226, closes #222); see [odd/tasks/play-guided-polish.md](../odd/tasks/play-guided-polish.md). The prompt is kept for reference.
+
 **B5. ui-theme-polish**
 
 ```text
 Start feature `ui-theme-polish` (ODD). Frontend only: give the app depth and a game feel, following the design canvas https://claude.ai/artifact/6MWYwPaXvQVUJYb7cXGiSo (the campaign Play screen in the default theme and the five campaign themes, plus an inputs now-vs-proposed board). 1) Depth: a `--well` token per palette in `index.css` (sunken background plus inset shadow) used by Input, Textarea, NativeSelect and read-out surfaces (last roll, oracle answer, empty tracker pips); layered card shadows; a subtle background texture per theme. 2) Icons: lucide-react icons in tiles on PlayPanel headers, the step card, the journal and icon-only buttons; dice buttons drawn as their die shapes. 3) Per-theme embellishments as theme tokens and CSS, not per-component branches: label style, title treatment and mark, a divider ornament, panel frame, a drop cap on journal prose, tracker pip and icon tile shapes. Storybook stories per theme for the touched components. Out of scope: new themes, layout changes.
 ```
+
+Done: depth, per-theme type, icon tiles and dice shapes, then title marks, divider ornaments, panel frames, drop caps and tracker pips (PRs #228 and #229, closes #227); see [odd/tasks/ui-theme-polish.md](../odd/tasks/ui-theme-polish.md). The prompt is kept for reference.
 
 **B6. play-journal-attachments**
 
@@ -384,6 +391,12 @@ Start feature `play-journal-attachments` (ODD). Play: write a journal note and a
 
 ```text
 Start feature `preset-pbta` (ODD). Author a Powered by the Apocalypse preset in Studio, not as hand-written JSON: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands (miss, partial, full) fit the contract today, so no contract change is planned; log every Studio friction as a finding. Export the published release into `backend/presets/` so `make presets` keeps it. Fan-content rule (ADR 0018) and credits with the publisher's notice (ADR 0021). Play a session and log findings. This is the first end-to-end proof of M4 on a new system.
+```
+
+**B7b. studio-ui-polish**
+
+```text
+Start feature `studio-ui-polish` (ODD). Two parts, in order. 1) Design, before any code: a design canvas (an artifact, as for `ui-theme-polish`) of the Studio screens in the default light and dark themes: home, the GameSystem page and its tabs, the oracle, Trackers & tags, Scene Types, Flows, sheet and check editors, the test-roll sandboxes, the publish dialog and the Releases tab. Start from the B5 tokens (wells, card shadows, label type, icon tiles) and the Studio findings logged by `preset-pbta`. The user reviews the canvas; distil its decisions and values into the feature doc, so writers work from the doc. 2) Build: slices that apply the canvas and fix those findings. Frontend only unless a finding needs an API change; accessible names unchanged; `contrast.test.ts` rules. Out of scope: campaign themes in Studio, new editors.
 ```
 
 **B8. rules-dice-pools**

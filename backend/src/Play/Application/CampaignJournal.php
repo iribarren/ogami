@@ -7,13 +7,17 @@ namespace App\Play\Application;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\FlowRun\FlowNote;
 use App\Play\Domain\Campaign\NoCurrentScene;
+use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\FlowOutcomeContent;
 use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
+use App\Play\Domain\Journal\InvalidNoteAttachment;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryContent;
@@ -23,6 +27,7 @@ use App\Play\Domain\Journal\LikelihoodContent;
 use App\Play\Domain\Journal\NotARandomEventQuestion;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
+use App\Play\Domain\Journal\RollContent;
 
 /**
  * Records journal entries on behalf of a player: what every Record* handler shares. A handler
@@ -31,6 +36,9 @@ use App\Play\Domain\Journal\RandomEventAlreadyRolled;
  */
 final readonly class CampaignJournal
 {
+    /** The kinds of entry a note can attach: results the player rolled or asked for. */
+    private const array ATTACHABLE_KINDS = [RollContent::KIND, OracleTableContent::KIND, LikelihoodContent::KIND, CheckContent::KIND];
+
     public function __construct(
         private OwnedCampaigns $ownedCampaigns,
         private JournalEntryRepository $entries,
@@ -156,6 +164,51 @@ final readonly class CampaignJournal
         foreach ($this->entries->ofCampaign($campaign->id()) as $recorded) {
             if ($recorded->content() instanceof OracleTableContent && $recorded->content()->forEntry() === $entryId) {
                 throw RandomEventAlreadyRolled::forEntry($entryId);
+            }
+        }
+    }
+
+    /**
+     * The results a note attaches, checked before anything is recorded: each is an entry of this
+     * campaign, recorded in the campaign's current session and scene, of a kind that can be
+     * attached (a roll, an oracle table result, a likelihood answer or a check) and not the result
+     * of a random event, which belongs to its question. Only the given entries are loaded.
+     * (Duplicates and the maximum are the note's own rules.).
+     *
+     * @param list<string> $entryIds
+     *
+     * @throws InvalidNoteAttachment
+     * @throws NoCurrentScene        when the campaign has no current scene to record the note in
+     */
+    public function assertAttachable(array $entryIds, Campaign $campaign): void
+    {
+        if ([] === $entryIds) {
+            return;
+        }
+
+        $session = $campaign->currentSession();
+        $scene = $session?->currentScene();
+        if (!$session instanceof Session || !$scene instanceof Scene) {
+            throw NoCurrentScene::toRecordJournalEntry();
+        }
+
+        foreach ($entryIds as $entryId) {
+            $entry = $this->entries->ofId(JournalEntryId::fromString($entryId));
+            if (!$entry instanceof JournalEntry || !$entry->campaignId()->equals($campaign->id())) {
+                throw InvalidNoteAttachment::notInCampaign($entryId);
+            }
+
+            if ($entry->sessionNumber() !== $session->number() || $entry->sceneNumber() !== $scene->number()) {
+                throw InvalidNoteAttachment::anotherScene($entryId);
+            }
+
+            $content = $entry->content();
+            if (!\in_array($content->kind(), self::ATTACHABLE_KINDS, true)) {
+                throw InvalidNoteAttachment::notAttachableKind($entryId, $content->kind());
+            }
+
+            if ($content instanceof OracleTableContent && null !== $content->forEntry()) {
+                throw InvalidNoteAttachment::randomEvent($entryId);
             }
         }
     }

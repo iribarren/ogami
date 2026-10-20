@@ -103,4 +103,30 @@ final class ContentData
 
         return $items;
     }
+
+    /**
+     * A list of strings, e.g. the ids a note attaches.
+     *
+     * @param array<mixed> $data
+     *
+     * @return list<string>
+     */
+    public static function listOfStrings(array $data, string $field): array
+    {
+        $value = $data[$field] ?? null;
+        if (!\is_array($value) || !array_is_list($value)) {
+            throw InvalidJournalEntryContent::malformed($field, 'a list of strings');
+        }
+
+        $items = [];
+        foreach ($value as $item) {
+            if (!\is_string($item)) {
+                throw InvalidJournalEntryContent::malformed($field, 'a list of strings');
+            }
+
+            $items[] = $item;
+        }
+
+        return $items;
+    }
 }

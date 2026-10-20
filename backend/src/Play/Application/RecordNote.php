@@ -12,11 +12,15 @@ use App\Shared\Application\Bus\Command;
  */
 final readonly class RecordNote implements Command
 {
+    /**
+     * @param list<string> $attachments ids of the journal entries of the current scene the note attaches, in the order picked
+     */
     public function __construct(
         public string $entryId,
         public string $campaignId,
         public string $userId,
         public string $text,
+        public array $attachments = [],
     ) {
     }
 }

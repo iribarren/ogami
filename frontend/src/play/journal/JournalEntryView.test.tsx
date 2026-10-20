@@ -147,6 +147,27 @@ describe('JournalEntryView check entries', () => {
     expect(within(entry).getByText('Total').nextElementSibling).toHaveTextContent(/^12$/)
   })
 
+  it('wraps the dice of a check in a well, and leaves the well out when no dice were rolled', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    const { unmount } = render(<JournalEntryView entry={skillCheckEntry} />)
+    const wrapped = screen.getByRole('article', { name: 'Check Skill check' })
+    expect(
+      within(wrapped).getByRole('list', { name: '1d10 dice' }).closest('.bg-well'),
+    ).not.toBeNull()
+    unmount()
+
+    render(<JournalEntryView entry={{ ...skillCheckEntry, content: { ...content, groups: [] } }} />)
+    const bare = screen.getByRole('article', { name: 'Check Skill check' })
+    expect(within(bare).queryByRole('list')).not.toBeInTheDocument()
+    expect(bare.querySelector('.bg-well')).toBeNull()
+    // The rest of the check still renders.
+    expect(within(bare).getByText('Success')).toBeInTheDocument()
+    expect(within(bare).getByText('Dice').nextElementSibling).toHaveTextContent('1d10 = 7')
+  })
+
   it('renders a sheet change one line per field, with the sheet labels and the dice rolled', () => {
     render(
       <JournalEntryView entry={sanityLossEntry} sheet={[{ key: 'sanity', label: 'Sanity' }]} />,
@@ -191,4 +212,24 @@ describe('JournalEntryView check entries', () => {
 
     expect(screen.getByText('Situational').nextElementSibling).toHaveTextContent('-3')
   })
+})
+
+describe('JournalEntryView icon tile', () => {
+  it.each([
+    [gateNote, 'Note'],
+    [keepThreeRoll, 'Roll 4d6kh3+2'],
+    [stormyWeather, 'Oracle Weather'],
+    [skillCheckEntry, 'Check Skill check'],
+  ])(
+    'keeps the article name of %# as "%s" and hides the tile from assistive technology',
+    (entry, name) => {
+      render(<JournalEntryView entry={entry} />)
+
+      const article = screen.getByRole('article', { name })
+      const tile = article.querySelector('.icon-tile')
+      expect(tile).toHaveAttribute('aria-hidden', 'true')
+      expect(tile?.textContent).toBe('')
+      expect(article).toHaveAccessibleName(name)
+    },
+  )
 })

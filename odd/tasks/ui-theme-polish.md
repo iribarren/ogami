@@ -1,7 +1,7 @@
 # Feature: ui-theme-polish
 
 - **Locator:** `odd/tasks/ui-theme-polish.md` · Engram topic `odd/ui-theme-polish/tasks`
-- **Issue:** #227 · **Branch:** `feat/ui-theme-polish-1-depth` · **Status:** in progress (slice 1)
+- **Issue:** #227 · **Branch:** `feat/ui-theme-polish-2-embellishments` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-guided-polish` (PR #226)
@@ -130,11 +130,12 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 | T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | `dc86cf3` |
 | T2 | 1 | Depth: `--well`, `--well-shadow`, `--card-shadow`, `--button-shadow`, `--readout-shadow`, texture tokens in all seven palette blocks; wells on Input, Textarea, NativeSelect and the journal read-outs; layered shadows on Card, PlayPanel, the step card and journal entries; body texture; primary button shadow; per-theme story helper and stories | delegated writer, direct | [x] | `5511ddb` |
 | T3 | 1 | Type: label, page title, panel title, prose and button tokens; `Label` and the ad-hoc group labels; missing fonts (Geist Mono, EB Garamond 400, IM Fell English italic); contrast pair for the label color; stories | delegated writer, direct | [x] | `542c729` |
-| T4 | 1 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | delegated writer, direct | [x] | `0d58319` |
+| T4 | 1 | Icon tiles: tile and `--icon` tokens, `IconTile`, lucide icons on PlayPanel headers (chevron included), the step card and the journal; lucide icons on existing icon-only buttons; contrast pairs; stories | delegated writer, direct | [x] | `0d58319`, `4c581b1` |
 | T5 | 1 | `DieShape` (d4–d20) and the dice preset buttons drawn as their dice; stories | delegated writer, direct | [x] | `966d680` |
+| F1 | 2 | Slice 1 review fixes (R3): test CheckView's empty-dice-groups path against the well-wrapped path (`JournalEntryView.tsx:203-207`); test that journal article names stay unchanged with the entry `IconTile` (`JournalEntryView.tsx:68-87`) | delegated writer, direct | [x] | |
 | T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | | [ ] | |
 | T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | | [ ] | |
-| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | | [ ] | |
+| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | parent, after the writer (browser) | [ ] | |
 
 ## Progress
 
@@ -146,12 +147,15 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-19: T4 tile tokens in all seven blocks (`.dark` keeps ogami shapes, colors from the dark primary), `IconTile`, `DieShape` (pulled forward for the Dice panel icon), tiles on panels, step card and journal entries, lucide chevrons, `X` on the fact link remove button, contrast pairs for `--tile-fg` and `--icon` (no design color changed; GREEN only, tests came after the code). The link remove `×` in `play/lists/TagFields.tsx` is outside the allowed surface and stays a glyph (delegated writer, direct).
 - 2026-10-19: T5 dice preset buttons draw `d20` hexagon, `2d6`/`4d6kh3` square and `d%` kite above their labels (56px, names unchanged; custom presets get no shape); `DieShape` itself landed in the T4 commit; per-theme DiceRoller and DieShape gallery stories (delegated writer, direct; DiceRoller shape tests RED first: 4 failed, then GREEN).
 - 2026-10-19: T4 follow-up by the parent: the free-tag remove button in `TagFields.tsx` (outside the writer's surfaces) uses the lucide `X` like `FactsPanel`; `src/play/lists` Vitest 32 passed. Route: parent, inline (one mechanical file).
+- 2026-10-20: slice 1 merged (PR #228); slice 2 started, F1 added from the slice 1 review.
+- 2026-10-20: F1 CheckView well-versus-empty-groups test and journal article-name/tile tests added (delegated writer, direct; regression tests of existing behavior, so GREEN on first run, no RED applicable).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-b12d0813f63c99bf` | `dc86cf3`…`4c581b1` (~1,017 lines) | approved and acknowledged; two R3 test suggestions, fixed in slice 2 (F1) | #228 |
 
 ## Next step
 
-Slice 1: T4–T5 on `feat/ui-theme-polish-1-depth`, then review and PR (1/2).
+Slice 2: F1, T6–T7 by the writer on `feat/ui-theme-polish-2-embellishments`, T8 Chrome pass by the parent, then review and PR (2/2, `Closes #227`) and the doc-only wrap-up commit on that PR.

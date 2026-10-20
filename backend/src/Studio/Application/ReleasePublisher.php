@@ -24,6 +24,14 @@ final readonly class ReleasePublisher
     }
 
     /**
+     * Whether the latest release of the content's GameSystem has exactly this content (its hash).
+     */
+    public function latestHas(ReleaseContent $content): bool
+    {
+        return $this->releases->latestFor($content->gameSystemKey())?->contentHash() === $content->hash();
+    }
+
+    /**
      * @param bool                                                                  $unlessUnchanged publish nothing when the latest release has the same content
      * @param list<array{section: string, key: string, pack: string, hash: string}> $librarySources  the draft's library imports, kept beside the release (not in its hash)
      *

@@ -136,6 +136,31 @@ final class NoteContentTest extends TestCase
         self::assertEquals(NoteContent::of('The gate is shut.'), $note);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
+    #[Test]
+    #[DataProvider('malformedStoredNotes')]
+    public function aMalformedStoredNoteFailsAsMalformedContent(array $data): void
+    {
+        $this->expectException(InvalidJournalEntryContent::class);
+        $this->expectExceptionMessageIsOrContains('"attachments"');
+
+        NoteContent::fromArray($data);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function malformedStoredNotes(): iterable
+    {
+        yield 'a string' => [['kind' => 'note', 'text' => 'A note.', 'attachments' => 'entry-1']];
+        yield 'a number in the list' => [['kind' => 'note', 'text' => 'A note.', 'attachments' => [3]]];
+        yield 'a blank id' => [['kind' => 'note', 'text' => 'A note.', 'attachments' => ['entry-1', ' ']]];
+        yield 'a duplicate' => [['kind' => 'note', 'text' => 'A note.', 'attachments' => ['entry-1', 'entry-1']]];
+        yield 'twenty-one ids' => [['kind' => 'note', 'text' => 'A note.', 'attachments' => array_map(static fn (int $n): string => 'entry-'.$n, range(1, 21))]];
+    }
+
     #[Test]
     public function aNoteRoundTripsThroughItsArray(): void
     {

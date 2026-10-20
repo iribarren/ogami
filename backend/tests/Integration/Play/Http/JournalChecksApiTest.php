@@ -155,6 +155,27 @@ final class JournalChecksApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aNoteAttachesACheckResult(): void
+    {
+        [$id, $vi] = $this->campaignInAScene();
+        $this->random->script(9);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $id), ['check' => 'skill', 'character' => $vi]);
+        self::assertResponseStatusCodeSame(201);
+        $check = self::ENTRY_ID_PREFIX.'01';
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/notes', $id), ['text' => 'Vi makes it.', 'attachments' => [$check]]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['kind' => 'note', 'text' => 'Vi makes it.', 'attachments' => [$check]], $this->json()['content'] ?? null);
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        $note = $this->json()[1] ?? null;
+        self::assertIsArray($note);
+        $content = $note['content'] ?? null;
+        self::assertIsArray($content);
+        self::assertSame([$check], $content['attachments'] ?? null);
+    }
+
+    #[Test]
     public function theDefaultDifficultyAndNoSituationalModifierApplyWhenOmittedOrNull(): void
     {
         [$id, , $ada] = $this->campaignInAScene();

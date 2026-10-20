@@ -798,7 +798,7 @@ final class JournalApiTest extends WebTestCase
             'note' => [[$note], $note],
             'event' => [[$event], $event],
             'duplicate' => [[$current, $current], $current],
-            'many' => [array_fill(0, 21, $current), ''],
+            'many' => [array_fill(0, 21, $current), 'at most 20'],
             'malformed' => [['not-an-id'], 'not-an-id'],
             default => throw new \LogicException(\sprintf('Unknown case "%s".', $case)),
         };

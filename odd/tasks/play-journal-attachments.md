@@ -1,7 +1,7 @@
 # Feature: play-journal-attachments
 
 - **Locator:** `odd/tasks/play-journal-attachments.md` · Engram topic `odd/play-journal-attachments/tasks`
-- **Issue:** #231 · **Branch:** `feat/play-journal-attachments-1-api` · **Status:** in progress (slice 1)
+- **Issue:** #231 · **Branch:** `feat/play-journal-attachments-2-ui` · **Status:** done (slice 2 in PR #233)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `ui-theme-polish` (PR #229)
@@ -42,7 +42,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 | API | `POST …/journal/notes` gains an optional nullable `attachments: string[]`. `NoteContentResponse` gains a required `attachments: string[]` (ids, `[]` when none); the client resolves them from the journal it already holds, as `randomEvents.ts` does. No new endpoint |
 | Lookup | One `ofId` per attached id, at most 20 primary-key finds; never the whole campaign (no new repository method) |
 | Picker (slice 2) | In `NoteComposer`: a toggle list of the current scene's attachable results (newest first, each with a short label from the existing entry renderers), checkbox per result, order = journal order. Cleared after a successful post |
-| Folding (slice 2) | `Journal` hides every entry attached to any note in the scene and renders the attached entries inside the note card, in the note's order; `FocusPanel` follows the same rule if it lists scene entries |
+| Folding (slice 2) | `Journal` hides every entry attached to any note in the scene and renders the attached entries inside the note card, in the note's order; `FocusPanel` lists the scene's entries (`FocusPanel.tsx:96-100`), so it follows the same rule |
 
 ## Constraints
 
@@ -55,18 +55,19 @@ A scene's journal reads as a list of loose results with notes between them. The 
 | Slice | Branch | Tasks | Forecast |
 |---|---|---|---|
 | 1 | `feat/play-journal-attachments-1-api` | T1–T3 | ~1,100–1,400 (domain and validation ~300, HTTP and API tests ~350, Behat ~80, generated `openapi.json` / `schema.d.ts` ~150–400, frontend fixtures and type fallout ~100, doc ~150) |
-| 2 | `feat/play-journal-attachments-2-ui` | T4–T6 | ~900–1,300 (picker ~300, folding and note rendering ~300, Vitest ~300, e2e ~80, stories ~100, glossary and ADR 0016 note ~50) |
+| 2 | `feat/play-journal-attachments-2-ui` | T7, T4–T6 | ~1,000–1,400 (slice 1 review fixes ~100, picker ~300, folding and note rendering ~300, Vitest ~300, e2e ~80, stories ~100, glossary and ADR 0016 note ~50) |
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | |
-| T2 | 1 | Domain and application: `NoteContent` attachments (ordered ids, `fromArray` legacy `[]`), attachment rules in `CampaignJournal` (same campaign and scene, attachable kind, no random event, no duplicates, ≤ 20) with a domain error, `RecordNote` carries the ids; unit tests | delegated writer, direct | [x] | |
-| T3 | 1 | HTTP and contract: `RecordNoteRequest.attachments` (optional, nullable), 422 mapping, `NoteContentResponse.attachments`, API tests (every 422 case, round trip, legacy note), Behat scenario, `make api`, frontend fixtures and type fallout | delegated writer, direct | [x] | |
-| T4 | 2 | `NoteComposer` attachment picker for the current scene's attachable results; `useRecordNote` sends `attachments`; Vitest; stories | | [ ] | |
-| T5 | 2 | Journal folding: attached entries hidden from their place and rendered inside their note (and in `FocusPanel` if it lists scene entries); Vitest; e2e in `play-session.spec.ts` | | [ ] | |
-| T6 | 2 | Docs: glossary JournalEntry kinds and attachments; ADR 0016 note on folded results | | [ ] | |
+| T1 | 1 | This feature doc | parent doc, writer commits (delegated writer, direct) | [x] | `d4db0fb` |
+| T2 | 1 | Domain and application: `NoteContent` attachments (ordered ids, `fromArray` legacy `[]`), attachment rules in `CampaignJournal` (same campaign and scene, attachable kind, no random event, no duplicates, ≤ 20) with a domain error, `RecordNote` carries the ids; unit tests | delegated writer, direct | [x] | `5c0634b` |
+| T3 | 1 | HTTP and contract: `RecordNoteRequest.attachments` (optional, nullable), 422 mapping, `NoteContentResponse.attachments`, API tests (every 422 case, round trip, legacy note), Behat scenario, `make api`, frontend fixtures and type fallout | delegated writer, direct | [x] | `5bf6eb7` |
+| T7 | 2 | Slice 1 review fixes: unit and API tests attaching a `check` and a `likelihood` result; `NoteContent::fromArray` fails with `InvalidJournalEntryContent` (not `InvalidNoteAttachment`) on a malformed stored note; the 21-ids API test asserts its real message | delegated writer, direct | [x] | `9e8f3e7` |
+| T4 | 2 | `NoteComposer` attachment picker for the current scene's attachable results; `useRecordNote` sends `attachments`; Vitest; stories | delegated writer, direct | [x] | `38084ef` |
+| T5 | 2 | Journal folding: attached entries hidden from their place and rendered inside their note (and in `FocusPanel` if it lists scene entries); Vitest; e2e in `play-session.spec.ts` | delegated writer, direct | [x] | `e03497c` |
+| T6 | 2 | Docs: glossary JournalEntry kinds and attachments; ADR 0016 note on folded results | delegated writer, direct | [x] | `90e7283` |
 
 ## Progress
 
@@ -74,12 +75,19 @@ A scene's journal reads as a list of loose results with notes between them. The 
 - 2026-10-20: T1 feature doc committed by the writer (doc-only, no test applicable).
 - 2026-10-20: T2 done: RED = fatal on missing `InvalidNoteAttachment`/`attachments` with src stashed; GREEN = `tests/Unit/Play` 1622 OK. Validation uses `ofId` per id (no new port method); stored-shape expectations updated incl. `JournalEntryRepositoryContract`.
 - 2026-10-20: T3 done: API/Behat tests written after the implementation (passed on first full run, no RED observed); JournalApiTest 90 OK, Integration/Play 998 OK, Behat 180 scenarios OK, `make qa` OK, `make api` regenerated; malformed `attachments` (not a list of strings) answers 422; Vitest first-render timeouts rerun per file: 188 OK.
+- 2026-10-20: T7 done: RED = 3 `NoteContentTest` malformed-stored-note cases threw `InvalidNoteAttachment` before the fix; GREEN = `tests/Unit/Play` + `JournalApiTest` + `JournalChecksApiTest` 1749 OK. The check and likelihood attachment tests passed first time (the rules were already generic).
+- 2026-10-20: T4 done: `NoteComposer` takes `current` and reads the journal itself (`useJournal`); `useRecordNote` already passed the request body through, so it needed no change. Picks are derived against the current scene's attachable results, so a scene change drops them. RED/GREEN: tests written with the implementation, one wrong-expectation fix, no separate RED; NoteComposer + CampaignPage tests OK.
+- 2026-10-20: T5 done: `isAttached` hides folded entries in `Journal` (emptiness check included) and `FocusPanel`; `NoteAttachments` renders them in the note's order through `JournalEntryView` children and `RandomEventOffer`, so an attached fate question keeps its event (and its roll button in the current scene). Tests written with the implementation (attachments helpers passed first run; one brittle assertion fixed); journal + FocusPanel Vitest 120 OK; e2e runs with the final checks. An attached table result no longer offers "Switch to <Scene Type>" (the offer stays on entries listed in place).
+- 2026-10-20: T6 done: glossary lists the nine JournalEntry kinds and defines Note attachment; ADR 0016 notes that attached results are folded under their note (display only). Doc-only, structural readback.
+- 2026-10-20: slice 2 reviewed (approved, acknowledged), PR #233 opened (`Closes #231`); feature done.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-a4a3b0353ee01c3e` | `d4db0fb`..`5bf6eb7` | Approved, acknowledged. Non-blocking R3: no test attaches a `check` (unit test lacks a likelihood); `NoteContent::fromArray` re-applies write rules on read and can throw `InvalidNoteAttachment`; the 21-ids API case has an empty needle. Fixed in slice 2 (T7) | #232 (merged) |
+| 2 | `review-bf605cef7d631e18` | `9e8f3e7`..`90e7283` | Approved, acknowledged. Non-blocking R3 suggestion: the picker does not cap picks at 20 (the server's 422 shows, picks kept); no test for the cap or the uncheck path. Left as a follow-up | #233 |
 
 ## Next step
 
-Slice 1 written; parent runs native review, opens the PR. Then slice 2 (T4–T6).
+None. Follow-ups: cap the picker at 20 attachments (R3, slice 2); an attached table result no longer offers "Switch to Scene Type" (offered only on entries listed in place).

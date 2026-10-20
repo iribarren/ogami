@@ -7,7 +7,15 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { fateDouble, fateDoubleEvent, gateNote, lostMineJournal } from '../journal/fixtures'
+import {
+  fateDouble,
+  fateDoubleEvent,
+  gateNote,
+  lockedDoorAnswer,
+  lostMineJournal,
+  noteAttaching,
+  stormyWeather,
+} from '../journal/fixtures'
 import { atStep, atTheScenePick, guided, inOpenPlay, promptStep, rollStep } from './fixtures'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
@@ -185,6 +193,21 @@ describe('focus mode', () => {
     expect(soFar.getAllByText('Dense fog')).toHaveLength(1)
     expect(soFar.queryByRole('button', { name: 'Roll Weather' })).not.toBeInTheDocument()
     expect(soFar.getByRole('textbox', { name: 'What does it mean?' })).toBeInTheDocument()
+  })
+
+  it('shows the attached results inside their note in the scene so far, not at their own place', async () => {
+    renderPlay(guided(atStep(promptStep), 'focus'), {}, [
+      lockedDoorAnswer,
+      stormyWeather,
+      noteAttaching([stormyWeather.id]),
+    ])
+
+    const focus = within(await focusRegion())
+    const soFar = within(await focus.findByRole('region', { name: 'So far' }))
+    const note = within(soFar.getByRole('article', { name: 'Note' }))
+    expect(note.getByRole('list', { name: 'Attached results' })).toHaveTextContent('Hail')
+    expect(soFar.getAllByText('Hail')).toHaveLength(1)
+    expect(soFar.getByText(/Is the door locked/)).toBeInTheDocument()
   })
 
   it('shows no summary at the scene pick, where the last scene has ended', async () => {

@@ -91,12 +91,15 @@ export function JournalEntryView({
   entry,
   tags = [],
   sheet = [],
+  children,
 }: {
   entry: JournalEntry
   /** The campaign's release Tags, so a pick shows labels instead of keys. */
   tags?: TagLabels
   /** The release's sheet fields, so a sheet change shows labels instead of keys. */
   sheet?: FieldLabels
+  /** Shown inside the card under the content: the results a note attaches. */
+  children?: ReactNode
 }) {
   return (
     <article
@@ -106,6 +109,7 @@ export function JournalEntryView({
       <IconTile size="md">{entryIcon(entry.content)}</IconTile>
       <div className="min-w-0 flex-1 space-y-2">
         <EntryContent content={entry.content} tags={tags} sheet={sheet} />
+        {children}
         <p className="text-xs text-muted-foreground">
           <time dateTime={entry.recordedAt}>{recordedTime.format(new Date(entry.recordedAt))}</time>
         </p>

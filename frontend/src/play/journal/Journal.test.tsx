@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 
 import { renderWithApi } from '@/test/renderWithApi'
 
@@ -8,8 +8,11 @@ import {
   fateDoubleEvent,
   flowOutcomeEntry,
   gateNote,
+  lockedDoorAnswer,
+  noteAttaching,
   sanityLossEntry,
   skillCheckEntry,
+  stormyWeather,
 } from './fixtures'
 import { Journal } from './Journal'
 
@@ -107,5 +110,64 @@ describe('Journal', () => {
 
     expect(screen.getAllByText('Flow step · Does the sight break you?')).toHaveLength(1)
     expect(screen.getByRole('article', { name: 'Flow outcome' })).toBeInTheDocument()
+  })
+  describe('with a note that attaches results', () => {
+    const note = noteAttaching([stormyWeather.id, lockedDoorAnswer.id])
+
+    it('shows the attached results inside the note, in its order, and not at their own place', () => {
+      renderJournal({ session: 2, scene: 1 }, [lockedDoorAnswer, stormyWeather, note])
+
+      const card = screen.getByRole('article', { name: 'Note' })
+      const attached = within(within(card).getByRole('list', { name: 'Attached results' }))
+      expect(
+        attached.getAllByRole('article').map((article) => article.getAttribute('aria-label')),
+      ).toEqual(['Oracle Weather', 'Oracle Fate question'])
+      expect(screen.getAllByText(/Is the door locked/)).toHaveLength(1)
+      expect(screen.getAllByText('Hail')).toHaveLength(1)
+      // The note and its two attached results are the only cards.
+      expect(screen.getAllByRole('article')).toHaveLength(3)
+    })
+
+    it('shows a result under each note that attaches it', () => {
+      const another = noteAttaching([stormyWeather.id], 'n2')
+
+      renderJournal({ session: 2, scene: 1 }, [stormyWeather, note, another])
+
+      expect(screen.getAllByText('Hail')).toHaveLength(2)
+    })
+
+    it('still shows a note whose attached ids are not in the journal', () => {
+      renderJournal({ session: 2, scene: 1 }, [note])
+
+      expect(screen.getByRole('article', { name: 'Note' })).toHaveTextContent('The door gives way.')
+      expect(screen.queryByRole('list', { name: 'Attached results' })).not.toBeInTheDocument()
+    })
+
+    it('keeps the random event under an attached fate question', () => {
+      renderJournal({ session: 2, scene: 1 }, [
+        fateDouble,
+        fateDoubleEvent,
+        noteAttaching([fateDouble.id]),
+      ])
+
+      const card = screen.getByRole('article', { name: 'Note' })
+      expect(within(card).getByText(/Does the guard notice/)).toBeInTheDocument()
+      expect(within(card).getAllByText('Dense fog')).toHaveLength(1)
+      expect(screen.getAllByText('Dense fog')).toHaveLength(1)
+    })
+
+    it('still offers the random event table of an attached fate question in the current scene', () => {
+      renderJournal({ session: 2, scene: 1 }, [fateDouble, noteAttaching([fateDouble.id])])
+
+      const card = screen.getByRole('article', { name: 'Note' })
+      expect(within(card).getByRole('button', { name: 'Roll Weather' })).toBeInTheDocument()
+    })
+  })
+
+  it('shows a note without attachments as before', () => {
+    renderJournal({ session: 2, scene: 1 }, [stormyWeather, noteAttaching([])])
+
+    expect(screen.queryByRole('list', { name: 'Attached results' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(2)
   })
 })

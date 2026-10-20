@@ -34,6 +34,27 @@ export function attachableIn(
   )
 }
 
+/**
+ * Whether a note of the list attaches the entry: the journal shows it under that note, not at
+ * its place in time (the entry itself stays as it was recorded).
+ */
+export function isAttached(entries: readonly JournalEntry[], entry: JournalEntry) {
+  return entries.some(
+    ({ content }) => content.kind === 'note' && content.attachments.includes(entry.id),
+  )
+}
+
+/**
+ * The entries a note attaches, in the order the note lists them. An id the list does not hold is
+ * left out.
+ */
+export function attachedTo(entries: readonly JournalEntry[], note: JournalEntry) {
+  if (note.content.kind !== 'note') {
+    return []
+  }
+  return note.content.attachments.flatMap((id) => entries.find((entry) => entry.id === id) ?? [])
+}
+
 /** A short line naming a result in the picker: what was rolled and what came out. */
 export function attachmentLabel(entry: JournalEntry) {
   const { content } = entry

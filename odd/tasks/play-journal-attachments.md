@@ -66,7 +66,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 | T3 | 1 | HTTP and contract: `RecordNoteRequest.attachments` (optional, nullable), 422 mapping, `NoteContentResponse.attachments`, API tests (every 422 case, round trip, legacy note), Behat scenario, `make api`, frontend fixtures and type fallout | delegated writer, direct | [x] | `5bf6eb7` |
 | T7 | 2 | Slice 1 review fixes: unit and API tests attaching a `check` and a `likelihood` result; `NoteContent::fromArray` fails with `InvalidJournalEntryContent` (not `InvalidNoteAttachment`) on a malformed stored note; the 21-ids API test asserts its real message | delegated writer, direct | [x] | |
 | T4 | 2 | `NoteComposer` attachment picker for the current scene's attachable results; `useRecordNote` sends `attachments`; Vitest; stories | delegated writer, direct | [x] | |
-| T5 | 2 | Journal folding: attached entries hidden from their place and rendered inside their note (and in `FocusPanel` if it lists scene entries); Vitest; e2e in `play-session.spec.ts` | | [ ] | |
+| T5 | 2 | Journal folding: attached entries hidden from their place and rendered inside their note (and in `FocusPanel` if it lists scene entries); Vitest; e2e in `play-session.spec.ts` | delegated writer, direct | [x] | |
 | T6 | 2 | Docs: glossary JournalEntry kinds and attachments; ADR 0016 note on folded results | | [ ] | |
 
 ## Progress
@@ -77,6 +77,7 @@ A scene's journal reads as a list of loose results with notes between them. The 
 - 2026-10-20: T3 done: API/Behat tests written after the implementation (passed on first full run, no RED observed); JournalApiTest 90 OK, Integration/Play 998 OK, Behat 180 scenarios OK, `make qa` OK, `make api` regenerated; malformed `attachments` (not a list of strings) answers 422; Vitest first-render timeouts rerun per file: 188 OK.
 - 2026-10-20: T7 done: RED = 3 `NoteContentTest` malformed-stored-note cases threw `InvalidNoteAttachment` before the fix; GREEN = `tests/Unit/Play` + `JournalApiTest` + `JournalChecksApiTest` 1749 OK. The check and likelihood attachment tests passed first time (the rules were already generic).
 - 2026-10-20: T4 done: `NoteComposer` takes `current` and reads the journal itself (`useJournal`); `useRecordNote` already passed the request body through, so it needed no change. Picks are derived against the current scene's attachable results, so a scene change drops them. RED/GREEN: tests written with the implementation, one wrong-expectation fix, no separate RED; NoteComposer + CampaignPage tests OK.
+- 2026-10-20: T5 done: `isAttached` hides folded entries in `Journal` (emptiness check included) and `FocusPanel`; `NoteAttachments` renders them in the note's order through `JournalEntryView` children and `RandomEventOffer`, so an attached fate question keeps its event (and its roll button in the current scene). Tests written with the implementation (attachments helpers passed first run; one brittle assertion fixed); journal + FocusPanel Vitest 120 OK; e2e runs with the final checks. An attached table result no longer offers "Switch to <Scene Type>" (the offer stays on entries listed in place).
 
 ## Reviews
 

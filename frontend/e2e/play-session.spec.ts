@@ -79,4 +79,28 @@ test('a solo player plays a free-journal session end to end', async ({ page }) =
     'Oracle Action',
     'Oracle Yes/no question',
   ])
+
+  // A note that attaches the roll: it is shown under the note and no longer on its own.
+  await page.getByRole('button', { name: 'Attach results' }).click()
+  await page.getByRole('checkbox', { name: /^Roll 2d6\+1 = / }).check()
+  await expect(page.getByRole('button', { name: 'Attach results (1)' })).toBeVisible()
+  await page.getByLabel('New note').fill('The dice decide it.')
+  await page.getByRole('button', { name: 'Write note' }).click()
+  const attaching = scene
+    .getByRole('article', { name: 'Note' })
+    .filter({ hasText: 'The dice decide it.' })
+  await expect(attaching.getByRole('article', { name: 'Roll 2d6+1' })).toBeVisible()
+  await expect(scene.getByRole('article', { name: 'Roll 2d6+1' })).toHaveCount(1)
+  // The picks are cleared once the note is written.
+  await expect(page.getByRole('button', { name: 'Attach results', exact: true })).toBeVisible()
+
+  // Saved: the roll is still folded under the note after a reload.
+  await page.reload()
+  await expect(scene.getByRole('article', { name: 'Roll 2d6+1' })).toHaveCount(1)
+  await expect(
+    scene
+      .getByRole('article', { name: 'Note' })
+      .filter({ hasText: 'The dice decide it.' })
+      .getByRole('article', { name: 'Roll 2d6+1' }),
+  ).toBeVisible()
 })

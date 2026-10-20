@@ -2,7 +2,9 @@ import { useId } from 'react'
 
 import { SceneCast } from '../cast/SceneCast'
 import type { Campaign } from '../campaigns/useCampaigns'
+import { isAttached } from '../journal/attachments'
 import { JournalEntryView } from '../journal/JournalEntryView'
+import { NoteAttachments } from '../journal/NoteAttachments'
 import { isListedRandomEvent } from '../journal/randomEvents'
 import { RandomEventOffer } from '../journal/RandomEventOffer'
 import { useJournal } from '../journal/useJournal'
@@ -97,7 +99,8 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
     (entry) =>
       entry.sessionNumber === campaign.currentSessionNumber &&
       entry.sceneNumber === sceneNumber &&
-      !isListedRandomEvent(journal.data ?? [], entry),
+      !isListedRandomEvent(journal.data ?? [], entry) &&
+      !isAttached(journal.data ?? [], entry),
   )
   if (sceneNumber === null || entries.length === 0) {
     return null
@@ -110,7 +113,16 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
       <ol className="space-y-3">
         {entries.map((entry) => (
           <li key={entry.id}>
-            <JournalEntryView entry={entry} tags={campaign.tags} />
+            <JournalEntryView entry={entry} tags={campaign.tags}>
+              <NoteAttachments
+                campaignId={campaign.id}
+                note={entry}
+                entries={journal.data ?? []}
+                tables={campaign.oracleTables}
+                tags={campaign.tags}
+                current
+              />
+            </JournalEntryView>
             <RandomEventOffer
               campaignId={campaign.id}
               entry={entry}

@@ -354,3 +354,11 @@ export const flowOutcomeEntry: JournalEntry = {
   },
   flowStep: { key: 'shock', title: 'Does the sight break you?', prompt: null },
 }
+
+/** A note in session 2, scene 1 that attaches the entries with the given ids, in that order. */
+export function noteAttaching(
+  attachments: string[],
+  id = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7098',
+): JournalEntry {
+  return recordedEntry({ kind: 'note', text: 'The door gives way.', attachments }, id)
+}

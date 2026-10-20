@@ -197,6 +197,15 @@
   --ornament-size: 12px 12px, calc(50% - 18px) 1px, calc(50% - 18px) 1px;
   --ornament-position: center, left center, right center;
   --ornament-glow: none;
+  --dropcap-font: var(--prose-font);
+  --dropcap-size: 1em;
+  --dropcap-line: 1;
+  --dropcap-float: none;
+  --dropcap-padding: 0;
+  --dropcap-color: oklch(0.22 0.015 60);
+  --dropcap-shadow: none;
+  --pip-height: 10px;
+  --pip-radius: 999px;
 }
 
 .dark {
@@ -298,6 +307,15 @@
   --ornament-size: 12px 12px, calc(50% - 18px) 1px, calc(50% - 18px) 1px;
   --ornament-position: center, left center, right center;
   --ornament-glow: none;
+  --dropcap-font: var(--prose-font);
+  --dropcap-size: 1em;
+  --dropcap-line: 1;
+  --dropcap-float: none;
+  --dropcap-padding: 0;
+  --dropcap-color: oklch(0.95 0.01 85);
+  --dropcap-shadow: none;
+  --pip-height: 10px;
+  --pip-radius: 999px;
 }
 
 /*
@@ -407,6 +425,15 @@
   --ornament-size: 84px 18px, calc(50% - 50px) 4px, calc(50% - 50px) 4px;
   --ornament-position: center, left center, right center;
   --ornament-glow: none;
+  --dropcap-font: var(--font-heading);
+  --dropcap-size: 58px;
+  --dropcap-line: 0.82;
+  --dropcap-float: left;
+  --dropcap-padding: 6px 10px 0 0;
+  --dropcap-color: oklch(0.4 0.14 25);
+  --dropcap-shadow: none;
+  --pip-height: 12px;
+  --pip-radius: 50%;
 }
 
 /* Cyberpunk: near-black violet, hot magenta primary, cyan accent. */
@@ -516,6 +543,15 @@
   --ornament-size: calc(100% - 124px) 2px, 12px 2px, 96px 2px;
   --ornament-position: left center, right 104px center, right center;
   --ornament-glow: drop-shadow(0 0 5px oklch(0.65 0.27 340 / 0.8));
+  --dropcap-font: var(--prose-font);
+  --dropcap-size: 1em;
+  --dropcap-line: 1;
+  --dropcap-float: none;
+  --dropcap-padding: 0;
+  --dropcap-color: oklch(0.96 0.02 300);
+  --dropcap-shadow: none;
+  --pip-height: 8px;
+  --pip-radius: 1px;
 }
 
 /* Crime, mystery: greyscale, high contrast, one desaturated amber accent. */
@@ -614,6 +650,15 @@
   --ornament-size: 100% 1px;
   --ornament-position: center;
   --ornament-glow: none;
+  --dropcap-font: var(--prose-font);
+  --dropcap-size: 1em;
+  --dropcap-line: 1;
+  --dropcap-float: none;
+  --dropcap-padding: 0;
+  --dropcap-color: oklch(0.95 0 0);
+  --dropcap-shadow: none;
+  --pip-height: 10px;
+  --pip-radius: 0px;
 }
 
 /* Horror: green-black, bone-white text, sickly green and deep teal. */
@@ -719,6 +764,15 @@
   --ornament-size: 60px 14px, calc(50% - 40px) 1px, calc(50% - 40px) 1px;
   --ornament-position: center, left center, right center;
   --ornament-glow: none;
+  --dropcap-font: var(--font-heading);
+  --dropcap-size: 58px;
+  --dropcap-line: 0.82;
+  --dropcap-float: left;
+  --dropcap-padding: 6px 10px 0 0;
+  --dropcap-color: oklch(0.72 0.17 140);
+  --dropcap-shadow: 0 0 14px oklch(0.72 0.17 140 / 0.5);
+  --pip-height: 12px;
+  --pip-radius: 50%;
 }
 
 /* Space sci-fi: cool white and blue-grey, teal primary. */
@@ -822,6 +876,15 @@
   --ornament-size: 100% 1px, 100% 5px;
   --ornament-position: center top, center bottom;
   --ornament-glow: none;
+  --dropcap-font: var(--prose-font);
+  --dropcap-size: 1em;
+  --dropcap-line: 1;
+  --dropcap-float: none;
+  --dropcap-padding: 0;
+  --dropcap-color: oklch(0.22 0.04 255);
+  --dropcap-shadow: none;
+  --pip-height: 8px;
+  --pip-radius: 1px;
 }
 
 /* The glow of a read-out number (roll total, oracle answer); the theme decides whether it has one. */
@@ -957,6 +1020,33 @@
   background-position: var(--ornament-position);
   background-repeat: no-repeat;
   filter: var(--ornament-glow);
+}
+
+/* The first letter of a note: a drop cap in some themes, the plain letter (neutral values) in others. */
+@utility drop-cap {
+  &::first-letter {
+    font-family: var(--dropcap-font);
+    font-size: var(--dropcap-size);
+    line-height: var(--dropcap-line);
+    float: var(--dropcap-float);
+    padding: var(--dropcap-padding);
+    color: var(--dropcap-color);
+    text-shadow: var(--dropcap-shadow);
+  }
+}
+
+/* A tracker pip; the theme decides its height and radius, and an empty one is a well. */
+@utility pip {
+  flex: 1;
+  height: var(--pip-height);
+  border-radius: var(--pip-radius);
+}
+
+@utility pip-empty {
+  background: var(--well);
+  box-shadow:
+    inset 0 0 0 1px var(--input),
+    var(--well-shadow);
 }
 
 @utility panel-title-case {

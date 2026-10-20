@@ -261,7 +261,7 @@ function ChoiceView({ content }: { content: ChoiceContent }) {
 
 function NoteView({ content }: { content: NoteContent }) {
   // Keeps the line breaks the player typed.
-  return <p className="type-prose whitespace-pre-wrap">{content.text}</p>
+  return <p className="drop-cap type-prose whitespace-pre-wrap">{content.text}</p>
 }
 
 function RollView({ content }: { content: RollContent }) {

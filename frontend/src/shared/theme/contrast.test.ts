@@ -171,6 +171,15 @@ const EMBELLISHMENT_TOKENS = [
   'ornament-size',
   'ornament-position',
   'ornament-glow',
+  'dropcap-font',
+  'dropcap-size',
+  'dropcap-line',
+  'dropcap-float',
+  'dropcap-padding',
+  'dropcap-color',
+  'dropcap-shadow',
+  'pip-height',
+  'pip-radius',
 ]
 const TYPE_TOKENS = [
   'label-font',
@@ -281,6 +290,14 @@ describe('palette contrast (WCAG AA)', () => {
         actual,
         `${palette.name}: mark glyph is ${actual.toFixed(2)}:1`,
       ).toBeGreaterThanOrEqual(3)
+    })
+
+    // The drop cap is large text, so 3:1 on the card.
+    it('--dropcap-color reaches 3:1 on --card', () => {
+      const actual = ratio(palette, 'dropcap-color', 'card')
+      expect(actual, `${palette.name}: drop cap is ${actual.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+        3,
+      )
     })
 
     it('--icon reaches 3:1 on --card', () => {

@@ -25,6 +25,8 @@ describe('JournalEntryView', () => {
     const text = within(note).getByText(/The gate is open\./)
     expect(text.textContent).toBe('The gate is open.\nNobody guards it.')
     expect(text).toHaveClass('whitespace-pre-wrap')
+    // The theme decides whether the first letter is a drop cap; the text itself is untouched.
+    expect(text).toHaveClass('drop-cap')
     expect(note.querySelector('time')).toHaveAttribute('datetime', gateNote.recordedAt)
   })
 

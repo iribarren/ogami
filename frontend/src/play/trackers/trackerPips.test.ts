@@ -9,6 +9,14 @@ describe('trackerPips', () => {
     expect(trackerPips(heatTracker)).toEqual({ total: 10, filled: 5 })
   })
 
+  it('counts a range that starts above zero from zero, so the filled pips match the value', () => {
+    // A 1..9 chaos factor at 5 fills 5 of 9, not 4 of 8.
+    expect(trackerPips({ ...edgeTracker, min: 1, max: 9, value: 5 })).toEqual({
+      total: 9,
+      filled: 5,
+    })
+  })
+
   it('keeps the filled count inside the range', () => {
     expect(trackerPips({ ...edgeTracker, value: 9 })).toEqual({ total: 3, filled: 3 })
     expect(trackerPips({ ...edgeTracker, value: -4 })).toEqual({ total: 3, filled: 0 })

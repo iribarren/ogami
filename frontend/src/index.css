@@ -1024,6 +1024,9 @@
 
 /* The first letter of a note: a drop cap in some themes, the plain letter (neutral values) in others. */
 @utility drop-cap {
+  /* Contains the floated capital, so a one-line note does not wrap the next line around it. */
+  display: flow-root;
+
   &::first-letter {
     font-family: var(--dropcap-font);
     font-size: var(--dropcap-size);

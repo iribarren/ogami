@@ -36,7 +36,7 @@ Inputs share their card's background, cards are flat, and every theme differs on
 | Default `.dark` | No design values; derive from the noir/neon pattern: well a step darker than `--background`, `inset 0 2px 5px oklch(0 0 0 / 0.5)`, card shadow `inset 0 1px 0 oklch(1 0 0 / 0.04), 0 12px 26px -12px oklch(0 0 0 / 0.7)`, ogami dot texture in `oklch(1 0 0 / 0.04)`, ogami type and shapes |
 | Colors | Keep the existing palette colors where the design differs slightly (`secondary`, `chip`, noir `card`); new color tokens (label, icon, tile foreground) get contrast pairs in `contrast.test.ts` (text 4.5:1, icons 3:1) |
 | Read-out surfaces | The journal's `RollView` total, `LikelihoodView` answer and `CheckView` challenge dice sit in wells; no new in-panel boxes |
-| Tracker pips | New pip bar under the tracker name for trackers with `max − min ≤ 12`, one pip per point above `min`, filled = `primary`, empty = well. Decorative (`aria-hidden`); the edit controls stay |
+| Tracker pips | New pip bar under the tracker name, one pip per point above zero (above `min` when `min` is negative), at most 12 pips, filled = `primary`, empty = well. Decorative (`aria-hidden`); the edit controls stay. Revised in T8: counting from `min` drew Mythic's 1..9 chaos factor at 5 as 4 of 8 |
 | Dice shapes | The four presets keep their labels and get a die outline: `d20` hexagon, `2d6` and `4d6kh3` square, `d%` kite. A shared `DieShape` covers d4–d20 for later use |
 | Title mark | A decorative mark before the campaign page `h1` (no other header change). Noir has no mark (the design's "Unsolved" stamp is copy and placement, out of scope). Parchment's seal shows the campaign initial |
 | Divider ornament | One ornament divider between the campaign header and the panel grid |
@@ -135,7 +135,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 | F1 | 2 | Slice 1 review fixes (R3): test CheckView's empty-dice-groups path against the well-wrapped path (`JournalEntryView.tsx:203-207`); test that journal article names stay unchanged with the entry `IconTile` (`JournalEntryView.tsx:68-87`) | delegated writer, direct | [x] | |
 | T6 | 2 | Title mark before the campaign title and the divider ornament under the header; panel frame tokens, `--radius` per theme, neon corner and starship brackets on the step card, Dice and Oracles; stories | delegated writer, direct | [x] | |
 | T7 | 2 | Journal note drop cap; tracker pip bar with per-theme pip shapes; stories | delegated writer, direct | [x] | |
-| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | parent, after the writer (browser) | [ ] | |
+| T8 | 2 | Chrome pass on a campaign in each of the six themes (light and dark default); fix small findings, log the rest | parent, inline (browser pass, two small fixes) | [x] | |
 
 ## Progress
 
@@ -151,6 +151,7 @@ Pips (height / radius): ogami 10px / 999px; parchment 12px / 50%; neon 8px / 1px
 - 2026-10-20: F1 CheckView well-versus-empty-groups test and journal article-name/tile tests added (delegated writer, direct; regression tests of existing behavior, so GREEN on first run, no RED applicable).
 - 2026-10-20: T6 title mark (`TitleMark`, wax-seal initial via `markInitial`) and `OrnamentDivider` in the campaign header, `--panel-border`, per-theme `--radius` (control radius; cards follow `rounded-xl` = 1.4x) and `frame` opt-in (corner brackets, neon corner and bar) in all seven blocks (delegated writer, direct; `markInitial` tests and contrast token/pair checks written first, contrast RED 26 failed then GREEN; CSS-only parts have no meaningful RED).
 - 2026-10-20: T7 note drop cap (`drop-cap` utility, `--dropcap-*` tokens: parchment and eldritch only, neutral elsewhere) and tracker pip bar (`trackerPips`, `MAX_PIPS` 12, `--pip-*` tokens, `aria-hidden`), per-theme pip stories (delegated writer, direct; pip logic and panel tests RED first: 5 failed, then GREEN; drop cap and pip CSS have no meaningful RED, contrast pair for `--dropcap-color` added).
+- 2026-10-20: T8 Chrome pass on two campaigns in all six themes plus default light and dark: marks, divider, frames (neon corner and cyan bar, starship brackets), pips and drop cap render as specced. Fixes: the drop cap paragraph contains its float (`display: flow-root`), so a one-line note no longer pulls its timestamp beside the capital (CSS, no RED); tracker pips count from zero for ranges starting above it (`trackerPips` test RED 1 failed, then GREEN, trackers Vitest 17 passed). Nothing logged for later.
 
 ## Reviews
 

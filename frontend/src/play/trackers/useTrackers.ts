@@ -23,15 +23,17 @@ export function trackerValueText(tracker: Tracker) {
 export const MAX_PIPS = 12
 
 /**
- * The pips under a Tracker's name: one per point above its minimum, `filled` of them up to the
- * value. Null when the range has no points or is wider than MAX_PIPS.
+ * The pips under a Tracker's name: one per point above zero (or above its minimum when that is
+ * negative), `filled` of them up to the value, so a 1..9 scale at 5 fills 5 of 9. Null when the
+ * range has no points or the bar would be longer than MAX_PIPS.
  */
 export function trackerPips(tracker: Tracker): { total: number; filled: number } | null {
-  const total = tracker.max - tracker.min
-  if (total < 1 || total > MAX_PIPS) {
+  const base = Math.min(tracker.min, 0)
+  const total = tracker.max - base
+  if (tracker.max <= tracker.min || total > MAX_PIPS) {
     return null
   }
-  return { total, filled: Math.min(total, Math.max(0, tracker.value - tracker.min)) }
+  return { total, filled: Math.min(total, Math.max(0, tracker.value - base)) }
 }
 
 /**

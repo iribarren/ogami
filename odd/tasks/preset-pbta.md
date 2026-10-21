@@ -1,7 +1,7 @@
 # Feature: preset-pbta
 
 - **Locator:** `odd/tasks/preset-pbta.md` · Engram topic `odd/preset-pbta/tasks`
-- **Issue:** #234 · **Branch:** `feat/preset-pbta-2-preset` · **Status:** in progress (slice 2)
+- **Issue:** #234 · **Branch:** `feat/preset-pbta-2-preset` · **Status:** done (slice 2 in review)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-journal-attachments` (PRs #232–#233)
@@ -69,8 +69,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | Author `hearts-and-rapiers` in Studio from the outline, publish v1, log every Studio friction under Studio findings | parent (browser, worker) | [x] | — |
 | T3 | 1 | `app:gamesystem:export <key> [--release N] [--output path]` (canonical pretty JSON, fails closed on an unknown key or version); console publisher reports "Unchanged (managed in Studio)" for a Studio-owned key whose latest release has the file's hash; unit and integration tests | delegated writer (slice 1) | [x] | 58d804d |
 | T4 | 2 | Playtest a session in Play (browser); fix content gaps in Studio and republish; log Play findings | parent (browser, worker) | [x] | — |
-| T5 | 2 | Export the latest release to `backend/presets/hearts-and-rapiers.json` unedited; `PresetsTest`; flow unit test; move band edge tests; e2e spec | delegated writer (slice 2) | [ ] | |
-| T6 | 2 | Wrap-up: roadmap B7 done; this doc closed | delegated writer (slice 2) | [ ] | |
+| T5 | 2 | Export the latest release to `backend/presets/hearts-and-rapiers.json` unedited; `PresetsTest`; flow unit test; move band edge tests; e2e spec | delegated writer (slice 2) | [x] | |
+| T6 | 2 | Wrap-up: roadmap B7 done; this doc closed | delegated writer (slice 2) | [x] | |
 
 ## Studio findings
 
@@ -134,6 +134,8 @@ Played 2026-10-21 by a Claude in Chrome worker as `pbta-author@ogami.test`: camp
 - 2026-10-20: T1 done: ADR 0036 (Accepted), index row, ADR 0028 amendment note, roadmap B7 marked in progress. Docs only, so no runnable RED; structural readback of the links and the index.
 - 2026-10-21: slice 1 review fixes (stdout OUTPUT_RAW, --release test with distinct content, export file mode follows umask); RED/GREEN: the style-tag/backslash stdout test failed with a JSON syntax error and the umask test saw 0600 instead of 0644, both pass after the fix; the --release test change is test-only (no RED).
 - 2026-10-20: T3 done. RED: `PublishGameSystemReleaseHandlerTest::aStudioKeyWhoseLatestReleaseHasTheSameContentIsSkippedWhenOnlyIfChanged` threw `GameSystemManagedInStudio`; `ExportGameSystemReleaseConsoleCommandTest` failed on the missing `app:gamesystem:export`. GREEN: the skip lives in `PublishGameSystemReleaseHandler` (via `ReleasePublisher::latestHas`), the console says "managed in Studio" through the `IsGameSystemManagedInStudio` query; export reads `GetPublishedRelease`; round trip export, publish `--if-changed`, Unchanged passes for schema versions 1 and 2.
+- 2026-10-21: T5 done: latest release is v4 (P17 prompt rewording published); `app:gamesystem:export hearts-and-rapiers --output presets/hearts-and-rapiers.json` committed unedited, re-export is byte-identical (`cmp`), `make presets` prints `Unchanged hearts-and-rapiers (v4, managed in Studio)` on the dev database. Tests: `PresetsTest` (publishes once as v1, credits with the CC BY SA 4.0 notice, flow, tables, sheet, 12 checks), `HeartsAndRapiersPresetFlowTest` (Setup names the villain NPC and goal Thread from `{answer}`, a missed move marks XP and advances the Countdown, a hit does not mark XP, a missed Confrontation marks XP; every move at totals 6 / 7 / 9 / 10 gives miss / partial / partial / full; every Condition costs 2, e.g. grace 1 and frightened 1 is a modifier of -1), `frontend/e2e/play-hearts-and-rapiers.spec.ts` (credits, hero, one move in the journal). RED: no RED for the preset file itself; tests written against it passed on the first run, so the band test was shown to be live by flipping one expected band (9 => full), which failed 12 cases, then restored. The e2e spec passed on the first run (no RED).
+- 2026-10-21: T6 done: roadmap B7 marked done, this doc closed pending review and PR.
 
 ## Reviews
 
@@ -143,4 +145,4 @@ Played 2026-10-21 by a Claude in Chrome worker as `pbta-author@ogami.test`: camp
 
 ## Next step
 
-Slice 2: T4 playtest in Play (browser), then T5 export and tests, T6 wrap-up.
+Review slice 2, PR, doc-only close commit.

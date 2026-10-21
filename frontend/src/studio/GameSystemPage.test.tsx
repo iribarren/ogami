@@ -241,6 +241,36 @@ describe('the section rail', () => {
 })
 
 describe('the metadata form', () => {
+  it('counts the notice against its limit, linked to the field', async () => {
+    const user = userEvent.setup()
+    renderDraft()
+
+    const notice = within(await metadataForm()).getByLabelText('Notice')
+    expect(notice).toHaveAccessibleDescription('23 / 2,000')
+    await user.type(notice, '!!')
+    expect(notice).toHaveAccessibleDescription('25 / 2,000')
+  })
+
+  it('shows Saving while the save is pending, then the time of the save', async () => {
+    const user = userEvent.setup()
+    let finish: (response: Response) => void = () => undefined
+    renderDraft({
+      'PUT /api/studio/game-systems/my-draft/metadata': () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve
+        }),
+    })
+
+    const form = within(await metadataForm())
+    expect(form.queryByText(/Saving|Saved at|Not saved/)).not.toBeInTheDocument()
+    await user.click(form.getByRole('button', { name: 'Save' }))
+    expect(await form.findByText('Saving…')).toBeInTheDocument()
+
+    finish(Response.json(draft))
+    expect(await form.findByRole('status')).toHaveTextContent(/^Saved at \d/)
+    expect(form.queryByText('Saving…')).not.toBeInTheDocument()
+  })
+
   it('saves every field and shows the saved state', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
@@ -258,7 +288,7 @@ describe('the metadata form', () => {
     await user.selectOptions(form.getByLabelText('Theme'), 'neon')
     await user.click(form.getByRole('button', { name: 'Save' }))
 
-    expect(await form.findByRole('status')).toHaveTextContent('Saved.')
+    expect(await form.findByRole('status')).toHaveTextContent(/^Saved at \d/)
     expect(sent).toEqual([
       {
         name: 'Renamed',
@@ -276,7 +306,7 @@ describe('the metadata form', () => {
 
     const form = within(await metadataForm())
     await user.click(form.getByRole('button', { name: 'Save' }))
-    expect(await form.findByRole('status')).toHaveTextContent('Saved.')
+    expect(await form.findByRole('status')).toHaveTextContent(/^Saved at \d/)
     await user.type(form.getByLabelText('Name'), '!')
 
     expect(form.queryByRole('status')).not.toBeInTheDocument()
@@ -288,7 +318,7 @@ describe('the metadata form', () => {
 
     const form = within(await metadataForm())
     await user.click(form.getByRole('button', { name: 'Save' }))
-    expect(await form.findByRole('status')).toHaveTextContent('Saved.')
+    expect(await form.findByRole('status')).toHaveTextContent(/^Saved at \d/)
     if (edit === 'description') {
       await user.type(form.getByLabelText('Description'), '!')
     } else {
@@ -356,7 +386,8 @@ describe('the metadata form', () => {
     const form = within(await metadataForm())
     await user.type(form.getByLabelText('Name'), '!')
     await user.click(form.getByRole('button', { name: 'Save' }))
-    expect(await form.findByRole('alert')).toHaveTextContent('reload and try again')
+    expect(await form.findByRole('alert')).toHaveTextContent('Not saved: 1 error')
+    expect(form.getByText(/reload and try again/)).toBeInTheDocument()
 
     latest = { ...draft, name: 'Changed elsewhere' }
     await user.click(form.getByRole('button', { name: 'Reload the latest version' }))
@@ -379,7 +410,8 @@ describe('the metadata form', () => {
     const form = within(await metadataForm())
     await user.click(form.getByRole('button', { name: 'Save' }))
 
-    expect(await form.findByRole('alert')).toHaveTextContent(message)
+    expect(await form.findByRole('alert')).toHaveTextContent('Not saved: 1 error')
+    expect(form.getByText(message)).toBeInTheDocument()
     expect(form.queryByRole('status')).not.toBeInTheDocument()
   })
 
@@ -581,7 +613,7 @@ describe('a library pack', () => {
         { name: 'Fantasy basics 2', description: 'Names, rumours and a tavern.' },
       ])
     })
-    expect(await form.findByText('Saved.')).toBeInTheDocument()
+    expect(await form.findByText(/^Saved at \d/)).toBeInTheDocument()
   })
 
   it('validates the pack without talking of a release', async () => {

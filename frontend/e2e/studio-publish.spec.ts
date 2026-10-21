@@ -31,7 +31,7 @@ test('a game manager publishes a GameSystem in Studio and a solo player starts a
   const metadata = page.getByRole('form', { name: 'Metadata' })
   await metadata.getByLabel('Description').fill('Published from the e2e test.')
   await metadata.getByRole('button', { name: 'Save' }).click()
-  await expect(metadata.getByRole('status')).toHaveText('Saved.')
+  await expect(metadata.getByRole('status')).toHaveText(/^Saved at/)
 
   await page.getByRole('button', { name: 'Publish' }).click()
   const dialog = page.getByRole('dialog')

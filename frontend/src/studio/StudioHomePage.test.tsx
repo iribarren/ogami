@@ -39,6 +39,7 @@ describe('the Studio home page', () => {
       'href',
       '/studio/game-systems/noir-detective',
     )
+    expect(within(list()).getByText('3')).toHaveClass('count-pill')
   })
 
   it('warns of the library changes of a draft and says nothing at 0', async () => {

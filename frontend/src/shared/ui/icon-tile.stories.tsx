@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Feather, Target } from 'lucide-react'
 
-import { DieShape } from '@/play/dice/DieShape'
+import { DieShape } from './die-shape'
 import { onTheme } from '@/shared/theme/themeStories'
 
 import { IconTile } from './icon-tile'
@@ -12,6 +12,8 @@ const meta = {
   args: { children: <Feather /> },
   render: (args) => (
     <div className="flex items-end gap-3 text-card-foreground">
+      <IconTile {...args} size="xs" />
+      <IconTile {...args} size="rail" />
       <IconTile {...args} size="sm" />
       <IconTile {...args} size="md" />
       <IconTile {...args} size="lg" />

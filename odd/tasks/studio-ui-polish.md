@@ -1,7 +1,7 @@
 # Feature: studio-ui-polish
 
 - **Locator:** `odd/tasks/studio-ui-polish.md` · Engram topic `odd/studio-ui-polish/tasks`
-- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-1-shell` · **Status:** planned (slice 1 not started; T1 this doc)
+- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-1-shell` · **Status:** slice 1 in progress (T2–T4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `faster-checks` (PR #238)
@@ -143,8 +143,8 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; roadmap B7b in progress | parent, inline (doc only) | [x] | — |
-| T2 | 1 | Studio kit: utilities (panel, action bar, save state, alerts, field error, list row and selected row, icon button, count pill, empty state, group label, read-out), `--warning-text` in all seven blocks with contrast pairs, `IconTile` sizes 24 and 28, `shared/ui/tooltip.tsx`, `IconButton`; stories | | [ ] | |
+| T1 | 1 | This feature doc; roadmap B7b in progress | parent, inline (doc only) | [x] | `9ac0b9c` |
+| T2 | 1 | Studio kit: utilities (panel, action bar, save state, alerts, field error, list row and selected row, icon button, count pill, empty state, group label, read-out), `--warning-text` in all seven blocks with contrast pairs, `IconTile` sizes 24 and 28, `shared/ui/tooltip.tsx`, `IconButton`; stories | writer (delegated) | [x] | |
 | T3 | 1 | GameSystem shell: section rail with groups, counts and `aria-current`, `tab` search param with fallback, header with initial tile and in-header notice (S17), sub-editor page headers with the rail; tab queries moved from `radio` to `link` (28 unit, 15 e2e); stories | | [ ] | |
 | T4 | 1 | Studio home cards; Overview Details and Credits panels with the notice counter (S19) and save state; the key hint on every Studio key field (S18) | | [ ] | |
 | T5 | 2 | `shared/ui/select.tsx` (radix-ui Select) and `chooseOption` helpers; replace the 28 Studio `NativeSelect` uses (S7); move 89 `selectOptions`, 14 `combobox` and 6 e2e `selectOption` calls; stories | | [ ] | |
@@ -167,12 +167,15 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 ## Progress
 
 - 2026-10-22: design canvas drawn (12 screens in light and dark, kit, rail and header parts), reviewed and approved by the user with the decisions above; Studio code mapped by two read-only explorers; issue #239; 6 slices planned. T1 committed on the slice 1 branch; slice 1 coding starts in a fresh session.
+- 2026-10-22: T1 `9ac0b9c` reviewed as passive (risk low, non_executable_only, no lenses), approved and acknowledged (`review-1940784a74325f2f`); slice 1 review boundary is `9ac0b9c`.
+- 2026-10-22: T2 studio kit: CSS utilities, `--warning-text` in 7 blocks with contrast pairs, `IconTile` sizes `xs` 24 and `rail` 28, `Tooltip`, `IconButton`, `SaveState`, `Alert`/`FieldError`; `DieShape` moved to `shared/ui/die-shape.tsx` (Studio needs it for the Checks rail icon; imports in `play/` updated). Tests written after the components (no RED observed); CSS has no RED, covered by `contrast.test.ts` and the kit story.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-1940784a74325f2f` | T1 `9ac0b9c` (docs only, 180 lines) | passive (risk low, non_executable_only), no lenses; approved and acknowledged | |
 
 ## Next step
 
-Slice 1 on `feat/studio-ui-polish-1-shell` (branch exists with T1): brief one writer for T2–T4, then review, push and open the PR (`Part of #239`).
+Slice 1 on `feat/studio-ui-polish-1-shell`: T2–T4 by one writer, then review T2–T4 against `9ac0b9c`, push and open the PR (`Part of #239`).

@@ -5,7 +5,7 @@ import { Badge } from '@/shared/ui/badge'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { DiceGroups } from '../dice/DiceGroups'
-import { DieShape } from '../dice/DieShape'
+import { DieShape } from '@/shared/ui/die-shape'
 import type {
   CheckContent,
   FlowOutcomeContent,

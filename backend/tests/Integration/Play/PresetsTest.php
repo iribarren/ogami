@@ -292,6 +292,47 @@ final class PresetsTest extends KernelTestCase
         }
     }
 
+    #[Test]
+    public function heartsAndRapiersPublishesOnceWithItsOpenLicenseCreditsAndTheOneShotFlow(): void
+    {
+        $this->assertPublishesOnce('hearts-and-rapiers');
+
+        $snapshot = $this->snapshot('hearts-and-rapiers');
+        self::assertSame('Hearts & Rapiers', $snapshot->name());
+        self::assertSame(1, $snapshot->releaseVersion());
+        self::assertSame('noir', $snapshot->theme());
+
+        // The open license notice (ADR 0021) names the source game and its publisher, and disclaims both.
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringContainsString('Thirsty Sword Lesbians', $credits->notice);
+        self::assertStringContainsString('Evil Hat Productions, LLC', $credits->notice);
+        self::assertStringContainsString('The CC BY SA 4.0 license is available at creativecommons.org/licenses/by-sa/4.0/', $credits->notice);
+        self::assertStringContainsString('not affiliated with or endorsed by Evil Hat Productions', $credits->notice);
+        self::assertSame(['CC BY-SA 4.0 (Powered by Lesbians open license)', 'https://poweredbylesbians.com/license/'], [$credits->license, $credits->url]);
+        // The title says "for use with" the game, never that it is the game.
+        self::assertStringNotContainsString('Thirsty Sword Lesbians', $snapshot->name());
+
+        $flow = $snapshot->defaultFlow();
+        self::assertSame(['one-shot', FlowView::Focus, ['setup', 'scenes', 'climax']], [$flow?->key, $flow?->defaultView, array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? [])]);
+        self::assertSame(['countdown'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['swashbuckle', 'heart-to-heart', 'intrigue'], array_map(static fn (\App\Play\Domain\GameSystem\SceneType $type): string => $type->key, $snapshot->sceneTypes()));
+        self::assertSame(['villain', 'ally', 'crush'], array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, $snapshot->tags()));
+
+        self::assertSame(['toxic-power', 'story-element', 'romantic-complication', 'location', 'villains-next-move'], $snapshot->oracleTableKeys());
+        foreach (['toxic-power' => 6, 'story-element' => 8, 'romantic-complication' => 8, 'location' => 8, 'villains-next-move' => 8] as $table => $entries) {
+            $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
+        }
+        self::assertSame(['will-it-work'], $this->likelihoodKeys($snapshot));
+
+        // The sheet has the five stats and five Conditions, the Conditions marked and the XP; the moves are the twelve checks.
+        $sheet = $snapshot->sheet();
+        foreach (['playbook' => TextField::class, 'daring' => NumberField::class, 'frightened' => NumberField::class, 'conditions-marked' => DerivedField::class, 'xp' => NumberField::class, 'strings' => ListField::class] as $key => $type) {
+            self::assertInstanceOf($type, $sheet->field($key), $key);
+        }
+        self::assertCount(12, $snapshot->checks());
+    }
+
     private function assertPublishesOnce(string $preset): void
     {
         $file = self::PRESETS.'/'.$preset.'.json';

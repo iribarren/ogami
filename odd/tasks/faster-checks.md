@@ -38,6 +38,7 @@ Measured 2026-10-21 on a warm stack, each suite on its own:
 | Who runs the full suites | CI, on every PR (unchanged). Locally the writer runs `make verify`, which picks the checks from the files changed since `main` |
 | `make verify` backend scope | Any backend change: `backend-qa`, Behat, `api-check`. PHPUnit by context: Play → Play; Studio → Studio + Play (Play reads Studio releases); Admin → Admin; anything else in `backend/` (Shared, Identity, Formula, Randomness, config, migrations, presets, composer) → full PHPUnit |
 | `make verify` frontend scope | Any frontend change: `frontend-qa`. Only `frontend/src/**` changed: `vitest related` on those files. Other frontend files (config, `package.json`, lockfile, setup) → full Vitest. `frontend/e2e/**` only: no Vitest (CI runs Playwright) |
+| Unsafe, deleted or setup files | A `frontend/src` path outside `[A-Za-z0-9._/@+-]` (never spliced into `eval` or the make recipe), a deleted file (`related` cannot find its importers) or anything under `frontend/src/test/` → full Vitest; the script prints one line for unsafe paths |
 | `api-check` | When `backend/` or `frontend/src/shared/api/` changed |
 | Git in containers | The node container has no git and mounts only `frontend/`, so the host script computes the changed files and passes them to the containers |
 | Failures | `make verify` runs every selected step, prints a summary and exits non-zero if any failed (no rerun to discover the next failure) |
@@ -75,6 +76,7 @@ Measured 2026-10-21 on a warm stack, each suite on its own:
 - 2026-10-21 T4: exception to RED (tooling); warm `pnpm lint` 1.9s (78s cold), `.eslintcache` ignored by git and Prettier, `format:check` passes.
 - 2026-10-21 T2: no shell test runner (exception to RED); `DRY_RUN=1` plans checked for docs-only, Play, Studio, Shared, frontend src, `package.json`, e2e-only, `schema.d.ts`, `Makefile`; shellcheck clean; PHPUnit 13.4 accepts several directory arguments; real `make verify` (Makefile in diff, so full scope) passed in 4m04 (qa 3s/24s, backend-test 87s, api-check 2s, Vitest 128s).
 - 2026-10-21 T1: `CLAUDE.md` (commands, layout, workflow) and `README.md` document `make verify`; `make qa` and `make test` pass (`make test` 3m49).
+- 2026-10-21 review fixes: RED: new `scripts/verify-changed.test.sh` (19 cases) failed 8 against the old script (unsafe paths, setup, deleted, e2e QA, root tooling plan); GREEN: 19/19 pass via `make verify-test`; shellcheck clean; BASE fallback to `origin/<BASE>` / exit 2 and `--no-renames` added; root-tooling plan starts with `make verify-test`.
 
 ## Reviews
 

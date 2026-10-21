@@ -212,3 +212,8 @@ qa: backend-qa frontend-qa api-check ## Run every static check
 .PHONY: verify
 verify: ## Run only the checks the changed files need (BASE=main, DRY_RUN=1 to print the plan); CI runs everything
 	@BASE="$(or $(BASE),main)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-changed.sh
+
+# Table-driven tests for the scope rules of `make verify`.
+.PHONY: verify-test
+verify-test: ## Test the scope rules of make verify (scripts/verify-changed.test.sh)
+	@./scripts/verify-changed.test.sh

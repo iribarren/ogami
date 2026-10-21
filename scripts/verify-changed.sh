@@ -8,15 +8,18 @@
 #   backend/          backend-qa, api-check, backend-test narrowed to the touched
 #                     contexts (Play -> Play; Studio -> Studio + Play; Admin -> Admin;
 #                     anything else -> full PHPUnit). Behat runs inside backend-test.
-#   frontend/         frontend-qa; Vitest `related` when only frontend/src changed,
-#                     full Vitest for other files, none for e2e-only changes.
-#   Makefile, compose*.yaml, docker/, scripts/, CI config -> everything, in full.
+#   frontend/         frontend-qa; Vitest `related` on frontend/src files that still
+#                     exist and have a plain path ([A-Za-z0-9._/@+-]); full Vitest for
+#                     other files, frontend/src/test/ (setup), deleted files and
+#                     unsafe paths; no Vitest for e2e-only changes (QA still runs).
+#   Makefile, compose*.yaml, docker/, scripts/, CI config -> everything, in full
+#                     (plus `make verify-test` for this script's own tests).
 #   docs/, odd/, *.md -> nothing.
 #
 # CI always runs the full suites and stays the merge gate; this is the local shortcut.
 #
 # Usage: scripts/verify-changed.sh [--dry-run]
-# Env:   BASE=main        branch to compare against
+# Env:   BASE=main        ref to compare against (local branch, else origin/<BASE>)
 #        DRY_RUN=1        print the plan and exit (same as --dry-run)
 #        VERIFY_FILES     newline/space separated repo-relative paths; replaces the git list (testing)
 
@@ -38,11 +41,20 @@ done
 if [[ -n "${VERIFY_FILES+x}" ]]; then
   changed="$(printf '%s\n' "$VERIFY_FILES" | tr ' ' '\n')"
 else
-  merge_base="$(git merge-base "$BASE" HEAD)"
+  base_ref="$BASE"
+  if ! git rev-parse --verify -q "$base_ref^{commit}" >/dev/null; then
+    base_ref="origin/$BASE"
+    if ! git rev-parse --verify -q "$base_ref^{commit}" >/dev/null; then
+      echo "BASE=$BASE is not a known ref; pass BASE=<ref>" >&2
+      exit 2
+    fi
+  fi
+  merge_base="$(git merge-base "$base_ref" HEAD)"
+  # --no-renames: a moved file lists its old path too, so the old context is covered
   changed="$(
     {
-      git diff --name-only "$merge_base"...HEAD
-      git diff --name-only HEAD
+      git diff --no-renames --name-only "$merge_base"...HEAD
+      git diff --no-renames --name-only HEAD
       git ls-files --others --exclude-standard
     }
   )"
@@ -57,7 +69,9 @@ backend_full=0     # PHPUnit cannot be narrowed
 phpunit_dirs=()
 frontend=0         # any frontend file that needs QA
 vitest_full=0
-vitest_related=()  # frontend/src files that still exist
+vitest_related=()  # frontend/src files that still exist, with a safe path
+safe_path='^[A-Za-z0-9._/@+-]+$'  # only these reach `eval` and the make recipe
+unsafe_noted=0
 api_check=0
 
 add_dir() {
@@ -97,16 +111,23 @@ while IFS= read -r file; do
         *) backend_full=1 ;;
       esac
       ;;
-    frontend/e2e/*) ;;
+    frontend/e2e/*) frontend=1 ;;
     frontend/*)
       frontend=1
       case "$file" in
         frontend/src/shared/api/*) api_check=1 ;;
       esac
-      if [[ "$file" == frontend/src/* ]]; then
-        [[ -f "$file" ]] && vitest_related+=("${file#frontend/}")
-      else
+      if [[ "$file" != frontend/src/* || "$file" == frontend/src/test/* ]]; then
         vitest_full=1
+      elif [[ ! "$file" =~ $safe_path ]]; then
+        # fail closed: never splice a path with shell metacharacters into a command
+        vitest_full=1
+        ((unsafe_noted)) || echo "Unsafe path in frontend/src, running full Vitest: $file" >&2
+        unsafe_noted=1
+      elif [[ -f "$file" ]]; then
+        vitest_related+=("${file#frontend/}")
+      else
+        vitest_full=1  # deleted: `related` cannot find its importers
       fi
       ;;
     *) everything=1 ;;
@@ -120,6 +141,7 @@ fi
 # --- plan --------------------------------------------------------------------
 
 steps=()
+((everything)) && steps+=("make verify-test")
 if ((backend)); then
   steps+=("make backend-qa")
   if ((backend_full || ${#phpunit_dirs[@]} == 0)); then

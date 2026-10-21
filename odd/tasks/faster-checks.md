@@ -1,7 +1,7 @@
 # Feature: faster-checks
 
 - **Locator:** `odd/tasks/faster-checks.md` · Engram topic `odd/faster-checks/tasks`
-- **Issue:** opened with the PR · **Branch:** `chore/faster-checks-1-scoped-verify` · **Status:** in progress (slice 1)
+- **Issue:** #237 · **Branch:** `chore/faster-checks-1-scoped-verify` · **Status:** done (slice 1 in PR #238)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-pbta` (PRs #235–#236)
@@ -61,12 +61,12 @@ Measured 2026-10-21 on a warm stack, each suite on its own:
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; `CLAUDE.md` (commands table: `make verify`; directory layout: `scripts/`; workflow: CI is the full gate); README command list | delegated writer (slice 1) | [x] | — |
-| T2 | 1 | `make verify [BASE=main]` → `scripts/verify-changed.sh` (scope rules above, `--dry-run`, `VERIFY_FILES` override for testing, summary, exit code); `backend-test` takes `PHPUNIT_ARGS`; `frontend-test-related FILES=…` | delegated writer (slice 1) | [x] | — |
-| T3 | 1 | Vitest flakes: `configure({ asyncUtilTimeout: 5000 })` in `src/test/setup.ts`, `testTimeout: 20000` | delegated writer (slice 1) | [x] | — |
-| T4 | 1 | ESLint cache in `lint` / `lint:fix`; `.eslintcache` gitignored | delegated writer (slice 1) | [x] | — |
-| T5 | 1 | `PlayRequestSchemasTest` fetches the spec once per class | delegated writer (slice 1) | [x] | — |
-| T6 | 1 | `ogami-slice` skill (outside the repo): writer verification is `make verify`; parent watches CI after opening the PR | parent | [ ] | — |
+| T1 | 1 | Docs: this feature doc; `CLAUDE.md` (commands table: `make verify`; directory layout: `scripts/`; workflow: CI is the full gate); README command list | delegated writer (slice 1) | [x] | 87b49c8 |
+| T2 | 1 | `make verify [BASE=main]` → `scripts/verify-changed.sh` (scope rules above, `--dry-run`, `VERIFY_FILES` override for testing, summary, exit code); `backend-test` takes `PHPUNIT_ARGS`; `frontend-test-related FILES=…` | delegated writer (slice 1) | [x] | a17878d, fda8b66 |
+| T3 | 1 | Vitest flakes: `configure({ asyncUtilTimeout: 5000 })` in `src/test/setup.ts`, `testTimeout: 20000` | delegated writer (slice 1) | [x] | 0a0c555 |
+| T4 | 1 | ESLint cache in `lint` / `lint:fix`; `.eslintcache` gitignored | delegated writer (slice 1) | [x] | 7ad33a3 |
+| T5 | 1 | `PlayRequestSchemasTest` fetches the spec once per class | delegated writer (slice 1) | [x] | 559efcd |
+| T6 | 1 | `ogami-slice` skill (outside the repo): writer verification is `make verify`; parent watches CI after opening the PR | parent | [x] | — (outside the repo) |
 
 ## Progress
 
@@ -77,12 +77,14 @@ Measured 2026-10-21 on a warm stack, each suite on its own:
 - 2026-10-21 T2: no shell test runner (exception to RED); `DRY_RUN=1` plans checked for docs-only, Play, Studio, Shared, frontend src, `package.json`, e2e-only, `schema.d.ts`, `Makefile`; shellcheck clean; PHPUnit 13.4 accepts several directory arguments; real `make verify` (Makefile in diff, so full scope) passed in 4m04 (qa 3s/24s, backend-test 87s, api-check 2s, Vitest 128s).
 - 2026-10-21 T1: `CLAUDE.md` (commands, layout, workflow) and `README.md` document `make verify`; `make qa` and `make test` pass (`make test` 3m49).
 - 2026-10-21 review fixes: RED: new `scripts/verify-changed.test.sh` (19 cases) failed 8 against the old script (unsafe paths, setup, deleted, e2e QA, root tooling plan); GREEN: 19/19 pass via `make verify-test`; shellcheck clean; BASE fallback to `origin/<BASE>` / exit 2 and `--no-renames` added; root-tooling plan starts with `make verify-test`.
+- 2026-10-21: T6 done: `ogami-slice` skill verification is `make verify`, the parent watches CI after opening the PR. Slice 1 in PR #238 (issue #237); feature closed.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-429f91fd555b2caa` | 559efcd, 0a0c555, 7ad33a3, a17878d, 87b49c8 | approved; 4 warnings (eval of unescaped paths, renames under-scope, e2e scope mismatch, Vitest setup and deleted files), 4 suggestions (merge-base fallback, untested classifier, stale Next step, path quoting), all fixed in fda8b66; review of fda8b66 offered, skipped by the user | [#238](https://github.com/iribarren/ogami/pull/238) |
 
 ## Next step
 
-Slice 1: writer builds T1–T5.
+None. Follow-ups: faster Studio editor Vitest tests (keystroke-by-keystroke `user.type`); audit overlap between handler unit tests, Behat and API tests.

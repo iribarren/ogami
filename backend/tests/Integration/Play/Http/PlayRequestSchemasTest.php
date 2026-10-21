@@ -16,6 +16,9 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 #[CoversNothing]
 final class PlayRequestSchemasTest extends WebTestCase
 {
+    /** @var array<mixed>|null the OpenAPI spec, built once per class: dumping it through the kernel takes over a second */
+    private static ?array $spec = null;
+
     /**
      * @return iterable<string, array{string, list<string>, list<string>}>
      */
@@ -49,13 +52,7 @@ final class PlayRequestSchemasTest extends WebTestCase
     #[DataProvider('playRequestSchemas')]
     public function optionalRequestFieldsStayOptionalInTheSpec(string $schema, array $required, array $optional): void
     {
-        $client = self::createClient();
-        $client->request('GET', '/api/doc.json');
-        self::assertResponseIsSuccessful();
-        $spec = json_decode((string) $client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
-        self::assertIsArray($spec);
-
-        $components = $spec['components'] ?? null;
+        $components = $this->spec()['components'] ?? null;
         self::assertIsArray($components);
         $schemas = $components['schemas'] ?? null;
         self::assertIsArray($schemas);
@@ -70,5 +67,22 @@ final class PlayRequestSchemasTest extends WebTestCase
             self::assertIsArray($property);
             self::assertArrayNotHasKey('default', $property, \sprintf('"%s.%s" documents a default, so the typed client makes it required.', $schema, $name));
         }
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function spec(): array
+    {
+        if (null === self::$spec) {
+            $client = self::createClient();
+            $client->request('GET', '/api/doc.json');
+            self::assertResponseIsSuccessful();
+            $spec = json_decode((string) $client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+            self::assertIsArray($spec);
+            self::$spec = $spec;
+        }
+
+        return self::$spec;
     }
 }

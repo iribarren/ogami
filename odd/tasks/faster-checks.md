@@ -60,16 +60,21 @@ Measured 2026-10-21 on a warm stack, each suite on its own:
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; `CLAUDE.md` (commands table: `make verify`; directory layout: `scripts/`; workflow: CI is the full gate); README command list | delegated writer (slice 1) | [ ] | — |
-| T2 | 1 | `make verify [BASE=main]` → `scripts/verify-changed.sh` (scope rules above, `--dry-run`, `VERIFY_FILES` override for testing, summary, exit code); `backend-test` takes `PHPUNIT_ARGS`; `frontend-test-related FILES=…` | delegated writer (slice 1) | [ ] | — |
-| T3 | 1 | Vitest flakes: `configure({ asyncUtilTimeout: 5000 })` in `src/test/setup.ts`, `testTimeout: 20000` | delegated writer (slice 1) | [ ] | — |
-| T4 | 1 | ESLint cache in `lint` / `lint:fix`; `.eslintcache` gitignored | delegated writer (slice 1) | [ ] | — |
-| T5 | 1 | `PlayRequestSchemasTest` fetches the spec once per class | delegated writer (slice 1) | [ ] | — |
+| T1 | 1 | Docs: this feature doc; `CLAUDE.md` (commands table: `make verify`; directory layout: `scripts/`; workflow: CI is the full gate); README command list | delegated writer (slice 1) | [x] | — |
+| T2 | 1 | `make verify [BASE=main]` → `scripts/verify-changed.sh` (scope rules above, `--dry-run`, `VERIFY_FILES` override for testing, summary, exit code); `backend-test` takes `PHPUNIT_ARGS`; `frontend-test-related FILES=…` | delegated writer (slice 1) | [x] | — |
+| T3 | 1 | Vitest flakes: `configure({ asyncUtilTimeout: 5000 })` in `src/test/setup.ts`, `testTimeout: 20000` | delegated writer (slice 1) | [x] | — |
+| T4 | 1 | ESLint cache in `lint` / `lint:fix`; `.eslintcache` gitignored | delegated writer (slice 1) | [x] | — |
+| T5 | 1 | `PlayRequestSchemasTest` fetches the spec once per class | delegated writer (slice 1) | [x] | — |
 | T6 | 1 | `ogami-slice` skill (outside the repo): writer verification is `make verify`; parent watches CI after opening the PR | parent | [ ] | — |
 
 ## Progress
 
 - 2026-10-21: measured every suite (table above); user approved quick wins 1–4 (scoped checks, flakes, ESLint cache, schema test).
+- 2026-10-21 T5: exception to RED (behaviour unchanged); `PlayRequestSchemasTest` 18/18 pass, 23s before, 1.4s after.
+- 2026-10-21 T3: exception to RED (flake, no deterministic test); two full Vitest runs 2089/2089 pass (110s and 131s), 0 timeouts (6 before).
+- 2026-10-21 T4: exception to RED (tooling); warm `pnpm lint` 1.9s (78s cold), `.eslintcache` ignored by git and Prettier, `format:check` passes.
+- 2026-10-21 T2: no shell test runner (exception to RED); `DRY_RUN=1` plans checked for docs-only, Play, Studio, Shared, frontend src, `package.json`, e2e-only, `schema.d.ts`, `Makefile`; shellcheck clean; PHPUnit 13.4 accepts several directory arguments; real `make verify` (Makefile in diff, so full scope) passed in 4m04 (qa 3s/24s, backend-test 87s, api-check 2s, Vitest 128s).
+- 2026-10-21 T1: `CLAUDE.md` (commands, layout, workflow) and `README.md` document `make verify`; `make qa` and `make test` pass (`make test` 3m49).
 
 ## Reviews
 

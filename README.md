@@ -37,6 +37,7 @@ Open http://localhost:8080: the SPA, with the API under `/api` on the same origi
 
 ```bash
 make qa test e2e     # static checks, unit/integration/Behat/Vitest, Playwright
+make verify          # only the checks the changed files need (CI runs everything)
 ```
 
 `make help` lists every command; [CLAUDE.md](CLAUDE.md#commands) groups them by task.

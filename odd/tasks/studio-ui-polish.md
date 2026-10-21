@@ -1,0 +1,178 @@
+# Feature: studio-ui-polish
+
+- **Locator:** `odd/tasks/studio-ui-polish.md` · Engram topic `odd/studio-ui-polish/tasks`
+- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-1-shell` · **Status:** planned (slice 1 not started; T1 this doc)
+- **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
+- **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
+- **Previous feature:** `faster-checks` (PR #238)
+
+## Objective
+
+Apply the reviewed Studio design to every Studio screen and fix the Studio findings `preset-pbta` logged (roadmap backlog B7b, [S2–S19](preset-pbta.md#studio-findings)). The design canvas is https://claude.ai/artifact/XhD3C9eDzeQpWF7wk59z1t (private; pages Light, Dark and Parts; boards `Main.dc.html` Studio kit, `Home`, `Overview`, `Sheet`, `Checks`, `Oracles`, `Narrative`, `SceneTypes`, `Flows`, `Validation`, `Publish`, `Releases`, parts `Rail` and `Header`; tokens in `studio.css`). Writers work from this doc, not the canvas; the values below are distilled from it.
+
+Out of scope: campaign themes in Studio (Studio keeps the default light and dark look); new editors; the flow contract gaps of B8b `rules-flow-choices` (S11 sheet effects, S12); S6 (all coverage errors), S9 and S20 (automation artifacts); Play findings P8–P14.
+
+## Problem and why
+
+Studio still looks like the pre-B5 app: bordered divs, text buttons on every row, 11 tabs in one segmented control, native selects. Authoring `hearts-and-rapiers` took ~340 browser actions; the expensive parts were repetitive check and table entry (S2, S5), the flow editor's nested accordions (S10), invisible save feedback (S14) and a validation that shows one JSON path at a time (S15). The next presets (B8–B10) are authored in Studio too.
+
+## Decisions (user, 2026-10-22, after the canvas review)
+
+| Question | Decision |
+|---|---|
+| Canvas | Approved as the design writers build from; the Overview "In this draft" counts card is dropped |
+| GameSystem navigation | A section rail replaces the 11-tab `SegmentedControl`: groups **Author** (Overview, Oracles, Trackers & tags, Scene Types, Flows, Sheet, Checks, Library) and **Ship** (Validation, Releases, Sections), same order and visibility for library packs as today. Items are links (`aria-current="page"`), names unchanged; the open section is the `tab` search param (`validateSearch` on `routes/studio.game-systems.$key.tsx`, unknown values fall back to `overview`). Role changes from `radio` to `link`: 28 unit and 15 e2e queries move with it |
+| Checks | List and editor side by side; after create the new check stays selected and the editor stays in place (S4) |
+| Flow editor | Full outline: phases, their Scene Types, hooks and steps on the left; one node edited at a time on the right (S10). The flow editor page shows the outline instead of the section rail |
+| Validation | API change allowed: the draft validation returns `errors: [{path, message}]` instead of one `error`, collecting every error it can (S15) |
+| Selects | A shared `Select` on the `radix-ui` package's Select (already a dependency, `radix-ui` ^1.6.7, so no new package) replaces `NativeSelect` in Studio: typeahead, arrows, Enter (S7). Play keeps `NativeSelect` |
+| Helpers in scope | Duplicate check, band presets (S2); Paste entries (S5); inline "Enable on flow" fix (S16) |
+| Tokens | No new palette tokens except `--warning-text`. Studio states (selected row, active rail item, error and warning alerts) are theme-neutral utilities derived from existing tokens with `color-mix`, so `contrast.test.ts` only gains the `--warning-text` pairs |
+| Accessible names | Unchanged for every existing control; icon-only buttons keep today's name as `aria-label` and show it as a tooltip. Roles change only for the rail (links) and the selects (combobox and listbox) |
+
+## Current code (explorer maps, 2026-10-22)
+
+- Page: `studio/GameSystemPage.tsx` (tabs in `useState<Tab>('overview')` `:130`; `SegmentedControl` `aria-label="GameSystem page"` `:187`, a Radix RadioGroup; notice `<p role="status">` under the header shifts the tabs, S17). Route `routes/studio.game-systems.$key.tsx` (13 lines, no `validateSearch`). Sub-editor pages: flow, oracle table, likelihood oracle, Scene Type (own routes, "Back to {key}" link, item name as `h1`).
+- Surfaces: Studio lists are `ul.divide-y rounded-xl ring-1 ring-foreground/10`; `Card` only on the home grids. Studio uses no `IconTile`, `DieShape`, lucide icons or well classes yet (inputs already are wells from B5).
+- Selects: 28 `<NativeSelect>` in 17 Studio files; tests use `userEvent.selectOptions` 89 times in 16 files, `'combobox'` 14 times in 3 files; Studio e2e `selectOption` 6 times (check-editor, sheet-builder). No `shared/ui/select.tsx`; `native-select.tsx` says no select primitive is installed yet.
+- Validation: `GET /api/studio/game-systems/{key}/validation` (`GameSystemController::validation` `:201`) → `ValidateGameSystemDraftHandler` wraps `ReleaseContent::fromArray`; fail-fast, 148 `InvalidReleaseContent::at($path, $reason)` sites in 16 files, the path only lives in the message (`"path: reason"`). Same validator runs at publish. Consumers: `PublishDialog.tsx:80`, the Validation tab (`GameSystemPage.tsx:250`), `flows/flowIssues.ts` (prefix match on `flows[i]`). Tests: `GameSystemDraftApiTest.php:651`, `GameSystemDraftHandlersTest.php:216-313`, Behat `StudioContext.php:404-417` (`is invalid at "path"`).
+- Flow editor: one `FlowDraft` in `useState` (`FlowEditor.tsx:39`); phases hold `hooks: Partial<Record<PhaseHook, StepDraft[]>>` (`flowDraft.ts:41-70`); save in `FlowEditor.tsx:54-95` with `flowChecks` and `flowAnswer` mapping server errors to fields, phases or page. S10: `FlowEditor.tsx:234` passes the first Scene Type, `flowDraft.ts:306-322` puts it in a new phase. Sizes: FlowEditor 271, PhaseOutline 247, PhaseHooks 86, StepListEditor 582 (shared with the Scene Type editor), FlowEditorPage.test 846, StepListEditor.test 1166.
+- S16: `FlowReferences.php:207` (`tracker "%s" is not one of the trackers of flow "%s"`) and `:227` (Scene Type oracles) run only at validation and publish; a flow save passes. The editor has `draft.trackers`, `draft.oracles`, every step's tracker effects and conditions, and `narrative.sceneTypes[].definition.oracles`; not the oracle tables' entries.
+- Checks: `ChecksTab.tsx` 735 (editor rendered after the list `:264-276`, form label `New check` / `Edit {key}` `:584`), `BandsEditor.tsx` 310, `CheckSandbox.tsx` 291. Oracles: `TableEditor.tsx:267-272` adds an entry with blank min/max (S5); `EntriesEditor.tsx` 316.
+- Sheet: `SheetPreview.tsx` already computes derived values (`computeDerived`); S19's "formula field shows raw text" must be reproduced first (field list row or field dialog).
+- Studio e2e: `studio-check-editor`, `studio-flow-editor`, `studio-library`, `studio-oracle-editor`, `studio-publish`, `studio-sheet-builder` (one test each).
+
+## Design spec
+
+### Studio kit (slice 1)
+
+Utilities go in `frontend/src/index.css` as theme-neutral classes or Tailwind compositions reading existing tokens; the only new token is `--warning-text` (light `oklch(0.42 0.09 70)`, dark `oklch(0.86 0.12 85)`), declared in all seven palette blocks (each campaign theme copies the default value of its ground: light themes the light value, dark themes the dark one) with contrast pairs against `--background` and `--card` (text 4.5:1).
+
+| Element | Spec |
+|---|---|
+| Panel | `rounded-xl`, `bg-card`, `border: var(--panel-border)`, `box-shadow: var(--card-shadow)`. Head: flex, gap 12px, padding 14px 16px, bottom border; `IconTile` 32 + panel title (`text-panel-title`); actions right (`ml-auto`). Body padding 16px |
+| Action bar | Bottom of a panel: flex end, gap 12px, padding 12px 16px, top border, `background: color-mix(in oklch, var(--card) 92%, var(--background))`, bottom radius. Holds the save state left of the primary button |
+| Save state | 13px, gap 6px, icon 14px. Saving: `LoaderCircle` spinning, muted. Saved: `Check` in `--success`, text muted, "Saved at HH:MM" (`role="status"`). Failed: `CircleAlert` + "Not saved: N errors" in `--destructive` (`role="alert"`) and a "Go to the first" link that focuses the first invalid field. Unsaved (only where the editor tracks it): "Unsaved changes", muted |
+| Alerts | 13px, padding 10px 12px, radius 10px, gap 10px, icon 16px. Error: bg `color-mix(in oklch, var(--destructive) 8%, transparent)`, border 35%, icon `--destructive`. Warning: bg `color-mix(in oklch, var(--warning) 15%, transparent)`, border `color-mix(in oklch, var(--warning) 50%, transparent)`, icon `--warning-text`; an optional action button sits right |
+| Field error | 12px `--destructive` with `CircleAlert` 14px; the input gets `aria-invalid` and a destructive border plus 1px destructive ring |
+| Hint | 12px muted under the field; every Studio key field shows "Lower case letters, digits and hyphens." before any error (S18) |
+| Section title | 20px / 600 / -0.01em (`h2` of sections; editor titles 18px) |
+| Group label | 11px / 600 / uppercase / 0.08em / `--label-color` (sheet groups, Scene Type step sections, rail groups) |
+| Read-out | 28px / 700 / -0.02em in a well (`--well`, `--well-shadow`, `border-input`), padding 10px 12px, gap 14px; 22px in small count tiles |
+| List row | min-height 44px (40 in the checks list), padding 6px 10px 6px 12px, bottom border; title 14px / 550, ellipsis; mono 12px muted key under it; meta badges; actions right. Hover `--secondary`. Selected: `aria-current="true"`, bg `color-mix(in oklch, var(--primary) 8%, transparent)`, `box-shadow: inset 3px 0 0 color-mix(in oklch, var(--primary) 55%, transparent)` |
+| Icon button | 30×30, radius 8px, icon 16px (14 in dense rows), muted; hover `--secondary` and foreground (destructive for Delete/Remove). `aria-label` = today's button name; tooltip with the same text on hover and focus (`radix-ui` Tooltip, new `shared/ui/tooltip.tsx`) |
+| Buttons | Existing variants. Add/New buttons are `outline sm` with `Plus`; Publish is primary with `Upload`; Reload/Restore/Check again use `RotateCcw` |
+| Count pill | 20px high, padding 0 6px, 11px / 600, `--secondary` bg, muted text; error variant `--destructive` bg with `--primary-foreground`-like light text (use the destructive badge colours) |
+| Empty state | Dashed well, padding 22px 18px, centred: `IconTile` 32, the existing message, a 12px hint |
+| `IconTile` | Sizes 24 (rows, menus, outline), 28 (rail), 32 (panel heads), 44 (page and editor titles); existing tokens; icons `aria-hidden` |
+| Dialog | Existing `dialog.tsx`; title row with `IconTile` 44 where the canvas shows one; footer is an action bar |
+
+Icons (lucide-react): Overview `BookOpen`, Oracles `Eye`, Trackers & tags `HeartPulse`, Scene Types `Clapperboard`, Flows `Route`, Sheet `UserRound`, Checks the d20 `DieShape`, Library `Library`, Validation `ShieldCheck`, Releases `Package`, Sections `ListTree`. Panels: Details `BookOpen`, Credits `ScrollText`, Trackers `Gauge`, Tags `Tag`, Fact slots `ScrollText`, Sheet fields `UserRound`, Preview `Eye`, Table and Steps `List`, Test roll d20. Field types: text `Type`, number `Hash`, derived `Sigma`, list `List`. Step kinds: prompt `MessageSquare`, character `UserRound`, roll and check d20, condition `Split`, oracle `Eye`, table `List`, choice `GitBranch`, pick `Check`. Outline: phase `Layers`, hook `Zap`, step a 6px dot, selection `Clapperboard`. Actions: `Plus`, `Pencil` (Edit), `Copy` (Duplicate), `ArrowUp`/`ArrowDown` (Move up/down, Up/Down), `Trash2` (Delete), `X` (Remove…), `ChevronDown` (disclosure, rotated −90° closed), `ChevronsUpDown` (select trigger), `CircleAlert`, `TriangleAlert`, `Info`, `ArrowRight` (Go to field), `ArrowLeft` (Back), `ClipboardPaste`, `Upload`, `LoaderCircle`.
+
+### GameSystem shell (slice 1)
+
+- Layout: container max 1232px, padding 24px; header; then a wrapping row: rail `flex: 1 1 210px; max-width: 230px`, content `flex: 999 1 560px; min-width: 0`, gap 28px. Below 768px the rail becomes one horizontally scrolling row of items above the content.
+- Header: "Back to Studio" with `ArrowLeft`; `IconTile` 44 showing the GameSystem's initial (heading font, 20px / 700, `aria-hidden`); `h1` name (page title); meta row 13px muted: mono key · Schema version N · Latest release vN / Never published, then the existing badges. Right: the publish notice (`role="status"`, `Check` in `--success`, cleared on section change as today) and Publish. Nothing below the header moves when the notice appears (S17).
+- Rail: `nav` "GameSystem page"; group labels "Author" and "Ship"; item 38px, padding 0 8px 0 6px, radius 9px, `IconTile` 28, 14px / 500; active: bg `color-mix(in oklch, var(--primary) 10%, transparent)`, `box-shadow: inset 2px 0 0 var(--primary)`. Count pill right, linked with `aria-describedby` so names stay unchanged: Oracles (tables + likelihood oracles), Trackers & tags (trackers + tags + fact slots), Scene Types, Flows, Sheet (fields), Checks, Releases (latest version); counts the page does not have are omitted. Validation shows the error count (error pill) from slice 6.
+- Sub-editor pages (oracle table, likelihood oracle, Scene Type) keep their route, back link and `h1`; header: `IconTile` 44 of the section, 12px muted "{GameSystem name} · {Oracle table|Scene Type}" above the `h1` (26px), meta badges right; the rail shows with the parent section active. The flow editor shows its outline instead (slice 4).
+
+### Home and Overview (slice 1)
+
+- Home: header (`h1` Studio, subtitle, primary New GameSystem with `Plus`). Sections "Your GameSystems" and "Library" with a count pill and a grid `repeat(auto-fill, minmax(320px, 1fr))`, gap 16px. GameSystem card: panel, padding 16px, `IconTile` 44 initial, name link (`h3` panel title), mono key, badges (Latest release vN secondary / Never published outline / Unpublished changes warning / library changes). Library card: `IconTile` 44 `Library`, name + Yours badge, key, description, section counts line 12px muted. New pack is `outline sm`.
+- Overview: two panels. "Details": Name and Theme (Theme hint "Campaigns on this GameSystem start with it.") in two columns, Description full width. "Credits": head hint "Shown to players before they start a campaign."; Notice with an "N / 2,000" counter right of its label, linked by `aria-describedby` (S19); License and Link in two columns; the action bar with the save state and Save. Discard draft stays below, as today.
+
+### Lists (slice 2)
+
+Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/Add button) and list rows as specced; row buttons become icon buttons with today's names (Edit, Move up, Move down, Delete, Duplicate where it exists). Sheet fields group under group labels with a field-type tile 24 per row and a range hint ("−1 to 3") when the field has min/max; the layout panel becomes a one-line bar in the fields panel ("Layout: N columns, N groups" + Edit layout). Trackers & tags: three panels (Trackers full width, Tags and Fact slots side by side), tracker rows with hint text and kind badges, empty states. Scene Types tab: "New Scene Type" creates and stays on the list with the new row selected, like other creates (S8). Releases: list panel (max 400px) of rows (version read-out 18px, notes, "date · short hash · Schema version N", View) beside the detail panel (`IconTile` 44 "vN", `h2` "Version N: {name}", "Read-only. Schema version N." + date and hash, Restore into the draft `outline sm` with `RotateCcw`, notes in a well, section counts as small read-outs in wells).
+
+### Select (slice 2)
+
+`shared/ui/select.tsx` on `radix-ui` Select: trigger 36px (32 in dense rows), a well like inputs, value left, `ChevronsUpDown` right; content a panel (radius 10px, padding 4px), options 13px, padding 7px 10px, radius 6px, highlighted `--row-hover`-like secondary, selected with `Check` in `--primary`. Typeahead jumps by typed prefix. Labels via `<Label htmlFor>` on the trigger. Empty option ("None", "Not set", "Choose a tracker…") stays a real option value (Radix forbids the empty string: map it to a sentinel inside the component). Tests get one helper, `chooseOption(user, name, option)` in `src/test/`, and e2e a `chooseOption(page, label, option)` next to the shared helpers.
+
+### Authoring (slice 3)
+
+- Checks: list panel `flex: 1 1 280px; max-width: 330px` (rows: label link, mono key, Duplicate / Move up / Move down) beside a column `flex: 2 1 440px` with the editor panel and the test-roll panel. Editor head: `IconTile` 44 d20, the existing `New check` / `Edit {key}` heading at 18px, Duplicate (`outline sm`, `Copy`) and Delete. Fields in two columns: Key (hint), Label, Hint (full), Dice, Modifier (hint "Reads Wit, Hopeless" from the formula diagnostics), Difficulty. After create the new check is selected (`aria-current`) and its editor stays put (S4).
+- Duplicate (S2): opens a new unsaved check prefilled from the source, key `{key}-copy` (then `-copy-2`…), label "{label} (copy)"; saving creates it through the existing create endpoint. No API change.
+- Bands: head "Bands" with a ghost "Use a preset" menu (`ChevronDown`) and `outline sm` Add band. Each band a well row (bg `--background`): index pill, Key, Label, Bound select, Up to (70px), Move up / Move down / Remove; the last band shows "The last band catches the rest: it has no bound." Presets replace the bands: **Miss / partial / full** (`miss` "Miss" up to 6, `partial` "Partial hit" up to 9, `full` "Full hit"), **Failure / success** (`failure` "Failure" with an empty number bound, `success` "Success"), **Copy from a check…** (submenu of the checks; keys, labels and bounds). A new band's key follows its label (slug) until the key is edited, and its bound starts as "A number" (S3).
+- Test roll: fieldset "Sample values" (two-column inputs), "Band bounds for these samples" in a well, primary "Roll the check" with the d20; results as wells: read-out total, band label 13px / 550, mono breakdown 12px muted ("2d6 (5 + 4) − 1 wit − 2 hopeless"); the latest result has a 1px primary ring and the existing "Reached" badge, older ones fade (opacity .75, .6).
+- Oracle table editor: Table panel (Key with hint, Name, Dice in one row) with the Entries section: head with the coverage badge (success "Covers 1–8" or the coverage problems list) and ghost Paste entries. One dense row per entry (32px inputs): Min and Max 52px centred (or Weight), Text flexible, a summary badge when it has details ("1 Scene Type", "2 effects"), a disclosure "Entry N details" (`aria-expanded`) and "Remove entry N". Details open in a well under the row: Entry key, Nested table, Scene Type, the effects editor. Add entry (`outline sm`) fills the next range: min = max = last max + 1 for ranged tables, weight 1 otherwise (S5). Labels of the dense inputs are visually hidden ("Entry N min", "Entry N max", "Entry N text").
+- Paste entries dialog (S5): one entry per line; an optional leading "N" or "N-M" sets the range, other lines follow on from the previous range (weighted tables: weight 1); radios "Replace all" / "Add after the last"; primary "Use N entries". Parsing is client side; the draft is saved with the existing Save.
+- Likelihood oracle editor: levels as dense rows; the Test answer panel's answer in a well.
+- Sheet preview: derived fields show their value as a read-out in a well with the formula in mono 12px muted beside it; fix whichever place shows the raw formula (S19).
+
+### Flow editor (slices 4 and 5)
+
+- Page: back link and header (`IconTile` 44 `Route`, "{GameSystem} · Flow", `h1` name, Default and "N issues" badges). Row: outline panel `flex: 1 1 260px; max-width: 300px` and content `flex: 999 1 560px`.
+- Outline panel: head "Outline" + `outline sm` Add phase. `nav` "Flow outline": "Flow settings" item; per phase "N. {name}" (`Layers`, mode meta "Once"/"Loop"), its selection ("Swashbuckle, Heart-to-heart…", `Clapperboard`), all seven hooks (`Zap`, step count meta; empty hooks dimmed, still selectable), steps under their hook (dot, title, error pill). Indent 16px per level, items 30px, radius 8px, selected as a selected row. The selected node is the `node` search param (e.g. `phases.2.hooks.phaseClosing.0`), so Validation can link to it.
+- Content: a breadcrumb (12px muted, `ChevronRight`) then one panel for the selected node: flow settings (today's flow fields, Oracle shortcuts, Trackers), a phase (Key, Name, Act, Mode, Description, Delete, Move up/down), its selection, a hook (the hook's step list, reusing `StepListEditor`), or a step (the hook's list with that step open and scrolled to). Errors open their node: `flowAnswer` results select the node instead of opening accordions.
+- A new phase starts with no Scene Type (S10); its selection shows "Add a Scene Type" and validation reports the empty selection.
+- Save bar (slice 5): a sticky panel at the bottom of the content (`bottom: 16px`) with the save state, "Go to the first" (selects the node and focuses the field), "Reload the latest version" on conflict, and Save (S14). Field errors sit on their fields, the Skip label error included (S13).
+- `{answer}` hint (S11) under the prompt and text fields of prompt and choice steps and their effects: "Effects can use {answer}: the option the player picks, or what they type in a prompt step."
+- Enable on flow (S16): a warning alert in the step panel (and a list in Flow settings) when a step's tracker effect or tracker condition, or a directly selected Scene Type's oracle shortcuts, are not enabled on the flow, with an `outline sm` "Enable on flow" button that adds them to the draft. Scene Types reached through steps or table entries stay covered by validation.
+
+### Scene Type editor and Publish dialog (slice 5)
+
+- Scene Type editor: Details panel (Key with hint, Name, Purpose, Tips in two columns; Oracle shortcuts as pill checkboxes, 32px, radius 999px, selected with the selected-row background and border). Steps panel: group labels "Setup", "Play", "Closing" with a count pill; each step an item with a disclosure, kind tile 24, title and mono key, kind badge (plus the bound check or table as an outline badge), Up / Down / Delete; open steps show their fields in two columns. "Add step" is a ghost menu button listing the kinds with their tiles, replacing the "New step kind" select and "Add step" button.
+- Publish dialog: `IconTile` 44 `Upload`, existing title and description, close button; a summary well: "vN → vN+1" (read-out 22px), "The draft is valid. This creates version N." with `Check`, warnings with `TriangleAlert`, or the errors list (first three, then "and N more" linking to Validation); Release notes with the counter right of the label; the "Only the saved draft is published…" line with `Info`; footer action bar: ghost Cancel, primary "Publish version N" with `Upload`.
+
+### Validation (slice 6)
+
+- API: `InvalidReleaseContent` carries `path` and `reason` (message stays `"path: reason"` for logs and publish); the validation response becomes `{valid, errors: [{path, message}], warnings}` with `message` the reason. Collect every error the validator can reach: each flow's coherence checks are independent (collect per flow in `FlowReferences`), and so are sections whose output no later section reads; a section that fails stops the sections that read it (checks read the sheet, flow steps read the checks, `ReleaseContent.php:135`). Publish keeps failing on the first error. `make api`; Behat step `is invalid at "path"` matches any error; API test for several errors.
+- Validation tab: status panel (`IconTile` 44 `ShieldCheck`, error-tinted when invalid), "The draft is not valid yet" / today's valid sentence, "N errors block publishing. N warnings do not.", `outline sm` "Check again" (refetch). Errors grouped by section and item in panels (head tile, "Flows · One-shot", error count pill); each row `CircleAlert`, the message, a 12px muted human path ("Climax › Phase closing › Step 1 “Did you learn…” › Skip label"), and "Go to field" (`outline sm`, `ArrowRight`) to the section tab or editor page and node; a `details` "Technical paths" lists the raw paths. Warnings panel below. `flowIssues` counts by path; the rail shows the error count.
+
+## Constraints
+
+- Frontend only, except the slice 6 validation API change.
+- `contrast.test.ts` stays green: the one new token in all seven blocks with pairs; everything else derived.
+- Accessible names unchanged (see Decisions for the two role changes); every icon `aria-hidden`; icon-only buttons have `aria-label` and a tooltip.
+- Each slice is safe on `main` alone: every slice leaves Studio fully working; the validation API and its consumers land in one slice.
+- Planning heuristic only: forecasts are not caps; the slice ceiling is ~1,700 changed lines including generated files.
+
+## Slice plan
+
+| # | Branch | PR title | Tasks | Forecast |
+|---|---|---|---|---|
+| 1 | `feat/studio-ui-polish-1-shell` | `feat(studio): studio-ui-polish 1/6 kit and shell` | T1–T4 | ~1,500 (kit utilities, token and tooltip ~350; rail, header, `?tab=` ~450 with 43 tab-query edits; home and Overview ~350; stories and tests ~350) |
+| 2 | `feat/studio-ui-polish-2-lists` | `feat(studio): studio-ui-polish 2/6 select and lists` | T5–T6 | ~1,600 (Select, helpers and 28 call sites ~450; 89 + 14 + 6 test edits ~300; list panels and rows across eight tabs ~700; stories ~150) |
+| 3 | `feat/studio-ui-polish-3-authoring` | `feat(studio): studio-ui-polish 3/6 checks and tables` | T7–T8 | ~1,500 (checks layout, Duplicate, presets, band defaults, sandbox ~750; dense entries, Add entry, Paste entries, likelihood, preview ~750) |
+| 4 | `feat/studio-ui-polish-4-flow-outline` | `feat(studio): studio-ui-polish 4/6 flow outline` | T9 | ~1,500 (outline and node routing ~600, node editors from the existing parts ~400, FlowEditorPage tests ~500) |
+| 5 | `feat/studio-ui-polish-5-flow-feedback` | `feat(studio): studio-ui-polish 5/6 flow feedback and Scene Types` | T10–T11 | ~1,400 (save bar, field errors, `{answer}`, Enable on flow ~650; Scene Type editor and Add step menu ~450; Publish dialog ~300) |
+| 6 | `feat/studio-ui-polish-6-validation` | `feat(studio): studio-ui-polish 6/6 validation` | T12–T14 | ~1,600 (backend path and collection with tests ~600, generated spec and types ~250, Validation tab, links and consumers ~600, Chrome pass fixes ~150) |
+
+## Tasks
+
+| ID | Slice | Task | Route | Status | Commit |
+|---|---|---|---|---|---|
+| T1 | 1 | This feature doc; roadmap B7b in progress | parent, inline (doc only) | [x] | — |
+| T2 | 1 | Studio kit: utilities (panel, action bar, save state, alerts, field error, list row and selected row, icon button, count pill, empty state, group label, read-out), `--warning-text` in all seven blocks with contrast pairs, `IconTile` sizes 24 and 28, `shared/ui/tooltip.tsx`, `IconButton`; stories | | [ ] | |
+| T3 | 1 | GameSystem shell: section rail with groups, counts and `aria-current`, `tab` search param with fallback, header with initial tile and in-header notice (S17), sub-editor page headers with the rail; tab queries moved from `radio` to `link` (28 unit, 15 e2e); stories | | [ ] | |
+| T4 | 1 | Studio home cards; Overview Details and Credits panels with the notice counter (S19) and save state; the key hint on every Studio key field (S18) | | [ ] | |
+| T5 | 2 | `shared/ui/select.tsx` (radix-ui Select) and `chooseOption` helpers; replace the 28 Studio `NativeSelect` uses (S7); move 89 `selectOptions`, 14 `combobox` and 6 e2e `selectOption` calls; stories | | [ ] | |
+| T6 | 2 | List panels and rows with icon actions: Sheet fields (groups, type tiles, layout bar), Checks list, Oracles tab, Trackers & tags with empty states, Scene Types tab (create stays on the list, S8), Flows tab, Releases list and detail side by side, Library tab | | [ ] | |
+| T7 | 3 | Checks side by side with selection after create (S4), Duplicate (S2), band presets and Copy from a check (S2), band key from label and bound default (S3), test-roll results in wells | | [ ] | |
+| T8 | 3 | Oracle table editor dense entries with details disclosure, Add entry next range, Paste entries dialog (S5), test roll in wells; likelihood editor rows and answer well; Sheet preview derived read-outs (S19) | | [ ] | |
+| T9 | 4 | Flow editor outline: nodes, `node` search param, one node editor at a time reusing the current parts, errors select their node, a new phase has no Scene Type (S10) | | [ ] | |
+| T10 | 5 | Flow save bar (S14), field-linked errors with Go to the first (S13), `{answer}` hint (S11), Enable on flow (S16) | | [ ] | |
+| T11 | 5 | Scene Type editor (details, shortcut pills, grouped steps, Add step menu); Publish dialog | | [ ] | |
+| T12 | 6 | Validation API: `path` on `InvalidReleaseContent`, `errors[]` response collecting per flow and per independent section, `make api`, PHPUnit and Behat | | [ ] | |
+| T13 | 6 | Validation tab grouped with Go to field, path-to-location mapper, Publish dialog errors list, `flowIssues` on paths, rail error count (S15) | | [ ] | |
+| T14 | 6 | Chrome pass on every Studio screen in the default light and dark themes; fix small findings, log the rest | | [ ] | |
+
+## Applicable checks
+
+- Per task: test first where a deterministic test exists (rail navigation and `tab` fallback, save-state messages, Duplicate keys, preset bands, band key slug, Add entry range, Paste parsing, outline node selection, Enable on flow, validation collection and path mapping); CSS-only parts have no meaningful RED and get structural checks and stories.
+- `make verify` once per slice by the writer; CI runs the full suites. Slice 2 changes a shared test helper under `src/test/`, so it runs the full Vitest (as `make verify` decides).
+- `contrast.test.ts` green; e2e Studio specs updated with the role and select changes; slice 6 runs `make api` and commits the spec and types.
+
+## Progress
+
+- 2026-10-22: design canvas drawn (12 screens in light and dark, kit, rail and header parts), reviewed and approved by the user with the decisions above; Studio code mapped by two read-only explorers; issue #239; 6 slices planned. T1 committed on the slice 1 branch; slice 1 coding starts in a fresh session.
+
+## Reviews
+
+| Slice | Lineage | Commits | Outcome | PR |
+|---|---|---|---|---|
+
+## Next step
+
+Slice 1 on `feat/studio-ui-polish-1-shell` (branch exists with T1): brief one writer for T2–T4, then review, push and open the PR (`Part of #239`).

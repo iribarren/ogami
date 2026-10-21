@@ -51,6 +51,7 @@ frontend/                    Vite + React + TypeScript SPA
   src/shared/                ui/ (shadcn), api/ (generated client), lib/, health/
   e2e/                       Playwright tests
 docker/                      container config (php: FrankenPHP + Caddy, node)
+scripts/                     host scripts behind make targets (`verify-changed.sh`)
 compose.yaml                 full dev environment (+ compose.override.yaml locally)
 Makefile                     every command, see below
 .github/workflows/ci.yml     CI: the same make targets
@@ -64,6 +65,7 @@ odd/tasks/                   ODD feature docs
 |---|---|
 | Method | ODD (gentle-ai): explore → feature doc in `odd/tasks/<feature>.md` (+ Engram mirror) → slice by slice, task by task ([ADR 0011](docs/adr/0011-gentle-ai-workflow.md), [ADR 0015](docs/adr/0015-sequential-slice-delivery.md)) |
 | Tests | Test first (RED → GREEN → refactor) when a runnable deterministic test exists |
+| Local checks | `make verify` runs only what the changed files need; CI runs the full suites and is the gate. Run `make qa test` yourself only when a change touches tooling or shared config |
 | Delivery strategy | **Sequential slices to `main`** ([ADR 0015](docs/adr/0015-sequential-slice-delivery.md)). Never use feature-branch chains, stacked PRs or tracker branches, and don't ask for a chain strategy |
 | Slice plan | In the feature doc before the first write: slices with their tasks and a forecast of ~800–1,500 changed lines **including generated files** (OpenAPI spec, TS types, route tree). Split a slice that grows past that before review |
 | Branches | One branch per slice from the latest `main`: `type/<feature>-<n>-<topic>` (`feat/`, `fix/`, `docs/`, `chore/`…). Branch the next slice only after the previous one is merged; nothing lands on `main` directly |
@@ -89,6 +91,7 @@ Everything runs in Docker through `make` (it exports your UID/GID; a bare `docke
 | QA | `make qa` | Backend (PHPStan + PHPat, CS-Fixer, Rector) + frontend (ESLint, Prettier, tsc) + `api-check` |
 | Fix style | `make backend-fix`, `make frontend-fix` | Apply Rector/CS-Fixer, ESLint/Prettier (Rector may need two passes) |
 | Tests | `make test` | PHPUnit (unit + integration on `ogami_test`), Behat, Vitest |
+| Scoped checks | `make verify` | Checks only what changed since `main` (committed, staged, unstaged, untracked): backend QA + PHPUnit narrowed to the touched context (Studio also runs Play) + Behat, `api-check`, frontend QA, Vitest `related` for `frontend/src` changes (full for other frontend files), nothing for docs. Root files (`Makefile`, `compose*.yaml`, `docker/`, `scripts/`) run everything. `make verify-test` tests these scope rules. `BASE=` changes the comparison branch, `DRY_RUN=1` prints the plan. Runs every step, prints a summary, exits 1 on any failure. CI still runs the full suites |
 | E2E | `make e2e` | Playwright smoke tests in the `playwright` container against the running stack |
 | Presets | `make presets` | Publish the GameSystem presets in `backend/presets/` as releases (skips unchanged ones) |
 | API contract | `make api` | After changing an endpoint: export the OpenAPI spec and regenerate `frontend/src/shared/api/schema.d.ts`; commit both |

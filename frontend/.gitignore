@@ -1,2 +1,5 @@
 # TanStack Router plugin scratch files
 .tanstack/
+
+# ESLint cache (kept outside node_modules so CI, which caches node_modules, lints fresh)
+.eslintcache

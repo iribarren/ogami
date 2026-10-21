@@ -22,6 +22,8 @@ NODE_EXEC := $(DOCKER_COMPOSE) exec $(TTY) node
 
 # Pass-through arguments: make composer ARGS="require foo/bar"
 ARGS ?=
+# Limit PHPUnit to some paths (make verify): make backend-test PHPUNIT_ARGS="tests/Unit/Play". Empty runs everything.
+PHPUNIT_ARGS ?=
 # Limit build/up to some services (CI jobs): make build up SERVICES="php"
 SERVICES ?=
 
@@ -94,7 +96,7 @@ backend-install: backend/vendor/autoload.php ## Install backend Composer depende
 backend-test: backend-install ## Run backend tests: PHPUnit (unit + integration) and Behat
 	$(PHP_EXEC) php bin/console doctrine:database:create --if-not-exists --env=test --quiet
 	$(PHP_EXEC) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test --quiet
-	$(PHP_EXEC) vendor/bin/phpunit
+	$(PHP_EXEC) vendor/bin/phpunit $(PHPUNIT_ARGS)
 	$(PHP_EXEC) vendor/bin/behat --strict
 
 .PHONY: backend-qa
@@ -143,6 +145,11 @@ frontend-fix: frontend-install ## Apply ESLint fixes and Prettier formatting to 
 .PHONY: frontend-test
 frontend-test: frontend-install ## Run frontend unit and component tests (Vitest)
 	$(NODE_EXEC) pnpm test
+
+# FILES are paths relative to frontend/: make frontend-test-related FILES="src/play/flow/GuidedPanel.tsx"
+.PHONY: frontend-test-related
+frontend-test-related: frontend-install ## Run only the Vitest tests that import the given files (FILES="src/a.ts src/b.tsx")
+	$(NODE_EXEC) pnpm exec vitest related --run $(FILES)
 
 .PHONY: frontend-build
 frontend-build: frontend-install ## Build the SPA for production into frontend/dist
@@ -200,3 +207,13 @@ test: backend-test frontend-test ## Run every test suite
 
 .PHONY: qa
 qa: backend-qa frontend-qa api-check ## Run every static check
+
+# BASE is the branch to compare against; DRY_RUN=1 prints the plan without running it.
+.PHONY: verify
+verify: ## Run only the checks the changed files need (BASE=main, DRY_RUN=1 to print the plan); CI runs everything
+	@BASE="$(or $(BASE),main)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-changed.sh
+
+# Table-driven tests for the scope rules of `make verify`.
+.PHONY: verify-test
+verify-test: ## Test the scope rules of make verify (scripts/verify-changed.test.sh)
+	@./scripts/verify-changed.test.sh

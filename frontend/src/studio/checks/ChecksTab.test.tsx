@@ -22,7 +22,7 @@ async function openChecks(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/checks`]: json(checks),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Checks' }))
+  await user.click(await screen.findByRole('link', { name: 'Checks' }))
   return { user, ...rendered }
 }
 

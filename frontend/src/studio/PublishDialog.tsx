@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { Upload } from 'lucide-react'
 import { useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -48,7 +49,10 @@ export function PublishDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Publish</Button>
+        <Button>
+          <Upload aria-hidden="true" />
+          Publish
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

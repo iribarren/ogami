@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, Check } from 'lucide-react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -11,8 +12,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
-import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
+import { IconTile } from '@/shared/ui/icon-tile'
 
+import type { GameSystemTab } from './gameSystemTabs'
 import { LibraryChangesBadge } from './LibraryChangesBadge'
 import { LibraryTab } from './library/LibraryTab'
 import { MetadataForm } from './MetadataForm'
@@ -24,6 +26,7 @@ import { OraclesTab } from './oracles/OraclesTab'
 import { PublishDialog } from './PublishDialog'
 import { ReleasesTab } from './ReleasesTab'
 import { SectionCounts } from './SectionCounts'
+import { SectionRail } from './SectionRail'
 import { SheetTab } from './sheet/SheetTab'
 import { useSampleValues } from './sheet/useSheetSamples'
 import {
@@ -34,35 +37,30 @@ import {
   type GameSystem,
 } from './useGameSystems'
 
-type Tab =
-  | 'overview'
-  | 'oracles'
-  | 'narrative'
-  | 'sceneTypes'
-  | 'flows'
-  | 'sheet'
-  | 'checks'
-  | 'library'
-  | 'validation'
-  | 'releases'
-  | 'sections'
-
 /**
  * `/studio/game-systems/$key`: one of my GameSystem drafts. An unknown key, or someone else's,
  * is not found.
  */
-export function GameSystemPage({ gameSystemKey }: { gameSystemKey: string }) {
+export function GameSystemPage({
+  gameSystemKey,
+  tab = 'overview',
+}: {
+  gameSystemKey: string
+  /** The open section: the route's `tab` search parameter, Overview without a valid one. */
+  tab?: GameSystemTab
+}) {
   const gameSystem = useStudioGameSystem(gameSystemKey)
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1232px] space-y-6">
       <Link
         to="/studio"
-        className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
-        <span aria-hidden="true">← </span>Back to Studio
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        Back to Studio
       </Link>
-      <GameSystemState gameSystem={gameSystem} />
+      <GameSystemState gameSystem={gameSystem} tab={tab} />
     </div>
   )
 }
@@ -71,7 +69,13 @@ export function GameSystemPage({ gameSystemKey }: { gameSystemKey: string }) {
  * Without data yet, one state at a time. Once there is data, a failed refetch keeps the page
  * (and what was typed in the form) and only adds a non-blocking alert with a retry.
  */
-function GameSystemState({ gameSystem }: { gameSystem: ReturnType<typeof useStudioGameSystem> }) {
+function GameSystemState({
+  gameSystem,
+  tab,
+}: {
+  gameSystem: ReturnType<typeof useStudioGameSystem>
+  tab: GameSystemTab
+}) {
   if (gameSystem.data === undefined) {
     if (gameSystem.isPending) {
       return <p className="text-muted-foreground">Loading the GameSystem…</p>
@@ -110,6 +114,7 @@ function GameSystemState({ gameSystem }: { gameSystem: ReturnType<typeof useStud
       <GameSystemView
         key={gameSystem.data.key}
         gameSystem={gameSystem.data}
+        tab={tab}
         onReload={async () => {
           const result = await gameSystem.refetch()
           // A failed refetch keeps the stale data: do not remount the form on it.
@@ -122,15 +127,18 @@ function GameSystemState({ gameSystem }: { gameSystem: ReturnType<typeof useStud
 
 function GameSystemView({
   gameSystem,
+  tab,
   onReload,
 }: {
   gameSystem: GameSystem
+  tab: GameSystemTab
   onReload: () => Promise<GameSystem | undefined>
 }) {
-  const [tab, setTab] = useState<Tab>('overview')
+  const navigate = useNavigate()
   // A library pack is edited here like a draft, without anything about releases or publishing.
   const pack = gameSystem.kind === 'library-pack'
-  const [notice, setNotice] = useState<string | null>(null)
+  // The notice belongs to the section it was shown on, so opening another section clears it.
+  const [notice, setNotice] = useState<{ text: string; tab: GameSystemTab } | null>(null)
   // The sample values of the Sheet tab's preview and the Checks tab's sandbox: one set for both.
   const sampleValues = useSampleValues()
   // The form owns what is typed and only starts from this GameSystem: a save does not reset it,
@@ -147,10 +155,15 @@ function GameSystemView({
 
   return (
     <>
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
+      <header className="flex flex-wrap items-start gap-4">
+        <IconTile size="lg">
+          <span className="font-heading text-xl font-bold">
+            {gameSystem.name.trim().charAt(0).toUpperCase() || '?'}
+          </span>
+        </IconTile>
+        <div className="min-w-0 flex-1 space-y-1.5">
           <h1 className="font-heading text-page-title break-words">{gameSystem.name}</h1>
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
             <span className="font-mono break-all">{gameSystem.key}</span>
             <span>Schema version {gameSystem.schemaVersion}</span>
             {pack ? (
@@ -170,70 +183,82 @@ function GameSystemView({
             )}
           </p>
         </div>
-        {!pack && (
-          <PublishDialog
-            gameSystem={gameSystem}
-            onPublished={(version) => {
-              setNotice(`Published version ${String(version)}.`)
-            }}
-          />
-        )}
+        {/* The notice sits beside Publish, so showing it moves nothing below the header. */}
+        <div className="flex items-center gap-3">
+          {notice?.tab === tab && (
+            <p role="status" className="flex items-center gap-1.5 text-sm">
+              <Check aria-hidden="true" className="size-4 text-success" />
+              {notice.text}
+            </p>
+          )}
+          {!pack && (
+            <PublishDialog
+              gameSystem={gameSystem}
+              onPublished={(version) => {
+                setNotice({ text: `Published version ${String(version)}.`, tab })
+              }}
+            />
+          )}
+        </div>
       </header>
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
-        </p>
-      )}
-      <SegmentedControl
-        aria-label="GameSystem page"
-        value={tab}
-        onValueChange={(value) => {
-          setTab(value as Tab)
-          setNotice(null)
-        }}
-      >
-        <SegmentedControlItem value="overview">Overview</SegmentedControlItem>
-        <SegmentedControlItem value="oracles">Oracles</SegmentedControlItem>
-        <SegmentedControlItem value="narrative">Trackers &amp; tags</SegmentedControlItem>
-        <SegmentedControlItem value="sceneTypes">Scene Types</SegmentedControlItem>
-        {!pack && <SegmentedControlItem value="flows">Flows</SegmentedControlItem>}
-        {!pack && <SegmentedControlItem value="sheet">Sheet</SegmentedControlItem>}
-        {!pack && <SegmentedControlItem value="checks">Checks</SegmentedControlItem>}
-        {!pack && <SegmentedControlItem value="library">Library</SegmentedControlItem>}
-        <SegmentedControlItem value="validation">Validation</SegmentedControlItem>
-        {!pack && <SegmentedControlItem value="releases">Releases</SegmentedControlItem>}
-        {!pack && <SegmentedControlItem value="sections">Sections</SegmentedControlItem>}
-      </SegmentedControl>
-      {/* Stays mounted while another tab shows, so typed and saved values survive tab switches. */}
-      <div hidden={tab !== 'overview'} className="space-y-8">
-        <MetadataForm key={formStart.reloads} gameSystem={formStart.gameSystem} onReload={reload} />
-        {(pack || gameSystem.latestReleaseVersion === null) && (
-          <Discard gameSystemKey={gameSystem.key} pack={pack} />
-        )}
-      </div>
-      {tab === 'oracles' && <OraclesTab gameSystemKey={gameSystem.key} />}
-      {tab === 'narrative' && <NarrativeTab gameSystemKey={gameSystem.key} />}
-      {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
-      {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
-      {tab === 'sheet' && <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
-      {tab === 'checks' && <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />}
-      {tab === 'library' && (
-        <LibraryTab gameSystemKey={gameSystem.key} schemaVersion={gameSystem.schemaVersion} />
-      )}
-      {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} pack={pack} />}
-      {tab === 'releases' && (
-        <ReleasesTab
-          gameSystemKey={gameSystem.key}
-          onReload={reload}
-          onRestored={(restored, version) => {
-            // The restored draft replaces what the form started from, and the form remounts on it.
-            setFormStart((start) => ({ gameSystem: restored, reloads: start.reloads + 1 }))
-            setNotice(`Restored version ${String(version)} into the draft.`)
-            setTab('overview')
+      <div className="flex flex-wrap gap-7">
+        <SectionRail
+          gameSystem={gameSystem}
+          active={tab}
+          onNavigate={(next) => {
+            if (next !== tab) {
+              setNotice(null)
+            }
           }}
         />
-      )}
-      {tab === 'sections' && <Sections counts={gameSystem.sectionCounts} />}
+        <div className="min-w-0 flex-[999_1_560px] space-y-6">
+          {/* Stays mounted while another tab shows, so typed and saved values survive tab switches. */}
+          <div hidden={tab !== 'overview'} className="space-y-8">
+            <MetadataForm
+              key={formStart.reloads}
+              gameSystem={formStart.gameSystem}
+              onReload={reload}
+            />
+            {(pack || gameSystem.latestReleaseVersion === null) && (
+              <Discard gameSystemKey={gameSystem.key} pack={pack} />
+            )}
+          </div>
+          {tab === 'oracles' && <OraclesTab gameSystemKey={gameSystem.key} />}
+          {tab === 'narrative' && <NarrativeTab gameSystemKey={gameSystem.key} />}
+          {tab === 'sceneTypes' && <SceneTypesTab gameSystemKey={gameSystem.key} />}
+          {tab === 'flows' && <FlowsTab gameSystemKey={gameSystem.key} />}
+          {tab === 'sheet' && (
+            <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />
+          )}
+          {tab === 'checks' && (
+            <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />
+          )}
+          {tab === 'library' && (
+            <LibraryTab gameSystemKey={gameSystem.key} schemaVersion={gameSystem.schemaVersion} />
+          )}
+          {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} pack={pack} />}
+          {tab === 'releases' && (
+            <ReleasesTab
+              gameSystemKey={gameSystem.key}
+              onReload={reload}
+              onRestored={(restored, version) => {
+                // The restored draft replaces what the form started from, and the form remounts on it.
+                setFormStart((start) => ({ gameSystem: restored, reloads: start.reloads + 1 }))
+                setNotice({
+                  text: `Restored version ${String(version)} into the draft.`,
+                  tab: 'overview',
+                })
+                void navigate({
+                  to: '/studio/game-systems/$key',
+                  params: { key: gameSystem.key },
+                  search: { tab: 'overview' },
+                })
+              }}
+            />
+          )}
+          {tab === 'sections' && <Sections counts={gameSystem.sectionCounts} />}
+        </div>
+      </div>
     </>
   )
 }

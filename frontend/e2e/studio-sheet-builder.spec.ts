@@ -22,7 +22,7 @@ test('a game manager lays out the sheet of a copied preset, adds a derived field
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}`)
 
-  await page.getByRole('radio', { name: 'Sheet' }).click()
+  await page.getByRole('link', { name: 'Sheet' }).click()
   const preview = page.getByRole('region', { name: 'Preview' })
   // The preset's layout is the preview's: its groups are boxes on the sheet.
   await expect(preview.getByRole('group', { name: 'Stats' })).toBeVisible()
@@ -65,7 +65,7 @@ test('a game manager lays out the sheet of a copied preset, adds a derived field
 
   // What was saved is what the draft holds, not just what the form shows.
   await page.reload()
-  await page.getByRole('radio', { name: 'Sheet' }).click()
+  await page.getByRole('link', { name: 'Sheet' }).click()
   await expect(preview.getByRole('group', { name: 'Extras' })).toBeVisible()
   await expect(preview.getByLabel('Luck twice')).toHaveText('6')
 })

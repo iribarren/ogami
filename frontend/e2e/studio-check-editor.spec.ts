@@ -22,7 +22,7 @@ test('a game manager authors a check with two bands, rolls it in the sandbox and
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}`)
 
-  await page.getByRole('radio', { name: 'Checks' }).click()
+  await page.getByRole('link', { name: 'Checks' }).click()
   await page.getByRole('button', { name: 'New check' }).click()
   const form = page.getByRole('form', { name: 'New check' })
   await form.getByLabel('Key', { exact: true }).fill('e2e-skill')
@@ -68,7 +68,7 @@ test('a game manager authors a check with two bands, rolls it in the sandbox and
 
   // What was saved is what the draft holds, not just what the form shows.
   await page.reload()
-  await page.getByRole('radio', { name: 'Checks' }).click()
+  await page.getByRole('link', { name: 'Checks' }).click()
   await page.getByRole('button', { name: 'Edit e2e-skill' }).click()
   await expect(
     page.getByRole('form', { name: 'Edit e2e-skill' }).getByLabel('Band 2 key'),

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { Eye } from 'lucide-react'
 
 import { stepContext } from '../narrative/steps/stepContext'
 import { useGameSystemNarrative } from '../narrative/useGameSystemNarrative'
+import { EditorFrame } from '../EditorFrame'
 import { StudioError } from '../useGameSystems'
 import { TableEditor } from './TableEditor'
 import { useRollHistory } from './useRollHistory'
@@ -72,11 +74,14 @@ export function OracleTableEditorPage({
   }
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        {backLink}
-        <h1 className="font-heading text-page-title break-words">{item.definition.name}</h1>
-      </header>
+    <EditorFrame
+      gameSystemKey={gameSystemKey}
+      section="oracles"
+      kind="Oracle table"
+      icon={<Eye />}
+      title={item.definition.name}
+      backLink={backLink}
+    >
       <TableEditor
         key={`${table}-${String(reloads)}`}
         gameSystemKey={gameSystemKey}
@@ -102,6 +107,6 @@ export function OracleTableEditorPage({
           Couldn&apos;t reload the latest version. Try again.
         </p>
       )}
-    </div>
+    </EditorFrame>
   )
 }

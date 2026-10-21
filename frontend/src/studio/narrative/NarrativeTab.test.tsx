@@ -22,7 +22,7 @@ async function openNarrative(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/narrative`]: json(narrative),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Trackers & tags' }))
+  await user.click(await screen.findByRole('link', { name: 'Trackers & tags' }))
   return { user, ...rendered }
 }
 

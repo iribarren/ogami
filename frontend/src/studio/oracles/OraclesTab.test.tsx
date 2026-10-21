@@ -22,7 +22,7 @@ async function openOracles(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/oracles`]: json(oracles),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Oracles' }))
+  await user.click(await screen.findByRole('link', { name: 'Oracles' }))
   return { user, ...rendered }
 }
 

@@ -35,7 +35,7 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await expect(page).toHaveURL(`/studio/game-systems/${key}`)
 
   // A Scene Type step.
-  await page.getByRole('radio', { name: 'Scene Types' }).click()
+  await page.getByRole('link', { name: 'Scene Types' }).click()
   const sceneTypes = page.getByRole('region', { name: 'Scene Types' })
   await sceneTypes.getByRole('link', { name: 'Social' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}/scene-types/social`)
@@ -53,7 +53,7 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
 
   // A flow phase.
   await page.goto(`/studio/game-systems/${key}`)
-  await page.getByRole('radio', { name: 'Flows' }).click()
+  await page.getByRole('link', { name: 'Flows' }).click()
   await page.getByRole('region', { name: 'Flows' }).getByRole('link', { name: 'Heist' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}/flows/heist`)
 
@@ -76,6 +76,6 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await page.getByRole('button', { name: 'Publish' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Publish version 1' }).click()
   await expect(page.getByText('Published version 1.')).toBeVisible()
-  await page.getByRole('radio', { name: 'Releases' }).click()
+  await page.getByRole('link', { name: 'Releases' }).click()
   await expect(page.getByRole('region', { name: 'Releases' })).toContainText('Version 1')
 })

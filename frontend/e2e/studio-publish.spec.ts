@@ -41,7 +41,7 @@ test('a game manager publishes a GameSystem in Studio and a solo player starts a
 
   await expect(page.getByText('Published version 1.')).toBeVisible()
   await expect(page.getByText('Latest release v1')).toBeVisible()
-  await page.getByRole('radio', { name: 'Releases' }).click()
+  await page.getByRole('link', { name: 'Releases' }).click()
   const releases = page.getByRole('region', { name: 'Releases' })
   await expect(releases.getByRole('listitem')).toHaveCount(1)
   await expect(releases).toContainText('Version 1')

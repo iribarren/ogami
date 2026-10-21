@@ -23,7 +23,7 @@ test('a game manager edits an oracle table of a copied preset, test-rolls it and
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}`)
 
-  await page.getByRole('radio', { name: 'Oracles' }).click()
+  await page.getByRole('link', { name: 'Oracles' }).click()
   const tables = page.getByRole('region', { name: 'Oracle tables' })
   await expect(tables.getByRole('listitem').first()).toBeVisible()
   await tables.getByRole('link', { name: 'Action' }).click()

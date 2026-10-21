@@ -34,5 +34,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // Keeps a 5s asyncUtilTimeout wait (src/test/setup.ts) under the per-test timeout.
+    testTimeout: 20000,
   },
 })

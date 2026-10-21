@@ -15,6 +15,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { KeyHint } from '../KeyHint'
 import { StudioError } from '../useGameSystems'
 import { newLikelihood } from './likelihoodDraft'
 import { newTable } from './tableDraft'
@@ -504,11 +505,12 @@ function CreateForm({
           id={keyId}
           value={oracleKey}
           autoComplete="off"
+          aria-describedby={`${keyId}-hint`}
           onChange={(event) => {
             onKey(event.target.value)
           }}
         />
-        <p className="text-sm text-muted-foreground">Lower case letters, digits and hyphens.</p>
+        <KeyHint id={`${keyId}-hint`} />
       </div>
       <div className="space-y-2">
         <Label htmlFor={nameId}>Name</Label>

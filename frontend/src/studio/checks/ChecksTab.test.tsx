@@ -22,7 +22,7 @@ async function openChecks(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/checks`]: json(checks),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Checks' }))
+  await user.click(await screen.findByRole('link', { name: 'Checks' }))
   return { user, ...rendered }
 }
 
@@ -128,6 +128,9 @@ describe('the checks tab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'New check' }))
     const form = within(screen.getByRole('form', { name: 'New check' }))
+    expect(form.getByLabelText('Key')).toHaveAccessibleDescription(
+      'Lower case letters, digits and hyphens.',
+    )
     await user.type(form.getByLabelText('Key'), 'grit')
     await user.type(form.getByLabelText('Label'), 'Grit')
     await user.type(form.getByLabelText('Dice'), '2d6')

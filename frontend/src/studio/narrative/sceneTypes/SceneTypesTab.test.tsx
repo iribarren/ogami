@@ -22,7 +22,7 @@ async function openTab(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/narrative`]: json(narrativeScenes),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Scene Types' }))
+  await user.click(await screen.findByRole('link', { name: 'Scene Types' }))
   return { user, ...rendered }
 }
 

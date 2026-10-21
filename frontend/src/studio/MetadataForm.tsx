@@ -1,10 +1,14 @@
+import { BookOpen, ScrollText } from 'lucide-react'
 import { useId, useState, type SubmitEvent } from 'react'
 
 import { CAMPAIGN_THEME_NAMES } from '@/shared/theme/themes'
+import { Alert, FieldError } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
+import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 import { Textarea } from '@/shared/ui/textarea'
 
 import {
@@ -16,6 +20,9 @@ import {
 
 /** The release contract's limit on a name, checked by the server too. */
 const MAX_NAME_LENGTH = 100
+
+/** The release contract's limit on the credits notice, checked by the server too. */
+const MAX_NOTICE_LENGTH = 2000
 
 /** Empty text means "none" for the optional fields. */
 const orNull = (text: string) => (text.trim() === '' ? null : text)
@@ -44,6 +51,7 @@ export function MetadataForm({
   const save = useEditMetadata(gameSystem.key)
   // "Saved." describes the last save only: any later edit hides it.
   const [edited, setEdited] = useState(false)
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
   const nameId = useId()
   const descriptionId = useId()
   const noticeId = useId()
@@ -68,58 +76,147 @@ export function MetadataForm({
       body.theme = orNull(theme)
     }
     setEdited(false)
-    save.mutate(body)
+    save.mutate(body, {
+      onSuccess: () => {
+        setSavedAt(new Date())
+      },
+    })
   }
+
+  const saveState: SaveStateValue | null = save.isPending
+    ? { kind: 'saving' }
+    : save.error
+      ? { kind: 'failed', errors: 1 }
+      : save.isSuccess && !edited && savedAt
+        ? { kind: 'saved', at: savedAt }
+        : edited
+          ? { kind: 'unsaved' }
+          : null
+  const actionBar = (
+    <>
+      {save.error && (
+        <div className="panel-body pt-0">
+          <Alert
+            action={
+              save.error instanceof StudioError && save.error.status === 409 ? (
+                <Button type="button" variant="outline" size="sm" onClick={onReload}>
+                  Reload the latest version
+                </Button>
+              ) : undefined
+            }
+          >
+            {save.error.message}
+          </Alert>
+        </div>
+      )}
+      <div className="action-bar">
+        {saveState && <SaveState state={saveState} />}
+        <Button type="submit" disabled={!valid || save.isPending}>
+          Save
+        </Button>
+      </div>
+    </>
+  )
 
   return (
     <form
       aria-label="Metadata"
-      className="max-w-xl space-y-4"
+      className="space-y-6"
       onChange={() => {
         setEdited(true)
       }}
       onSubmit={handleSubmit}
     >
-      <div className="space-y-2">
-        <Label htmlFor={nameId}>Name</Label>
-        <Input
-          id={nameId}
-          value={name}
-          maxLength={MAX_NAME_LENGTH}
-          autoComplete="off"
-          onChange={(event) => {
-            setName(event.target.value)
-          }}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={descriptionId}>Description</Label>
-        <Textarea
-          id={descriptionId}
-          value={description}
-          onChange={(event) => {
-            setDescription(event.target.value)
-          }}
-        />
-      </div>
-      {hasCreditsAndTheme && (
-        <>
-          <fieldset className="space-y-4">
-            <legend className="font-heading font-semibold">Credits</legend>
+      <section aria-labelledby={`${nameId}-panel`} className="panel">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <BookOpen />
+          </IconTile>
+          <h2 id={`${nameId}-panel`} className="font-heading text-panel-title">
+            Details
+          </h2>
+        </div>
+        <div className="grid gap-4 panel-body sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor={nameId}>Name</Label>
+            <Input
+              id={nameId}
+              value={name}
+              maxLength={MAX_NAME_LENGTH}
+              autoComplete="off"
+              onChange={(event) => {
+                setName(event.target.value)
+              }}
+            />
+          </div>
+          {hasCreditsAndTheme && (
             <div className="space-y-2">
-              <Label htmlFor={noticeId}>Notice</Label>
+              <Label htmlFor={themeId}>Theme</Label>
+              <NativeSelect
+                id={themeId}
+                value={theme}
+                aria-describedby={`${themeId}-hint`}
+                onChange={(event) => {
+                  setTheme(event.target.value)
+                }}
+              >
+                <option value="">None (the default app theme)</option>
+                {themes.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </NativeSelect>
+              <p id={`${themeId}-hint`} className="hint">
+                Campaigns on this GameSystem start with it.
+              </p>
+            </div>
+          )}
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor={descriptionId}>Description</Label>
+            <Textarea
+              id={descriptionId}
+              value={description}
+              onChange={(event) => {
+                setDescription(event.target.value)
+              }}
+            />
+          </div>
+        </div>
+        {!hasCreditsAndTheme && actionBar}
+      </section>
+      {hasCreditsAndTheme && (
+        <section aria-labelledby={`${noticeId}-panel`} className="panel">
+          <div className="panel-head">
+            <IconTile size="sm">
+              <ScrollText />
+            </IconTile>
+            <h2 id={`${noticeId}-panel`} className="font-heading text-panel-title">
+              Credits
+            </h2>
+            <p className="ml-auto hint">Shown to players before they start a campaign.</p>
+          </div>
+          <div className="grid gap-4 panel-body sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <Label htmlFor={noticeId}>Notice</Label>
+                <span id={`${noticeId}-count`} className="hint">
+                  {notice.length} / {MAX_NOTICE_LENGTH.toLocaleString('en-GB')}
+                </span>
+              </div>
               <Textarea
                 id={noticeId}
                 value={notice}
                 aria-invalid={!creditsValid}
+                aria-describedby={`${noticeId}-count`}
                 onChange={(event) => {
                   setNotice(event.target.value)
                 }}
               />
               {!creditsValid && (
-                <p className="text-sm text-destructive">
+                <FieldError>
                   A license or link needs a notice. Clear them, or write the notice.
-                </p>
+                </FieldError>
               )}
             </div>
             <div className="space-y-2">
@@ -145,44 +242,10 @@ export function MetadataForm({
                 }}
               />
             </div>
-          </fieldset>
-          <div className="space-y-2">
-            <Label htmlFor={themeId}>Theme</Label>
-            <NativeSelect
-              id={themeId}
-              value={theme}
-              onChange={(event) => {
-                setTheme(event.target.value)
-              }}
-            >
-              <option value="">None (the default app theme)</option>
-              {themes.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </NativeSelect>
           </div>
-        </>
+          {actionBar}
+        </section>
       )}
-      {save.error && (
-        <div role="alert" className="space-y-2 text-sm text-destructive">
-          <p>{save.error.message}</p>
-          {save.error instanceof StudioError && save.error.status === 409 && (
-            <Button type="button" variant="outline" onClick={onReload}>
-              Reload the latest version
-            </Button>
-          )}
-        </div>
-      )}
-      {save.isSuccess && !edited && (
-        <p role="status" className="text-sm text-muted-foreground">
-          Saved.
-        </p>
-      )}
-      <Button type="submit" disabled={!valid || save.isPending}>
-        Save
-      </Button>
     </form>
   )
 }

@@ -22,7 +22,7 @@ async function openSheet(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/sheet`]: json(sheet),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Sheet' }))
+  await user.click(await screen.findByRole('link', { name: 'Sheet' }))
   return { user, ...rendered }
 }
 

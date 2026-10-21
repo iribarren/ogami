@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { Clapperboard } from 'lucide-react'
 
+import { EditorFrame } from '../../EditorFrame'
 import { StudioError } from '../../useGameSystems'
 import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarrative'
 import { SceneTypeEditor } from './SceneTypeEditor'
@@ -67,13 +69,14 @@ export function SceneTypeEditorPage({
   const name = shown.definition.name
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        {backLink}
-        <h1 className="font-heading text-page-title break-words">
-          {typeof name === 'string' && name !== '' ? name : shown.key}
-        </h1>
-      </header>
+    <EditorFrame
+      gameSystemKey={gameSystemKey}
+      section="sceneTypes"
+      kind="Scene Type"
+      icon={<Clapperboard />}
+      title={typeof name === 'string' && name !== '' ? name : shown.key}
+      backLink={backLink}
+    >
       {open === null ? (
         <p role="alert">
           The Scene Type “{shown.key}” has a shape this editor does not know; it stays as it is
@@ -89,6 +92,6 @@ export function SceneTypeEditorPage({
           version={open.version}
         />
       )}
-    </div>
+    </EditorFrame>
   )
 }

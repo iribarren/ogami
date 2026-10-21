@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { ambush, narrativeScenes } from '../../fixtures'
+import { ambush, draft, narrativeScenes } from '../../fixtures'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -81,6 +81,25 @@ const changed = {
 }
 
 describe('the Scene Type editor', () => {
+  it('shows the section rail with Scene Types active and the GameSystem name above the title', async () => {
+    await openEditor('ambush', { [`GET ${base}`]: json(draft) })
+
+    const rail = await screen.findByRole('navigation', { name: 'GameSystem page' })
+    expect(within(rail).getByRole('link', { name: 'Scene Types' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(rail).getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByText('My draft · Scene Type')).toBeInTheDocument()
+  })
+
+  it('still shows the editor, without the rail, while the GameSystem is unavailable', async () => {
+    await openEditor('ambush', { [`GET ${base}`]: json({ error: 'Nope.' }, 500) })
+
+    expect(screen.getByText('my-draft · Scene Type')).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'GameSystem page' })).not.toBeInTheDocument()
+  })
+
   it('shows the fields, the oracle shortcuts and the three step lists of the Scene Type', async () => {
     await openEditor('ambush')
 

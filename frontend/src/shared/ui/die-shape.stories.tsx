@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { onTheme } from '@/shared/theme/themeStories'
 
-import { DieShape } from './DieShape'
+import { DieShape } from './die-shape'
 
 const meta = {
-  title: 'Play/DieShape',
+  title: 'Shared/UI/DieShape',
   component: DieShape,
   args: { sides: 20 },
   render: (args) => (

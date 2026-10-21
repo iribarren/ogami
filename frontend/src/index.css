@@ -114,6 +114,7 @@
   --success-foreground: oklch(0.985 0.005 85);
   --warning: oklch(0.82 0.15 85);
   --warning-foreground: oklch(0.25 0.04 70);
+  --warning-text: oklch(0.42 0.09 70);
   --info: oklch(0.5 0.12 245);
   --info-foreground: oklch(0.985 0.005 85);
   --border: oklch(0.88 0.012 80);
@@ -228,6 +229,7 @@
   --success-foreground: oklch(0.18 0.02 260);
   --warning: oklch(0.82 0.14 85);
   --warning-foreground: oklch(0.18 0.02 260);
+  --warning-text: oklch(0.86 0.12 85);
   --info: oklch(0.72 0.12 240);
   --info-foreground: oklch(0.18 0.02 260);
   --border: oklch(1 0 0 / 12%);
@@ -347,6 +349,7 @@
   --success-foreground: oklch(0.97 0.02 85);
   --warning: oklch(0.8 0.13 85);
   --warning-foreground: oklch(0.28 0.05 70);
+  --warning-text: oklch(0.42 0.09 70);
   --info: oklch(0.42 0.09 245);
   --info-foreground: oklch(0.97 0.02 85);
   --border: oklch(0.8 0.04 80);
@@ -459,6 +462,7 @@
   --success-foreground: oklch(0.15 0.03 295);
   --warning: oklch(0.84 0.16 90);
   --warning-foreground: oklch(0.15 0.03 295);
+  --warning-text: oklch(0.86 0.12 85);
   --info: oklch(0.78 0.12 230);
   --info-foreground: oklch(0.15 0.03 295);
   --border: oklch(1 0 0 / 14%);
@@ -577,6 +581,7 @@
   --success-foreground: oklch(0.14 0 0);
   --warning: oklch(0.8 0.12 85);
   --warning-foreground: oklch(0.14 0 0);
+  --warning-text: oklch(0.86 0.12 85);
   --info: oklch(0.72 0.07 240);
   --info-foreground: oklch(0.14 0 0);
   --border: oklch(1 0 0 / 16%);
@@ -684,6 +689,7 @@
   --success-foreground: oklch(0.15 0.025 165);
   --warning: oklch(0.8 0.13 90);
   --warning-foreground: oklch(0.15 0.025 165);
+  --warning-text: oklch(0.86 0.12 85);
   --info: oklch(0.75 0.1 210);
   --info-foreground: oklch(0.15 0.025 165);
   --border: oklch(0.85 0.08 150 / 20%);
@@ -798,6 +804,7 @@
   --success-foreground: oklch(0.98 0.005 245);
   --warning: oklch(0.82 0.14 85);
   --warning-foreground: oklch(0.25 0.05 70);
+  --warning-text: oklch(0.42 0.09 70);
   --info: oklch(0.5 0.15 255);
   --info-foreground: oklch(0.98 0.005 245);
   --border: oklch(0.88 0.015 245);
@@ -1054,6 +1061,225 @@
 
 @utility panel-title-case {
   text-transform: var(--panel-title-case);
+}
+
+/*
+ * The Studio kit: theme-neutral surfaces and states for the authoring screens. Everything reads
+ * existing tokens (mixed with color-mix where a tint is needed), so no palette needs its own copy.
+ */
+@utility panel {
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  border: var(--panel-border);
+  box-shadow: var(--card-shadow);
+}
+
+@utility panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+@utility panel-body {
+  padding: 16px;
+}
+
+/* The bottom of a panel: the save state sits left of the primary button. */
+@utility action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 92%, var(--background));
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+@utility save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  & > svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+}
+
+@utility alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid transparent;
+  & > svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+
+@utility alert-error {
+  background: color-mix(in oklch, var(--destructive) 8%, transparent);
+  border-color: color-mix(in oklch, var(--destructive) 35%, transparent);
+  & > svg {
+    color: var(--destructive);
+  }
+}
+
+@utility alert-warning {
+  background: color-mix(in oklch, var(--warning) 15%, transparent);
+  border-color: color-mix(in oklch, var(--warning) 50%, transparent);
+  & > svg {
+    color: var(--warning-text);
+  }
+}
+
+@utility field-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--destructive);
+  & > svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+}
+
+@utility hint {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* An h2 of a section; editor titles use text-lg instead. */
+@utility section-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-section-title);
+  line-height: var(--text-section-title--line-height);
+  font-weight: var(--text-section-title--font-weight);
+  letter-spacing: var(--text-section-title--letter-spacing);
+}
+
+/* Sheet groups, step sections and the rail's groups. */
+@utility group-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--label-color);
+}
+
+/* A number in a well; `readout-sm` is the 22px size of small count tiles. */
+@utility readout {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--well);
+  box-shadow: var(--well-shadow);
+  border: 1px solid var(--input);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+@utility readout-sm {
+  font-size: 22px;
+}
+
+/* A row of a Studio list; the selected row is marked with aria-current="true". */
+@utility list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px 6px 12px;
+  border-bottom: 1px solid var(--border);
+  &:hover {
+    background: var(--secondary);
+  }
+  &[aria-current='true'] {
+    background: color-mix(in oklch, var(--primary) 8%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+}
+
+@utility list-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+@utility list-row-key {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+@utility icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  & > svg {
+    width: 16px;
+    height: 16px;
+  }
+  &:hover {
+    background: var(--secondary);
+    color: var(--foreground);
+  }
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+@utility count-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--secondary);
+  color: var(--muted-foreground);
+}
+
+@utility count-pill-error {
+  background: var(--destructive);
+  color: var(--background);
+}
+
+@utility empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 18px;
+  text-align: center;
+  border: 1px dashed var(--input);
+  border-radius: var(--radius-lg);
+  background: var(--well);
 }
 
 @layer base {

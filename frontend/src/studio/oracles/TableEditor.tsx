@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
+import { KeyHint } from '../KeyHint'
 import type { FieldErrors } from '../narrative/narrativeDraft'
 import { mapStepError, type StepError } from '../narrative/steps/stepError'
 import type { StepContext } from '../narrative/steps/stepContext'
@@ -205,13 +206,12 @@ export function TableEditor({
               value={draft.key}
               autoComplete="off"
               aria-invalid={trimmed.key === ''}
+              aria-describedby={`${keyId}-hint`}
               onChange={(event) => {
                 edit({ ...draft, key: event.target.value })
               }}
             />
-            <p className="text-sm text-muted-foreground">
-              Renaming a table the draft uses is refused.
-            </p>
+            <KeyHint id={`${keyId}-hint`}>Renaming a table the draft uses is refused.</KeyHint>
           </div>
           <div className="space-y-2">
             <Label htmlFor={nameId}>Name</Label>

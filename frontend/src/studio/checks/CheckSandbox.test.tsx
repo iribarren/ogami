@@ -53,7 +53,7 @@ async function editCheck(key: string, handlers: Record<string, FakeHandler> = {}
     [`GET ${base}/sheet`]: json(sheet),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Checks' }))
+  await user.click(await screen.findByRole('link', { name: 'Checks' }))
   await user.click(await screen.findByRole('button', { name: `Edit ${key}` }))
   const sandbox = within(await screen.findByRole('region', { name: 'Test roll sandbox' }))
   // The sheet's defaults are known once it is read.
@@ -375,7 +375,7 @@ describe('the test roll sandbox', () => {
 
     await user.type(sandbox.getByLabelText('Power'), '7')
     await user.type(sandbox.getByLabelText('Heat (Tracker)'), '4')
-    await user.click(screen.getByRole('radio', { name: 'Sheet' }))
+    await user.click(screen.getByRole('link', { name: 'Sheet' }))
     const preview = within(await screen.findByRole('region', { name: 'Preview' }))
 
     expect(preview.getByLabelText('Power')).toHaveValue(7)
@@ -385,7 +385,7 @@ describe('the test roll sandbox', () => {
 
     await user.clear(preview.getByLabelText('Power'))
     await user.type(preview.getByLabelText('Power'), '9')
-    await user.click(screen.getByRole('radio', { name: 'Checks' }))
+    await user.click(screen.getByRole('link', { name: 'Checks' }))
     await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
 
     expect(

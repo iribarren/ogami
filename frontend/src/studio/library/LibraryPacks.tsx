@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
+import { Library } from 'lucide-react'
 
 import { Badge } from '@/shared/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { SectionCounts } from '../SectionCounts'
 import { NewLibraryPackDialog } from './NewLibraryPackDialog'
@@ -12,12 +13,17 @@ import { useLibraryPacks, type LibraryPackSummary } from './useLibraryPacks'
  * editable page, the others on the read-only catalog.
  */
 export function LibraryPacks() {
+  const packs = useLibraryPacks()
+
   return (
     <section aria-labelledby="library-packs" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="library-packs" className="font-heading text-xl font-semibold">
-          Library
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 id="library-packs" className="section-title">
+            Library
+          </h2>
+          {packs.data && <span className="count-pill">{packs.data.length}</span>}
+        </div>
         <NewLibraryPackDialog />
       </div>
       <Packs />
@@ -45,7 +51,7 @@ function Packs() {
     )
   }
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
       {packs.data.map((pack) => (
         <li key={pack.key}>
           <PackCard pack={pack} />
@@ -58,9 +64,12 @@ function Packs() {
 function PackCard({ pack }: { pack: LibraryPackSummary }) {
   const linkClass = 'underline-offset-4 hover:underline'
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center gap-2 break-words">
+    <div className="flex gap-3 panel p-4">
+      <IconTile size="lg">
+        <Library />
+      </IconTile>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <h3 className="flex flex-wrap items-center gap-2 font-heading text-panel-title break-words">
           {pack.mine ? (
             <Link to="/studio/game-systems/$key" params={{ key: pack.key }} className={linkClass}>
               {pack.name}
@@ -71,13 +80,13 @@ function PackCard({ pack }: { pack: LibraryPackSummary }) {
             </Link>
           )}
           {pack.mine && <Badge variant="secondary">Yours</Badge>}
-        </CardTitle>
-        <p className="font-mono text-sm break-all text-muted-foreground">{pack.key}</p>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
-        {pack.description !== null && <p className="break-words">{pack.description}</p>}
-        <SectionCounts counts={pack.itemCounts} compact />
-      </CardContent>
-    </Card>
+        </h3>
+        <p className="list-row-key break-all">{pack.key}</p>
+        {pack.description !== null && <p className="text-sm break-words">{pack.description}</p>}
+        <div className="text-xs text-muted-foreground">
+          <SectionCounts counts={pack.itemCounts} compact />
+        </div>
+      </div>
+    </div>
   )
 }

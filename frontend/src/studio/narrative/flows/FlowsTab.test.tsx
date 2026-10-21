@@ -32,7 +32,7 @@ async function openTab(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/narrative`]: json(narrativeFlows),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Flows' }))
+  await user.click(await screen.findByRole('link', { name: 'Flows' }))
   return { user, ...rendered }
 }
 
@@ -213,13 +213,13 @@ describe('the issues of each flow', () => {
     })
 
     expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
-    await user.click(screen.getByRole('radio', { name: 'Overview' }))
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
     queryClient.setQueryData(narrativeKey('my-draft'), {
       ...narrativeFlows,
       version: 6,
       flows: narrativeFlows.flows.filter(({ key }) => key !== 'heist'),
     })
-    await user.click(screen.getByRole('radio', { name: 'Flows' }))
+    await user.click(screen.getByRole('link', { name: 'Flows' }))
 
     await row('Side job')
     expect(screen.queryByText(/issue/)).not.toBeInTheDocument()
@@ -233,8 +233,8 @@ describe('the issues of each flow', () => {
     })
 
     expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
-    await user.click(screen.getByRole('radio', { name: 'Overview' }))
-    await user.click(screen.getByRole('radio', { name: 'Flows' }))
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+    await user.click(screen.getByRole('link', { name: 'Flows' }))
 
     expect(within(await row('Heist')).getByText('1 issue')).toBeInTheDocument()
   })

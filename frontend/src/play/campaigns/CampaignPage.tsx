@@ -10,7 +10,7 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 import { TitleMark } from '@/shared/ui/title-mark'
 
 import { CharactersPanel } from '../characters/CharactersPanel'
-import { DieShape } from '../dice/DieShape'
+import { DieShape } from '@/shared/ui/die-shape'
 import { DiceRoller } from '../dice/DiceRoller'
 import { FactsPanel } from '../facts/FactsPanel'
 import { FlowIntroduction } from '../flow/FlowIntroduction'

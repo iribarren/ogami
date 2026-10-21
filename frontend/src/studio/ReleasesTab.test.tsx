@@ -23,7 +23,7 @@ async function openReleases(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/releases/2`]: json(releaseTwo),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Releases' }))
+  await user.click(await screen.findByRole('link', { name: 'Releases' }))
   return { user, ...rendered }
 }
 

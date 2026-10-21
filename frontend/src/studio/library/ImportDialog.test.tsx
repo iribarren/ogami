@@ -35,7 +35,7 @@ async function openDialog(handlers: Record<string, FakeHandler> = {}) {
     'GET /api/studio/library/packs/fantasy-basics': json(catalog),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Library' }))
+  await user.click(await screen.findByRole('link', { name: 'Library' }))
   const [header] = await screen.findAllByRole('button', { name: 'Import from library' })
   if (!header) {
     throw new Error('The Library tab has no import button.')

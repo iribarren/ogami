@@ -39,6 +39,7 @@ describe('the Studio home page', () => {
       'href',
       '/studio/game-systems/noir-detective',
     )
+    expect(within(list()).getByText('3')).toHaveClass('count-pill')
   })
 
   it('warns of the library changes of a draft and says nothing at 0', async () => {
@@ -117,6 +118,9 @@ describe('the New GameSystem dialog', () => {
 
     const create = within(form).getByRole('button', { name: 'Create GameSystem' })
     expect(create).toBeDisabled()
+    expect(within(form).getByLabelText('Key')).toHaveAccessibleDescription(
+      /^Lower case letters, digits and hyphens\./,
+    )
     expect(within(form).queryByLabelText('Source GameSystem key')).not.toBeInTheDocument()
     await user.type(within(form).getByLabelText('Key'), 'my-draft')
     await user.type(within(form).getByLabelText('Name'), 'My draft')

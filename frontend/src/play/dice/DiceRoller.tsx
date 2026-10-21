@@ -4,7 +4,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
-import { DieShape, type DieSides } from './DieShape'
+import { DieShape, type DieSides } from '@/shared/ui/die-shape'
 
 const defaultPresets = ['d20', '2d6', '4d6kh3', 'd%'] as const
 

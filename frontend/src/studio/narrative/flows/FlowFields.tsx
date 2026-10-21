@@ -22,8 +22,8 @@ export function NewFlowFields({
     <>
       <TextField
         label="Key"
+        keyField
         value={draft.key}
-        help="Lower case letters, digits and hyphens."
         onChange={(key) => {
           onChange({ ...draft, key })
         }}

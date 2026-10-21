@@ -63,7 +63,18 @@ export const LibraryPack: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Library pack')).toBeInTheDocument()
-    await expect(canvas.queryByRole('radio', { name: 'Releases' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('link', { name: 'Releases' })).not.toBeInTheDocument()
+  },
+}
+
+export const OnAnotherSection: Story = {
+  args: { tab: 'sections' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('link', { name: 'Sections' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 
@@ -78,6 +89,7 @@ export const PublishedSchemaVersion1: Story = {
 }
 
 export const InvalidDraft: Story = {
+  args: { tab: 'validation' },
   parameters: {
     api: {
       ...draftApi,
@@ -89,12 +101,12 @@ export const InvalidDraft: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByRole('radio', { name: 'Validation' }))
     await expect(await within(canvasElement).findByRole('alert')).toBeInTheDocument()
   },
 }
 
 export const ValidWithWarnings: Story = {
+  args: { tab: 'validation' },
   parameters: {
     api: {
       ...draftApi,
@@ -106,7 +118,6 @@ export const ValidWithWarnings: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByRole('radio', { name: 'Validation' }))
     await expect(await within(canvasElement).findByText('Warnings')).toBeInTheDocument()
   },
 }

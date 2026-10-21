@@ -138,6 +138,7 @@ export function SceneTypeEditor({
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label="Key"
+          keyField
           value={draft.key}
           help="Renaming a Scene Type the draft uses is refused."
           error={answer.fields.key}

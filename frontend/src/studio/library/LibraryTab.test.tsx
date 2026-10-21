@@ -23,7 +23,7 @@ async function openLibrary(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}/library-imports`]: json(importsMixed),
     ...handlers,
   })
-  await user.click(await screen.findByRole('radio', { name: 'Library' }))
+  await user.click(await screen.findByRole('link', { name: 'Library' }))
   return { user, ...rendered }
 }
 
@@ -312,7 +312,7 @@ describe('the Library tab', () => {
       'GET /api/studio/game-systems/free-journal/validation': json(validDraft),
     })
 
-    await user.click(await screen.findByRole('radio', { name: 'Library' }))
+    await user.click(await screen.findByRole('link', { name: 'Library' }))
 
     expect(await screen.findByText(/Schema version 1 drafts import nothing/)).toBeInTheDocument()
     expect(fakeApi.requests.some((request) => request.includes('library-imports'))).toBe(false)
@@ -327,6 +327,6 @@ describe('the Library tab', () => {
     })
 
     await screen.findByText('Library pack')
-    expect(screen.queryByRole('radio', { name: 'Library' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Library' })).not.toBeInTheDocument()
   })
 })

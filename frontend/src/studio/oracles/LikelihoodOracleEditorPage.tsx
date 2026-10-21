@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { Eye } from 'lucide-react'
 
 import { useGameSystemNarrative } from '../narrative/useGameSystemNarrative'
+import { EditorFrame } from '../EditorFrame'
 import { StudioError } from '../useGameSystems'
 import { LikelihoodOracleEditor } from './LikelihoodOracleEditor'
 import { useRollHistory } from './useRollHistory'
@@ -72,11 +74,14 @@ export function LikelihoodOracleEditorPage({
   }
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        {backLink}
-        <h1 className="font-heading text-page-title break-words">{item.definition.name}</h1>
-      </header>
+    <EditorFrame
+      gameSystemKey={gameSystemKey}
+      section="oracles"
+      kind="Likelihood oracle"
+      icon={<Eye />}
+      title={item.definition.name}
+      backLink={backLink}
+    >
       <LikelihoodOracleEditor
         key={`${oracle}-${String(reloads)}`}
         gameSystemKey={gameSystemKey}
@@ -102,6 +107,6 @@ export function LikelihoodOracleEditorPage({
           Couldn&apos;t reload the latest version. Try again.
         </p>
       )}
-    </div>
+    </EditorFrame>
   )
 }

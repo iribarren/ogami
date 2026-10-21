@@ -88,6 +88,9 @@ const TEXT_PAIRS: [string, string][] = [
   ['muted-foreground', 'background'],
   ['muted-foreground', 'muted'],
   ['destructive', 'background'],
+  // Text and icons of a warning alert, which sits on the page and on cards.
+  ['warning-text', 'background'],
+  ['warning-text', 'card'],
   // Form and group labels sit on cards and on the page.
   ['label-color', 'card'],
   ['label-color', 'background'],

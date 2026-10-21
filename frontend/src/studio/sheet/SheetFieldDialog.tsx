@@ -223,6 +223,7 @@ function FieldForm({
     >
       <TextField
         label="Key"
+        keyField
         value={draft.key}
         onChange={(key) => {
           change({ key })

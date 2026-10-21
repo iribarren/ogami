@@ -101,6 +101,7 @@ export function BandsEditor({
               <div className="grid gap-3 sm:grid-cols-2">
                 <TextField
                   label={`${name} key`}
+                  keyField
                   value={band.key}
                   onChange={(key) => {
                     change(index, { key })

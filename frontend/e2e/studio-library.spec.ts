@@ -16,7 +16,7 @@ async function saveSceneType(page: Page) {
 
 /** Adds a ranged oracle table with the default dice to the draft being shown. */
 async function addTable(page: Page, key: string, name: string) {
-  await page.getByRole('radio', { name: 'Oracles' }).click()
+  await page.getByRole('link', { name: 'Oracles' }).click()
   await page.getByRole('button', { name: 'New table' }).click()
   const form = page.getByRole('form', { name: 'New oracle table' })
   await form.getByLabel('Key').fill(key)
@@ -56,7 +56,7 @@ test('a game manager imports a library Scene Type over an oracle the draft overr
   await expect(page).toHaveURL(`/studio/game-systems/${pack}`)
 
   await addTable(page, table, `Omens ${id}`)
-  await page.getByRole('radio', { name: 'Scene Types' }).click()
+  await page.getByRole('link', { name: 'Scene Types' }).click()
   await page.getByRole('button', { name: 'New Scene Type' }).click()
   const newScene = page.getByRole('form', { name: 'New Scene Type' })
   await newScene.getByLabel('Key').fill(sceneType)
@@ -89,7 +89,7 @@ test('a game manager imports a library Scene Type over an oracle the draft overr
 
   // Import the Scene Type: the draft keeps its own table.
   await page.goto(`/studio/game-systems/${draft}`)
-  await page.getByRole('radio', { name: 'Library' }).click()
+  await page.getByRole('link', { name: 'Library' }).click()
   await page.getByRole('button', { name: 'Import from library' }).first().click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('button', { name: `Choose ${packName}` }).click()
@@ -115,7 +115,7 @@ test('a game manager imports a library Scene Type over an oracle the draft overr
 
   await page.goto(`/studio/game-systems/${draft}`)
   await expect(page.getByText('1 library change', { exact: true })).toBeVisible()
-  await page.getByRole('radio', { name: 'Library' }).click()
+  await page.getByRole('link', { name: 'Library' }).click()
   await expect(row).toContainText('Changed')
   await row.getByRole('button', { name: `Update ${sceneType}` }).click()
   await expect(row).toContainText('Current')
@@ -125,7 +125,7 @@ test('a game manager imports a library Scene Type over an oracle the draft overr
   await page.getByRole('button', { name: 'Publish' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Publish version 1' }).click()
   await expect(page.getByText('Published version 1.')).toBeVisible()
-  await page.getByRole('radio', { name: 'Releases' }).click()
+  await page.getByRole('link', { name: 'Releases' }).click()
   await expect(page.getByRole('region', { name: 'Releases' })).toContainText(
     `Library: ${pack} (${sceneType}`,
   )

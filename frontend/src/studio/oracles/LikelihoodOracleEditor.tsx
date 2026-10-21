@@ -6,6 +6,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { KeyHint } from '../KeyHint'
 import type { NarrativeItem } from '../narrative/useGameSystemNarrative'
 import { StudioError } from '../useGameSystems'
 import {
@@ -368,13 +369,12 @@ export function LikelihoodOracleEditor({
               value={draft.key}
               autoComplete="off"
               aria-invalid={trimmed.key === ''}
+              aria-describedby={`${keyId}-hint`}
               onChange={(event) => {
                 edit({ ...draft, key: event.target.value })
               }}
             />
-            <p className="text-sm text-muted-foreground">
-              Renaming an oracle the draft uses is refused.
-            </p>
+            <KeyHint id={`${keyId}-hint`}>Renaming an oracle the draft uses is refused.</KeyHint>
           </div>
           <div className="space-y-2">
             <Label htmlFor={nameId}>Name</Label>

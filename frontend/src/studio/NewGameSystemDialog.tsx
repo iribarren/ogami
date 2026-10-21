@@ -1,5 +1,7 @@
 import { useId, useState, type SubmitEvent } from 'react'
 
+import { Plus } from 'lucide-react'
+
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -14,6 +16,7 @@ import { Label } from '@/shared/ui/label'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 import { Textarea } from '@/shared/ui/textarea'
 
+import { KeyHint } from './KeyHint'
 import { useCreateGameSystem, type CreateGameSystemRequest } from './useGameSystems'
 
 type StartingPoint = 'blank' | 'copy'
@@ -32,7 +35,10 @@ export function NewGameSystemDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>New GameSystem</Button>
+        <Button>
+          <Plus aria-hidden="true" />
+          New GameSystem
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -139,13 +145,12 @@ function NewGameSystemForm() {
             id={keyId}
             value={key}
             autoComplete="off"
+            aria-describedby={`${keyId}-hint`}
             onChange={(event) => {
               setKey(event.target.value)
             }}
           />
-          <p className="text-sm text-muted-foreground">
-            Lower case letters, digits and hyphens. It names the release line and never changes.
-          </p>
+          <KeyHint id={`${keyId}-hint`}>It names the release line and never changes.</KeyHint>
         </div>
         <div className="space-y-2">
           <Label htmlFor={nameId}>Name</Label>

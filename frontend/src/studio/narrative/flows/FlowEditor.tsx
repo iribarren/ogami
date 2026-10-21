@@ -133,6 +133,7 @@ export function FlowEditor({
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label="Key"
+          keyField
           value={draft.key}
           error={field('key')}
           onChange={(key) => {

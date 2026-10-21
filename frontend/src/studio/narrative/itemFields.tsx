@@ -22,8 +22,6 @@ interface FieldsProps<Draft> {
   errors: FieldErrors
 }
 
-const keyHelp = 'Lower case letters, digits and hyphens.'
-
 function LevelsEditor({
   levels,
   errors,
@@ -140,8 +138,8 @@ export function TrackerFields({ draft, onChange, errors }: FieldsProps<TrackerDr
     <>
       <TextField
         label="Key"
+        keyField
         value={draft.key}
-        help={keyHelp}
         onChange={(key) => {
           set({ key })
         }}
@@ -238,8 +236,8 @@ function LabelledFields({
     <>
       <TextField
         label="Key"
+        keyField
         value={draft.key}
-        help={keyHelp}
         onChange={(key) => {
           onChange({ ...draft, key })
         }}
@@ -293,8 +291,8 @@ export function SceneTypeFields({ draft, onChange }: FieldsProps<NewSceneTypeDra
     <>
       <TextField
         label="Key"
+        keyField
         value={draft.key}
-        help={keyHelp}
         onChange={(key) => {
           onChange({ ...draft, key })
         }}

@@ -274,6 +274,7 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
             >
               <TextField
                 label="Option key"
+                keyField
                 value={option.key}
                 error={onFields.key?.message ?? p.guide.items[at]}
                 onChange={(key) => {

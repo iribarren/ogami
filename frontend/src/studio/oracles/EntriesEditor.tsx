@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { NativeSelect } from '@/shared/ui/native-select'
 
+import { KeyHint } from '../KeyHint'
 import { EffectsEditor } from '../narrative/steps/EffectsEditor'
 import { aboutEffects, type StepError } from '../narrative/steps/stepError'
 import type { StepContext } from '../narrative/steps/stepContext'
@@ -224,8 +225,16 @@ function EntryRow({
           <div className="min-w-40 space-y-1">
             <Label>
               Entry key
-              <Input autoComplete="off" aria-label={`${label} key`} {...field('key')} />
+              <Input
+                autoComplete="off"
+                aria-label={`${label} key`}
+                {...field('key')}
+                aria-describedby={[`${problemId}-key`, problem === null ? null : problemId]
+                  .filter((id) => id !== null)
+                  .join(' ')}
+              />
             </Label>
+            <KeyHint id={`${problemId}-key`} />
           </div>
         )}
         {context !== null && (

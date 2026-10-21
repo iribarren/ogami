@@ -593,6 +593,7 @@ function CheckEditor({
         <h3 className="font-heading font-semibold">{title}</h3>
         <TextField
           label="Key"
+          keyField
           value={draft.key}
           onChange={(key) => {
             change({ key })

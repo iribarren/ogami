@@ -1,3 +1,6 @@
+import { Plus } from 'lucide-react'
+
+import { KeyHint } from '../KeyHint'
 import { useId, useState, type SubmitEvent } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -28,7 +31,10 @@ export function NewLibraryPackDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>New pack</Button>
+        <Button variant="outline" size="sm">
+          <Plus aria-hidden="true" />
+          New pack
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -70,13 +76,12 @@ function NewLibraryPackForm() {
           id={keyId}
           value={key}
           autoComplete="off"
+          aria-describedby={`${keyId}-hint`}
           onChange={(event) => {
             setKey(event.target.value)
           }}
         />
-        <p className="text-sm text-muted-foreground">
-          Lower case letters, digits and hyphens. It names the pack and never changes.
-        </p>
+        <KeyHint id={`${keyId}-hint`}>It names the pack and never changes.</KeyHint>
       </div>
       <div className="space-y-2">
         <Label htmlFor={nameId}>Name</Label>

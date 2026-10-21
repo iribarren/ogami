@@ -142,6 +142,7 @@ function StepFields({
     <div className="space-y-3 pt-3">
       <TextField
         label="Key"
+        keyField
         value={step.key}
         error={fieldError('key') ?? guide.key}
         onChange={(key) => {

@@ -394,7 +394,7 @@ Start feature `play-journal-attachments` (ODD). Play: write a journal note and a
 Start feature `preset-pbta` (ODD). Author a Powered by the Apocalypse preset in Studio, not as hand-written JSON: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands (miss, partial, full) fit the contract today, so no contract change is planned; log every Studio friction as a finding. Export the published release into `backend/presets/` so `make presets` keeps it. Fan-content rule (ADR 0018) and credits with the publisher's notice (ADR 0021). Play a session and log findings. This is the first end-to-end proof of M4 on a new system.
 ```
 
-Done: `hearts-and-rapiers`, a Thirsty Sword Lesbians-compatible one-shot authored in Studio, played, and exported as a preset, with the `app:gamesystem:export` command (PR #235 and slice 2, closes #234); see [odd/tasks/preset-pbta.md](../odd/tasks/preset-pbta.md). The prompt is kept for reference.
+Done: `hearts-and-rapiers`, a Thirsty Sword Lesbians-compatible one-shot authored in Studio, played, and exported as a preset, with the `app:gamesystem:export` command (PRs #235 and #236, closes #234); see [odd/tasks/preset-pbta.md](../odd/tasks/preset-pbta.md). The prompt is kept for reference.
 
 **B7b. studio-ui-polish**
 

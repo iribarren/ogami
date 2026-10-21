@@ -1,7 +1,7 @@
 # Feature: preset-pbta
 
 - **Locator:** `odd/tasks/preset-pbta.md` · Engram topic `odd/preset-pbta/tasks`
-- **Issue:** #234 · **Branch:** `feat/preset-pbta-2-preset` · **Status:** done (slice 2 in review)
+- **Issue:** #234 · **Branch:** `feat/preset-pbta-2-preset` · **Status:** done (slice 2 in PR #236)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-journal-attachments` (PRs #232–#233)
@@ -69,8 +69,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | Author `hearts-and-rapiers` in Studio from the outline, publish v1, log every Studio friction under Studio findings | parent (browser, worker) | [x] | — |
 | T3 | 1 | `app:gamesystem:export <key> [--release N] [--output path]` (canonical pretty JSON, fails closed on an unknown key or version); console publisher reports "Unchanged (managed in Studio)" for a Studio-owned key whose latest release has the file's hash; unit and integration tests | delegated writer (slice 1) | [x] | 58d804d |
 | T4 | 2 | Playtest a session in Play (browser); fix content gaps in Studio and republish; log Play findings | parent (browser, worker) | [x] | — |
-| T5 | 2 | Export the latest release to `backend/presets/hearts-and-rapiers.json` unedited; `PresetsTest`; flow unit test; move band edge tests; e2e spec | delegated writer (slice 2) | [x] | |
-| T6 | 2 | Wrap-up: roadmap B7 done; this doc closed | delegated writer (slice 2) | [x] | |
+| T5 | 2 | Export the latest release to `backend/presets/hearts-and-rapiers.json` unedited; `PresetsTest`; flow unit test; move band edge tests; e2e spec | delegated writer (slice 2) | [x] | d43bf84 |
+| T6 | 2 | Wrap-up: roadmap B7 done; this doc closed | delegated writer (slice 2) | [x] | d4cc9dc |
 
 ## Studio findings
 
@@ -136,13 +136,15 @@ Played 2026-10-21 by a Claude in Chrome worker as `pbta-author@ogami.test`: camp
 - 2026-10-20: T3 done. RED: `PublishGameSystemReleaseHandlerTest::aStudioKeyWhoseLatestReleaseHasTheSameContentIsSkippedWhenOnlyIfChanged` threw `GameSystemManagedInStudio`; `ExportGameSystemReleaseConsoleCommandTest` failed on the missing `app:gamesystem:export`. GREEN: the skip lives in `PublishGameSystemReleaseHandler` (via `ReleasePublisher::latestHas`), the console says "managed in Studio" through the `IsGameSystemManagedInStudio` query; export reads `GetPublishedRelease`; round trip export, publish `--if-changed`, Unchanged passes for schema versions 1 and 2.
 - 2026-10-21: T5 done: latest release is v4 (P17 prompt rewording published); `app:gamesystem:export hearts-and-rapiers --output presets/hearts-and-rapiers.json` committed unedited, re-export is byte-identical (`cmp`), `make presets` prints `Unchanged hearts-and-rapiers (v4, managed in Studio)` on the dev database. Tests: `PresetsTest` (publishes once as v1, credits with the CC BY SA 4.0 notice, flow, tables, sheet, 12 checks), `HeartsAndRapiersPresetFlowTest` (Setup names the villain NPC and goal Thread from `{answer}`, a missed move marks XP and advances the Countdown, a hit does not mark XP, a missed Confrontation marks XP; every move at totals 6 / 7 / 9 / 10 gives miss / partial / partial / full; every Condition costs 2, e.g. grace 1 and frightened 1 is a modifier of -1), `frontend/e2e/play-hearts-and-rapiers.spec.ts` (credits, hero, one move in the journal). RED: no RED for the preset file itself; tests written against it passed on the first run, so the band test was shown to be live by flipping one expected band (9 => full), which failed 12 cases, then restored. The e2e spec passed on the first run (no RED).
 - 2026-10-21: T6 done: roadmap B7 marked done, this doc closed pending review and PR.
+- 2026-10-21: slice 2 in PR #236 (review skipped by the user); credits checked word for word against poweredbylesbians.com/license; feature closed.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-1bb45d588bb974f8` | 84209a6, 58d804d | approved; 1 warning (stdout export goes through the console formatter: use `OUTPUT_RAW`), 2 suggestions (`--release` test publishes identical content; temp file mode 0600 survives the rename), fixed in slice 2 | [#235](https://github.com/iribarren/ogami/pull/235) |
+| 2 | — | f78348f, d43bf84, d4cc9dc | review offered, skipped by the user (Studio-exported data already playtested, its tests, a 70-line fix of slice 1's findings) | [#236](https://github.com/iribarren/ogami/pull/236) |
 
 ## Next step
 
-Review slice 2, PR, doc-only close commit.
+None. Follow-ups: B7b `studio-ui-polish` (Studio findings), B8b `rules-flow-choices` (S11, S12, P4, P5), Play polish findings P8–P14.

@@ -1,0 +1,950 @@
+{
+    "schemaVersion": 2,
+    "gameSystem": {
+        "key": "hearts-and-rapiers",
+        "name": "Hearts & Rapiers",
+        "description": "An unofficial one-shot of swashbuckling romance, for use with Thirsty Sword Lesbians.",
+        "credits": {
+            "notice": "This work uses material from the Thirsty Sword Lesbians roleplaying game (found at https://swordlesbians.com), designed by April Kit Walsh and published by Evil Hat Productions, LLC, pursuant to the open license available at poweredbylesbians.com. The CC BY SA 4.0 license is available at creativecommons.org/licenses/by-sa/4.0/. Hearts & Rapiers is unofficial fan content, not affiliated with or endorsed by Evil Hat Productions or April Kit Walsh.",
+            "license": "CC BY-SA 4.0 (Powered by Lesbians open license)",
+            "url": "https://poweredbylesbians.com/license/"
+        }
+    },
+    "theme": "noir",
+    "oracles": {
+        "tables": [
+            {
+                "key": "toxic-power",
+                "name": "Toxic power",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Conqueror: the villain takes what is not theirs by force"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Corrupter: the villain bends others into serving their schemes"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Affliction: a curse or sickness spreads wherever the villain goes"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Tyrannical authority: rules and rank are used as weapons"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Complacent privilege: comfort is guarded and everyone else pays"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Well-meaning liabilities: good intentions leave a trail of harm"
+                    }
+                ]
+            },
+            {
+                "key": "story-element",
+                "name": "Story element",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Mystery: a riddle hides behind the evening's glamour"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Intrigue: whispers, forged letters and double dealing"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Celebration: a grand ball, festival or wedding is under way"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Utopia: a shining ideal community that hides a rotten price"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Invasion: an outside force lands on the shore"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Revolution: the people are ready to topple the throne"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Relationship triangle: three hearts pull in different directions"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "Couple with an obstacle: two people in love, one thing in the way"
+                    }
+                ]
+            },
+            {
+                "key": "romantic-complication",
+                "name": "Romantic complication",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Rival suitor: someone else has eyes on your crush"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Old flame: a past lover turns up at the worst moment"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Misunderstanding: a half-heard remark is taken the wrong way"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Duty versus desire: orders or family expectations pull you apart"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Stolen letter: a private note ends up in the wrong hands"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Jealous friend: an ally lashes out over feelings"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Secret identity: your crush is hiding who they really are"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "Bad timing: a vow or promise blocks the moment"
+                    }
+                ]
+            },
+            {
+                "key": "location",
+                "name": "Location",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "A moonlit balcony above a lantern-lit courtyard"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "A crowded harbor tavern full of sailors and secrets"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "A candlelit ballroom with a quartet and a hundred masks"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A windswept cliff-top fortress with crumbling stairs"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "A hidden smugglers' cove at low tide"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "A rooftop garden overlooking the sleeping city"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "The deck of a creaking galleon at dusk"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "A hall of mirrors in an abandoned theater"
+                    }
+                ]
+            },
+            {
+                "key": "villains-next-move",
+                "name": "Villain's next move",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Strikes at an ally while the heroes are looking elsewhere"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Spreads a vicious rumor that turns the town against the heroes"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Tightens a grip on the district, and the toxic power grows"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Kidnaps someone the heroes care about"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Offers a tempting bargain that would cost them dearly"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Moves the grand plan one step closer: advance the Countdown"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Sets a trap baited with something the heroes want"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "Reveals a hidden ally or a secret that changes the stakes"
+                    }
+                ]
+            }
+        ],
+        "likelihood": [
+            {
+                "key": "will-it-work",
+                "name": "Will it work out?",
+                "sides": 100,
+                "levels": [
+                    {
+                        "key": "unlikely",
+                        "label": "Unlikely",
+                        "target": 35
+                    },
+                    {
+                        "key": "likely",
+                        "label": "Likely",
+                        "target": 65
+                    }
+                ]
+            }
+        ]
+    },
+    "trackers": [
+        {
+            "key": "countdown",
+            "name": "Countdown",
+            "hint": "Advances when the villain's plan moves forward. At 5 the plan succeeds.",
+            "kind": "counter",
+            "min": 0,
+            "max": 5,
+            "initial": 0
+        }
+    ],
+    "factSlots": [],
+    "tags": [
+        {
+            "key": "villain",
+            "label": "Villain",
+            "hint": "The one pulling the strings"
+        },
+        {
+            "key": "ally",
+            "label": "Ally",
+            "hint": "Someone on your side"
+        },
+        {
+            "key": "crush",
+            "label": "Crush",
+            "hint": "The person your heart is set on"
+        }
+    ],
+    "sceneTypes": [
+        {
+            "key": "swashbuckle",
+            "name": "Swashbuckle",
+            "purpose": "Action: duels, chases and daring escapes where the heroes act and the villain reacts.",
+            "oracles": [
+                "location",
+                "villains-next-move",
+                "will-it-work"
+            ],
+            "setup": [],
+            "play": [],
+            "closing": []
+        },
+        {
+            "key": "heart-to-heart",
+            "name": "Heart-to-heart",
+            "purpose": "Feelings: quiet moments to confess, comfort, flirt or quarrel with someone who matters.",
+            "oracles": [
+                "romantic-complication",
+                "will-it-work"
+            ],
+            "setup": [],
+            "play": [],
+            "closing": []
+        },
+        {
+            "key": "intrigue",
+            "name": "Intrigue",
+            "purpose": "Plot: investigating, scheming and uncovering what the villain is really up to.",
+            "oracles": [
+                "story-element",
+                "villains-next-move",
+                "will-it-work"
+            ],
+            "setup": [],
+            "play": [],
+            "closing": []
+        }
+    ],
+    "flows": [
+        {
+            "key": "one-shot",
+            "name": "One-shot",
+            "description": "A single-evening swashbuckling romance: set up a villain and a goal, play scenes, then confront the villain.",
+            "introduction": "You are the whole table. Describe what happens, roll when a move applies, and let the questions guide you. Pick your playbook, name your character, then set the villain and goal in the Setup phase. In Scenes, choose a scene type each time and play it out; every miss earns experience. When the Countdown runs low or the scenes feel done, move to the Climax and confront the villain.",
+            "default": true,
+            "defaultView": "focus",
+            "oracles": [
+                "toxic-power",
+                "story-element",
+                "romantic-complication",
+                "villains-next-move",
+                "will-it-work",
+                "location"
+            ],
+            "trackers": [
+                "countdown"
+            ],
+            "phases": [
+                {
+                    "key": "setup",
+                    "name": "Setup",
+                    "act": "Act I",
+                    "description": "Create your hero, then decide who the villain is and what you are after.",
+                    "mode": "once",
+                    "selection": {
+                        "rule": "sequence",
+                        "sceneTypes": [
+                            "heart-to-heart"
+                        ]
+                    },
+                    "phaseOpening": [
+                        {
+                            "key": "character-1",
+                            "kind": "character",
+                            "title": "Create your hero",
+                            "prompt": "Pick a playbook, name your hero and set your five stats. Note who you hold a String on.",
+                            "mandatory": true
+                        },
+                        {
+                            "key": "table-1",
+                            "kind": "table",
+                            "title": "Name the toxic power",
+                            "prompt": "Roll to learn what rotten force the villain wields, then say how it shows up in town.",
+                            "mandatory": true,
+                            "table": "toxic-power"
+                        },
+                        {
+                            "key": "table-2",
+                            "kind": "table",
+                            "title": "Choose the story element",
+                            "prompt": "Roll to find the shape of the evening's story, then fit it around your hero and the villain.",
+                            "mandatory": true,
+                            "table": "story-element"
+                        },
+                        {
+                            "key": "prompt-1",
+                            "kind": "prompt",
+                            "title": "Who is the villain? Give a name.",
+                            "prompt": "Name the villain in a few words.",
+                            "tip": "This name becomes their NPC in the cast. Their scheme comes from the Toxic power you just rolled.",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "createNpc",
+                                    "name": "{answer}",
+                                    "agenda": "Advance the plan and crush anyone who stands in the way.",
+                                    "tags": [
+                                        "villain"
+                                    ]
+                                }
+                            ],
+                            "inspiration": [
+                                "toxic-power"
+                            ]
+                        },
+                        {
+                            "key": "prompt-2",
+                            "kind": "prompt",
+                            "title": "What is your goal tonight? A few words.",
+                            "prompt": "State what your hero wants by the end of the night, in a few words.",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "createThread",
+                                    "name": "{answer}"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "scenes",
+                    "name": "Scenes",
+                    "act": "Act II",
+                    "description": "Play scene after scene. Pick the kind of scene, state what you want from it, and roll when a move applies.",
+                    "mode": "loop",
+                    "selection": {
+                        "rule": "player",
+                        "sceneTypes": [
+                            "swashbuckle",
+                            "heart-to-heart",
+                            "intrigue"
+                        ]
+                    },
+                    "sceneOpening": [
+                        {
+                            "key": "prompt-1",
+                            "kind": "prompt",
+                            "title": "Set your intent",
+                            "prompt": "What does your hero want from this scene, and where is it set? Give the scene a short title.",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "sceneTitle",
+                                    "title": "{answer}"
+                                }
+                            ]
+                        },
+                        {
+                            "key": "table-1",
+                            "kind": "table",
+                            "title": "Add a complication",
+                            "prompt": "Roll for a romantic complication and work it into the scene.",
+                            "mandatory": true,
+                            "table": "romantic-complication"
+                        },
+                        {
+                            "key": "check-1",
+                            "kind": "check",
+                            "title": "Make your move",
+                            "prompt": "Face the complication head on. This step rolls Defy Disaster (Daring). To act another way, roll another move first with Roll a check on the character sheet. A miss marks XP.",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "countdown",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ],
+                            "check": "defy-disaster-daring",
+                            "outcomes": [
+                                {
+                                    "band": "miss",
+                                    "effects": [
+                                        {
+                                            "kind": "sheet",
+                                            "field": "xp",
+                                            "op": "add",
+                                            "value": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "climax",
+                    "name": "Climax",
+                    "act": "Act III",
+                    "description": "Confront the villain, then look back on the night and tally your experience.",
+                    "mode": "once",
+                    "selection": {
+                        "rule": "sequence",
+                        "sceneTypes": [
+                            "swashbuckle"
+                        ]
+                    },
+                    "phaseOpening": [
+                        {
+                            "key": "check-1",
+                            "kind": "check",
+                            "title": "Confront the villain",
+                            "prompt": "Face the villain with everything you have. Fight with Daring; use a String as the roll modifier if one applies.",
+                            "mandatory": true,
+                            "check": "fight-daring",
+                            "outcomes": [
+                                {
+                                    "band": "miss",
+                                    "effects": [
+                                        {
+                                            "kind": "sheet",
+                                            "field": "xp",
+                                            "op": "add",
+                                            "value": 1
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "phaseClosing": [
+                        {
+                            "key": "choice-1",
+                            "kind": "choice",
+                            "title": "Did you learn something about yourself or the villain?",
+                            "prompt": "Think back over the night. If you learned something about yourself or about the villain, mark 1 XP.",
+                            "mandatory": true,
+                            "options": [
+                                {
+                                    "key": "no",
+                                    "label": "No"
+                                },
+                                {
+                                    "key": "yes",
+                                    "label": "Yes"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "sheet": {
+        "fields": [
+            {
+                "key": "playbook",
+                "label": "Playbook",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "daring",
+                "label": "Daring",
+                "group": "Stats",
+                "type": "number",
+                "min": -1,
+                "max": 3,
+                "default": 0
+            },
+            {
+                "key": "grace",
+                "label": "Grace",
+                "group": "Stats",
+                "type": "number",
+                "min": -1,
+                "max": 3,
+                "default": 0
+            },
+            {
+                "key": "heart",
+                "label": "Heart",
+                "group": "Stats",
+                "type": "number",
+                "min": -1,
+                "max": 3,
+                "default": 0
+            },
+            {
+                "key": "wit",
+                "label": "Wit",
+                "group": "Stats",
+                "type": "number",
+                "min": -1,
+                "max": 3,
+                "default": 0
+            },
+            {
+                "key": "spirit",
+                "label": "Spirit",
+                "group": "Stats",
+                "type": "number",
+                "min": -1,
+                "max": 3,
+                "default": 0
+            },
+            {
+                "key": "angry",
+                "label": "Angry",
+                "group": "Conditions",
+                "type": "number",
+                "min": 0,
+                "max": 1,
+                "default": 0
+            },
+            {
+                "key": "frightened",
+                "label": "Frightened",
+                "group": "Conditions",
+                "type": "number",
+                "min": 0,
+                "max": 1,
+                "default": 0
+            },
+            {
+                "key": "guilty",
+                "label": "Guilty",
+                "group": "Conditions",
+                "type": "number",
+                "min": 0,
+                "max": 1,
+                "default": 0
+            },
+            {
+                "key": "hopeless",
+                "label": "Hopeless",
+                "group": "Conditions",
+                "type": "number",
+                "min": 0,
+                "max": 1,
+                "default": 0
+            },
+            {
+                "key": "insecure",
+                "label": "Insecure",
+                "group": "Conditions",
+                "type": "number",
+                "min": 0,
+                "max": 1,
+                "default": 0
+            },
+            {
+                "key": "conditions-marked",
+                "label": "Conditions marked",
+                "group": "Conditions",
+                "type": "derived",
+                "formula": "{angry} + {frightened} + {guilty} + {hopeless} + {insecure}"
+            },
+            {
+                "key": "xp",
+                "label": "XP",
+                "group": "Progress",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "strings",
+                "label": "Strings",
+                "hint": "Who holds a String on you, and who you hold one on",
+                "group": "Progress",
+                "type": "list",
+                "itemLabel": "String"
+            }
+        ]
+    },
+    "checks": [
+        {
+            "key": "fight-daring",
+            "label": "Fight (Daring)",
+            "hint": "Strike in a fight. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, pick from the list: hurt them, avoid harm, gain ground, impress or protect someone, take something.",
+            "dice": "2d6",
+            "modifier": "{daring}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: trouble finds you, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: choose one benefit from the hint",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: choose two benefits from the hint"
+                }
+            ]
+        },
+        {
+            "key": "fight-grace",
+            "label": "Fight (Grace)",
+            "hint": "Fight with finesse, but fear holds you back. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, pick from the list: hurt them, avoid harm, gain ground, impress or protect someone, take something.",
+            "dice": "2d6",
+            "modifier": "{grace} - 2 * {frightened}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: trouble finds you, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: choose one benefit from the hint",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: choose two benefits from the hint"
+                }
+            ]
+        },
+        {
+            "key": "defy-disaster-daring",
+            "label": "Defy Disaster (Daring)",
+            "hint": "Dodge or endure a threat by acting boldly, but hopelessness drags you down. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a partial hit you succeed at a cost, the GM names it.",
+            "dice": "2d6",
+            "modifier": "{daring} - 2 * {hopeless}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: disaster lands, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: you manage it, but at a cost",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: you pull it off cleanly"
+                }
+            ]
+        },
+        {
+            "key": "defy-disaster-grace",
+            "label": "Defy Disaster (Grace)",
+            "hint": "Slip out of a threat with agility, though hopelessness drags you down. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a partial hit you succeed at a cost, the GM names it.",
+            "dice": "2d6",
+            "modifier": "{grace} - 2 * {hopeless}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: disaster lands, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: you manage it, but at a cost",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: you pull it off cleanly"
+                }
+            ]
+        },
+        {
+            "key": "defy-disaster-heart",
+            "label": "Defy Disaster (Heart)",
+            "hint": "Weather a threat through feeling and connection, though hopelessness drags you down. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a partial hit you succeed at a cost, the GM names it.",
+            "dice": "2d6",
+            "modifier": "{heart} - 2 * {hopeless}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: disaster lands, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: you manage it, but at a cost",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: you pull it off cleanly"
+                }
+            ]
+        },
+        {
+            "key": "defy-disaster-wit",
+            "label": "Defy Disaster (Wit)",
+            "hint": "Think your way out of a threat, though hopelessness drags you down. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a partial hit you succeed at a cost, the GM names it.",
+            "dice": "2d6",
+            "modifier": "{wit} - 2 * {hopeless}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: disaster lands, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: you manage it, but at a cost",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: you pull it off cleanly"
+                }
+            ]
+        },
+        {
+            "key": "defy-disaster-spirit",
+            "label": "Defy Disaster (Spirit)",
+            "hint": "Resist a threat through sheer willpower, though hopelessness drags you down. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a partial hit you succeed at a cost, the GM names it.",
+            "dice": "2d6",
+            "modifier": "{spirit} - 2 * {hopeless}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: disaster lands, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: you manage it, but at a cost",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: you pull it off cleanly"
+                }
+            ]
+        },
+        {
+            "key": "entice",
+            "label": "Entice (Heart)",
+            "hint": "Charm or woo someone into acting on your wishes, but insecurity undercuts you. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, they act, and on a full hit you may also gain a String on them.",
+            "dice": "2d6",
+            "modifier": "{heart} - 2 * {insecure}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: they resist, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: they act if you give something up",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: they give in, and you may gain a String"
+                }
+            ]
+        },
+        {
+            "key": "figure-out-a-person",
+            "label": "Figure Out a Person (Wit)",
+            "hint": "Read someone to learn what they want, but anger clouds your read. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, ask the GM questions from a list: what are they feeling, what do they want, who do they trust, what are they hiding.",
+            "dice": "2d6",
+            "modifier": "{wit} - 2 * {angry}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: you misread them, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: ask one question from the hint",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: ask two questions from the hint"
+                }
+            ]
+        },
+        {
+            "key": "emotional-support-heart",
+            "label": "Emotional Support (Heart)",
+            "hint": "Comfort or encourage someone from the heart, but guilt weighs on you. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, they pick from a list: ease a Condition, gain a String, or feel steadier.",
+            "dice": "2d6",
+            "modifier": "{heart} - 2 * {guilty}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: your words ring hollow, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: they choose one benefit from the hint",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: they choose two benefits from the hint"
+                }
+            ]
+        },
+        {
+            "key": "emotional-support-spirit",
+            "label": "Emotional Support (Spirit)",
+            "hint": "Steady someone with conviction, but guilt weighs on you. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, they pick from a list: ease a Condition, gain a String, or feel steadier.",
+            "dice": "2d6",
+            "modifier": "{spirit} - 2 * {guilty}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: your words ring hollow, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: they choose one benefit from the hint",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: they choose two benefits from the hint"
+                }
+            ]
+        },
+        {
+            "key": "call-on-a-toxic-power",
+            "label": "Call on a Toxic Power (Spirit)",
+            "hint": "Stand against the villain's toxic power with your will. No Condition applies. Strings: +1 or +3 from a String, forward or ongoing, goes in as the roll modifier. On a hit, the power's grip loosens; on a miss, it tightens.",
+            "dice": "2d6",
+            "modifier": "{spirit}",
+            "bands": [
+                {
+                    "key": "miss",
+                    "label": "Miss: the power tightens, the GM makes a move",
+                    "upTo": 6
+                },
+                {
+                    "key": "partial",
+                    "label": "Partial hit: it loosens, but you pay a price",
+                    "upTo": 9
+                },
+                {
+                    "key": "full",
+                    "label": "Full hit: the power loosens its hold"
+                }
+            ]
+        }
+    ]
+}

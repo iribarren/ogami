@@ -1,10 +1,18 @@
 import {
+  addBand,
+  bandPresets,
   blankCheck,
+  duplicateCheck,
+  editBandKey,
+  editBandLabel,
   followBands,
+  newBand,
   mergeBandErrors,
   readCheck,
   sameCheck,
+  slugOf,
   writeCheck,
+  type BandDraft,
   type CheckDraft,
   type StoredCheck,
 } from './checkDraft'
@@ -352,5 +360,103 @@ describe('comparing checks', () => {
     const written = writeCheck(drafted(stored))
 
     expect('check' in written && sameCheck(written.check, stored)).toBe(true)
+  })
+})
+
+describe('duplicating a check', () => {
+  it('prefills a copy from the source with a key and label that mark it as one', () => {
+    const copy = duplicateCheck(drafted(stored), ['skill'])
+
+    expect(copy).toMatchObject({ key: 'skill-copy', label: 'Skill (copy)', dice: '1d10' })
+    expect(copy.bands).toEqual(drafted(stored).bands)
+    expect(copy.difficulty).toEqual(drafted(stored).difficulty)
+  })
+
+  it('takes the first free copy key among the existing ones', () => {
+    const source = drafted(stored)
+
+    expect(duplicateCheck(source, ['skill', 'skill-copy']).key).toBe('skill-copy-2')
+    expect(duplicateCheck(source, ['skill', 'skill-copy', 'skill-copy-2']).key).toBe('skill-copy-3')
+    // A gap is filled: the first free one wins, not the next after the highest.
+    expect(duplicateCheck(source, ['skill-copy', 'skill-copy-3']).key).toBe('skill-copy-2')
+  })
+
+  it('does not share its bands with the source', () => {
+    const source = drafted(stored)
+    const copy = duplicateCheck(source, [])
+
+    expect(copy.bands[0]).not.toBe(source.bands[0])
+  })
+})
+
+describe('the band presets', () => {
+  const preset = (id: string): BandDraft[] => {
+    const found = bandPresets.find((candidate) => candidate.id === id)
+    if (found === undefined) {
+      throw new Error(`No preset ${id}.`)
+    }
+    return found.bands()
+  }
+
+  it('has Miss / partial / full with its two bounds and a last band without one', () => {
+    expect(preset('miss-partial-full')).toEqual([
+      { key: 'miss', label: 'Miss', upTo: { kind: 'number', value: '6' } },
+      { key: 'partial', label: 'Partial hit', upTo: { kind: 'number', value: '9' } },
+      { key: 'full', label: 'Full hit', upTo: { kind: 'none' } },
+    ])
+  })
+
+  it('has Failure / success with an empty number bound the person must fill in', () => {
+    expect(preset('failure-success')).toEqual([
+      { key: 'failure', label: 'Failure', upTo: { kind: 'number', value: '' } },
+      { key: 'success', label: 'Success', upTo: { kind: 'none' } },
+    ])
+  })
+
+  it('gives each use its own bands', () => {
+    expect(preset('miss-partial-full')[0]).not.toBe(preset('miss-partial-full')[0])
+  })
+})
+
+describe('a band key that follows its label', () => {
+  it('slugs a label into a key', () => {
+    expect(slugOf(' Partial hit! ')).toBe('partial-hit')
+    expect(slugOf('Success (2+)')).toBe('success-2')
+  })
+
+  it('follows the label of an added band until the key is edited by hand', () => {
+    const labelled = editBandLabel(newBand(), 'Full hit')
+    expect(labelled.key).toBe('full-hit')
+
+    const edited = editBandKey(labelled, 'win')
+    expect(editBandLabel(edited, 'Victory').key).toBe('win')
+  })
+
+  it('never rewrites the key of a stored band when its label changes', () => {
+    const bands = drafted({
+      key: 'a',
+      label: 'A',
+      dice: '1d6',
+      bands: [{ key: 'outcome', label: 'Outcome' }],
+    }).bands
+
+    expect(bands.map((band) => editBandLabel(band, 'Result').key)).toEqual(['outcome'])
+  })
+
+  it('starts a new band as a number bound, and gives a last band without one a number too', () => {
+    const { bands, order } = addBand([
+      { key: 'a', label: 'A', upTo: { kind: 'number', value: '3' } },
+      { key: 'b', label: 'B', upTo: { kind: 'none' } },
+    ])
+
+    expect(bands[1]?.upTo).toEqual({ kind: 'number', value: '' })
+    expect(bands[2]).toMatchObject({ key: '', label: '', upTo: { kind: 'number', value: '' } })
+    expect(order).toEqual([0, 1, null])
+  })
+
+  it('leaves a bound the old last band has alone', () => {
+    const { bands } = addBand([{ key: 'a', label: 'A', upTo: { kind: 'tracker', value: 'heat' } }])
+
+    expect(bands[0]?.upTo).toEqual({ kind: 'tracker', value: 'heat' })
   })
 })

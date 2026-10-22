@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useId, useMemo, useState, type SubmitEvent } from 'react'
+import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useId, useMemo, useState, type ReactNode, type SubmitEvent } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -17,7 +17,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
 
 import type { SampleValues } from '../sheet/useSheetSamples'
-import { BandsEditor } from './BandsEditor'
+import { BandsEditor, type BandSource } from './BandsEditor'
 import { CheckSandbox } from './CheckSandbox'
 import { TextField } from '../narrative/TextField'
 import { FormulaInput } from '../sheet/FormulaInput'
@@ -25,6 +25,7 @@ import { StudioError } from '../useGameSystems'
 import {
   blankCheck,
   blankDifficulty,
+  duplicateCheck,
   followBands,
   mergeBandErrors,
   readCheck,
@@ -36,7 +37,7 @@ import {
   type DifficultyDraft,
   type StoredCheck,
 } from './checkDraft'
-import { checkFormulaDiagnostics, checkReferences } from './checkFormulaDiagnostics'
+import { checkFormulaDiagnostics, checkReads, checkReferences } from './checkFormulaDiagnostics'
 import { checkAnswer } from './checkError'
 import {
   CheckError,
@@ -94,9 +95,15 @@ export function ChecksTab({
 /**
  * The check being edited (a stored one by its key, or a new one) and the checks it was opened at.
  * The editor keeps that version until it is opened again: a refetch must not make a stale draft
- * look current. `opened` counts the openings, so each one starts the form again.
+ * look current. `opened` counts the openings, so each one starts the form again. A new check may
+ * come with a `prefill` (a duplicate): the form starts from it, unsaved.
  */
-type Selection = { original: string | null; start: GameSystemChecks; opened: number } | null
+type Selection = {
+  original: string | null
+  start: GameSystemChecks
+  opened: number
+  prefill: CheckDraft | null
+} | null
 
 function CheckList({
   gameSystemKey,
@@ -112,9 +119,29 @@ function CheckList({
   const [selected, setSelected] = useState<Selection>(null)
   const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
 
-  function open(original: string | null, start: GameSystemChecks) {
+  function open(
+    original: string | null,
+    start: GameSystemChecks,
+    prefill: CheckDraft | null = null,
+  ) {
     setConflict(null)
-    setSelected((current) => ({ original, start, opened: (current?.opened ?? 0) + 1 }))
+    setSelected((current) => ({ original, start, prefill, opened: (current?.opened ?? 0) + 1 }))
+  }
+
+  /** Opens a new, unsaved check prefilled from the stored one `key`; nothing is sent until saved. */
+  function duplicate(key: string) {
+    const stored = data.checks.find((check) => check.key === key)
+    const source = stored && readCheck(stored)
+    if (source) {
+      open(
+        null,
+        data,
+        duplicateCheck(
+          source,
+          data.checks.flatMap((check) => (typeof check.key === 'string' ? [check.key] : [])),
+        ),
+      )
+    }
   }
 
   /**
@@ -212,88 +239,108 @@ function CheckList({
           )}
         </div>
       )}
-      <div className="panel">
-        <div className="panel-head">
-          <IconTile size="sm">
-            <DieShape sides={20} inner />
-          </IconTile>
-          <h2 className="font-heading text-panel-title">Checks</h2>
-          <Button
-            className="ml-auto"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              open(null, data)
-            }}
-          >
-            <Plus aria-hidden="true" />
-            New check
-          </Button>
-        </div>
-        {data.checks.length === 0 && (
-          <div className="panel-body">
-            <div className="empty-state">
-              <IconTile size="sm">
-                <DieShape sides={20} inner />
-              </IconTile>
-              <p>This draft has no checks yet.</p>
-              <p className="hint">Use New check to add one.</p>
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="max-w-[330px] flex-[1_1_280px] panel">
+          <div className="panel-head">
+            <IconTile size="sm">
+              <DieShape sides={20} inner />
+            </IconTile>
+            <h2 className="font-heading text-panel-title">Checks</h2>
+            <Button
+              className="ml-auto"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                open(null, data)
+              }}
+            >
+              <Plus aria-hidden="true" />
+              New check
+            </Button>
+          </div>
+          {data.checks.length === 0 && (
+            <div className="panel-body">
+              <div className="empty-state">
+                <IconTile size="sm">
+                  <DieShape sides={20} inner />
+                </IconTile>
+                <p>This draft has no checks yet.</p>
+                <p className="hint">Use New check to add one.</p>
+              </div>
             </div>
+          )}
+          {data.checks.length > 0 && (
+            <ul>
+              {data.checks.map((check, index) => (
+                <CheckRow
+                  key={typeof check.key === 'string' ? check.key : `#${String(index)}`}
+                  gameSystemKey={gameSystemKey}
+                  data={data}
+                  check={check}
+                  index={index}
+                  selected={selected?.original === check.key}
+                  busy={move.isPending}
+                  onEdit={(original) => {
+                    open(original, data)
+                  }}
+                  onDuplicate={duplicate}
+                  onMove={(target) => {
+                    move.mutate(
+                      { expectedVersion: data.version, check: check.key, index: target },
+                      {
+                        onSuccess: advance,
+                        onError: (error) => {
+                          if (error instanceof StudioError && error.status === 409) {
+                            move.reset()
+                            onConflict(error.message)
+                          }
+                        },
+                      },
+                    )
+                  }}
+                  onDeleted={(result) => {
+                    if (selected?.original === check.key) {
+                      setSelected(null)
+                    } else {
+                      advance(result)
+                    }
+                  }}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+        {selected !== null && (
+          <div className="min-w-0 flex-[2_1_440px]">
+            <CheckEditor
+              key={selected.opened}
+              gameSystemKey={gameSystemKey}
+              start={selected.start}
+              original={selected.original}
+              prefill={selected.prefill}
+              sampleValues={sampleValues}
+              onSaved={(saved, key) => {
+                adopt(selected.opened, saved, key)
+              }}
+              onConflict={onConflict}
+              onDuplicate={duplicate}
+              deleteAction={
+                selected.original !== null && (
+                  <DeleteCheckDialog
+                    gameSystemKey={gameSystemKey}
+                    checkKey={selected.original}
+                    version={data.version}
+                    onDeleted={() => {
+                      setSelected(null)
+                    }}
+                    text
+                  />
+                )
+              }
+            />
           </div>
         )}
-        {data.checks.length > 0 && (
-          <ul>
-            {data.checks.map((check, index) => (
-              <CheckRow
-                key={typeof check.key === 'string' ? check.key : `#${String(index)}`}
-                gameSystemKey={gameSystemKey}
-                data={data}
-                check={check}
-                index={index}
-                selected={selected?.original === check.key}
-                busy={move.isPending}
-                onEdit={(original) => {
-                  open(original, data)
-                }}
-                onMove={(target) => {
-                  move.mutate(
-                    { expectedVersion: data.version, check: check.key, index: target },
-                    {
-                      onSuccess: advance,
-                      onError: (error) => {
-                        if (error instanceof StudioError && error.status === 409) {
-                          move.reset()
-                          onConflict(error.message)
-                        }
-                      },
-                    },
-                  )
-                }}
-                onDeleted={(result) => {
-                  if (selected?.original === check.key) {
-                    setSelected(null)
-                  } else {
-                    advance(result)
-                  }
-                }}
-              />
-            ))}
-          </ul>
-        )}
       </div>
-      {selected !== null && (
-        <CheckEditor
-          key={selected.opened}
-          gameSystemKey={gameSystemKey}
-          start={selected.start}
-          original={selected.original}
-          sampleValues={sampleValues}
-          onSaved={(saved, key) => {
-            adopt(selected.opened, saved, key)
-          }}
-          onConflict={onConflict}
-        />
-      )}
     </section>
   )
 }
@@ -306,6 +353,7 @@ function CheckRow({
   selected,
   busy,
   onEdit,
+  onDuplicate,
   onMove,
   onDeleted,
 }: {
@@ -316,6 +364,7 @@ function CheckRow({
   selected: boolean
   busy: boolean
   onEdit: (key: string) => void
+  onDuplicate: (key: string) => void
   onMove: (target: number) => void
   onDeleted: (result: GameSystemChecks) => void
 }) {
@@ -347,6 +396,16 @@ function CheckRow({
         }}
       >
         <Pencil />
+      </IconButton>
+      <IconButton
+        label={`Duplicate ${key}`}
+        dense
+        disabled={!editable}
+        onClick={() => {
+          onDuplicate(key)
+        }}
+      >
+        <Copy />
       </IconButton>
       <IconButton
         label={`Move up ${key}`}
@@ -384,11 +443,14 @@ function DeleteCheckDialog({
   checkKey,
   version,
   onDeleted,
+  text = false,
 }: {
   gameSystemKey: string
   checkKey: string
   version: number
   onDeleted: (result: GameSystemChecks) => void
+  /** A "Delete" button with text (the editor's head) instead of the list row's icon button. */
+  text?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const remove = useDeleteCheck(gameSystemKey)
@@ -406,9 +468,16 @@ function DeleteCheckDialog({
       }}
     >
       <DialogTrigger asChild>
-        <IconButton label={`Delete ${checkKey}`} dense destructive>
-          <Trash2 />
-        </IconButton>
+        {text ? (
+          <Button variant="outline" size="sm">
+            <Trash2 aria-hidden="true" />
+            Delete
+          </Button>
+        ) : (
+          <IconButton label={`Delete ${checkKey}`} dense destructive>
+            <Trash2 />
+          </IconButton>
+        )}
       </DialogTrigger>
       <DialogContent aria-describedby={reasonId}>
         <DialogHeader>
@@ -477,22 +546,42 @@ function CheckEditor({
   gameSystemKey,
   start,
   original,
+  prefill,
   sampleValues,
   onSaved,
   onConflict,
+  onDuplicate,
+  deleteAction,
 }: {
   gameSystemKey: string
   start: GameSystemChecks
   original: string | null
+  /** A duplicate's starting form; only a new check uses it. */
+  prefill: CheckDraft | null
   sampleValues: SampleValues
   onSaved: (saved: GameSystemChecks, key: string) => void
   onConflict: (message: string) => void
+  onDuplicate: (key: string) => void
+  /** The editor head's Delete, which needs the list's latest version. */
+  deleteAction: ReactNode
 }) {
   const save = useSaveCheck(gameSystemKey)
   const [draft, setDraft] = useState<CheckDraft>(() => {
+    if (original === null) {
+      return prefill ?? blankCheck()
+    }
     const stored = start.checks.find((check) => check.key === original)
     return (stored && readCheck(stored)) ?? blankCheck()
   })
+  // The other checks whose bands "Copy from a check…" offers: the ones the form can read.
+  const copyFrom = useMemo<BandSource[]>(
+    () =>
+      start.checks.flatMap((check) => {
+        const read = check.key === original ? null : readCheck(check)
+        return read ? [{ key: read.key, label: read.label, bands: read.bands }] : []
+      }),
+    [start, original],
+  )
   const [errors, setErrors] = useState<Omit<CheckErrors, 'band'>>({})
   // The band messages, by position, from the form's own checks and from the publisher's refusal.
   // They follow their band when the bands are rearranged: a message must not stay on the band
@@ -513,6 +602,7 @@ function CheckEditor({
           }),
     [draft.modifier, start],
   )
+  const reads = useMemo(() => checkReads(draft.modifier, start), [draft.modifier, start])
   const difficultyId = useId()
 
   const position =
@@ -599,126 +689,153 @@ function CheckEditor({
 
   return (
     <div className="space-y-4">
-      <form
-        aria-label={title}
-        className="space-y-4 rounded-xl p-4 ring-1 ring-foreground/10"
-        onSubmit={handleSubmit}
-      >
-        <h3 className="font-heading font-semibold">{title}</h3>
-        <TextField
-          label="Key"
-          keyField
-          value={draft.key}
-          onChange={(key) => {
-            change({ key })
-          }}
-          error={shown.key}
-        />
-        <TextField
-          label="Label"
-          value={draft.label}
-          onChange={(label) => {
-            change({ label })
-          }}
-          error={shown.label}
-        />
-        <TextField
-          label="Hint"
-          value={draft.hint}
-          onChange={(hint) => {
-            change({ hint })
-          }}
-          error={shown.hint}
-        />
-        <TextField
-          label="Dice"
-          value={draft.dice}
-          onChange={(dice) => {
-            change({ dice })
-          }}
-          error={shown.dice}
-          help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
-        />
-        <FormulaInput
-          label="Modifier"
-          value={draft.modifier}
-          onChange={(modifier) => {
-            change({ modifier })
-          }}
-          diagnostics={modifierDiagnostics}
-          references={references}
-          error={shown.modifier}
-        />
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <input
-              id={difficultyId}
-              type="checkbox"
-              checked={draft.difficulty !== null}
-              onChange={(event) => {
-                change({ difficulty: event.target.checked ? blankDifficulty() : null })
-              }}
-            />
-            <Label htmlFor={difficultyId}>Difficulty</Label>
-          </div>
-          {shown.difficulty && <p className="text-sm text-destructive">{shown.difficulty}</p>}
-          {draft.difficulty !== null && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <TextField
-                label="Difficulty label"
-                value={draft.difficulty.label}
-                onChange={(label) => {
-                  changeDifficulty({ label })
+      <form aria-label={title} className="panel" onSubmit={handleSubmit}>
+        <div className="panel-head">
+          <IconTile size="lg">
+            <DieShape sides={20} inner />
+          </IconTile>
+          <h3 className="font-heading text-lg font-semibold">{title}</h3>
+          {original !== null && (
+            <div className="ml-auto flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onDuplicate(original)
                 }}
-                error={shown.difficultyLabel}
-              />
-              <TextField
-                label="Default"
-                value={draft.difficulty.default}
-                onChange={(value) => {
-                  changeDifficulty({ default: value })
-                }}
-                error={shown.difficultyDefault}
-              />
-              <TextField
-                label="Min"
-                value={draft.difficulty.min}
-                onChange={(min) => {
-                  changeDifficulty({ min })
-                }}
-                error={shown.difficultyMin}
-              />
-              <TextField
-                label="Max"
-                value={draft.difficulty.max}
-                onChange={(max) => {
-                  changeDifficulty({ max })
-                }}
-                error={shown.difficultyMax}
-              />
+              >
+                <Copy aria-hidden="true" />
+                Duplicate
+              </Button>
+              {deleteAction}
             </div>
           )}
         </div>
-        <BandsEditor
-          bands={draft.bands}
-          onChange={(bands, order) => {
-            change({ bands })
-            if (order !== undefined) {
-              setLocalBands((held) => followBands(held, order))
-              setPublishedBands((held) => followBands(held, order))
-            }
-          }}
-          catalog={start}
-          difficulty={draft.difficulty}
-          error={shown.bands}
-          errors={shown.band ?? {}}
-        />
-        {message !== '' && (
-          <p role="alert" className="text-sm text-destructive">
-            {message}
-          </p>
-        )}
-        <div className="flex flex-wrap gap-2">
+        <div className="space-y-4 panel-body">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField
+              label="Key"
+              keyField
+              value={draft.key}
+              onChange={(key) => {
+                change({ key })
+              }}
+              error={shown.key}
+            />
+            <TextField
+              label="Label"
+              value={draft.label}
+              onChange={(label) => {
+                change({ label })
+              }}
+              error={shown.label}
+            />
+            <div className="sm:col-span-2">
+              <TextField
+                label="Hint"
+                value={draft.hint}
+                onChange={(hint) => {
+                  change({ hint })
+                }}
+                error={shown.hint}
+              />
+            </div>
+            <TextField
+              label="Dice"
+              value={draft.dice}
+              onChange={(dice) => {
+                change({ dice })
+              }}
+              error={shown.dice}
+              help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
+            />
+            <div className="space-y-2">
+              <FormulaInput
+                label="Modifier"
+                value={draft.modifier}
+                onChange={(modifier) => {
+                  change({ modifier })
+                }}
+                diagnostics={modifierDiagnostics}
+                references={references}
+                error={shown.modifier}
+              />
+              {reads.length > 0 && <p className="hint">Reads {reads.join(', ')}</p>}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                id={difficultyId}
+                type="checkbox"
+                checked={draft.difficulty !== null}
+                onChange={(event) => {
+                  change({ difficulty: event.target.checked ? blankDifficulty() : null })
+                }}
+              />
+              <Label htmlFor={difficultyId}>Difficulty</Label>
+            </div>
+            {shown.difficulty && <p className="text-sm text-destructive">{shown.difficulty}</p>}
+            {draft.difficulty !== null && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField
+                  label="Difficulty label"
+                  value={draft.difficulty.label}
+                  onChange={(label) => {
+                    changeDifficulty({ label })
+                  }}
+                  error={shown.difficultyLabel}
+                />
+                <TextField
+                  label="Default"
+                  value={draft.difficulty.default}
+                  onChange={(value) => {
+                    changeDifficulty({ default: value })
+                  }}
+                  error={shown.difficultyDefault}
+                />
+                <TextField
+                  label="Min"
+                  value={draft.difficulty.min}
+                  onChange={(min) => {
+                    changeDifficulty({ min })
+                  }}
+                  error={shown.difficultyMin}
+                />
+                <TextField
+                  label="Max"
+                  value={draft.difficulty.max}
+                  onChange={(max) => {
+                    changeDifficulty({ max })
+                  }}
+                  error={shown.difficultyMax}
+                />
+              </div>
+            )}
+          </div>
+          <BandsEditor
+            bands={draft.bands}
+            onChange={(bands, order) => {
+              change({ bands })
+              if (order !== undefined) {
+                setLocalBands((held) => followBands(held, order))
+                setPublishedBands((held) => followBands(held, order))
+              }
+            }}
+            catalog={start}
+            difficulty={draft.difficulty}
+            copyFrom={copyFrom}
+            error={shown.bands}
+            errors={shown.band ?? {}}
+          />
+          {message !== '' && (
+            <p role="alert" className="text-sm text-destructive">
+              {message}
+            </p>
+          )}
+        </div>
+        <div className="action-bar">
           <Button type="submit" disabled={save.isPending}>
             {original === null ? 'Create check' : 'Save check'}
           </Button>

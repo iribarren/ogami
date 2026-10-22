@@ -1195,6 +1195,23 @@
   letter-spacing: -0.02em;
 }
 
+/* Content set into a surface like an input: roll results, details, notes. */
+@utility well {
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--well);
+  box-shadow: var(--well-shadow);
+  border: 1px solid var(--input);
+}
+
+/* A row of controls on the page ground, set into a panel: a band, a level. */
+@utility well-row {
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  border: 1px solid var(--input);
+}
+
 @utility readout-sm {
   font-size: 22px;
 }

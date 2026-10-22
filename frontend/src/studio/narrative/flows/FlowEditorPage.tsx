@@ -77,12 +77,9 @@ export function FlowEditorPage({
     )
   }
   const name = shown.definition.name
-  const issues = validation.data
-    ? flowIssueCount(
-        validation.data,
-        data.flows.findIndex((item) => item.key === flow),
-      )
-    : 0
+  // A flow that has gone from the draft has no position: it has no issues to count.
+  const position = data.flows.findIndex((item) => item.key === flow)
+  const issues = validation.data && position >= 0 ? flowIssueCount(validation.data, position) : 0
 
   return (
     <div className="mx-auto w-full max-w-[1232px] space-y-6">

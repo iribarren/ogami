@@ -145,10 +145,10 @@ export function answerNode(answer: FlowAnswer): FlowNode | null {
       const errors = said.hooks[hook] ?? []
       const first = errors[0]
       if (first !== undefined) {
-        const step = errors.find((error) => error.index !== null)?.index
-        return step === null || step === undefined
+        // The first error decides: one on the list itself selects the hook, not a later step.
+        return first.index === null
           ? { kind: 'hook', phase, hook }
-          : { kind: 'step', phase, hook, step }
+          : { kind: 'step', phase, hook, step: first.index }
       }
     }
   }

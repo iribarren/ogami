@@ -51,6 +51,8 @@ describe('parsePaste', () => {
     ['2-4 Rain', 2, 4, 'Rain'],
     ['2–4: Rain', 2, 4, 'Rain'],
     ['2 - 4) Rain', 2, 4, 'Rain'],
+    ['1.Rain', 1, 1, 'Rain'],
+    ['1-3.Rain', 1, 3, 'Rain'],
   ])('reads the range in %j', (line, min, max, text) => {
     expect(parsePaste(ranged([]), line, 'replace').entries).toEqual([{ text, min, max }])
   })

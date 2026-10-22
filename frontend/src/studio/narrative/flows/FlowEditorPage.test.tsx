@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { narrativeFlows } from '../../fixtures'
+import { draft as gameSystem, narrativeFlows } from '../../fixtures'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -1025,5 +1025,74 @@ describe('the outline', () => {
     expect(content().getByText('No Scene Types yet.')).toBeInTheDocument()
     await pickPhase(user, 1)
     expect(content().getByLabelText('Key')).toHaveValue('old')
+  })
+})
+
+describe('the header of the flow editor page', () => {
+  const system = { [`GET ${base.replace('/narrative', '')}`]: json(gameSystem) }
+  const validation = (error: string | null, warnings: string[]) =>
+    json({
+      valid: error === null,
+      error: error === null ? null : { path: '', message: error },
+      warnings,
+    })
+  const check = `GET ${base}/validation`
+
+  it('names the GameSystem, and counts the issues of this flow only', async () => {
+    await openEditor('heist', {
+      ...system,
+      [check]: validation('flows[0].name: nope', ['flows[0].phases[1]: odd', 'flows[1]: other']),
+    })
+
+    expect(await screen.findByText('2 issues')).toBeInTheDocument()
+    expect(screen.getByText('My draft · Flow')).toBeInTheDocument()
+  })
+
+  it('says "1 issue" for one', async () => {
+    await openEditor('heist', { ...system, [check]: validation(null, ['flows[0]: odd']) })
+
+    expect(await screen.findByText('1 issue')).toBeInTheDocument()
+  })
+
+  it('shows no badge when the issues are about other flows', async () => {
+    await openEditor('heist', { ...system, [check]: validation(null, ['flows[1]: other']) })
+
+    await waitFor(() => {
+      expect(screen.getByText('My draft · Flow')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/issues?$/)).not.toBeInTheDocument()
+  })
+
+  it('falls back to the key and no badge when the GameSystem or the validation fail', async () => {
+    await openEditor('heist', {
+      [`GET ${base.replace('/narrative', '')}`]: json({ error: 'Down' }, 500),
+      [check]: json({ error: 'Down' }, 500),
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('my-draft · Flow')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/issues?$/)).not.toBeInTheDocument()
+  })
+
+  it('shows no badge for a flow that has gone from the draft, whatever the validation says', async () => {
+    let reads = 0
+    const { user } = await openEditor('heist', {
+      ...system,
+      [`GET ${base}/narrative`]: () =>
+        Response.json(++reads === 1 ? narrativeFlows : { ...narrativeFlows, flows: [] }),
+      [check]: validation('flows[0].name: nope', []),
+      [put]: json(changed, 409),
+    })
+    expect(await screen.findByText('1 issue')).toBeInTheDocument()
+
+    await pickPhase(user, 1)
+    await replace(user, content().getByLabelText('Name'), 'Mine')
+    await user.click(save())
+    await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+    expect(await screen.findByText(/no longer exists/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Heist')
+    expect(screen.queryByText(/issues?$/)).not.toBeInTheDocument()
   })
 })

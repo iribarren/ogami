@@ -55,6 +55,21 @@ describe('parsePaste', () => {
     expect(parsePaste(ranged([]), line, 'replace').entries).toEqual([{ text, min, max }])
   })
 
+  it('does not read a decimal as a range with a dot separator', () => {
+    const { entries } = parsePaste(ranged([]), '3.5 kg of salt\n2-4.5 litres', 'replace')
+    expect(entries).toEqual([
+      { text: '3.5 kg of salt', min: 1, max: 1 },
+      { text: '2-4.5 litres', min: 2, max: 2 },
+    ])
+  })
+
+  it('keeps a leading number in the text of a weighted table', () => {
+    const weighted = { ...ranged([]), ranged: false }
+    expect(parsePaste(weighted, '3.5 kg of salt', 'replace').entries).toEqual([
+      { text: '3.5 kg of salt', weight: 1 },
+    ])
+  })
+
   it('continues from the last range of a numbered line', () => {
     const { entries } = parsePaste(ranged([]), '1-3 Rain\nSnow\n6 Hail\nFog', 'replace')
     expect(entries.map(({ min, max }) => [min, max])).toEqual([

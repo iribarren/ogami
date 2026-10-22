@@ -1,26 +1,31 @@
-import { useId, useState, type SubmitEvent } from 'react'
+import { ChevronRight, Clapperboard, Layers, Route, Zap } from 'lucide-react'
+import { useState, type ReactNode, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
-import { Label } from '@/shared/ui/label'
-import { Select } from '@/shared/ui/select'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { StudioError } from '../../useGameSystems'
-import { TextField } from '../TextField'
-import { Area, CheckList } from '../steps/fields'
+import { moveItem } from '../steps/draftParts'
 import { stepContext } from '../steps/stepContext'
 import {
   useGameSystemNarrative,
   useSaveNarrativeItem,
   type GameSystemNarrative,
 } from '../useGameSystemNarrative'
-import { flowToDraft, flowToItem, flowViews, type FlowDraft } from './flowDraft'
+import { flowToDraft, flowToItem, newPhase, type FlowDraft, type PhaseDraft } from './flowDraft'
 import { flowAnswer, flowChecks, noAnswer, type FlowAnswer } from './flowError'
-import { PhaseOutline } from './PhaseOutline'
+import { answerNode, hookLabels, nodePath, nodeTrail, resolveNode, type FlowNode } from './flowNode'
+import { FlowOutline } from './FlowOutline'
+import { FlowSettings } from './FlowSettings'
+import { HookPanel } from './HookPanel'
+import { PhaseActions, PhasePanel } from './PhasePanel'
+import { SelectionEditor } from './SelectionEditor'
 
 /**
- * The form of one flow. It is filled once, from `initial` read at `version`; a save sends that
- * version, and a reload replaces the draft and the version together or neither.
+ * The editor of one flow: its outline, and the form of the selected node. It is filled once, from
+ * `initial` read at `version`; a save sends that version, and a reload replaces the draft and the
+ * version together or neither. `selected` is the `node` search param as the URL has it.
  */
 export function FlowEditor({
   gameSystemKey,
@@ -28,6 +33,7 @@ export function FlowEditor({
   original,
   initial,
   version,
+  selected,
 }: {
   gameSystemKey: string
   narrative: GameSystemNarrative
@@ -35,6 +41,7 @@ export function FlowEditor({
   original: string
   initial: FlowDraft
   version: number
+  selected: string | undefined
 }) {
   const [draft, setDraft] = useState(initial)
   const [readAt, setReadAt] = useState(version)
@@ -44,19 +51,37 @@ export function FlowEditor({
   const [reloadNote, setReloadNote] = useState<string | null>(null)
   // Remounts the phases on a reload: their hook lists keep no state of the draft they replace.
   const [generation, setGeneration] = useState(0)
-  const viewId = useId()
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
   const context = stepContext(narrative)
-  const options = [...context.tables, ...context.likelihood]
+  const node = resolveNode(draft, selected)
+
+  /** Selects a node; `replace` for the changes the editor makes itself, so back keeps to what the person chose. */
+  function select(next: FlowNode, replace = false) {
+    void navigate({
+      to: '/studio/game-systems/$key/flows/$flow',
+      params: { key: gameSystemKey, flow: current },
+      search: { node: next.kind === 'settings' ? undefined : nodePath(next) },
+      replace,
+    })
+  }
+
+  /** Shows what a refused save is about: the answer on its fields, the first node it names selected. */
+  function refuse(next: FlowAnswer) {
+    setAnswer(next)
+    const target = answerNode(next)
+    if (target !== null) {
+      select(target, true)
+    }
+  }
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     const result = flowToItem(draft)
     const refused = flowChecks(draft, 'errors' in result ? result.errors : {})
     if (refused !== null || 'errors' in result) {
-      setAnswer(refused ?? noAnswer)
+      refuse(refused ?? noAnswer)
       return
     }
     setAnswer(noAnswer)
@@ -75,7 +100,7 @@ export function FlowEditor({
     } catch (error) {
       const index = narrative.flows.findIndex((stored) => stored.key === current)
       const message = error instanceof Error ? error.message : 'Saving the item failed.'
-      setAnswer({
+      refuse({
         ...flowAnswer(message, index, draft.phases.length),
         conflict: error instanceof StudioError && error.status === 409,
       })
@@ -86,6 +111,7 @@ export function FlowEditor({
         await navigate({
           to: '/studio/game-systems/$key/flows/$flow',
           params: { key: gameSystemKey, flow: key },
+          search: { node: selected },
           replace: true,
         })
       } catch {
@@ -119,154 +145,182 @@ export function FlowEditor({
     setGeneration((count) => count + 1)
   }
 
-  const field = (name: string) => answer.fields[name]
+  const phases = draft.phases
+  // `answer.phases` has holes: spread to the phases' length so that moving one keeps the others in place.
+  const aligned = phases.map((_, index) => answer.phases[index])
+  const locked = save.isPending
 
-  return (
-    <form
-      aria-label="Flow"
-      className="space-y-6"
-      noValidate
-      onSubmit={(event) => {
-        void submit(event)
-      }}
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="Key"
-          keyField
-          value={draft.key}
-          error={field('key')}
-          onChange={(key) => {
-            setDraft({ ...draft, key })
-          }}
-        />
-        <TextField
-          label="Name"
-          value={draft.name}
-          error={field('name')}
-          onChange={(name) => {
-            setDraft({ ...draft, name })
-          }}
-        />
-      </div>
-      <Area
-        label="Description"
-        value={draft.description}
-        error={field('description')}
-        onChange={(description) => {
-          setDraft({ ...draft, description })
-        }}
-      />
-      <Area
-        label="Introduction"
-        value={draft.introduction}
-        error={field('introduction')}
-        onChange={(introduction) => {
-          setDraft({ ...draft, introduction })
-        }}
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={viewId}>Default view</Label>
-          <Select
-            id={viewId}
-            value={draft.defaultView}
-            onChange={(event) => {
-              setDraft({
-                ...draft,
-                defaultView: flowViews.find((view) => view === event.target.value) ?? 'focus',
-              })
-            }}
-          >
-            <option value="focus">Focus</option>
-            <option value="journal">Journal</option>
-          </Select>
-          {field('defaultView') && (
-            <p className="text-sm text-destructive">{field('defaultView')}</p>
-          )}
-        </div>
-        <div className="space-y-1">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={draft.default}
-              onChange={(event) => {
-                setDraft({ ...draft, default: event.target.checked })
+  function changePhases(next: PhaseDraft[], answers = aligned) {
+    setDraft({ ...draft, phases: next })
+    setAnswer({ ...answer, phases: answers })
+  }
+
+  /** The panel of the selected node: its icon, title, actions and form. */
+  function panel(): { icon: ReactNode; title: string; actions?: ReactNode; body: ReactNode } {
+    const [title = ''] = nodeTrail(draft, node).slice(-1)
+    if (node.kind === 'settings') {
+      return {
+        icon: <Route />,
+        title,
+        body: (
+          <FlowSettings
+            draft={draft}
+            context={context}
+            errors={answer.fields}
+            onChange={setDraft}
+          />
+        ),
+      }
+    }
+    const index = node.phase
+    const phase = phases[index]
+    if (phase === undefined) {
+      return { icon: <Route />, title, body: null }
+    }
+    const change = (changed: PhaseDraft) => {
+      changePhases(phases.map((current, at) => (at === index ? changed : current)))
+    }
+    switch (node.kind) {
+      case 'phase':
+        return {
+          icon: <Layers />,
+          title,
+          actions: (
+            <PhaseActions
+              index={index}
+              total={phases.length}
+              locked={locked}
+              onMove={(by) => {
+                changePhases(moveItem(phases, index, by), moveItem(aligned, index, by))
+                select({ kind: 'phase', phase: index + by }, true)
+              }}
+              onDelete={() => {
+                changePhases(
+                  phases.filter((_, at) => at !== index),
+                  aligned.filter((_, at) => at !== index),
+                )
+                select({ kind: 'phase', phase: Math.max(0, index - 1) }, true)
               }}
             />
-            Default flow
-          </label>
-          <p className="text-sm text-muted-foreground">
-            Saving it as the default clears the flag on the other flows.
+          ),
+          body: <PhasePanel phase={phase} answer={aligned[index]} onChange={change} />,
+        }
+      case 'selection':
+        return {
+          icon: <Clapperboard />,
+          title,
+          body: (
+            <SelectionEditor
+              selection={phase.selection}
+              sceneTypes={context.sceneTypes ?? []}
+              tables={context.tables}
+              messages={aligned[index]?.selection ?? []}
+              onChange={(selection) => {
+                change({ ...phase, selection })
+              }}
+            />
+          ),
+        }
+      case 'hook':
+      case 'step':
+        return {
+          icon: <Zap />,
+          title: hookLabels[node.hook],
+          body: (
+            <HookPanel
+              phase={phase}
+              hook={node.hook}
+              step={node.kind === 'step' ? node.step : undefined}
+              context={context}
+              answer={aligned[index]}
+              locked={locked}
+              onChange={change}
+            />
+          ),
+        }
+    }
+  }
+
+  const shown = panel()
+  const trail = nodeTrail(draft, node)
+  // A hook and its steps share one list, so moving between them keeps its state.
+  const listKey =
+    node.kind === 'hook' || node.kind === 'step'
+      ? nodePath({ ...node, kind: 'hook' })
+      : nodePath(node)
+
+  return (
+    <div className="flex flex-wrap gap-6">
+      <FlowOutline
+        draft={draft}
+        node={node}
+        answers={aligned}
+        sceneTypes={context.sceneTypes ?? []}
+        tables={context.tables}
+        locked={locked}
+        onSelect={select}
+        onAdd={() => {
+          changePhases([...phases, newPhase(phases)])
+          select({ kind: 'phase', phase: phases.length }, true)
+        }}
+      />
+      <form
+        aria-label="Flow"
+        className="min-w-0 flex-[999_1_560px] space-y-4"
+        noValidate
+        onSubmit={(event) => {
+          void submit(event)
+        }}
+      >
+        <nav aria-label="Breadcrumb">
+          <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+            {trail.map((label, at) => (
+              <li key={at} className="flex items-center gap-1">
+                {at > 0 && <ChevronRight aria-hidden="true" className="size-3.5" />}
+                {label}
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <section aria-labelledby="flow-node-title" className="panel">
+          <div className="panel-head">
+            <IconTile size="sm">{shown.icon}</IconTile>
+            <h2 id="flow-node-title" className="font-heading text-panel-title">
+              {shown.title}
+            </h2>
+            {shown.actions}
+          </div>
+          <div key={`${String(generation)}:${listKey}`} className="panel-body">
+            {shown.body}
+          </div>
+        </section>
+        {answer.page !== null && (
+          <p role="alert" className="text-sm text-destructive">
+            {answer.page}
           </p>
-          {field('default') && <p className="text-sm text-destructive">{field('default')}</p>}
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1">
-          <CheckList
-            legend="Oracle shortcuts"
-            options={options}
-            value={draft.oracles}
-            onChange={(oracles) => {
-              setDraft({ ...draft, oracles })
-            }}
-          />
-          {field('oracles') && <p className="text-sm text-destructive">{field('oracles')}</p>}
-        </div>
-        <div className="space-y-1">
-          <CheckList
-            legend="Trackers"
-            options={context.trackers}
-            value={draft.trackers}
-            onChange={(trackers) => {
-              setDraft({ ...draft, trackers })
-            }}
-          />
-          {field('trackers') && <p className="text-sm text-destructive">{field('trackers')}</p>}
-        </div>
-      </div>
-      <section aria-label="Phases" className="space-y-3">
-        <h2 className="font-heading text-lg font-semibold">Phases</h2>
-        <PhaseOutline
-          key={generation}
-          phases={draft.phases}
-          answers={answer.phases}
-          sceneType={narrative.sceneTypes[0]?.key ?? null}
-          context={context}
-          locked={save.isPending}
-          onChange={(phases, phaseAnswers) => {
-            setDraft({ ...draft, phases })
-            setAnswer({ ...answer, phases: phaseAnswers })
-          }}
-        />
-      </section>
-      {answer.page !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {answer.page}
-        </p>
-      )}
-      {reloadNote !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {reloadNote}
-        </p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={save.isPending}>
-          Save
-        </Button>
-        {answer.conflict && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              void reload()
-            }}
-          >
-            Reload the latest version
-          </Button>
         )}
-      </div>
-    </form>
+        {reloadNote !== null && (
+          <p role="alert" className="text-sm text-destructive">
+            {reloadNote}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" disabled={save.isPending}>
+            Save
+          </Button>
+          {answer.conflict && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void reload()
+              }}
+            >
+              Reload the latest version
+            </Button>
+          )}
+        </div>
+      </form>
+    </div>
   )
 }

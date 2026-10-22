@@ -1247,6 +1247,34 @@
   color: var(--muted-foreground);
 }
 
+/* An item of the flow editor's outline; `--level` indents it, aria-current="true" selects it. */
+@utility outline-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px 0 calc(8px + var(--level, 0) * 16px);
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: left;
+  & > svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+  &:hover {
+    background: var(--secondary);
+  }
+  &[data-dim='true'] {
+    color: var(--muted-foreground);
+  }
+  &[aria-current='true'] {
+    background: color-mix(in oklch, var(--primary) 8%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+}
+
 @utility icon-button {
   display: inline-flex;
   align-items: center;

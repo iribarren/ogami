@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -324,6 +324,7 @@ function StepCard({
   step,
   index,
   total,
+  current,
   guide,
   mine,
   context,
@@ -337,6 +338,7 @@ function StepCard({
   step: StepDraft
   index: number
   total: number
+  current: boolean
   guide: StepGuide
   mine: StepError[]
   context: StepContext
@@ -348,6 +350,13 @@ function StepCard({
   onItems: (count: number, change: (origin: (number | null)[]) => (number | null)[]) => void
 }) {
   const number = String(index + 1)
+  const card = useRef<HTMLLIElement>(null)
+  // The step the outline selected comes into view.
+  useEffect(() => {
+    if (current) {
+      card.current?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [current])
   const stored = step.kind === 'stored' ? step.stored : null
   const record =
     typeof stored === 'object' && stored !== null ? (stored as Record<string, unknown>) : {}
@@ -401,9 +410,11 @@ function StepCard({
 
   return (
     <li
+      ref={card}
       role="group"
       aria-label={`Step ${number}`}
-      className="rounded-xl p-3 ring-1 ring-foreground/10"
+      aria-current={current ? 'true' : undefined}
+      className="rounded-xl p-3 ring-1 ring-foreground/10 aria-[current=true]:ring-2 aria-[current=true]:ring-primary/55"
     >
       {step.kind === 'stored' ? (
         <div className="space-y-2">
@@ -453,11 +464,14 @@ export function StepListEditor({
   steps,
   context,
   errors = noErrors,
+  current,
   onChange,
 }: {
   steps: StepDraft[]
   context: StepContext
   errors?: StepError[]
+  /** The position of the step to scroll to and mark, when the list is shown for one step. */
+  current?: number
   onChange: (steps: StepDraft[]) => void
 }) {
   const [kind, setKind] = useState<StepKind>('prompt')
@@ -515,6 +529,7 @@ export function StepListEditor({
               step={step}
               index={index}
               total={steps.length}
+              current={current === index}
               guide={guides[index] ?? { bands: {}, nexts: {}, items: {} }}
               mine={messagesOf(index)}
               context={context}

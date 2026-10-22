@@ -343,17 +343,17 @@ describe('a new phase', () => {
     ],
   })?.phases
 
-  it('is the smallest phase the publisher accepts, with a key no phase has', () => {
-    expect(newPhase(phases ?? [], 'quiet')).toEqual({
+  it('starts with a key no phase has and no Scene Type to play (S10)', () => {
+    expect(newPhase(phases ?? [])).toEqual({
       key: 'phase-3',
       name: 'Phase 2',
       act: '',
       description: '',
       mode: 'once',
-      selection: { rule: 'sequence', sceneTypes: ['quiet'], extra: {} },
+      selection: { rule: 'sequence', sceneTypes: [], extra: {} },
       hooks: {},
       extra: {},
     })
-    expect(newPhase([], 'quiet').key).toBe('phase-1')
+    expect(newPhase([]).key).toBe('phase-1')
   })
 })

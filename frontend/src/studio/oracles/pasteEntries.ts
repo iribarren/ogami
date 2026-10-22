@@ -31,8 +31,11 @@ export function pasteStart(draft: TableDraft, mode: PasteMode): number | null {
   return mode === 'replace' ? (diceRange(draft.dice)?.min ?? 1) : nextTotal(draft)
 }
 
-/** An optional range (`N` or `N-M`, hyphen or en dash), then a separator or space, then the text. */
-const RANGED_LINE = /^(\d{1,9})(?:\s*[-–]\s*(\d{1,9}))?(?:\s*[.:)]\s*|\s+)(\S.*)$/
+/**
+ * An optional range (`N` or `N-M`, hyphen or en dash), then a separator or space, then the text.
+ * A dot separates only when whitespace follows it, so "3.5 kg" is text, not range 3.
+ */
+const RANGED_LINE = /^(\d{1,9})(?:\s*[-–]\s*(\d{1,9}))?(?:\s*[:)]\s*|\s*\.\s+|\s+)(\S.*)$/
 /** A line that is only a range, with or without its separator. */
 const RANGE_ONLY = /^\d{1,9}(?:\s*[-–]\s*\d{1,9})?\s*[.:)]?$/
 

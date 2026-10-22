@@ -96,7 +96,7 @@ Authored 2026-10-20 by a Claude in Chrome worker as `pbta-author@ogami.test` (~3
 | S16 | Validation: scene-type oracles and step trackers must be enabled on the flow; caught only at validation | Medium | → `studio-ui-polish` |
 | S17 | GameSystem page: tab not in the URL; publish banner shifts tabs ~36px | Medium | → `studio-ui-polish` |
 | S18 | Sheet: key rule (a-z, 0-9, "-") only in the error | Low | → `studio-ui-polish` |
-| S19 | Overview: notice counter not shown; formula field preview shows raw text | Low | → `studio-ui-polish` |
+| S19 | Overview: notice counter not shown; formula field preview shows raw text | Low | → `studio-ui-polish` (notice counter done in slice 1; formula raw text not reproducible, 2026-10-22) |
 | S20 | Dev build: TanStack devtools buttons steal clicks | Low | — |
 
 ## Playtest findings

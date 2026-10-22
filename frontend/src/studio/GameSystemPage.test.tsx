@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, draftWithLibraryChange, legacy, validDraft } from './fixtures'
@@ -253,10 +254,17 @@ describe('the section rail', () => {
     await screen.findByText('Published version 1.')
 
     // Leaving by the address bar or the back button is not a rail click.
-    await act(() => router.navigate({ to: '/studio/game-systems/$key', params: { key: 'my-draft' }, search: { tab: 'sections' } }))
+    await act(() =>
+      router.navigate({
+        to: '/studio/game-systems/$key',
+        params: { key: 'my-draft' },
+        search: { tab: 'sections' },
+      }),
+    )
     expect(screen.queryByText('Published version 1.')).not.toBeInTheDocument()
-    await act(() => {
+    await act(async () => {
       router.history.back()
+      await Promise.resolve()
     })
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
@@ -332,10 +340,10 @@ describe('the metadata form', () => {
     })
 
     const form = within(await metadataForm())
-    expect(form.getByLabelText('Theme')).toHaveDisplayValue('noir')
+    expect(form.getByLabelText('Theme')).toHaveTextContent('noir')
     await user.clear(form.getByLabelText('Name'))
     await user.type(form.getByLabelText('Name'), 'Renamed')
-    await user.selectOptions(form.getByLabelText('Theme'), 'neon')
+    await chooseOption(user, 'Theme', 'neon', form)
     await user.click(form.getByRole('button', { name: 'Save' }))
 
     expect(await form.findByRole('status')).toHaveTextContent(/^Saved at \d/)
@@ -372,7 +380,7 @@ describe('the metadata form', () => {
     if (edit === 'description') {
       await user.type(form.getByLabelText('Description'), '!')
     } else {
-      await user.selectOptions(form.getByLabelText('Theme'), 'neon')
+      await chooseOption(user, 'Theme', 'neon', form)
     }
     return form
   }
@@ -403,7 +411,7 @@ describe('the metadata form', () => {
     await user.clear(form.getByLabelText('Description'))
     await user.clear(form.getByLabelText('Notice'))
     await user.clear(form.getByLabelText('License (optional)'))
-    await user.selectOptions(form.getByLabelText('Theme'), 'None (the default app theme)')
+    await chooseOption(user, 'Theme', 'None (the default app theme)', form)
     await user.click(form.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

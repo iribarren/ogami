@@ -3,7 +3,7 @@ import { useId } from 'react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { KeyHint } from '../KeyHint'
 import { EffectsEditor } from '../narrative/steps/EffectsEditor'
@@ -69,7 +69,7 @@ function SceneTypeField({
     <div className="min-w-48 space-y-1">
       <Label>
         Scene Type
-        <NativeSelect
+        <Select
           aria-label={`${label} Scene Type`}
           aria-invalid={unknown || error !== undefined}
           aria-describedby={error === undefined ? undefined : problemId}
@@ -87,7 +87,7 @@ function SceneTypeField({
               {name}
             </option>
           ))}
-        </NativeSelect>
+        </Select>
       </Label>
       {unknown && (
         <p className="text-sm text-destructive">
@@ -211,14 +211,14 @@ function EntryRow({
         <div className="min-w-48 space-y-1">
           <Label>
             Nested table
-            <NativeSelect aria-label={`${label} nested table`} {...field('table')}>
+            <Select aria-label={`${label} nested table`} {...field('table')}>
               <option value="">None</option>
               {options.map((key) => (
                 <option key={key} value={key}>
                   {key}
                 </option>
               ))}
-            </NativeSelect>
+            </Select>
           </Label>
         </div>
         {withKey && (

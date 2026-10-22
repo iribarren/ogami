@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { chooseOption } from './choose-option.ts'
 import { manager, signIn } from './sign-in.ts'
 
 // Users and the "night-job" preset are seeded by `make e2e-seed`. Its sheet declares the groups
@@ -40,7 +41,7 @@ test('a game manager lays out the sheet of a copied preset, adds a derived field
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Key', { exact: true }).fill('luck')
   await dialog.getByLabel('Label', { exact: true }).fill('Luck')
-  await dialog.getByLabel('Group', { exact: true }).selectOption('Extras')
+  await chooseOption(page, 'Group', 'Extras', dialog)
   await dialog.getByLabel('Default').fill('3')
   await dialog.getByRole('button', { name: 'Create field' }).click()
   await expect(dialog).toBeHidden()
@@ -49,13 +50,13 @@ test('a game manager lays out the sheet of a copied preset, adds a derived field
   await page.getByRole('button', { name: 'Add field' }).click()
   await dialog.getByLabel('Key', { exact: true }).fill('luck-twice')
   await dialog.getByLabel('Label', { exact: true }).fill('Luck twice')
-  await dialog.getByLabel('Group', { exact: true }).selectOption('Extras')
-  await dialog.getByLabel('Type').selectOption('derived')
+  await chooseOption(page, 'Group', 'Extras', dialog)
+  await chooseOption(page, 'Type', 'derived', dialog)
   const formula = dialog.getByLabel('Formula')
   await formula.fill('{ghost} * 2')
   await expect(dialog.getByText('{ghost}: unknown field "ghost"')).toBeVisible()
   await formula.fill('')
-  await dialog.getByLabel('Insert reference').selectOption('luck')
+  await chooseOption(page, 'Insert reference', 'luck', dialog)
   await formula.pressSequentially(' * 2')
   await expect(formula).toHaveValue('{luck} * 2')
   await expect(dialog.getByText('Value with the sample values: 6')).toBeVisible()

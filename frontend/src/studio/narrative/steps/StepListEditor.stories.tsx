@@ -13,6 +13,7 @@ import {
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts } from './stepDraft'
 import { mapStepError } from './stepError'
+import { chooseOption } from '@/test/chooseOption'
 
 /** The editor holding its own drafts, as a Scene Type or flow editor will. */
 function Editable({ stored, errors = [] }: { stored: unknown[]; errors?: string[] }) {
@@ -58,7 +59,7 @@ export const PickAndCheck: Story = {
   args: { stored: stepListPickCheck },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.selectOptions(canvas.getByLabelText('Check'), 'luck')
+    await chooseOption(userEvent.setup(), 'Check', 'luck', canvas)
     await expect(canvas.getByText('This check declares no difficulty.')).toBeInTheDocument()
   },
 }

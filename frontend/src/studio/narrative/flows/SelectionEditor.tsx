@@ -1,5 +1,5 @@
 import { Button } from '@/shared/ui/button'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { moveItem } from '../steps/draftParts'
 import { PickField, SelectField } from '../steps/fields'
@@ -153,7 +153,7 @@ function SceneTypeList({
           ))}
         </ol>
       )}
-      <NativeSelect
+      <Select
         aria-label="Add a Scene Type"
         value=""
         disabled={full || offered.length === 0}
@@ -175,7 +175,7 @@ function SceneTypeList({
             {option.name}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
     </div>
   )
 }

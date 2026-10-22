@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { oracles, oraclesV1, stormRoll, narrativeScenes } from '../fixtures'
@@ -106,7 +107,7 @@ describe('the table editor', () => {
   })
 
   it('shows the Scene Type and effects of an entry, and the entry key of a version 2 table', async () => {
-    await openEditor('weather')
+    const { user } = await openEditor('weather')
 
     // The stored Scene Type is not one of the draft's: it stays selected, flagged.
     const sceneType = screen.getByLabelText('Entry 1 Scene Type')
@@ -115,9 +116,9 @@ describe('the table editor', () => {
     expect(entry(1).getByText(/no Scene Type/)).toBeInTheDocument()
     expect(screen.getByLabelText('Entry 2 Scene Type')).toHaveValue('')
     expect(
-      within(screen.getByLabelText('Entry 2 Scene Type'))
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+      (await listOptions(user, screen.getByLabelText('Entry 2 Scene Type'))).map(
+        (option) => option.label,
+      ),
     ).toEqual(['None', 'Ambush', 'Quiet', 'Odd'])
     // The stored effect has a kind the editor does not know: kept, read-only.
     expect(entry(1).getByText(/kind or shape this editor cannot edit/)).toBeInTheDocument()
@@ -162,10 +163,10 @@ describe('the table editor', () => {
       },
     })
 
-    await user.selectOptions(screen.getByLabelText('Entry 2 Scene Type'), 'quiet')
-    await user.selectOptions(entry(2).getByLabelText('New effect kind'), 'endPhase')
+    await chooseOption(user, 'Entry 2 Scene Type', 'quiet')
+    await chooseOption(user, 'New effect kind', 'endPhase', entry(2))
     await user.click(entry(2).getByRole('button', { name: 'Add effect' }))
-    await user.selectOptions(screen.getByLabelText('Entry 1 Scene Type'), '')
+    await chooseOption(user, 'Entry 1 Scene Type', '')
     await user.click(save())
 
     await waitFor(() => {
@@ -186,9 +187,9 @@ describe('the table editor', () => {
   it('offers no sheet effect for an entry, and holds at ten effects', async () => {
     const { user } = await openEditor('storm-kind')
 
-    const kinds = within(entry(1).getByLabelText('New effect kind'))
-      .getAllByRole('option')
-      .map((option) => option.textContent)
+    const kinds = (await listOptions(user, entry(1).getByLabelText('New effect kind'))).map(
+      (option) => option.label,
+    )
     expect(kinds).not.toContain('sheet')
     for (let count = 0; count < 10; count += 1) {
       await user.click(entry(1).getByRole('button', { name: 'Add effect' }))
@@ -200,7 +201,7 @@ describe('the table editor', () => {
     const { user } = await openEditor('storm-kind')
 
     await user.click(entry(1).getByRole('button', { name: 'Add effect' }))
-    await user.selectOptions(entry(1).getByLabelText('Tracker'), 'heat')
+    await chooseOption(user, 'Tracker', 'heat', entry(1))
     await user.clear(entry(1).getByLabelText('Value'))
     await user.type(entry(1).getByLabelText('Value'), 'x')
 
@@ -414,7 +415,7 @@ describe('the table editor', () => {
         ),
       })
 
-      await user.selectOptions(screen.getByLabelText('Entry 2 Scene Type'), 'quiet')
+      await chooseOption(user, 'Entry 2 Scene Type', 'quiet')
       await user.click(save())
 
       const field = screen.getByLabelText('Entry 2 Scene Type')
@@ -433,7 +434,7 @@ describe('the table editor', () => {
         ),
       })
 
-      await user.selectOptions(entry(2).getByLabelText('New effect kind'), 'nextScene')
+      await chooseOption(user, 'New effect kind', 'nextScene', entry(2))
       await user.click(entry(2).getByRole('button', { name: 'Add effect' }))
       await user.click(save())
 

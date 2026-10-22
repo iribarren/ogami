@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
 import { ValueInput } from './BandsEditor'
@@ -35,7 +35,7 @@ function OpField({
   onChange: (op: string) => void
 }) {
   return (
-    <NativeSelect
+    <Select
       aria-label="Operation"
       value={value}
       onChange={(event) => {
@@ -47,7 +47,7 @@ function OpField({
           {op}
         </option>
       ))}
-    </NativeSelect>
+    </Select>
   )
 }
 
@@ -392,7 +392,7 @@ export function EffectsEditor({
         </ol>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <NativeSelect
+        <Select
           aria-label="New effect kind"
           value={kind}
           onChange={(event) => {
@@ -404,7 +404,7 @@ export function EffectsEditor({
               {option}
             </option>
           ))}
-        </NativeSelect>
+        </Select>
         <Button
           type="button"
           variant="outline"

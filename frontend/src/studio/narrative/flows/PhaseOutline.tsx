@@ -2,7 +2,7 @@ import { useId } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
 import { Area } from '../steps/fields'
@@ -116,7 +116,7 @@ function PhaseCard({
         />
         <div className="space-y-2">
           <Label htmlFor={modeId}>Mode</Label>
-          <NativeSelect
+          <Select
             id={modeId}
             value={phase.mode}
             onChange={(event) => {
@@ -128,7 +128,7 @@ function PhaseCard({
           >
             <option value="once">Once</option>
             <option value="loop">Loop</option>
-          </NativeSelect>
+          </Select>
           {fields.mode && <p className="text-sm text-destructive">{fields.mode}</p>}
         </div>
       </div>

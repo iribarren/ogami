@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { FormulaInput } from './FormulaInput'
 import type { FormulaDiagnostics } from './formulaDiagnostics'
+import { chooseOption } from '@/test/chooseOption'
 
 const references = [
   { reference: 'pow', label: 'Power' },
@@ -94,7 +95,7 @@ describe('the formula input', () => {
 
     input.focus()
     input.setSelectionRange(4, 4)
-    await user.selectOptions(screen.getByLabelText('Insert reference'), 'hp.max')
+    await chooseOption(user, 'Insert reference', 'hp.max')
 
     expect(input).toHaveValue('1 + {hp.max}2')
     expect(input).toHaveFocus()
@@ -108,13 +109,15 @@ describe('the formula input', () => {
 
     input.focus()
     input.setSelectionRange(4, 6)
-    await user.selectOptions(screen.getByLabelText('Insert reference'), 'tracker:heat')
+    await chooseOption(user, 'Insert reference', 'tracker:heat')
 
     expect(input).toHaveValue('1 + {tracker:heat}')
   })
 
-  it('offers each reference by label and key', () => {
+  it('offers each reference by label and key', async () => {
+    const user = userEvent.setup()
     render(<Harness />)
+    await user.click(screen.getByRole('combobox', { name: 'Insert reference' }))
 
     expect(screen.getByRole('option', { name: 'Power {pow}' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Tracker Heat {tracker:heat}' })).toBeInTheDocument()

@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 import { Textarea } from '@/shared/ui/textarea'
 
@@ -28,7 +28,7 @@ const MAX_NOTICE_LENGTH = 2000
  * The server counts characters (code points), not UTF-16 units: an emoji is one. `.length`
  * would refuse a notice the server accepts.
  */
-const characterCount = (text: string) => [...text].length
+const characterCount = (text: string) => Array.from(text).length
 
 /** Empty text means "none" for the optional fields. */
 const orNull = (text: string) => (text.trim() === '' ? null : text)
@@ -160,7 +160,7 @@ export function MetadataForm({
           {hasCreditsAndTheme && (
             <div className="space-y-2">
               <Label htmlFor={themeId}>Theme</Label>
-              <NativeSelect
+              <Select
                 id={themeId}
                 value={theme}
                 aria-describedby={`${themeId}-hint`}
@@ -174,7 +174,7 @@ export function MetadataForm({
                     {option}
                   </option>
                 ))}
-              </NativeSelect>
+              </Select>
               <p id={`${themeId}-hint`} className="hint">
                 Campaigns on this GameSystem start with it.
               </p>
@@ -209,7 +209,8 @@ export function MetadataForm({
               <div className="flex items-baseline justify-between gap-3">
                 <Label htmlFor={noticeId}>Notice</Label>
                 <span id={`${noticeId}-count`} className="hint">
-                  {noticeLength.toLocaleString('en-GB')} / {MAX_NOTICE_LENGTH.toLocaleString('en-GB')}
+                  {noticeLength.toLocaleString('en-GB')} /{' '}
+                  {MAX_NOTICE_LENGTH.toLocaleString('en-GB')}
                 </span>
               </div>
               <Textarea

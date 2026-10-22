@@ -13,6 +13,7 @@ import {
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts, stepsToItems } from './stepDraft'
 import { clientStepErrors, mapStepError, type StepError } from './stepError'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 
 /** The editor as a screen holds it: the drafts in state, the written steps exposed for checks. */
 const latest: { written: unknown } = { written: null }
@@ -66,7 +67,7 @@ describe('the step list editor', () => {
     const user = userEvent.setup()
     render(<Harness stored={[stepList[3]]} />)
 
-    await user.selectOptions(screen.getByLabelText('New step kind'), 'roll')
+    await chooseOption(user, 'New step kind', 'roll')
     await user.click(screen.getByRole('button', { name: 'Add step' }))
     expect(card(2).getByLabelText('Key')).toHaveValue('roll-1')
     await user.click(screen.getByRole('button', { name: 'Move step 2 up' }))
@@ -94,8 +95,8 @@ describe('the step list editor', () => {
 
     expect(card(2).getByText(/next only goes forward/)).toBeInTheDocument()
     expect(card(2).getByRole('combobox', { name: 'Next' })).toHaveValue('b')
-    const options = within(card(1).getByRole('combobox', { name: 'Next' })).getAllByRole('option')
-    expect(options.map((option) => option.getAttribute('value'))).toEqual(['', 'a', 'end'])
+    const options = await listOptions(user, card(1).getByRole('combobox', { name: 'Next' }))
+    expect(options.map((option) => option.value)).toEqual(['', 'a', 'end'])
   })
 
   it('shows a backward next on a step and on a band in the fixture', () => {
@@ -109,7 +110,7 @@ describe('the step list editor', () => {
     const user = userEvent.setup()
     render(<Harness stored={stepList} />)
 
-    await user.selectOptions(card(1).getByRole('combobox', { name: 'Next' }), 'who')
+    await chooseOption(user, 'Next', 'who', card(1))
     await user.click(card(1).getByRole('radio', { name: 'Suggested' }))
 
     expect(saved(0)).toMatchObject({ next: 'who' })
@@ -128,9 +129,9 @@ describe('the step list editor', () => {
     expect(band(1).getByLabelText('Up to')).toHaveValue('2')
     expect(band(2).getByRole('combobox', { name: 'Up to' })).toHaveValue('alarm')
 
-    await user.selectOptions(band(1).getByLabelText('Up to type'), 'formula')
+    await chooseOption(user, 'Up to type', 'formula', band(1))
     await user.type(band(1).getByLabelText('Up to'), 'heat + 1')
-    await user.selectOptions(band(2).getByRole('combobox', { name: 'Up to' }), 'heat')
+    await chooseOption(user, 'Up to', 'heat', band(2))
     await user.click(card(2).getByRole('button', { name: 'Add band' }))
     await user.type(band(3).getByLabelText('Up to'), '9')
 
@@ -278,7 +279,7 @@ describe('the step list editor', () => {
     await user.click(card(1).getByRole('checkbox', { name: 'Places' }))
     await user.clear(card(2).getByLabelText('Dice'))
     await user.type(card(2).getByLabelText('Dice'), '2d6')
-    await user.selectOptions(card(3).getByRole('combobox', { name: 'Count of' }), 'thread')
+    await chooseOption(user, 'Count of', 'thread', card(3))
     await user.click(card(3).getByRole('checkbox', { name: 'Gang' }))
 
     expect(saved(0)).toMatchObject({ inspiration: ['moods'] })
@@ -286,8 +287,8 @@ describe('the step list editor', () => {
     expect(saved(2)).toMatchObject({ count: { of: 'thread' } })
     expect(saved(2)).not.toHaveProperty('count.tags')
 
-    await user.selectOptions(card(3).getByRole('combobox', { name: 'Reads' }), 'tracker')
-    await user.selectOptions(card(3).getByRole('combobox', { name: 'Tracker' }), 'alarm')
+    await chooseOption(user, 'Reads', 'tracker', card(3))
+    await chooseOption(user, 'Tracker', 'alarm', card(3))
 
     expect(saved(2)).toMatchObject({ tracker: 'alarm' })
     expect(saved(2)).not.toHaveProperty('count')
@@ -379,7 +380,8 @@ describe('the step list editor', () => {
     })
   })
 
-  it('offers each next once and warns about repeated and reserved keys, with no duplicate React keys', () => {
+  it('offers each next once and warns about repeated and reserved keys, with no duplicate React keys', async () => {
+    const user = userEvent.setup()
     const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     render(
       <Harness
@@ -405,8 +407,8 @@ describe('the step list editor', () => {
       />,
     )
 
-    const options = within(card(1).getByRole('combobox', { name: 'Next' })).getAllByRole('option')
-    expect(options.map((option) => option.getAttribute('value'))).toEqual(['', 'a', 'c', 'end'])
+    const options = await listOptions(user, card(1).getByRole('combobox', { name: 'Next' }))
+    expect(options.map((option) => option.value)).toEqual(['', 'a', 'c', 'end'])
     expect(card(3).getByText('Another step has this key.')).toBeInTheDocument()
     expect(card(4).getByText('end is reserved for the end of the list.')).toBeInTheDocument()
     expect(screen.getAllByText('Twice')).toHaveLength(2)
@@ -464,7 +466,7 @@ describe('the step list editor', () => {
       render(<Harness stored={stepList} />)
       const band = within(card(2).getByRole('group', { name: 'Band 1' }))
 
-      await user.selectOptions(effectsOf(1).getByLabelText('New effect kind'), 'sceneTitle')
+      await chooseOption(user, 'New effect kind', 'sceneTitle', effectsOf(1))
       await user.click(effectsOf(1).getByRole('button', { name: 'Add effect' }))
       await user.type(effectsOf(1).getByLabelText('Title'), 'Dawn')
       await user.clear(band.getByLabelText('Value'))
@@ -476,15 +478,16 @@ describe('the step list editor', () => {
       })
     })
 
-    it('allows sheet effects in a character step only', () => {
+    it('allows sheet effects in a character step only', async () => {
+      const user = userEvent.setup()
       render(<Harness stored={stepList} />)
-      const kinds = (step: number) =>
-        within(effectsOf(step).getByLabelText('New effect kind'))
-          .getAllByRole('option')
-          .map((option) => option.getAttribute('value'))
+      const kinds = async (step: number) =>
+        (await listOptions(user, effectsOf(step).getByLabelText('New effect kind'))).map(
+          (option) => option.value,
+        )
 
-      expect(kinds(4)).toContain('sheet')
-      expect(kinds(1)).not.toContain('sheet')
+      expect(await kinds(4)).toContain('sheet')
+      expect(await kinds(1)).not.toContain('sheet')
       expect(
         within(card(2).getByRole('group', { name: 'Band 1 effects' })).getByLabelText(
           'New effect kind',
@@ -530,14 +533,14 @@ describe('the step list editor', () => {
       expect(latest.written).toEqual({ steps: stepListBranching })
 
       expect(
-        within(card(1).getByLabelText('Likelihood level'))
-          .getAllByRole('option')
-          .map((option) => option.getAttribute('value')),
+        (await listOptions(user, card(1).getByLabelText('Likelihood level'))).map(
+          (option) => option.value,
+        ),
       ).toEqual(['', 'unlikely', 'even', 'likely'])
-      await user.selectOptions(card(1).getByLabelText('Likelihood level'), 'even')
-      await user.selectOptions(answer('No').getByLabelText('Next'), 'which')
-      await user.selectOptions(answer('Yes').getByLabelText('Next'), '')
-      await user.selectOptions(answer('Yes').getByLabelText('New effect kind'), 'endPhase')
+      await chooseOption(user, 'Likelihood level', 'even', card(1))
+      await chooseOption(user, 'Next', 'which', answer('No'))
+      await chooseOption(user, 'Next', '', answer('Yes'))
+      await chooseOption(user, 'New effect kind', 'endPhase', answer('Yes'))
       await user.click(answer('Yes').getByRole('button', { name: 'Add effect' }))
 
       expect(saved(0)).toEqual({
@@ -570,9 +573,9 @@ describe('the step list editor', () => {
       expect(card(1).getByText(/uses yes \/ no/)).toBeVisible()
       expect(card(1).queryByRole('group', { name: 'Exceptional yes' })).not.toBeInTheDocument()
       await user.click(card(1).getByRole('button', { name: 'Exceptional answers' }))
-      await user.selectOptions(answer('Exceptional yes').getByLabelText('Next'), 'end')
-      await user.selectOptions(answer('Exceptional yes').getByLabelText('Next'), '')
-      await user.selectOptions(answer('No').getByLabelText('Next'), '')
+      await chooseOption(user, 'Next', 'end', answer('Exceptional yes'))
+      await chooseOption(user, 'Next', '', answer('Exceptional yes'))
+      await chooseOption(user, 'Next', '', answer('No'))
 
       expect(saved(0)).toEqual({ key: 'o', kind: 'oracle', title: 'O', oracle: 'fate' })
     })
@@ -587,7 +590,7 @@ describe('the step list editor', () => {
       expect(card(1).getByLabelText('Likelihood level')).toHaveValue('certain')
       expect(card(1).getByText('Not a level of this oracle.')).toBeInTheDocument()
       expect(saved(0)).toEqual(stored[0])
-      await user.selectOptions(card(1).getByLabelText('Likelihood level'), '')
+      await chooseOption(user, 'Likelihood level', '', card(1))
 
       expect(saved(0)).not.toHaveProperty('likelihood')
     })
@@ -602,14 +605,16 @@ describe('the step list editor', () => {
       render(<Harness stored={stepListBranching} />)
 
       await user.click(card(2).getByRole('button', { name: 'Add branch' }))
-      await user.selectOptions(branch(3).getByLabelText('Entry'), 'patrol')
+      await chooseOption(user, 'Entry', 'patrol', branch(3))
       expect(branch(3).getByText('Another branch has this entry.')).toBeInTheDocument()
-      await user.selectOptions(branch(1).getByLabelText('Next'), 'end')
+      await chooseOption(user, 'Next', 'end', branch(1))
       await user.click(screen.getByRole('button', { name: 'Move branch 2 up' }))
       await user.click(screen.getByRole('button', { name: 'Delete branch 3' }))
-      await user.selectOptions(
-        within(card(2).getByRole('group', { name: 'Otherwise' })).getByLabelText('Next'),
-        '',
+      await chooseOption(
+        user,
+        'Next',
+        'The following step',
+        within(card(2).getByRole('group', { name: 'Otherwise' })),
       )
 
       expect(saved(1)).toEqual({
@@ -651,11 +656,9 @@ describe('the step list editor', () => {
       await user.click(card(1).getByRole('button', { name: 'Add branch' }))
 
       expect(
-        within(card(1).getByLabelText('Entry'))
-          .getAllByRole('option')
-          .map((option) => option.getAttribute('value')),
+        (await listOptions(user, card(1).getByLabelText('Entry'))).map((option) => option.value),
       ).toEqual(['', 'market', 'docks'])
-      await user.selectOptions(card(1).getByLabelText('Table'), 'moods')
+      await chooseOption(user, 'Table', 'moods', card(1))
       expect(saved(0)).toMatchObject({ table: 'moods', branches: [{ entry: '' }] })
     })
   })
@@ -668,7 +671,7 @@ describe('the step list editor', () => {
       const user = userEvent.setup()
       render(<Harness stored={[]} />)
 
-      await user.selectOptions(screen.getByLabelText('New step kind'), 'choice')
+      await chooseOption(user, 'New step kind', 'choice')
       await user.click(screen.getByRole('button', { name: 'Add step' }))
       expect(card(1).getByLabelText('Skip')).toHaveValue('')
       expect(
@@ -696,7 +699,7 @@ describe('the step list editor', () => {
       await user.type(option(1).getByLabelText('Option key'), 'west')
       expect(card(3).getByLabelText('Skip')).toHaveValue('west')
       await user.click(card(3).getByRole('button', { name: 'Move option 2 up' }))
-      await user.selectOptions(option(2).getByLabelText('Next'), '')
+      await chooseOption(user, 'Next', '', option(2))
       await user.type(option(1).getByLabelText('Label'), '!')
 
       expect(saved(2)).toEqual({
@@ -724,7 +727,7 @@ describe('the step list editor', () => {
       )
       expect(option(2).getByText('Another option has this key.')).toBeInTheDocument()
       await user.click(card(3).getByRole('radio', { name: 'Suggested' }))
-      await user.selectOptions(card(3).getByLabelText('Skip'), '')
+      await chooseOption(user, 'Skip', '', card(3))
 
       expect(
         card(3).getByText('A suggested choice must name the option taken when it is skipped.'),
@@ -873,8 +876,8 @@ describe('the step list editor', () => {
       const user = userEvent.setup()
       render(<Harness stored={stepListPickCheck} />)
 
-      await user.selectOptions(card(1).getByLabelText('Pick of'), 'thread')
-      await user.selectOptions(card(1).getByLabelText('Mode'), 'choose')
+      await chooseOption(user, 'Pick of', 'thread', card(1))
+      await chooseOption(user, 'Mode', 'choose', card(1))
       await user.click(card(1).getByRole('checkbox', { name: 'Gang' }))
       await user.clear(card(1).getByLabelText('Count max'))
       await user.type(card(1).getByLabelText('Count max'), '2')
@@ -898,16 +901,16 @@ describe('the step list editor', () => {
 
       await user.clear(card(1).getByLabelText('Count min'))
       await user.type(card(1).getByLabelText('Count min'), '5')
-      await user.selectOptions(inside(1, 'None').getByLabelText('Next'), 'end')
+      await chooseOption(user, 'Next', 'end', inside(1, 'None'))
 
       expect(card(1).getByText('Max must be at least min.')).toBeInTheDocument()
       expect(saved(0)).toMatchObject({
         count: { min: 5, max: 3 },
         branches: { none: { next: 'end' } },
       })
-      const kinds = within(inside(1, 'Found').getByLabelText('New effect kind'))
-        .getAllByRole('option')
-        .map((option) => option.getAttribute('value'))
+      const kinds = (
+        await listOptions(user, inside(1, 'Found').getByLabelText('New effect kind'))
+      ).map((option) => option.value)
       expect(kinds).not.toContain('sheet')
     })
 
@@ -933,7 +936,7 @@ describe('the step list editor', () => {
 
       expect(triggers()).toEqual(['fail', 'partial', 'success'])
 
-      await user.selectOptions(card(2).getByLabelText('Check'), 'luck')
+      await chooseOption(user, 'Check', 'luck', card(2))
 
       expect(triggers()).toEqual(['lose', 'win'])
       expect(card(2).getByText('This check declares no difficulty.')).toBeInTheDocument()
@@ -955,8 +958,8 @@ describe('the step list editor', () => {
       await user.clear(card(2).getByLabelText('Difficulty'))
       expect(saved(1)).not.toHaveProperty('difficulty')
 
-      await user.selectOptions(card(2).getByLabelText('Difficulty type'), 'tracker')
-      await user.selectOptions(card(2).getByLabelText('Difficulty'), 'heat')
+      await chooseOption(user, 'Difficulty type', 'tracker', card(2))
+      await chooseOption(user, 'Difficulty', 'heat', card(2))
       expect(saved(1)).toMatchObject({ difficulty: { tracker: 'heat' } })
     })
 
@@ -967,7 +970,7 @@ describe('the step list editor', () => {
       await user.click(
         within(card(2).getByRole('group', { name: 'Outcomes' })).getByText('partial'),
       )
-      await user.selectOptions(inside(2, 'Outcome partial').getByLabelText('Next'), 'end')
+      await chooseOption(user, 'Next', 'end', inside(2, 'Outcome partial'))
 
       expect(saved(1)).toMatchObject({
         outcomes: [
@@ -976,9 +979,9 @@ describe('the step list editor', () => {
           { band: 'success' },
         ],
       })
-      const kinds = within(inside(2, 'Outcome partial').getByLabelText('New effect kind'))
-        .getAllByRole('option')
-        .map((option) => option.getAttribute('value'))
+      const kinds = (
+        await listOptions(user, inside(2, 'Outcome partial').getByLabelText('New effect kind'))
+      ).map((option) => option.value)
       expect(kinds).toContain('sheet')
     })
 
@@ -1155,7 +1158,7 @@ describe('the step list editor', () => {
       render(<Harness stored={[]} />)
 
       for (const kind of ['pick', 'check']) {
-        await user.selectOptions(screen.getByLabelText('New step kind'), kind)
+        await chooseOption(user, 'New step kind', kind)
         await user.click(screen.getByRole('button', { name: 'Add step' }))
       }
 

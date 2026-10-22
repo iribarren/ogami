@@ -2,8 +2,9 @@ import * as React from 'react'
 import { cn } from '@/shared/lib/utils'
 
 /**
- * A native `<select>` styled like the shadcn Input; no select primitive is installed yet
- * (ADR 0004: libraries come with the feature that needs them).
+ * A native `<select>` styled like the shadcn Input. Play and the colour-mode toggle keep it
+ * (the platform picker suits a phone at the table); Studio uses `Select`, the Radix select
+ * with typeahead and a styled panel.
  */
 function NativeSelect({ className, ...props }: React.ComponentProps<'select'>) {
   return (

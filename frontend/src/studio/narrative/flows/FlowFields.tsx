@@ -1,7 +1,7 @@
 import { useId } from 'react'
 
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import type { FieldErrors } from '../narrativeDraft'
 import { TextField } from '../TextField'
@@ -37,7 +37,7 @@ export function NewFlowFields({
       />
       <div className="space-y-2">
         <Label htmlFor={sceneTypeId}>First Scene Type</Label>
-        <NativeSelect
+        <Select
           id={sceneTypeId}
           value={draft.sceneType}
           onChange={(event) => {
@@ -49,7 +49,7 @@ export function NewFlowFields({
               {name}
             </option>
           ))}
-        </NativeSelect>
+        </Select>
         <p className="text-sm text-muted-foreground">
           The flow starts with one phase that plays it; the rest comes in the flow editor.
         </p>

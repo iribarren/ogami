@@ -6,6 +6,7 @@ import { EffectsEditor } from './EffectsEditor'
 import { effectsToDrafts, effectsToStored } from './effectDraft'
 import { effectPickers, every } from './effectFixtures'
 import { mapStepError, type StepError } from './stepError'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 
 /** The editor as a step card holds it: the drafts in state, the written effects exposed for checks. */
 const latest: { written: unknown[] } = { written: [] }
@@ -39,7 +40,7 @@ const card = (number: number) =>
   within(screen.getByRole('group', { name: `Effect ${String(number)}` }))
 
 async function add(user: ReturnType<typeof userEvent.setup>, kind: string) {
-  await user.selectOptions(screen.getByLabelText('New effect kind'), kind)
+  await chooseOption(user, 'New effect kind', kind)
   await user.click(screen.getByRole('button', { name: 'Add effect' }))
 }
 
@@ -55,17 +56,17 @@ describe('the effects editor', () => {
     [
       'tracker',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Tracker'), 'heat')
-        await user.selectOptions(card(1).getByLabelText('Operation'), 'set')
-        await user.selectOptions(card(1).getByLabelText('Value type'), 'tracker')
-        await user.selectOptions(card(1).getByRole('combobox', { name: 'Value' }), 'alarm')
+        await chooseOption(user, 'Tracker', 'heat', card(1))
+        await chooseOption(user, 'Operation', 'set', card(1))
+        await chooseOption(user, 'Value type', 'tracker', card(1))
+        await chooseOption(user, 'Value', 'alarm', card(1))
       },
       { kind: 'tracker', tracker: 'heat', op: 'set', value: { tracker: 'alarm' } },
     ],
     [
       'tracker',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Tracker'), 'alarm')
+        await chooseOption(user, 'Tracker', 'alarm', card(1))
         await user.clear(card(1).getByLabelText('Value'))
         await user.type(card(1).getByLabelText('Value'), '-3')
       },
@@ -74,7 +75,7 @@ describe('the effects editor', () => {
     [
       'tracker',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Value type'), 'formula')
+        await chooseOption(user, 'Value type', 'formula', card(1))
         await user.type(card(1).getByLabelText('Value'), 'heat + 1')
       },
       { kind: 'tracker', tracker: '', op: 'add', value: { formula: 'heat + 1' } },
@@ -82,14 +83,14 @@ describe('the effects editor', () => {
     [
       'nextScene',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Scene Type'), 'chase')
+        await chooseOption(user, 'Scene Type', 'chase', card(1))
       },
       { kind: 'nextScene', sceneType: 'chase' },
     ],
     [
       'switchSceneType',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Scene Type'), 'hideout')
+        await chooseOption(user, 'Scene Type', 'hideout', card(1))
       },
       { kind: 'switchSceneType', sceneType: 'hideout' },
     ],
@@ -121,7 +122,7 @@ describe('the effects editor', () => {
     [
       'fillFact',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Fact slot'), 'client')
+        await chooseOption(user, 'Fact slot', 'client', card(1))
         await user.type(card(1).getByLabelText('Text'), 'A fence')
       },
       { kind: 'fillFact', slot: 'client', text: 'A fence' },
@@ -129,9 +130,9 @@ describe('the effects editor', () => {
     [
       'sheet',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.selectOptions(card(1).getByLabelText('Sheet field'), 'hands')
-        await user.selectOptions(card(1).getByLabelText('Operation'), 'subtract')
-        await user.selectOptions(card(1).getByLabelText('Value type'), 'dice')
+        await chooseOption(user, 'Sheet field', 'hands', card(1))
+        await chooseOption(user, 'Operation', 'subtract', card(1))
+        await chooseOption(user, 'Value type', 'dice', card(1))
         await user.type(card(1).getByLabelText('Value'), '1d4')
       },
       { kind: 'sheet', field: 'hands', op: 'subtract', value: { dice: '1d4' } },
@@ -152,18 +153,19 @@ describe('the effects editor', () => {
 
     await add(user, 'fillFact')
     expect(card(1).queryByLabelText('Text')).not.toBeInTheDocument()
-    await user.selectOptions(card(1).getByLabelText('Fact slot'), 'target')
+    await chooseOption(user, 'Fact slot', 'target', card(1))
 
     expect(card(1).queryByLabelText('Text')).not.toBeInTheDocument()
     expect(latest.written).toEqual([{ kind: 'fillFact', slot: 'target' }])
   })
 
-  it('offers the sheet kind only where it is allowed, and keeps one stored elsewhere with a note', () => {
+  it('offers the sheet kind only where it is allowed, and keeps one stored elsewhere with a note', async () => {
+    const user = userEvent.setup()
     const sheet = { kind: 'sheet', field: 'hands', op: 'add', value: 1 }
     const { unmount } = render(<Harness stored={[sheet]} />)
-    const kinds = within(screen.getByLabelText('New effect kind')).getAllByRole('option')
+    const kinds = await listOptions(user, screen.getByLabelText('New effect kind'))
 
-    expect(kinds.map((option) => option.getAttribute('value'))).not.toContain('sheet')
+    expect(kinds.map((option) => option.value)).not.toContain('sheet')
     expect(card(1).getByText(/only allowed in a character step/)).toBeInTheDocument()
     expect(latest.written).toEqual([sheet])
     unmount()
@@ -171,9 +173,9 @@ describe('the effects editor', () => {
     render(<Harness stored={[sheet]} allowSheet />)
     expect(screen.queryByText(/only allowed in a character step/)).not.toBeInTheDocument()
     expect(
-      within(screen.getByLabelText('New effect kind'))
-        .getAllByRole('option')
-        .map((option) => option.getAttribute('value')),
+      (await listOptions(user, screen.getByLabelText('New effect kind'))).map(
+        (option) => option.value,
+      ),
     ).toContain('sheet')
   })
 

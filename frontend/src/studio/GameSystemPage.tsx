@@ -211,10 +211,7 @@ function GameSystemView({
         </div>
       </header>
       <div className="flex flex-wrap gap-7">
-        <SectionRail
-          gameSystem={gameSystem}
-          active={tab}
-        />
+        <SectionRail gameSystem={gameSystem} active={tab} />
         <div className="min-w-0 flex-[999_1_560px] space-y-6">
           {/* Stays mounted while another tab shows, so typed and saved values survive tab switches. */}
           <div hidden={tab !== 'overview'} className="space-y-8">

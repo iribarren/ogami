@@ -2,7 +2,7 @@ import { useId, useMemo } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../narrative/TextField'
 import { FormulaInput } from '../sheet/FormulaInput'
@@ -223,7 +223,7 @@ function UpToInput({
   return (
     <div className="space-y-2">
       <Label htmlFor={kindId}>{name} bound</Label>
-      <NativeSelect
+      <Select
         id={kindId}
         value={upTo.kind}
         onChange={(event) => {
@@ -236,7 +236,7 @@ function UpToInput({
             {label}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {upTo.kind === 'none' && error && <p className="text-sm text-destructive">{error}</p>}
       {upTo.kind === 'number' && (
         <TextField
@@ -251,7 +251,7 @@ function UpToInput({
       {upTo.kind === 'tracker' && (
         <div className="space-y-2">
           <Label htmlFor={trackerId}>{name} tracker</Label>
-          <NativeSelect
+          <Select
             id={trackerId}
             value={upTo.value}
             aria-invalid={error !== undefined}
@@ -269,7 +269,7 @@ function UpToInput({
                 {tracker.label} ({tracker.key})
               </option>
             ))}
-          </NativeSelect>
+          </Select>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}

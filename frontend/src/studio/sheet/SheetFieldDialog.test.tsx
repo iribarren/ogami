@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, sheet, sheetUngrouped, validDraft } from '../fixtures'
@@ -75,16 +76,16 @@ describe('adding a field', () => {
 
     expect(inDialog().getByLabelText('Min')).toBeVisible()
     await user.type(inDialog().getByLabelText('Max'), '9')
-    await user.selectOptions(inDialog().getByLabelText('Type'), 'text')
+    await chooseOption(user, 'Type', 'text', inDialog())
     expect(inDialog().queryByLabelText('Min')).not.toBeInTheDocument()
     expect(inDialog().getByLabelText('Multiline')).not.toBeChecked()
     expect(inDialog().getByLabelText('Max length')).toBeVisible()
-    await user.selectOptions(inDialog().getByLabelText('Type'), 'list')
+    await chooseOption(user, 'Type', 'list', inDialog())
     expect(inDialog().getByLabelText('Item label')).toBeVisible()
     expect(inDialog().getByLabelText('Max items')).toBeVisible()
-    await user.selectOptions(inDialog().getByLabelText('Type'), 'track')
+    await chooseOption(user, 'Type', 'track', inDialog())
     expect(inDialog().getByLabelText('Max')).toHaveValue('')
-    await user.selectOptions(inDialog().getByLabelText('Type'), 'derived')
+    await chooseOption(user, 'Type', 'derived', inDialog())
     expect(inDialog().getByLabelText('Formula')).toBeVisible()
   })
 
@@ -96,7 +97,7 @@ describe('adding a field', () => {
     await user.type(inDialog().getByLabelText('Key'), 'story')
     await user.type(inDialog().getByLabelText('Label'), 'Story')
     await user.type(inDialog().getByLabelText('Hint'), 'Background')
-    await user.selectOptions(inDialog().getByLabelText('Type'), 'text')
+    await chooseOption(user, 'Type', 'text', inDialog())
     await user.click(inDialog().getByLabelText('Multiline'))
     await user.type(inDialog().getByLabelText('Max length'), '300')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
@@ -120,21 +121,15 @@ describe('adding a field', () => {
 
     await addField(user)
     const span = inDialog().getByLabelText('Span')
+    expect((await listOptions(user, span)).map((o) => o.label)).toEqual(['Not set', '1', '2'])
+    await chooseOption(user, 'Span', '2', inDialog())
+    await chooseOption(user, 'Group', 'Health', inDialog())
     expect(
-      within(span)
-        .getAllByRole('option')
-        .map((o) => o.textContent),
-    ).toEqual(['Not set', '1', '2'])
-    await user.selectOptions(span, '2')
-    await user.selectOptions(inDialog().getByLabelText('Group'), 'Health')
-    expect(
-      within(inDialog().getByLabelText('Span'))
-        .getAllByRole('option')
-        .map((o) => o.textContent),
+      (await listOptions(user, inDialog().getByLabelText('Span'))).map((o) => o.label),
     ).toEqual(['Not set', '1'])
     expect(inDialog().getByLabelText('Span')).toHaveValue('')
-    await user.selectOptions(inDialog().getByLabelText('Group'), 'Stats')
-    await user.selectOptions(inDialog().getByLabelText('Span'), '2')
+    await chooseOption(user, 'Group', 'Stats', inDialog())
+    await chooseOption(user, 'Span', '2', inDialog())
     await user.type(inDialog().getByLabelText('Key'), 'luck')
     await user.type(inDialog().getByLabelText('Label'), 'Luck')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
@@ -484,27 +479,27 @@ describe('the formula of a derived field', () => {
 
   it('inserts a reference to a field or a Tracker, not to the field itself or a text field', async () => {
     const { user } = await editBonus()
-    const options = within(inDialog().getByLabelText('Insert reference'))
-      .getAllByRole('option')
-      .map((option) => option.getAttribute('value'))
+    const options = (await listOptions(user, inDialog().getByLabelText('Insert reference'))).map(
+      (option) => option.value,
+    )
 
     expect(options).toEqual(['', 'pow', 'hp', 'hp.max', 'dex', 'tracker:heat'])
     await retype(user, '1 + ')
-    await user.selectOptions(inDialog().getByLabelText('Insert reference'), 'tracker:heat')
+    await chooseOption(user, 'Insert reference', 'tracker:heat', inDialog())
     expect(inDialog().getByLabelText('Formula')).toHaveValue('1 + {tracker:heat}')
   })
 
   it('reads a field being renamed by its typed key, in the menu and the diagnostics alike', async () => {
     const { user } = await editBonus()
     const key = inDialog().getByLabelText('Key', { exact: true })
-    const options = () =>
-      within(inDialog().getByLabelText('Insert reference'))
-        .getAllByRole('option')
-        .map((option) => option.getAttribute('value'))
+    const options = async () =>
+      (await listOptions(user, inDialog().getByLabelText('Insert reference'))).map(
+        (option) => option.value,
+      )
 
     await user.clear(key)
     await user.type(key, 'bonus2')
-    expect(options()).toEqual(['', 'pow', 'hp', 'hp.max', 'dex', 'tracker:heat'])
+    expect(await options()).toEqual(['', 'pow', 'hp', 'hp.max', 'dex', 'tracker:heat'])
     await retype(user, '{bonus} + 1')
     expect(inDialog().getByText('{bonus}: unknown field "bonus"')).toBeVisible()
     await retype(user, '{bonus2} + 1')
@@ -513,7 +508,7 @@ describe('the formula of a derived field', () => {
     // Taking another field's key: neither offers it as a field this one may read.
     await user.clear(key)
     await user.type(key, 'pow')
-    expect(options()).toEqual(['', 'hp', 'hp.max', 'dex', 'tracker:heat'])
+    expect(await options()).toEqual(['', 'hp', 'hp.max', 'dex', 'tracker:heat'])
     await retype(user, '{pow} + 1')
     expect(inDialog().getByText(/depend on each other in a cycle: pow -> pow/)).toBeVisible()
   })

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, oracles, validDraft } from '../fixtures'
@@ -193,7 +194,7 @@ describe('the oracles tab', () => {
 
       await user.type(inDialog().getByLabelText('Key'), 'omens')
       await user.type(inDialog().getByLabelText('Name'), 'Omens')
-      await user.selectOptions(inDialog().getByLabelText('Kind'), 'weighted')
+      await chooseOption(user, 'Kind', 'weighted', inDialog())
       expect(inDialog().queryByLabelText('Dice')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Create table' }))
 

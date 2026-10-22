@@ -1,8 +1,8 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { useId, useRef } from 'react'
 
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import type { FormulaDiagnostics } from './formulaDiagnostics'
 
@@ -38,16 +38,8 @@ export function FormulaInput({
   const id = useId()
   const messageId = `${id}-message`
   const inputRef = useRef<HTMLInputElement>(null)
-  const [caret, setCaret] = useState<number | null>(null)
-
-  // Put the caret after an inserted reference once the input shows the new text.
-  useLayoutEffect(() => {
-    if (caret !== null && inputRef.current !== null) {
-      inputRef.current.focus()
-      inputRef.current.setSelectionRange(caret, caret)
-      setCaret(null)
-    }
-  }, [caret])
+  // Where the caret goes after an inserted reference, once the menu has closed.
+  const caretRef = useRef<number | null>(null)
 
   const problem = diagnostics?.error ?? null
   const result = problem === null ? (diagnostics?.result ?? null) : null
@@ -63,7 +55,7 @@ export function FormulaInput({
     const end = input?.selectionEnd ?? start
     const text = `{${reference}}`
     onChange(value.slice(0, start) + text + value.slice(end))
-    setCaret(start + text.length)
+    caretRef.current = start + text.length
   }
 
   return (
@@ -83,9 +75,20 @@ export function FormulaInput({
         }}
       />
       {references.length > 0 && (
-        <NativeSelect
+        <Select
           aria-label="Insert reference"
           value=""
+          // After an insert the caret goes back to the formula, not to this menu. Focusing the
+          // input earlier loses to the menu's focus trap, which is still active until it closes.
+          onCloseAutoFocus={(event) => {
+            const caret = caretRef.current
+            caretRef.current = null
+            if (caret !== null && inputRef.current !== null) {
+              event.preventDefault()
+              inputRef.current.focus()
+              inputRef.current.setSelectionRange(caret, caret)
+            }
+          }}
           onChange={(event) => {
             if (event.target.value !== '') {
               insert(event.target.value)
@@ -98,7 +101,7 @@ export function FormulaInput({
               {option.label} {`{${option.reference}}`}
             </option>
           ))}
-        </NativeSelect>
+        </Select>
       )}
       {problem !== null && (
         <div id={messageId} className="space-y-1 text-sm text-destructive">

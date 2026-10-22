@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { StudioError } from '../../useGameSystems'
 import { TextField } from '../TextField'
@@ -168,7 +168,7 @@ export function FlowEditor({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor={viewId}>Default view</Label>
-          <NativeSelect
+          <Select
             id={viewId}
             value={draft.defaultView}
             onChange={(event) => {
@@ -180,7 +180,7 @@ export function FlowEditor({
           >
             <option value="focus">Focus</option>
             <option value="journal">Journal</option>
-          </NativeSelect>
+          </Select>
           {field('defaultView') && (
             <p className="text-sm text-destructive">{field('defaultView')}</p>
           )}

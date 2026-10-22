@@ -13,7 +13,7 @@ import {
 } from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { KeyHint } from '../KeyHint'
 import { StudioError } from '../useGameSystems'
@@ -625,7 +625,7 @@ function CreateTableForm({
     >
       <div className="space-y-2">
         <Label htmlFor={kindId}>Kind</Label>
-        <NativeSelect
+        <Select
           id={kindId}
           value={ranged ? 'ranged' : 'weighted'}
           onChange={(event) => {
@@ -634,7 +634,7 @@ function CreateTableForm({
         >
           <option value="ranged">Ranged (rolls dice)</option>
           <option value="weighted">Weighted (entries have a weight)</option>
-        </NativeSelect>
+        </Select>
       </div>
       {ranged && (
         <div className="space-y-2">

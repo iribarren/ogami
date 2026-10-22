@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { oracles, oraclesV1Likelihood, oraclesWithChaos, narrativeScenes } from '../fixtures'
@@ -129,12 +130,12 @@ describe('the likelihood oracle editor', () => {
 
   it('offers the counters of the draft as chaos trackers, and flags a stored one that is not a counter', async () => {
     const stored = withTracker('alarm')
-    await openEditor('fate', {}, stored)
+    const { user } = await openEditor('fate', {}, stored)
 
     expect(
-      within(screen.getByLabelText('Chaos tracker'))
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+      (await listOptions(user, screen.getByLabelText('Chaos tracker'))).map(
+        (option) => option.label,
+      ),
     ).toEqual(['None', 'alarm (not a counter)', 'Heat'])
     expect(screen.getByLabelText('Chaos tracker')).toHaveValue('alarm')
     expect(screen.getByText('The tracker "alarm" is not a counter.')).toBeInTheDocument()
@@ -150,7 +151,7 @@ describe('the likelihood oracle editor', () => {
     )
 
     expect(screen.getByLabelText('Chaos tracker')).toHaveValue('')
-    await user.selectOptions(screen.getByLabelText('Chaos tracker'), 'heat')
+    await chooseOption(user, 'Chaos tracker', 'heat')
     await user.click(save())
     await waitFor(() => {
       expect(bodies).toHaveLength(1)
@@ -159,7 +160,8 @@ describe('the likelihood oracle editor', () => {
       oracle: { chaos: { min: 1, max: 9, neutral: 5, shiftPerPoint: 5, tracker: 'heat' } },
     })
 
-    await user.selectOptions(await screen.findByLabelText('Chaos tracker'), '')
+    await screen.findByLabelText('Chaos tracker')
+    await chooseOption(user, 'Chaos tracker', 'None')
     await user.click(save())
     await waitFor(() => {
       expect(bodies).toHaveLength(2)
@@ -215,7 +217,7 @@ describe('the likelihood oracle editor', () => {
     await replace(user, 'Level 1 target', '55')
     await replace(user, 'Chaos max', '8')
     await replace(user, 'Exceptional percent', '10')
-    await user.selectOptions(screen.getByLabelText('Random event table'), 'weather')
+    await chooseOption(user, 'Random event table', 'weather')
     await user.click(save())
 
     await waitFor(() => {

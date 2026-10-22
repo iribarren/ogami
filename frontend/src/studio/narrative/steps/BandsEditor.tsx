@@ -2,7 +2,7 @@ import { useId } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
 import type { ValueDraft, ValueForm } from './draftParts'
@@ -41,7 +41,7 @@ export function NextPicker({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <NativeSelect
+      <Select
         id={id}
         value={value}
         aria-invalid={error !== undefined}
@@ -55,7 +55,7 @@ export function NextPicker({
             {key === END ? 'End of the list' : key}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
@@ -85,7 +85,7 @@ export function ValueInput({
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <NativeSelect
+      <Select
         aria-label={`${label} type`}
         value={value.form}
         onChange={(event) => {
@@ -97,11 +97,11 @@ export function ValueInput({
             {formNames[form]}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {value.form === 'tracker' ? (
         <div className="space-y-2">
           <Label htmlFor={id}>{label}</Label>
-          <NativeSelect
+          <Select
             id={id}
             value={value.text}
             onChange={(event) => {
@@ -117,7 +117,7 @@ export function ValueInput({
                   {tracker.name}
                 </option>
               ))}
-          </NativeSelect>
+          </Select>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       ) : (

@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { KeyHint } from '../KeyHint'
 import type { NarrativeItem } from '../narrative/useGameSystemNarrative'
@@ -103,7 +103,7 @@ function TrackerField({
   return (
     <div className="max-w-64 space-y-2">
       <Label htmlFor={id}>Chaos tracker</Label>
-      <NativeSelect
+      <Select
         id={id}
         value={draft}
         aria-invalid={flag !== null || error !== null}
@@ -123,7 +123,7 @@ function TrackerField({
             {name(item)}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {flag !== null && <p className="text-sm text-destructive">{flag}</p>}
       {error !== null && (
         <p id={problemId} role="alert" className="text-sm text-destructive">
@@ -499,7 +499,7 @@ export function LikelihoodOracleEditor({
         {version2 && (
           <div className="max-w-64 space-y-2">
             <Label htmlFor={eventId}>Random event table</Label>
-            <NativeSelect
+            <Select
               id={eventId}
               value={draft.randomEvent}
               onChange={(event) => {
@@ -512,7 +512,7 @@ export function LikelihoodOracleEditor({
                   {key}
                 </option>
               ))}
-            </NativeSelect>
+            </Select>
           </div>
         )}
         {!valid && (

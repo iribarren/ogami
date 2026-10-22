@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { checks, checksV1, draft, validDraft } from '../fixtures'
@@ -345,7 +346,7 @@ describe('the checks tab', () => {
       await user.type(form.getByLabelText('Band 4 key'), 'crit')
       await user.type(form.getByLabelText('Band 4 label'), 'Critical')
       // The old last band now needs a bound.
-      await user.selectOptions(form.getByLabelText('Band 3 bound'), 'number')
+      await chooseOption(user, 'Band 3 bound', 'number', form)
       await user.type(form.getByLabelText('Band 3 number'), '90')
       await user.click(form.getByRole('button', { name: 'Move down band 1' }))
       // Band 1 is now Middling and band 2 the Bad one.
@@ -423,7 +424,7 @@ describe('the checks tab', () => {
       const form = within(screen.getByRole('form', { name: 'Edit odd' }))
 
       expect(form.getByLabelText('Band 1 tracker')).toHaveValue('gone')
-      expect(form.getByText('gone (not in this draft)')).toBeInTheDocument()
+      expect(form.getByLabelText('Band 1 tracker')).toHaveTextContent('gone (not in this draft)')
       expect(form.getByText('2.5')).toBeVisible()
       await user.click(form.getByRole('button', { name: 'Save check' }))
 
@@ -569,10 +570,18 @@ describe('the checks tab', () => {
       const form = within(screen.getByRole('form', { name: 'Edit skill' }))
 
       // Only band 1's menu offers it: the modifier's never does.
-      expect(form.getAllByRole('option', { name: /\{check:difficulty\}/ })).toHaveLength(1)
+      const offers = async () => {
+        let count = 0
+        for (const menu of form.getAllByRole('combobox', { name: 'Insert reference' })) {
+          const options = await listOptions(user, menu)
+          count += options.filter((option) => option.label.includes('{check:difficulty}')).length
+        }
+        return count
+      }
+      expect(await offers()).toBe(1)
 
       await user.click(form.getByLabelText('Difficulty'))
-      expect(form.queryAllByRole('option', { name: /\{check:difficulty\}/ })).toHaveLength(0)
+      expect(await offers()).toBe(0)
       expect(form.getByText(/this check declares no difficulty/)).toBeVisible()
     })
 

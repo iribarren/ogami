@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { fateAnswer, oracles, oraclesWithChaos, narrativeScenes } from '../fixtures'
@@ -56,7 +57,7 @@ describe('the test answer panel', () => {
       },
     })
 
-    await user.selectOptions(screen.getByLabelText('Likelihood'), 'likely')
+    await chooseOption(user, 'Likelihood', 'likely')
     await replace(user, 'Chaos factor', '7')
     await user.click(askButton())
 

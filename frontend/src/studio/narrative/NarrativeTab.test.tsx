@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, narrative, narrativeV1, validDraft } from '../fixtures'
@@ -281,7 +282,7 @@ describe('creating', () => {
     await user.type(dialog.getByLabelText('Key'), 'doom')
     await user.type(dialog.getByLabelText('Name'), 'Doom')
     await user.type(dialog.getByLabelText('Hint'), 'It comes')
-    await user.selectOptions(dialog.getByLabelText('Kind'), 'clock')
+    await chooseOption(user, 'Kind', 'clock', dialog)
     expect(dialog.queryByLabelText('Max')).not.toBeInTheDocument()
     expect(dialog.getByLabelText('Key')).toHaveValue('doom')
     await user.clear(dialog.getByLabelText('Segments'))
@@ -319,7 +320,7 @@ describe('creating', () => {
     await user.click(screen.getByRole('button', { name: 'New fact slot' }))
     await user.type(inDialog().getByLabelText('Key'), 'rumour')
     await user.type(inDialog().getByLabelText('Label'), 'Rumour')
-    await user.selectOptions(inDialog().getByLabelText('Type'), 'thread')
+    await chooseOption(user, 'Type', 'thread', inDialog())
     await user.click(inDialog().getByRole('button', { name: 'Create fact slot' }))
 
     await waitFor(() => {

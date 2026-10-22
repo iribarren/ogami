@@ -1,7 +1,7 @@
 # Feature: studio-ui-polish
 
 - **Locator:** `odd/tasks/studio-ui-polish.md` · Engram topic `odd/studio-ui-polish/tasks`
-- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-1-shell` · **Status:** slice 1 in progress (T2–T4)
+- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-2-lists` · **Status:** slice 1 merged (PR #240); slice 2 in progress (T5–T6)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `faster-checks` (PR #238)
@@ -133,7 +133,7 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/studio-ui-polish-1-shell` | `feat(studio): studio-ui-polish 1/6 kit and shell` | T1–T4 | ~1,500 (kit utilities, token and tooltip ~350; rail, header, `?tab=` ~450 with 43 tab-query edits; home and Overview ~350; stories and tests ~350) |
-| 2 | `feat/studio-ui-polish-2-lists` | `feat(studio): studio-ui-polish 2/6 select and lists` | T5–T6 | ~1,600 (Select, helpers and 28 call sites ~450; 89 + 14 + 6 test edits ~300; list panels and rows across eight tabs ~700; stories ~150) |
+| 2 | `feat/studio-ui-polish-2-lists` | `feat(studio): studio-ui-polish 2/6 select and lists` | slice 1 review fixes, T5–T6 | ~1,600 (Select, helpers and 28 call sites ~450; 89 + 14 + 6 test edits ~300; list panels and rows across eight tabs ~700; stories ~150) plus fixes ~120; re-forecast ~1,750–1,950, the user accepted the size exception (review as two candidates, fixes + T5 then T6, if over ~1,850) |
 | 3 | `feat/studio-ui-polish-3-authoring` | `feat(studio): studio-ui-polish 3/6 checks and tables` | T7–T8 | ~1,500 (checks layout, Duplicate, presets, band defaults, sandbox ~750; dense entries, Add entry, Paste entries, likelihood, preview ~750) |
 | 4 | `feat/studio-ui-polish-4-flow-outline` | `feat(studio): studio-ui-polish 4/6 flow outline` | T9 | ~1,500 (outline and node routing ~600, node editors from the existing parts ~400, FlowEditorPage tests ~500) |
 | 5 | `feat/studio-ui-polish-5-flow-feedback` | `feat(studio): studio-ui-polish 5/6 flow feedback and Scene Types` | T10–T11 | ~1,400 (save bar, field errors, `{answer}`, Enable on flow ~650; Scene Type editor and Add step menu ~450; Publish dialog ~300) |
@@ -144,11 +144,11 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; roadmap B7b in progress | parent, inline (doc only) | [x] | `9ac0b9c` |
-| T2 | 1 | Studio kit: utilities (panel, action bar, save state, alerts, field error, list row and selected row, icon button, count pill, empty state, group label, read-out), `--warning-text` in all seven blocks with contrast pairs, `IconTile` sizes 24 and 28, `shared/ui/tooltip.tsx`, `IconButton`; stories | writer (delegated) | [x] | |
-| T3 | 1 | GameSystem shell: section rail with groups, counts and `aria-current`, `tab` search param with fallback, header with initial tile and in-header notice (S17), sub-editor page headers with the rail; tab queries moved from `radio` to `link` (28 unit, 15 e2e); stories | writer (delegated) | [x] | |
-| T4 | 1 | Studio home cards; Overview Details and Credits panels with the notice counter (S19) and save state; the key hint on every Studio key field (S18) | writer (delegated) | [x] | |
-| T5 | 2 | `shared/ui/select.tsx` (radix-ui Select) and `chooseOption` helpers; replace the 28 Studio `NativeSelect` uses (S7); move 89 `selectOptions`, 14 `combobox` and 6 e2e `selectOption` calls; stories | | [ ] | |
-| T6 | 2 | List panels and rows with icon actions: Sheet fields (groups, type tiles, layout bar), Checks list, Oracles tab, Trackers & tags with empty states, Scene Types tab (create stays on the list, S8), Flows tab, Releases list and detail side by side, Library tab | | [ ] | |
+| T2 | 1 | Studio kit: utilities (panel, action bar, save state, alerts, field error, list row and selected row, icon button, count pill, empty state, group label, read-out), `--warning-text` in all seven blocks with contrast pairs, `IconTile` sizes 24 and 28, `shared/ui/tooltip.tsx`, `IconButton`; stories | writer (delegated) | [x] | `1dcc5d5` |
+| T3 | 1 | GameSystem shell: section rail with groups, counts and `aria-current`, `tab` search param with fallback, header with initial tile and in-header notice (S17), sub-editor page headers with the rail; tab queries moved from `radio` to `link` (28 unit, 15 e2e); stories | writer (delegated) | [x] | `46dc57d` |
+| T4 | 1 | Studio home cards; Overview Details and Credits panels with the notice counter (S19) and save state; the key hint on every Studio key field (S18) | writer (delegated) | [x] | `8235db3`, `2764134` |
+| T5 | 2 | `shared/ui/select.tsx` (radix-ui Select) and `chooseOption` helpers; replace the 28 Studio `NativeSelect` uses (S7); move 89 `selectOptions`, 14 `combobox` and 6 e2e `selectOption` calls; stories | writer (delegated) | [x] | |
+| T6 | 2 | List panels and rows with icon actions: Sheet fields (groups, type tiles, layout bar), Checks list, Oracles tab, Trackers & tags with empty states, Scene Types tab (create stays on the list, S8), Flows tab, Releases list and detail side by side, Library tab | writer (delegated) | [x] | |
 | T7 | 3 | Checks side by side with selection after create (S4), Duplicate (S2), band presets and Copy from a check (S2), band key from label and bound default (S3), test-roll results in wells | | [ ] | |
 | T8 | 3 | Oracle table editor dense entries with details disclosure, Add entry next range, Paste entries dialog (S5), test roll in wells; likelihood editor rows and answer well; Sheet preview derived read-outs (S19) | | [ ] | |
 | T9 | 4 | Flow editor outline: nodes, `node` search param, one node editor at a time reusing the current parts, errors select their node, a new phase has no Scene Type (S10) | | [ ] | |
@@ -171,13 +171,20 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 - 2026-10-22: T2 studio kit: CSS utilities, `--warning-text` in 7 blocks with contrast pairs, `IconTile` sizes `xs` 24 and `rail` 28, `Tooltip`, `IconButton`, `SaveState`, `Alert`/`FieldError`; `DieShape` moved to `shared/ui/die-shape.tsx` (Studio needs it for the Checks rail icon; imports in `play/` updated). Tests written after the components (no RED observed); CSS has no RED, covered by `contrast.test.ts` and the kit story.
 - 2026-10-22: T3 shell: `SectionRail` (Author/Ship, `aria-current`, count pills via `aria-describedby`), `tab` search param (`validateSearch` returns an explicit undefined for unknown values because the router merges it over the raw search), header with initial tile and in-header notice, `EditorFrame` for the oracle table, likelihood oracle and Scene Type pages; tab queries moved to `link` in unit tests, stories and e2e. RED observed: 18 failing new page tests before the shell existed.
 - 2026-10-22: T4 home and Overview: home cards with count pills, Overview Details/Credits panels, notice counter, save state, `KeyHint` on every Studio key field (S18). Slice 1 is ~1,870 lines; the user accepted the size exception; reviewed as two candidates, T2–T3 and T4.
+- 2026-10-22: slice 1 review fixes: the publish notice clears whenever the `tab` param changes (history navigation, typed URL), the SceneTypeEditorPage "unavailable" test waits for the GET, the notice counts code points like the server (`mb_strlen`) with `aria-invalid`, a field error and Save disabled over 2,000. RED observed for the history and the over-limit tests.
+- 2026-10-22: T5 `Select` on `radix-ui` Select: `<option>` children and a native-style `onChange` keep call sites to a tag rename (28 Studio uses); `''` maps to an internal sentinel; a value outside the options shows as "(not an option)" and `aria-invalid` instead of the first option; `onCloseAutoFocus` lets `FormulaInput` put the caret back (Radix's focus trap otherwise wins); `chooseOption`/`listOptions` test helpers (match by name, then value) and e2e `choose-option.ts`; 85 `selectOptions` moved, 5 Studio e2e calls moved (the sixth, studio-publish, drives a Play NativeSelect and stays); jsdom polyfills in `setup.ts`. Select tests written right after the component (no RED); the migrated Studio tests were the RED (51 failing before the helper existed).
+- 2026-10-22: select review findings (`review-5e710e80ff77ac7b`): `''` with no empty option shows nothing chosen instead of invalid (non-empty unknown values still fail closed; RED observed for both cases); e2e `chooseOption` prefers the name and falls back to the value without a CSS selector.
+- 2026-10-22: T6 list panels: Sheet fields (panel, group labels, type tiles, range hint "0 to 18" only when min/max exist, layout bar "Layout: N columns, N groups" in the panel), Trackers & tags (three panels, Tags and Fact slots side by side, empty states), Scene Types (a created one stays on the list, `aria-current`; RED observed), Flows, Oracles (tables, likelihood), Checks list (layout only), Library imports, Releases (list panel max 400px beside the detail panel with date, hash, notes well and Restore `outline sm`). Row buttons are `IconButton`s with the old names; `DeleteItemDialog` shared by Trackers, Scene Types and Flows. Library Update/Detach use `RefreshCw`/`Unlink` (not in the icon list). Stories not changed (they render the same components). Left out: nothing from the priority list.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-1940784a74325f2f` | T1 `9ac0b9c` (docs only, 180 lines) | passive (risk low, non_executable_only), no lenses; approved and acknowledged | |
+| 1 | `review-56ddf7cd93651083` | T2–T3 `1dcc5d5`, `46dc57d` (base `9ac0b9c`, temp worktree at `46dc57d`) | medium; approved and acknowledged. Findings fixed in slice 2: publish notice cleared only on rail click, back/forward or a typed URL brings it back (`GameSystemPage.tsx:188-198`); SceneTypeEditorPage "unavailable" test asserts before the 500 settles | [#240](https://github.com/iribarren/ogami/pull/240) |
+| 1 | `review-225c1eb22e3d7498` | T4 `8235db3`, `2764134` (base `46dc57d`) | medium; approved and acknowledged. Finding fixed in slice 2: the notice counter shows the 2,000 limit without client enforcement (`MetadataForm.tsx:203-205`) | [#240](https://github.com/iribarren/ogami/pull/240) |
+| 2 | `review-5e710e80ff77ac7b` | `df3aa8c`, `7bf7ad3` (base `149b072`, 1,023 lines) | medium; approved and acknowledged. Findings fixed in commit 3: empty value without an empty option shown as invalid (`select.tsx:84-109`); e2e `chooseOption` `.or().first()` ambiguity and an unescaped value in its selector | |
 
 ## Next step
 
-Slice 1 on `feat/studio-ui-polish-1-shell`: T2–T4 by one writer, then review T2–T4 against `9ac0b9c`, push and open the PR (`Part of #239`).
+Slice 2 on `feat/studio-ui-polish-2-lists`: slice 1 review fixes, T5 (Select) and T6 (list panels) by one writer, then review against `2764134`, push and open the PR (`Part of #239`).

@@ -108,6 +108,11 @@ describe('the releases tab', () => {
     expect(view.getByRole('heading')).toHaveTextContent('Version 2: Noir detective (old name)')
     expect(view.getByText('Oracle tables')).toBeInTheDocument()
     expect(view.queryByText('Editor coming')).not.toBeInTheDocument()
+    expect(view.getByText('Rebalanced the oracles.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View version 2' }).closest('li')).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
     expect(view.queryByRole('textbox')).not.toBeInTheDocument()
   })
 

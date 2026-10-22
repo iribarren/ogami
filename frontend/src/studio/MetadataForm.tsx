@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 import { Textarea } from '@/shared/ui/textarea'
 
@@ -23,6 +23,12 @@ const MAX_NAME_LENGTH = 100
 
 /** The release contract's limit on the credits notice, checked by the server too. */
 const MAX_NOTICE_LENGTH = 2000
+
+/**
+ * The server counts characters (code points), not UTF-16 units: an emoji is one. `.length`
+ * would refuse a notice the server accepts.
+ */
+const characterCount = (text: string) => Array.from(text).length
 
 /** Empty text means "none" for the optional fields. */
 const orNull = (text: string) => (text.trim() === '' ? null : text)
@@ -60,7 +66,9 @@ export function MetadataForm({
   const themeId = useId()
   // Credits are all or nothing: a license or link without a notice has nothing to qualify.
   const creditsValid = notice.trim() !== '' || (license.trim() === '' && url.trim() === '')
-  const valid = name.trim() !== '' && (!hasCreditsAndTheme || creditsValid)
+  const noticeLength = characterCount(notice)
+  const noticeTooLong = noticeLength > MAX_NOTICE_LENGTH
+  const valid = name.trim() !== '' && (!hasCreditsAndTheme || (creditsValid && !noticeTooLong))
   // A theme the form does not know (the API may grow one) stays selectable instead of vanishing.
   const themes: string[] = [...CAMPAIGN_THEME_NAMES]
   if (theme !== '' && !themes.includes(theme)) {
@@ -152,7 +160,7 @@ export function MetadataForm({
           {hasCreditsAndTheme && (
             <div className="space-y-2">
               <Label htmlFor={themeId}>Theme</Label>
-              <NativeSelect
+              <Select
                 id={themeId}
                 value={theme}
                 aria-describedby={`${themeId}-hint`}
@@ -166,7 +174,7 @@ export function MetadataForm({
                     {option}
                   </option>
                 ))}
-              </NativeSelect>
+              </Select>
               <p id={`${themeId}-hint`} className="hint">
                 Campaigns on this GameSystem start with it.
               </p>
@@ -201,18 +209,24 @@ export function MetadataForm({
               <div className="flex items-baseline justify-between gap-3">
                 <Label htmlFor={noticeId}>Notice</Label>
                 <span id={`${noticeId}-count`} className="hint">
-                  {notice.length} / {MAX_NOTICE_LENGTH.toLocaleString('en-GB')}
+                  {noticeLength.toLocaleString('en-GB')} /{' '}
+                  {MAX_NOTICE_LENGTH.toLocaleString('en-GB')}
                 </span>
               </div>
               <Textarea
                 id={noticeId}
                 value={notice}
-                aria-invalid={!creditsValid}
+                aria-invalid={!creditsValid || noticeTooLong}
                 aria-describedby={`${noticeId}-count`}
                 onChange={(event) => {
                   setNotice(event.target.value)
                 }}
               />
+              {noticeTooLong && (
+                <FieldError>
+                  The notice is limited to {MAX_NOTICE_LENGTH.toLocaleString('en-GB')} characters.
+                </FieldError>
+              )}
               {!creditsValid && (
                 <FieldError>
                   A license or link needs a notice. Clear them, or write the notice.

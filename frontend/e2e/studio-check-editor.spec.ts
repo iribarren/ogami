@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { chooseOption } from './choose-option.ts'
 import { manager, signIn } from './sign-in.ts'
 
 // Users and the "night-job" preset are seeded by `make e2e-seed`. The copy is a schema 2 draft
@@ -34,7 +35,7 @@ test('a game manager authors a check with two bands, rolls it in the sandbox and
   await form.getByRole('button', { name: 'Add band' }).click()
   await form.getByLabel('Band 1 key').fill('low')
   await form.getByLabel('Band 1 label').fill('Low')
-  await form.getByLabel('Band 1 bound').selectOption('number')
+  await chooseOption(page, 'Band 1 bound', 'number', form)
   await form.getByLabel('Band 1 number').fill('5')
   await form.getByLabel('Band 2 key').fill('high')
   await form.getByLabel('Band 2 label').fill('High')

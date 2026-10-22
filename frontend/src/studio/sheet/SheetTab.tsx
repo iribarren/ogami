@@ -1,7 +1,21 @@
-import { useId, useState } from 'react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Hash,
+  List,
+  Pencil,
+  Plus,
+  Sigma,
+  Trash2,
+  Type,
+  UserRound,
+} from 'lucide-react'
+import { useId, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
+import { IconButton } from '@/shared/ui/icon-button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import {
   Dialog,
   DialogContent,
@@ -89,84 +103,109 @@ function SheetFields({
 
   return (
     <section aria-label="Sheet" className="space-y-4">
-      <SheetLayoutPanel gameSystemKey={gameSystemKey} sheet={data} onDraftChange={setLayoutDraft} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-semibold">Sheet fields</h2>
-        <SheetFieldDialog
+      <div className="panel">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <UserRound />
+          </IconTile>
+          <h2 className="font-heading text-panel-title">Sheet fields</h2>
+          <div className="ml-auto">
+            <SheetFieldDialog
+              gameSystemKey={gameSystemKey}
+              sheet={data}
+              samples={samples}
+              original={null}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Plus aria-hidden="true" />
+                  Add field
+                </Button>
+              }
+            />
+          </div>
+        </div>
+        <SheetLayoutPanel
           gameSystemKey={gameSystemKey}
           sheet={data}
-          samples={samples}
-          original={null}
-          trigger={<Button size="sm">Add field</Button>}
+          onDraftChange={setLayoutDraft}
         />
-      </div>
-      {move.error && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
-          <p>{move.error.message}</p>
-          {move.error instanceof StudioError && move.error.status === 409 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void latest.refetch().then((result) => {
-                  setReloadFailed(result.isError)
-                  if (!result.isError) {
-                    move.reset()
-                  }
-                })
-              }}
+        <div className="space-y-4 panel-body">
+          {move.error && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-3 text-sm text-destructive"
             >
-              Reload the latest version
-            </Button>
-          )}
-        </div>
-      )}
-      {reloadFailed && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t reload the latest version. Try again.
-        </p>
-      )}
-      {data.fields.length === 0 && (
-        <p className="text-muted-foreground">This draft has no sheet fields yet.</p>
-      )}
-      {sections.map((section, position) => (
-        <section
-          // A heading can repeat when groups are not declared, so the position is part of the key.
-          key={`${String(position)}:${section.heading ?? ''}`}
-          aria-label={section.heading ?? 'Fields without a group'}
-          className="space-y-2"
-        >
-          {section.heading !== null && (
-            <h3 className="font-heading font-semibold">{section.heading}</h3>
-          )}
-          {section.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No fields</p>
-          ) : (
-            <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
-              {section.rows.map(({ field, index }) => (
-                <FieldRow
-                  key={typeof field.key === 'string' ? field.key : `#${String(index)}`}
-                  gameSystemKey={gameSystemKey}
-                  sheet={data}
-                  samples={samples}
-                  field={field}
-                  index={index}
-                  busy={move.isPending}
-                  onMove={(target) => {
-                    setReloadFailed(false)
-                    move.mutate({
-                      expectedVersion: data.version,
-                      field: String(field.key),
-                      index: target,
+              <p>{move.error.message}</p>
+              {move.error instanceof StudioError && move.error.status === 409 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void latest.refetch().then((result) => {
+                      setReloadFailed(result.isError)
+                      if (!result.isError) {
+                        move.reset()
+                      }
                     })
                   }}
-                />
-              ))}
-            </ul>
+                >
+                  Reload the latest version
+                </Button>
+              )}
+            </div>
           )}
-        </section>
-      ))}
+          {reloadFailed && (
+            <p role="alert" className="text-sm text-destructive">
+              Couldn&apos;t reload the latest version. Try again.
+            </p>
+          )}
+          {data.fields.length === 0 && (
+            <div className="empty-state">
+              <IconTile size="sm">
+                <UserRound />
+              </IconTile>
+              <p>This draft has no sheet fields yet.</p>
+              <p className="hint">Add a field to start the sheet.</p>
+            </div>
+          )}
+          {sections.map((section, position) => (
+            <section
+              // A heading can repeat when groups are not declared, so the position is part of the key.
+              key={`${String(position)}:${section.heading ?? ''}`}
+              aria-label={section.heading ?? 'Fields without a group'}
+              className="space-y-2"
+            >
+              {section.heading !== null && <h3 className="group-label">{section.heading}</h3>}
+              {section.rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No fields</p>
+              ) : (
+                <ul className="overflow-hidden rounded-lg border">
+                  {section.rows.map(({ field, index }) => (
+                    <FieldRow
+                      key={typeof field.key === 'string' ? field.key : `#${String(index)}`}
+                      gameSystemKey={gameSystemKey}
+                      sheet={data}
+                      samples={samples}
+                      field={field}
+                      index={index}
+                      busy={move.isPending}
+                      onMove={(target) => {
+                        setReloadFailed(false)
+                        move.mutate({
+                          expectedVersion: data.version,
+                          field: String(field.key),
+                          index: target,
+                        })
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
+      </div>
       <SheetPreview sheet={data} samples={samples} />
     </section>
   )
@@ -203,28 +242,31 @@ function FieldRow({
   const down = moveTarget(sheet.fields, index, 'down', sheet.groups !== null)
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-      <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-medium">{typeof label === 'string' ? label : key}</span>
-        <span className="font-mono text-sm break-all text-muted-foreground">{key}</span>
-        <Badge variant="secondary">{typeof type === 'string' ? type : 'unknown type'}</Badge>
-        {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
-      </p>
+    <li className="list-row">
+      <IconTile size="xs">{typeIcons[typeof type === 'string' ? type : ''] ?? <Type />}</IconTile>
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <span className="list-row-title">{typeof label === 'string' ? label : key}</span>
+          <span className="list-row-key break-all">{key}</span>
+          <Badge variant="secondary">{typeof type === 'string' ? type : 'unknown type'}</Badge>
+          {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
+        </p>
+        {rangeHint(field) !== null && <p className="hint">{rangeHint(field)}</p>}
+      </div>
       <SheetFieldDialog
         gameSystemKey={gameSystemKey}
         sheet={sheet}
         samples={samples}
         original={key}
         trigger={
-          <Button variant="outline" size="sm" disabled={!editable} aria-label={`Edit ${key}`}>
-            Edit
-          </Button>
+          <IconButton label={`Edit ${key}`} dense disabled={!editable}>
+            <Pencil />
+          </IconButton>
         }
       />
-      <Button
-        variant="outline"
-        size="sm"
-        aria-label={`Move up ${key}`}
+      <IconButton
+        label={`Move up ${key}`}
+        dense
         disabled={up === null || busy}
         onClick={() => {
           if (up !== null) {
@@ -232,12 +274,11 @@ function FieldRow({
           }
         }}
       >
-        Move up
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        aria-label={`Move down ${key}`}
+        <ArrowUp />
+      </IconButton>
+      <IconButton
+        label={`Move down ${key}`}
+        dense
         disabled={down === null || busy}
         onClick={() => {
           if (down !== null) {
@@ -245,11 +286,30 @@ function FieldRow({
           }
         }}
       >
-        Move down
-      </Button>
+        <ArrowDown />
+      </IconButton>
       <DeleteFieldDialog gameSystemKey={gameSystemKey} fieldKey={key} version={sheet.version} />
     </li>
   )
+}
+
+const typeIcons: Record<string, ReactNode> = {
+  text: <Type />,
+  number: <Hash />,
+  derived: <Sigma />,
+  list: <List />,
+}
+
+/** "−1 to 3" for a field with bounds; legacy fields without min or max say nothing. */
+function rangeHint({ min, max }: StoredField): string | null {
+  const show = (bound: number) => String(bound).replace('-', '−')
+  if (typeof min === 'number' && typeof max === 'number') {
+    return `${show(min)} to ${show(max)}`
+  }
+  if (typeof min === 'number') {
+    return `${show(min)} or more`
+  }
+  return typeof max === 'number' ? `up to ${show(max)}` : null
 }
 
 /** Deleting is refused while the draft reads the field; the refusal lists where. */
@@ -278,9 +338,9 @@ function DeleteFieldDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={`Delete ${fieldKey}`}>
-          Delete
-        </Button>
+        <IconButton label={`Delete ${fieldKey}`} dense destructive>
+          <Trash2 />
+        </IconButton>
       </DialogTrigger>
       <DialogContent aria-describedby={reasonId}>
         <DialogHeader>

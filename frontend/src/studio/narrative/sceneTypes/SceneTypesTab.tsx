@@ -1,8 +1,10 @@
-import { useId } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Clapperboard, Plus } from 'lucide-react'
+import { useId, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { ItemDialog } from '../ItemDialog'
 import { sceneTypeForm } from '../itemForms'
@@ -14,39 +16,56 @@ import { sceneTypeToDraft, scenePartNames } from './sceneTypeDraft'
 /** The Scene Types of a draft in stored order, with where each is used; each opens its editor page. */
 export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
-  const navigate = useNavigate()
+  // The Scene Type just created: it stays selected on the list, like other creates.
+  const [selected, setSelected] = useState<string | null>(null)
 
   return (
     <NarrativeGate narrative={narrative}>
       {(data) => (
-        <section aria-label="Scene Types" className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-heading text-lg font-semibold">Scene Types</h2>
-            <ItemDialog
-              gameSystemKey={gameSystemKey}
-              form={sceneTypeForm}
-              version={data.version}
-              original={null}
-              initial={sceneTypeForm.blank()}
-              trigger={<Button size="sm">New Scene Type</Button>}
-              onSaved={(item) => {
-                void navigate({
-                  to: '/studio/game-systems/$key/scene-types/$sceneType',
-                  params: { key: gameSystemKey, sceneType: String(item.key) },
-                })
-              }}
-            />
+        <section aria-label="Scene Types" className="panel">
+          <div className="panel-head">
+            <IconTile size="sm">
+              <Clapperboard />
+            </IconTile>
+            <h2 className="font-heading text-panel-title">Scene Types</h2>
+            <div className="ml-auto">
+              <ItemDialog
+                gameSystemKey={gameSystemKey}
+                form={sceneTypeForm}
+                version={data.version}
+                original={null}
+                initial={sceneTypeForm.blank()}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Plus aria-hidden="true" />
+                    New Scene Type
+                  </Button>
+                }
+                onSaved={(item) => {
+                  setSelected(String(item.key))
+                }}
+              />
+            </div>
           </div>
           {data.sceneTypes.length === 0 ? (
-            <p className="text-muted-foreground">This draft has no Scene Types yet.</p>
+            <div className="panel-body">
+              <div className="empty-state">
+                <IconTile size="sm">
+                  <Clapperboard />
+                </IconTile>
+                <p>This draft has no Scene Types yet.</p>
+                <p className="hint">Use New Scene Type to add one.</p>
+              </div>
+            </div>
           ) : (
-            <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+            <ul>
               {data.sceneTypes.map((item) => (
                 <SceneTypeRow
                   key={item.key}
                   gameSystemKey={gameSystemKey}
                   item={item}
                   version={data.version}
+                  selected={item.key === selected}
                 />
               ))}
             </ul>
@@ -61,10 +80,12 @@ function SceneTypeRow({
   gameSystemKey,
   item,
   version,
+  selected,
 }: {
   gameSystemKey: string
   item: NarrativeItem
   version: number
+  selected: boolean
 }) {
   const reasonId = useId()
   const draft = sceneTypeToDraft(item.definition)
@@ -72,21 +93,21 @@ function SceneTypeRow({
   const title = typeof name === 'string' && name !== '' ? name : item.key
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+    <li className="list-row" aria-current={selected ? 'true' : undefined}>
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           {draft === null ? (
-            <span className="font-medium">{title}</span>
+            <span className="list-row-title">{title}</span>
           ) : (
             <Link
               to="/studio/game-systems/$key/scene-types/$sceneType"
               params={{ key: gameSystemKey, sceneType: item.key }}
-              className="font-medium underline-offset-4 hover:underline"
+              className="list-row-title underline-offset-4 hover:underline"
             >
               {title}
             </Link>
           )}
-          <span className="font-mono text-sm break-all text-muted-foreground">{item.key}</span>
+          <span className="list-row-key break-all">{item.key}</span>
           {draft === null ? (
             <Badge variant="outline">Can&apos;t be edited here</Badge>
           ) : (

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, sheet, sheetUngrouped, validDraft } from '../fixtures'
@@ -85,7 +86,7 @@ describe('a sheet without a layout', () => {
     })
     expect(await screen.findByRole('button', { name: 'Edit layout' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Declare layout' })).not.toBeInTheDocument()
-    expect(screen.getByText(/1 column of groups: Stats/)).toBeVisible()
+    expect(screen.getByText(/Layout: 1 column, 1 group/)).toBeVisible()
     await waitFor(() => {
       expect(fakeApi.requests.filter((request) => request === `GET ${base}`)).toHaveLength(2)
     })
@@ -145,7 +146,7 @@ describe('editing the layout', () => {
     const { sent, handler } = recorder(Response.json({ ...sheet, version: 8 }))
     const { user, fakeApi } = await openSheet({ [`PUT ${base}/sheet/layout`]: handler })
 
-    expect(await screen.findByText(/2 columns of groups: Stats, Health, Notes/)).toBeVisible()
+    expect(await screen.findByText(/Layout: 2 columns, 3 groups/)).toBeVisible()
     await editLayout(user)
     expect(inDialog().getByLabelText('Sheet columns')).toHaveValue('2')
     expect(within(group(1)).getByLabelText('Name')).toHaveValue('Stats')
@@ -182,7 +183,7 @@ describe('editing the layout', () => {
     await editLayout(user)
     await user.click(inDialog().getByRole('button', { name: 'Add group' }))
     await user.type(within(group(4)).getByLabelText('Name'), 'Gear')
-    await user.selectOptions(within(group(4)).getByLabelText('Columns'), '3')
+    await chooseOption(user, 'Columns', '3', within(group(4)))
     await user.click(within(group(4)).getByRole('button', { name: 'Move up' }))
     await user.click(within(group(4)).getByRole('button', { name: 'Delete group' }))
     await user.click(within(group(1)).getByRole('button', { name: 'Move down' }))
@@ -223,13 +224,13 @@ describe('editing the layout', () => {
 
     await editLayout(user)
     expect(
-      within(within(group(1)).getByLabelText('Span'))
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+      (await listOptions(user, within(group(1)).getByLabelText('Span'))).map(
+        (option) => option.label,
+      ),
     ).toEqual(['1', '2'])
-    await user.selectOptions(inDialog().getByLabelText('Sheet columns'), '1')
+    await chooseOption(user, 'Sheet columns', '1', inDialog())
     expect(within(group(1)).getByLabelText('Span')).toHaveValue('1')
-    expect(within(within(group(1)).getByLabelText('Span')).getAllByRole('option')).toHaveLength(1)
+    expect(await listOptions(user, within(group(1)).getByLabelText('Span'))).toHaveLength(1)
     await saveLayout(user)
 
     await waitFor(() => {

@@ -67,11 +67,11 @@ export function SheetLayoutPanel({
   const declare = useDeclareSheetLayout(gameSystemKey)
 
   return (
-    <section aria-label="Layout" className="space-y-3 rounded-xl p-4 ring-1 ring-foreground/10">
-      <h2 className="font-heading text-lg font-semibold">Layout</h2>
+    <section aria-label="Layout" className="space-y-2 border-b bg-secondary/40 px-4 py-2.5 text-sm">
       {sheet.groups === null ? (
         <>
-          <p className="text-sm text-muted-foreground">
+          <p className="font-medium">Layout: none</p>
+          <p className="hint">
             This sheet has no layout: fields render in one column, grouped as their group text
             reads. Declaring a layout makes a group of each one in order of first appearance, and
             puts fields without a group in &quot;General&quot;.
@@ -102,9 +102,9 @@ export function SheetLayoutPanel({
         </>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">
-            {sheet.columns === 1 ? '1 column' : `${String(sheet.columns)} columns`} of groups:{' '}
-            {sheet.groups.map((group) => group.name).join(', ')}.
+          <p className="font-medium">
+            Layout: {sheet.columns === 1 ? '1 column' : `${String(sheet.columns)} columns`},{' '}
+            {sheet.groups.length === 1 ? '1 group' : `${String(sheet.groups.length)} groups`}
           </p>
           {readLayout(sheet) === null && (
             <p className="text-sm text-destructive">
@@ -256,7 +256,7 @@ function EditLayoutDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" disabled={!editable}>
+        <Button variant="outline" size="sm" disabled={!editable}>
           Edit layout
         </Button>
       </DialogTrigger>

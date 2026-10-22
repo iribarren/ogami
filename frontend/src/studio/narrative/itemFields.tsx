@@ -2,7 +2,7 @@ import { useId } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { Area } from './steps/fields'
 import { TextField } from './TextField'
@@ -160,7 +160,7 @@ export function TrackerFields({ draft, onChange, errors }: FieldsProps<TrackerDr
       />
       <div className="space-y-2">
         <Label htmlFor={kindId}>Kind</Label>
-        <NativeSelect
+        <Select
           id={kindId}
           value={draft.kind}
           onChange={(event) => {
@@ -169,7 +169,7 @@ export function TrackerFields({ draft, onChange, errors }: FieldsProps<TrackerDr
         >
           <option value="counter">Counter (a number in a range)</option>
           <option value="clock">Clock (fills segment by segment)</option>
-        </NativeSelect>
+        </Select>
       </div>
       {draft.kind === 'clock' ? (
         <TextField
@@ -252,7 +252,7 @@ function LabelledFields({
       {withType && (
         <div className="space-y-2">
           <Label htmlFor={typeId}>Type</Label>
-          <NativeSelect
+          <Select
             id={typeId}
             value={draft.type}
             onChange={(event) => {
@@ -264,7 +264,7 @@ function LabelledFields({
                 {type}
               </option>
             ))}
-          </NativeSelect>
+          </Select>
         </div>
       )}
       <TextField

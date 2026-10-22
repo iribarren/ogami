@@ -63,6 +63,10 @@ test('a game manager imports a library Scene Type over an oracle the draft overr
   await newScene.getByLabel('Name').fill(sceneName)
   await newScene.getByLabel('Purpose').fill(purpose)
   await newScene.getByRole('button', { name: 'Create Scene Type' }).click()
+  // The new Scene Type stays on the list, selected; its link opens the editor.
+  const created = page.getByRole('link', { name: sceneName })
+  await expect(created.locator('xpath=ancestor::li')).toHaveAttribute('aria-current', 'true')
+  await created.click()
   await expect(page).toHaveURL(`/studio/game-systems/${pack}/scene-types/${sceneType}`)
 
   const editor = page.getByRole('form', { name: 'Scene Type' })

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { narrativeFlows } from '../../fixtures'
@@ -169,12 +170,12 @@ describe('the flow editor', () => {
     await replace(user, flowName(), 'Big heist')
     await user.type(first('Description'), 'A big one.')
     await user.click(screen.getByLabelText('Default flow'))
-    await user.selectOptions(screen.getByLabelText('Default view'), 'Journal')
+    await chooseOption(user, 'Default view', 'Journal')
     await user.click(screen.getByRole('checkbox', { name: 'Fate' }))
     await user.click(screen.getByRole('checkbox', { name: 'Complications' }))
     await user.click(screen.getByRole('checkbox', { name: 'Heat' }))
     await replace(user, phase(1).getByLabelText('Name'), 'Prep')
-    await user.selectOptions(phase(1).getByLabelText('Mode'), 'Loop')
+    await chooseOption(user, 'Mode', 'Loop', phase(1))
     await user.type(phase(1).getByLabelText('Act'), 'One')
     await user.click(save())
 
@@ -561,8 +562,8 @@ describe('the selection of a phase', () => {
 
   it('adds, moves and removes Scene Types of a sequence, which may name one twice', async () => {
     const saved = await saveAfter(async (user) => {
-      await user.selectOptions(phase(1).getByLabelText('Add a Scene Type'), 'Quiet')
-      await user.selectOptions(phase(1).getByLabelText('Add a Scene Type'), 'Ambush')
+      await chooseOption(user, 'Add a Scene Type', 'Quiet', phase(1))
+      await chooseOption(user, 'Add a Scene Type', 'Ambush', phase(1))
       await user.click(phase(1).getByRole('button', { name: 'Move Scene Type 2 up' }))
       await user.click(phase(1).getByRole('button', { name: 'Remove Scene Type 3' }))
     })
@@ -574,19 +575,18 @@ describe('the selection of a phase', () => {
   })
 
   it('offers a player list only the Scene Types it does not name yet', async () => {
-    await openEditor('heist')
+    const { user } = await openEditor('heist')
 
     const add = phase(2).getByLabelText('Add a Scene Type')
-    expect(
-      within(add)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual(['Pick a Scene Type', 'Odd'])
+    expect((await listOptions(user, add)).map((option) => option.label)).toEqual([
+      'Pick a Scene Type',
+      'Odd',
+    ])
   })
 
   it('keeps the Scene Types when the rule goes from sequence to player', async () => {
     const saved = await saveAfter(async (user) => {
-      await user.selectOptions(phase(1).getByLabelText('Rule'), 'The player picks')
+      await chooseOption(user, 'Rule', 'The player picks', phase(1))
     })
 
     await waitFor(() => {
@@ -599,12 +599,12 @@ describe('the selection of a phase', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
-    await user.selectOptions(phase(1).getByLabelText('Rule'), 'An oracle table picks')
+    await chooseOption(user, 'Rule', 'An oracle table picks', phase(1))
     expect(phase(1).queryByLabelText('Add a Scene Type')).not.toBeInTheDocument()
     await user.click(save())
     expect(await phase(1).findByText('Pick an oracle table.')).toBeInTheDocument()
     expect(saved.sent).toHaveLength(0)
-    await user.selectOptions(phase(1).getByLabelText('Oracle table'), 'Places')
+    await chooseOption(user, 'Oracle table', 'Places', phase(1))
     await user.click(save())
 
     await waitFor(() => {
@@ -627,7 +627,7 @@ describe('the selection of a phase', () => {
       [put]: saved.handler,
     })
 
-    await user.selectOptions(phase(1).getByLabelText('Rule'), 'Plays in order')
+    await chooseOption(user, 'Rule', 'Plays in order', phase(1))
     expect(phase(1).getByText('No Scene Types yet.')).toBeInTheDocument()
     await user.click(save())
 
@@ -639,8 +639,8 @@ describe('the selection of a phase', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
-    await user.selectOptions(phase(1).getByLabelText('Add a Scene Type'), 'Ambush')
-    await user.selectOptions(phase(1).getByLabelText('Rule'), 'The player picks')
+    await chooseOption(user, 'Add a Scene Type', 'Ambush', phase(1))
+    await chooseOption(user, 'Rule', 'The player picks', phase(1))
     await user.click(save())
 
     expect(

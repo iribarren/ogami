@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
+import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import {
@@ -58,7 +59,7 @@ describe('the Flows tab', () => {
     expect(side).toHaveTextContent('Used by sceneTypes[0].play[1]')
     const keys = within(screen.getByRole('region', { name: 'Flows' }))
       .getAllByRole('listitem')
-      .map((item) => item.querySelector('span.font-mono')?.textContent)
+      .map((item) => item.querySelector('.list-row-key')?.textContent)
     expect(keys).toEqual(['heist', 'side-job', 'odd-flow'])
   })
 
@@ -293,7 +294,7 @@ describe('creating a flow', () => {
     expect(inDialog().getByLabelText('First Scene Type')).toHaveValue('ambush')
     await user.type(inDialog().getByLabelText('Key'), ' chase ')
     await user.type(inDialog().getByLabelText('Name'), 'Chase')
-    await user.selectOptions(inDialog().getByLabelText('First Scene Type'), 'Quiet')
+    await chooseOption(user, 'First Scene Type', 'Quiet', inDialog())
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
 
     // The editor of the new flow opens.
@@ -361,9 +362,7 @@ describe('creating a flow', () => {
     })
     // The reloaded Scene Types are what the select offers, and the next create sends their version.
     expect(inDialog().getByLabelText('First Scene Type')).toHaveValue('ambush')
-    expect(
-      within(inDialog().getByLabelText('First Scene Type')).getAllByRole('option'),
-    ).toHaveLength(1)
+    expect(await listOptions(user, inDialog().getByLabelText('First Scene Type'))).toHaveLength(1)
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
     await waitFor(() => {
       expect(sent).toEqual([5, 6])

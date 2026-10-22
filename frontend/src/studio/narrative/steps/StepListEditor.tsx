@@ -4,7 +4,7 @@ import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { TextField } from '../TextField'
@@ -218,7 +218,7 @@ function StepFields({
         <>
           <div className="space-y-2">
             <Label>Reads</Label>
-            <NativeSelect
+            <Select
               aria-label="Reads"
               value={step.source}
               onChange={(event) => {
@@ -227,10 +227,10 @@ function StepFields({
             >
               <option value="tracker">A tracker</option>
               <option value="count">A count of open items</option>
-            </NativeSelect>
+            </Select>
           </div>
           {step.source === 'tracker' ? (
-            <NativeSelect
+            <Select
               aria-label="Tracker"
               value={step.tracker}
               onChange={(event) => {
@@ -249,10 +249,10 @@ function StepFields({
                   {tracker.name}
                 </option>
               ))}
-            </NativeSelect>
+            </Select>
           ) : (
             <>
-              <NativeSelect
+              <Select
                 aria-label="Count of"
                 value={step.of}
                 onChange={(event) => {
@@ -264,7 +264,7 @@ function StepFields({
                     {target}
                   </option>
                 ))}
-              </NativeSelect>
+              </Select>
               <CheckList
                 legend="Tags"
                 options={context.tags}
@@ -553,7 +553,7 @@ export function StepListEditor({
         </ol>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <NativeSelect
+        <Select
           aria-label="New step kind"
           value={kind}
           onChange={(event) => {
@@ -565,7 +565,7 @@ export function StepListEditor({
               {option}
             </option>
           ))}
-        </NativeSelect>
+        </Select>
         <Button
           type="button"
           variant="outline"

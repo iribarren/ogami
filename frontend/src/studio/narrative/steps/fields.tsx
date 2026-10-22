@@ -1,7 +1,7 @@
 import { useId } from 'react'
 
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
 
 /** Checkboxes over `options`; a selected key the options no longer have stays listed. */
@@ -98,7 +98,7 @@ export function PickField({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <NativeSelect
+      <Select
         id={id}
         value={value}
         aria-invalid={error !== undefined}
@@ -112,7 +112,7 @@ export function PickField({
             {option.name}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
@@ -137,7 +137,7 @@ export function SelectField({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <NativeSelect
+      <Select
         id={id}
         value={value}
         aria-invalid={error !== undefined}
@@ -150,7 +150,7 @@ export function SelectField({
             {option.name}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )

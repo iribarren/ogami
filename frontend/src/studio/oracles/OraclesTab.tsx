@@ -1,3 +1,4 @@
+import { Eye, List, Plus, Trash2 } from 'lucide-react'
 import { useId, useRef, useState, type ReactNode, type SubmitEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 
@@ -11,9 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { IconButton } from '@/shared/ui/icon-button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import { KeyHint } from '../KeyHint'
 import { StudioError } from '../useGameSystems'
@@ -77,15 +80,28 @@ function TablesList({
   oracles: GameSystemOracles
 }) {
   return (
-    <section aria-label="Oracle tables" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-semibold">Oracle tables</h2>
-        <CreateTableDialog gameSystemKey={gameSystemKey} oracles={oracles} />
+    <section aria-label="Oracle tables" className="panel">
+      <div className="panel-head">
+        <IconTile size="sm">
+          <List />
+        </IconTile>
+        <h2 className="font-heading text-panel-title">Oracle tables</h2>
+        <div className="ml-auto">
+          <CreateTableDialog gameSystemKey={gameSystemKey} oracles={oracles} />
+        </div>
       </div>
       {oracles.tables.length === 0 ? (
-        <p className="text-muted-foreground">This draft has no oracle tables yet.</p>
+        <div className="panel-body">
+          <div className="empty-state">
+            <IconTile size="sm">
+              <List />
+            </IconTile>
+            <p>This draft has no oracle tables yet.</p>
+            <p className="hint">Use New table to add one.</p>
+          </div>
+        </div>
       ) : (
-        <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+        <ul>
           {oracles.tables.map((item) => (
             <TableRow
               key={item.definition.key}
@@ -113,19 +129,17 @@ function TableRow({
   const reasonId = useId()
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+    <li className="list-row">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <Link
             to="/studio/game-systems/$key/oracle-tables/$table"
             params={{ key: gameSystemKey, table: definition.key }}
-            className="font-medium underline-offset-4 hover:underline"
+            className="list-row-title underline-offset-4 hover:underline"
           >
             {definition.name}
           </Link>
-          <span className="font-mono text-sm break-all text-muted-foreground">
-            {definition.key}
-          </span>
+          <span className="list-row-key break-all">{definition.key}</span>
           <Badge variant="secondary">
             {typeof definition.dice === 'string' ? `Ranged ${definition.dice}` : 'Weighted'}
           </Badge>
@@ -194,15 +208,15 @@ function DeleteOracleDialog<Variables>({
       }}
     >
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
+        <IconButton
+          label={`Delete ${oracleKey}`}
+          dense
+          destructive
           disabled={usedBy.length > 0}
           aria-describedby={reasonId}
-          aria-label={`Delete ${oracleKey}`}
         >
-          Delete
-        </Button>
+          <Trash2 />
+        </IconButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -255,15 +269,28 @@ function LikelihoodList({
   oracles: GameSystemOracles
 }) {
   return (
-    <section aria-label="Likelihood oracles" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-semibold">Likelihood oracles</h2>
-        <CreateLikelihoodDialog gameSystemKey={gameSystemKey} oracles={oracles} />
+    <section aria-label="Likelihood oracles" className="panel">
+      <div className="panel-head">
+        <IconTile size="sm">
+          <Eye />
+        </IconTile>
+        <h2 className="font-heading text-panel-title">Likelihood oracles</h2>
+        <div className="ml-auto">
+          <CreateLikelihoodDialog gameSystemKey={gameSystemKey} oracles={oracles} />
+        </div>
       </div>
       {oracles.likelihood.length === 0 ? (
-        <p className="text-muted-foreground">This draft has no likelihood oracles.</p>
+        <div className="panel-body">
+          <div className="empty-state">
+            <IconTile size="sm">
+              <Eye />
+            </IconTile>
+            <p>This draft has no likelihood oracles.</p>
+            <p className="hint">Use New likelihood oracle to add one.</p>
+          </div>
+        </div>
       ) : (
-        <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+        <ul>
           {oracles.likelihood.map((item) => (
             <LikelihoodRow
               key={item.definition.key}
@@ -291,19 +318,17 @@ function LikelihoodRow({
   const reasonId = useId()
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+    <li className="list-row">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <Link
             to="/studio/game-systems/$key/likelihood-oracles/$oracle"
             params={{ key: gameSystemKey, oracle: definition.key }}
-            className="font-medium underline-offset-4 hover:underline"
+            className="list-row-title underline-offset-4 hover:underline"
           >
             {definition.name}
           </Link>
-          <span className="font-mono text-sm break-all text-muted-foreground">
-            {definition.key}
-          </span>
+          <span className="list-row-key break-all">{definition.key}</span>
           <span className="text-sm text-muted-foreground">
             {definition.levels.length === 1
               ? '1 level'
@@ -398,7 +423,10 @@ function CreateOracleDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">{trigger}</Button>
+        <Button variant="outline" size="sm">
+          <Plus aria-hidden="true" />
+          {trigger}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -625,7 +653,7 @@ function CreateTableForm({
     >
       <div className="space-y-2">
         <Label htmlFor={kindId}>Kind</Label>
-        <NativeSelect
+        <Select
           id={kindId}
           value={ranged ? 'ranged' : 'weighted'}
           onChange={(event) => {
@@ -634,7 +662,7 @@ function CreateTableForm({
         >
           <option value="ranged">Ranged (rolls dice)</option>
           <option value="weighted">Weighted (entries have a weight)</option>
-        </NativeSelect>
+        </Select>
       </div>
       {ranged && (
         <div className="space-y-2">

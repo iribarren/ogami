@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useId, useMemo, useState, type SubmitEvent } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
@@ -10,6 +11,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { DieShape } from '@/shared/ui/die-shape'
+import { IconButton } from '@/shared/ui/icon-button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
 
 import type { SampleValues } from '../sheet/useSheetSamples'
@@ -178,17 +182,6 @@ function CheckList({
 
   return (
     <section aria-label="Checks" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-semibold">Checks</h2>
-        <Button
-          size="sm"
-          onClick={() => {
-            open(null, data)
-          }}
-        >
-          New check
-        </Button>
-      </div>
       {move.error && (
         <p role="alert" className="text-sm text-destructive">
           {move.error.message}
@@ -219,48 +212,75 @@ function CheckList({
           )}
         </div>
       )}
-      {data.checks.length === 0 && (
-        <p className="text-muted-foreground">This draft has no checks yet.</p>
-      )}
-      {data.checks.length > 0 && (
-        <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
-          {data.checks.map((check, index) => (
-            <CheckRow
-              key={typeof check.key === 'string' ? check.key : `#${String(index)}`}
-              gameSystemKey={gameSystemKey}
-              data={data}
-              check={check}
-              index={index}
-              selected={selected?.original === check.key}
-              busy={move.isPending}
-              onEdit={(original) => {
-                open(original, data)
-              }}
-              onMove={(target) => {
-                move.mutate(
-                  { expectedVersion: data.version, check: check.key, index: target },
-                  {
-                    onSuccess: advance,
-                    onError: (error) => {
-                      if (error instanceof StudioError && error.status === 409) {
-                        move.reset()
-                        onConflict(error.message)
-                      }
+      <div className="panel">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <DieShape sides={20} inner />
+          </IconTile>
+          <h2 className="font-heading text-panel-title">Checks</h2>
+          <Button
+            className="ml-auto"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              open(null, data)
+            }}
+          >
+            <Plus aria-hidden="true" />
+            New check
+          </Button>
+        </div>
+        {data.checks.length === 0 && (
+          <div className="panel-body">
+            <div className="empty-state">
+              <IconTile size="sm">
+                <DieShape sides={20} inner />
+              </IconTile>
+              <p>This draft has no checks yet.</p>
+              <p className="hint">Use New check to add one.</p>
+            </div>
+          </div>
+        )}
+        {data.checks.length > 0 && (
+          <ul>
+            {data.checks.map((check, index) => (
+              <CheckRow
+                key={typeof check.key === 'string' ? check.key : `#${String(index)}`}
+                gameSystemKey={gameSystemKey}
+                data={data}
+                check={check}
+                index={index}
+                selected={selected?.original === check.key}
+                busy={move.isPending}
+                onEdit={(original) => {
+                  open(original, data)
+                }}
+                onMove={(target) => {
+                  move.mutate(
+                    { expectedVersion: data.version, check: check.key, index: target },
+                    {
+                      onSuccess: advance,
+                      onError: (error) => {
+                        if (error instanceof StudioError && error.status === 409) {
+                          move.reset()
+                          onConflict(error.message)
+                        }
+                      },
                     },
-                  },
-                )
-              }}
-              onDeleted={(result) => {
-                if (selected?.original === check.key) {
-                  setSelected(null)
-                } else {
-                  advance(result)
-                }
-              }}
-            />
-          ))}
-        </ul>
-      )}
+                  )
+                }}
+                onDeleted={(result) => {
+                  if (selected?.original === check.key) {
+                    setSelected(null)
+                  } else {
+                    advance(result)
+                  }
+                }}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
       {selected !== null && (
         <CheckEditor
           key={selected.opened}
@@ -311,49 +331,43 @@ function CheckRow({
   const editable = readCheck(check) !== null
 
   return (
-    <li
-      aria-current={selected ? 'true' : undefined}
-      className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 aria-[current=true]:bg-muted/50"
-    >
-      <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-medium">{typeof label === 'string' ? label : key}</span>
-        <span className="font-mono text-sm break-all text-muted-foreground">{key}</span>
+    <li aria-current={selected ? 'true' : undefined} className="list-row">
+      <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="list-row-title">{typeof label === 'string' ? label : key}</span>
+        <span className="list-row-key break-all">{key}</span>
         <Badge variant="secondary">{typeof dice === 'string' ? dice : 'no dice'}</Badge>
         {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
       </p>
-      <Button
-        variant="outline"
-        size="sm"
-        aria-label={`Edit ${key}`}
+      <IconButton
+        label={`Edit ${key}`}
+        dense
         disabled={!editable}
         onClick={() => {
           onEdit(key)
         }}
       >
-        Edit
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        aria-label={`Move up ${key}`}
+        <Pencil />
+      </IconButton>
+      <IconButton
+        label={`Move up ${key}`}
+        dense
         disabled={index === 0 || busy}
         onClick={() => {
           onMove(index - 1)
         }}
       >
-        Move up
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        aria-label={`Move down ${key}`}
+        <ArrowUp />
+      </IconButton>
+      <IconButton
+        label={`Move down ${key}`}
+        dense
         disabled={index === data.checks.length - 1 || busy}
         onClick={() => {
           onMove(index + 1)
         }}
       >
-        Move down
-      </Button>
+        <ArrowDown />
+      </IconButton>
       <DeleteCheckDialog
         gameSystemKey={gameSystemKey}
         checkKey={key}
@@ -392,9 +406,9 @@ function DeleteCheckDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={`Delete ${checkKey}`}>
-          Delete
-        </Button>
+        <IconButton label={`Delete ${checkKey}`} dense destructive>
+          <Trash2 />
+        </IconButton>
       </DialogTrigger>
       <DialogContent aria-describedby={reasonId}>
         <DialogHeader>

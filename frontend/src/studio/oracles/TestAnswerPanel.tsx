@@ -3,7 +3,7 @@ import { useId, useState } from 'react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 
 import type { LevelDraft } from './likelihoodDraft'
 import { parseInteger } from './tableDraft'
@@ -104,7 +104,7 @@ export function TestAnswerPanel({
       </p>
       <div className="space-y-2">
         <Label htmlFor={levelId}>Likelihood</Label>
-        <NativeSelect
+        <Select
           id={levelId}
           value={level}
           onChange={(event) => {
@@ -116,7 +116,7 @@ export function TestAnswerPanel({
               {label} ({key})
             </option>
           ))}
-        </NativeSelect>
+        </Select>
       </div>
       {chaos !== null && (
         <div className="space-y-2">

@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from '@/shared/ui/dialog'
 import { Label } from '@/shared/ui/label'
-import { NativeSelect } from '@/shared/ui/native-select'
+import { Select } from '@/shared/ui/select'
 import type { SheetFieldView } from '@/shared/sheet/types'
 
 import { TextField } from '../narrative/TextField'
@@ -450,7 +450,7 @@ export function SelectField({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <NativeSelect
+      <Select
         id={id}
         value={value}
         aria-invalid={error !== undefined}
@@ -463,7 +463,7 @@ export function SelectField({
             {option.label}
           </option>
         ))}
-      </NativeSelect>
+      </Select>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )

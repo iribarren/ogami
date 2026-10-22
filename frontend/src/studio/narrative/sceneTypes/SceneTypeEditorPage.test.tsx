@@ -94,7 +94,13 @@ describe('the Scene Type editor', () => {
   })
 
   it('still shows the editor, without the rail, while the GameSystem is unavailable', async () => {
-    await openEditor('ambush', { [`GET ${base}`]: json({ error: 'Nope.' }, 500) })
+    const { fakeApi } = await openEditor('ambush', {
+      [`GET ${base}`]: json({ error: 'Nope.' }, 500),
+    })
+    // The 500 has to come back before the rail is judged absent.
+    await waitFor(() => {
+      expect(fakeApi.requests).toContain(`GET ${base}`)
+    })
 
     expect(screen.getByText('my-draft · Scene Type')).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'GameSystem page' })).not.toBeInTheDocument()

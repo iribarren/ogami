@@ -6,6 +6,7 @@ import { formulaDiagnostics } from './formulaDiagnostics'
 import { FormulaInput } from './FormulaInput'
 import { sheet } from '../fixtures'
 import type { SheetFieldView } from '@/shared/sheet/types'
+import { chooseOption } from '@/test/chooseOption'
 
 const view = (key: string, label: string, type: SheetFieldView['type']): SheetFieldView => ({
   key,
@@ -68,7 +69,7 @@ export const Valid: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Value with the sample values: 8')).toBeVisible()
-    await userEvent.selectOptions(canvas.getByLabelText('Insert reference'), 'tracker:heat')
+    await chooseOption(userEvent.setup(), 'Insert reference', 'tracker:heat', canvas)
     await expect(canvas.getByLabelText('Formula')).toHaveValue('{pow} + 1{tracker:heat}')
   },
 }

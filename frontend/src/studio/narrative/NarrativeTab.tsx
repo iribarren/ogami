@@ -1,3 +1,4 @@
+import { Gauge, Pencil, Plus, ScrollText, Tag, Trash2 } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
@@ -10,6 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { IconButton } from '@/shared/ui/icon-button'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { StudioError } from '../useGameSystems'
 import { ItemDialog, type ItemForm } from './ItemDialog'
@@ -43,11 +46,12 @@ function NarrativeSections({
   data: GameSystemNarrative
 }) {
   return (
-    <section aria-label="Trackers & tags" className="space-y-8">
+    <section aria-label="Trackers & tags" className="space-y-6">
       <ItemSection
         gameSystemKey={gameSystemKey}
         narrative={data}
         title="Trackers"
+        icon={<Gauge />}
         items={data.trackers}
         form={trackerForm}
         titleField="name"
@@ -67,26 +71,30 @@ function NarrativeSections({
           </>
         )}
       />
-      <ItemSection
-        gameSystemKey={gameSystemKey}
-        narrative={data}
-        title="Tags"
-        items={data.tags}
-        form={tagForm}
-        titleField="label"
-        empty="This draft has no tags yet."
-        summary={() => null}
-      />
-      <ItemSection
-        gameSystemKey={gameSystemKey}
-        narrative={data}
-        title="Fact slots"
-        items={data.factSlots}
-        form={factSlotForm}
-        titleField="label"
-        empty="This draft has no fact slots yet."
-        summary={(draft: LabelledDraft) => <Badge variant="secondary">{draft.type}</Badge>}
-      />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ItemSection
+          gameSystemKey={gameSystemKey}
+          narrative={data}
+          title="Tags"
+          icon={<Tag />}
+          items={data.tags}
+          form={tagForm}
+          titleField="label"
+          empty="This draft has no tags yet."
+          summary={() => null}
+        />
+        <ItemSection
+          gameSystemKey={gameSystemKey}
+          narrative={data}
+          title="Fact slots"
+          icon={<ScrollText />}
+          items={data.factSlots}
+          form={factSlotForm}
+          titleField="label"
+          empty="This draft has no fact slots yet."
+          summary={(draft: LabelledDraft) => <Badge variant="secondary">{draft.type}</Badge>}
+        />
+      </div>
     </section>
   )
 }
@@ -95,6 +103,7 @@ function ItemSection<Draft>({
   gameSystemKey,
   narrative,
   title,
+  icon,
   items,
   form,
   titleField,
@@ -104,6 +113,7 @@ function ItemSection<Draft>({
   gameSystemKey: string
   narrative: GameSystemNarrative
   title: string
+  icon: ReactNode
   items: NarrativeItem[]
   form: ItemForm<Draft>
   /** The stored field that names the item in its row. */
@@ -112,22 +122,36 @@ function ItemSection<Draft>({
   summary: (draft: Draft) => ReactNode
 }) {
   return (
-    <section aria-label={title} className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-semibold">{title}</h2>
-        <ItemDialog
-          gameSystemKey={gameSystemKey}
-          form={form}
-          version={narrative.version}
-          original={null}
-          initial={form.blank()}
-          trigger={<Button size="sm">New {form.noun}</Button>}
-        />
+    <section aria-label={title} className="self-start panel">
+      <div className="panel-head">
+        <IconTile size="sm">{icon}</IconTile>
+        <h2 className="font-heading text-panel-title">{title}</h2>
+        <div className="ml-auto">
+          <ItemDialog
+            gameSystemKey={gameSystemKey}
+            form={form}
+            version={narrative.version}
+            original={null}
+            initial={form.blank()}
+            trigger={
+              <Button variant="outline" size="sm">
+                <Plus aria-hidden="true" />
+                New {form.noun}
+              </Button>
+            }
+          />
+        </div>
       </div>
       {items.length === 0 ? (
-        <p className="text-muted-foreground">{empty}</p>
+        <div className="panel-body">
+          <div className="empty-state">
+            <IconTile size="sm">{icon}</IconTile>
+            <p>{empty}</p>
+            <p className="hint">Use New {form.noun} to add one.</p>
+          </div>
+        </div>
       ) : (
-        <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+        <ul>
           {items.map((item) => (
             <ItemRow
               key={item.key}
@@ -173,11 +197,11 @@ function ItemRow<Draft>({
   const title = item.definition[titleField]
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+    <li className="list-row">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-medium">{typeof title === 'string' ? title : item.key}</span>
-          <span className="font-mono text-sm break-all text-muted-foreground">{item.key}</span>
+          <span className="list-row-title">{typeof title === 'string' ? title : item.key}</span>
+          <span className="list-row-key break-all">{item.key}</span>
           {draft === null ? (
             <Badge variant="outline">Can&apos;t be edited here</Badge>
           ) : (
@@ -203,14 +227,9 @@ function ItemRow<Draft>({
         original={item.key}
         initial={draft ?? form.blank()}
         trigger={
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={draft === null}
-            aria-label={`Edit ${item.key}`}
-          >
-            Edit
-          </Button>
+          <IconButton label={`Edit ${item.key}`} dense disabled={draft === null}>
+            <Pencil />
+          </IconButton>
         }
       />
       <DeleteItemDialog
@@ -259,15 +278,15 @@ export function DeleteItemDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
+        <IconButton
+          label={`Delete ${itemKey}`}
+          dense
+          destructive
           disabled={usedBy.length > 0}
           aria-describedby={reasonId}
-          aria-label={`Delete ${itemKey}`}
         >
-          Delete
-        </Button>
+          <Trash2 />
+        </IconButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

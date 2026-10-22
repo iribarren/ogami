@@ -1,7 +1,10 @@
-import { useState, type SubmitEvent } from 'react'
+import { useId, useState, type SubmitEvent } from 'react'
+import { BookOpen, List, RotateCcw } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 
+import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { StudioError } from '../../useGameSystems'
 import { TextField } from '../TextField'
@@ -42,6 +45,7 @@ export function SceneTypeEditor({
   initial: SceneTypeDraft
   version: number
 }) {
+  const id = useId()
   const [draft, setDraft] = useState(initial)
   const [readAt, setReadAt] = useState(version)
   const [current, setCurrent] = useState(original)
@@ -135,97 +139,119 @@ export function SceneTypeEditor({
         void submit(event)
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="Key"
-          keyField
-          value={draft.key}
-          help="Renaming a Scene Type the draft uses is refused."
-          error={answer.fields.key}
-          onChange={(key) => {
-            setDraft({ ...draft, key })
-          }}
-        />
-        <TextField
-          label="Name"
-          value={draft.name}
-          error={answer.fields.name}
-          onChange={(name) => {
-            setDraft({ ...draft, name })
-          }}
-        />
-      </div>
-      <Area
-        label="Purpose"
-        value={draft.purpose}
-        error={answer.fields.purpose}
-        onChange={(purpose) => {
-          setDraft({ ...draft, purpose })
-        }}
-      />
-      <Area
-        label="Tips"
-        value={draft.tips}
-        error={answer.fields.tips}
-        onChange={(tips) => {
-          setDraft({ ...draft, tips })
-        }}
-      />
-      <div className="space-y-1">
-        <CheckList
-          legend="Oracle shortcuts"
-          options={options}
-          value={draft.oracles}
-          onChange={(oracles) => {
-            setDraft({ ...draft, oracles })
-          }}
-        />
-        {answer.fields.oracles && (
-          <p className="text-sm text-destructive">{answer.fields.oracles}</p>
-        )}
-      </div>
-      {scenePartNames.map((part) => (
-        <section
-          key={`${part}-${String(generation)}`}
-          aria-label={partTitles[part]}
-          className="space-y-3"
-        >
-          <h2 className="font-heading text-lg font-semibold">{partTitles[part]}</h2>
-          <StepListEditor
-            steps={draft.steps[part]}
-            context={context}
-            errors={answer.lists[part]}
-            onChange={(steps) => {
-              setDraft({ ...draft, steps: { ...draft.steps, [part]: steps } })
+      <section aria-labelledby={`${id}-details`} className="panel">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <BookOpen />
+          </IconTile>
+          <h2 id={`${id}-details`} className="font-heading text-panel-title font-semibold">
+            Details
+          </h2>
+        </div>
+        <div className="grid gap-4 panel-body sm:grid-cols-2">
+          <TextField
+            label="Key"
+            keyField
+            value={draft.key}
+            help="Renaming a Scene Type the draft uses is refused."
+            error={answer.fields.key}
+            onChange={(key) => {
+              setDraft({ ...draft, key })
             }}
           />
-        </section>
-      ))}
-      {answer.page !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {answer.page}
-        </p>
-      )}
-      {reloadNote !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {reloadNote}
-        </p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={save.isPending}>
-          Save
-        </Button>
-        {answer.conflict && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              void reload()
+          <TextField
+            label="Name"
+            value={draft.name}
+            error={answer.fields.name}
+            onChange={(name) => {
+              setDraft({ ...draft, name })
             }}
-          >
-            Reload the latest version
+          />
+          <Area
+            label="Purpose"
+            value={draft.purpose}
+            error={answer.fields.purpose}
+            onChange={(purpose) => {
+              setDraft({ ...draft, purpose })
+            }}
+          />
+          <Area
+            label="Tips"
+            value={draft.tips}
+            error={answer.fields.tips}
+            onChange={(tips) => {
+              setDraft({ ...draft, tips })
+            }}
+          />
+          <div className="sm:col-span-2">
+            <CheckList
+              legend="Oracle shortcuts"
+              variant="pills"
+              options={options}
+              value={draft.oracles}
+              error={answer.fields.oracles}
+              onChange={(oracles) => {
+                setDraft({ ...draft, oracles })
+              }}
+            />
+          </div>
+        </div>
+      </section>
+      <section aria-labelledby={`${id}-steps`} className="panel">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <List />
+          </IconTile>
+          <h2 id={`${id}-steps`} className="font-heading text-panel-title font-semibold">
+            Steps
+          </h2>
+        </div>
+        <div className="space-y-6 panel-body">
+          {scenePartNames.map((part) => (
+            <section
+              key={`${part}-${String(generation)}`}
+              aria-label={partTitles[part]}
+              aria-describedby={`${id}-${part}-count`}
+              className="space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <h3 className="group-label">{partTitles[part]}</h3>
+                <span id={`${id}-${part}-count`} className="count-pill">
+                  {draft.steps[part].length}
+                </span>
+              </div>
+              <StepListEditor
+                steps={draft.steps[part]}
+                context={context}
+                errors={answer.lists[part]}
+                onChange={(steps) => {
+                  setDraft({ ...draft, steps: { ...draft.steps, [part]: steps } })
+                }}
+              />
+            </section>
+          ))}
+        </div>
+      </section>
+      {answer.page !== null && <Alert role="alert">{answer.page}</Alert>}
+      {reloadNote !== null && <Alert role="alert">{reloadNote}</Alert>}
+      <div className="panel">
+        <div className="action-bar">
+          {answer.conflict && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void reload()
+              }}
+            >
+              <RotateCcw aria-hidden="true" />
+              Reload the latest version
+            </Button>
+          )}
+          <Button type="submit" disabled={save.isPending}>
+            Save
           </Button>
-        )}
+        </div>
       </div>
     </form>
   )

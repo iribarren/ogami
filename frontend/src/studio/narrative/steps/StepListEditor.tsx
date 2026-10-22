@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
@@ -16,6 +24,7 @@ import { CheckFields, PickFields } from './PickCheckFields'
 import { EffectsEditor } from './EffectsEditor'
 import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
+import { StepKindTile } from './stepKindTile'
 import {
   bandForms,
   checkDifficulty,
@@ -53,6 +62,9 @@ function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
   }
   return problems
 }
+
+/** The simple fields of an open step sit two to a row; areas and nested editors span both. */
+const wide = 'sm:col-span-2'
 
 function StepFields({
   step,
@@ -140,7 +152,7 @@ function StepFields({
   }
 
   return (
-    <div className="space-y-3 pt-3">
+    <div className="grid gap-3 pt-3 sm:grid-cols-2">
       <TextField
         label="Key"
         keyField
@@ -158,23 +170,27 @@ function StepFields({
           onChange({ ...step, title })
         }}
       />
-      <Area
-        label="Prompt"
-        value={step.prompt}
-        error={fieldError('prompt')}
-        help={step.kind === 'prompt' || step.kind === 'choice' ? answerHint : undefined}
-        onChange={(prompt) => {
-          onChange({ ...step, prompt })
-        }}
-      />
-      <Area
-        label="Tip"
-        value={step.tip}
-        error={fieldError('tip')}
-        onChange={(tip) => {
-          onChange({ ...step, tip })
-        }}
-      />
+      <div className={wide}>
+        <Area
+          label="Prompt"
+          value={step.prompt}
+          error={fieldError('prompt')}
+          help={step.kind === 'prompt' || step.kind === 'choice' ? answerHint : undefined}
+          onChange={(prompt) => {
+            onChange({ ...step, prompt })
+          }}
+        />
+      </div>
+      <div className={wide}>
+        <Area
+          label="Tip"
+          value={step.tip}
+          error={fieldError('tip')}
+          onChange={(tip) => {
+            onChange({ ...step, tip })
+          }}
+        />
+      </div>
       {step.kind !== 'condition' && (
         <SegmentedControl
           aria-label="Requirement"
@@ -197,14 +213,16 @@ function StepFields({
         }}
       />
       {step.kind === 'prompt' && (
-        <CheckList
-          legend="Inspiration tables"
-          options={context.tables}
-          value={step.inspiration}
-          onChange={(inspiration) => {
-            onChange({ ...step, inspiration })
-          }}
-        />
+        <div className={wide}>
+          <CheckList
+            legend="Inspiration tables"
+            options={context.tables}
+            value={step.inspiration}
+            onChange={(inspiration) => {
+              onChange({ ...step, inspiration })
+            }}
+          />
+        </div>
       )}
       {step.kind === 'roll' && (
         <TextField
@@ -267,54 +285,80 @@ function StepFields({
                   </option>
                 ))}
               </Select>
-              <CheckList
-                legend="Tags"
-                options={context.tags}
-                value={step.tags}
-                onChange={(tags) => {
-                  onChange({ ...step, tags })
-                }}
-              />
+              <div className={wide}>
+                <CheckList
+                  legend="Tags"
+                  options={context.tags}
+                  value={step.tags}
+                  onChange={(tags) => {
+                    onChange({ ...step, tags })
+                  }}
+                />
+              </div>
             </>
           )}
         </>
       )}
-      {step.kind === 'oracle' && <OracleFields step={step} {...kindProps} />}
-      {step.kind === 'table' && <TableFields step={step} {...kindProps} />}
-      {step.kind === 'choice' && <ChoiceFields step={step} {...kindProps} />}
-      {step.kind === 'pick' && <PickFields step={step} {...kindProps} />}
-      {step.kind === 'check' && <CheckFields step={step} {...kindProps} />}
+      {step.kind === 'oracle' && (
+        <div className={wide}>
+          <OracleFields step={step} {...kindProps} />
+        </div>
+      )}
+      {step.kind === 'table' && (
+        <div className={wide}>
+          <TableFields step={step} {...kindProps} />
+        </div>
+      )}
+      {step.kind === 'choice' && (
+        <div className={wide}>
+          <ChoiceFields step={step} {...kindProps} />
+        </div>
+      )}
+      {step.kind === 'pick' && (
+        <div className={wide}>
+          <PickFields step={step} {...kindProps} />
+        </div>
+      )}
+      {step.kind === 'check' && (
+        <div className={wide}>
+          <CheckFields step={step} {...kindProps} />
+        </div>
+      )}
       {(step.kind === 'roll' || step.kind === 'condition') && (
-        <BandsEditor
-          bands={step.bands}
-          forms={bandForms}
+        <div className={wide}>
+          <BandsEditor
+            bands={step.bands}
+            forms={bandForms}
+            context={context}
+            laterKeys={laterKeys}
+            problems={bandProblems(guide, mine)}
+            effectErrors={mine.filter((error) => error.band !== null && aboutEffects(error))}
+            onChange={setBands}
+            onRestructure={onInnerRestructure}
+          />
+        </div>
+      )}
+      <div className={wide}>
+        <EffectsEditor
+          label="Effects"
+          effects={step.effects}
           context={context}
-          laterKeys={laterKeys}
-          problems={bandProblems(guide, mine)}
-          effectErrors={mine.filter((error) => error.band !== null && aboutEffects(error))}
-          onChange={setBands}
+          allowSheet={step.kind === 'character'}
+          errors={mine.filter(
+            (error) =>
+              error.band === null &&
+              error.slot === undefined &&
+              error.item === undefined &&
+              aboutEffects(error),
+          )}
+          onChange={(effects) => {
+            onChange({ ...step, effects })
+          }}
           onRestructure={onInnerRestructure}
         />
-      )}
-      <EffectsEditor
-        label="Effects"
-        effects={step.effects}
-        context={context}
-        allowSheet={step.kind === 'character'}
-        errors={mine.filter(
-          (error) =>
-            error.band === null &&
-            error.slot === undefined &&
-            error.item === undefined &&
-            aboutEffects(error),
-        )}
-        onChange={(effects) => {
-          onChange({ ...step, effects })
-        }}
-        onRestructure={onInnerRestructure}
-      />
+      </div>
       {loose.map((error, at) => (
-        <p key={at} role="alert" className="text-sm text-destructive">
+        <p key={at} role="alert" className={`${wide} text-sm text-destructive`}>
           {error.field === null ? error.message : `${error.field}: ${error.message}`}
         </p>
       ))}
@@ -322,11 +366,28 @@ function StepFields({
   )
 }
 
+/** The name of the check, table or oracle a step is bound to; the key when it is gone, '' when none is picked. */
+function boundName(step: EditedStep, context: StepContext): string {
+  const named = (items: { key: string; name: string }[], key: string) =>
+    key === '' ? '' : (items.find((item) => item.key === key)?.name ?? key)
+  switch (step.kind) {
+    case 'check':
+      return named(context.checks, step.check)
+    case 'table':
+      return named(context.tables, step.table)
+    case 'oracle':
+      return named([...context.likelihood, ...context.tables], step.oracle)
+    default:
+      return ''
+  }
+}
+
 function StepCard({
   step,
   index,
   total,
   current,
+  answer,
   guide,
   mine,
   context,
@@ -341,6 +402,8 @@ function StepCard({
   index: number
   total: number
   current: boolean
+  /** The list's `errors` array: a new one is a new answer from the server. */
+  answer: StepError[]
   guide: StepGuide
   mine: StepError[]
   context: StepContext
@@ -353,6 +416,24 @@ function StepCard({
 }) {
   const number = String(index + 1)
   const card = useRef<HTMLLIElement>(null)
+  // A card the person closed opens again when the step becomes the current one, or when a new
+  // answer from the server has messages for it, so what the outline or "Go to the first" points
+  // at is never hidden. The same answer on a later render does not reopen it.
+  const [open, setOpen] = useState(true)
+  const [wasCurrent, setWasCurrent] = useState(current)
+  const [seenAnswer, setSeenAnswer] = useState(answer)
+  if (wasCurrent !== current) {
+    setWasCurrent(current)
+    if (current) {
+      setOpen(true)
+    }
+  }
+  if (seenAnswer !== answer) {
+    setSeenAnswer(answer)
+    if (mine.length > 0) {
+      setOpen(true)
+    }
+  }
   // The step the outline selected comes into view.
   useEffect(() => {
     if (current) {
@@ -365,48 +446,41 @@ function StepCard({
   const kind =
     step.kind === 'stored' ? (typeof record.kind === 'string' ? record.kind : 'unknown') : step.kind
   const title = step.kind === 'stored' ? record.title : step.title
+  const bound = step.kind === 'stored' ? '' : boundName(step, context)
   const header = (
     <>
-      <span className="font-mono">{stepKey(step) || '(no key)'}</span>
-      <Badge variant="outline">{kind}</Badge>
-      <span>{typeof title === 'string' ? title : ''}</span>
+      <StepKindTile kind={kind} />
+      <span className="min-w-0 flex-1">
+        <span className="block list-row-title">{typeof title === 'string' ? title : ''}</span>
+        <span className="block list-row-key">{stepKey(step) || '(no key)'}</span>
+      </span>
+      <Badge variant="secondary">{kind}</Badge>
+      {bound !== '' && <Badge variant="outline">{bound}</Badge>}
     </>
   )
   const controls = (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
+    <div className="flex shrink-0 gap-1">
+      <IconButton
+        label={`Move step ${number} up`}
         disabled={index === 0}
-        aria-label={`Move step ${number} up`}
         onClick={() => {
           onMove(-1)
         }}
       >
-        Up
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
+        <ChevronUp />
+      </IconButton>
+      <IconButton
+        label={`Move step ${number} down`}
         disabled={index === total - 1}
-        aria-label={`Move step ${number} down`}
         onClick={() => {
           onMove(1)
         }}
       >
-        Down
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        aria-label={`Delete step ${number}`}
-        onClick={onDelete}
-      >
-        Delete
-      </Button>
+        <ChevronDown />
+      </IconButton>
+      <IconButton label={`Delete step ${number}`} destructive onClick={onDelete}>
+        <Trash2 />
+      </IconButton>
     </div>
   )
 
@@ -416,25 +490,31 @@ function StepCard({
       role="group"
       aria-label={`Step ${number}`}
       aria-current={current ? 'true' : undefined}
-      className="rounded-xl p-3 ring-1 ring-foreground/10 aria-[current=true]:ring-2 aria-[current=true]:ring-primary/55"
+      className="rounded-xl ring-1 ring-foreground/10 aria-[current=true]:ring-2 aria-[current=true]:ring-primary/55"
     >
       {step.kind === 'stored' ? (
-        <div className="space-y-2">
-          <p className="flex flex-wrap items-center gap-2 text-sm">{header}</p>
-          <p className="text-sm text-muted-foreground">
+        <div className="space-y-2 p-2">
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 py-1 pl-2 text-sm">{header}</div>
+            {controls}
+          </div>
+          <p className="px-2 text-sm text-muted-foreground">
             This step has a kind or shape this editor cannot edit yet; it is kept as it is.
           </p>
-          {controls}
         </div>
       ) : (
-        <Collapsible defaultOpen>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CollapsibleTrigger className="flex flex-wrap items-center gap-2 text-left text-sm font-medium">
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <div className="flex items-center gap-2 p-2">
+            <CollapsibleTrigger className="group/disclosure flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1 pl-2 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+              <ChevronDown
+                aria-hidden="true"
+                className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=closed]/disclosure:-rotate-90"
+              />
               {header}
             </CollapsibleTrigger>
             {controls}
           </div>
-          <CollapsibleContent>
+          <CollapsibleContent className="border-t border-border px-3 pb-3">
             <AnswerHint value={step.kind === 'prompt' || step.kind === 'choice'}>
               <StepFields
                 step={step}
@@ -457,7 +537,7 @@ function StepCard({
 const noErrors: StepError[] = []
 
 /**
- * An ordered list of step cards, edited in place: add (the kind is chosen first), delete, move.
+ * An ordered list of step items, edited in place: add (from a menu of the kinds), delete, move.
  * Controlled: `steps` and `onChange`. `errors` are the server's messages for this list, already
  * mapped by `mapStepError`; the cards flag a backward `next` before any save. A new `errors` array
  * is a new answer from the server (keep it in state, do not rebuild it on every render): its
@@ -478,7 +558,6 @@ export function StepListEditor({
   current?: number
   onChange: (steps: StepDraft[]) => void
 }) {
-  const [kind, setKind] = useState<StepKind>('prompt')
   // The position each step had when `errors` arrived (null: added since), and the steps whose band
   // messages about bands or effects no longer line up because those moved or went.
   const [answered, setAnswered] = useState(errors)
@@ -534,6 +613,7 @@ export function StepListEditor({
               index={index}
               total={steps.length}
               current={current === index}
+              answer={errors}
               guide={guides[index] ?? { bands: {}, nexts: {}, items: {} }}
               mine={messagesOf(index)}
               context={context}
@@ -571,32 +651,28 @@ export function StepListEditor({
           ))}
         </ol>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select
-          aria-label="New step kind"
-          value={kind}
-          onChange={(event) => {
-            setKind(event.target.value as StepKind)
-          }}
-        >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="sm">
+            <Plus aria-hidden="true" />
+            Add step
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
           {stepKinds.map((option) => (
-            <option key={option} value={option}>
+            <DropdownMenuItem
+              key={option}
+              onSelect={() => {
+                setOrigin([...origins, null])
+                onChange([...steps, newStep(option, steps)])
+              }}
+            >
+              <StepKindTile kind={option} />
               {option}
-            </option>
+            </DropdownMenuItem>
           ))}
-        </Select>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setOrigin([...origins, null])
-            onChange([...steps, newStep(kind, steps)])
-          }}
-        >
-          Add step
-        </Button>
-      </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 
 import {
@@ -11,7 +11,7 @@ import {
   stepPickers,
 } from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
-import { stepsToDrafts, stepsToItems } from './stepDraft'
+import { stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
 import { clientStepErrors, mapStepError, type StepError } from './stepError'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 
@@ -55,6 +55,130 @@ function Saver({ stored }: { stored: unknown[] }) {
 const card = (number: number) =>
   within(screen.getByRole('group', { name: `Step ${String(number)}` }))
 
+/** Opens the Add step menu and picks a kind, the way a person does. */
+async function addStep(user: UserEvent, kind = 'prompt') {
+  await user.click(screen.getByRole('button', { name: 'Add step' }))
+  await user.click(await screen.findByRole('menuitem', { name: kind }))
+}
+
+describe('the step items', () => {
+  /** The badges of a step's item: the first button of the card is its disclosure. */
+  const badges = (number: number) => {
+    const toggle = card(number).getAllByRole('button')[0]
+    if (!toggle) {
+      throw new Error(`No disclosure on step ${String(number)}.`)
+    }
+    return within(toggle).queryAllByText(/./, { selector: '[data-slot="badge"]' })
+  }
+  const badge = (number: number, text: string) =>
+    badges(number).find((item) => item.textContent === text)
+
+  it('names the table, oracle or check a step is bound to, and nothing for the others', () => {
+    render(<Harness stored={[...stepListBranching, ...stepListPickCheck]} />)
+
+    expect(badge(1, 'oracle')).toBeDefined()
+    expect(badge(1, 'Fate')).toBeDefined()
+    expect(badge(2, 'Complications')).toBeDefined()
+    expect(badge(5, 'Skill check')).toBeDefined()
+    // A choice and a pick are bound to nothing: only their kind shows.
+    expect(badges(3)).toHaveLength(1)
+    expect(badges(4)).toHaveLength(1)
+  })
+
+  it('shows the key when a bound name is gone, and nothing while none is picked', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={[{ ...stepListBranching[1], table: 'vanished' }]} />)
+
+    expect(badge(1, 'vanished')).toBeDefined()
+    await addStep(user, 'table')
+    expect(badges(2)).toHaveLength(1)
+  })
+
+  it('opens a collapsed card for a new answer with messages, but not again for the same one', async () => {
+    const user = userEvent.setup()
+    const first = [mapStepError('sceneTypes[0].setup', 'sceneTypes[0].setup[0].title: nope')]
+    function Answers() {
+      const [answer, setAnswer] = useState<StepError[]>([])
+      const [steps, setSteps] = useState(() => stepsToDrafts([stepList[0]]))
+      return (
+        <>
+          <StepListEditor steps={steps} context={stepPickers} errors={answer} onChange={setSteps} />
+          <button
+            type="button"
+            onClick={() => {
+              setAnswer(first)
+            }}
+          >
+            Refuse
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAnswer([])
+            }}
+          >
+            Accept
+          </button>
+        </>
+      )
+    }
+    render(<Answers />)
+    await user.click(card(1).getByRole('button', { name: /^Set the scene/ }))
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Refuse' }))
+    expect(card(1).getByLabelText('Title')).toBeInTheDocument()
+
+    // The person can close a card that has errors; a re-render with the same answer keeps it closed.
+    await user.click(card(1).getByRole('button', { name: /^Set the scene/ }))
+    await user.type(screen.getByRole('button', { name: 'Refuse' }), '{Enter}')
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+
+    // An answer with no messages opens nothing.
+    await user.click(screen.getByRole('button', { name: 'Accept' }))
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+  })
+
+  it('shows the title with the key and the kind, behind a disclosure that closes the fields', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={[stepList[0]]} />)
+
+    const toggle = card(1).getByRole('button', { name: /^Set the scene/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(toggle).toHaveTextContent('intro')
+    expect(toggle).toHaveTextContent('prompt')
+    await user.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+  })
+
+  it('offers every kind in the Add step menu, each with its tile', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={[]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Add step' }))
+
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual([...stepKinds])
+    for (const item of items) {
+      expect(item.querySelector('[aria-hidden="true"] svg')).not.toBeNull()
+    }
+    // The old kind select is gone.
+    expect(screen.queryByRole('combobox', { name: 'New step kind' })).not.toBeInTheDocument()
+  })
+
+  it('moves a step with icon buttons that keep their names and show them as tooltips', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={[stepList[0], stepList[3]]} />)
+
+    const down = screen.getByRole('button', { name: 'Move step 1 down' })
+    expect(down.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    await user.hover(down)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Move step 1 down')
+  })
+})
+
 describe('the step list editor', () => {
   it('gives an untouched list back exactly as it was stored', () => {
     render(<Harness stored={stepList} />)
@@ -84,8 +208,7 @@ describe('the step list editor', () => {
     const user = userEvent.setup()
     render(<Harness stored={[stepList[3]]} />)
 
-    await chooseOption(user, 'New step kind', 'roll')
-    await user.click(screen.getByRole('button', { name: 'Add step' }))
+    await addStep(user, 'roll')
     expect(card(2).getByLabelText('Key')).toHaveValue('roll-1')
     await user.click(screen.getByRole('button', { name: 'Move step 2 up' }))
     expect(card(1).getByLabelText('Key')).toHaveValue('roll-1')
@@ -389,7 +512,7 @@ describe('the step list editor', () => {
       const first = within(card(3).getByRole('group', { name: 'Band 1' }))
       expect(first.getByText('must be an integer')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Add step' }))
+      await addStep(user)
       await user.click(card(3).getByRole('button', { name: 'Move band 1 down' }))
 
       expect(screen.queryByText('must be an integer')).not.toBeInTheDocument()
@@ -688,8 +811,7 @@ describe('the step list editor', () => {
       const user = userEvent.setup()
       render(<Harness stored={[]} />)
 
-      await chooseOption(user, 'New step kind', 'choice')
-      await user.click(screen.getByRole('button', { name: 'Add step' }))
+      await addStep(user, 'choice')
       expect(card(1).getByLabelText('Skip')).toHaveValue('')
       expect(
         card(1)
@@ -1175,8 +1297,7 @@ describe('the step list editor', () => {
       render(<Harness stored={[]} />)
 
       for (const kind of ['pick', 'check']) {
-        await chooseOption(user, 'New step kind', kind)
-        await user.click(screen.getByRole('button', { name: 'Add step' }))
+        await addStep(user, kind)
       }
 
       expect(saved(0)).toMatchObject({ key: 'pick-1', kind: 'pick', of: 'npc', mode: 'random' })

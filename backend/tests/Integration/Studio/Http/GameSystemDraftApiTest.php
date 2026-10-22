@@ -648,7 +648,7 @@ final class GameSystemDraftApiTest extends WebTestCase
     }
 
     #[Test]
-    public function aValidDraftReportsItsWarningsAndAnInvalidOneItsFirstError(): void
+    public function aValidDraftReportsItsWarningsAndAnInvalidOneEveryError(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
         $this->createDraft('mine');
@@ -658,7 +658,7 @@ final class GameSystemDraftApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $valid = $this->json();
         self::assertTrue($valid['valid']);
-        self::assertNull($valid['error']);
+        self::assertSame([], $valid['errors']);
         self::assertIsArray($valid['warnings']);
 
         $repository = self::getContainer()->get(GameSystemRepository::class);
@@ -673,9 +673,36 @@ final class GameSystemDraftApiTest extends WebTestCase
         $invalid = $this->json();
         self::assertFalse($invalid['valid']);
         self::assertSame([], $invalid['warnings']);
-        self::assertIsArray($invalid['error']);
-        self::assertIsString($invalid['error']['message']);
-        self::assertStringStartsWith('oracles: ', $invalid['error']['message']);
+        self::assertSame([['path' => 'oracles', 'message' => 'required']], $invalid['errors']);
+    }
+
+    #[Test]
+    public function anInvalidDraftWithSeveralErrorsListsThemAllInTheOrderPublishingMeetsThem(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('mine');
+        $document = ReleaseArrays::fixture('valid/v2-contract-doc-example');
+        $document = ReleaseArrays::with($document, 'trackers.0.name', '');
+        $document = ReleaseArrays::with($document, 'factSlots.0.label', '');
+        $document = ReleaseArrays::with($document, 'theme', 'pastel');
+        $repository = self::getContainer()->get(GameSystemRepository::class);
+        $draft = $repository->ofKey('mine');
+        self::assertNotNull($draft);
+        $draft->restore($document, new \DateTimeImmutable());
+        $repository->save($draft);
+
+        $this->client->request('GET', self::BASE.'/mine/validation');
+
+        self::assertResponseIsSuccessful();
+        $body = $this->json();
+        self::assertFalse($body['valid']);
+        self::assertSame([], $body['warnings']);
+        /** @var list<array{path: string, message: string}> $errors */
+        $errors = $body['errors'];
+        self::assertSame(['trackers[0].name', 'factSlots[0].label', 'theme'], array_column($errors, 'path'));
+        // The message is the reason alone: the path is its own field.
+        self::assertStringNotContainsString('trackers[0].name', $errors[0]['message']);
+        self::assertStringStartsWith('must be one of', $errors[2]['message']);
     }
 
     /**

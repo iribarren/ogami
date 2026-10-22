@@ -95,13 +95,52 @@ final readonly class ReleaseContent
     }
 
     /**
+     * Every error fromArray() can reach, not only the first, in the order it reaches them: the first
+     * is the one it throws. The checks of the document itself (an object, its schema version and
+     * sections) stop at the first error; after them the GameSystem, the schema version 2 sections
+     * and the flows are checked independently of each other where nothing reads their output
+     * (ReleaseVersion2::sections() maps what reads what). Used by the validation query only.
+     *
+     * @param array<mixed> $data decoded JSON, objects as string-keyed arrays
+     *
+     * @return list<InvalidReleaseContent> empty when fromArray() accepts the document
+     */
+    public static function errors(array $data): array
+    {
+        try {
+            [$version, $release] = self::prepared($data);
+        } catch (InvalidReleaseContent $error) {
+            return [$error];
+        }
+
+        $errors = [];
+        try {
+            self::gameSystem($release['gameSystem'], $version);
+        } catch (InvalidReleaseContent $error) {
+            $errors[] = $error;
+        }
+
+        if (2 === $version) {
+            return [...$errors, ...ReleaseVersion2::errors($release)];
+        }
+
+        try {
+            self::versionOneParts($release);
+        } catch (InvalidReleaseContent $error) {
+            $errors[] = $error;
+        }
+
+        return $errors;
+    }
+
+    /**
      * @param array<mixed> $data
      *
-     * @return array{1|2, array<string, mixed>} the schema version and the canonical content
+     * @return array{1|2, array<string, mixed>} the schema version and the checked top-level object
      *
      * @throws InvalidReleaseContent
      */
-    private static function validated(array $data, bool $flowCoherence): array
+    private static function prepared(array $data): array
     {
         $data = self::normalizeNumbers($data);
         if ([] !== $data && array_is_list($data)) {
@@ -117,30 +156,52 @@ final readonly class ReleaseContent
             throw InvalidReleaseContent::at('schemaVersion', \sprintf('unsupported schema version %s, expected 1 or 2', self::describe($version)));
         }
 
-        /** @var 1|2 $version */
-        $release = self::object($data, self::ROOT, 1 === $version ? self::RELEASE : ReleaseVersion2::RELEASE);
-        $gameSystem = self::gameSystem($release['gameSystem'], $version);
-        if (1 === $version) {
-            $parts = [
-                'oracles' => OraclesSection::validate($release['oracles'], 1),
-                'flow' => self::flow($release['flow']),
-                'sheet' => self::reservedSheet($release['sheet']),
-            ];
-            if ([] !== $release['checks']) {
-                throw InvalidReleaseContent::at('checks', 'not supported in schema version 1, must be []');
-            }
+        /* @var 1|2 $version */
+        return [$version, self::object($data, self::ROOT, 1 === $version ? self::RELEASE : ReleaseVersion2::RELEASE)];
+    }
 
-            $parts['checks'] = [];
-        } else {
-            // The sheet and the checks come with the other parts: checks read the sheet and flow steps read the checks.
-            $parts = ReleaseVersion2::validate($release, $flowCoherence);
-        }
+    /**
+     * @param array<mixed> $data
+     *
+     * @return array{1|2, array<string, mixed>} the schema version and the canonical content
+     *
+     * @throws InvalidReleaseContent
+     */
+    private static function validated(array $data, bool $flowCoherence): array
+    {
+        [$version, $release] = self::prepared($data);
+        $gameSystem = self::gameSystem($release['gameSystem'], $version);
+        // The sheet and the checks come with the other parts: checks read the sheet and flow steps read the checks.
+        $parts = 1 === $version ? self::versionOneParts($release) : ReleaseVersion2::validate($release, $flowCoherence);
 
         return [$version, [
             'schemaVersion' => $version,
             'gameSystem' => $gameSystem,
             ...$parts,
         ]];
+    }
+
+    /**
+     * @param array<string, mixed> $release
+     *
+     * @return array<string, mixed>
+     *
+     * @throws InvalidReleaseContent
+     */
+    private static function versionOneParts(array $release): array
+    {
+        $parts = [
+            'oracles' => OraclesSection::validate($release['oracles'], 1),
+            'flow' => self::flow($release['flow']),
+            'sheet' => self::reservedSheet($release['sheet']),
+        ];
+        if ([] !== $release['checks']) {
+            throw InvalidReleaseContent::at('checks', 'not supported in schema version 1, must be []');
+        }
+
+        $parts['checks'] = [];
+
+        return $parts;
     }
 
     public function schemaVersion(): int

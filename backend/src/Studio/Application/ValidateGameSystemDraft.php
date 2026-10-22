@@ -7,7 +7,7 @@ namespace App\Studio\Application;
 use App\Shared\Application\Bus\Query;
 
 /**
- * Validates the owner's draft as a release (ReleaseContent::fromArray), without publishing it.
+ * Validates the owner's draft as a release (ReleaseContent::errors, fromArray), without publishing it.
  *
  * @implements Query<GameSystemValidation>
  */

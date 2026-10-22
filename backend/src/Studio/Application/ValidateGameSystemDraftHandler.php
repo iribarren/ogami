@@ -23,10 +23,16 @@ final readonly class ValidateGameSystemDraftHandler implements QueryHandler
     {
         $document = $this->owned->get($query->ownerId, $query->key)->document();
 
-        try {
-            return new GameSystemValidation(true, null, ReleaseContent::fromArray($document)->warnings());
-        } catch (InvalidReleaseContent $rejection) {
-            return new GameSystemValidation(false, $rejection->getMessage(), []);
+        $errors = ReleaseContent::errors($document);
+        if ([] === $errors) {
+            try {
+                return new GameSystemValidation(true, [], ReleaseContent::fromArray($document)->warnings());
+            } catch (InvalidReleaseContent $rejection) {
+                // errors() and fromArray() agree; should they ever not, the draft is invalid, never a 500.
+                $errors = [$rejection];
+            }
         }
+
+        return new GameSystemValidation(false, array_map(static fn (InvalidReleaseContent $error): GameSystemValidationError => new GameSystemValidationError($error->path(), $error->reason()), $errors), []);
     }
 }

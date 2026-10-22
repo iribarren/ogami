@@ -59,20 +59,61 @@ final class FlowReferences
         $sceneTypesByKey = self::byKey($sceneTypes);
 
         foreach ($flows as $flowIndex => $flow) {
-            /** @var string $flowKey */
-            $flowKey = $flow['key'];
-            self::checkOracleSelections($flow, $flowIndex, $tables, $tablesByKey);
-
-            [$reachedSceneTypes, $rolledTables] = self::reach($flow, $flowIndex, $tables, $tablesByKey, $sceneTypes, $sceneTypesByKey);
-            $lists = [...self::phaseLists($flow, $flowIndex), ...self::sceneTypeLists($sceneTypes, $reachedSceneTypes)];
-
-            /** @var list<string> $flowTrackerKeys */
-            $flowTrackerKeys = $flow['trackers'];
-            $flowTrackers = array_fill_keys($flowTrackerKeys, true);
-            self::checkTrackers($lists, $rolledTables, $tables, $flowTrackers, $flowKey);
-            self::checkSceneTypeOracles($flow, $flowKey, $sceneTypes, $reachedSceneTypes);
-            self::checkPlaceholders($lists, $rolledTables, $tables, $flowTrackers, self::stepKeys($lists), $factSlots, $flowKey);
+            self::checkFlow($flow, $flowIndex, $tables, $tablesByKey, $sceneTypes, $sceneTypesByKey, $factSlots);
         }
+    }
+
+    /**
+     * The flow coherence of every flow: each flow is checked on its own and reports its first
+     * error, so the first of the list is the one check() throws.
+     *
+     * @param list<array<string, mixed>> $tables     canonical oracle tables
+     * @param list<array<string, mixed>> $sceneTypes canonical Scene Types
+     * @param list<array<string, mixed>> $flows      canonical flows
+     * @param array<string, string>      $factSlots  the fact slot types by key
+     *
+     * @return list<InvalidReleaseContent> one at most per flow, in flow order
+     */
+    public static function errors(array $tables, array $sceneTypes, array $flows, array $factSlots): array
+    {
+        $tablesByKey = self::byKey($tables);
+        $sceneTypesByKey = self::byKey($sceneTypes);
+
+        $errors = [];
+        foreach ($flows as $flowIndex => $flow) {
+            try {
+                self::checkFlow($flow, $flowIndex, $tables, $tablesByKey, $sceneTypes, $sceneTypesByKey, $factSlots);
+            } catch (InvalidReleaseContent $error) {
+                $errors[] = $error;
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param array<string, mixed>       $flow
+     * @param list<array<string, mixed>> $tables
+     * @param array<string, int>         $tablesByKey
+     * @param list<array<string, mixed>> $sceneTypes
+     * @param array<string, int>         $sceneTypesByKey
+     * @param array<string, string>      $factSlots
+     */
+    private static function checkFlow(array $flow, int $flowIndex, array $tables, array $tablesByKey, array $sceneTypes, array $sceneTypesByKey, array $factSlots): void
+    {
+        /** @var string $flowKey */
+        $flowKey = $flow['key'];
+        self::checkOracleSelections($flow, $flowIndex, $tables, $tablesByKey);
+
+        [$reachedSceneTypes, $rolledTables] = self::reach($flow, $flowIndex, $tables, $tablesByKey, $sceneTypes, $sceneTypesByKey);
+        $lists = [...self::phaseLists($flow, $flowIndex), ...self::sceneTypeLists($sceneTypes, $reachedSceneTypes)];
+
+        /** @var list<string> $flowTrackerKeys */
+        $flowTrackerKeys = $flow['trackers'];
+        $flowTrackers = array_fill_keys($flowTrackerKeys, true);
+        self::checkTrackers($lists, $rolledTables, $tables, $flowTrackers, $flowKey);
+        self::checkSceneTypeOracles($flow, $flowKey, $sceneTypes, $reachedSceneTypes);
+        self::checkPlaceholders($lists, $rolledTables, $tables, $flowTrackers, self::stepKeys($lists), $factSlots, $flowKey);
     }
 
     /**

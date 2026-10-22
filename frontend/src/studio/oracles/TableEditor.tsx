@@ -1,7 +1,9 @@
 import { useId, useRef, useState, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { List } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
@@ -11,13 +13,15 @@ import { mapStepError, type StepError } from '../narrative/steps/stepError'
 import type { StepContext } from '../narrative/steps/stepContext'
 import { StudioError } from '../useGameSystems'
 import { CoverageSummary, EntriesEditor } from './EntriesEditor'
+import { PasteEntriesDialog } from './PasteEntriesDialog'
+import { applyPaste } from './pasteEntries'
 import {
   coverage as coverageOf,
   diceRange,
+  newEntry,
   numbersValid,
   parseInteger,
   toDraft,
-  toEntryDraft,
   toTable,
   type EntryDraft,
   type TableDraft,
@@ -197,99 +201,122 @@ export function TableEditor({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <form aria-label="Oracle table" className="space-y-6" onSubmit={handleSubmit} noValidate>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor={keyId}>Key</Label>
-            <Input
-              id={keyId}
-              value={draft.key}
-              autoComplete="off"
-              aria-invalid={trimmed.key === ''}
-              aria-describedby={`${keyId}-hint`}
-              onChange={(event) => {
-                edit({ ...draft, key: event.target.value })
-              }}
-            />
-            <KeyHint id={`${keyId}-hint`}>Renaming a table the draft uses is refused.</KeyHint>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={nameId}>Name</Label>
-            <Input
-              id={nameId}
-              value={draft.name}
-              autoComplete="off"
-              aria-invalid={trimmed.name === ''}
-              onChange={(event) => {
-                edit({ ...draft, name: event.target.value })
-              }}
-            />
-          </div>
+      <form aria-label="Oracle table" className="panel" onSubmit={handleSubmit} noValidate>
+        <div className="panel-head">
+          <IconTile size="sm">
+            <List />
+          </IconTile>
+          <h2 className="font-heading text-panel-title">Table</h2>
         </div>
-        {draft.ranged && (
-          <div className="space-y-2">
-            <Label htmlFor={diceId}>Dice</Label>
-            <Input
-              id={diceId}
-              value={draft.dice}
-              autoComplete="off"
-              className="max-w-40 font-mono"
-              aria-invalid={diceMissing}
-              onChange={(event) => {
-                edit({ ...draft, dice: event.target.value })
+        <div className="space-y-5 panel-body">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div className="space-y-2">
+              <Label htmlFor={keyId}>Key</Label>
+              <Input
+                id={keyId}
+                value={draft.key}
+                autoComplete="off"
+                aria-invalid={trimmed.key === ''}
+                aria-describedby={`${keyId}-hint`}
+                onChange={(event) => {
+                  edit({ ...draft, key: event.target.value })
+                }}
+              />
+              <KeyHint id={`${keyId}-hint`}>Renaming a table the draft uses is refused.</KeyHint>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={nameId}>Name</Label>
+              <Input
+                id={nameId}
+                value={draft.name}
+                autoComplete="off"
+                aria-invalid={trimmed.name === ''}
+                onChange={(event) => {
+                  edit({ ...draft, name: event.target.value })
+                }}
+              />
+            </div>
+            {draft.ranged && (
+              <div className="space-y-2">
+                <Label htmlFor={diceId}>Dice</Label>
+                <Input
+                  id={diceId}
+                  value={draft.dice}
+                  autoComplete="off"
+                  className="font-mono sm:w-32"
+                  aria-invalid={diceMissing}
+                  onChange={(event) => {
+                    edit({ ...draft, dice: event.target.value })
+                  }}
+                />
+                {diceMissing && (
+                  <p className="text-sm text-destructive">Enter dice like 1d6 or 2d6.</p>
+                )}
+              </div>
+            )}
+          </div>
+          {draft.ranged && !coverage && !diceMissing && (
+            <p className="text-sm text-muted-foreground">
+              Coverage is shown for dice like 1d6, 2d6 or d%; the server checks any other.
+            </p>
+          )}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="group-label">Entries</h3>
+              {coverage && <CoverageSummary coverage={coverage} range={range} />}
+              <div className="ml-auto">
+                <PasteEntriesDialog
+                  draft={draft}
+                  onApply={(pasted, mode) => {
+                    const entries = applyPaste(draft, pasted, mode, nextId.current)
+                    nextId.current += pasted.length
+                    edit({ ...draft, entries })
+                  }}
+                />
+              </div>
+            </div>
+            <EntriesEditor
+              entries={draft.entries}
+              problems={problems}
+              ranged={draft.ranged}
+              withKey={withKey}
+              tables={oracles.tables
+                .map(({ definition }) => definition.key)
+                .filter((key) => key !== stored.key)}
+              context={context}
+              errors={entryErrors}
+              onChange={(entries: EntryDraft[]) => {
+                edit({ ...draft, entries })
+              }}
+              onAdd={() => {
+                const entry = newEntry(draft, nextId.current++)
+                edit({ ...draft, entries: [...draft.entries, entry] })
               }}
             />
-            {diceMissing && <p className="text-sm text-destructive">Enter dice like 1d6 or 2d6.</p>}
-            {coverage ? (
-              <CoverageSummary coverage={coverage} />
-            ) : (
-              !diceMissing && (
-                <p className="text-sm text-muted-foreground">
-                  Coverage is shown for dice like 1d6, 2d6 or d%; the server checks any other.
-                </p>
-              )
-            )}
           </div>
-        )}
-        <EntriesEditor
-          entries={draft.entries}
-          problems={problems}
-          ranged={draft.ranged}
-          withKey={withKey}
-          tables={oracles.tables
-            .map(({ definition }) => definition.key)
-            .filter((key) => key !== stored.key)}
-          context={context}
-          errors={entryErrors}
-          onChange={(entries: EntryDraft[]) => {
-            edit({ ...draft, entries })
-          }}
-          onAdd={() => {
-            const entry = toEntryDraft({}, nextId.current++)
-            edit({
-              ...draft,
-              entries: [...draft.entries, draft.ranged ? entry : { ...entry, weight: '1' }],
-            })
-          }}
-        />
-        {formProblem !== null && (
-          <div role="alert" className="space-y-1 text-sm text-destructive">
-            <p>{formProblem}</p>
-            {error instanceof OracleError && error.paths.length > 0 && (
-              <p className="break-all">Used by {error.paths.join(', ')}.</p>
-            )}
-            {conflict && <p>Reloading replaces your unsaved edits with the latest stored table.</p>}
-          </div>
-        )}
-        {conflict ? (
-          <Button type="button" onClick={onReload}>
-            Reload the latest version
-          </Button>
-        ) : (
-          <Button type="submit" disabled={!valid || !dirty || save.isPending}>
-            Save
-          </Button>
-        )}
+          {formProblem !== null && (
+            <div role="alert" className="space-y-1 text-sm text-destructive">
+              <p>{formProblem}</p>
+              {error instanceof OracleError && error.paths.length > 0 && (
+                <p className="break-all">Used by {error.paths.join(', ')}.</p>
+              )}
+              {conflict && (
+                <p>Reloading replaces your unsaved edits with the latest stored table.</p>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="action-bar">
+          {conflict ? (
+            <Button type="button" onClick={onReload}>
+              Reload the latest version
+            </Button>
+          ) : (
+            <Button type="submit" disabled={!valid || !dirty || save.isPending}>
+              Save
+            </Button>
+          )}
+        </div>
       </form>
       <TestRollPanel
         dirty={dirty}

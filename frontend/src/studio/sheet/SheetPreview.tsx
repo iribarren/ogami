@@ -1,5 +1,7 @@
 import { useId } from 'react'
+import { Eye } from 'lucide-react'
 
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { computeDerived } from '@/shared/sheet/derivedValues'
@@ -26,44 +28,48 @@ export function SheetPreview({
   const derived = computeDerived(template.fields, drafts, readings)
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="space-y-3 rounded-xl p-4 ring-1 ring-foreground/10"
-    >
-      <h2 id={headingId} className="font-heading text-lg font-semibold">
-        Preview
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        The sheet as a player sees it, with the layout you are editing. Values here are samples:
-        they are never saved.
-      </p>
-      {template.fields.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Add a field to preview the sheet.</p>
-      ) : (
-        <SheetFields
-          template={template}
-          drafts={drafts}
-          derived={derived}
-          onChange={samples.setSample}
-        />
-      )}
-      {sheet.trackers.length > 0 && (
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Sample Trackers</legend>
-          <div className="flex flex-wrap gap-3">
-            {sheet.trackers.map(({ key, label }) => (
-              <TrackerSample
-                key={key}
-                label={label}
-                value={trackerSamples[key] ?? '0'}
-                onChange={(value) => {
-                  samples.setTrackerSample(key, value)
-                }}
-              />
-            ))}
-          </div>
-        </fieldset>
-      )}
+    <section aria-labelledby={headingId} className="panel">
+      <div className="panel-head">
+        <IconTile size="sm">
+          <Eye />
+        </IconTile>
+        <h2 id={headingId} className="font-heading text-panel-title">
+          Preview
+        </h2>
+      </div>
+      <div className="space-y-3 panel-body">
+        <p className="text-sm text-muted-foreground">
+          The sheet as a player sees it, with the layout you are editing. Values here are samples:
+          they are never saved.
+        </p>
+        {template.fields.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Add a field to preview the sheet.</p>
+        ) : (
+          <SheetFields
+            template={template}
+            drafts={drafts}
+            derived={derived}
+            onChange={samples.setSample}
+          />
+        )}
+        {sheet.trackers.length > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">Sample Trackers</legend>
+            <div className="flex flex-wrap gap-3">
+              {sheet.trackers.map(({ key, label }) => (
+                <TrackerSample
+                  key={key}
+                  label={label}
+                  value={trackerSamples[key] ?? '0'}
+                  onChange={(value) => {
+                    samples.setTrackerSample(key, value)
+                  }}
+                />
+              ))}
+            </div>
+          </fieldset>
+        )}
+      </div>
     </section>
   )
 }

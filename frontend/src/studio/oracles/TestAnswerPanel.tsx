@@ -1,6 +1,9 @@
 import { useId, useState } from 'react'
+import { Eye } from 'lucide-react'
 
+import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
@@ -22,8 +25,8 @@ const answers = {
 function AnswerView({ test: { answer, randomEvent } }: { test: LikelihoodTest }) {
   return (
     <div className="space-y-1 text-sm">
-      <p>
-        <span className="font-semibold">{answers[answer.answer]}</span>{' '}
+      <p className="flex flex-wrap items-baseline gap-x-3.5">
+        <span className="readout">{answers[answer.answer]}</span>
         <span className="text-muted-foreground tabular-nums">
           rolled {answer.roll} on 1d{answer.sides} against {answer.effectiveTarget}
         </span>
@@ -93,72 +96,85 @@ export function TestAnswerPanel({
   }
 
   return (
-    <section
-      aria-label="Test answer"
-      className="space-y-3 rounded-xl p-4 ring-1 ring-foreground/10"
-    >
-      <h2 className="font-heading text-lg font-semibold">Test answer</h2>
-      <p className="text-sm text-muted-foreground">
-        Asks the saved oracle; nothing is recorded.
-        {dirty && ' Your unsaved edits are saved first.'}
-      </p>
-      <div className="space-y-2">
-        <Label htmlFor={levelId}>Likelihood</Label>
-        <Select
-          id={levelId}
-          value={level}
-          onChange={(event) => {
-            setChosen(event.target.value)
+    <section aria-label="Test answer" className="panel">
+      <div className="panel-head">
+        <IconTile size="sm">
+          <Eye />
+        </IconTile>
+        <h2 className="font-heading text-panel-title">Test answer</h2>
+      </div>
+      <div className="space-y-3 panel-body">
+        <p className="text-sm text-muted-foreground">
+          Asks the saved oracle; nothing is recorded.
+          {dirty && ' Your unsaved edits are saved first.'}
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor={levelId}>Likelihood</Label>
+          <Select
+            id={levelId}
+            value={level}
+            onChange={(event) => {
+              setChosen(event.target.value)
+            }}
+          >
+            {levels.map(({ id, key, label }) => (
+              <option key={id} value={key}>
+                {label} ({key})
+              </option>
+            ))}
+          </Select>
+        </div>
+        {chaos !== null && (
+          <div className="space-y-2">
+            <Label htmlFor={factorId}>Chaos factor</Label>
+            <Input
+              id={factorId}
+              inputMode="numeric"
+              autoComplete="off"
+              className="max-w-32"
+              placeholder="Neutral"
+              value={factor}
+              aria-invalid={factorProblem !== null}
+              onChange={(event) => {
+                setFactor(event.target.value)
+              }}
+            />
+            {factorProblem !== null && <p className="text-sm text-destructive">{factorProblem}</p>}
+          </div>
+        )}
+        <Button
+          type="button"
+          disabled={disabled || busy || level === '' || factorProblem !== null}
+          onClick={() => {
+            void ask()
           }}
         >
-          {levels.map(({ id, key, label }) => (
-            <option key={id} value={key}>
-              {label} ({key})
-            </option>
-          ))}
-        </Select>
+          Ask
+        </Button>
+        {error !== null && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {history.results.length > 0 && (
+          <ul aria-label="Test answer results" className="space-y-2">
+            {history.results.map(({ id, result }, position) => (
+              // The latest answer is ringed; older ones fade as they age.
+              <li
+                key={id}
+                className={cn(
+                  'well',
+                  position === 0 && 'ring-1 ring-primary',
+                  position === 1 && 'opacity-75',
+                  position > 1 && 'opacity-60',
+                )}
+              >
+                <AnswerView test={result} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      {chaos !== null && (
-        <div className="space-y-2">
-          <Label htmlFor={factorId}>Chaos factor</Label>
-          <Input
-            id={factorId}
-            inputMode="numeric"
-            autoComplete="off"
-            className="max-w-32"
-            placeholder="Neutral"
-            value={factor}
-            aria-invalid={factorProblem !== null}
-            onChange={(event) => {
-              setFactor(event.target.value)
-            }}
-          />
-          {factorProblem !== null && <p className="text-sm text-destructive">{factorProblem}</p>}
-        </div>
-      )}
-      <Button
-        type="button"
-        disabled={disabled || busy || level === '' || factorProblem !== null}
-        onClick={() => {
-          void ask()
-        }}
-      >
-        Ask
-      </Button>
-      {error !== null && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {history.results.length > 0 && (
-        <ul aria-label="Test answer results" className="divide-y">
-          {history.results.map(({ id, result }) => (
-            <li key={id} className="py-2">
-              <AnswerView test={result} />
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   )
 }

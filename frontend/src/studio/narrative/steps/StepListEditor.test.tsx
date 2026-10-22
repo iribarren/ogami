@@ -100,9 +100,19 @@ describe('the step items', () => {
     function Answers() {
       const [answer, setAnswer] = useState<StepError[]>([])
       const [steps, setSteps] = useState(() => stepsToDrafts([stepList[0]]))
+      const [renders, setRenders] = useState(0)
       return (
         <>
           <StepListEditor steps={steps} context={stepPickers} errors={answer} onChange={setSteps} />
+          <output>{`renders: ${String(renders)}`}</output>
+          <button
+            type="button"
+            onClick={() => {
+              setRenders((count) => count + 1)
+            }}
+          >
+            Render again
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -131,7 +141,8 @@ describe('the step items', () => {
 
     // The person can close a card that has errors; a re-render with the same answer keeps it closed.
     await user.click(card(1).getByRole('button', { name: /^Set the scene/ }))
-    await user.type(screen.getByRole('button', { name: 'Refuse' }), '{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Render again' }))
+    expect(screen.getByText('renders: 1')).toBeInTheDocument()
     expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
 
     // An answer with no messages opens nothing.

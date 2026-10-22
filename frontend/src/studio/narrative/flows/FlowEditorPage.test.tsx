@@ -392,7 +392,7 @@ describe('a refused save', () => {
     await user.click(save())
 
     expect(await screen.findByText('must be at most 80 characters')).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Not saved: 1 error')
   })
 
   it('puts a message about a phase field on its card', async () => {
@@ -486,7 +486,7 @@ describe('a refused save', () => {
 
     await user.click(save())
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(await screen.findByText(message)).toBeInTheDocument()
   })
 
   it('says the flow is gone when the server cannot find it', async () => {
@@ -496,7 +496,7 @@ describe('a refused save', () => {
 
     await user.click(save())
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('The draft has no flow "heist".')
+    expect(await screen.findByText('The draft has no flow "heist".')).toBeInTheDocument()
   })
 })
 
@@ -519,7 +519,7 @@ describe('a conflict', () => {
     await pickPhase(user, 1)
     await replace(user, content().getByLabelText('Name'), 'Mine')
     await user.click(save())
-    expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
+    expect(await screen.findByText(/was changed by another request/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
 
     // The selected node stays, with the reloaded draft in it.
@@ -1094,5 +1094,287 @@ describe('the header of the flow editor page', () => {
     expect(await screen.findByText(/no longer exists/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Heist')
     expect(screen.queryByText(/issues?$/)).not.toBeInTheDocument()
+  })
+})
+
+describe('the save bar', () => {
+  const rename = async (user: User) => {
+    await replace(user, flowName(), 'Mine')
+  }
+
+  it('shows nothing, then unsaved changes, then when it was saved, and unsaved again after an edit', async () => {
+    const { user } = await openEditor('heist', {
+      [put]: () => Response.json(withHeist({ ...heist, name: 'Mine' }, 6)),
+    })
+    expect(screen.queryByText(/Unsaved changes|Saved at/)).not.toBeInTheDocument()
+
+    await rename(user)
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    await user.click(save())
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+
+    await replace(user, flowName(), 'Mine again')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    await replace(user, flowName(), 'Mine')
+    expect(screen.getByRole('status')).toHaveTextContent(/^Saved at/)
+  })
+
+  it('says how many errors stopped the save, and goes to the first one and focuses its field', async () => {
+    const { user } = await openEditor('heist', {
+      [put]: json({ error: 'flows[0].phases[1].key: duplicate phase key "setup"' }, 422),
+    })
+    await user.click(save())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Not saved: 1 error')
+    await pickSettings(user)
+    expect(current()).toHaveAccessibleName('Flow settings')
+
+    await user.click(screen.getByRole('button', { name: 'Go to the first' }))
+
+    await waitFor(() => {
+      expect(current()).toHaveAccessibleName(/^2\. The job/)
+    })
+    await waitFor(() => {
+      expect(content().getByLabelText('Key')).toHaveFocus()
+    })
+  })
+
+  it('offers the latest version on a conflict, next to Save', async () => {
+    const { user } = await openEditor('heist', { [put]: json(changed, 409) })
+
+    await user.click(save())
+
+    expect(await screen.findByRole('button', { name: 'Reload the latest version' })).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent('Not saved: 1 error')
+  })
+
+  it.each([
+    [
+      'a flow field',
+      'flows[0].name: nope',
+      () => outline().getByRole('button', { name: 'Flow settings' }),
+    ],
+    [
+      'a phase field',
+      'flows[0].phases[0].key: nope',
+      () => nth(outline().getAllByRole('button', { name: /^\d\. / }), 1),
+    ],
+    [
+      'a selection',
+      'flows[0].phases[1].selection.sceneTypes[0]: nope',
+      () => nth(outline().getAllByRole('button', { name: /^Selection:/ }), 2),
+    ],
+    [
+      'a hook list',
+      'flows[0].phases[0].sceneClosing: nope',
+      () => hook('Scene closing (0 steps)', 1),
+    ],
+  ])('marks the outline item of %s', async (_, message, item) => {
+    const { user } = await openEditor('heist', { [put]: json({ error: message }, 422) })
+
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(item()).toHaveAttribute('aria-description', 'Has an error')
+    })
+    expect(outline().getAllByText('Error')).toHaveLength(1)
+    // The pill is not part of the name.
+    expect(item()).not.toHaveAccessibleName(/Error/)
+  })
+
+  it('puts a refusal on its field: the default view, and the Skip of a choice step', async () => {
+    const phases = heist.phases as Record<string, unknown>[]
+    const choice = {
+      key: 'ask',
+      kind: 'choice',
+      title: 'Ask',
+      options: [
+        { key: 'a', label: 'A' },
+        { key: 'b', label: 'B' },
+      ],
+    }
+    const withChoice = withHeist({
+      ...heist,
+      phases: [{ ...phases[0], worldTurn: [choice] }, phases[1]],
+    })
+    const { user } = await openEditor('heist', {
+      [`GET ${base}/narrative`]: json(withChoice),
+      [put]: json({ error: 'flows[0].defaultView: must be focus or journal' }, 422),
+    })
+    await user.click(save())
+    const view = await screen.findByRole('combobox', { name: 'Default view' })
+    expect(view).toHaveAttribute('aria-invalid', 'true')
+    expect(view).toHaveAccessibleDescription('must be focus or journal')
+  })
+
+  it('puts a refusal of the Skip label on the Skip field', async () => {
+    const phases = heist.phases as Record<string, unknown>[]
+    const choice = {
+      key: 'ask',
+      kind: 'choice',
+      title: 'Ask',
+      skip: 'a',
+      options: [
+        { key: 'a', label: 'A' },
+        { key: 'b', label: 'B' },
+      ],
+    }
+    const { user } = await openEditor('heist', {
+      [`GET ${base}/narrative`]: json(
+        withHeist({ ...heist, phases: [{ ...phases[0], worldTurn: [choice] }, phases[1]] }),
+      ),
+      [put]: json({ error: 'flows[0].phases[0].worldTurn[0].skip: must be an option key' }, 422),
+    })
+
+    await user.click(save())
+
+    const skip = await within(await content().findByRole('group', { name: 'Step 1' })).findByRole(
+      'combobox',
+      { name: 'Skip' },
+    )
+    expect(skip).toHaveAttribute('aria-invalid', 'true')
+    expect(skip).toHaveAccessibleDescription('must be an option key')
+  })
+})
+
+describe('the {answer} hint', () => {
+  const hint = /^Effects can use \{answer\}/
+  const withStep = (step: Record<string, unknown>) => {
+    const phases = heist.phases as Record<string, unknown>[]
+    return withHeist({ ...heist, phases: [{ ...phases[0], worldTurn: [step] }, phases[1]] })
+  }
+  const open = (step: Record<string, unknown>) =>
+    openEditor(
+      'heist',
+      { [`GET ${base}/narrative`]: json(withStep(step)) },
+      '?node=phases.0.hooks.worldTurn.0',
+    )
+
+  it('sits under the prompt and the text of the effects of a prompt step, linked to them', async () => {
+    await open({
+      key: 'look',
+      kind: 'prompt',
+      title: 'Look',
+      effects: [{ kind: 'sceneTitle', title: 'T' }],
+    })
+
+    const texts = await screen.findAllByText(hint)
+    expect(texts).toHaveLength(2)
+    const prompt = content().getByLabelText('Prompt')
+    expect(prompt).toHaveAccessibleDescription(texts[0]?.textContent ?? '')
+  })
+
+  it('is not shown for a step that has no answer', async () => {
+    await open({
+      key: 'who',
+      kind: 'character',
+      title: 'Who',
+      effects: [{ kind: 'sceneTitle', title: 'T' }],
+    })
+
+    await screen.findByLabelText('Prompt')
+    expect(screen.queryByText(hint)).not.toBeInTheDocument()
+  })
+})
+
+describe('enabling on the flow', () => {
+  const tracked = {
+    key: 'look',
+    kind: 'prompt',
+    title: 'Look',
+    effects: [{ kind: 'tracker', tracker: 'heat', op: 'add', value: 1 }],
+  }
+  const narrativeWith = (ambushOracles: string[] = []) => {
+    const phases = heist.phases as Record<string, unknown>[]
+    const flows = withHeist({
+      ...heist,
+      phases: [{ ...phases[0], worldTurn: [tracked] }, phases[1]],
+    })
+    return {
+      ...flows,
+      sceneTypes: flows.sceneTypes.map((item) =>
+        item.key === 'ambush'
+          ? { ...item, definition: { ...item.definition, oracles: ambushOracles } }
+          : item,
+      ),
+    }
+  }
+  const open = (query: string, handlers: Record<string, FakeHandler> = {}, oracles?: string[]) =>
+    openEditor(
+      'heist',
+      { [`GET ${base}/narrative`]: json(narrativeWith(oracles)), ...handlers },
+      query,
+    )
+  const enable = (user: User) => user.click(screen.getByRole('button', { name: 'Enable on flow' }))
+
+  it('warns on the step that uses a tracker the flow lacks, and adds it when asked, unsaved', async () => {
+    const saved = recorder(() => Response.json(narrativeFlows))
+    const { user } = await open('?node=phases.0.hooks.worldTurn.0', { [put]: saved.handler })
+    expect(await content().findByText('Tracker Heat')).toBeInTheDocument()
+
+    await enable(user)
+
+    expect(screen.queryByRole('button', { name: 'Enable on flow' })).not.toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(saved.sent).toHaveLength(0)
+    await pickSettings(user)
+    expect(
+      within(screen.getByRole('group', { name: 'Trackers' })).getByRole('checkbox', {
+        name: 'Heat',
+      }),
+    ).toBeChecked()
+    await user.click(save())
+    await waitFor(() => {
+      expect(saved.sent[0]?.item.trackers).toEqual(['heat'])
+    })
+  })
+
+  it('warns on the selection about the shortcuts of its Scene Types, and keeps the others', async () => {
+    const saved = recorder(() => Response.json(narrativeFlows))
+    const { user } = await open('?node=phases.0.selection', { [put]: saved.handler }, ['places'])
+    expect(await content().findByText('Oracle shortcut Places')).toBeInTheDocument()
+
+    await enable(user)
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(saved.sent[0]?.item.oracles).toEqual(['fate', 'places'])
+    })
+  })
+
+  it('lists everything the flow lacks in the flow settings and enables it in one go', async () => {
+    const { user } = await open('', {}, ['places'])
+    expect(await content().findByText('Tracker Heat')).toBeInTheDocument()
+    expect(content().getByText('Oracle shortcut Places')).toBeInTheDocument()
+
+    await enable(user)
+
+    expect(screen.queryByRole('button', { name: 'Enable on flow' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('group', { name: 'Oracle shortcuts' })).getByRole('checkbox', {
+        name: 'Places',
+      }),
+    ).toBeChecked()
+  })
+
+  it('says nothing when the flow enables what its steps use', async () => {
+    const phases = heist.phases as Record<string, unknown>[]
+    await openEditor(
+      'heist',
+      {
+        [`GET ${base}/narrative`]: json(
+          withHeist({
+            ...heist,
+            trackers: ['heat'],
+            phases: [{ ...phases[0], worldTurn: [tracked] }, phases[1]],
+          }),
+        ),
+      },
+      '?node=phases.0.hooks.worldTurn.0',
+    )
+
+    await waitFor(() => {
+      expect(current()).toHaveTextContent('Look')
+    })
+    expect(screen.queryByRole('button', { name: 'Enable on flow' })).not.toBeInTheDocument()
   })
 })

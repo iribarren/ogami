@@ -143,3 +143,19 @@ export function flowChecks(draft: FlowDraft, hookErrors: HookErrors = {}): FlowA
     ? { ...noAnswer, fields: empty ? { key: 'Enter a key.' } : {}, phases }
     : null
 }
+
+/** How many messages an answer holds: the count "Not saved: N errors" gives. */
+export function answerCount(answer: FlowAnswer): number {
+  const inPhases = answer.phases.reduce(
+    (total, phase) =>
+      total +
+      (phase === undefined
+        ? 0
+        : Object.keys(phase.fields).length +
+          phase.messages.length +
+          phase.selection.length +
+          Object.values(phase.hooks).reduce((hooks, errors) => hooks + errors.length, 0)),
+    0,
+  )
+  return Object.keys(answer.fields).length + inPhases + (answer.page === null ? 0 : 1)
+}

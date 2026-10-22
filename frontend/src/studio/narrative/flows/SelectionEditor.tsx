@@ -1,5 +1,6 @@
 import { Clapperboard } from 'lucide-react'
 
+import { FieldError } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 import { Select } from '@/shared/ui/select'
@@ -63,6 +64,7 @@ export function SelectionEditor({
           value={selection.table}
           options={tables}
           placeholder="Pick a table"
+          error={messages[0]}
           onChange={(table) => {
             onChange({ ...selection, table })
           }}
@@ -72,13 +74,13 @@ export function SelectionEditor({
           selection={selection}
           sceneTypes={sceneTypes}
           nameOf={nameOf}
+          invalid={messages.length > 0}
           onChange={onChange}
         />
       )}
-      {messages.map((message) => (
-        <p key={message} className="text-sm text-destructive">
-          {message}
-        </p>
+      {/* The oracle table shows its first message on its own field. */}
+      {messages.slice(selection.rule === 'oracle' ? 1 : 0).map((message) => (
+        <FieldError key={message}>{message}</FieldError>
       ))}
     </fieldset>
   )
@@ -88,11 +90,14 @@ function SceneTypeList({
   selection,
   sceneTypes,
   nameOf,
+  invalid,
   onChange,
 }: {
   selection: Extract<SelectionDraft, { rule: 'sequence' | 'player' }>
   sceneTypes: Option[]
   nameOf: (key: string) => string
+  /** The checks or the server refused the list: flag the field that adds to it. */
+  invalid: boolean
   onChange: (selection: SelectionDraft) => void
 }) {
   const list = selection.sceneTypes
@@ -164,6 +169,7 @@ function SceneTypeList({
       )}
       <Select
         aria-label="Add a Scene Type"
+        aria-invalid={invalid}
         value=""
         disabled={full || offered.length === 0}
         onChange={(event) => {

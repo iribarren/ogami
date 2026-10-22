@@ -1,12 +1,15 @@
 import { useId } from 'react'
 
+import { FieldError } from '@/shared/ui/alert'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
 import { Area, CheckList } from '../steps/fields'
 import type { StepContext } from '../steps/stepContext'
+import { EnableOnFlow } from './EnableOnFlow'
 import { flowViews, type FlowDraft } from './flowDraft'
+import type { Missing } from './flowEnable'
 
 /**
  * The fields of the flow itself: key, name, texts, default view and flag, the oracle shortcuts and
@@ -16,11 +19,16 @@ export function FlowSettings({
   draft,
   context,
   errors,
+  missing,
+  onEnable,
   onChange,
 }: {
   draft: FlowDraft
   context: StepContext
   errors: Record<string, string>
+  /** What the flow's steps and selections use that it does not enable. */
+  missing: Missing
+  onEnable: () => void
   onChange: (draft: FlowDraft) => void
 }) {
   const viewId = useId()
@@ -28,6 +36,12 @@ export function FlowSettings({
 
   return (
     <div className="space-y-6">
+      <EnableOnFlow
+        missing={missing}
+        context={context}
+        intro="The steps and Scene Types of this flow use what is not enabled on it:"
+        onEnable={onEnable}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label="Key"
@@ -69,6 +83,8 @@ export function FlowSettings({
           <Select
             id={viewId}
             value={draft.defaultView}
+            aria-invalid={errors.defaultView !== undefined}
+            aria-describedby={errors.defaultView ? `${viewId}-error` : undefined}
             onChange={(event) => {
               onChange({
                 ...draft,
@@ -79,13 +95,17 @@ export function FlowSettings({
             <option value="focus">Focus</option>
             <option value="journal">Journal</option>
           </Select>
-          {errors.defaultView && <p className="text-sm text-destructive">{errors.defaultView}</p>}
+          {errors.defaultView && (
+            <FieldError id={`${viewId}-error`}>{errors.defaultView}</FieldError>
+          )}
         </div>
         <div className="space-y-1">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={draft.default}
+              aria-invalid={errors.default !== undefined}
+              aria-describedby={errors.default ? `${viewId}-default-error` : undefined}
               onChange={(event) => {
                 onChange({ ...draft, default: event.target.checked })
               }}
@@ -95,7 +115,9 @@ export function FlowSettings({
           <p className="text-sm text-muted-foreground">
             Saving it as the default clears the flag on the other flows.
           </p>
-          {errors.default && <p className="text-sm text-destructive">{errors.default}</p>}
+          {errors.default && (
+            <FieldError id={`${viewId}-default-error`}>{errors.default}</FieldError>
+          )}
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -104,22 +126,22 @@ export function FlowSettings({
             legend="Oracle shortcuts"
             options={options}
             value={draft.oracles}
+            error={errors.oracles}
             onChange={(oracles) => {
               onChange({ ...draft, oracles })
             }}
           />
-          {errors.oracles && <p className="text-sm text-destructive">{errors.oracles}</p>}
         </div>
         <div className="space-y-1">
           <CheckList
             legend="Trackers"
             options={context.trackers}
             value={draft.trackers}
+            error={errors.trackers}
             onChange={(trackers) => {
               onChange({ ...draft, trackers })
             }}
           />
-          {errors.trackers && <p className="text-sm text-destructive">{errors.trackers}</p>}
         </div>
       </div>
     </div>

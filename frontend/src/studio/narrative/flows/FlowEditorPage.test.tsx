@@ -60,6 +60,11 @@ const current = () => outline().getByRole('button', { current: true })
 const flowKey = () => content().getByLabelText('Key')
 const flowName = () => content().getByLabelText('Name')
 const save = () => screen.getByRole('button', { name: 'Save' })
+/** Opens the Add step menu and picks a kind, the way a person does. */
+async function addStep(user: User, kind = 'prompt') {
+  await user.click(content().getByRole('button', { name: 'Add step' }))
+  await user.click(await screen.findByRole('menuitem', { name: kind }))
+}
 
 async function replace(user: User, field: HTMLElement, text: string) {
   await user.clear(field)
@@ -762,7 +767,7 @@ describe('the hooks of a phase', () => {
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await user.click(hook('World turn (0 steps)'))
-    await user.click(content().getByRole('button', { name: 'Add step' }))
+    await addStep(user)
     await replace(user, content().getByLabelText('Title'), 'Tick')
     expect(hook('World turn (1 step)')).toBeInTheDocument()
     await user.click(save())
@@ -838,7 +843,7 @@ describe('the hooks of a phase', () => {
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await user.click(hook('Phase closing (0 steps)'))
-    await user.click(content().getByRole('button', { name: 'Add step' }))
+    await addStep(user)
     await user.click(content().getByRole('button', { name: 'Add effect' }))
     await replace(user, content().getByLabelText('Value'), '1.5')
     await user.click(save())
@@ -1189,7 +1194,7 @@ describe('the save bar', () => {
       '?node=phases.0.hooks.worldTurn',
     )
     const step = await content().findByRole('group', { name: 'Step 1' })
-    await user.click(within(step).getByRole('button', { name: /^ask/ }))
+    await user.click(within(step).getByRole('button', { name: /^Ask/ }))
     expect(within(step).queryByLabelText('Title')).not.toBeInTheDocument()
 
     await user.click(save())

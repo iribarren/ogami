@@ -5,21 +5,27 @@ import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
 
-/** Checkboxes over `options`; a selected key the options no longer have stays listed. */
+/**
+ * Checkboxes over `options`; a selected key the options no longer have stays listed. With
+ * `variant="pills"` each one is a round pill (the checkbox itself stays, hidden behind it).
+ */
 export function CheckList({
   legend,
   options,
   value,
   error,
+  variant = 'list',
   onChange,
 }: {
   legend: string
   options: { key: string; name: string }[]
   value: string[]
   error?: string
+  variant?: 'list' | 'pills'
   onChange: (value: string[]) => void
 }) {
   const errorId = useId()
+  const pills = variant === 'pills'
   const known = options.map((option) => option.key)
   const all = [
     ...options,
@@ -30,23 +36,29 @@ export function CheckList({
     <fieldset className="space-y-1" aria-describedby={error ? errorId : undefined}>
       <legend className="text-sm font-medium">{legend}</legend>
       {all.length === 0 && <p className="text-sm text-muted-foreground">Nothing to pick yet.</p>}
-      {all.map((option) => (
-        <label key={option.key} className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.includes(option.key)}
-            aria-invalid={error !== undefined}
-            onChange={(event) => {
-              onChange(
-                event.target.checked
-                  ? [...value, option.key]
-                  : value.filter((key) => key !== option.key),
-              )
-            }}
-          />
-          {option.name}
-        </label>
-      ))}
+      <div className={pills ? 'flex flex-wrap gap-2' : 'space-y-1'}>
+        {all.map((option) => (
+          <label
+            key={option.key}
+            className={pills ? 'pill-check' : 'flex items-center gap-2 text-sm'}
+          >
+            <input
+              type="checkbox"
+              className={pills ? 'sr-only' : undefined}
+              checked={value.includes(option.key)}
+              aria-invalid={error !== undefined}
+              onChange={(event) => {
+                onChange(
+                  event.target.checked
+                    ? [...value, option.key]
+                    : value.filter((key) => key !== option.key),
+                )
+              }}
+            />
+            {option.name}
+          </label>
+        ))}
+      </div>
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </fieldset>
   )

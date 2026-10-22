@@ -1298,6 +1298,34 @@
   }
 }
 
+/*
+ * A checkbox as a round pill: outline when off, the selected-row tint and border when on. The
+ * checkbox inside stays a real one (visually hidden), so the keyboard and the names are unchanged.
+ */
+@utility pill-check {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--input);
+  font-size: 13px;
+  cursor: pointer;
+  &:hover {
+    background: var(--secondary);
+  }
+  &:has(input:checked) {
+    background: color-mix(in oklch, var(--primary) 8%, transparent);
+    border-color: color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+  &:has(input[aria-invalid='true']) {
+    border-color: var(--destructive);
+  }
+  &:has(input:focus-visible) {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+  }
+}
+
 @utility count-pill {
   display: inline-flex;
   align-items: center;

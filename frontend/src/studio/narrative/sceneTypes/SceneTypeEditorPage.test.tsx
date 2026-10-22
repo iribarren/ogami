@@ -249,6 +249,50 @@ describe('the Scene Type editor', () => {
     })
   })
 
+  it('toggles an oracle shortcut by its pill, and the pill is still a checkbox', async () => {
+    const { user } = await openEditor('ambush')
+    const shortcuts = within(screen.getByRole('group', { name: 'Oracle shortcuts' }))
+
+    await user.click(shortcuts.getByText('Places'))
+    expect(shortcuts.getByRole('checkbox', { name: 'Places' })).toBeChecked()
+    await user.click(shortcuts.getByText('Fate'))
+    expect(shortcuts.getByRole('checkbox', { name: 'Fate' })).not.toBeChecked()
+    // Keyboard works as on any checkbox.
+    shortcuts.getByRole('checkbox', { name: 'Fate' }).focus()
+    await user.keyboard(' ')
+    expect(shortcuts.getByRole('checkbox', { name: 'Fate' })).toBeChecked()
+  })
+
+  it('counts the steps of each part beside its name, which stays the name of the part', async () => {
+    await openEditor('ambush')
+
+    expect(list('Setup').getByRole('heading', { name: 'Setup' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Setup' })).toHaveAccessibleDescription('1')
+    expect(screen.getByRole('region', { name: 'Play' })).toHaveAccessibleDescription('2')
+    expect(screen.getByRole('region', { name: 'Closing' })).toHaveAccessibleDescription('1')
+  })
+
+  it('puts the details and the steps in their own panels', async () => {
+    await openEditor('ambush')
+
+    expect(screen.getByRole('region', { name: 'Details' })).toContainElement(sceneKey())
+    expect(screen.getByRole('region', { name: 'Steps' })).toContainElement(
+      screen.getByRole('region', { name: 'Setup' }),
+    )
+  })
+
+  it('shows the message about the shortcuts on them', async () => {
+    const { user } = await openEditor('ambush', {
+      [put]: json({ error: 'sceneTypes[0].oracles: unknown oracle "fate"' }, 422),
+    })
+
+    await user.click(save())
+
+    const shortcuts = screen.getByRole('group', { name: 'Oracle shortcuts' })
+    expect(await within(shortcuts).findByText(/unknown oracle/)).toBeInTheDocument()
+    expect(shortcuts).toHaveAccessibleDescription(/unknown oracle/)
+  })
+
   it('adds a step to a list and saves it in that list only', async () => {
     const saved = recorder(() => Response.json(narrativeScenes))
     const { user } = await openEditor('quiet', {
@@ -256,6 +300,7 @@ describe('the Scene Type editor', () => {
     })
 
     await user.click(list('Closing').getByRole('button', { name: 'Add step' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'prompt' }))
     await replace(user, card('Closing', 1).getByLabelText('Title'), 'Wrap up')
     await user.click(save())
 

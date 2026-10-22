@@ -139,6 +139,15 @@ function GameSystemView({
   const pack = gameSystem.kind === 'library-pack'
   // The notice belongs to the section it was shown on, so opening another section clears it.
   const [notice, setNotice] = useState<{ text: string; tab: GameSystemTab } | null>(null)
+  // Cleared however the section changed (rail, back and forward, a typed URL), not only on a
+  // rail click: a notice kept for later would come back and be announced again.
+  const [shownTab, setShownTab] = useState(tab)
+  if (shownTab !== tab) {
+    setShownTab(tab)
+    if (notice && notice.tab !== tab) {
+      setNotice(null)
+    }
+  }
   // The sample values of the Sheet tab's preview and the Checks tab's sandbox: one set for both.
   const sampleValues = useSampleValues()
   // The form owns what is typed and only starts from this GameSystem: a save does not reset it,
@@ -205,11 +214,6 @@ function GameSystemView({
         <SectionRail
           gameSystem={gameSystem}
           active={tab}
-          onNavigate={(next) => {
-            if (next !== tab) {
-              setNotice(null)
-            }
-          }}
         />
         <div className="min-w-0 flex-[999_1_560px] space-y-6">
           {/* Stays mounted while another tab shows, so typed and saved values survive tab switches. */}

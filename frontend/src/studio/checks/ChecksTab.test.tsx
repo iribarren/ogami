@@ -605,6 +605,161 @@ describe('the checks tab', () => {
     })
   })
 
+  describe('duplicating a check', () => {
+    const grit = {
+      key: 'grit',
+      label: 'Grit',
+      dice: '2d6',
+      bands: [{ key: 'outcome', label: 'Outcome' }],
+    }
+
+    it('opens an unsaved copy from the list, saved through the create endpoint', async () => {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }, { status: 201 }))
+      const { user } = await openChecks({ [`POST ${base}/checks`]: handler })
+
+      await user.click(await screen.findByRole('button', { name: 'Duplicate skill' }))
+
+      const form = within(screen.getByRole('form', { name: 'New check' }))
+      expect(form.getByLabelText('Key')).toHaveValue('skill-copy')
+      expect(form.getByLabelText('Label')).toHaveValue('Skill check (copy)')
+      expect(form.getByLabelText('Dice')).toHaveValue('1d10')
+      expect(form.getByLabelText('Band 1 formula')).toHaveValue('{check:difficulty}-1')
+      // Nothing is stored until the person saves.
+      expect(sent).toEqual([])
+      await user.click(form.getByRole('button', { name: 'Create check' }))
+
+      expect(sent).toHaveLength(1)
+      expect(sent[0]).toMatchObject({
+        expectedVersion: 5,
+        check: { key: 'skill-copy', label: 'Skill check (copy)', dice: '1d10' },
+      })
+    })
+
+    it('duplicates from the editor head and takes the first free copy key', async () => {
+      const { user } = await openChecks({
+        [`GET ${base}/checks`]: json({
+          ...checks,
+          checks: [...checks.checks, { ...grit, key: 'skill-copy' }],
+        }),
+      })
+
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      await user.click(
+        within(screen.getByRole('form', { name: 'Edit skill' })).getByRole('button', {
+          name: 'Duplicate',
+        }),
+      )
+
+      const form = within(screen.getByRole('form', { name: 'New check' }))
+      expect(form.getByLabelText('Key')).toHaveValue('skill-copy-2')
+    })
+  })
+
+  describe('band presets and the key that follows the label', () => {
+    async function editLuck() {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }))
+      const opened = await openChecks({ [`PUT ${base}/checks/luck`]: handler })
+      await opened.user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+      return { ...opened, sent, form: within(screen.getByRole('form', { name: 'Edit luck' })) }
+    }
+
+    it('replaces the bands with a preset and sends them', async () => {
+      const { user, form, sent } = await editLuck()
+
+      await user.click(form.getByRole('button', { name: 'Use a preset' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Miss / partial / full' }))
+
+      expect(form.getByLabelText('Band 1 key')).toHaveValue('miss')
+      expect(form.getByLabelText('Band 2 number')).toHaveValue('9')
+      expect(form.queryByLabelText('Band 4 key')).toBeNull()
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(sent[0]).toMatchObject({
+        check: {
+          bands: [
+            { key: 'miss', label: 'Miss', upTo: 6 },
+            { key: 'partial', label: 'Partial hit', upTo: 9 },
+            { key: 'full', label: 'Full hit' },
+          ],
+        },
+      })
+    })
+
+    it('leaves the bands alone when the menu is closed without a choice', async () => {
+      const { user, form } = await editLuck()
+
+      await user.click(form.getByRole('button', { name: 'Use a preset' }))
+      await user.keyboard('{Escape}')
+
+      expect(form.getByLabelText('Band 1 key')).toHaveValue('bad')
+      expect(form.getByLabelText('Band 3 key')).toHaveValue('good')
+    })
+
+    it('asks for the bound a Failure / success preset leaves empty, without calling the API', async () => {
+      const { user, form, sent } = await editLuck()
+
+      await user.click(form.getByRole('button', { name: 'Use a preset' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Failure / success' }))
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      expect(await form.findByText('Give the band a number.')).toBeVisible()
+      expect(sent).toEqual([])
+    })
+
+    it('copies the bands of another check, bounds included', async () => {
+      const { user, form, sent } = await editLuck()
+
+      await user.click(form.getByRole('button', { name: 'Use a preset' }))
+      // A submenu opens from the keyboard in jsdom (the pointer's grace area needs a layout).
+      screen.getByRole('menuitem', { name: 'Copy from a check…' }).focus()
+      await user.keyboard('{ArrowRight}')
+      await user.click(await screen.findByRole('menuitem', { name: 'Skill check' }))
+
+      expect(form.getByLabelText('Band 1 formula')).toHaveValue('{check:difficulty}-1')
+      expect(form.getByLabelText('Band 2 key')).toHaveValue('win')
+      expect(form.queryByLabelText('Band 3 key')).toBeNull()
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+      expect(sent[0]).toMatchObject({ check: { bands: checks.checks[0]?.bands } })
+    })
+
+    it('starts a new band as a number bound and writes its key from its label until edited', async () => {
+      const { user, form } = await editLuck()
+
+      await user.click(form.getByRole('button', { name: 'Add band' }))
+      // The band that was last needs a bound now: it starts as a number too.
+      expect(form.getByLabelText('Band 3 bound')).toHaveValue('number')
+      expect(form.queryByLabelText('Band 4 bound')).toBeNull()
+      await user.type(form.getByLabelText('Band 4 label'), 'Great hit')
+      expect(form.getByLabelText('Band 4 key')).toHaveValue('great-hit')
+
+      await user.clear(form.getByLabelText('Band 4 key'))
+      await user.type(form.getByLabelText('Band 4 key'), 'great')
+      await user.type(form.getByLabelText('Band 4 label'), '!')
+      expect(form.getByLabelText('Band 4 key')).toHaveValue('great')
+    })
+
+    it('does not rewrite the key of a stored band when its label changes', async () => {
+      const { user, form } = await editLuck()
+
+      await user.type(form.getByLabelText('Band 2 label'), ' now')
+
+      expect(form.getByLabelText('Band 2 label')).toHaveValue('Middling now')
+      expect(form.getByLabelText('Band 2 key')).toHaveValue('mid')
+    })
+
+    it('says what the modifier reads', async () => {
+      const { user } = await openChecks()
+
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      expect(form.getByText('Reads Power')).toBeVisible()
+
+      await user.clear(form.getByLabelText('Modifier'))
+      await user.type(form.getByLabelText('Modifier'), '{{pow}+{{tracker:heat}')
+      expect(form.getByText('Reads Power, Heat')).toBeVisible()
+    })
+  })
+
   describe('when the person moves or deletes from the list while editing', () => {
     const swapped = { ...checks, version: 6, checks: [checks.checks[1], checks.checks[0]] }
 

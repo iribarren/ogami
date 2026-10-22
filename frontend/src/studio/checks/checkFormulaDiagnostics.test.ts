@@ -1,4 +1,4 @@
-import { checkFormulaDiagnostics, checkReferences } from './checkFormulaDiagnostics'
+import { checkFormulaDiagnostics, checkReads, checkReferences } from './checkFormulaDiagnostics'
 
 const catalog = {
   fields: [
@@ -106,5 +106,21 @@ describe('checkReferences', () => {
     expect(has('band', true)).toBe(true)
     expect(has('band', false)).toBe(false)
     expect(has('modifier', true)).toBe(false)
+  })
+})
+
+describe('checkReads', () => {
+  it('names what a formula reads by label, once each, in the order it reads them', () => {
+    expect(checkReads('{pow} + {tracker:heat} + {pow} + {hp.max}', catalog)).toEqual([
+      'Power',
+      'Heat',
+      'Hit points max',
+    ])
+  })
+
+  it('reads the key of a reference the catalog does not know, and nothing from a broken formula', () => {
+    expect(checkReads('{gone}', catalog)).toEqual(['gone'])
+    expect(checkReads('{pow} $', catalog)).toEqual([])
+    expect(checkReads('3', catalog)).toEqual([])
   })
 })

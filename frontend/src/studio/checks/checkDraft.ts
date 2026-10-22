@@ -23,6 +23,11 @@ export interface BandDraft {
   key: string
   label: string
   upTo: UpToDraft
+  /**
+   * Set on a band added in the form: its key follows its label as a slug until the key is edited.
+   * A stored band never has it, so renaming one never rewrites its key. Never sent.
+   */
+  follow?: boolean
 }
 
 /** The most bands a check may have, as the publisher. */
@@ -102,7 +107,68 @@ export const blankDifficulty = (): DifficultyDraft => ({
   max: '',
 })
 
-export const blankBand = (): BandDraft => ({ key: '', label: '', upTo: { kind: 'none' } })
+/** The key a label suggests: lower case letters and digits, runs of anything else as one hyphen. */
+export function slugOf(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+/** A band added in the form: its key follows its label, and its bound starts as a number. */
+export const newBand = (): BandDraft => ({
+  key: '',
+  label: '',
+  upTo: { kind: 'number', value: '' },
+  follow: true,
+})
+
+/**
+ * The bands with a new one at the end, and the position each band had before (null for the new
+ * one). The band that was last had no bound, but now it needs one: it starts as a number too, so
+ * nothing has to be switched by hand first. Any bound it already had stays.
+ */
+export function addBand(bands: BandDraft[]): { bands: BandDraft[]; order: (number | null)[] } {
+  const last = bands.length - 1
+  const kept = bands.map((band, at) =>
+    at === last && band.upTo.kind === 'none'
+      ? { ...band, upTo: { kind: 'number' as const, value: '' } }
+      : band,
+  )
+  return { bands: [...kept, newBand()], order: [...bands.keys(), null] }
+}
+
+/** The band with a new label; the key follows it while the band has not had its key edited. */
+export function editBandLabel(band: BandDraft, label: string): BandDraft {
+  return band.follow === true ? { ...band, label, key: slugOf(label) } : { ...band, label }
+}
+
+/** The band with a key typed by hand, which stops it following the label. */
+export function editBandKey(band: BandDraft, key: string): BandDraft {
+  return { ...band, key, follow: false }
+}
+
+/** The ready-made bands the "Use a preset" menu offers; each call gives bands of its own. */
+export const bandPresets: { id: string; label: string; bands: () => BandDraft[] }[] = [
+  {
+    id: 'miss-partial-full',
+    label: 'Miss / partial / full',
+    bands: () => [
+      { key: 'miss', label: 'Miss', upTo: { kind: 'number', value: '6' } },
+      { key: 'partial', label: 'Partial hit', upTo: { kind: 'number', value: '9' } },
+      { key: 'full', label: 'Full hit', upTo: { kind: 'none' } },
+    ],
+  },
+  {
+    id: 'failure-success',
+    label: 'Failure / success',
+    // The bound is for the person to fill in: no number is right for every dice.
+    bands: () => [
+      { key: 'failure', label: 'Failure', upTo: { kind: 'number', value: '' } },
+      { key: 'success', label: 'Success', upTo: { kind: 'none' } },
+    ],
+  },
+]
 
 /** A new check starts with the one band every check needs. */
 export function blankCheck(): CheckDraft {
@@ -114,6 +180,26 @@ export function blankCheck(): CheckDraft {
     modifier: '',
     difficulty: null,
     bands: [{ key: 'outcome', label: 'Outcome', upTo: { kind: 'none' } }],
+  }
+}
+
+/**
+ * A new, unsaved check prefilled from `source`: the key is `{key}-copy`, then `-copy-2`, `-copy-3`…
+ * (the first one no check in `existingKeys` has) and the label "{label} (copy)". The bands are
+ * copied, so editing the copy never touches the source.
+ */
+export function duplicateCheck(source: CheckDraft, existingKeys: string[]): CheckDraft {
+  const taken = new Set(existingKeys)
+  let key = `${source.key}-copy`
+  for (let copy = 2; taken.has(key); copy += 1) {
+    key = `${source.key}-copy-${String(copy)}`
+  }
+  return {
+    ...source,
+    key,
+    label: `${source.label} (copy)`,
+    difficulty: source.difficulty === null ? null : { ...source.difficulty },
+    bands: source.bands.map((band) => ({ ...band, upTo: { ...band.upTo } })),
   }
 }
 

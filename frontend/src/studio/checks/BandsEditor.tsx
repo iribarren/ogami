@@ -1,13 +1,30 @@
+import { ArrowDown, ArrowUp, ChevronDown, Plus, X } from 'lucide-react'
 import { useId, useMemo } from 'react'
 
+import { cn } from '@/shared/lib/utils'
+import { FieldError } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
+import { IconButton } from '@/shared/ui/icon-button'
+import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
-import { TextField } from '../narrative/TextField'
+import { KeyHint } from '../KeyHint'
 import { FormulaInput } from '../sheet/FormulaInput'
 import {
-  blankBand,
+  addBand,
+  bandPresets,
+  editBandKey,
+  editBandLabel,
   maxBands,
   type BandDraft,
   type BandErrorMap,
@@ -41,17 +58,25 @@ function withKind(kind: Kind, current: UpToDraft): UpToDraft {
   return { kind, value: 'value' in current ? current.value : '' }
 }
 
+/** A band the "Copy from a check…" submenu offers: a check's bands, keys, labels and bounds. */
+export interface BandSource {
+  key: string
+  label: string
+  bands: BandDraft[]
+}
+
 /**
  * The bands of a check, in order: the outcome is the first band whose bound is at least the
  * total. Every band but the last has a bound (a number, a tracker's value or a formula); the last
  * catches the rest, so its bound is not sent. A band rename is a drop plus an add: nothing that
- * names the old key follows it.
+ * names the old key follows it. A preset replaces all the bands at once.
  */
 export function BandsEditor({
   bands,
   onChange,
   catalog,
   difficulty,
+  copyFrom,
   error,
   errors,
 }: {
@@ -63,6 +88,8 @@ export function BandsEditor({
   onChange: (bands: BandDraft[], order?: (number | null)[]) => void
   catalog: Pick<GameSystemChecks, 'fields' | 'trackers'>
   difficulty: DifficultyDraft | null
+  /** The other checks whose bands can be copied. */
+  copyFrom: BandSource[]
   /** The publisher's message about the bands as a whole. */
   error?: string
   errors: BandErrorMap
@@ -72,9 +99,10 @@ export function BandsEditor({
     () => checkReferences(catalog, 'band', difficulty !== null),
     [catalog, difficulty],
   )
+  const keyHintId = useId()
 
-  const change = (index: number, changes: Partial<BandDraft>) => {
-    onChange(bands.map((band, at) => (at === index ? { ...band, ...changes } : band)))
+  const change = (index: number, next: (band: BandDraft) => BandDraft) => {
+    onChange(bands.map((band, at) => (at === index ? next(band) : band)))
   }
   const move = (index: number, to: number) => {
     const next = [...bands]
@@ -86,120 +114,227 @@ export function BandsEditor({
     order.splice(to, 0, ...order.splice(index, 1))
     onChange(next, order)
   }
+  // A preset or a copy replaces every band: no message about the old ones stays.
+  const replace = (next: BandDraft[]) => {
+    onChange(
+      next,
+      next.map(() => null),
+    )
+  }
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium">Bands</h4>
-      <ol className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h4 className="mr-auto text-sm font-medium">Bands</h4>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="sm">
+              Use a preset
+              <ChevronDown aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {bandPresets.map((preset) => (
+              <DropdownMenuItem
+                key={preset.id}
+                onSelect={() => {
+                  replace(preset.bands())
+                }}
+              >
+                {preset.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger disabled={copyFrom.length === 0}>
+                Copy from a check…
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {copyFrom.map((source) => (
+                  <DropdownMenuItem
+                    key={source.key}
+                    onSelect={() => {
+                      replace(source.bands.map((band) => ({ ...band, upTo: { ...band.upTo } })))
+                    }}
+                  >
+                    {source.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={bands.length >= maxBands}
+          onClick={() => {
+            const added = addBand(bands)
+            onChange(added.bands, added.order)
+          }}
+        >
+          <Plus aria-hidden="true" />
+          Add band
+        </Button>
+      </div>
+      <ol className="space-y-2">
         {bands.map((band, index) => {
           const last = index === bands.length - 1
           const found = errors[index] ?? {}
           const name = `Band ${String(index + 1)}`
           return (
             // The bands have no identity of their own, so the position is the key.
-            <li key={index} className="space-y-3 rounded-lg p-3 ring-1 ring-foreground/10">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField
+            <li key={index} className="space-y-2 well-row">
+              <div className="flex flex-wrap items-start gap-2">
+                <span aria-hidden="true" className="mt-1.5 count-pill">
+                  {index + 1}
+                </span>
+                <BandInput
                   label={`${name} key`}
-                  keyField
+                  placeholder="Key"
+                  className="w-32 flex-1"
+                  mono
+                  describedBy={keyHintId}
                   value={band.key}
                   onChange={(key) => {
-                    change(index, { key })
+                    change(index, (held) => editBandKey(held, key))
                   }}
                   error={found.key}
                 />
-                <TextField
+                <BandInput
                   label={`${name} label`}
+                  placeholder="Label"
+                  className="w-40 flex-[2]"
                   value={band.label}
                   onChange={(label) => {
-                    change(index, { label })
+                    change(index, (held) => editBandLabel(held, label))
                   }}
                   error={found.label}
                 />
+                {!last && (
+                  <UpToInput
+                    name={name}
+                    upTo={band.upTo}
+                    onChange={(upTo) => {
+                      change(index, (held) => ({ ...held, upTo }))
+                    }}
+                    catalog={catalog}
+                    references={references}
+                    declared={declared}
+                    error={found.upTo}
+                  />
+                )}
+                <div className="ml-auto flex">
+                  <IconButton
+                    label={`Move up ${name.toLowerCase()}`}
+                    dense
+                    disabled={index === 0}
+                    onClick={() => {
+                      move(index, index - 1)
+                    }}
+                  >
+                    <ArrowUp />
+                  </IconButton>
+                  <IconButton
+                    label={`Move down ${name.toLowerCase()}`}
+                    dense
+                    disabled={last}
+                    onClick={() => {
+                      move(index, index + 1)
+                    }}
+                  >
+                    <ArrowDown />
+                  </IconButton>
+                  <IconButton
+                    label={`Remove ${name.toLowerCase()}`}
+                    dense
+                    destructive
+                    disabled={bands.length <= 1}
+                    onClick={() => {
+                      onChange(
+                        bands.filter((_, at) => at !== index),
+                        bands.flatMap((_, at) => (at === index ? [] : [at])),
+                      )
+                    }}
+                  >
+                    <X />
+                  </IconButton>
+                </div>
               </div>
-              {last ? (
+              {last && (
                 <>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="hint">
                     The last band catches the rest: it has no bound.
-                    {band.upTo.kind !== 'none' && ' Its bound is dropped when you save.'}
+                    {droppedBound(band.upTo) && ' Its bound is dropped when you save.'}
                   </p>
-                  {found.upTo && <p className="text-sm text-destructive">{found.upTo}</p>}
+                  {found.upTo && <FieldError>{found.upTo}</FieldError>}
                 </>
-              ) : (
-                <UpToInput
-                  name={name}
-                  upTo={band.upTo}
-                  onChange={(upTo) => {
-                    change(index, { upTo })
-                  }}
-                  catalog={catalog}
-                  references={references}
-                  declared={declared}
-                  error={found.upTo}
-                />
               )}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label={`Move up ${name.toLowerCase()}`}
-                  disabled={index === 0}
-                  onClick={() => {
-                    move(index, index - 1)
-                  }}
-                >
-                  Move up
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label={`Move down ${name.toLowerCase()}`}
-                  disabled={last}
-                  onClick={() => {
-                    move(index, index + 1)
-                  }}
-                >
-                  Move down
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label={`Remove ${name.toLowerCase()}`}
-                  disabled={bands.length <= 1}
-                  onClick={() => {
-                    onChange(
-                      bands.filter((_, at) => at !== index),
-                      bands.flatMap((_, at) => (at === index ? [] : [at])),
-                    )
-                  }}
-                >
-                  Remove
-                </Button>
-              </div>
             </li>
           )
         })}
       </ol>
+      <KeyHint id={keyHintId}>Every band key follows this rule.</KeyHint>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={bands.length >= maxBands}
-        onClick={() => {
-          onChange([...bands, blankBand()], [...bands.keys(), null])
-        }}
-      >
-        Add band
-      </Button>
     </div>
   )
 }
 
-/** The bound of a band that is not the last: a kind selector and the input of that kind. */
+/** Whether saving would drop the bound: an empty number says nothing, so nothing is lost. */
+function droppedBound(upTo: UpToDraft): boolean {
+  return upTo.kind !== 'none' && !(upTo.kind === 'number' && upTo.value.trim() === '')
+}
+
+/** A compact text input of a band row: its label is for assistive technology only. */
+function BandInput({
+  label,
+  placeholder,
+  value,
+  onChange,
+  error,
+  describedBy,
+  mono = false,
+  className,
+}: {
+  label: string
+  placeholder: string
+  value: string
+  onChange: (value: string) => void
+  error?: string
+  describedBy?: string
+  mono?: boolean
+  className?: string
+}) {
+  const id = useId()
+  const errorId = `${id}-error`
+  const described = [describedBy, error ? errorId : undefined].filter(Boolean).join(' ')
+
+  return (
+    <div className={cn('min-w-0 space-y-1', className)}>
+      <Label htmlFor={id} className="sr-only">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        className={mono ? 'font-mono' : undefined}
+        placeholder={placeholder}
+        value={value}
+        autoComplete="off"
+        aria-invalid={error !== undefined}
+        aria-describedby={described === '' ? undefined : described}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
+      />
+      {error && <FieldError id={errorId}>{error}</FieldError>}
+    </div>
+  )
+}
+
+/**
+ * The bound of a band that is not the last, in the band's row: a kind selector and the input of
+ * that kind (a formula wraps onto its own line; the others sit beside the selector).
+ */
 function UpToInput({
   name,
   upTo,
@@ -217,30 +352,31 @@ function UpToInput({
   declared: ReturnType<typeof declaredDifficulty>
   error?: string
 }) {
-  const kindId = useId()
-  const trackerId = useId()
-
   return (
-    <div className="space-y-2">
-      <Label htmlFor={kindId}>{name} bound</Label>
-      <Select
-        id={kindId}
-        value={upTo.kind}
-        onChange={(event) => {
-          onChange(withKind(event.target.value as Kind, upTo))
-        }}
-      >
-        {upTo.kind === 'unknown' && <option value="unknown">Kept as stored</option>}
-        {kinds.map(({ kind, label }) => (
-          <option key={kind} value={kind}>
-            {label}
-          </option>
-        ))}
-      </Select>
-      {upTo.kind === 'none' && error && <p className="text-sm text-destructive">{error}</p>}
+    <>
+      <div className="w-36 space-y-1">
+        <Select
+          size="sm"
+          aria-label={`${name} bound`}
+          value={upTo.kind}
+          onChange={(event) => {
+            onChange(withKind(event.target.value as Kind, upTo))
+          }}
+        >
+          {upTo.kind === 'unknown' && <option value="unknown">Kept as stored</option>}
+          {kinds.map(({ kind, label }) => (
+            <option key={kind} value={kind}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        {upTo.kind === 'none' && error && <FieldError>{error}</FieldError>}
+      </div>
       {upTo.kind === 'number' && (
-        <TextField
+        <BandInput
           label={`${name} number`}
+          placeholder="Up to"
+          className="w-[70px] flex-none"
           value={upTo.value}
           onChange={(value) => {
             onChange({ kind: 'number', value })
@@ -249,10 +385,10 @@ function UpToInput({
         />
       )}
       {upTo.kind === 'tracker' && (
-        <div className="space-y-2">
-          <Label htmlFor={trackerId}>{name} tracker</Label>
+        <div className="w-48 space-y-1">
           <Select
-            id={trackerId}
+            size="sm"
+            aria-label={`${name} tracker`}
             value={upTo.value}
             aria-invalid={error !== undefined}
             onChange={(event) => {
@@ -270,32 +406,34 @@ function UpToInput({
               </option>
             ))}
           </Select>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <FieldError>{error}</FieldError>}
         </div>
       )}
       {upTo.kind === 'formula' && (
-        <FormulaInput
-          label={`${name} formula`}
-          value={upTo.value}
-          onChange={(value) => {
-            onChange({ kind: 'formula', value })
-          }}
-          diagnostics={
-            upTo.value.trim() === ''
-              ? null
-              : checkFormulaDiagnostics({
-                  formula: upTo.value,
-                  scope: 'band',
-                  catalog,
-                  difficulty: declared,
-                })
-          }
-          references={references}
-          error={error}
-        />
+        <div className="basis-full">
+          <FormulaInput
+            label={`${name} formula`}
+            value={upTo.value}
+            onChange={(value) => {
+              onChange({ kind: 'formula', value })
+            }}
+            diagnostics={
+              upTo.value.trim() === ''
+                ? null
+                : checkFormulaDiagnostics({
+                    formula: upTo.value,
+                    scope: 'band',
+                    catalog,
+                    difficulty: declared,
+                  })
+            }
+            references={references}
+            error={error}
+          />
+        </div>
       )}
       {upTo.kind === 'unknown' && (
-        <div className="space-y-1">
+        <div className="basis-full space-y-1">
           <p className="font-mono text-sm break-all text-muted-foreground">
             {JSON.stringify(upTo.raw)}
           </p>
@@ -303,9 +441,9 @@ function UpToInput({
             The editor has no input for this bound: it is kept as stored. Choose another kind to
             replace it.
           </p>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <FieldError>{error}</FieldError>}
         </div>
       )}
-    </div>
+    </>
   )
 }

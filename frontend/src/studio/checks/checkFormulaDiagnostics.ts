@@ -151,3 +151,28 @@ export function checkReferences(
       : []),
   ]
 }
+
+/**
+ * What a check formula reads, by label, once each in the order it first reads them ("Power",
+ * "Heat"): the hint under the modifier. A reference the catalog does not know is named by its
+ * key; a formula that does not parse reads nothing here (its error is shown instead).
+ */
+export function checkReads(text: string, catalog: Catalog): string[] {
+  let formula: Formula
+  try {
+    formula = parseFormula(text)
+  } catch (error) {
+    if (!(error instanceof InvalidFormula)) {
+      throw error
+    }
+    return []
+  }
+  const labels = new Map(
+    checkReferences(catalog, 'band', true).map(({ reference, label }) => [reference, label]),
+  )
+  const names = formula.references.map((reference) => {
+    const written = referenceToString(reference)
+    return labels.get(written) ?? written
+  })
+  return [...new Set(names)]
+}

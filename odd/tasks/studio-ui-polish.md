@@ -173,6 +173,7 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 - 2026-10-22: T4 home and Overview: home cards with count pills, Overview Details/Credits panels, notice counter, save state, `KeyHint` on every Studio key field (S18). Slice 1 is ~1,870 lines; the user accepted the size exception; reviewed as two candidates, T2–T3 and T4.
 - 2026-10-22: slice 1 review fixes: the publish notice clears whenever the `tab` param changes (history navigation, typed URL), the SceneTypeEditorPage "unavailable" test waits for the GET, the notice counts code points like the server (`mb_strlen`) with `aria-invalid`, a field error and Save disabled over 2,000. RED observed for the history and the over-limit tests.
 - 2026-10-22: T5 `Select` on `radix-ui` Select: `<option>` children and a native-style `onChange` keep call sites to a tag rename (28 Studio uses); `''` maps to an internal sentinel; a value outside the options shows as "(not an option)" and `aria-invalid` instead of the first option; `onCloseAutoFocus` lets `FormulaInput` put the caret back (Radix's focus trap otherwise wins); `chooseOption`/`listOptions` test helpers (match by name, then value) and e2e `choose-option.ts`; 85 `selectOptions` moved, 5 Studio e2e calls moved (the sixth, studio-publish, drives a Play NativeSelect and stays); jsdom polyfills in `setup.ts`. Select tests written right after the component (no RED); the migrated Studio tests were the RED (51 failing before the helper existed).
+- 2026-10-22: select review findings (`review-5e710e80ff77ac7b`): `''` with no empty option shows nothing chosen instead of invalid (non-empty unknown values still fail closed; RED observed for both cases); e2e `chooseOption` prefers the name and falls back to the value without a CSS selector.
 
 ## Reviews
 
@@ -181,6 +182,7 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 | 1 | `review-1940784a74325f2f` | T1 `9ac0b9c` (docs only, 180 lines) | passive (risk low, non_executable_only), no lenses; approved and acknowledged | |
 | 1 | `review-56ddf7cd93651083` | T2–T3 `1dcc5d5`, `46dc57d` (base `9ac0b9c`, temp worktree at `46dc57d`) | medium; approved and acknowledged. Findings fixed in slice 2: publish notice cleared only on rail click, back/forward or a typed URL brings it back (`GameSystemPage.tsx:188-198`); SceneTypeEditorPage "unavailable" test asserts before the 500 settles | [#240](https://github.com/iribarren/ogami/pull/240) |
 | 1 | `review-225c1eb22e3d7498` | T4 `8235db3`, `2764134` (base `46dc57d`) | medium; approved and acknowledged. Finding fixed in slice 2: the notice counter shows the 2,000 limit without client enforcement (`MetadataForm.tsx:203-205`) | [#240](https://github.com/iribarren/ogami/pull/240) |
+| 2 | `review-5e710e80ff77ac7b` | `df3aa8c`, `7bf7ad3` (base `149b072`, 1,023 lines) | medium; approved and acknowledged. Findings fixed in commit 3: empty value without an empty option shown as invalid (`select.tsx:84-109`); e2e `chooseOption` `.or().first()` ambiguity and an unescaped value in its selector | |
 
 ## Next step
 

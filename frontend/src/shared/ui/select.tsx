@@ -67,7 +67,7 @@ interface SelectProps {
  * panel lists `role="option"`s. Options are `<option>` children as with `NativeSelect`, which keeps
  * call sites unchanged apart from the tag. A value that is none of the options fails closed:
  * the trigger shows it as "not an option" and is `aria-invalid`, instead of silently showing
- * the first option.
+ * the first option. Only `''` without an empty option is not an error: it shows nothing chosen.
  */
 function Select({
   className,
@@ -81,7 +81,9 @@ function Select({
 }: SelectProps) {
   const options = readOptions(children)
   const selected = options.find((option) => option.value === value)
-  const unknown = selected === undefined
+  // An empty value with no empty option is "nothing chosen yet" (a list still loading or
+  // empty), not an error; any other value that is no option fails closed.
+  const unknown = selected === undefined && value !== ''
   const invalid = props['aria-invalid'] === true || unknown
 
   return (
@@ -106,7 +108,7 @@ function Select({
       >
         <SelectPrimitive.Value>
           <span className="block truncate">
-            {unknown ? `${value} (not an option)` : selected.label}
+            {unknown ? `${value} (not an option)` : selected?.label}
           </span>
         </SelectPrimitive.Value>
         <SelectPrimitive.Icon asChild>

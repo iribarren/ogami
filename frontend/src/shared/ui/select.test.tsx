@@ -66,6 +66,31 @@ describe('Select', () => {
     expect(screen.getByText('value:luck')).toBeInTheDocument()
   })
 
+  it('shows nothing chosen, not an error, for an empty value without an empty option', () => {
+    render(
+      <>
+        <Label htmlFor="level">Level</Label>
+        <Select id="level" value="" onChange={() => undefined}>
+          <option value="low">Low</option>
+        </Select>
+      </>,
+    )
+
+    const trigger = screen.getByRole('combobox', { name: 'Level' })
+    expect(trigger).not.toBeInvalid()
+    expect(trigger).not.toHaveTextContent('not an option')
+  })
+
+  it('shows nothing chosen for an empty value when there are no options at all', () => {
+    render(
+      <Select aria-label="First Scene Type" value="" onChange={() => undefined}>
+        {null}
+      </Select>,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'First Scene Type' })).not.toBeInvalid()
+  })
+
   it('fails closed on a value that is not an option', () => {
     render(<Harness initial="gone" />)
 

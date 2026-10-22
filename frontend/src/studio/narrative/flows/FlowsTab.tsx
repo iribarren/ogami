@@ -1,8 +1,10 @@
+import { Plus, Route } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { useGameSystemValidation } from '../../useGameSystems'
 import { ItemDialog } from '../ItemDialog'
@@ -57,15 +59,20 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
       {(data) => {
         const sceneTypes = sceneTypeOptions(data)
         return (
-          <section aria-label="Flows" className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-heading text-lg font-semibold">Flows</h2>
+          <section aria-label="Flows" className="panel">
+            <div className="panel-head">
+              <IconTile size="sm">
+                <Route />
+              </IconTile>
+              <h2 className="font-heading text-panel-title">Flows</h2>
+              <div className="ml-auto">
               {sceneTypes.length === 0 ? (
                 <div className="flex items-center gap-3">
                   <p id={noSceneTypes} className="text-sm text-muted-foreground">
                     Add a Scene Type first.
                   </p>
-                  <Button size="sm" disabled aria-describedby={noSceneTypes}>
+                  <Button variant="outline" size="sm" disabled aria-describedby={noSceneTypes}>
+                    <Plus aria-hidden="true" />
                     New flow
                   </Button>
                 </div>
@@ -83,14 +90,28 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                     })
                   }}
                   refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}
-                  trigger={<Button size="sm">New flow</Button>}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Plus aria-hidden="true" />
+                      New flow
+                    </Button>
+                  }
                 />
               )}
+              </div>
             </div>
             {data.flows.length === 0 ? (
-              <p className="text-muted-foreground">This draft has no flows yet.</p>
+              <div className="panel-body">
+                <div className="empty-state">
+                  <IconTile size="sm">
+                    <Route />
+                  </IconTile>
+                  <p>This draft has no flows yet.</p>
+                  <p className="hint">A flow is the order of phases a campaign plays through.</p>
+                </div>
+              </div>
             ) : (
-              <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+              <ul>
                 {data.flows.map((item, index) => (
                   <FlowRow
                     key={item.key}
@@ -135,21 +156,21 @@ function FlowRow({
   const title = typeof name === 'string' && name !== '' ? name : item.key
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+    <li className="list-row">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           {draft === null ? (
-            <span className="font-medium">{title}</span>
+            <span className="list-row-title">{title}</span>
           ) : (
             <Link
               to="/studio/game-systems/$key/flows/$flow"
               params={{ key: gameSystemKey, flow: item.key }}
-              className="font-medium underline-offset-4 hover:underline"
+              className="list-row-title underline-offset-4 hover:underline"
             >
               {title}
             </Link>
           )}
-          <span className="font-mono text-sm break-all text-muted-foreground">{item.key}</span>
+          <span className="list-row-key break-all">{item.key}</span>
           {draft === null ? (
             <Badge variant="outline">Can&apos;t be edited here</Badge>
           ) : (

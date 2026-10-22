@@ -59,7 +59,7 @@ describe('the Flows tab', () => {
     expect(side).toHaveTextContent('Used by sceneTypes[0].play[1]')
     const keys = within(screen.getByRole('region', { name: 'Flows' }))
       .getAllByRole('listitem')
-      .map((item) => item.querySelector('span.font-mono')?.textContent)
+      .map((item) => item.querySelector('.list-row-key')?.textContent)
     expect(keys).toEqual(['heist', 'side-job', 'odd-flow'])
   })
 

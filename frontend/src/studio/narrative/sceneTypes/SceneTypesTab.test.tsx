@@ -50,7 +50,7 @@ describe('the Scene Types tab', () => {
     expect(quiet).toHaveTextContent('Not used')
     const names = within(screen.getByRole('region', { name: 'Scene Types' }))
       .getAllByRole('listitem')
-      .map((item) => item.querySelector('span.font-mono')?.textContent)
+      .map((item) => item.querySelector('.list-row-key')?.textContent)
     expect(names).toEqual(['ambush', 'quiet', 'odd'])
   })
 
@@ -88,7 +88,7 @@ describe('the Scene Types tab', () => {
 })
 
 describe('creating a Scene Type', () => {
-  it('sends the smallest Scene Type the publisher accepts and opens its editor', async () => {
+  it('sends the smallest Scene Type the publisher accepts and stays on the list with it selected', async () => {
     const sent: unknown[] = []
     const created = {
       key: 'heist',
@@ -122,9 +122,13 @@ describe('creating a Scene Type', () => {
     await user.type(inDialog().getByLabelText('Purpose'), 'Steal it.')
     await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
 
-    expect(await screen.findByRole('form', { name: 'Scene Type' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Key')).toHaveValue('heist')
-    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/heist')
+    const row = (await screen.findByRole('link', { name: 'Heist' })).closest('li')
+    expect(row).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('link', { name: 'Quiet' }).closest('li')).not.toHaveAttribute(
+      'aria-current',
+    )
+    expect(screen.queryByRole('form', { name: 'Scene Type' })).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
   })
 

@@ -45,7 +45,7 @@ const changed = {
 const labelsIn = (region: HTMLElement) =>
   within(region)
     .getAllByRole('listitem')
-    .map((item) => item.querySelector('span')?.textContent)
+    .map((item) => item.querySelector('.list-row-title')?.textContent)
 
 describe('the sheet tab', () => {
   it('lists the fields under the declared groups in order, an empty group included', async () => {
@@ -67,6 +67,15 @@ describe('the sheet tab', () => {
       'Health',
       'Notes',
     ])
+  })
+
+  it('shows the range of a bounded field and nothing for a field without bounds', async () => {
+    await openSheet()
+
+    const stats = within(await screen.findByRole('region', { name: 'Stats' }))
+    const [power, dexterity] = stats.getAllByRole('listitem')
+    expect(power).toHaveTextContent('0 to 18')
+    expect(dexterity).not.toHaveTextContent(' to ')
   })
 
   it('without declared groups lists in order, with a heading each time the group changes', async () => {

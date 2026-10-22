@@ -86,7 +86,7 @@ describe('a sheet without a layout', () => {
     })
     expect(await screen.findByRole('button', { name: 'Edit layout' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Declare layout' })).not.toBeInTheDocument()
-    expect(screen.getByText(/1 column of groups: Stats/)).toBeVisible()
+    expect(screen.getByText(/Layout: 1 column, 1 group/)).toBeVisible()
     await waitFor(() => {
       expect(fakeApi.requests.filter((request) => request === `GET ${base}`)).toHaveLength(2)
     })
@@ -146,7 +146,7 @@ describe('editing the layout', () => {
     const { sent, handler } = recorder(Response.json({ ...sheet, version: 8 }))
     const { user, fakeApi } = await openSheet({ [`PUT ${base}/sheet/layout`]: handler })
 
-    expect(await screen.findByText(/2 columns of groups: Stats, Health, Notes/)).toBeVisible()
+    expect(await screen.findByText(/Layout: 2 columns, 3 groups/)).toBeVisible()
     await editLayout(user)
     expect(inDialog().getByLabelText('Sheet columns')).toHaveValue('2')
     expect(within(group(1)).getByLabelText('Name')).toHaveValue('Stats')

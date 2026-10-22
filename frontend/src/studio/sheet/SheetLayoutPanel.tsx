@@ -67,10 +67,7 @@ export function SheetLayoutPanel({
   const declare = useDeclareSheetLayout(gameSystemKey)
 
   return (
-    <section
-      aria-label="Layout"
-      className="space-y-2 border-b bg-secondary/40 px-4 py-2.5 text-sm"
-    >
+    <section aria-label="Layout" className="space-y-2 border-b bg-secondary/40 px-4 py-2.5 text-sm">
       {sheet.groups === null ? (
         <>
           <p className="font-medium">Layout: none</p>

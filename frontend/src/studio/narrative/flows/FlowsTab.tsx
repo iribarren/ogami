@@ -66,38 +66,38 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
               </IconTile>
               <h2 className="font-heading text-panel-title">Flows</h2>
               <div className="ml-auto">
-              {sceneTypes.length === 0 ? (
-                <div className="flex items-center gap-3">
-                  <p id={noSceneTypes} className="text-sm text-muted-foreground">
-                    Add a Scene Type first.
-                  </p>
-                  <Button variant="outline" size="sm" disabled aria-describedby={noSceneTypes}>
-                    <Plus aria-hidden="true" />
-                    New flow
-                  </Button>
-                </div>
-              ) : (
-                <ItemDialog
-                  gameSystemKey={gameSystemKey}
-                  form={flowForm}
-                  version={data.version}
-                  original={null}
-                  initial={newFlow(sceneTypes)}
-                  onSaved={(item) => {
-                    void navigate({
-                      to: '/studio/game-systems/$key/flows/$flow',
-                      params: { key: gameSystemKey, flow: String(item.key) },
-                    })
-                  }}
-                  refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}
-                  trigger={
-                    <Button variant="outline" size="sm">
+                {sceneTypes.length === 0 ? (
+                  <div className="flex items-center gap-3">
+                    <p id={noSceneTypes} className="text-sm text-muted-foreground">
+                      Add a Scene Type first.
+                    </p>
+                    <Button variant="outline" size="sm" disabled aria-describedby={noSceneTypes}>
                       <Plus aria-hidden="true" />
                       New flow
                     </Button>
-                  }
-                />
-              )}
+                  </div>
+                ) : (
+                  <ItemDialog
+                    gameSystemKey={gameSystemKey}
+                    form={flowForm}
+                    version={data.version}
+                    original={null}
+                    initial={newFlow(sceneTypes)}
+                    onSaved={(item) => {
+                      void navigate({
+                        to: '/studio/game-systems/$key/flows/$flow',
+                        params: { key: gameSystemKey, flow: String(item.key) },
+                      })
+                    }}
+                    refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <Plus aria-hidden="true" />
+                        New flow
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </div>
             {data.flows.length === 0 ? (

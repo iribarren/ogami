@@ -88,7 +88,7 @@ export function ReleasesTab({
 
   return (
     <div className="flex flex-wrap items-start gap-6">
-      <section aria-label="Releases" className="panel w-full max-w-[400px] flex-1 basis-72">
+      <section aria-label="Releases" className="w-full max-w-[400px] flex-1 basis-72 panel">
         <div className="panel-head">
           <IconTile size="sm">
             <Package />
@@ -200,7 +200,7 @@ function ReleaseView({
   return (
     <section
       aria-label={`Version ${String(version)}`}
-      className="panel min-w-0 flex-[2_1_360px] space-y-4 p-4"
+      className="min-w-0 flex-[2_1_360px] space-y-4 panel p-4"
     >
       <div className="flex flex-wrap items-start gap-3">
         <IconTile size="lg">

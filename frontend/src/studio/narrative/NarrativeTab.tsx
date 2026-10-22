@@ -72,28 +72,28 @@ function NarrativeSections({
         )}
       />
       <div className="grid gap-6 lg:grid-cols-2">
-      <ItemSection
-        gameSystemKey={gameSystemKey}
-        narrative={data}
-        title="Tags"
-        icon={<Tag />}
-        items={data.tags}
-        form={tagForm}
-        titleField="label"
-        empty="This draft has no tags yet."
-        summary={() => null}
-      />
-      <ItemSection
-        gameSystemKey={gameSystemKey}
-        narrative={data}
-        title="Fact slots"
-        icon={<ScrollText />}
-        items={data.factSlots}
-        form={factSlotForm}
-        titleField="label"
-        empty="This draft has no fact slots yet."
-        summary={(draft: LabelledDraft) => <Badge variant="secondary">{draft.type}</Badge>}
-      />
+        <ItemSection
+          gameSystemKey={gameSystemKey}
+          narrative={data}
+          title="Tags"
+          icon={<Tag />}
+          items={data.tags}
+          form={tagForm}
+          titleField="label"
+          empty="This draft has no tags yet."
+          summary={() => null}
+        />
+        <ItemSection
+          gameSystemKey={gameSystemKey}
+          narrative={data}
+          title="Fact slots"
+          icon={<ScrollText />}
+          items={data.factSlots}
+          form={factSlotForm}
+          titleField="label"
+          empty="This draft has no fact slots yet."
+          summary={(draft: LabelledDraft) => <Badge variant="secondary">{draft.type}</Badge>}
+        />
       </div>
     </section>
   )
@@ -122,24 +122,24 @@ function ItemSection<Draft>({
   summary: (draft: Draft) => ReactNode
 }) {
   return (
-    <section aria-label={title} className="panel self-start">
+    <section aria-label={title} className="self-start panel">
       <div className="panel-head">
         <IconTile size="sm">{icon}</IconTile>
         <h2 className="font-heading text-panel-title">{title}</h2>
         <div className="ml-auto">
-        <ItemDialog
-          gameSystemKey={gameSystemKey}
-          form={form}
-          version={narrative.version}
-          original={null}
-          initial={form.blank()}
-          trigger={
-            <Button variant="outline" size="sm">
-              <Plus aria-hidden="true" />
-              New {form.noun}
-            </Button>
-          }
-        />
+          <ItemDialog
+            gameSystemKey={gameSystemKey}
+            form={form}
+            version={narrative.version}
+            original={null}
+            initial={form.blank()}
+            trigger={
+              <Button variant="outline" size="sm">
+                <Plus aria-hidden="true" />
+                New {form.noun}
+              </Button>
+            }
+          />
         </div>
       </div>
       {items.length === 0 ? (

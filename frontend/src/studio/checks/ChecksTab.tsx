@@ -241,45 +241,45 @@ function CheckList({
             </div>
           </div>
         )}
-      {data.checks.length > 0 && (
-        <ul>
-          {data.checks.map((check, index) => (
-            <CheckRow
-              key={typeof check.key === 'string' ? check.key : `#${String(index)}`}
-              gameSystemKey={gameSystemKey}
-              data={data}
-              check={check}
-              index={index}
-              selected={selected?.original === check.key}
-              busy={move.isPending}
-              onEdit={(original) => {
-                open(original, data)
-              }}
-              onMove={(target) => {
-                move.mutate(
-                  { expectedVersion: data.version, check: check.key, index: target },
-                  {
-                    onSuccess: advance,
-                    onError: (error) => {
-                      if (error instanceof StudioError && error.status === 409) {
-                        move.reset()
-                        onConflict(error.message)
-                      }
+        {data.checks.length > 0 && (
+          <ul>
+            {data.checks.map((check, index) => (
+              <CheckRow
+                key={typeof check.key === 'string' ? check.key : `#${String(index)}`}
+                gameSystemKey={gameSystemKey}
+                data={data}
+                check={check}
+                index={index}
+                selected={selected?.original === check.key}
+                busy={move.isPending}
+                onEdit={(original) => {
+                  open(original, data)
+                }}
+                onMove={(target) => {
+                  move.mutate(
+                    { expectedVersion: data.version, check: check.key, index: target },
+                    {
+                      onSuccess: advance,
+                      onError: (error) => {
+                        if (error instanceof StudioError && error.status === 409) {
+                          move.reset()
+                          onConflict(error.message)
+                        }
+                      },
                     },
-                  },
-                )
-              }}
-              onDeleted={(result) => {
-                if (selected?.original === check.key) {
-                  setSelected(null)
-                } else {
-                  advance(result)
-                }
-              }}
-            />
-          ))}
-        </ul>
-      )}
+                  )
+                }}
+                onDeleted={(result) => {
+                  if (selected?.original === check.key) {
+                    setSelected(null)
+                  } else {
+                    advance(result)
+                  }
+                }}
+              />
+            ))}
+          </ul>
+        )}
       </div>
       {selected !== null && (
         <CheckEditor

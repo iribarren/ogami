@@ -124,47 +124,47 @@ function LibraryImportsPanel({ gameSystemKey }: { gameSystemKey: string }) {
         </Button>
       </div>
       <div className="space-y-6 panel-body">
-      {imports.isRefetchError && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t refresh the library imports. {imports.error.message}
-        </p>
-      )}
-      {failure && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
-          <p>{failure.message}</p>
-          {isStaleWrite(failure) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void reload()
-              }}
-            >
-              Reload the latest version
-            </Button>
-          )}
-        </div>
-      )}
-      <ImportList
-        imports={imports.data}
-        busy={busy}
-        onUpdate={(item) => {
-          run('update', item)
-        }}
-        onDetach={(item) => {
-          run('detach', item)
-        }}
-        onImport={() => {
-          setImporting(true)
-        }}
-      />
-      <ImportDialog
-        gameSystemKey={gameSystemKey}
-        version={version}
-        open={importing}
-        onOpenChange={setImporting}
-        onReload={reload}
-      />
+        {imports.isRefetchError && (
+          <p role="alert" className="text-sm text-destructive">
+            Couldn&apos;t refresh the library imports. {imports.error.message}
+          </p>
+        )}
+        {failure && (
+          <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+            <p>{failure.message}</p>
+            {isStaleWrite(failure) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void reload()
+                }}
+              >
+                Reload the latest version
+              </Button>
+            )}
+          </div>
+        )}
+        <ImportList
+          imports={imports.data}
+          busy={busy}
+          onUpdate={(item) => {
+            run('update', item)
+          }}
+          onDetach={(item) => {
+            run('detach', item)
+          }}
+          onImport={() => {
+            setImporting(true)
+          }}
+        />
+        <ImportDialog
+          gameSystemKey={gameSystemKey}
+          version={version}
+          open={importing}
+          onOpenChange={setImporting}
+          onReload={reload}
+        />
       </div>
     </section>
   )

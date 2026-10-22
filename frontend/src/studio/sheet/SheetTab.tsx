@@ -1,4 +1,15 @@
-import { ArrowDown, ArrowUp, Hash, List, Pencil, Plus, Sigma, Trash2, Type, UserRound } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Hash,
+  List,
+  Pencil,
+  Plus,
+  Sigma,
+  Trash2,
+  Type,
+  UserRound,
+} from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
@@ -93,102 +104,107 @@ function SheetFields({
   return (
     <section aria-label="Sheet" className="space-y-4">
       <div className="panel">
-      <div className="panel-head">
-        <IconTile size="sm">
-          <UserRound />
-        </IconTile>
-        <h2 className="font-heading text-panel-title">Sheet fields</h2>
-        <div className="ml-auto">
-          <SheetFieldDialog
-            gameSystemKey={gameSystemKey}
-            sheet={data}
-            samples={samples}
-            original={null}
-            trigger={
-              <Button variant="outline" size="sm">
-                <Plus aria-hidden="true" />
-                Add field
-              </Button>
-            }
-          />
-        </div>
-      </div>
-      <SheetLayoutPanel gameSystemKey={gameSystemKey} sheet={data} onDraftChange={setLayoutDraft} />
-      <div className="space-y-4 panel-body">
-      {move.error && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
-          <p>{move.error.message}</p>
-          {move.error instanceof StudioError && move.error.status === 409 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void latest.refetch().then((result) => {
-                  setReloadFailed(result.isError)
-                  if (!result.isError) {
-                    move.reset()
-                  }
-                })
-              }}
-            >
-              Reload the latest version
-            </Button>
-          )}
-        </div>
-      )}
-      {reloadFailed && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t reload the latest version. Try again.
-        </p>
-      )}
-      {data.fields.length === 0 && (
-        <div className="empty-state">
+        <div className="panel-head">
           <IconTile size="sm">
             <UserRound />
           </IconTile>
-          <p>This draft has no sheet fields yet.</p>
-          <p className="hint">Add a field to start the sheet.</p>
+          <h2 className="font-heading text-panel-title">Sheet fields</h2>
+          <div className="ml-auto">
+            <SheetFieldDialog
+              gameSystemKey={gameSystemKey}
+              sheet={data}
+              samples={samples}
+              original={null}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Plus aria-hidden="true" />
+                  Add field
+                </Button>
+              }
+            />
+          </div>
         </div>
-      )}
-      {sections.map((section, position) => (
-        <section
-          // A heading can repeat when groups are not declared, so the position is part of the key.
-          key={`${String(position)}:${section.heading ?? ''}`}
-          aria-label={section.heading ?? 'Fields without a group'}
-          className="space-y-2"
-        >
-          {section.heading !== null && (
-            <h3 className="group-label">{section.heading}</h3>
-          )}
-          {section.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No fields</p>
-          ) : (
-            <ul className="overflow-hidden rounded-lg border">
-              {section.rows.map(({ field, index }) => (
-                <FieldRow
-                  key={typeof field.key === 'string' ? field.key : `#${String(index)}`}
-                  gameSystemKey={gameSystemKey}
-                  sheet={data}
-                  samples={samples}
-                  field={field}
-                  index={index}
-                  busy={move.isPending}
-                  onMove={(target) => {
-                    setReloadFailed(false)
-                    move.mutate({
-                      expectedVersion: data.version,
-                      field: String(field.key),
-                      index: target,
+        <SheetLayoutPanel
+          gameSystemKey={gameSystemKey}
+          sheet={data}
+          onDraftChange={setLayoutDraft}
+        />
+        <div className="space-y-4 panel-body">
+          {move.error && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-3 text-sm text-destructive"
+            >
+              <p>{move.error.message}</p>
+              {move.error instanceof StudioError && move.error.status === 409 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void latest.refetch().then((result) => {
+                      setReloadFailed(result.isError)
+                      if (!result.isError) {
+                        move.reset()
+                      }
                     })
                   }}
-                />
-              ))}
-            </ul>
+                >
+                  Reload the latest version
+                </Button>
+              )}
+            </div>
           )}
-        </section>
-      ))}
-      </div>
+          {reloadFailed && (
+            <p role="alert" className="text-sm text-destructive">
+              Couldn&apos;t reload the latest version. Try again.
+            </p>
+          )}
+          {data.fields.length === 0 && (
+            <div className="empty-state">
+              <IconTile size="sm">
+                <UserRound />
+              </IconTile>
+              <p>This draft has no sheet fields yet.</p>
+              <p className="hint">Add a field to start the sheet.</p>
+            </div>
+          )}
+          {sections.map((section, position) => (
+            <section
+              // A heading can repeat when groups are not declared, so the position is part of the key.
+              key={`${String(position)}:${section.heading ?? ''}`}
+              aria-label={section.heading ?? 'Fields without a group'}
+              className="space-y-2"
+            >
+              {section.heading !== null && <h3 className="group-label">{section.heading}</h3>}
+              {section.rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No fields</p>
+              ) : (
+                <ul className="overflow-hidden rounded-lg border">
+                  {section.rows.map(({ field, index }) => (
+                    <FieldRow
+                      key={typeof field.key === 'string' ? field.key : `#${String(index)}`}
+                      gameSystemKey={gameSystemKey}
+                      sheet={data}
+                      samples={samples}
+                      field={field}
+                      index={index}
+                      busy={move.isPending}
+                      onMove={(target) => {
+                        setReloadFailed(false)
+                        move.mutate({
+                          expectedVersion: data.version,
+                          field: String(field.key),
+                          index: target,
+                        })
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
       </div>
       <SheetPreview sheet={data} samples={samples} />
     </section>

@@ -29,22 +29,22 @@ export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
             </IconTile>
             <h2 className="font-heading text-panel-title">Scene Types</h2>
             <div className="ml-auto">
-            <ItemDialog
-              gameSystemKey={gameSystemKey}
-              form={sceneTypeForm}
-              version={data.version}
-              original={null}
-              initial={sceneTypeForm.blank()}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Plus aria-hidden="true" />
-                  New Scene Type
-                </Button>
-              }
-              onSaved={(item) => {
-                setSelected(String(item.key))
-              }}
-            />
+              <ItemDialog
+                gameSystemKey={gameSystemKey}
+                form={sceneTypeForm}
+                version={data.version}
+                original={null}
+                initial={sceneTypeForm.blank()}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Plus aria-hidden="true" />
+                    New Scene Type
+                  </Button>
+                }
+                onSaved={(item) => {
+                  setSelected(String(item.key))
+                }}
+              />
             </div>
           </div>
           {data.sceneTypes.length === 0 ? (

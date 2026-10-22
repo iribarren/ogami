@@ -14,6 +14,8 @@ export async function chooseOption(
   await scope.getByLabel(label, { exact: true }).click()
   // The name wins; the value is only a fallback when no option has that name, so an option
   // named like another one's value is never picked by mistake.
+  // Counting does not auto-wait: let the listbox open before looking at its options.
+  await page.getByRole('option').first().waitFor({ state: 'visible' })
   const byName = page.getByRole('option', { name: option, exact: true })
   if ((await byName.count()) > 0) {
     await byName.first().click()

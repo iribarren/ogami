@@ -78,6 +78,26 @@ describe('the sheet tab', () => {
     expect(dexterity).not.toHaveTextContent(' to ')
   })
 
+  it('words a one-sided range and writes negative bounds with a minus sign', async () => {
+    const field = { type: 'number' as const }
+    await openSheet({
+      [`GET ${base}/sheet`]: json({
+        ...sheetUngrouped,
+        fields: [
+          { ...field, key: 'low', label: 'Low', min: 2 },
+          { ...field, key: 'high', label: 'High', max: 5 },
+          { ...field, key: 'swing', label: 'Swing', min: -1, max: 3 },
+        ],
+      }),
+    })
+
+    const rows = await screen.findAllByRole('listitem')
+    const row = (label: string) => rows.find((item) => item.textContent.includes(label))
+    expect(row('Low')).toHaveTextContent('2 or more')
+    expect(row('High')).toHaveTextContent('up to 5')
+    expect(row('Swing')).toHaveTextContent('\u22121 to 3')
+  })
+
   it('without declared groups lists in order, with a heading each time the group changes', async () => {
     await openSheet({ [`GET ${base}/sheet`]: json(sheetUngrouped) })
 

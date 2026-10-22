@@ -284,7 +284,8 @@ function Validation({ gameSystemKey, pack }: { gameSystemKey: string; pack: bool
       </p>
     )
   }
-  const { valid, error, warnings } = validation.data
+  const { valid, errors, warnings } = validation.data
+  const first = errors[0]
   return (
     <Panel title="Validation">
       {valid ? (
@@ -296,7 +297,7 @@ function Validation({ gameSystemKey, pack }: { gameSystemKey: string; pack: bool
       ) : (
         <p role="alert" className="text-destructive">
           The {pack ? 'pack' : 'draft'} is not valid yet. The first error:{' '}
-          {error?.message ?? 'unknown'}
+          {first ? `${first.path}: ${first.message}` : 'unknown'}
         </p>
       )}
       {warnings.length > 0 && (

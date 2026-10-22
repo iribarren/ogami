@@ -95,7 +95,7 @@ export const InvalidDraft: Story = {
       ...draftApi,
       'GET /api/studio/game-systems/my-draft/validation': json({
         valid: false,
-        error: { message: 'oracles: must be an object' },
+        errors: [{ path: 'oracles', message: 'must be an object' }],
         warnings: [],
       }),
     },
@@ -112,7 +112,7 @@ export const ValidWithWarnings: Story = {
       ...draftApi,
       'GET /api/studio/game-systems/my-draft/validation': json({
         valid: true,
-        error: null,
+        errors: [],
         warnings: ['oracles.tables[0]: has no entries'],
       }),
     },

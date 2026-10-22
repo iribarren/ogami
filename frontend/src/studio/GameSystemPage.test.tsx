@@ -543,7 +543,7 @@ describe('the validation tab', () => {
   it('lists repeated warnings once each', async () => {
     await openValidation({
       valid: true,
-      error: null,
+      errors: [],
       warnings: ['flows[1]: has no steps', 'flows[1]: has no steps'],
     })
 
@@ -553,7 +553,7 @@ describe('the validation tab', () => {
   it('shows the first error with its path', async () => {
     await openValidation({
       valid: false,
-      error: { message: 'oracles: must be an object' },
+      errors: [{ path: 'oracles', message: 'must be an object' }],
       warnings: [],
     })
 
@@ -565,7 +565,7 @@ describe('the validation tab', () => {
   it('lists the warnings of a valid draft', async () => {
     await openValidation({
       valid: true,
-      error: null,
+      errors: [],
       warnings: ['oracles.tables[0]: has no entries', 'flows[1]: has no steps'],
     })
 

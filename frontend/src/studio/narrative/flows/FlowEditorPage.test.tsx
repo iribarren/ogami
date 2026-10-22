@@ -1039,7 +1039,7 @@ describe('the header of the flow editor page', () => {
   const validation = (error: string | null, warnings: string[]) =>
     json({
       valid: error === null,
-      error: error === null ? null : { path: '', message: error },
+      errors: error === null ? [] : [{ path: error.split(': ')[0], message: error.split(': ')[1] }],
       warnings,
     })
   const check = `GET ${base}/validation`

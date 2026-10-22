@@ -50,7 +50,7 @@ export const NextVersionWithWarnings: Story = {
     api: {
       'GET /api/studio/game-systems/noir-detective/validation': json({
         valid: true,
-        error: null,
+        errors: [],
         warnings: ['oracles.tables[0]: has no entries'],
       }),
     },
@@ -66,7 +66,7 @@ export const InvalidDraft: Story = {
     api: {
       'GET /api/studio/game-systems/my-draft/validation': json({
         valid: false,
-        error: { message: 'oracles: must be an object' },
+        errors: [{ path: 'oracles', message: 'must be an object' }],
         warnings: [],
       }),
     },

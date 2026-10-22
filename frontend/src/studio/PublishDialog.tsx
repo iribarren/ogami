@@ -250,12 +250,16 @@ function ValidationSummary({
   if (validation.isError) {
     return <Alert role="alert">{validation.error.message}</Alert>
   }
-  const { valid, error, warnings } = validation.data
+  const { valid, errors, warnings } = validation.data
   if (!valid) {
+    const first = errors[0]
     return (
       <Alert role="alert">
         <p>The draft is not valid yet, so it cannot be published. The first error:</p>
-        <PublishErrors errors={[error?.message ?? 'unknown']} gameSystemKey={key} />
+        <PublishErrors
+          errors={[first ? `${first.path}: ${first.message}` : 'unknown']}
+          gameSystemKey={key}
+        />
       </Alert>
     )
   }

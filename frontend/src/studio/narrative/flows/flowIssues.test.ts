@@ -1,12 +1,12 @@
 import { flowIssueCount } from './flowIssues'
 
-const valid = { valid: true, error: null, warnings: [] }
+const valid = { valid: true, errors: [], warnings: [] }
 
 describe('the issues of a flow', () => {
   it('counts the error and the warnings that are about the flow or go into it', () => {
     const validation = {
       valid: false,
-      error: { message: 'flows[1].phases[0].selection: unknown Scene Type "x"' },
+      errors: [{ path: 'flows[1].phases[0].selection', message: 'unknown Scene Type "x"' }],
       warnings: [
         'flows[1]: has no default view',
         'flows[1].phases[0].sceneOpening[2]: is never reached',

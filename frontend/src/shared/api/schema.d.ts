@@ -4112,15 +4112,20 @@ export interface components {
         };
         GameSystemValidationErrorResponse: {
             /**
-             * @description Starts with the path of the offending part of the draft.
-             * @example oracles: must be an object
+             * @description The path of the offending part of the draft: "(root)" for the document itself, otherwise e.g. "flows[0].phases[1].selection.table".
+             * @example oracles.likelihood[1].key
+             */
+            path: string;
+            /**
+             * @description What is wrong with it, without the path.
+             * @example must be a lower-case key
              */
             message: string;
         };
         GameSystemValidationResponse: {
             valid: boolean;
-            /** @description The first error when the draft is invalid; null when it is valid. */
-            error: components["schemas"]["GameSystemValidationErrorResponse"] | null;
+            /** @description Every error when the draft is invalid, the first being the one publishing refuses with; empty when it is valid. */
+            errors: components["schemas"]["GameSystemValidationErrorResponse"][];
             /**
              * @description Authoring warnings, each starting with the path it is about; empty when the draft is invalid.
              * @example [
@@ -9991,7 +9996,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The verdict: the first error with its path when invalid, the authoring warnings when valid. */
+            /** @description The verdict: every error with its path when invalid, the authoring warnings when valid. */
             200: {
                 headers: {
                     [name: string]: unknown;

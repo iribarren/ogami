@@ -43,7 +43,7 @@ describe('the publish dialog', () => {
     renderPublishable(published3, {
       'GET /api/studio/game-systems/noir-detective/validation': json({
         valid: true,
-        error: null,
+        errors: [],
         warnings: ['flows[1]: has no steps', 'flows[1]: has no steps'],
       }),
     })
@@ -70,7 +70,7 @@ describe('the publish dialog', () => {
     renderPublishable(draft, {
       'GET /api/studio/game-systems/my-draft/validation': json({
         valid: false,
-        error: { message: 'oracles: must be an object' },
+        errors: [{ path: 'oracles', message: 'must be an object' }],
         warnings: [],
       }),
     })

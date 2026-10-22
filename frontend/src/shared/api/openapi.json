@@ -6421,7 +6421,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The verdict: the first error with its path when invalid, the authoring warnings when valid.",
+                        "description": "The verdict: every error with its path when invalid, the authoring warnings when valid.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14944,13 +14944,19 @@
             },
             "GameSystemValidationErrorResponse": {
                 "required": [
+                    "path",
                     "message"
                 ],
                 "properties": {
-                    "message": {
-                        "description": "Starts with the path of the offending part of the draft.",
+                    "path": {
+                        "description": "The path of the offending part of the draft: \"(root)\" for the document itself, otherwise e.g. \"flows[0].phases[1].selection.table\".",
                         "type": "string",
-                        "example": "oracles: must be an object"
+                        "example": "oracles.likelihood[1].key"
+                    },
+                    "message": {
+                        "description": "What is wrong with it, without the path.",
+                        "type": "string",
+                        "example": "must be a lower-case key"
                     }
                 },
                 "type": "object"
@@ -14958,21 +14964,19 @@
             "GameSystemValidationResponse": {
                 "required": [
                     "valid",
-                    "error",
+                    "errors",
                     "warnings"
                 ],
                 "properties": {
                     "valid": {
                         "type": "boolean"
                     },
-                    "error": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/GameSystemValidationErrorResponse"
-                            }
-                        ],
-                        "nullable": true,
-                        "description": "The first error when the draft is invalid; null when it is valid."
+                    "errors": {
+                        "description": "Every error when the draft is invalid, the first being the one publishing refuses with; empty when it is valid.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GameSystemValidationErrorResponse"
+                        }
                     },
                     "warnings": {
                         "description": "Authoring warnings, each starting with the path it is about; empty when the draft is invalid.",

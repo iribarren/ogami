@@ -1,4 +1,7 @@
+import { Clapperboard } from 'lucide-react'
+
 import { Button } from '@/shared/ui/button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Select } from '@/shared/ui/select'
 
 import { moveItem } from '../steps/draftParts'
@@ -42,7 +45,7 @@ export function SelectionEditor({
 
   return (
     <fieldset className="space-y-3">
-      <legend className="text-sm font-medium">Selection</legend>
+      <legend className="sr-only">Selection</legend>
       <SelectField
         label="Rule"
         value={selection.rule}
@@ -105,7 +108,13 @@ function SceneTypeList({
   return (
     <div className="space-y-2">
       {list.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No Scene Types yet.</p>
+        <div className="empty-state">
+          <IconTile size="sm">
+            <Clapperboard />
+          </IconTile>
+          <p>No Scene Types yet.</p>
+          <p className="hint">Add a Scene Type to say what this phase plays.</p>
+        </div>
       ) : (
         <ol className="space-y-1">
           {list.map((key, index) => (

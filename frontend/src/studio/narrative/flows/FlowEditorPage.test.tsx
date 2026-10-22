@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -25,9 +25,9 @@ function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
 }
 
-async function openEditor(flow: string, handlers: Record<string, FakeHandler> = {}) {
+async function openEditor(flow: string, handlers: Record<string, FakeHandler> = {}, query = '') {
   const user = userEvent.setup()
-  const rendered = renderAppAt(`/studio/game-systems/my-draft/flows/${flow}`, {
+  const rendered = renderAppAt(`/studio/game-systems/my-draft/flows/${flow}${query}`, {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
     [`GET ${base}/narrative`]: json(narrativeFlows),
     ...handlers,
@@ -36,21 +36,31 @@ async function openEditor(flow: string, handlers: Record<string, FakeHandler> = 
   return { user, ...rendered }
 }
 
-const phase = (number: number) =>
-  within(screen.getByRole('group', { name: `Phase ${String(number)}` }))
-/** The flow's own key: every phase card has a Key of its own too. */
-function first(label: string) {
-  const [field] = screen.getAllByLabelText(label)
-  if (!field) {
-    throw new Error(`No ${label} field.`)
+function nth(items: HTMLElement[], number: number) {
+  const item = items[number - 1]
+  if (!item) {
+    throw new Error(`No item ${String(number)}.`)
   }
-  return field
+  return item
 }
-const flowKey = () => first('Key')
-const flowName = () => first('Name')
+const outline = () => within(screen.getByRole('navigation', { name: 'Flow outline' }))
+/** The form of the selected node. */
+const content = () => within(screen.getByRole('form', { name: 'Flow' }))
+type User = ReturnType<typeof userEvent.setup>
+const pickSettings = (user: User) =>
+  user.click(outline().getByRole('button', { name: 'Flow settings' }))
+const pickPhase = (user: User, number: number) =>
+  user.click(outline().getByRole('button', { name: new RegExp(`^${String(number)}\\. `) }))
+const pickSelection = (user: User, number: number) =>
+  user.click(nth(outline().getAllByRole('button', { name: /^Selection:/ }), number))
+/** A hook of the phase `number`: the outline names them all alike. */
+const hook = (name: string, number = 1) => nth(outline().getAllByRole('button', { name }), number)
+const current = () => outline().getByRole('button', { current: true })
+const flowKey = () => content().getByLabelText('Key')
+const flowName = () => content().getByLabelText('Name')
 const save = () => screen.getByRole('button', { name: 'Save' })
 
-async function replace(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, text: string) {
+async function replace(user: User, field: HTMLElement, text: string) {
   await user.clear(field)
   await user.type(field, text)
 }
@@ -83,10 +93,11 @@ const changed = {
 }
 
 describe('the flow editor', () => {
-  it('shows the fields, the pickers and one card per phase, with its selection and its hooks collapsed', async () => {
+  it('opens the flow settings with the outline of phases, selections and hooks beside them', async () => {
     await openEditor('heist')
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Heist')
+    expect(current()).toHaveAccessibleName('Flow settings')
     expect(flowKey()).toHaveValue('heist')
     expect(flowName()).toHaveValue('Heist')
     expect(screen.getByLabelText('Default flow')).toBeChecked()
@@ -99,19 +110,36 @@ describe('the flow editor', () => {
         name: 'Heat',
       }),
     ).not.toBeChecked()
-    expect(phase(1).getByLabelText('Key')).toHaveValue('setup')
-    expect(phase(1).getByLabelText('Mode')).toHaveValue('once')
-    expect(phase(1).getByLabelText('Rule')).toHaveValue('sequence')
-    expect(phase(1).getByText('1. Ambush')).toBeInTheDocument()
-    expect(phase(2).getByLabelText('Mode')).toHaveValue('loop')
-    expect(phase(2).getByLabelText('Rule')).toHaveValue('player')
-    expect(phase(2).getByText('2. Quiet')).toBeInTheDocument()
-    expect(phase(2).getByRole('button', { name: 'World turn (0 steps)' })).toBeInTheDocument()
-    expect(phase(2).queryByRole('button', { name: 'Add step' })).not.toBeInTheDocument()
+    expect(outline().getByRole('button', { name: '1. Setup Once' })).toBeInTheDocument()
+    expect(outline().getByRole('button', { name: '2. The job Loop' })).toBeInTheDocument()
+    expect(outline().getAllByRole('button', { name: /^Selection:/ })).toHaveLength(2)
+    expect(outline().getByRole('button', { name: 'Selection: Ambush, Quiet' })).toBeInTheDocument()
+    expect(outline().getAllByRole('button', { name: 'World turn (0 steps)' })).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'Back to my-draft' })).toHaveAttribute(
       'href',
       '/studio/game-systems/my-draft',
     )
+    expect(screen.getByText('Default')).toBeInTheDocument()
+  })
+
+  it('edits one node at a time: a phase, its selection, a hook', async () => {
+    const { user } = await openEditor('heist')
+
+    await pickPhase(user, 1)
+    expect(current()).toHaveAccessibleName('1. Setup Once')
+    expect(content().getByLabelText('Key')).toHaveValue('setup')
+    expect(content().getByLabelText('Mode')).toHaveValue('once')
+    expect(screen.queryByLabelText('Default flow')).not.toBeInTheDocument()
+    await pickPhase(user, 2)
+    expect(content().getByLabelText('Mode')).toHaveValue('loop')
+    await pickSelection(user, 2)
+    expect(content().getByLabelText('Rule')).toHaveValue('player')
+    expect(content().getByText('2. Quiet')).toBeInTheDocument()
+    await user.click(hook('World turn (0 steps)', 2))
+    expect(content().getByText('No steps yet.')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByText('World turn'),
+    ).toBeInTheDocument()
   })
 
   it('sends exactly the stored item, with the original key and the version it read, when nothing changed', async () => {
@@ -150,11 +178,13 @@ describe('the flow editor', () => {
       [put]: saved.handler,
     })
 
-    expect(phase(1).getByLabelText('Oracle table')).toHaveValue('places')
-    expect(phase(1).getByRole('button', { name: 'Scene opening (1 step)' })).toBeInTheDocument()
-    expect(phase(1).getByRole('button', { name: 'World turn (1 step)' })).toBeInTheDocument()
-    expect(phase(1).getByRole('button', { name: 'Session opening (0 steps)' })).toBeInTheDocument()
-    expect(phase(1).getByLabelText('Act')).toHaveValue('Act one')
+    expect(hook('Scene opening (1 step)')).toBeInTheDocument()
+    expect(hook('World turn (1 step)')).toBeInTheDocument()
+    expect(hook('Session opening (0 steps)')).toBeInTheDocument()
+    await pickSelection(user, 1)
+    expect(content().getByLabelText('Oracle table')).toHaveValue('places')
+    await pickPhase(user, 1)
+    expect(content().getByLabelText('Act')).toHaveValue('Act one')
     await user.click(save())
 
     await waitFor(() => {
@@ -168,15 +198,16 @@ describe('the flow editor', () => {
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await replace(user, flowName(), 'Big heist')
-    await user.type(first('Description'), 'A big one.')
+    await user.type(content().getByLabelText('Description'), 'A big one.')
     await user.click(screen.getByLabelText('Default flow'))
     await chooseOption(user, 'Default view', 'Journal')
     await user.click(screen.getByRole('checkbox', { name: 'Fate' }))
     await user.click(screen.getByRole('checkbox', { name: 'Complications' }))
     await user.click(screen.getByRole('checkbox', { name: 'Heat' }))
-    await replace(user, phase(1).getByLabelText('Name'), 'Prep')
-    await chooseOption(user, 'Mode', 'Loop', phase(1))
-    await user.type(phase(1).getByLabelText('Act'), 'One')
+    await pickPhase(user, 1)
+    await replace(user, content().getByLabelText('Name'), 'Prep')
+    await chooseOption(user, 'Mode', 'Loop', content())
+    await user.type(content().getByLabelText('Act'), 'One')
     await user.click(save())
 
     await waitFor(() => {
@@ -224,14 +255,25 @@ describe('the flow editor', () => {
 })
 
 describe('the phase outline', () => {
-  it('adds a phase with a key no phase has, starting at the first Scene Type, and saves it last', async () => {
+  it('adds a phase with a key no phase has and no Scene Type, selects it, and refuses it empty (S10)', async () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await user.click(screen.getByRole('button', { name: 'Add phase' }))
 
-    expect(phase(3).getByLabelText('Key')).toHaveValue('phase-3')
+    expect(current()).toHaveAccessibleName('3. Phase 3 Once')
+    expect(content().getByLabelText('Key')).toHaveValue('phase-3')
+    await pickSelection(user, 3)
+    expect(content().getByText('No Scene Types yet.')).toBeInTheDocument()
+    expect(outline().getByRole('button', { name: 'Selection: No Scene Type' })).toBeInTheDocument()
+    await pickSettings(user)
     await user.click(save())
+    expect(await content().findByText('Pick at least one Scene Type.')).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('Selection: No Scene Type')
+    expect(saved.sent).toHaveLength(0)
+    await chooseOption(user, 'Add a Scene Type', 'Ambush', content())
+    await user.click(save())
+
     await waitFor(() => {
       expect(saved.sent).toHaveLength(1)
     })
@@ -250,10 +292,15 @@ describe('the phase outline', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
+    await pickPhase(user, 1)
     expect(screen.getByRole('button', { name: 'Move phase 1 up' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Move phase 2 down' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Move phase 1 down' }))
-    expect(phase(1).getByLabelText('Key')).toHaveValue('job')
+    // The moved phase stays selected, at its new place.
+    expect(current()).toHaveAccessibleName('2. Setup Once')
+    expect(content().getByLabelText('Key')).toHaveValue('setup')
+    expect(screen.getByRole('button', { name: 'Move phase 2 down' })).toBeDisabled()
+    await pickPhase(user, 1)
+    expect(content().getByLabelText('Key')).toHaveValue('job')
     await user.click(save())
 
     await waitFor(() => {
@@ -267,9 +314,12 @@ describe('the phase outline', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
+    await pickPhase(user, 1)
     await user.click(screen.getByRole('button', { name: 'Delete phase 1' }))
 
-    expect(screen.queryByRole('group', { name: 'Phase 2' })).not.toBeInTheDocument()
+    expect(outline().queryByRole('button', { name: /^2\. / })).not.toBeInTheDocument()
+    // The next phase takes its place in the content.
+    expect(current()).toHaveAccessibleName('1. The job Loop')
     expect(screen.getByRole('button', { name: 'Delete phase 1' })).toBeDisabled()
     await user.click(save())
     await waitFor(() => {
@@ -311,15 +361,24 @@ describe('the phase outline', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
-    await replace(user, phase(2).getByLabelText('Key'), 'setup')
+    await pickPhase(user, 2)
+    await replace(user, content().getByLabelText('Key'), 'setup')
+    await pickSettings(user)
     await user.click(save())
-    expect(await phase(2).findByText('Another phase has this key.')).toBeInTheDocument()
-    await user.clear(phase(1).getByLabelText('Key'))
+    expect(await content().findByText('Another phase has this key.')).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('2. The job Loop')
+    await user.clear(content().getByLabelText('Key'))
+    await pickPhase(user, 1)
+    await user.clear(content().getByLabelText('Key'))
+    await pickSettings(user)
     await user.clear(flowKey())
     await user.click(save())
 
-    expect(await phase(1).findByText('Enter a key.')).toBeInTheDocument()
-    expect(screen.getAllByText('Enter a key.')).toHaveLength(2)
+    // The flow's own key comes first.
+    expect(await content().findByText('Enter a key.')).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('Flow settings')
+    await pickPhase(user, 1)
+    expect(content().getByText('Enter a key.')).toBeInTheDocument()
     expect(saved.sent).toHaveLength(0)
   })
 })
@@ -343,8 +402,10 @@ describe('a refused save', () => {
 
     await user.click(save())
 
-    expect(await phase(2).findByText('duplicate phase key "setup"')).toBeInTheDocument()
-    expect(phase(1).queryByText(/duplicate/)).not.toBeInTheDocument()
+    expect(await content().findByText('duplicate phase key "setup"')).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('2. The job Loop')
+    await pickPhase(user, 1)
+    expect(content().queryByText(/duplicate/)).not.toBeInTheDocument()
   })
 
   it('puts a message about the selection under it, without its path', async () => {
@@ -357,8 +418,10 @@ describe('a refused save', () => {
 
     await user.click(save())
 
-    expect(await phase(1).findByText('unknown Scene Type "x"')).toBeInTheDocument()
-    expect(phase(2).queryByText('unknown Scene Type "x"')).not.toBeInTheDocument()
+    expect(await content().findByText('unknown Scene Type "x"')).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('Selection: Ambush')
+    await pickSelection(user, 2)
+    expect(content().queryByText('unknown Scene Type "x"')).not.toBeInTheDocument()
   })
 
   it('keeps a message on the phase it is about when phases are moved or deleted before the next save', async () => {
@@ -367,13 +430,17 @@ describe('a refused save', () => {
     })
 
     await user.click(save())
-    expect(await phase(2).findByText(/duplicate phase key/)).toBeInTheDocument()
+    expect(await content().findByText(/duplicate phase key/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Move phase 2 up' }))
-    expect(phase(1).getByText(/duplicate phase key/)).toBeInTheDocument()
-    expect(phase(2).queryByText(/duplicate phase key/)).not.toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('1. The job Loop')
+    expect(content().getByText(/duplicate phase key/)).toBeInTheDocument()
+    await pickPhase(user, 2)
+    expect(content().queryByText(/duplicate phase key/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Add phase' }))
+    await pickPhase(user, 2)
     await user.click(screen.getByRole('button', { name: 'Delete phase 2' }))
-    expect(phase(1).getByText(/duplicate phase key/)).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('1. The job Loop')
+    expect(content().getByText(/duplicate phase key/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Delete phase 1' }))
     expect(screen.queryByText(/duplicate phase key/)).not.toBeInTheDocument()
   })
@@ -393,17 +460,20 @@ describe('a refused save', () => {
       },
     })
 
+    await pickPhase(user, 1)
     await user.click(save())
 
     await waitFor(() => {
       expect(save()).toBeDisabled()
     })
-    for (const name of ['Add phase', 'Move phase 1 down', 'Move phase 2 up', 'Delete phase 1']) {
+    for (const name of ['Add phase', 'Move phase 1 down', 'Delete phase 1']) {
       expect(screen.getByRole('button', { name })).toBeDisabled()
     }
     release()
-    expect(await phase(2).findByText('must be at most 80 characters')).toBeInTheDocument()
-    expect(phase(1).queryByText('must be at most 80 characters')).not.toBeInTheDocument()
+    expect(await content().findByText('must be at most 80 characters')).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('2. The job Loop')
+    await pickPhase(user, 1)
+    expect(content().queryByText('must be at most 80 characters')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add phase' })).toBeEnabled()
   })
 
@@ -446,15 +516,18 @@ describe('a conflict', () => {
       [put]: saved.handler,
     })
 
-    await replace(user, phase(1).getByLabelText('Name'), 'Mine')
+    await pickPhase(user, 1)
+    await replace(user, content().getByLabelText('Name'), 'Mine')
     await user.click(save())
     expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
     await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
 
+    // The selected node stays, with the reloaded draft in it.
     await waitFor(() => {
-      expect(flowName()).toHaveValue('Changed elsewhere')
+      expect(content().getByLabelText('Name')).toHaveValue('Setup')
     })
-    expect(phase(1).getByLabelText('Name')).toHaveValue('Setup')
+    await pickSettings(user)
+    expect(flowName()).toHaveValue('Changed elsewhere')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await user.click(save())
 
@@ -483,12 +556,13 @@ describe('a conflict', () => {
       [put]: saved.handler,
     })
 
-    await replace(user, phase(1).getByLabelText('Name'), 'Mine')
+    await pickPhase(user, 1)
+    await replace(user, content().getByLabelText('Name'), 'Mine')
     await user.click(save())
     await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
 
     expect(await screen.findByText(note)).toBeInTheDocument()
-    expect(phase(1).getByLabelText('Name')).toHaveValue('Mine')
+    expect(content().getByLabelText('Name')).toHaveValue('Mine')
     await user.click(save())
     await waitFor(() => {
       expect(saved.sent).toHaveLength(2)
@@ -506,12 +580,13 @@ describe('a conflict', () => {
       [put]: json(changed, 409),
     })
 
-    await replace(user, phase(1).getByLabelText('Name'), 'Mine')
+    await pickPhase(user, 1)
+    await replace(user, content().getByLabelText('Name'), 'Mine')
     await user.click(save())
     await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
 
     expect(await screen.findByText(/Couldn.t reload the latest version/)).toBeInTheDocument()
-    expect(phase(1).getByLabelText('Name')).toHaveValue('Mine')
+    expect(content().getByLabelText('Name')).toHaveValue('Mine')
   })
 })
 
@@ -552,9 +627,10 @@ describe('the selection of a phase', () => {
   const sentPhases = (saved: { sent: Sent[] }) =>
     (saved.sent[0]?.item.phases as Record<string, unknown>[]).map(({ selection }) => selection)
 
-  async function saveAfter(edit: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
+  async function saveAfter(edit: (user: User) => Promise<void>) {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
+    await pickSelection(user, 1)
     await edit(user)
     await user.click(save())
     return saved
@@ -562,10 +638,10 @@ describe('the selection of a phase', () => {
 
   it('adds, moves and removes Scene Types of a sequence, which may name one twice', async () => {
     const saved = await saveAfter(async (user) => {
-      await chooseOption(user, 'Add a Scene Type', 'Quiet', phase(1))
-      await chooseOption(user, 'Add a Scene Type', 'Ambush', phase(1))
-      await user.click(phase(1).getByRole('button', { name: 'Move Scene Type 2 up' }))
-      await user.click(phase(1).getByRole('button', { name: 'Remove Scene Type 3' }))
+      await chooseOption(user, 'Add a Scene Type', 'Quiet', content())
+      await chooseOption(user, 'Add a Scene Type', 'Ambush', content())
+      await user.click(content().getByRole('button', { name: 'Move Scene Type 2 up' }))
+      await user.click(content().getByRole('button', { name: 'Remove Scene Type 3' }))
     })
 
     await waitFor(() => {
@@ -577,7 +653,8 @@ describe('the selection of a phase', () => {
   it('offers a player list only the Scene Types it does not name yet', async () => {
     const { user } = await openEditor('heist')
 
-    const add = phase(2).getByLabelText('Add a Scene Type')
+    await pickSelection(user, 2)
+    const add = content().getByLabelText('Add a Scene Type')
     expect((await listOptions(user, add)).map((option) => option.label)).toEqual([
       'Pick a Scene Type',
       'Odd',
@@ -586,7 +663,7 @@ describe('the selection of a phase', () => {
 
   it('keeps the Scene Types when the rule goes from sequence to player', async () => {
     const saved = await saveAfter(async (user) => {
-      await chooseOption(user, 'Rule', 'The player picks', phase(1))
+      await chooseOption(user, 'Rule', 'The player picks', content())
     })
 
     await waitFor(() => {
@@ -599,12 +676,13 @@ describe('the selection of a phase', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
-    await chooseOption(user, 'Rule', 'An oracle table picks', phase(1))
-    expect(phase(1).queryByLabelText('Add a Scene Type')).not.toBeInTheDocument()
+    await pickSelection(user, 1)
+    await chooseOption(user, 'Rule', 'An oracle table picks', content())
+    expect(content().queryByLabelText('Add a Scene Type')).not.toBeInTheDocument()
     await user.click(save())
-    expect(await phase(1).findByText('Pick an oracle table.')).toBeInTheDocument()
+    expect(await content().findByText('Pick an oracle table.')).toBeInTheDocument()
     expect(saved.sent).toHaveLength(0)
-    await chooseOption(user, 'Oracle table', 'Places', phase(1))
+    await chooseOption(user, 'Oracle table', 'Places', content())
     await user.click(save())
 
     await waitFor(() => {
@@ -627,11 +705,12 @@ describe('the selection of a phase', () => {
       [put]: saved.handler,
     })
 
-    await chooseOption(user, 'Rule', 'Plays in order', phase(1))
-    expect(phase(1).getByText('No Scene Types yet.')).toBeInTheDocument()
+    await pickSelection(user, 1)
+    await chooseOption(user, 'Rule', 'Plays in order', content())
+    expect(content().getByText('No Scene Types yet.')).toBeInTheDocument()
     await user.click(save())
 
-    expect(await phase(1).findByText('Pick at least one Scene Type.')).toBeInTheDocument()
+    expect(await content().findByText('Pick at least one Scene Type.')).toBeInTheDocument()
     expect(saved.sent).toHaveLength(0)
   })
 
@@ -639,12 +718,13 @@ describe('the selection of a phase', () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
-    await chooseOption(user, 'Add a Scene Type', 'Ambush', phase(1))
-    await chooseOption(user, 'Rule', 'The player picks', phase(1))
+    await pickSelection(user, 1)
+    await chooseOption(user, 'Add a Scene Type', 'Ambush', content())
+    await chooseOption(user, 'Rule', 'The player picks', content())
     await user.click(save())
 
     expect(
-      await phase(1).findByText('A player selection lists each Scene Type once.'),
+      await content().findByText('A player selection lists each Scene Type once.'),
     ).toBeInTheDocument()
     expect(saved.sent).toHaveLength(0)
   })
@@ -666,7 +746,7 @@ describe('the selection of a phase', () => {
 
     await user.click(save())
 
-    expect(await phase(1).findByText('unknown oracle table "places"')).toBeInTheDocument()
+    expect(await content().findByText('unknown oracle table "places"')).toBeInTheDocument()
   })
 })
 
@@ -675,15 +755,14 @@ describe('the hooks of a phase', () => {
     const phases = heist.phases as Record<string, unknown>[]
     return withHeist({ ...heist, phases: [{ ...phases[0], ...hooks }, phases[1]] }, 5)
   }
-  const hook = (name: string) => phase(1).getByRole('button', { name })
 
   it('opens a hook to edit its steps and sends them in that hook only', async () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await user.click(hook('World turn (0 steps)'))
-    await user.click(phase(1).getByRole('button', { name: 'Add step' }))
-    await replace(user, phase(1).getByLabelText('Title'), 'Tick')
+    await user.click(content().getByRole('button', { name: 'Add step' }))
+    await replace(user, content().getByLabelText('Title'), 'Tick')
     expect(hook('World turn (1 step)')).toBeInTheDocument()
     await user.click(save())
 
@@ -704,7 +783,7 @@ describe('the hooks of a phase', () => {
     })
 
     await user.click(hook('Scene opening (1 step)'))
-    await replace(user, phase(1).getByLabelText('Title'), 'Look closer')
+    await replace(user, content().getByLabelText('Title'), 'Look closer')
     await user.click(save())
 
     await waitFor(() => {
@@ -723,7 +802,7 @@ describe('the hooks of a phase', () => {
     })
 
     await user.click(hook('World turn (1 step)'))
-    await user.click(phase(1).getByRole('button', { name: 'Delete step 1' }))
+    await user.click(content().getByRole('button', { name: 'Delete step 1' }))
     expect(hook('World turn (0 steps)')).toBeInTheDocument()
     await user.click(save())
 
@@ -758,15 +837,15 @@ describe('the hooks of a phase', () => {
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await user.click(hook('Phase closing (0 steps)'))
-    await user.click(phase(1).getByRole('button', { name: 'Add step' }))
-    await user.click(phase(1).getByRole('button', { name: 'Add effect' }))
-    await replace(user, phase(1).getByLabelText('Value'), '1.5')
+    await user.click(content().getByRole('button', { name: 'Add step' }))
+    await user.click(content().getByRole('button', { name: 'Add effect' }))
+    await replace(user, content().getByLabelText('Value'), '1.5')
     await user.click(save())
 
-    expect(await phase(1).findByText('Use a whole number.')).toBeInTheDocument()
+    expect(await content().findByText('Use a whole number.')).toBeInTheDocument()
     expect(saved.sent).toHaveLength(0)
 
-    await replace(user, phase(1).getByLabelText('Value'), '2')
+    await replace(user, content().getByLabelText('Value'), '2')
     await user.click(save())
 
     await waitFor(() => {
@@ -795,17 +874,23 @@ describe('the hooks of a phase', () => {
 
     await user.click(save())
 
-    expect(await phase(2).findByText('must not be blank')).toBeInTheDocument()
-    expect(phase(1).queryByText('must not be blank')).not.toBeInTheDocument()
+    // The refusal selects the step it is about, and the outline flags it.
     expect(
-      within(phase(2).getByRole('group', { name: 'Step 1' })).getByText('must not be blank'),
+      within(await content().findByRole('group', { name: 'Step 1' })).getByText(
+        'must not be blank',
+      ),
     ).toBeInTheDocument()
+    expect(current()).toHaveTextContent('Look')
+    expect(outline().getAllByText('Error')).toHaveLength(1)
     // The message follows its phase when the phases are moved.
+    await pickPhase(user, 2)
     await user.click(screen.getByRole('button', { name: 'Move phase 2 up' }))
+    await user.click(hook('World turn (1 step)', 1))
     expect(
-      within(phase(1).getByRole('group', { name: 'Step 1' })).getByText('must not be blank'),
+      within(content().getByRole('group', { name: 'Step 1' })).getByText('must not be blank'),
     ).toBeInTheDocument()
-    expect(phase(2).queryByText('must not be blank')).not.toBeInTheDocument()
+    await user.click(hook('World turn (1 step)', 2))
+    expect(content().queryByText('must not be blank')).not.toBeInTheDocument()
   })
 
   it('puts a message about a hook list itself above that list, path included', async () => {
@@ -816,8 +901,9 @@ describe('the hooks of a phase', () => {
     await user.click(save())
 
     expect(
-      await phase(1).findByText('flows[0].phases[0].sceneClosing: at most 50 steps'),
+      await content().findByText('flows[0].phases[0].sceneClosing: at most 50 steps'),
     ).toBeInTheDocument()
+    expect(current()).toHaveAccessibleName('Scene closing (0 steps)')
   })
 
   it('disables the hook lists while a save is pending', async () => {
@@ -836,11 +922,108 @@ describe('the hooks of a phase', () => {
     await user.click(save())
 
     await waitFor(() => {
-      expect(phase(1).getByRole('button', { name: 'Add step' })).toBeDisabled()
+      expect(content().getByRole('button', { name: 'Add step' })).toBeDisabled()
     })
     release()
     await waitFor(() => {
-      expect(phase(1).getByRole('button', { name: 'Add step' })).toBeEnabled()
+      expect(content().getByRole('button', { name: 'Add step' })).toBeEnabled()
     })
+  })
+})
+
+describe('the outline', () => {
+  it('puts the selected node in the URL, so back returns to the node before', async () => {
+    const { user, router } = await openEditor('heist')
+
+    await pickPhase(user, 2)
+    await pickSelection(user, 1)
+    expect(router.state.location.search).toEqual({ node: 'phases.0.selection' })
+    act(() => {
+      router.history.back()
+    })
+
+    await waitFor(() => {
+      expect(current()).toHaveAccessibleName('2. The job Loop')
+    })
+    expect(content().getByLabelText('Mode')).toHaveValue('loop')
+  })
+
+  it('opens the node the URL names, as a reload does', async () => {
+    await openEditor('heist', {}, '?node=phases.1.selection')
+
+    expect(current()).toHaveAccessibleName('Selection: Ambush, Quiet')
+    expect(content().getByLabelText('Rule')).toHaveValue('player')
+  })
+
+  it.each([
+    ['garbage'],
+    ['phases.9'],
+    ['phases.1.hooks.nothing'],
+    ['phases.9.hooks.worldTurn.0'],
+    ['phases.01'],
+  ])('opens the flow settings for the node %j, which names nothing', async (node) => {
+    await openEditor('heist', {}, `?node=${node}`)
+
+    expect(current()).toHaveAccessibleName('Flow settings')
+    expect(flowKey()).toHaveValue('heist')
+  })
+
+  it('drops a node value that is no path from the URL', async () => {
+    const { router } = await openEditor('heist', {}, '?node=garbage')
+
+    expect(router.state.location.search).toEqual({})
+  })
+
+  it('opens the hook for a step the hook does not have', async () => {
+    await openEditor('heist', {}, '?node=phases.0.hooks.worldTurn.4')
+
+    expect(current()).toHaveAccessibleName('World turn (0 steps)')
+  })
+
+  it('shows the hook list for a step, with that step marked and in view', async () => {
+    const step = { key: 'look', kind: 'prompt', title: 'Look' }
+    const phases = heist.phases as Record<string, unknown>[]
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    await openEditor(
+      'heist',
+      {
+        [`GET ${base}/narrative`]: json(
+          withHeist(
+            {
+              ...heist,
+              phases: [{ ...phases[0], sceneOpening: [step, { ...step, key: 'b' }] }, phases[1]],
+            },
+            5,
+          ),
+        ),
+      },
+      '?node=phases.0.hooks.sceneOpening.1',
+    )
+
+    expect(current()).toHaveAccessibleName('Look')
+    expect(content().getAllByRole('group', { name: /^Step / })).toHaveLength(2)
+    expect(content().getByRole('group', { name: 'Step 2' })).toHaveAttribute('aria-current', 'true')
+    expect(content().getByRole('group', { name: 'Step 1' })).not.toHaveAttribute('aria-current')
+    expect(scroll).toHaveBeenCalled()
+    scroll.mockRestore()
+  })
+
+  it('shows a legacy phase with no hooks and an empty selection', async () => {
+    const legacy = {
+      ...heist,
+      phases: [
+        { key: 'old', name: '', mode: 'once', selection: { rule: 'sequence', sceneTypes: [] } },
+      ],
+    }
+    const { user } = await openEditor('heist', {
+      [`GET ${base}/narrative`]: json(withHeist(legacy, 5)),
+    })
+
+    expect(outline().getByRole('button', { name: '1. old Once' })).toBeInTheDocument()
+    expect(hook('Session opening (0 steps)')).toBeInTheDocument()
+    await pickSelection(user, 1)
+    expect(content().getByText('No Scene Types yet.')).toBeInTheDocument()
+    await pickPhase(user, 1)
+    expect(content().getByLabelText('Key')).toHaveValue('old')
   })
 })

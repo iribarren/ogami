@@ -37,7 +37,8 @@ type Story = StoryObj<typeof meta>
 export const WithPhases: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('group', { name: 'Phase 2' })).toBeVisible()
+    const outline = await canvas.findByRole('navigation', { name: 'Flow outline' })
+    await expect(within(outline).getByRole('button', { name: '2. The job Loop' })).toBeVisible()
     await expect(canvas.getByLabelText('Default flow')).toBeChecked()
   },
 }
@@ -56,7 +57,10 @@ const withHook = {
             name: 'Setup',
             mode: 'loop',
             selection: { rule: 'oracle', table: 'places' },
-            worldTurn: [{ key: 'tick', kind: 'prompt', title: 'The street stirs' }],
+            worldTurn: [
+              { key: 'tick', kind: 'prompt', title: 'The street stirs' },
+              { key: 'tock', kind: 'prompt', title: 'A door slams' },
+            ],
           },
         ],
       },
@@ -65,14 +69,27 @@ const withHook = {
   ],
 }
 
-/** A phase that picks its scenes from an oracle table, with a world turn step to open. */
-export const OracleSelectionAndHook: Story = {
+/** A phase that picks its scenes from an oracle table: open its selection from the outline. */
+export const OracleSelection: Story = {
   parameters: { api: { [`GET ${base}/narrative`]: json(withHook) } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: /^Selection:/ }))
     await expect(await canvas.findByLabelText('Oracle table')).toHaveValue('places')
-    await userEvent.click(canvas.getByRole('button', { name: 'World turn (1 step)' }))
-    await expect(await canvas.findByDisplayValue('The street stirs')).toBeVisible()
+  },
+}
+
+/** A step selected in the outline: its hook's list shows, the step marked and scrolled into view. */
+export const SelectedStep: Story = {
+  args: { node: 'phases.0.hooks.worldTurn.1' },
+  parameters: { api: { [`GET ${base}/narrative`]: json(withHook) } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('group', { name: 'Step 2' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+    await expect(canvas.getByDisplayValue('A door slams')).toBeVisible()
   },
 }
 

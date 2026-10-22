@@ -300,10 +300,10 @@ export function flowToItem(draft: FlowDraft): FlowSave {
 }
 
 /**
- * A phase to add: the smallest one the publisher accepts, with a key no phase has and a selection
- * that starts at `sceneType`, like the first phase of `newFlowToItem`.
+ * A phase to add: a key no phase has and an empty selection. The author adds its Scene Types in
+ * the outline; saving it empty is refused on the selection.
  */
-export function newPhase(phases: PhaseDraft[], sceneType: string): PhaseDraft {
+export function newPhase(phases: PhaseDraft[]): PhaseDraft {
   let number = phases.length + 1
   while (phases.some(({ key }) => key === `phase-${String(number)}`)) {
     number += 1
@@ -314,7 +314,7 @@ export function newPhase(phases: PhaseDraft[], sceneType: string): PhaseDraft {
     act: '',
     description: '',
     mode: 'once',
-    selection: { rule: 'sequence', sceneTypes: [sceneType], extra: {} },
+    selection: { rule: 'sequence', sceneTypes: [], extra: {} },
     hooks: {},
     extra: {},
   }

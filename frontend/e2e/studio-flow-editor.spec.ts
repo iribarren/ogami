@@ -57,19 +57,28 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await page.getByRole('region', { name: 'Flows' }).getByRole('link', { name: 'Heist' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}/flows/heist`)
 
-  const phase = page.getByRole('group', { name: 'Phase 1' })
-  await phase.getByLabel('Name', { exact: true }).fill(phaseName)
-  const act = phase.getByLabel('Act', { exact: true })
+  // The outline selects the phase; its fields are the only ones on the page.
+  await page
+    .getByRole('navigation', { name: 'Flow outline' })
+    .getByRole('button', { name: /^1\. / })
+    .click()
+  await expect(page).toHaveURL(/\?node=phases\.0$/)
+  const form = page.getByRole('form', { name: 'Flow' })
+  await form.getByLabel('Name', { exact: true }).fill(phaseName)
+  const act = form.getByLabel('Act', { exact: true })
   await act.fill(phaseAct)
   await saveWith(page, act, `/narrative/flows/heist`)
 
+  // The selected node survives a reload, and so does what was saved.
   await page.reload()
+  const reloaded = page.getByRole('form', { name: 'Flow' })
+  await expect(reloaded.getByLabel('Name', { exact: true })).toHaveValue(phaseName)
+  await expect(reloaded.getByLabel('Act', { exact: true })).toHaveValue(phaseAct)
   await expect(
-    page.getByRole('group', { name: 'Phase 1' }).getByLabel('Name', { exact: true }),
-  ).toHaveValue(phaseName)
-  await expect(
-    page.getByRole('group', { name: 'Phase 1' }).getByLabel('Act', { exact: true }),
-  ).toHaveValue(phaseAct)
+    page
+      .getByRole('navigation', { name: 'Flow outline' })
+      .getByRole('button', { name: new RegExp(`^1\\. ${phaseName}`) }),
+  ).toHaveAttribute('aria-current', 'true')
 
   // Publish the draft with both edits.
   await page.goto(`/studio/game-systems/${key}`)

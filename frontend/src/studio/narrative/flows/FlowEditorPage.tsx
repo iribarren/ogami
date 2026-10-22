@@ -1,14 +1,32 @@
+import { Route as RouteIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { StudioError } from '../../useGameSystems'
+import { Badge } from '@/shared/ui/badge'
+import { IconTile } from '@/shared/ui/icon-tile'
+
+import { StudioError, useGameSystemValidation, useStudioGameSystem } from '../../useGameSystems'
 import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarrative'
 import { FlowEditor } from './FlowEditor'
 import { flowToDraft, type FlowDraft } from './flowDraft'
+import { flowIssueCount } from './flowIssues'
 
-/** `/studio/game-systems/$key/flows/$flow`: edits one flow of a draft. */
-export function FlowEditorPage({ gameSystemKey, flow }: { gameSystemKey: string; flow: string }) {
+/**
+ * `/studio/game-systems/$key/flows/$flow`: edits one flow of a draft. `node` is the outline node
+ * the URL selects (the `node` search param); anything it does not name opens the flow settings.
+ */
+export function FlowEditorPage({
+  gameSystemKey,
+  flow,
+  node,
+}: {
+  gameSystemKey: string
+  flow: string
+  node?: string
+}) {
   const narrative = useGameSystemNarrative(gameSystemKey)
+  const gameSystem = useStudioGameSystem(gameSystemKey)
+  const validation = useGameSystemValidation(gameSystemKey)
   const [opened, setOpened] = useState<{
     key: string
     item: NarrativeItem
@@ -59,14 +77,32 @@ export function FlowEditorPage({ gameSystemKey, flow }: { gameSystemKey: string;
     )
   }
   const name = shown.definition.name
+  const issues = validation.data
+    ? flowIssueCount(
+        validation.data,
+        data.flows.findIndex((item) => item.key === flow),
+      )
+    : 0
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        {backLink}
-        <h1 className="font-heading text-page-title break-words">
-          {typeof name === 'string' && name !== '' ? name : shown.key}
-        </h1>
+    <div className="mx-auto w-full max-w-[1232px] space-y-6">
+      {backLink}
+      <header className="flex flex-wrap items-center gap-4">
+        <IconTile size="lg">
+          <RouteIcon />
+        </IconTile>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted-foreground">
+            {gameSystem.data?.name ?? gameSystemKey} · Flow
+          </p>
+          <h1 className="font-heading text-[26px] leading-tight font-bold break-words">
+            {typeof name === 'string' && name !== '' ? name : shown.key}
+          </h1>
+        </div>
+        {shown.definition.default === true && <Badge variant="secondary">Default</Badge>}
+        {issues > 0 && (
+          <Badge variant="warning">{`${String(issues)} ${issues === 1 ? 'issue' : 'issues'}`}</Badge>
+        )}
       </header>
       {open === null ? (
         <p role="alert">
@@ -81,6 +117,7 @@ export function FlowEditorPage({ gameSystemKey, flow }: { gameSystemKey: string;
           original={open.item.key}
           initial={open.draft}
           version={open.version}
+          selected={node}
         />
       )}
     </div>

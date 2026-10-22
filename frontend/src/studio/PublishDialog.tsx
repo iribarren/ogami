@@ -199,8 +199,7 @@ function PublishForm({
 }
 
 /**
- * The errors that block a publish: the first three, then a link to the Validation tab for the
- * rest. The validation API gives one error today; it takes a list so that it can give several.
+ * The errors that block a publish: the first three, then a link to the Validation tab for the rest.
  */
 export function PublishErrors({
   errors,
@@ -252,12 +251,11 @@ function ValidationSummary({
   }
   const { valid, errors, warnings } = validation.data
   if (!valid) {
-    const first = errors[0]
     return (
       <Alert role="alert">
-        <p>The draft is not valid yet, so it cannot be published. The first error:</p>
+        <p>The draft is not valid yet, so it cannot be published.</p>
         <PublishErrors
-          errors={[first ? `${first.path}: ${first.message}` : 'unknown']}
+          errors={errors.map(({ path, message }) => `${path}: ${message}`)}
           gameSystemKey={key}
         />
       </Alert>

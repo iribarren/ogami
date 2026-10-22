@@ -23,6 +23,21 @@ describe('the issues of a flow', () => {
     expect(flowIssueCount(validation, 2)).toBe(0)
   })
 
+  it('counts every error by its path, not by what its message says', () => {
+    const validation = {
+      valid: false,
+      errors: [
+        { path: 'flows[0].name', message: 'must not be blank' },
+        { path: 'flows[0].phases[1].mode', message: 'must be once or loop' },
+        { path: 'sceneTypes[0].play[0].title', message: 'flows[0]: is not a placeholder' },
+      ],
+      warnings: [],
+    }
+
+    expect(flowIssueCount(validation, 0)).toBe(2)
+    expect(flowIssueCount(validation, 1)).toBe(0)
+  })
+
   it('is zero for a valid draft', () => {
     expect(flowIssueCount(valid, 0)).toBe(0)
   })

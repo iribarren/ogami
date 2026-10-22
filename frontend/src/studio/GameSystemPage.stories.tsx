@@ -95,7 +95,12 @@ export const InvalidDraft: Story = {
       ...draftApi,
       'GET /api/studio/game-systems/my-draft/validation': json({
         valid: false,
-        errors: [{ path: 'oracles', message: 'must be an object' }],
+        errors: [
+          { path: 'oracles', message: 'must be an object' },
+          { path: 'flows[0].phases[0].name', message: 'must not be blank' },
+          { path: 'trackers[1].max', message: 'must be at least min (0), -1 given' },
+          { path: 'sheet.fields[2].key', message: 'duplicate field key "pow"' },
+        ],
         warnings: [],
       }),
     },

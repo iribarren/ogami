@@ -65,7 +65,7 @@ describe('the publish dialog', () => {
     expect(await dialog.findByText('This creates version 1.')).toBeInTheDocument()
   })
 
-  it('shows the first error of an invalid draft and cannot confirm', async () => {
+  it('shows the error of an invalid draft and cannot confirm', async () => {
     const user = userEvent.setup()
     renderPublishable(draft, {
       'GET /api/studio/game-systems/my-draft/validation': json({
@@ -78,6 +78,29 @@ describe('the publish dialog', () => {
     const dialog = await openDialog(user)
 
     expect(await dialog.findByRole('alert')).toHaveTextContent('oracles: must be an object')
+    expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
+  })
+
+  it('lists the first three errors, then how many more', async () => {
+    const user = userEvent.setup()
+    renderPublishable(draft, {
+      'GET /api/studio/game-systems/my-draft/validation': json({
+        valid: false,
+        errors: ['a', 'b', 'c', 'd', 'e'].map((name) => ({
+          path: `trackers[0].${name}`,
+          message: 'is wrong',
+        })),
+        warnings: [],
+      }),
+    })
+
+    const dialog = await openDialog(user)
+
+    const alert = await dialog.findByRole('alert')
+    expect(within(alert).getAllByRole('listitem')).toHaveLength(3)
+    expect(alert).toHaveTextContent('trackers[0].c: is wrong')
+    expect(alert).not.toHaveTextContent('trackers[0].d')
+    expect(alert).toHaveTextContent('and 2 more')
     expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
   })
 

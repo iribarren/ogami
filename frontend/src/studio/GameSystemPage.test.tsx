@@ -5,7 +5,14 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, draftWithLibraryChange, legacy, validDraft } from './fixtures'
+import {
+  draft,
+  draftWithLibraryChange,
+  legacy,
+  narrativeFlows,
+  oracles,
+  validDraft,
+} from './fixtures'
 import { packSystem } from './library/fixtures'
 
 function json(body: unknown, status = 200): FakeHandler {
@@ -550,16 +557,125 @@ describe('the validation tab', () => {
     expect(await screen.findAllByRole('listitem')).toHaveLength(2)
   })
 
-  it('shows the first error with its path', async () => {
+  const several = {
+    valid: false,
+    errors: [
+      { path: 'flows[0].phases[1].mode', message: 'must be once or loop' },
+      { path: 'flows[0].name', message: 'must not be blank' },
+      { path: 'oracles.tables[0].entries[1].text', message: 'must not be blank' },
+      { path: 'mystery[2]', message: 'is odd' },
+    ],
+    warnings: ['flows[1]: has no steps'],
+  }
+  const names = {
+    'GET /api/studio/game-systems/my-draft/narrative': json(narrativeFlows),
+    'GET /api/studio/game-systems/my-draft/oracles': json(oracles),
+  }
+
+  async function openSeveral() {
+    const user = userEvent.setup()
+    renderDraft({ 'GET /api/studio/game-systems/my-draft/validation': json(several), ...names })
+    await user.click(await screen.findByRole('link', { name: 'Validation' }))
+    return user
+  }
+
+  it('tells how many errors block publishing and how many warnings do not', async () => {
+    await openSeveral()
+
+    expect(await screen.findByText('The draft is not valid yet')).toBeInTheDocument()
+    expect(screen.getByText(/4 errors block publishing\. 1 warning does not\./)).toBeInTheDocument()
+  })
+
+  it('says "1 error blocks publishing" for one', async () => {
     await openValidation({
       valid: false,
       errors: [{ path: 'oracles', message: 'must be an object' }],
-      warnings: [],
+      warnings: ['flows[1]: a', 'flows[1]: b'],
     })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The first error: oracles: must be an object',
+    expect(
+      await screen.findByText(/1 error blocks publishing\. 2 warnings do not\./),
+    ).toBeInTheDocument()
+  })
+
+  it('groups the errors by section and item with a count each', async () => {
+    await openSeveral()
+
+    const flows = await screen.findByRole('region', { name: 'Flows · Heist' })
+    expect(within(flows).getByText('2')).toBeInTheDocument()
+    expect(within(flows).getByText('must be once or loop')).toBeInTheDocument()
+    expect(within(flows).getByText('2. The job › Mode')).toBeInTheDocument()
+    expect(within(flows).getByText('Name')).toBeInTheDocument()
+    const table = screen.getByRole('region', { name: 'Oracle tables · Weather' })
+    expect(within(table).getByText('Entries 2 › Text')).toBeInTheDocument()
+  })
+
+  it('links each error to its field, and falls back to the Overview for an unknown path', async () => {
+    await openSeveral()
+
+    const flows = await screen.findByRole('region', { name: 'Flows · Heist' })
+    const [phase, settings] = within(flows).getAllByRole('link', { name: 'Go to field' })
+    expect(phase).toHaveAttribute('href', '/studio/game-systems/my-draft/flows/heist?node=phases.1')
+    expect(settings).toHaveAttribute('href', '/studio/game-systems/my-draft/flows/heist')
+    const table = screen.getByRole('region', { name: 'Oracle tables · Weather' })
+    expect(within(table).getByRole('link', { name: 'Go to field' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/oracle-tables/weather',
     )
+    const unknown = screen.getByRole('region', { name: 'Draft' })
+    expect(within(unknown).getByText('mystery[2]')).toBeInTheDocument()
+    expect(within(unknown).getByRole('link', { name: 'Go to field' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft?tab=overview',
+    )
+  })
+
+  it('lists the raw paths under Technical paths and the warnings in a panel below', async () => {
+    await openSeveral()
+
+    expect(await screen.findByText('Technical paths')).toBeInTheDocument()
+    expect(screen.getByText('mystery[2]: is odd')).toBeInTheDocument()
+    const warnings = screen.getByRole('region', { name: 'Warnings' })
+    expect(within(warnings).getByText('flows[1]: has no steps')).toBeInTheDocument()
+  })
+
+  it('names the items by position when the draft cannot be read', async () => {
+    const user = userEvent.setup()
+    renderDraft({ 'GET /api/studio/game-systems/my-draft/validation': json(several) })
+    await user.click(await screen.findByRole('link', { name: 'Validation' }))
+
+    const flows = await screen.findByRole('region', { name: 'Flows · 1' })
+    expect(within(flows).getAllByRole('link', { name: 'Go to field' })[0]).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft?tab=flows',
+    )
+  })
+
+  it('checks again on request', async () => {
+    let reads = 0
+    const user = userEvent.setup()
+    renderDraft({
+      'GET /api/studio/game-systems/my-draft/validation': () => {
+        reads += 1
+        return Response.json(reads === 1 ? several : validDraft)
+      },
+      ...names,
+    })
+    await user.click(await screen.findByRole('link', { name: 'Validation' }))
+    await screen.findByText('The draft is not valid yet')
+
+    await user.click(screen.getByRole('button', { name: 'Check again' }))
+
+    expect(await screen.findByText(/The draft is valid/)).toBeInTheDocument()
+  })
+
+  it('counts the errors in the rail', async () => {
+    renderDraft({ 'GET /api/studio/game-systems/my-draft/validation': json(several), ...names })
+
+    const link = await screen.findByRole('link', { name: 'Validation' })
+    await waitFor(() => {
+      expect(link).toHaveTextContent('4')
+    })
   })
 
   it('lists the warnings of a valid draft', async () => {

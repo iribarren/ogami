@@ -1,4 +1,5 @@
 import { Plus, Route } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 
@@ -12,6 +13,7 @@ import { flowForm } from '../itemForms'
 import { NarrativeGate } from '../NarrativeGate'
 import { DeleteItemDialog, UsedBy } from '../NarrativeTab'
 import {
+  narrativeKey,
   useGameSystemNarrative,
   type GameSystemNarrative,
   type NarrativeItem,
@@ -31,9 +33,15 @@ const sceneTypeOptions = (data: GameSystemNarrative) =>
  * mounts counts as changed at its update time, so only a validation read since then shows counts.
  * A refetch that finds the same data does not move it.
  */
-function useChangedAt(data: GameSystemNarrative | undefined, updatedAt: number): number {
+function useChangedAt(
+  data: GameSystemNarrative | undefined,
+  updatedAt: number,
+  updates: number,
+): number {
   const [seen, setSeen] = useState(data)
-  const [changedAt, setChangedAt] = useState(data === undefined ? 0 : updatedAt)
+  // Data read once and never replaced did not change: a validation read before it (the rail reads
+  // it when the page opens) still describes it.
+  const [changedAt, setChangedAt] = useState(data === undefined || updates <= 1 ? 0 : updatedAt)
   if (seen !== data) {
     setSeen(data)
     if (seen !== undefined) {
@@ -51,7 +59,8 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
   const validation = useGameSystemValidation(gameSystemKey)
   const noSceneTypes = useId()
-  const changedAt = useChangedAt(narrative.data, narrative.dataUpdatedAt)
+  const updates = useQueryClient().getQueryState(narrativeKey(gameSystemKey))?.dataUpdateCount ?? 0
+  const changedAt = useChangedAt(narrative.data, narrative.dataUpdatedAt, updates)
   const navigate = useNavigate()
 
   return (

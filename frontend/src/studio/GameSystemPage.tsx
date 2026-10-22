@@ -26,13 +26,13 @@ import { OraclesTab } from './oracles/OraclesTab'
 import { PublishDialog } from './PublishDialog'
 import { ReleasesTab } from './ReleasesTab'
 import { SectionCounts } from './SectionCounts'
+import { ValidationTab } from './ValidationTab'
 import { SectionRail } from './SectionRail'
 import { SheetTab } from './sheet/SheetTab'
 import { useSampleValues } from './sheet/useSheetSamples'
 import {
   StudioError,
   useDiscardGameSystem,
-  useGameSystemValidation,
   useStudioGameSystem,
   type GameSystem,
 } from './useGameSystems'
@@ -237,7 +237,7 @@ function GameSystemView({
           {tab === 'library' && (
             <LibraryTab gameSystemKey={gameSystem.key} schemaVersion={gameSystem.schemaVersion} />
           )}
-          {tab === 'validation' && <Validation gameSystemKey={gameSystem.key} pack={pack} />}
+          {tab === 'validation' && <ValidationTab gameSystemKey={gameSystem.key} pack={pack} />}
           {tab === 'releases' && (
             <ReleasesTab
               gameSystemKey={gameSystem.key}
@@ -269,49 +269,6 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
     <section aria-label={title} className="space-y-3">
       {children}
     </section>
-  )
-}
-
-function Validation({ gameSystemKey, pack }: { gameSystemKey: string; pack: boolean }) {
-  const validation = useGameSystemValidation(gameSystemKey)
-  if (validation.isPending) {
-    return <p className="text-muted-foreground">Validating the {pack ? 'pack' : 'draft'}…</p>
-  }
-  if (validation.isError) {
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {validation.error.message}
-      </p>
-    )
-  }
-  const { valid, errors, warnings } = validation.data
-  const first = errors[0]
-  return (
-    <Panel title="Validation">
-      {valid ? (
-        <p>
-          {pack
-            ? "The pack's items are valid."
-            : 'The draft is valid: it could be published as a release.'}
-        </p>
-      ) : (
-        <p role="alert" className="text-destructive">
-          The {pack ? 'pack' : 'draft'} is not valid yet. The first error:{' '}
-          {first ? `${first.path}: ${first.message}` : 'unknown'}
-        </p>
-      )}
-      {warnings.length > 0 && (
-        <>
-          <h2 className="font-heading font-semibold">Warnings</h2>
-          <ul className="list-disc space-y-1 pl-5 text-sm">
-            {warnings.map((warning, index) => (
-              // Warnings can repeat, so the position is part of the key.
-              <li key={`${String(index)}:${warning}`}>{warning}</li>
-            ))}
-          </ul>
-        </>
-      )}
-    </Panel>
   )
 }
 

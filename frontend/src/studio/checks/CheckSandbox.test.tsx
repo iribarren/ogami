@@ -149,7 +149,7 @@ describe('the test roll sandbox', () => {
         },
       },
     ])
-    expect(results.getByText('1d10', { selector: '.list-row-key' })).toBeVisible()
+    expect(results.getByText('1d10', { selector: 'span.font-mono' })).toBeVisible()
     expect(results.getByText('= 6')).toBeVisible()
     expect(results.getByText('1d10: 6')).toBeVisible()
     expect(results.getByText('Modifier 7')).toBeVisible()

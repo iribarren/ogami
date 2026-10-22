@@ -1,3 +1,4 @@
+import { Package, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -9,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { SectionCounts } from './SectionCounts'
 import {
@@ -85,9 +87,16 @@ export function ReleasesTab({
   }
 
   return (
-    <div className="space-y-8">
-      <section aria-label="Releases">
-        <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+    <div className="flex flex-wrap items-start gap-6">
+      <section aria-label="Releases" className="panel w-full max-w-[400px] flex-1 basis-72">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <Package />
+          </IconTile>
+          <h2 className="font-heading text-panel-title">Releases</h2>
+          <span className="ml-auto count-pill">{releases.data.length}</span>
+        </div>
+        <ul>
           {releases.data.map((release) => (
             <ReleaseRow
               key={release.version}
@@ -106,6 +115,7 @@ export function ReleasesTab({
           key={selected}
           gameSystemKey={gameSystemKey}
           version={selected}
+          summary={releases.data.find((release) => release.version === selected)}
           onReload={onReload}
           onRestored={onRestored}
         />
@@ -124,10 +134,10 @@ function ReleaseRow({
   onSelect: () => void
 }) {
   return (
-    <li className="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-3">
+    <li className="list-row items-start" aria-current={selected ? 'true' : undefined}>
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3">
-          <span className="font-heading font-semibold">Version {release.version}</span>
+          <span className="font-heading text-lg font-bold">Version {release.version}</span>
           <span className="text-sm text-muted-foreground">
             Schema version {release.schemaVersion}
           </span>
@@ -163,11 +173,14 @@ function ReleaseRow({
 function ReleaseView({
   gameSystemKey,
   version,
+  summary,
   onReload,
   onRestored,
 }: {
   gameSystemKey: string
   version: number
+  /** The list's row of this release: its date, hash and notes. */
+  summary: ReleaseSummary | undefined
   onReload: () => void
   onRestored: (draft: GameSystem, version: number) => void
 }) {
@@ -185,20 +198,42 @@ function ReleaseView({
   }
   const { name, schemaVersion, sectionCounts } = release.data
   return (
-    <section aria-label={`Version ${String(version)}`} className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="font-heading text-lg font-semibold">
-          Version {version}: {name}
-        </h2>
-        <p className="text-sm text-muted-foreground">Read-only. Schema version {schemaVersion}.</p>
+    <section
+      aria-label={`Version ${String(version)}`}
+      className="panel min-w-0 flex-[2_1_360px] space-y-4 p-4"
+    >
+      <div className="flex flex-wrap items-start gap-3">
+        <IconTile size="lg">
+          <span className="font-heading text-sm font-bold">v{version}</span>
+        </IconTile>
+        <div className="min-w-0 flex-1 space-y-1">
+          <h2 className="font-heading text-lg font-semibold">
+            Version {version}: {name}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Read-only. Schema version {schemaVersion}.
+            {summary && (
+              <>
+                {' '}
+                {publishedAtFormat.format(new Date(summary.publishedAt))} ·{' '}
+                <span className="font-mono">{shortHash(summary.contentHash)}</span>
+              </>
+            )}
+          </p>
+        </div>
+        <RestoreDialog
+          gameSystemKey={gameSystemKey}
+          version={version}
+          onReload={onReload}
+          onRestored={onRestored}
+        />
       </div>
+      {summary?.notes != null && (
+        <p className="rounded-lg border border-input bg-well p-3 text-sm break-words shadow-well">
+          {summary.notes}
+        </p>
+      )}
       <SectionCounts counts={sectionCounts} />
-      <RestoreDialog
-        gameSystemKey={gameSystemKey}
-        version={version}
-        onReload={onReload}
-        onRestored={onRestored}
-      />
     </section>
   )
 }
@@ -228,7 +263,10 @@ function RestoreDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline">Restore into the draft</Button>
+        <Button variant="outline" size="sm">
+          <RotateCcw aria-hidden="true" />
+          Restore into the draft
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

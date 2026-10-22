@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { Library, Plus, RefreshCw, Unlink } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Badge } from '@/shared/ui/badge'
@@ -11,6 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { IconButton } from '@/shared/ui/icon-button'
+import { IconTile } from '@/shared/ui/icon-tile'
 
 import { gameSystemKey as draftKey, isStaleWrite, StudioError } from '../useGameSystems'
 import { ImportDialog } from './ImportDialog'
@@ -102,18 +105,25 @@ function LibraryImportsPanel({ gameSystemKey }: { gameSystemKey: string }) {
   }
 
   return (
-    <section aria-label="Library" className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-semibold">Library imports</h2>
+    <section aria-label="Library" className="panel">
+      <div className="panel-head">
+        <IconTile size="sm">
+          <Library />
+        </IconTile>
+        <h2 className="font-heading text-panel-title">Library imports</h2>
         <Button
+          className="ml-auto"
+          variant="outline"
           size="sm"
           onClick={() => {
             setImporting(true)
           }}
         >
+          <Plus aria-hidden="true" />
           Import from library
         </Button>
       </div>
+      <div className="space-y-6 panel-body">
       {imports.isRefetchError && (
         <p role="alert" className="text-sm text-destructive">
           Couldn&apos;t refresh the library imports. {imports.error.message}
@@ -155,6 +165,7 @@ function LibraryImportsPanel({ gameSystemKey }: { gameSystemKey: string }) {
         onOpenChange={setImporting}
         onReload={reload}
       />
+      </div>
     </section>
   )
 }
@@ -174,8 +185,11 @@ function ImportList({
 }) {
   if (imports.imports.length === 0) {
     return (
-      <div className="space-y-3">
-        <p className="text-muted-foreground">
+      <div className="empty-state">
+        <IconTile size="sm">
+          <Library />
+        </IconTile>
+        <p>
           This draft has imported nothing from the library yet. Import oracles, trackers, tags, fact
           slots or Scene Types from a library pack.
         </p>
@@ -189,8 +203,8 @@ function ImportList({
         const items = imports.imports.filter((item) => item.section === section)
         return items.length === 0 ? null : (
           <section key={section} aria-label={sectionTitles[section]} className="space-y-2">
-            <h3 className="font-heading font-semibold">{sectionTitles[section]}</h3>
-            <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+            <h3 className="group-label">{sectionTitles[section]}</h3>
+            <ul className="overflow-hidden rounded-lg border">
               {items.map((item) => (
                 <ImportRow
                   key={item.key}
@@ -228,11 +242,11 @@ function ImportRow({
   const updatable = item.status === 'changed' && !busy
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+    <li className="list-row">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-medium break-words">{item.label}</span>
-          <span className="font-mono text-sm break-all text-muted-foreground">{item.key}</span>
+          <span className="list-row-title">{item.label}</span>
+          <span className="list-row-key break-all">{item.key}</span>
           <Badge variant={status.variant}>{status.label}</Badge>
           {item.editedLocally && <Badge variant="outline">Edited locally</Badge>}
         </p>
@@ -254,7 +268,7 @@ function ImportRow({
       {item.editedLocally ? (
         <ConfirmDialog
           trigger={`Update ${item.key}`}
-          label="Update"
+          icon={<RefreshCw />}
           disabled={!updatable}
           title={`Update ${item.key}?`}
           description="Update replaces your local edits with the pack's current item."
@@ -262,19 +276,13 @@ function ImportRow({
           onConfirm={onUpdate}
         />
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!updatable}
-          aria-label={`Update ${item.key}`}
-          onClick={onUpdate}
-        >
-          Update
-        </Button>
+        <IconButton label={`Update ${item.key}`} dense disabled={!updatable} onClick={onUpdate}>
+          <RefreshCw />
+        </IconButton>
       )}
       <ConfirmDialog
         trigger={`Detach ${item.key}`}
-        label="Detach"
+        icon={<Unlink />}
         disabled={busy}
         title={`Detach ${item.key}?`}
         description="The item stays in the draft, but it no longer follows the library pack."
@@ -288,7 +296,7 @@ function ImportRow({
 /** A button that asks before it acts; the action's result shows in the tab, not here. */
 function ConfirmDialog({
   trigger,
-  label,
+  icon,
   disabled,
   title,
   description,
@@ -296,7 +304,7 @@ function ConfirmDialog({
   onConfirm,
 }: {
   trigger: string
-  label: string
+  icon: ReactNode
   disabled: boolean
   title: string
   description: string
@@ -308,9 +316,9 @@ function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} aria-label={trigger}>
-          {label}
-        </Button>
+        <IconButton label={trigger} dense disabled={disabled}>
+          {icon}
+        </IconButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

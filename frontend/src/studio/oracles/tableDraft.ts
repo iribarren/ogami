@@ -146,6 +146,43 @@ export function toEntryDraft(entry: StoredEntry, id: number): EntryDraft {
   }
 }
 
+/**
+ * The total a ranged table's next entry starts at: one after the last max, or the dice minimum (1
+ * when the dice are unknown) without entries. Null when the last max is not a whole number.
+ */
+export function nextTotal(draft: TableDraft): number | null {
+  const last = draft.entries[draft.entries.length - 1]
+  if (last === undefined) {
+    return diceRange(draft.dice)?.min ?? 1
+  }
+  const max = parseInteger(last.max)
+  return max === null ? null : max + 1
+}
+
+/**
+ * The entry "Add entry" appends: the next total as its range, or weight 1 on a weighted table.
+ * A range with nothing to follow on from stays blank for the editor to flag.
+ */
+export function newEntry(draft: TableDraft, id: number): EntryDraft {
+  const entry = toEntryDraft({}, id)
+  if (!draft.ranged) {
+    return { ...entry, weight: '1' }
+  }
+  const total = nextTotal(draft)
+  return total === null ? entry : { ...entry, min: String(total), max: String(total) }
+}
+
+/** What an entry's details hold, for the row's badge ("Table next · 1 Scene Type · 2 effects"); null for none. */
+export function entrySummary(entry: EntryDraft): string | null {
+  const parts = [
+    entry.table !== '' && `Table ${entry.table}`,
+    entry.sceneType !== '' && '1 Scene Type',
+    entry.effects.length > 0 &&
+      `${String(entry.effects.length)} ${entry.effects.length === 1 ? 'effect' : 'effects'}`,
+  ].filter((part) => part !== false)
+  return parts.length === 0 ? null : parts.join(' · ')
+}
+
 /** Whether the stored Scene Type is absent or text: anything else is kept as stored, not edited. */
 export const sceneTypeEditable = (entry: StoredEntry) =>
   entry.sceneType === undefined || typeof entry.sceneType === 'string'

@@ -40,6 +40,14 @@ async function replace(user: ReturnType<typeof userEvent.setup>, label: string, 
   }
 }
 
+/** Opens the details of an entry (its disclosure starts closed). */
+async function openDetails(user: ReturnType<typeof userEvent.setup>, position: number) {
+  const toggle = screen.getByRole('button', { name: `Entry ${String(position)} details` })
+  if (toggle.getAttribute('aria-expanded') !== 'true') {
+    await user.click(toggle)
+  }
+}
+
 const save = () => screen.getByRole('button', { name: 'Save' })
 
 /** The stored `weather` with its name changed, as the server would answer a save. */
@@ -83,7 +91,7 @@ describe('the table editor', () => {
     expect(screen.getByLabelText('Dice')).toHaveValue('1d6')
     expect(screen.getByLabelText('Entry 1 text')).toHaveValue('Clear')
     expect(screen.getByLabelText('Entry 2 nested table')).toHaveValue('storm-kind')
-    expect(screen.getByText('Every total is covered exactly once.')).toBeInTheDocument()
+    expect(screen.getByText('Covers 1–6')).toBeInTheDocument()
 
     await replace(user, 'Entry 1 max', '3')
     expect(screen.getByRole('list', { name: 'Coverage problems' })).toHaveTextContent(
@@ -94,7 +102,7 @@ describe('the table editor', () => {
       'More than one entry covers 5.',
     )
     await replace(user, 'Entry 1 max', '4')
-    expect(screen.getByText('Every total is covered exactly once.')).toBeInTheDocument()
+    expect(screen.getByText('Covers 1–6')).toBeInTheDocument()
   })
 
   it('shows a weighted table with a weight per entry', async () => {
@@ -163,6 +171,8 @@ describe('the table editor', () => {
       },
     })
 
+    await openDetails(user, 1)
+    await openDetails(user, 2)
     await chooseOption(user, 'Entry 2 Scene Type', 'quiet')
     await chooseOption(user, 'New effect kind', 'endPhase', entry(2))
     await user.click(entry(2).getByRole('button', { name: 'Add effect' }))
@@ -187,6 +197,7 @@ describe('the table editor', () => {
   it('offers no sheet effect for an entry, and holds at ten effects', async () => {
     const { user } = await openEditor('storm-kind')
 
+    await openDetails(user, 1)
     const kinds = (await listOptions(user, entry(1).getByLabelText('New effect kind'))).map(
       (option) => option.label,
     )
@@ -200,6 +211,7 @@ describe('the table editor', () => {
   it('cannot be saved while an effect value is not a whole number', async () => {
     const { user } = await openEditor('storm-kind')
 
+    await openDetails(user, 1)
     await user.click(entry(1).getByRole('button', { name: 'Add effect' }))
     await chooseOption(user, 'Tracker', 'heat', entry(1))
     await user.clear(entry(1).getByLabelText('Value'))
@@ -370,10 +382,11 @@ describe('the table editor', () => {
     expect(watch.seen.notFound).toBe(false)
   })
 
-  it('adds and removes entries, a new ranged one empty and a new weighted one at weight 1', async () => {
+  it('adds and removes entries, a new ranged one after the last range', async () => {
     const { user } = await openEditor('weather')
     await user.click(screen.getByRole('button', { name: 'Add entry' }))
-    expect(screen.getByLabelText('Entry 3 min')).toHaveValue('')
+    expect(screen.getByLabelText('Entry 3 min')).toHaveValue('7')
+    expect(screen.getByLabelText('Entry 3 max')).toHaveValue('7')
     expect(save()).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Remove entry 3' }))
     expect(screen.queryByLabelText('Entry 3 min')).not.toBeInTheDocument()
@@ -388,6 +401,103 @@ describe('the table editor', () => {
     await user.click(screen.getByRole('button', { name: 'Remove entry 3' }))
     await user.click(screen.getByRole('button', { name: 'Remove entry 2' }))
     expect(screen.getByRole('button', { name: 'Remove entry 1' })).toBeDisabled()
+  })
+
+  it('opens and closes the details of an entry, which a summary badge counts', async () => {
+    const { user } = await openEditor('weather')
+    const toggle = screen.getByRole('button', { name: 'Entry 2 details' })
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByLabelText('Entry 2 nested table')).not.toBeVisible()
+    expect(entry(2).getByText(/^Table storm-kind/)).toBeInTheDocument()
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByLabelText('Entry 2 nested table')).toBeVisible()
+    await user.click(toggle)
+    expect(screen.getByLabelText('Entry 2 nested table')).not.toBeVisible()
+  })
+
+  it('opens the details an error points at', async () => {
+    const { user } = await openEditor('weather', {
+      [`PUT ${base}/oracle-tables/weather`]: json(
+        { error: 'oracles.tables[0].entries[1].sceneType: unknown Scene Type "ghost"' },
+        422,
+      ),
+    })
+
+    await replace(user, 'Entry 2 text', 'Gale')
+    expect(screen.getByLabelText('Entry 2 Scene Type')).not.toBeVisible()
+    await user.click(save())
+
+    expect(await entry(2).findByRole('alert')).toHaveTextContent('unknown Scene Type "ghost"')
+    expect(screen.getByRole('button', { name: 'Entry 2 details' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  describe('pasting entries', () => {
+    async function paste(user: ReturnType<typeof userEvent.setup>, text: string) {
+      await user.click(screen.getByRole('button', { name: 'Paste entries' }))
+      const dialog = within(await screen.findByRole('dialog', { name: 'Paste entries' }))
+      await user.click(dialog.getByLabelText('Entries to paste'))
+      await user.paste(text)
+      return dialog
+    }
+
+    it('adds the lines after the last range by default, and changes only the draft', async () => {
+      const { user } = await openEditor('weather')
+
+      const dialog = await paste(user, '7 Fog\n\nHail')
+      await user.click(dialog.getByRole('button', { name: 'Use 2 entries' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Entry 3 text')).toHaveValue('Fog')
+      expect(screen.getByLabelText('Entry 3 min')).toHaveValue('7')
+      expect(screen.getByLabelText('Entry 4 text')).toHaveValue('Hail')
+      expect(screen.getByLabelText('Entry 4 max')).toHaveValue('8')
+      expect(screen.getByLabelText('Entry 2 text')).toHaveValue(weather.definition.entries[1]?.text)
+      expect(save()).toBeEnabled()
+    })
+
+    it('replaces every entry on request', async () => {
+      const { user } = await openEditor('weather')
+
+      await user.click(screen.getByRole('button', { name: 'Paste entries' }))
+      const dialog = within(await screen.findByRole('dialog', { name: 'Paste entries' }))
+      await user.click(dialog.getByRole('radio', { name: 'Replace all' }))
+      await user.click(dialog.getByLabelText('Entries to paste'))
+      await user.paste('1-3. Calm\n4–6: Gale')
+      await user.click(dialog.getByRole('button', { name: 'Use 2 entries' }))
+
+      expect(screen.queryByLabelText('Entry 3 text')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Entry 1 max')).toHaveValue('3')
+      expect(screen.getByLabelText('Entry 2 min')).toHaveValue('4')
+      expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Gale')
+    })
+
+    it('names a bad line and applies nothing', async () => {
+      const { user } = await openEditor('weather')
+
+      const dialog = await paste(user, 'Fog\n5-3 Hail')
+
+      expect(dialog.getByRole('alert')).toHaveTextContent(
+        'Line 2: the range 5–3 has its min above its max.',
+      )
+      expect(dialog.getByRole('button', { name: 'Use 0 entries' })).toBeDisabled()
+      await user.click(dialog.getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByLabelText('Entry 3 text')).not.toBeInTheDocument()
+    })
+
+    it('gives a weighted table weight 1 and keeps leading numbers in the text', async () => {
+      const { user } = await openEditor('storm-kind')
+
+      const dialog = await paste(user, '2 Hail')
+      await user.click(dialog.getByRole('button', { name: 'Use 1 entry' }))
+
+      expect(screen.getByLabelText('Entry 4 text')).toHaveValue('2 Hail')
+      expect(screen.getByLabelText('Entry 4 weight')).toHaveValue('1')
+    })
   })
 
   describe('when the server refuses a save', () => {
@@ -415,6 +525,7 @@ describe('the table editor', () => {
         ),
       })
 
+      await openDetails(user, 2)
       await chooseOption(user, 'Entry 2 Scene Type', 'quiet')
       await user.click(save())
 
@@ -434,6 +545,7 @@ describe('the table editor', () => {
         ),
       })
 
+      await openDetails(user, 2)
       await chooseOption(user, 'New effect kind', 'nextScene', entry(2))
       await user.click(entry(2).getByRole('button', { name: 'Add effect' }))
       await user.click(save())

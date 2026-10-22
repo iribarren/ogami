@@ -1,7 +1,9 @@
 import { useId, useRef, useState, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Plus, X } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
@@ -192,38 +194,30 @@ function LevelRow({
   })
 
   return (
-    <li aria-label={label} className="space-y-2 px-4 py-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-40 space-y-1">
-          <Label>
-            Level key
-            <Input {...text('key', level.key.trim() === '')} />
-          </Label>
-        </div>
-        <div className="min-w-40 flex-1 space-y-1">
-          <Label>
-            Level label
-            <Input {...text('label', level.label.trim() === '')} />
-          </Label>
-        </div>
-        <div className="w-24 space-y-1">
-          <Label>
-            Level target
-            <Input
-              inputMode="numeric"
-              autoComplete="off"
-              aria-label={`${label} target`}
-              aria-invalid={parseInteger(level.target) === null}
-              value={level.target}
-              onChange={(event) => {
-                onChange({ ...level, target: event.target.value })
-              }}
-            />
-          </Label>
-        </div>
-        <Button type="button" variant="outline" size="sm" disabled={!canRemove} onClick={onRemove}>
-          Remove {label.toLowerCase()}
-        </Button>
+    <li aria-label={label} className="space-y-2 py-2">
+      <div className="flex items-center gap-2">
+        <Input className="h-8 w-36 shrink-0 font-mono" {...text('key', level.key.trim() === '')} />
+        <Input className="h-8 min-w-0 flex-1" {...text('label', level.label.trim() === '')} />
+        <Input
+          inputMode="numeric"
+          autoComplete="off"
+          className="h-8 w-[52px] shrink-0 px-1 text-center"
+          aria-label={`${label} target`}
+          aria-invalid={parseInteger(level.target) === null}
+          value={level.target}
+          onChange={(event) => {
+            onChange({ ...level, target: event.target.value })
+          }}
+        />
+        <IconButton
+          label={`Remove ${label.toLowerCase()}`}
+          dense
+          destructive
+          disabled={!canRemove}
+          onClick={onRemove}
+        >
+          <X />
+        </IconButton>
       </div>
       {problem !== null && (
         <p id={problemId} role="alert" className="text-sm text-destructive">
@@ -421,7 +415,12 @@ export function LikelihoodOracleEditor({
           </div>
         </div>
         <div className="space-y-3">
-          <ol aria-label="Levels" className="divide-y rounded-xl ring-1 ring-foreground/10">
+          <div aria-hidden="true" className="flex gap-2 group-label">
+            <span className="w-36">Key</span>
+            <span className="flex-1">Label</span>
+            <span className="w-[52px] text-center">Target</span>
+          </div>
+          <ol aria-label="Levels" className="divide-y">
             {draft.levels.map((level, index) => (
               <LevelRow
                 key={level.id}
@@ -449,6 +448,7 @@ export function LikelihoodOracleEditor({
               edit({ ...draft, levels: [...draft.levels, toLevelDraft({}, nextId.current++)] })
             }}
           >
+            <Plus aria-hidden="true" />
             Add level
           </Button>
         </div>

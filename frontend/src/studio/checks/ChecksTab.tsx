@@ -144,6 +144,18 @@ function CheckList({
     }
   }
 
+  /** Opens a new, unsaved check prefilled from what the editor shows, unsaved edits included. */
+  function duplicateDraft(draft: CheckDraft) {
+    open(
+      null,
+      data,
+      duplicateCheck(
+        draft,
+        data.checks.flatMap((check) => (typeof check.key === 'string' ? [check.key] : [])),
+      ),
+    )
+  }
+
   /**
    * Another request changed the draft: say so and reload, so the open editor starts again from
    * the latest check (or closes when it is gone) and its next save carries the new version.
@@ -323,7 +335,7 @@ function CheckList({
                 adopt(selected.opened, saved, key)
               }}
               onConflict={onConflict}
-              onDuplicate={duplicate}
+              onDuplicate={duplicateDraft}
               deleteAction={
                 selected.original !== null && (
                   <DeleteCheckDialog
@@ -561,7 +573,8 @@ function CheckEditor({
   sampleValues: SampleValues
   onSaved: (saved: GameSystemChecks, key: string) => void
   onConflict: (message: string) => void
-  onDuplicate: (key: string) => void
+  /** The editor head's Duplicate: copies the draft as shown, not the stored check. */
+  onDuplicate: (draft: CheckDraft) => void
   /** The editor head's Delete, which needs the list's latest version. */
   deleteAction: ReactNode
 }) {
@@ -702,7 +715,7 @@ function CheckEditor({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  onDuplicate(original)
+                  onDuplicate(draft)
                 }}
               >
                 <Copy aria-hidden="true" />

@@ -1,6 +1,10 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
+import { ChevronDown, Plus, X } from 'lucide-react'
 
+import { cn } from '@/shared/lib/utils'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
@@ -11,24 +15,29 @@ import { aboutEffects, type StepError } from '../narrative/steps/stepError'
 import type { StepContext } from '../narrative/steps/stepContext'
 import {
   effectsEditable,
+  entrySummary,
   parseInteger,
   sceneTypeEditable,
   type Coverage,
+  type DiceRange,
   type EntryDraft,
   type Span,
 } from './tableDraft'
 
 const span = ({ from, to }: Span) => (from === to ? String(from) : `${String(from)}–${String(to)}`)
 
-/** What the entries' ranges leave uncovered or cover twice, as the dice would roll them. */
-export function CoverageSummary({ coverage }: { coverage: Coverage }) {
+/**
+ * What the entries' ranges leave uncovered or cover twice, as the dice would roll them; a badge
+ * when every total is covered exactly once.
+ */
+export function CoverageSummary({ coverage, range }: { coverage: Coverage; range: DiceRange }) {
   const problems = [
     coverage.gaps.length > 0 && `No entry covers ${coverage.gaps.map(span).join(', ')}.`,
     coverage.overlaps.length > 0 &&
       `More than one entry covers ${coverage.overlaps.map(span).join(', ')}.`,
   ].filter((problem) => problem !== false)
   return problems.length === 0 ? (
-    <p className="text-sm text-muted-foreground">Every total is covered exactly once.</p>
+    <Badge variant="success">Covers {span({ from: range.min, to: range.max })}</Badge>
   ) : (
     <ul aria-label="Coverage problems" className="text-sm text-destructive">
       {problems.map((problem) => (
@@ -147,127 +156,144 @@ function EntryRow({
     'aria-describedby': problem === null ? undefined : problemId,
   })
 
+  // Details open by hand, and open by themselves when an error points at one of their fields.
+  const [open, setOpen] = useState(false)
+  const [seenErrors, setSeenErrors] = useState(0)
+  if (errors.length !== seenErrors) {
+    setSeenErrors(errors.length)
+    if (errors.length > seenErrors) {
+      setOpen(true)
+    }
+  }
+  const detailsId = `${problemId}-details`
+  const summary = entrySummary(entry)
+
   return (
-    <li aria-label={label} className="space-y-2 px-4 py-3">
-      <div className="flex flex-wrap items-end gap-3">
+    <li aria-label={label} className="space-y-2 py-2">
+      <div className="flex items-center gap-2">
         {ranged ? (
           <>
-            <div className="w-20 space-y-1">
-              <Label>
-                Min
-                <Input
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-label={`${label} min`}
-                  aria-invalid={parseInteger(entry.min) === null}
-                  {...field('min')}
-                />
-              </Label>
-            </div>
-            <div className="w-20 space-y-1">
-              <Label>
-                Max
-                <Input
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-label={`${label} max`}
-                  aria-invalid={parseInteger(entry.max) === null}
-                  {...field('max')}
-                />
-              </Label>
-            </div>
+            <Input
+              inputMode="numeric"
+              autoComplete="off"
+              className="h-8 w-[52px] shrink-0 px-1 text-center"
+              aria-label={`${label} min`}
+              aria-invalid={parseInteger(entry.min) === null}
+              {...field('min')}
+            />
+            <Input
+              inputMode="numeric"
+              autoComplete="off"
+              className="h-8 w-[52px] shrink-0 px-1 text-center"
+              aria-label={`${label} max`}
+              aria-invalid={parseInteger(entry.max) === null}
+              {...field('max')}
+            />
           </>
         ) : (
-          <div className="w-24 space-y-1">
+          <Input
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="1"
+            className="h-8 w-[52px] shrink-0 px-1 text-center"
+            aria-label={`${label} weight`}
+            aria-invalid={entry.weight !== '' && parseInteger(entry.weight) === null}
+            {...field('weight')}
+          />
+        )}
+        <Input
+          autoComplete="off"
+          className="h-8 min-w-0 flex-1"
+          aria-label={`${label} text`}
+          aria-invalid={entry.text.trim() === ''}
+          {...field('text')}
+        />
+        {summary !== null && <Badge variant="secondary">{summary}</Badge>}
+        <IconButton
+          label={`${label} details`}
+          dense
+          aria-expanded={open}
+          aria-controls={detailsId}
+          onClick={() => {
+            setOpen(!open)
+          }}
+        >
+          <ChevronDown className={cn(!open && '-rotate-90')} />
+        </IconButton>
+        <IconButton
+          label={`Remove ${label.toLowerCase()}`}
+          dense
+          destructive
+          disabled={!canRemove}
+          onClick={onRemove}
+        >
+          <X />
+        </IconButton>
+      </div>
+      <div id={detailsId} hidden={!open} className="space-y-3 well">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-48 space-y-1">
             <Label>
-              Weight
-              <Input
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="1"
-                aria-label={`${label} weight`}
-                aria-invalid={entry.weight !== '' && parseInteger(entry.weight) === null}
-                {...field('weight')}
-              />
+              Nested table
+              <Select aria-label={`${label} nested table`} {...field('table')}>
+                <option value="">None</option>
+                {options.map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </Select>
             </Label>
           </div>
-        )}
-        <div className="min-w-48 flex-1 space-y-1">
-          <Label>
-            Text
-            <Input
-              autoComplete="off"
-              aria-label={`${label} text`}
-              aria-invalid={entry.text.trim() === ''}
-              {...field('text')}
+          {withKey && (
+            <div className="min-w-40 space-y-1">
+              <Label>
+                Entry key
+                <Input
+                  autoComplete="off"
+                  aria-label={`${label} key`}
+                  {...field('key')}
+                  aria-describedby={[`${problemId}-key`, problem === null ? null : problemId]
+                    .filter((id) => id !== null)
+                    .join(' ')}
+                />
+              </Label>
+              <KeyHint id={`${problemId}-key`} />
+            </div>
+          )}
+          {context !== null && (
+            <SceneTypeField
+              label={label}
+              entry={entry}
+              context={context}
+              error={
+                errors.find((error) => error.effect === null && error.field === 'sceneType')
+                  ?.message
+              }
+              onChange={(sceneType) => {
+                onChange({ ...entry, sceneType })
+              }}
             />
-          </Label>
+          )}
         </div>
-        <Button type="button" variant="outline" size="sm" disabled={!canRemove} onClick={onRemove}>
-          Remove {label.toLowerCase()}
-        </Button>
+        {context !== null &&
+          (effectsEditable(entry.original) ? (
+            <EffectsEditor
+              label={`${label} effects`}
+              effects={entry.effects}
+              context={context}
+              allowSheet={false}
+              errors={errors.filter(aboutEffects)}
+              onChange={(effects) => {
+                onChange({ ...entry, effects })
+              }}
+            />
+          ) : (
+            <p className="text-sm text-destructive">
+              {label} effects are not a list; they are kept as stored.
+            </p>
+          ))}
       </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-48 space-y-1">
-          <Label>
-            Nested table
-            <Select aria-label={`${label} nested table`} {...field('table')}>
-              <option value="">None</option>
-              {options.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-            </Select>
-          </Label>
-        </div>
-        {withKey && (
-          <div className="min-w-40 space-y-1">
-            <Label>
-              Entry key
-              <Input
-                autoComplete="off"
-                aria-label={`${label} key`}
-                {...field('key')}
-                aria-describedby={[`${problemId}-key`, problem === null ? null : problemId]
-                  .filter((id) => id !== null)
-                  .join(' ')}
-              />
-            </Label>
-            <KeyHint id={`${problemId}-key`} />
-          </div>
-        )}
-        {context !== null && (
-          <SceneTypeField
-            label={label}
-            entry={entry}
-            context={context}
-            error={
-              errors.find((error) => error.effect === null && error.field === 'sceneType')?.message
-            }
-            onChange={(sceneType) => {
-              onChange({ ...entry, sceneType })
-            }}
-          />
-        )}
-      </div>
-      {context !== null &&
-        (effectsEditable(entry.original) ? (
-          <EffectsEditor
-            label={`${label} effects`}
-            effects={entry.effects}
-            context={context}
-            allowSheet={false}
-            errors={errors.filter(aboutEffects)}
-            onChange={(effects) => {
-              onChange({ ...entry, effects })
-            }}
-          />
-        ) : (
-          <p className="text-sm text-destructive">
-            {label} effects are not a list; they are kept as stored.
-          </p>
-        ))}
       {problem !== null && (
         <p id={problemId} role="alert" className="text-sm text-destructive">
           {problem}
@@ -282,6 +308,7 @@ export function EntriesEditor({
   entries,
   problems,
   errors,
+  ranged,
   onChange,
   onAdd,
   ...row
@@ -298,11 +325,23 @@ export function EntriesEditor({
 }) {
   return (
     <div className="space-y-3">
-      <ol aria-label="Entries" className="divide-y rounded-xl ring-1 ring-foreground/10">
+      <div aria-hidden="true" className="flex gap-2 group-label">
+        {ranged ? (
+          <>
+            <span className="w-[52px] text-center">Min</span>
+            <span className="w-[52px] text-center">Max</span>
+          </>
+        ) : (
+          <span className="w-[52px] text-center">Weight</span>
+        )}
+        <span>Text</span>
+      </div>
+      <ol aria-label="Entries" className="divide-y">
         {entries.map((entry, index) => (
           <EntryRow
             key={entry.id}
             {...row}
+            ranged={ranged}
             entry={entry}
             index={index}
             problem={problems[index] ?? null}
@@ -318,6 +357,7 @@ export function EntriesEditor({
         ))}
       </ol>
       <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+        <Plus aria-hidden="true" />
         Add entry
       </Button>
     </div>

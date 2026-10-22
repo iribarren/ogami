@@ -653,6 +653,23 @@ describe('the checks tab', () => {
       const form = within(screen.getByRole('form', { name: 'New check' }))
       expect(form.getByLabelText('Key')).toHaveValue('skill-copy-2')
     })
+
+    it('duplicates the visible draft from the editor head, unsaved edits included', async () => {
+      const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }, { status: 201 }))
+      const { user } = await openChecks({ [`POST ${base}/checks`]: handler })
+
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const edit = within(screen.getByRole('form', { name: 'Edit skill' }))
+      await user.clear(edit.getByLabelText('Dice'))
+      await user.type(edit.getByLabelText('Dice'), '3d6')
+      await user.click(edit.getByRole('button', { name: 'Duplicate' }))
+
+      const form = within(screen.getByRole('form', { name: 'New check' }))
+      expect(form.getByLabelText('Key')).toHaveValue('skill-copy')
+      expect(form.getByLabelText('Dice')).toHaveValue('3d6')
+      await user.click(form.getByRole('button', { name: 'Create check' }))
+      expect(sent[0]).toMatchObject({ check: { key: 'skill-copy', dice: '3d6' } })
+    })
   })
 
   describe('band presets and the key that follows the label', () => {
@@ -720,6 +737,21 @@ describe('the checks tab', () => {
       expect(form.queryByLabelText('Band 3 key')).toBeNull()
       await user.click(form.getByRole('button', { name: 'Save check' }))
       expect(sent[0]).toMatchObject({ check: { bands: checks.checks[0]?.bands } })
+    })
+
+    it('disables Copy from a check when no other check can be read', async () => {
+      const { user } = await openChecks({
+        [`GET ${base}/checks`]: json({ ...checks, checks: [checks.checks[1]] }),
+      })
+      await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+      const form = within(screen.getByRole('form', { name: 'Edit luck' }))
+
+      await user.click(form.getByRole('button', { name: 'Use a preset' }))
+
+      expect(await screen.findByRole('menuitem', { name: 'Copy from a check…' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
     })
 
     it('starts a new band as a number bound and writes its key from its label until edited', async () => {

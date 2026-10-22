@@ -4,6 +4,8 @@ import type { EntryDraft, TableDraft } from './tableDraft'
 import {
   coverage,
   diceRange,
+  entrySummary,
+  newEntry,
   newTable,
   parseInteger,
   toDraft,
@@ -272,5 +274,75 @@ describe('newTable', () => {
 
   it('refuses dice it cannot read', () => {
     expect(newTable('a', 'A', true, '4d6kh3')).toBeNull()
+  })
+})
+
+describe('newEntry', () => {
+  const table = (dice: string, entries: [number | string, number | string][]) =>
+    toDraft({
+      key: 'omens',
+      name: 'Omens',
+      dice,
+      entries: entries.map(([min, max]) => ({ min, max, text: 'x' })),
+    } as unknown as OracleTable)
+
+  it('takes the total after the last max', () => {
+    expect(
+      newEntry(
+        table('1d8', [
+          [1, 3],
+          [4, 5],
+        ]),
+        7,
+      ),
+    ).toMatchObject({ id: 7, min: '6', max: '6', weight: '' })
+  })
+
+  it('starts at the dice minimum, or 1 when the dice are unknown, without entries', () => {
+    expect(newEntry(table('2d6', []), 0)).toMatchObject({ min: '2', max: '2' })
+    expect(newEntry(table('2d6+1', []), 0)).toMatchObject({ min: '1', max: '1' })
+  })
+
+  it('leaves the range blank when the last max is not a whole number', () => {
+    expect(newEntry(table('1d8', [[1, '']]), 0)).toMatchObject({ min: '', max: '' })
+  })
+
+  it('gives a weighted table weight 1', () => {
+    const weighted = toDraft({
+      key: 'mood',
+      name: 'Mood',
+      entries: [{ weight: 3, text: 'Calm' }],
+    } as OracleTable)
+    expect(newEntry(weighted, 4)).toMatchObject({ id: 4, weight: '1', min: '', max: '' })
+  })
+})
+
+describe('entrySummary', () => {
+  it('is null for an entry without details', () => {
+    expect(entrySummary(toEntryDraft({ text: 'x', key: 'k' }, 0))).toBeNull()
+  })
+
+  it('counts the Scene Type, effects and nested table', () => {
+    const entry = toEntryDraft(
+      {
+        text: 'x',
+        table: 'next',
+        sceneType: 'chase',
+        effects: [
+          { kind: 'tracker', tracker: 'a', op: 'add', value: 1 },
+          { kind: 'tracker', tracker: 'b', op: 'add', value: 1 },
+        ],
+      },
+      0,
+    )
+    expect(entrySummary(entry)).toBe('Table next · 1 Scene Type · 2 effects')
+    expect(
+      entrySummary(
+        toEntryDraft(
+          { text: 'x', effects: [{ kind: 'tracker', tracker: 'a', op: 'add', value: 1 }] },
+          0,
+        ),
+      ),
+    ).toBe('1 effect')
   })
 })

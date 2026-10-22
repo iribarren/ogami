@@ -44,7 +44,10 @@ export function CheckList({
           >
             <input
               type="checkbox"
-              className={pills ? 'sr-only' : undefined}
+              // A pill's checkbox covers the whole pill, unseen, so a click anywhere on it lands on the box.
+              className={
+                pills ? 'absolute inset-0 cursor-pointer rounded-full opacity-0' : undefined
+              }
               checked={value.includes(option.key)}
               aria-invalid={error !== undefined}
               onChange={(event) => {

@@ -1303,6 +1303,7 @@
  * checkbox inside stays a real one (visually hidden), so the keyboard and the names are unchanged.
  */
 @utility pill-check {
+  position: relative;
   display: inline-flex;
   align-items: center;
   height: 32px;

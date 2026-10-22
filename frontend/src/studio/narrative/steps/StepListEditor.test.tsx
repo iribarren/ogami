@@ -63,6 +63,23 @@ describe('the step list editor', () => {
     expect(screen.getAllByRole('group', { name: /^Step \d$/ })).toHaveLength(4)
   })
 
+  it('scrolls the current step into view, and only that one', () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const steps = stepsToDrafts(stepList)
+    const { rerender } = render(
+      <StepListEditor steps={steps} context={stepPickers} onChange={() => undefined} />,
+    )
+    expect(scroll).not.toHaveBeenCalled()
+
+    rerender(
+      <StepListEditor steps={steps} context={stepPickers} current={2} onChange={() => undefined} />,
+    )
+
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(scroll.mock.contexts[0]).toBe(screen.getByRole('group', { name: 'Step 3' }))
+    scroll.mockRestore()
+  })
+
   it('adds a step of the chosen kind, moves it and deletes it', async () => {
     const user = userEvent.setup()
     render(<Harness stored={[stepList[3]]} />)

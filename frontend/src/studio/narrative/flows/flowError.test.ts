@@ -1,4 +1,4 @@
-import { flowAnswer, flowChecks, noAnswer, type PhaseAnswer } from './flowError'
+import { answerCount, flowAnswer, flowChecks, noAnswer, type PhaseAnswer } from './flowError'
 import { flowToDraft, setHook } from './flowDraft'
 import { stepsToDrafts } from '../steps/stepDraft'
 
@@ -202,4 +202,38 @@ describe('the selection checks made before a save', () => {
 const setHookOn = (flow: ReturnType<typeof draft>) => ({
   ...flow,
   phases: flow.phases.map((phase) => setHook(phase, 'worldTurn', stepsToDrafts([]))),
+})
+
+describe('the number of messages in an answer', () => {
+  it('is none for a clean answer and one for a message of the page', () => {
+    expect(answerCount(noAnswer)).toBe(0)
+    expect(answerCount(flowAnswer('flows[1].name: nope', 0, 1))).toBe(1)
+  })
+
+  it.each([
+    ['flows[0].name: nope', 1],
+    ['flows[0].phases[0].key: nope', 1],
+    ['flows[0].phases[0].selection.sceneTypes[0]: nope', 1],
+    ['flows[0].phases[0].worldTurn: nope', 1],
+    ['flows[0].phases[0].worldTurn[2].title: nope', 1],
+  ])('counts %s as %i', (message, count) => {
+    expect(answerCount(flowAnswer(message, 0, 1))).toBe(count)
+  })
+
+  it('adds up fields, phases, selections and hooks of what the checks refuse', () => {
+    const flow = flowToDraft({
+      key: ' ',
+      name: 'Heist',
+      defaultView: 'focus',
+      oracles: [],
+      trackers: [],
+      phases: [
+        { ...phase(' '), selection: { rule: 'sequence', sceneTypes: [] } },
+        { ...phase('b'), worldTurn: [{ key: 's', kind: 'prompt', title: 'S' }] },
+      ],
+    })
+    const checked = flow && flowChecks(flow)
+
+    expect(checked && answerCount(checked)).toBe(3)
+  })
 })

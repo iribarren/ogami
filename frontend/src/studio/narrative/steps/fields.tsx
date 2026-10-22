@@ -1,5 +1,6 @@
 import { useId } from 'react'
 
+import { FieldError } from '@/shared/ui/alert'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
@@ -9,13 +10,16 @@ export function CheckList({
   legend,
   options,
   value,
+  error,
   onChange,
 }: {
   legend: string
   options: { key: string; name: string }[]
   value: string[]
+  error?: string
   onChange: (value: string[]) => void
 }) {
+  const errorId = useId()
   const known = options.map((option) => option.key)
   const all = [
     ...options,
@@ -23,7 +27,7 @@ export function CheckList({
   ]
 
   return (
-    <fieldset className="space-y-1">
+    <fieldset className="space-y-1" aria-describedby={error ? errorId : undefined}>
       <legend className="text-sm font-medium">{legend}</legend>
       {all.length === 0 && <p className="text-sm text-muted-foreground">Nothing to pick yet.</p>}
       {all.map((option) => (
@@ -31,6 +35,7 @@ export function CheckList({
           <input
             type="checkbox"
             checked={value.includes(option.key)}
+            aria-invalid={error !== undefined}
             onChange={(event) => {
               onChange(
                 event.target.checked
@@ -42,6 +47,7 @@ export function CheckList({
           {option.name}
         </label>
       ))}
+      {error && <FieldError id={errorId}>{error}</FieldError>}
     </fieldset>
   )
 }
@@ -50,14 +56,20 @@ export function Area({
   label,
   value,
   error,
+  help,
   onChange,
 }: {
   label: string
   value: string
   error?: string
+  /** A hint under the field. */
+  help?: string
   onChange: (value: string) => void
 }) {
   const id = useId()
+  const described = [help ? `${id}-help` : null, error ? `${id}-error` : null]
+    .filter((part) => part !== null)
+    .join(' ')
 
   return (
     <div className="space-y-2">
@@ -66,11 +78,17 @@ export function Area({
         id={id}
         value={value}
         aria-invalid={error !== undefined}
+        aria-describedby={described === '' ? undefined : described}
         onChange={(event) => {
           onChange(event.target.value)
         }}
       />
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {help && (
+        <p id={`${id}-help`} className="hint">
+          {help}
+        </p>
+      )}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
     </div>
   )
 }
@@ -102,6 +120,7 @@ export function PickField({
         id={id}
         value={value}
         aria-invalid={error !== undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => {
           onChange(event.target.value)
         }}
@@ -113,7 +132,7 @@ export function PickField({
           </option>
         ))}
       </Select>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
     </div>
   )
 }
@@ -141,6 +160,7 @@ export function SelectField({
         id={id}
         value={value}
         aria-invalid={error !== undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => {
           onChange(event.target.value)
         }}
@@ -151,7 +171,7 @@ export function SelectField({
           </option>
         ))}
       </Select>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
     </div>
   )
 }

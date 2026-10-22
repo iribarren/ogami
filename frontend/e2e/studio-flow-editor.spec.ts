@@ -70,6 +70,7 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await saveWith(page, act, `/narrative/flows/heist`)
 
   // The selected node survives a reload, and so does what was saved.
+  const escaped = phaseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   await page.reload()
   const reloaded = page.getByRole('form', { name: 'Flow' })
   await expect(reloaded.getByLabel('Name', { exact: true })).toHaveValue(phaseName)
@@ -77,7 +78,7 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await expect(
     page
       .getByRole('navigation', { name: 'Flow outline' })
-      .getByRole('button', { name: new RegExp(`^1\\. ${phaseName}`) }),
+      .getByRole('button', { name: new RegExp(`^1\\. ${escaped}`) }),
   ).toHaveAttribute('aria-current', 'true')
 
   // Publish the draft with both edits.

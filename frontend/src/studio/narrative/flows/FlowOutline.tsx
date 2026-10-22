@@ -46,6 +46,7 @@ function Item({
   level,
   selected,
   dim = false,
+  invalid = false,
   label,
   icon,
   meta,
@@ -55,6 +56,8 @@ function Item({
   level: 0 | 1 | 2
   selected: boolean
   dim?: boolean
+  /** An error targets this node: it gets the error pill. */
+  invalid?: boolean
   /** The accessible name, when it differs from the text. */
   label?: string
   icon: ReactNode
@@ -68,6 +71,7 @@ function Item({
         type="button"
         aria-current={selected ? 'true' : undefined}
         aria-label={label}
+        aria-description={invalid ? 'Has an error' : undefined}
         data-dim={dim ? 'true' : undefined}
         style={{ '--level': level } as CSSProperties}
         className="outline-item outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -78,6 +82,7 @@ function Item({
         {/* The space keeps the accessible name from running the label into the meta. */}
         {meta !== undefined && ' '}
         {meta}
+        {invalid && errorPill}
       </button>
     </li>
   )
@@ -92,6 +97,13 @@ interface Place {
 
 const dot = <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />
 
+// Hidden from the name, so an item keeps the name it has without an error; `invalid` says it instead.
+const errorPill = (
+  <span aria-hidden="true" className="count-pill count-pill-error">
+    Error
+  </span>
+)
+
 /**
  * The outline of a flow: its settings, then each phase with its selection, its seven hooks and
  * their steps. Selecting an item selects that node; the selected one is `aria-current`. Adding a
@@ -100,6 +112,7 @@ const dot = <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full b
 export function FlowOutline({
   draft,
   node,
+  flowErrored,
   answers,
   sceneTypes,
   tables,
@@ -109,6 +122,8 @@ export function FlowOutline({
 }: {
   draft: FlowDraft
   node: FlowNode
+  /** The last answer is about a field of the flow itself. */
+  flowErrored: boolean
   answers: (PhaseAnswer | undefined)[]
   sceneTypes: Option[]
   tables: Option[]
@@ -157,7 +172,7 @@ export function FlowOutline({
       </div>
       <nav aria-label="Flow outline" className="p-2">
         <ul className="space-y-0.5">
-          <Item {...at(settingsNode, 0)} icon={<Route aria-hidden="true" />}>
+          <Item {...at(settingsNode, 0)} icon={<Route aria-hidden="true" />} invalid={flowErrored}>
             Flow settings
           </Item>
           {draft.phases.map((phase, index) => (
@@ -203,6 +218,7 @@ function PhaseItems({
       <Item
         {...at({ kind: 'phase', phase: index }, 0)}
         icon={<Layers aria-hidden="true" />}
+        invalid={Object.keys(answer?.fields ?? {}).length + (answer?.messages.length ?? 0) > 0}
         meta={<span className="hint">{phase.mode === 'loop' ? 'Loop' : 'Once'}</span>}
       >
         {label}
@@ -211,6 +227,7 @@ function PhaseItems({
         {...at({ kind: 'selection', phase: index }, 1)}
         icon={<Clapperboard aria-hidden="true" />}
         label={`Selection: ${selection}`}
+        invalid={(answer?.selection.length ?? 0) > 0}
       >
         {selection}
       </Item>
@@ -222,6 +239,7 @@ function PhaseItems({
             key={hook}
             steps={steps}
             errored={errors.flatMap(({ index: step }) => (step === null ? [] : [step]))}
+            listErrored={errors.some(({ index: step }) => step === null || step >= steps.length)}
             hookLabel={hookLabels[hook]}
             hook={at({ kind: 'hook', phase: index, hook }, 1)}
             step={(position) => at({ kind: 'step', phase: index, hook, step: position }, 2)}
@@ -235,6 +253,7 @@ function PhaseItems({
 function HookItems({
   steps,
   errored,
+  listErrored,
   hookLabel,
   hook,
   step,
@@ -242,6 +261,8 @@ function HookItems({
   steps: StepDraft[]
   /** The positions of the steps the last answer is about. */
   errored: number[]
+  /** The answer is about the list itself, or about a step it does not have. */
+  listErrored: boolean
   hookLabel: string
   hook: Place
   step: (position: number) => Place
@@ -253,6 +274,7 @@ function HookItems({
         dim={steps.length === 0}
         label={`${hookLabel} (${count(steps.length)})`}
         icon={<Zap aria-hidden="true" />}
+        invalid={listErrored}
         meta={<span className="hint">{steps.length}</span>}
       >
         {hookLabel}
@@ -263,11 +285,7 @@ function HookItems({
           key={position}
           {...step(position)}
           icon={dot}
-          meta={
-            errored.includes(position) ? (
-              <span className="count-pill count-pill-error">Error</span>
-            ) : undefined
-          }
+          invalid={errored.includes(position)}
         >
           {stepName(steps, position)}
         </Item>

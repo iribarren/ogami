@@ -8,6 +8,7 @@ import { Select } from '@/shared/ui/select'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { TextField } from '../TextField'
+import { AnswerHint, answerHint } from './answerHint'
 import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
 import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
@@ -161,6 +162,7 @@ function StepFields({
         label="Prompt"
         value={step.prompt}
         error={fieldError('prompt')}
+        help={step.kind === 'prompt' || step.kind === 'choice' ? answerHint : undefined}
         onChange={(prompt) => {
           onChange({ ...step, prompt })
         }}
@@ -433,16 +435,18 @@ function StepCard({
             {controls}
           </div>
           <CollapsibleContent>
-            <StepFields
-              step={step}
-              guide={guide}
-              mine={mine}
-              context={context}
-              laterKeys={laterKeys}
-              onChange={onChange}
-              onInnerRestructure={onInnerRestructure}
-              onItems={onItems}
-            />
+            <AnswerHint value={step.kind === 'prompt' || step.kind === 'choice'}>
+              <StepFields
+                step={step}
+                guide={guide}
+                mine={mine}
+                context={context}
+                laterKeys={laterKeys}
+                onChange={onChange}
+                onInnerRestructure={onInnerRestructure}
+                onItems={onItems}
+              />
+            </AnswerHint>
           </CollapsibleContent>
         </Collapsible>
       )}

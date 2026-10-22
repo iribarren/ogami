@@ -157,6 +157,33 @@ describe('the node an answer is about', () => {
     })
   })
 
+  it('follows the first error of a hook: a list-level one selects the hook, not a later step', () => {
+    const list = flowAnswer('flows[0].phases[0].worldTurn: nope', 0, 1)
+    const phase = list.phases[0]
+    const listError = phase?.hooks.worldTurn?.[0]
+    const stepError = flowAnswer('flows[0].phases[0].worldTurn[1].title: nope', 0, 1).phases[0]
+      ?.hooks.worldTurn?.[0]
+    if (phase === undefined || listError === undefined || stepError === undefined) {
+      throw new Error('Unreadable answers.')
+    }
+    const answer = (...errors: (typeof listError)[]) => ({
+      ...list,
+      phases: [{ ...phase, hooks: { worldTurn: errors } }],
+    })
+
+    expect(answerNode(answer(listError, stepError))).toEqual({
+      kind: 'hook',
+      phase: 0,
+      hook: 'worldTurn',
+    })
+    expect(answerNode(answer(stepError, listError))).toEqual({
+      kind: 'step',
+      phase: 0,
+      hook: 'worldTurn',
+      step: 1,
+    })
+  })
+
   it('is the first place of a draft the checks refuse: the earliest phase, its fields before its selection', () => {
     const flow = draft(
       {},

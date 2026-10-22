@@ -1,11 +1,13 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, published3, validDraft } from './fixtures'
-import { conflictMessage } from './PublishDialog'
+import { StoryProviders } from '@/test/StoryProviders'
+
+import { conflictMessage, PublishErrors } from './PublishDialog'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -51,7 +53,7 @@ describe('the publish dialog', () => {
     expect(await dialog.findByText('This creates version 4.')).toBeInTheDocument()
     expect(dialog.getAllByRole('listitem')).toHaveLength(2)
     expect(dialog.getByRole('button', { name: 'Publish version 4' })).toBeEnabled()
-    expect(dialog.getByText('0 / 2,000 characters')).toBeInTheDocument()
+    expect(dialog.getByText('0 / 2,000')).toBeInTheDocument()
   })
 
   it('creates version 1 for a draft that was never published', async () => {
@@ -107,7 +109,7 @@ describe('the publish dialog', () => {
     const dialog = await openDialog(user)
     await dialog.findByText('This creates version 1.')
     await user.type(dialog.getByLabelText('Release notes (optional)'), '  Rebalanced the oracles. ')
-    expect(dialog.getByText('26 / 2,000 characters')).toBeInTheDocument()
+    expect(dialog.getByText('26 / 2,000')).toBeInTheDocument()
     await user.click(dialog.getByRole('button', { name: 'Publish version 1' }))
 
     await waitFor(() => {
@@ -205,5 +207,78 @@ describe('the publish dialog', () => {
     expect(await dialog.findByRole('alert')).toHaveTextContent(
       'Publishing the GameSystem failed with HTTP 500.',
     )
+  })
+
+  it('shows the move from the latest release to the next one, and the draft as valid', async () => {
+    const user = userEvent.setup()
+    renderPublishable(published3, {
+      'GET /api/studio/game-systems/noir-detective/validation': json(validDraft),
+    })
+
+    const dialog = await openDialog(user)
+
+    expect(await dialog.findByText('The draft is valid.')).toBeInTheDocument()
+    expect(dialog.getByText(/^v3/)).toHaveTextContent('v3 → to v4')
+    expect(dialog.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    await user.click(dialog.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('counts characters like the server and refuses notes over the limit', async () => {
+    const user = userEvent.setup()
+    renderPublishable()
+
+    const dialog = await openDialog(user)
+    await dialog.findByText('This creates version 1.')
+    const notes = dialog.getByLabelText('Release notes (optional)')
+    // Two code points each; the server counts those, not UTF-16 units.
+    await user.click(notes)
+    await user.paste('😀'.repeat(2000))
+    expect(dialog.getByText('2,000 / 2,000')).toBeInTheDocument()
+    expect(notes).toHaveAttribute('aria-invalid', 'false')
+    expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeEnabled()
+
+    await user.type(notes, 'x')
+
+    expect(dialog.getByText('2,001 / 2,000')).toBeInTheDocument()
+    expect(notes).toHaveAttribute('aria-invalid', 'true')
+    expect(notes).toHaveAccessibleDescription('2,001 / 2,000')
+    expect(dialog.getByText(/limited to 2,000 characters/)).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
+  })
+})
+
+describe('the errors of a publish', () => {
+  it('lists the first three and links to the Validation tab for the rest', async () => {
+    render(
+      <StoryProviders handlers={{}}>
+        <PublishErrors
+          errors={['a: one', 'b: two', 'c: three', 'd: four', 'e: five']}
+          gameSystemKey="my-draft"
+        />
+      </StoryProviders>,
+    )
+
+    expect((await screen.findAllByRole('listitem')).map((item) => item.textContent)).toEqual([
+      'a: one',
+      'b: two',
+      'c: three',
+    ])
+    expect(screen.getByText(/and 2 more/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'see the Validation tab' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft?tab=validation',
+    )
+  })
+
+  it('lists one error without a link', async () => {
+    render(
+      <StoryProviders handlers={{}}>
+        <PublishErrors errors={['a: one']} gameSystemKey="my-draft" />
+      </StoryProviders>,
+    )
+
+    expect(await screen.findAllByRole('listitem')).toHaveLength(1)
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 })

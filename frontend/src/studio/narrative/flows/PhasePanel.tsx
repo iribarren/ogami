@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { useId } from 'react'
 
+import { Alert, FieldError } from '@/shared/ui/alert'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
@@ -56,6 +57,8 @@ export function PhasePanel({
           <Select
             id={modeId}
             value={phase.mode}
+            aria-invalid={fields.mode !== undefined}
+            aria-describedby={fields.mode ? `${modeId}-error` : undefined}
             onChange={(event) => {
               onChange({
                 ...phase,
@@ -66,7 +69,7 @@ export function PhasePanel({
             <option value="once">Once</option>
             <option value="loop">Loop</option>
           </Select>
-          {fields.mode && <p className="text-sm text-destructive">{fields.mode}</p>}
+          {fields.mode && <FieldError id={`${modeId}-error`}>{fields.mode}</FieldError>}
         </div>
       </div>
       <Area
@@ -78,9 +81,7 @@ export function PhasePanel({
         }}
       />
       {answer?.messages.map((message) => (
-        <p key={message} className="text-sm text-destructive">
-          {message}
-        </p>
+        <Alert key={message}>{message}</Alert>
       ))}
     </div>
   )

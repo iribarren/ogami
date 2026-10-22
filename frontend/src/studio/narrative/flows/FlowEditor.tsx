@@ -1,9 +1,11 @@
 import { ChevronRight, Clapperboard, Layers, Route, Zap } from 'lucide-react'
-import { useState, type ReactNode, type SubmitEvent } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
+import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
+import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
 import { StudioError } from '../../useGameSystems'
 import { moveItem } from '../steps/draftParts'
@@ -14,7 +16,17 @@ import {
   type GameSystemNarrative,
 } from '../useGameSystemNarrative'
 import { flowToDraft, flowToItem, newPhase, type FlowDraft, type PhaseDraft } from './flowDraft'
-import { flowAnswer, flowChecks, noAnswer, type FlowAnswer } from './flowError'
+import { EnableOnFlow } from './EnableOnFlow'
+import { flowAnswer, answerCount, flowChecks, noAnswer, type FlowAnswer } from './flowError'
+import {
+  enableOnFlow,
+  flowScope,
+  missingForFlow,
+  missingForSelection,
+  missingForStep,
+  nothingMissing,
+  type Missing,
+} from './flowEnable'
 import { answerNode, hookLabels, nodePath, nodeTrail, resolveNode, type FlowNode } from './flowNode'
 import { FlowOutline } from './FlowOutline'
 import { FlowSettings } from './FlowSettings'
@@ -49,6 +61,13 @@ export function FlowEditor({
   const [answer, setAnswer] = useState<FlowAnswer>(noAnswer)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
+  // The draft as it was last loaded or saved: the form is unsaved while it differs.
+  const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  // The node whose first invalid field takes focus once it is shown ("Go to the first").
+  const [focusAt, setFocusAt] = useState<{ path: string; id: number } | null>(null)
+  const focused = useRef(0)
+  const body = useRef<HTMLDivElement>(null)
   // Remounts the phases on a reload: their hook lists keep no state of the draft they replace.
   const [generation, setGeneration] = useState(0)
   const save = useSaveNarrativeItem(gameSystemKey)
@@ -56,6 +75,14 @@ export function FlowEditor({
   const navigate = useNavigate()
   const context = stepContext(narrative)
   const node = resolveNode(draft, selected)
+  const path = nodePath(node)
+  useEffect(() => {
+    // Once per request: coming back to the node later must not take the focus again.
+    if (focusAt?.path === path && focusAt.id !== focused.current) {
+      focused.current = focusAt.id
+      body.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+    }
+  }, [focusAt, path])
 
   /** Selects a node; `replace` for the changes the editor makes itself, so back keeps to what the person chose. */
   function select(next: FlowNode, replace = false) {
@@ -74,6 +101,16 @@ export function FlowEditor({
     if (target !== null) {
       select(target, true)
     }
+  }
+
+  /** Selects the node of the first error and puts the focus on its first invalid field. */
+  function goToFirst() {
+    const target = answerNode(answer)
+    if (target === null) {
+      return
+    }
+    setFocusAt({ path: nodePath(target), id: (focusAt?.id ?? 0) + 1 })
+    select(target, true)
   }
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
@@ -97,6 +134,8 @@ export function FlowEditor({
       })
       setReadAt(saved.version)
       setCurrent(key)
+      setBaseline(JSON.stringify(draft))
+      setSavedAt(new Date())
     } catch (error) {
       const index = narrative.flows.findIndex((stored) => stored.key === current)
       const message = error instanceof Error ? error.message : 'Saving the item failed.'
@@ -139,6 +178,7 @@ export function FlowEditor({
       return
     }
     setDraft(reloaded)
+    setBaseline(JSON.stringify(reloaded))
     setReadAt(result.data.version)
     setReloadNote(null)
     setAnswer(noAnswer)
@@ -146,6 +186,25 @@ export function FlowEditor({
   }
 
   const phases = draft.phases
+  const scope = flowScope(narrative, context)
+  const count = answerCount(answer)
+  const saveState: SaveStateValue | null = save.isPending
+    ? { kind: 'saving' }
+    : count > 0
+      ? {
+          kind: 'failed',
+          errors: count,
+          onGoToFirst: answerNode(answer) === null ? undefined : goToFirst,
+        }
+      : JSON.stringify(draft) !== baseline
+        ? { kind: 'unsaved' }
+        : savedAt === null
+          ? null
+          : { kind: 'saved', at: savedAt }
+  /** Adds what a node uses to the flow's lists; the rest of the draft stays as it is. */
+  const enable = (missing: Missing) => () => {
+    setDraft(enableOnFlow(draft, missing))
+  }
   // `answer.phases` has holes: spread to the phases' length so that moving one keeps the others in place.
   const aligned = phases.map((_, index) => answer.phases[index])
   const locked = save.isPending
@@ -167,6 +226,8 @@ export function FlowEditor({
             draft={draft}
             context={context}
             errors={answer.fields}
+            missing={missingForFlow(draft, scope)}
+            onEnable={enable(missingForFlow(draft, scope))}
             onChange={setDraft}
           />
         ),
@@ -210,34 +271,54 @@ export function FlowEditor({
           icon: <Clapperboard />,
           title,
           body: (
-            <SelectionEditor
-              selection={phase.selection}
-              sceneTypes={context.sceneTypes ?? []}
-              tables={context.tables}
-              messages={aligned[index]?.selection ?? []}
-              onChange={(selection) => {
-                change({ ...phase, selection })
-              }}
-            />
+            <div className="space-y-4">
+              <EnableOnFlow
+                missing={missingForSelection(draft, phase.selection, scope)}
+                context={context}
+                intro="These Scene Types use oracle shortcuts the flow does not enable:"
+                onEnable={enable(missingForSelection(draft, phase.selection, scope))}
+              />
+              <SelectionEditor
+                selection={phase.selection}
+                sceneTypes={context.sceneTypes ?? []}
+                tables={context.tables}
+                messages={aligned[index]?.selection ?? []}
+                onChange={(selection) => {
+                  change({ ...phase, selection })
+                }}
+              />
+            </div>
           ),
         }
       case 'hook':
-      case 'step':
+      case 'step': {
+        const selectedStep = node.kind === 'step' ? phase.hooks[node.hook]?.[node.step] : undefined
+        const missing =
+          selectedStep === undefined ? nothingMissing : missingForStep(draft, selectedStep, scope)
         return {
           icon: <Zap />,
           title: hookLabels[node.hook],
           body: (
-            <HookPanel
-              phase={phase}
-              hook={node.hook}
-              step={node.kind === 'step' ? node.step : undefined}
-              context={context}
-              answer={aligned[index]}
-              locked={locked}
-              onChange={change}
-            />
+            <div className="space-y-4">
+              <EnableOnFlow
+                missing={missing}
+                context={context}
+                intro="This step uses what the flow does not enable:"
+                onEnable={enable(missing)}
+              />
+              <HookPanel
+                phase={phase}
+                hook={node.hook}
+                step={node.kind === 'step' ? node.step : undefined}
+                context={context}
+                answer={aligned[index]}
+                locked={locked}
+                onChange={change}
+              />
+            </div>
           ),
         }
+      }
     }
   }
 
@@ -254,6 +335,7 @@ export function FlowEditor({
       <FlowOutline
         draft={draft}
         node={node}
+        flowErrored={Object.keys(answer.fields).length > 0}
         answers={aligned}
         sceneTypes={context.sceneTypes ?? []}
         tables={context.tables}
@@ -290,35 +372,30 @@ export function FlowEditor({
             </h2>
             {shown.actions}
           </div>
-          <div key={`${String(generation)}:${listKey}`} className="panel-body">
+          <div ref={body} key={`${String(generation)}:${listKey}`} className="panel-body">
             {shown.body}
           </div>
         </section>
-        {answer.page !== null && (
-          <p role="alert" className="text-sm text-destructive">
-            {answer.page}
-          </p>
-        )}
-        {reloadNote !== null && (
-          <p role="alert" className="text-sm text-destructive">
-            {reloadNote}
-          </p>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={save.isPending}>
-            Save
-          </Button>
-          {answer.conflict && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                void reload()
-              }}
-            >
-              Reload the latest version
+        {answer.page !== null && <Alert>{answer.page}</Alert>}
+        {reloadNote !== null && <Alert>{reloadNote}</Alert>}
+        <div className="sticky bottom-4 panel">
+          <div className="action-bar">
+            {saveState && <SaveState state={saveState} />}
+            {answer.conflict && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void reload()
+                }}
+              >
+                Reload the latest version
+              </Button>
+            )}
+            <Button type="submit" disabled={save.isPending}>
+              Save
             </Button>
-          )}
+          </div>
         </div>
       </form>
     </div>

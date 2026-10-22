@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
+import { answerHint, AnswerHint } from './answerHint'
 import { ValueInput } from './BandsEditor'
 import { moveItem } from './draftParts'
 import {
@@ -64,6 +65,8 @@ function EffectFields({
   set: (patch: Partial<EditedEffect>) => void
 }) {
   const { sceneTypes = [], factSlots = [], sheetFields = [] } = context
+  // Where the step has an answer, the text of an effect can use it.
+  const hint = useContext(AnswerHint) ? answerHint : undefined
   switch (effect.kind) {
     case 'tracker':
       return (
@@ -117,6 +120,7 @@ function EffectFields({
           label="Title"
           value={effect.title}
           error={problem('title')}
+          help={hint}
           onChange={(title) => {
             set({ title })
           }}
@@ -130,6 +134,7 @@ function EffectFields({
             label="Name"
             value={effect.name}
             error={problem('name')}
+            help={hint}
             onChange={(name) => {
               set({ name })
             }}
@@ -139,6 +144,7 @@ function EffectFields({
               label="Agenda"
               value={effect.agenda}
               error={problem('agenda')}
+              help={hint}
               onChange={(agenda) => {
                 set({ agenda })
               }}
@@ -174,7 +180,7 @@ function EffectFields({
               label="Text"
               value={effect.text}
               error={problem('text')}
-              help={type === 'text' ? undefined : 'Only a text slot takes text.'}
+              help={type === 'text' ? hint : 'Only a text slot takes text.'}
               onChange={(text) => {
                 set({ text })
               }}

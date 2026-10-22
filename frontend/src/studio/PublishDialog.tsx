@@ -1,16 +1,21 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Upload } from 'lucide-react'
+import { Check, Info, Upload, X } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useId, useState, type SubmitEvent } from 'react'
 
+import { Alert, FieldError } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { IconButton } from '@/shared/ui/icon-button'
+import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
@@ -22,8 +27,11 @@ import {
   type GameSystem,
 } from './useGameSystems'
 
-/** The API's limit on release notes, checked by the server too. */
+/** The API's limit on release notes (`GameSystemRelease::MAX_NOTES_LENGTH`), in characters like the server counts them. */
 const MAX_NOTES_LENGTH = 2000
+const characterCount = (text: string) => Array.from(text).length
+/** How many errors the summary lists before it links to the Validation tab for the rest. */
+const SHOWN_ERRORS = 3
 
 /**
  * The server answers 409 both for "no changes" and for a lost version race, in the same shape,
@@ -55,12 +63,23 @@ export function PublishDialog({
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Publish a release</DialogTitle>
-          <DialogDescription>
-            Publishing turns the saved draft into a new, immutable release that campaigns can play.
-          </DialogDescription>
-        </DialogHeader>
+        <div className="flex items-start gap-3">
+          <IconTile size="lg">
+            <Upload />
+          </IconTile>
+          <DialogHeader className="min-w-0 flex-1">
+            <DialogTitle>Publish a release</DialogTitle>
+            <DialogDescription>
+              Publishing turns the saved draft into a new, immutable release that campaigns can
+              play.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogClose asChild>
+            <IconButton label="Close">
+              <X />
+            </IconButton>
+          </DialogClose>
+        </div>
         <PublishForm
           gameSystem={gameSystem}
           onPublished={(version) => {
@@ -86,7 +105,9 @@ function PublishForm({
   const queryClient = useQueryClient()
   const notesId = useId()
   const conflict = publish.error instanceof StudioError && publish.error.status === 409
-  const canPublish = validation.data?.valid === true && !publish.isPending
+  const notesLength = characterCount(notes)
+  const notesTooLong = notesLength > MAX_NOTES_LENGTH
+  const canPublish = validation.data?.valid === true && !notesTooLong && !publish.isPending
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -100,79 +121,155 @@ function PublishForm({
 
   return (
     <form aria-label="Publish" className="space-y-4" onSubmit={handleSubmit}>
-      <ValidationSummary validation={validation} version={nextVersion(gameSystem)} />
+      <div className="space-y-3 well">
+        <p className="font-heading text-[22px] font-bold readout-glow">
+          {gameSystem.latestReleaseVersion === null
+            ? 'Draft'
+            : `v${String(gameSystem.latestReleaseVersion)}`}{' '}
+          <span aria-hidden="true">→</span> <span className="sr-only">to</span> v
+          {nextVersion(gameSystem)}
+        </p>
+        <ValidationSummary
+          validation={validation}
+          version={nextVersion(gameSystem)}
+          gameSystemKey={gameSystem.key}
+        />
+      </div>
       <div className="space-y-2">
-        <Label htmlFor={notesId}>Release notes (optional)</Label>
+        <div className="flex items-baseline justify-between gap-3">
+          <Label htmlFor={notesId}>Release notes (optional)</Label>
+          <span id={`${notesId}-count`} className="hint">
+            {notesLength.toLocaleString('en-GB')} / {MAX_NOTES_LENGTH.toLocaleString('en-GB')}
+          </span>
+        </div>
         <Textarea
           id={notesId}
           value={notes}
-          maxLength={MAX_NOTES_LENGTH}
+          aria-invalid={notesTooLong}
+          aria-describedby={`${notesId}-count`}
           onChange={(event) => {
             setNotes(event.target.value)
           }}
         />
-        <p className="text-sm text-muted-foreground">
-          {notes.length} / {MAX_NOTES_LENGTH.toLocaleString('en-GB')} characters
-        </p>
+        {notesTooLong && (
+          <FieldError>
+            The release notes are limited to {MAX_NOTES_LENGTH.toLocaleString('en-GB')} characters.
+          </FieldError>
+        )}
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="flex items-start gap-2 hint">
+        <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
         Only the saved draft is published: save your metadata edits first.
       </p>
       {publish.error && (
-        <div role="alert" className="space-y-2 text-sm text-destructive">
-          <p>{conflict ? conflictMessage : publish.error.message}</p>
-          {conflict && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                publish.reset()
-                void queryClient.invalidateQueries({ queryKey: gameSystemKey(gameSystem.key) })
-              }}
-            >
-              Reload
-            </Button>
-          )}
-        </div>
+        <Alert
+          role="alert"
+          action={
+            conflict ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  publish.reset()
+                  void queryClient.invalidateQueries({ queryKey: gameSystemKey(gameSystem.key) })
+                }}
+              >
+                Reload
+              </Button>
+            ) : undefined
+          }
+        >
+          {conflict ? conflictMessage : publish.error.message}
+        </Alert>
       )}
-      <Button type="submit" disabled={!canPublish}>
-        Publish version {nextVersion(gameSystem)}
-      </Button>
+      <div className="-mx-4 -mb-4 action-bar">
+        <DialogClose asChild>
+          <Button type="button" variant="ghost">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button type="submit" disabled={!canPublish}>
+          <Upload aria-hidden="true" />
+          Publish version {nextVersion(gameSystem)}
+        </Button>
+      </div>
     </form>
+  )
+}
+
+/**
+ * The errors that block a publish: the first three, then a link to the Validation tab for the
+ * rest. The validation API gives one error today; it takes a list so that it can give several.
+ */
+export function PublishErrors({
+  errors,
+  gameSystemKey: key,
+}: {
+  errors: string[]
+  gameSystemKey: string
+}) {
+  const more = errors.length - SHOWN_ERRORS
+
+  return (
+    <>
+      <ul className="list-disc space-y-1 pl-5">
+        {errors.slice(0, SHOWN_ERRORS).map((message, index) => (
+          <li key={`${String(index)}:${message}`}>{message}</li>
+        ))}
+      </ul>
+      {more > 0 && (
+        <p>
+          and {String(more)} more:{' '}
+          <Link
+            to="/studio/game-systems/$key"
+            params={{ key }}
+            search={{ tab: 'validation' }}
+            className="underline underline-offset-4"
+          >
+            see the Validation tab
+          </Link>
+        </p>
+      )}
+    </>
   )
 }
 
 function ValidationSummary({
   validation,
   version,
+  gameSystemKey: key,
 }: {
   validation: ReturnType<typeof useGameSystemValidation>
   version: number
+  gameSystemKey: string
 }) {
   if (validation.isPending) {
     return <p className="text-muted-foreground">Validating the draft…</p>
   }
   if (validation.isError) {
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {validation.error.message}
-      </p>
-    )
+    return <Alert role="alert">{validation.error.message}</Alert>
   }
   const { valid, error, warnings } = validation.data
   if (!valid) {
     return (
-      <p role="alert" className="text-sm text-destructive">
-        The draft is not valid yet, so it cannot be published. The first error:{' '}
-        {error?.message ?? 'unknown'}
-      </p>
+      <Alert role="alert">
+        <p>The draft is not valid yet, so it cannot be published. The first error:</p>
+        <PublishErrors errors={[error?.message ?? 'unknown']} gameSystemKey={key} />
+      </Alert>
     )
   }
   return (
     <div className="space-y-2">
-      <p>This creates version {version}.</p>
+      <div className="flex items-start gap-2">
+        <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
+        <div>
+          <p className="font-medium">The draft is valid.</p>
+          <p>This creates version {version}.</p>
+        </div>
+      </div>
       {warnings.length > 0 && (
-        <>
+        <Alert variant="warning">
           <h3 className="font-heading font-semibold">Warnings</h3>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {warnings.map((warning, index) => (
@@ -180,7 +277,7 @@ function ValidationSummary({
               <li key={`${String(index)}:${warning}`}>{warning}</li>
             ))}
           </ul>
-        </>
+        </Alert>
       )}
     </div>
   )

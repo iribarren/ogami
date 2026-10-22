@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -6,6 +6,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft as gameSystem, narrativeFlows } from '../../fixtures'
+import { SelectionEditor } from './SelectionEditor'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -1138,6 +1139,68 @@ describe('the save bar', () => {
     })
   })
 
+  it('focuses the field once per request, and again on a new one', async () => {
+    const { user } = await openEditor('heist', {
+      [put]: json({ error: 'flows[0].phases[1].key: duplicate phase key "setup"' }, 422),
+    })
+    await user.click(save())
+    await screen.findByRole('alert')
+    await pickSettings(user)
+    await user.click(screen.getByRole('button', { name: 'Go to the first' }))
+    await waitFor(() => {
+      expect(content().getByLabelText('Key')).toHaveFocus()
+    })
+
+    // An unrelated change keeps the focus where the person put it.
+    await user.click(content().getByLabelText('Name'))
+    await user.type(content().getByLabelText('Name'), 'x')
+    expect(content().getByLabelText('Name')).toHaveFocus()
+    // Coming back to the node later does not take the focus either.
+    await pickSettings(user)
+    await pickPhase(user, 2)
+    expect(content().getByLabelText('Key')).not.toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'Go to the first' }))
+    await waitFor(() => {
+      expect(content().getByLabelText('Key')).toHaveFocus()
+    })
+  })
+
+  it('opens the step card a refusal is about, even when the person closed it', async () => {
+    const phases = heist.phases as Record<string, unknown>[]
+    const choice = {
+      key: 'ask',
+      kind: 'choice',
+      title: 'Ask',
+      skip: 'a',
+      options: [
+        { key: 'a', label: 'A' },
+        { key: 'b', label: 'B' },
+      ],
+    }
+    const { user } = await openEditor(
+      'heist',
+      {
+        [`GET ${base}/narrative`]: json(
+          withHeist({ ...heist, phases: [{ ...phases[0], worldTurn: [choice] }, phases[1]] }),
+        ),
+        [put]: json({ error: 'flows[0].phases[0].worldTurn[0].skip: must be an option key' }, 422),
+      },
+      '?node=phases.0.hooks.worldTurn',
+    )
+    const step = await content().findByRole('group', { name: 'Step 1' })
+    await user.click(within(step).getByRole('button', { name: /^ask/ }))
+    expect(within(step).queryByLabelText('Title')).not.toBeInTheDocument()
+
+    await user.click(save())
+
+    const skip = await within(await content().findByRole('group', { name: 'Step 1' })).findByRole(
+      'combobox',
+      { name: 'Skip' },
+    )
+    expect(skip).toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('offers the latest version on a conflict, next to Save', async () => {
     const { user } = await openEditor('heist', { [put]: json(changed, 409) })
 
@@ -1181,23 +1244,8 @@ describe('the save bar', () => {
     expect(item()).not.toHaveAccessibleName(/Error/)
   })
 
-  it('puts a refusal on its field: the default view, and the Skip of a choice step', async () => {
-    const phases = heist.phases as Record<string, unknown>[]
-    const choice = {
-      key: 'ask',
-      kind: 'choice',
-      title: 'Ask',
-      options: [
-        { key: 'a', label: 'A' },
-        { key: 'b', label: 'B' },
-      ],
-    }
-    const withChoice = withHeist({
-      ...heist,
-      phases: [{ ...phases[0], worldTurn: [choice] }, phases[1]],
-    })
+  it('puts a refusal on its field: the default view', async () => {
     const { user } = await openEditor('heist', {
-      [`GET ${base}/narrative`]: json(withChoice),
       [put]: json({ error: 'flows[0].defaultView: must be focus or journal' }, 422),
     })
     await user.click(save())
@@ -1376,5 +1424,25 @@ describe('enabling on the flow', () => {
       expect(current()).toHaveTextContent('Look')
     })
     expect(screen.queryByRole('button', { name: 'Enable on flow' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the messages about an oracle selection', () => {
+  it('puts the first on the table field and lists the rest', () => {
+    render(
+      <SelectionEditor
+        selection={{ rule: 'oracle', table: 'places', extra: {} }}
+        sceneTypes={[]}
+        tables={[{ key: 'places', name: 'Places' }]}
+        messages={['unknown oracle table', 'Another message.']}
+        onChange={() => undefined}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Oracle table' })).toHaveAccessibleDescription(
+      'unknown oracle table',
+    )
+    expect(screen.getByText('Another message.')).toBeInTheDocument()
+    expect(screen.getAllByText('unknown oracle table')).toHaveLength(1)
   })
 })

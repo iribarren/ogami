@@ -353,6 +353,16 @@ function StepCard({
 }) {
   const number = String(index + 1)
   const card = useRef<HTMLLIElement>(null)
+  // A card the person closed opens again when the step becomes the current one, so what the
+  // outline or "Go to the first" points at is never hidden.
+  const [open, setOpen] = useState(true)
+  const [wasCurrent, setWasCurrent] = useState(current)
+  if (wasCurrent !== current) {
+    setWasCurrent(current)
+    if (current) {
+      setOpen(true)
+    }
+  }
   // The step the outline selected comes into view.
   useEffect(() => {
     if (current) {
@@ -427,7 +437,7 @@ function StepCard({
           {controls}
         </div>
       ) : (
-        <Collapsible defaultOpen>
+        <Collapsible open={open} onOpenChange={setOpen}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CollapsibleTrigger className="flex flex-wrap items-center gap-2 text-left text-sm font-medium">
               {header}

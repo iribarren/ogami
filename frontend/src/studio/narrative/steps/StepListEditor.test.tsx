@@ -94,6 +94,51 @@ describe('the step items', () => {
     expect(badges(2)).toHaveLength(1)
   })
 
+  it('opens a collapsed card for a new answer with messages, but not again for the same one', async () => {
+    const user = userEvent.setup()
+    const first = [mapStepError('sceneTypes[0].setup', 'sceneTypes[0].setup[0].title: nope')]
+    function Answers() {
+      const [answer, setAnswer] = useState<StepError[]>([])
+      const [steps, setSteps] = useState(() => stepsToDrafts([stepList[0]]))
+      return (
+        <>
+          <StepListEditor steps={steps} context={stepPickers} errors={answer} onChange={setSteps} />
+          <button
+            type="button"
+            onClick={() => {
+              setAnswer(first)
+            }}
+          >
+            Refuse
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAnswer([])
+            }}
+          >
+            Accept
+          </button>
+        </>
+      )
+    }
+    render(<Answers />)
+    await user.click(card(1).getByRole('button', { name: /^Set the scene/ }))
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Refuse' }))
+    expect(card(1).getByLabelText('Title')).toBeInTheDocument()
+
+    // The person can close a card that has errors; a re-render with the same answer keeps it closed.
+    await user.click(card(1).getByRole('button', { name: /^Set the scene/ }))
+    await user.type(screen.getByRole('button', { name: 'Refuse' }), '{Enter}')
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+
+    // An answer with no messages opens nothing.
+    await user.click(screen.getByRole('button', { name: 'Accept' }))
+    expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
+  })
+
   it('shows the title with the key and the kind, behind a disclosure that closes the fields', async () => {
     const user = userEvent.setup()
     render(<Harness stored={[stepList[0]]} />)

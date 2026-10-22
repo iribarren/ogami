@@ -1206,6 +1206,44 @@ describe('the save bar', () => {
     expect(skip).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('opens the current step card when a refused save has an error in it, and Go to the first focuses it', async () => {
+    const phases = heist.phases as Record<string, unknown>[]
+    const choice = {
+      key: 'ask',
+      kind: 'choice',
+      title: 'Ask',
+      skip: 'a',
+      options: [
+        { key: 'a', label: 'A' },
+        { key: 'b', label: 'B' },
+      ],
+    }
+    const { user } = await openEditor(
+      'heist',
+      {
+        [`GET ${base}/narrative`]: json(
+          withHeist({ ...heist, phases: [{ ...phases[0], worldTurn: [choice] }, phases[1]] }),
+        ),
+        [put]: json({ error: 'flows[0].phases[0].worldTurn[0].skip: must be an option key' }, 422),
+      },
+      '?node=phases.0.hooks.worldTurn.0',
+    )
+    const step = await content().findByRole('group', { name: 'Step 1' })
+    await user.click(within(step).getByRole('button', { name: /^Ask/ }))
+    expect(within(step).queryByLabelText('Title')).not.toBeInTheDocument()
+
+    await user.click(save())
+
+    const skip = await within(await content().findByRole('group', { name: 'Step 1' })).findByRole(
+      'combobox',
+      { name: 'Skip' },
+    )
+    await user.click(screen.getByRole('button', { name: 'Go to the first' }))
+    await waitFor(() => {
+      expect(skip).toHaveFocus()
+    })
+  })
+
   it('offers the latest version on a conflict, next to Save', async () => {
     const { user } = await openEditor('heist', { [put]: json(changed, 409) })
 

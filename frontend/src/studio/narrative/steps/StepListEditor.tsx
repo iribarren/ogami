@@ -387,6 +387,7 @@ function StepCard({
   index,
   total,
   current,
+  answer,
   guide,
   mine,
   context,
@@ -401,6 +402,8 @@ function StepCard({
   index: number
   total: number
   current: boolean
+  /** The list's `errors` array: a new one is a new answer from the server. */
+  answer: StepError[]
   guide: StepGuide
   mine: StepError[]
   context: StepContext
@@ -413,13 +416,21 @@ function StepCard({
 }) {
   const number = String(index + 1)
   const card = useRef<HTMLLIElement>(null)
-  // A card the person closed opens again when the step becomes the current one, so what the
-  // outline or "Go to the first" points at is never hidden.
+  // A card the person closed opens again when the step becomes the current one, or when a new
+  // answer from the server has messages for it, so what the outline or "Go to the first" points
+  // at is never hidden. The same answer on a later render does not reopen it.
   const [open, setOpen] = useState(true)
   const [wasCurrent, setWasCurrent] = useState(current)
+  const [seenAnswer, setSeenAnswer] = useState(answer)
   if (wasCurrent !== current) {
     setWasCurrent(current)
     if (current) {
+      setOpen(true)
+    }
+  }
+  if (seenAnswer !== answer) {
+    setSeenAnswer(answer)
+    if (mine.length > 0) {
       setOpen(true)
     }
   }
@@ -602,6 +613,7 @@ export function StepListEditor({
               index={index}
               total={steps.length}
               current={current === index}
+              answer={errors}
               guide={guides[index] ?? { bands: {}, nexts: {}, items: {} }}
               mine={messagesOf(index)}
               context={context}

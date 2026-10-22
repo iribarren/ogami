@@ -19,13 +19,11 @@ export async function chooseOption(
     await byName.first().click()
     return
   }
-  const options = page.getByRole('option')
-  const values = await options.evaluateAll((nodes) =>
-    nodes.map((node) => node.getAttribute('data-option-value')),
-  )
-  const index = values.indexOf(option)
-  if (index < 0) {
-    throw new Error(`No option "${option}" in the "${label}" select.`)
+  for (const candidate of await page.getByRole('option').all()) {
+    if ((await candidate.getAttribute('data-option-value')) === option) {
+      await candidate.click()
+      return
+    }
   }
-  await options.nth(index).click()
+  throw new Error(`No option "${option}" in the "${label}" select.`)
 }

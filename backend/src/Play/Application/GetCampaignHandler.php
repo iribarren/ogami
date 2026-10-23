@@ -16,6 +16,7 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
 use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
@@ -63,7 +64,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $campaign->flowRunView($snapshot),
             array_map(FlowSummaryView::of(...), $snapshot->flows()),
             array_map(SceneTypeSummaryView::of(...), $snapshot->sceneTypes()),
-            array_map(static fn (Tag $tag): TagView => new TagView($tag->key, $tag->label, $tag->hint), $snapshot->tags()),
+            array_map(static fn (Tag $tag): TagView => new TagView($tag->key, $tag->label, $tag->hint, [] === $tag->appliesTo ? null : array_map(static fn (ItemKind $kind): string => $kind->value, $tag->appliesTo)), $snapshot->tags()),
             array_map(CheckView::of(...), $snapshot->checks()),
             array_map(NpcView::of(...), $campaign->npcs()),
             array_map(ThreadView::of(...), $campaign->threads()),

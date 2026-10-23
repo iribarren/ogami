@@ -15,6 +15,7 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
+use App\Play\Domain\Campaign\Upgrade\DroppedTags;
 use App\Play\Domain\Campaign\Upgrade\FieldChange;
 use App\Play\Domain\Campaign\Upgrade\FieldChangeKind;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlan;
@@ -23,12 +24,14 @@ use App\Play\Domain\Campaign\Upgrade\TrackerChangeKind;
 use App\Play\Domain\Campaign\Upgrade\UpgradeToAnotherGameSystem;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -172,8 +175,30 @@ final class ReleaseUpgradePlanTest extends TestCase
 
         self::assertSame(['boss', 'rival'], $plan->characters[0]->droppedTags);
         self::assertSame([], $plan->characters[0]->changes);
-        self::assertSame([['npc-1', 'Mira', ['rival']]], array_map(static fn (\App\Play\Domain\Campaign\Upgrade\DroppedTags $npc): array => [$npc->id, $npc->name, $npc->tags], $plan->npcs));
-        self::assertSame([['thread-1', 'Vault', ['boss', 'rival']]], array_map(static fn (\App\Play\Domain\Campaign\Upgrade\DroppedTags $thread): array => [$thread->id, $thread->name, $thread->tags], $plan->threads));
+        self::assertSame([['npc-1', 'Mira', ['rival']]], array_map(static fn (DroppedTags $npc): array => [$npc->id, $npc->name, $npc->tags], $plan->npcs));
+        self::assertSame([['thread-1', 'Vault', ['boss', 'rival']]], array_map(static fn (DroppedTags $thread): array => [$thread->id, $thread->name, $thread->tags], $plan->threads));
+    }
+
+    #[Test]
+    public function aTagThatNoLongerAppliesToAnEntityKindIsDroppedLikeARemovedOne(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [], ['ally', 'boss']);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', ['boss', 'ally'], [], [], $pinned);
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, ['boss', 'ally'], [], 1, $pinned);
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Vault', ['boss'], [], 1, $pinned);
+        // In v2 "boss" is for NPCs only, and "ally" for Characters and Threads.
+        $target = UpgradeFixtures::release(2, [], [new Tag('boss', 'Boss', null, [ItemKind::Npc]), new Tag('ally', 'Ally', null, [ItemKind::Character, ItemKind::Thread])]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame(['boss'], $plan->characters[0]->droppedTags);
+        self::assertSame([['npc-1', 'Mira', ['ally']]], array_map(static fn (DroppedTags $npc): array => [$npc->id, $npc->name, $npc->tags], $plan->npcs));
+        self::assertSame([['thread-1', 'Vault', ['boss']]], array_map(static fn (DroppedTags $thread): array => [$thread->id, $thread->name, $thread->tags], $plan->threads));
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        self::assertSame([['ally'], ['boss'], []], [$campaign->characters()[0]->tags(), $campaign->npcs()[0]->tags(), $campaign->threads()[0]->tags()]);
     }
 
     #[Test]

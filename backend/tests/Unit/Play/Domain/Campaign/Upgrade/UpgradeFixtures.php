@@ -27,12 +27,12 @@ use App\Play\Domain\GameSystem\Tracker;
 final class UpgradeFixtures
 {
     /**
-     * @param list<Field>     $fields
-     * @param list<string>    $tags       Tag keys
-     * @param list<Tracker>   $trackers
-     * @param list<FactSlot>  $factSlots
-     * @param list<Flow>      $flows
-     * @param list<SceneType> $sceneTypes
+     * @param list<Field>      $fields
+     * @param list<string|Tag> $tags       Tag keys (every kind) or Tags
+     * @param list<Tracker>    $trackers
+     * @param list<FactSlot>   $factSlots
+     * @param list<Flow>       $flows
+     * @param list<SceneType>  $sceneTypes
      */
     public static function release(int $version, array $fields = [], array $tags = [], array $trackers = [], array $factSlots = [], array $flows = [], string $key = 'heist', array $sceneTypes = []): GameSystemSnapshot
     {
@@ -47,7 +47,7 @@ final class UpgradeFixtures
             factSlots: $factSlots,
             sceneTypes: $sceneTypes,
             flows: $flows,
-            tags: array_map(static fn (string $tag): Tag => new Tag($tag, ucfirst($tag)), $tags),
+            tags: array_map(static fn (string|Tag $tag): Tag => $tag instanceof Tag ? $tag : new Tag($tag, ucfirst($tag)), $tags),
             sheet: new SheetTemplate($fields),
         );
     }

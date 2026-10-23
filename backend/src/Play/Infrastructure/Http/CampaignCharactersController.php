@@ -16,6 +16,7 @@ use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
+use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
@@ -78,7 +79,7 @@ final readonly class CampaignCharactersController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignLimitReached|CampaignModifiedConcurrently|CharacterAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidCharacter|UnknownReleaseTag $exception) {
+        } catch (InvalidCharacter|UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();
@@ -114,7 +115,7 @@ final readonly class CampaignCharactersController
         } catch (InvalidCharacter $exception) {
             // A blank id is not a value to fix: no Character has it.
             return '' === trim($characterId) ? $this->error(\sprintf('Character "%s" not found.', $characterId), Response::HTTP_NOT_FOUND) : $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (UnknownReleaseTag $exception) {
+        } catch (UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();

@@ -362,6 +362,57 @@ describe('the NPCs panel', () => {
     expect(panel.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
+  it('offers only the Tags that apply to NPCs, and keeps a held one that no longer does', async () => {
+    const user = userEvent.setup()
+    const goal = { key: 'goal', label: 'Goal', hint: null, appliesTo: ['thread' as const] }
+    const villain = { key: 'villain', label: 'Villain', hint: null, appliesTo: ['npc' as const] }
+    const hero = {
+      key: 'hero',
+      label: 'Hero',
+      hint: 'The player side.',
+      appliesTo: ['character' as const],
+    }
+    const tags = [...lostMineWithLists.tags, goal, villain, hero]
+    const sent: unknown[] = []
+    renderLists(
+      {
+        ...lostMineWithLists,
+        tags,
+        npcs: [{ ...miraNpc, tags: ['hero'] }, brannNpc],
+      },
+      { [`POST ${path}/npcs`]: () => Response.json({}, { status: 201 }) },
+      sent,
+    )
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Add NPC' }))
+
+    const offered = panel.getAllByRole('checkbox').map((box) => box.getAttribute('value'))
+    expect(offered).toEqual(['leader', 'ally', 'villain'])
+
+    await user.click(panel.getByRole('button', { name: 'Cancel' }))
+    await user.click(panel.getByRole('button', { name: 'Edit Mira Vane' }))
+    const held = panel.getAllByRole('checkbox').map((box) => box.getAttribute('value'))
+    expect(held).toEqual(['leader', 'ally', 'villain', 'hero'])
+    expect(panel.getByRole('checkbox', { name: /Hero/ })).toBeChecked()
+  })
+
+  it('offers only the Tags that apply to Threads', async () => {
+    const user = userEvent.setup()
+    const goal = { key: 'goal', label: 'Goal', hint: null, appliesTo: ['thread' as const] }
+    const villain = { key: 'villain', label: 'Villain', hint: null, appliesTo: ['npc' as const] }
+    renderLists({ ...lostMineWithLists, tags: [...lostMineWithLists.tags, goal, villain] })
+
+    const panel = await threads()
+    await user.click(panel.getByRole('button', { name: 'Add Thread' }))
+
+    expect(panel.getAllByRole('checkbox').map((box) => box.getAttribute('value'))).toEqual([
+      'leader',
+      'ally',
+      'goal',
+    ])
+  })
+
   it('cancels the form and keeps one form open at a time', async () => {
     const user = userEvent.setup()
     renderLists(lostMineWithLists)

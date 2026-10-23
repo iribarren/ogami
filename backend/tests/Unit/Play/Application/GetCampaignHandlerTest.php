@@ -162,6 +162,7 @@ final class GetCampaignHandlerTest extends TestCase
         $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
 
         self::assertEquals([new TagView('ally', 'Ally', null), new TagView('rival', 'Rival', 'Someone in the way')], $view->tags);
+        self::assertNull($view->tags[0]->appliesTo, 'A Tag without a scope applies to every kind.');
         self::assertEquals([
             new NpcView('npc-2', 'Brann', null, [], [], 1, 'open', null),
             new NpcView('npc-1', 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, 'closed', null),

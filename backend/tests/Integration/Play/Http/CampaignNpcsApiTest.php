@@ -61,9 +61,9 @@ final class CampaignNpcsApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $campaign = $this->json();
         self::assertSame([
-            ['key' => 'leader', 'label' => 'Leader', 'hint' => 'Runs a faction or a crew.'],
-            ['key' => 'ally', 'label' => 'Ally', 'hint' => null],
-            ['key' => 'hostile', 'label' => 'Hostile', 'hint' => 'Works against the player.'],
+            ['key' => 'leader', 'label' => 'Leader', 'hint' => 'Runs a faction or a crew.', 'appliesTo' => null],
+            ['key' => 'ally', 'label' => 'Ally', 'hint' => null, 'appliesTo' => null],
+            ['key' => 'hostile', 'label' => 'Hostile', 'hint' => 'Works against the player.', 'appliesTo' => null],
         ], $campaign['tags'] ?? null);
         self::assertSame([[], []], [$campaign['npcs'] ?? null, $campaign['threads'] ?? null]);
     }

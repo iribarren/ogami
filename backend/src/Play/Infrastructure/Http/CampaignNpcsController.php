@@ -22,6 +22,7 @@ use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
+use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -86,7 +87,7 @@ final readonly class CampaignNpcsController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignLimitReached|CampaignModifiedConcurrently|NpcAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidNpc|UnknownReleaseTag $exception) {
+        } catch (InvalidNpc|UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();
@@ -122,7 +123,7 @@ final readonly class CampaignNpcsController
         } catch (InvalidNpc $exception) {
             // A blank id is not a value to fix: no NPC has it.
             return '' === trim($npcId) ? $this->blankNpcNotFound($npcId) : $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (UnknownReleaseTag $exception) {
+        } catch (UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();
@@ -194,7 +195,7 @@ final readonly class CampaignNpcsController
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InvalidNpc) {
             return $this->blankNpcNotFound($npcId);
-        } catch (UnknownReleaseTag $exception) {
+        } catch (UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();

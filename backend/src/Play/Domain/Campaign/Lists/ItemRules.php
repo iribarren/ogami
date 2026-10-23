@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\Lists;
 
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 
@@ -119,12 +120,18 @@ final class ItemRules
      * @param list<string> $tags
      *
      * @throws UnknownReleaseTag when the release defines none of a key
+     * @throws TagNotApplicable  when the Tag is limited to other kinds than this one
      */
-    public static function assertInRelease(array $tags, GameSystemSnapshot $release): void
+    public static function assertInRelease(array $tags, GameSystemSnapshot $release, ItemKind $kind): void
     {
         foreach ($tags as $key) {
-            if (!$release->tag($key) instanceof Tag) {
+            $tag = $release->tag($key);
+            if (!$tag instanceof Tag) {
                 throw UnknownReleaseTag::withKey($key);
+            }
+
+            if (!$tag->isFor($kind)) {
+                throw TagNotApplicable::forKind($key, $kind);
             }
         }
     }

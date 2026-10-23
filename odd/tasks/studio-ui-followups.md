@@ -1,7 +1,7 @@
 # Feature: studio-ui-followups
 
 - **Locator:** `odd/tasks/studio-ui-followups.md` · Engram topic `odd/studio-ui-followups/tasks`
-- **Issue:** #249 · **Branch:** `fix/studio-ui-followups-1-followups` · **Status:** in progress: slice 1 of 1
+- **Issue:** #249 · **Branch:** `fix/studio-ui-followups-1-followups` · **Status:** done: slice 1 in PR #250
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-ui-polish` (PRs #240–#248)
@@ -48,11 +48,11 @@ Out of scope: backend and API changes; new Studio screens; restyling beyond the 
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
-| T2 | 1 | Review warnings: `splitWarning` splits only on a path prefix; Publish dialog falls back to the default focus without notes | writer (delegated) | [x] | |
-| T3 | 1 | Check Modifier and band preview component tests at the sandbox defaults, with the sheet read pending and failed | writer (delegated) | [x] | |
-| T4 | 1 | Readable "Used by" lines (Oracles, Trackers & tags, Scene Types) and Publish dialog errors through `locateError` | writer (delegated) | [x] | |
-| T5 | 1 | Check editor title with the label; Close and Cancel in the New GameSystem dialog; Sheet derived previews read untyped number fields at the sandbox defaults | writer (delegated) | [x] | |
+| T1 | 1 | This feature doc | parent, inline (doc only) | [x] | `33dbc4e` |
+| T2 | 1 | Review warnings: `splitWarning` splits only on a path prefix; Publish dialog falls back to the default focus without notes | writer (delegated) | [x] | `33dbc4e` |
+| T3 | 1 | Check Modifier and band preview component tests at the sandbox defaults, with the sheet read pending and failed | writer (delegated) | [x] | `0f21987` |
+| T4 | 1 | Readable "Used by" lines (Oracles, Trackers & tags, Scene Types) and Publish dialog errors through `locateError` | writer (delegated) | [x] | `e7b41cf`, `813856a` |
+| T5 | 1 | Check editor title with the label; Close and Cancel in the New GameSystem dialog; Sheet derived previews read untyped number fields at the sandbox defaults | writer (delegated) | [x] | `073b5b2` |
 
 ## Applicable checks
 
@@ -66,12 +66,14 @@ Out of scope: backend and API changes; new Studio screens; restyling beyond the 
 - 2026-10-23: T4 done. `UsedBy` (exported from `NarrativeTab`, reused by `OraclesTab`) takes optional `names` and renders each path via `describeLocation` (new in `validationLocation.ts`) with the raw path as `title`; Trackers & tags and both Oracle lists pass `useNames`. `PublishErrors` renders each error through `WarningText` (reason plus location). RED: Oracles/Narrative/Publish tests with the new text failed (7 failures), GREEN after. Flows list stays raw (not requested); delete-error messages unchanged.
 - 2026-10-23: T4 follow-up. Scene Types list (`narrative/sceneTypes/SceneTypesTab.tsx`) passes `useNames` to `UsedBy`; RED: the list and delete-description assertions failed with raw paths, GREEN after. Flows left raw (not requested).
 - 2026-10-23: T5 done. Check editor heading shows `Edit <label>` (key when the label is empty), form name stays `Edit <key>`; New GameSystem dialog has a Close button and Cancel (tests in `StudioHomePage.test.tsx`); `useSheetSamples` starts an untyped number at `sampleDefaults` (default held within its range). RED: the Sheet preview test (Power min 4 showed 0, not 4), the dialog Close/Cancel test and the heading test failed; GREEN after. The empty-label heading test pins existing behaviour (no RED).
+- 2026-10-23: slice 1 reviewed (`review-7a3f926075800ef7`, approved and acknowledged), PR #250; the feature is done once #250 is merged.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-7a3f926075800ef7` | `33dbc4e`, `0f21987`, `e7b41cf`, `073b5b2`, `813856a` (base `main` `ef0ee33`, 483 lines) | medium; approved and acknowledged. Findings, logged (not fixed): the Publish focus test cannot reach the no-notes branch of `onOpenAutoFocus`, since the notes textarea is always rendered (`PublishDialog.test.tsx:81-94`); `splitWarning`'s head list can drift from `locateError` and has no unknown-head test (`validationLocation.ts:121-133`); `useSheetSamples` could draft `"undefined"` if `sampleDefaults` skipped a number field (`useSheetSamples.ts:98-99`): not a bug, `sampleDefaults` maps every `number` field of the same template | [#250](https://github.com/iribarren/ogami/pull/250) |
 
 ## Next step
 
-Slice 1: T2–T5 are implemented; the parent records commits, runs the native review, then pushes and opens the PR.
+None. The Flows list's "Used by" lines still show raw paths (not requested); the review findings above are logged for a later feature.

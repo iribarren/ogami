@@ -31,7 +31,8 @@ const sceneTypeOptions = (data: GameSystemNarrative) =>
  * When the narrative last changed: the update time of its data once the data is a new value, 0
  * while it is the one first read here on a fresh load. A narrative already cached when the tab
  * mounts counts as changed at its update time, so only a validation read since then shows counts.
- * A refetch that finds the same data does not move it.
+ * A refetch that finds the same data does not move it. The update count matters only at mount, to
+ * tell data read once from data already replaced; later changes are detected by data identity.
  */
 function useChangedAt(
   data: GameSystemNarrative | undefined,

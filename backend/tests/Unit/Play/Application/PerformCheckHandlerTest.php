@@ -97,6 +97,12 @@ final class PerformCheckHandlerTest extends JournalTestCase
             'total' => 18,
             'bandKey' => 'success',
             'bandLabel' => 'Success',
+            'hint' => 'A stat against a Difficulty Value.',
+            'modifierFormula' => '{hands} + {edge}',
+            'modifierTerms' => [
+                ['reference' => '{hands}', 'label' => 'Hands', 'value' => 6],
+                ['reference' => '{edge}', 'label' => 'Edge', 'value' => 3],
+            ],
         ], $entry->content()->toArray());
     }
 

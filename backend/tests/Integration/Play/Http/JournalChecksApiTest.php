@@ -20,6 +20,7 @@ use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
 use App\Tests\Support\Play\UuidSequenceJournalEntryIdGenerator;
 use App\Tests\Support\Studio\ReleaseArrays;
+use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -146,6 +147,12 @@ final class JournalChecksApiTest extends WebTestCase
                 'total' => 16,
                 'bandKey' => 'success',
                 'bandLabel' => 'Success',
+                'hint' => 'A stat against a Difficulty Value.',
+                'modifierFormula' => '{reflexes} + {luck}',
+                'modifierTerms' => [
+                    ['reference' => '{reflexes}', 'label' => 'Reflexes', 'value' => 7],
+                    ['reference' => '{luck}', 'label' => 'Luck', 'value' => -2],
+                ],
             ],
         ];
         self::assertJsonStringEqualsJsonString(json_encode($created, \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());
@@ -203,6 +210,31 @@ final class JournalChecksApiTest extends WebTestCase
         $content = $this->json()['content'] ?? null;
         self::assertIsArray($content);
         self::assertSame(['1d100', 77, 0, -5, null, 72, 'good'], [$content['expression'] ?? null, $content['diceTotal'] ?? null, $content['modifier'] ?? null, $content['situational'] ?? null, $content['difficulty'] ?? null, $content['total'] ?? null, $content['bandKey'] ?? null]);
+        self::assertSame(['hint' => null, 'modifierFormula' => null, 'modifierTerms' => []], array_intersect_key($content, array_flip(['hint', 'modifierFormula', 'modifierTerms'])));
+    }
+
+    /**
+     * A row stored before the breakdown was recorded has none of the three keys.
+     */
+    #[Test]
+    public function anEntryStoredBeforeTheBreakdownReadsWithoutOne(): void
+    {
+        [$id, , $ada] = $this->campaignInAScene();
+        $this->random->script(8);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $id), ['check' => 'skill', 'character' => $ada]);
+        self::assertResponseStatusCodeSame(201);
+        $connection = self::getContainer()->get(Connection::class);
+        $connection->executeStatement("UPDATE play_journal_entry SET content = content - 'hint' - 'modifierFormula' - 'modifierTerms'");
+
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+
+        self::assertResponseIsSuccessful();
+        $entry = $this->json()[0] ?? null;
+        self::assertIsArray($entry);
+        $content = $entry['content'] ?? null;
+        self::assertIsArray($content);
+        self::assertSame(4, $content['modifier'] ?? null);
+        self::assertSame(['hint' => null, 'modifierFormula' => null, 'modifierTerms' => []], array_intersect_key($content, array_flip(['hint', 'modifierFormula', 'modifierTerms'])));
     }
 
     #[Test]

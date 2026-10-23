@@ -120,6 +120,9 @@ trait JournalEntryRepositoryContract
             'total' => 13,
             'bandKey' => 'success',
             'bandLabel' => 'Success',
+            'hint' => null,
+            'modifierFormula' => null,
+            'modifierTerms' => [],
         ];
         yield 'check' => [$check];
         yield 'check without difficulty' => [array_replace($check, ['difficulty' => null])];

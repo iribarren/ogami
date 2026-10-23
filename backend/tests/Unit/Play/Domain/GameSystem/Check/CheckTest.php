@@ -14,6 +14,7 @@ use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Check\CheckValues;
+use App\Play\Domain\GameSystem\Check\ModifierTerm;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -35,6 +36,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CheckDifficulty::class)]
 #[CoversClass(CheckResult::class)]
 #[CoversClass(CheckValues::class)]
+#[CoversClass(ModifierTerm::class)]
 final class CheckTest extends TestCase
 {
     #[Test]
@@ -45,6 +47,24 @@ final class CheckTest extends TestCase
         self::assertSame(7, $result->roll->total());
         self::assertSame([6, 2, 13, 15], [$result->modifier, $result->situational, $result->difficulty, $result->total]);
         self::assertSame('success', $result->band->key, 'Fail up to 12, success up to 17.');
+    }
+
+    #[Test]
+    public function itRecordsWhatEachReferenceOfTheModifierRead(): void
+    {
+        $result = $this->skill()->perform(new ScriptedRandomNumberGenerator(7), $this->sheet(['hands' => 6]), null, 0);
+
+        self::assertSame(['{hands}', '{edge}'], array_map(static fn (ModifierTerm $term): string => $term->token(), $result->modifierTerms));
+        self::assertSame([6, 3], array_map(static fn (ModifierTerm $term): int => $term->value, $result->modifierTerms));
+        self::assertSame(9, $result->modifier);
+    }
+
+    #[Test]
+    public function aCheckWithoutAModifierRecordsNoTerms(): void
+    {
+        $check = new Check('luck', 'Luck', null, DiceExpression::fromString('1d6'), null, null, [new CheckBand('only', 'Only')]);
+
+        self::assertSame([], $check->perform(new ScriptedRandomNumberGenerator(3), $this->sheet(), null, 0)->modifierTerms);
     }
 
     /**

@@ -3193,6 +3193,23 @@ export interface components {
             /** @description The items picked, in the order picked, named as they were at pick time; empty when nothing matched. */
             picked: components["schemas"]["ItemRefResponse"][];
         };
+        CheckModifierTermResponse: {
+            /**
+             * @description The reference as the formula spells it, braces included.
+             * @example {hot}
+             */
+            reference: string;
+            /**
+             * @description What players call it: the sheet field's label, the track's label plus " max", or the Tracker's name.
+             * @example Hot
+             */
+            label: string;
+            /**
+             * @description The value it had when the check was performed.
+             * @example 2
+             */
+            value: number;
+        };
         CheckContentResponse: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3258,6 +3275,18 @@ export interface components {
              * @example Success
              */
             bandLabel: string;
+            /**
+             * @description The hint of the check when it was performed; null when it had none, and for entries recorded before hints were kept.
+             * @example Roll +Hot to seduce.
+             */
+            hint: string | null;
+            /**
+             * @description The text of the modifier formula; null for a check without one, and for entries recorded before the breakdown was kept.
+             * @example {hot} - 1
+             */
+            modifierFormula: string | null;
+            /** @description What each reference of the modifier formula read, in the order the formula first names them; empty without a formula. */
+            modifierTerms: components["schemas"]["CheckModifierTermResponse"][];
         };
         SheetChangeDiceResponse: {
             /**

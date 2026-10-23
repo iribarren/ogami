@@ -13165,6 +13165,31 @@
                 },
                 "type": "object"
             },
+            "CheckModifierTermResponse": {
+                "required": [
+                    "reference",
+                    "label",
+                    "value"
+                ],
+                "properties": {
+                    "reference": {
+                        "description": "The reference as the formula spells it, braces included.",
+                        "type": "string",
+                        "example": "{hot}"
+                    },
+                    "label": {
+                        "description": "What players call it: the sheet field's label, the track's label plus \" max\", or the Tracker's name.",
+                        "type": "string",
+                        "example": "Hot"
+                    },
+                    "value": {
+                        "description": "The value it had when the check was performed.",
+                        "type": "integer",
+                        "example": 2
+                    }
+                },
+                "type": "object"
+            },
             "CheckContentResponse": {
                 "required": [
                     "kind",
@@ -13180,7 +13205,10 @@
                     "difficulty",
                     "total",
                     "bandKey",
-                    "bandLabel"
+                    "bandLabel",
+                    "hint",
+                    "modifierFormula",
+                    "modifierTerms"
                 ],
                 "properties": {
                     "kind": {
@@ -13255,6 +13283,25 @@
                         "description": "The label of the Outcome band when the check was performed.",
                         "type": "string",
                         "example": "Success"
+                    },
+                    "hint": {
+                        "description": "The hint of the check when it was performed; null when it had none, and for entries recorded before hints were kept.",
+                        "type": "string",
+                        "example": "Roll +Hot to seduce.",
+                        "nullable": true
+                    },
+                    "modifierFormula": {
+                        "description": "The text of the modifier formula; null for a check without one, and for entries recorded before the breakdown was kept.",
+                        "type": "string",
+                        "example": "{hot} - 1",
+                        "nullable": true
+                    },
+                    "modifierTerms": {
+                        "description": "What each reference of the modifier formula read, in the order the formula first names them; empty without a formula.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckModifierTermResponse"
+                        }
                     }
                 },
                 "type": "object"

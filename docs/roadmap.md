@@ -76,6 +76,10 @@ Items here come after every feature defined above. Build them in this order: fix
 | B7 | `preset-pbta` | Preset | B4 | A Powered by the Apocalypse preset: Thirsty Sword Lesbians or Bluebeard's Bride in original wording. 2d6 + stat moves with three outcome bands fit the contract today: no contract change. Authored in Studio, as the first end-to-end proof of M4 on a new system |
 | B7b | `studio-ui-polish` | Studio | B7 | Design first: a [design canvas](https://claude.ai/artifact/XhD3C9eDzeQpWF7wk59z1t) (private) of the Studio screens in the default light and dark themes, reviewed before any code. Then fix the Studio findings of B7 and apply the canvas: the B5 depth, type and icon tokens where they fit, icon tiles on tabs and editor sections, test results in wells, lucide icons on add, delete and reorder buttons, editor list density |
 | B7c | `studio-ui-followups` | Studio | B7b | Fix the follow-ups `studio-ui-polish` logged ([slice 9 review and Chrome pass](../odd/tasks/studio-ui-polish.md#reviews)): the two review warnings first (a pathless warning with `: `, the Publish dialog focus without the notes field), then readable "Used by" and Publish error paths, the check editor title, a Close for the New GameSystem dialog and Sheet preview defaults. One slice |
+| B7d | `followups-sweep` | Fixes | — | Fix the small findings earlier features logged and never picked up, and add their missing tests ([#252](https://github.com/iribarren/ogami/issues/252)): login throttle normalization, `/me` retry, the journal append race, `LinksForm` matching, Studio errors leaking through Play's release port, `OraclePanel` chaos input, dice tokenizer edges, the check sandbox track max, `RandomEventOffer` refetch, `forEntry` scene rule, the "Scene: Scene" guide, the attachment cap, `markInitial` locale. One or two slices |
+| B7e | `play-pbta-findings` | Play | B7 | Fix the `preset-pbta` Play findings no feature owns ([#253](https://github.com/iribarren/ogami/issues/253), [P6–P19](../odd/tasks/preset-pbta.md)): the Complication table by scene type, Strings in the summary, a modifier breakdown with Conditions, tags scoped per entity, the move hint on the result card, the climax roll placement, toggles for 0..1 Conditions and a shorter character form |
+| B7f | `tooling-followups` | Tooling | — | Tooling and test-suite follow-ups ([#254](https://github.com/iribarren/ogami/issues/254)): one e2e password default, `--if-missing` seeding that repairs drifted credentials, faster Studio Vitest typing, an overlap audit of unit, Behat and API tests, CI image layer caching if CI time hurts |
+| B7g | `release-api-followups` | Studio | — | Design first ([#255](https://github.com/iribarren/ogami/issues/255)): distinct publish 409 codes, what a release view shows, structured character creation (dice defaults, point budgets) and an NPC agenda from a later answer; record the decisions, then build or split into features |
 | B8 | `rules-dice-pools` | Rules | B4 | Close the pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md) once, across the contract, Play, the Studio check editor and the release upgrade planner: a dice count read from the sheet, counting successes per die, pushed rolls (re-roll the dice that did not succeed) and conditions as sheet effects |
 | B8b | `rules-flow-choices` | Rules | B7 | Close two flow gaps `preset-pbta` found ([S11, S12](../odd/tasks/preset-pbta.md#studio-findings)) across the contract, Play, the Studio flow editor and the release upgrade planner: sheet effects on `choice` options and `prompt` answers (end-of-session XP questions), and a `check` step that offers a set of checks for the player to pick (a PbtA move rolled with any stat). Then rework `hearts-and-rapiers` in Studio to use them |
 | B9 | `preset-vaesen` | Preset | B8 | A Vaesen preset on the Year Zero SRD, under Free League's free license: d6 pools, sixes as successes, pushed rolls and conditions from B8 |
@@ -412,6 +416,30 @@ Start feature `studio-ui-followups` (ODD). Fix the follow-ups `studio-ui-polish`
 ```
 
 Done: `studio-ui-followups`, the `studio-ui-polish` follow-ups fixed in one slice: warnings split only on a release path, the Publish dialog focus, readable "Used by" lines and Publish errors, the check editor title, Close and Cancel in New GameSystem, Sheet previews at the sandbox defaults, and every section write carrying the shared draft version into the other section reads (PR #250, closes #249); see [odd/tasks/studio-ui-followups.md](../odd/tasks/studio-ui-followups.md).
+
+**B7d. followups-sweep**
+
+```text
+Start feature `followups-sweep` (ODD). Fix every item of GitHub issue #252: small findings earlier features logged and never picked up, each with its `path:line` and origin feature in the issue, plus the missing tests it lists (check the two marked "check first" before writing them). Test first for each fix. Group the items by area into one or two slices; tick them in the issue as they land. Out of scope: anything that needs a contract or API design decision (B7g).
+```
+
+**B7e. play-pbta-findings**
+
+```text
+Start feature `play-pbta-findings` (ODD). Fix the `preset-pbta` Play findings in GitHub issue #253 (P6, P8–P12, P14/P19; see odd/tasks/preset-pbta.md:113-125), replaying `hearts-and-rapiers` in Chrome to confirm each one first. Ask before anything that changes the release contract (tags scoped per entity may; P18 belongs to B7g). Frontend first; backend only where a finding needs it.
+```
+
+**B7f. tooling-followups**
+
+```text
+Start feature `tooling-followups` (ODD). Do the tooling and test-suite items of GitHub issue #254: one e2e password default instead of three, `--if-missing` seeding that repairs drifted e2e credentials, faster Studio editor Vitest tests (fewer key-by-key `user.type` calls where the test does not need them), an audit of the overlap between handler unit, Behat and API tests with a short proposal before deleting any, and CI Docker layer caching only if it measurably shortens CI. `chore/` branches.
+```
+
+**B7g. release-api-followups**
+
+```text
+Start feature `release-api-followups` (ODD). Design first, for the items in GitHub issue #255: distinct publish 409 codes (no changes, version race, library pack), what the Studio release view API should show, structured character creation (dice defaults, point budgets) and an NPC agenda that comes from a later answer. Propose the decisions (ADRs where they change the contract), get them approved, then build the small ones and turn the large ones into their own roadmap items.
+```
 
 **B8. rules-dice-pools**
 

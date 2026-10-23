@@ -73,6 +73,7 @@ odd/tasks/                   ODD feature docs
 | Shippable slices | Each slice is safe on `main` alone: backend unused until its UI lands, unfinished UI on an unlinked route |
 | Review sequencing | Per slice: writer finishes and commits → native review (assess, consent, capture, acknowledge) → PR → user merges → next slice. No writer runs during a review; answer the review stop hook only with a clean tree and no writer running |
 | Feature doc | The writer updates progress and evidence inside its work-unit commit; review outcomes and PR links go in the next slice's first commit; the last slice records them in one doc-only commit on the same branch after its review and PR, pushed to that PR before the user merges (no separate wrap-up branch or PR). No other doc-only progress commits, no uncommitted doc edits at the end of a turn |
+| Late findings | Review findings, CI surprises and Chrome-pass follow-ups of a feature's last slice never live only in its closing feature doc. Under ~300 lines in total: fix them on the last slice's branch as one more task before the merge. Bigger: a GitHub issue labelled `follow-up` plus a `docs/roadmap.md` backlog line linking it, in the closing doc commit. Next step says "None" only when every finding is fixed or has an issue |
 | Merging | Merge commit only (no squash, no rebase), so the commit hashes in feature docs stay valid |
 | Commits | One work-unit commit per task, Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`…) |
 | Delivery | Never push, open a PR or merge without the user |

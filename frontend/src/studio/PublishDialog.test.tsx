@@ -44,19 +44,26 @@ describe('the publish dialog', () => {
       'GET /api/studio/game-systems/noir-detective/validation': json({
         valid: true,
         errors: [],
-        warnings: ['flows[1]: has no steps', 'flows[1]: has no steps', 'no location at all'],
+        warnings: [
+          'flows[1]: has no steps',
+          'flows[1]: has no steps',
+          'no location at all',
+          'Heads up: this is only text',
+        ],
       }),
     })
 
     const dialog = await openDialog(user)
 
     expect(await dialog.findByText('This creates version 4.')).toBeInTheDocument()
-    expect(dialog.getAllByRole('listitem')).toHaveLength(3)
+    expect(dialog.getAllByRole('listitem')).toHaveLength(4)
     // The reason and the place in words, not the raw path.
     expect(dialog.getAllByText('has no steps')).toHaveLength(2)
     expect(dialog.getAllByText('Flows · 2')).toHaveLength(2)
     expect(dialog.queryByText(/flows\[1\]/)).not.toBeInTheDocument()
     expect(dialog.getByText('no location at all')).toBeInTheDocument()
+    // A colon alone is not a path: the whole warning stays, with no location.
+    expect(dialog.getByText('Heads up: this is only text')).toBeInTheDocument()
     expect(dialog.getByRole('button', { name: 'Publish version 4' })).toBeEnabled()
     expect(dialog.getByText('0 / 2,000')).toBeInTheDocument()
   })
@@ -69,6 +76,21 @@ describe('the publish dialog', () => {
 
     expect(dialog.getByRole('textbox', { name: /Release notes/ })).toHaveFocus()
     expect(dialog.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('keeps focus inside the dialog when the draft is invalid', async () => {
+    const user = userEvent.setup()
+    renderPublishable(draft, {
+      'GET /api/studio/game-systems/my-draft/validation': json({
+        valid: false,
+        errors: [{ path: 'oracles', message: 'must be an object' }],
+        warnings: [],
+      }),
+    })
+
+    await openDialog(user)
+
+    expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
   })
 
   it('creates version 1 for a draft that was never published', async () => {

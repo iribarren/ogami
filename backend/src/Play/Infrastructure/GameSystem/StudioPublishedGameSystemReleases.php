@@ -8,11 +8,13 @@ use App\Play\Application\GameSystemSummary;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\ListPublishedGameSystems;
 use App\Studio\Application\PublishedGameSystemSummary;
 use App\Studio\Application\PublishedReleaseNotFound;
+use App\Studio\Application\PublishedReleaseUnreadable;
 
 /**
  * Reads published GameSystem releases from Studio's Published Language (GetPublishedRelease on the
@@ -33,6 +35,8 @@ final readonly class StudioPublishedGameSystemReleases implements PublishedGameS
             $view = $this->queries->ask(new GetPublishedRelease($gameSystemKey, $version));
         } catch (PublishedReleaseNotFound $exception) {
             throw GameSystemReleaseNotFound::for($gameSystemKey, $version, $exception);
+        } catch (PublishedReleaseUnreadable $exception) {
+            throw InvalidGameSystemRelease::of($gameSystemKey, $exception->version, $exception->path, $exception->reason, $exception);
         }
 
         return $this->translator->translate($view);

@@ -246,6 +246,29 @@ describe('the Facts panel', () => {
     })
   })
 
+  it('tells an NPC and a Thread with the same id apart when linking', async () => {
+    const user = userEvent.setup()
+    const twin = { ...vaultThread, id: miraNpc.id, name: 'Mira, the thread' }
+    renderFacts({ ...lostMineWithFacts, threads: [...lostMineWithFacts.threads, twin] })
+
+    const panel = await facts()
+    await user.click(panel.getByRole('button', { name: 'Edit links of The oath' }))
+    const form = within(panel.getByRole('form', { name: 'Links of The oath' }))
+    await user.selectOptions(form.getByLabelText('Link to'), `npc:${miraNpc.id}`)
+    await user.click(form.getByRole('button', { name: 'Add link' }))
+
+    // Linking the NPC leaves the Thread with the same id on offer.
+    expect(form.getByRole('option', { name: 'Thread: Mira, the thread' })).toBeInTheDocument()
+    expect(form.queryByRole('option', { name: 'NPC: Mira Vane' })).not.toBeInTheDocument()
+    await user.selectOptions(form.getByLabelText('Link to'), `thread:${miraNpc.id}`)
+    await user.click(form.getByRole('button', { name: 'Add link' }))
+
+    // Removing one of the two removes only that one.
+    await user.click(form.getByRole('button', { name: `Remove link ${miraNpc.name}` }))
+    expect(form.getByRole('button', { name: 'Remove link Mira, the thread' })).toBeInTheDocument()
+    expect(form.getByRole('option', { name: 'NPC: Mira Vane' })).toBeInTheDocument()
+  })
+
   it('stops offering links at the limit of 20', async () => {
     const user = userEvent.setup()
     const many = Array.from({ length: 20 }, (_, index) => ({
@@ -278,6 +301,30 @@ describe('the Facts panel', () => {
 
     expect(await form.findByRole('alert')).toHaveTextContent('The fact text is too long.')
     expect(form.getByLabelText('Text')).toHaveValue('Ashford')
+  })
+
+  it('refetches the campaign when a change is refused with 409', async () => {
+    const user = userEvent.setup()
+    const { server } = renderFacts(lostMineWithFacts, {
+      [`PUT ${path}/facts/${oathFact.id}`]: () =>
+        Response.json({ error: 'Modified meanwhile.' }, { status: 409 }),
+    })
+
+    const panel = await facts()
+    server.campaign = {
+      ...lostMineWithFacts,
+      facts: lostMineWithFacts.facts.map((fact) =>
+        fact.id === oathFact.id
+          ? { ...fact, text: 'Always pay the debt.', value: 'Always pay the debt.' }
+          : fact,
+      ),
+    }
+    await user.click(panel.getByRole('button', { name: 'Edit The oath' }))
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    expect(await panel.findByText('Modified meanwhile.')).toBeInTheDocument()
+    await user.click(panel.getByRole('button', { name: 'Cancel' }))
+    expect(await panel.findByText('Always pay the debt.')).toBeInTheDocument()
   })
 
   it('offers every NPC to fill an NPC slot', async () => {

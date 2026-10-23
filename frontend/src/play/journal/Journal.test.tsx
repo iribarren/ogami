@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 
 import { renderWithApi } from '@/test/renderWithApi'
 
-import { lostMineCampaign } from '../campaigns/fixtures'
+import { lostMineCampaign, lostMineWithTypes } from '../campaigns/fixtures'
 import {
   fateDouble,
   fateDoubleEvent,
@@ -10,18 +10,23 @@ import {
   gateNote,
   lockedDoorAnswer,
   noteAttaching,
+  sceneShiftRoll,
   sanityLossEntry,
   skillCheckEntry,
   stormyWeather,
 } from './fixtures'
 import { Journal } from './Journal'
 
-function renderJournal(current: { session: number; scene: number } | null, entries = [fateDouble]) {
+function renderJournal(
+  current: { session: number; scene: number } | null,
+  entries = [fateDouble],
+  sceneTypes = lostMineCampaign.sceneTypes,
+) {
   return renderWithApi(
     <Journal
       campaignId={lostMineCampaign.id}
       sessions={lostMineCampaign.sessions}
-      sceneTypes={lostMineCampaign.sceneTypes}
+      sceneTypes={sceneTypes}
       tags={lostMineCampaign.tags}
       sheet={lostMineCampaign.pinnedRelease.sheet}
       npcs={lostMineCampaign.npcs}
@@ -161,6 +166,25 @@ describe('Journal', () => {
 
       const card = screen.getByRole('article', { name: 'Note' })
       expect(within(card).getByRole('button', { name: 'Roll Weather' })).toBeInTheDocument()
+    })
+  })
+
+  describe('with an attached oracle table result that offers a Scene Type', () => {
+    const shift = sceneShiftRoll('firefight')
+    const attaching = noteAttaching([shift.id])
+
+    it('still offers the switch inside the note in the current scene', () => {
+      renderJournal({ session: 2, scene: 1 }, [shift, attaching], lostMineWithTypes.sceneTypes)
+
+      const card = screen.getByRole('article', { name: 'Note' })
+      expect(within(card).getByRole('button', { name: 'Switch to Firefight' })).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Switch to Firefight' })).toHaveLength(1)
+    })
+
+    it('offers nothing in a scene that is no longer the current one', () => {
+      renderJournal({ session: 2, scene: 2 }, [shift, attaching], lostMineWithTypes.sceneTypes)
+
+      expect(screen.queryByRole('button', { name: /^Switch to/ })).not.toBeInTheDocument()
     })
   })
 

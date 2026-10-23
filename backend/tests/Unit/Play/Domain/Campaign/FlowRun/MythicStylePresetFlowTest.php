@@ -193,7 +193,7 @@ final class MythicStylePresetFlowTest extends FlowRunTestCase
 
         $view = $campaign->flowRunView($this->release);
         self::assertSame([FlowRunStage::ScenePick, null, 2], [self::flowRunOf($campaign)->stage(), self::flowRunOf($campaign)->scene(), \count($campaign->currentSession()?->scenes() ?? [])]);
-        self::assertSame([['scene'], true, true, 'Scene: Scene'], [array_map(static fn (SceneType $sceneType): string => $sceneType->key, $view?->pick->cards ?? []), $view?->canEndSession, $view?->canMoveOn, $view?->next]);
+        self::assertSame([['scene'], true, true, 'Scene: Open scene'], [array_map(static fn (SceneType $sceneType): string => $sceneType->key, $view?->pick->cards ?? []), $view?->canEndSession, $view?->canMoveOn, $view?->next]);
 
         $campaign->endSession(self::at(), null, $this->release);
 

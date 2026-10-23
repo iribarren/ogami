@@ -24,6 +24,17 @@ describe('DiceRoller', () => {
     expect(rolled).toEqual([])
   })
 
+  it('says what is missing on a blank submit, until the player types again', async () => {
+    render(<DiceRoller initialExpression="   " onRoll={() => undefined} />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Roll' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Type a dice expression')
+    await user.type(screen.getByLabelText('Dice expression'), '1')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('rolls a preset immediately and puts it in the input', async () => {
     const rolled: string[] = []
     render(<DiceRoller onRoll={(expression) => rolled.push(expression)} />)
@@ -80,6 +91,22 @@ describe('DiceRoller', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('Unexpected character "x" at position 2.')
+  })
+
+  it('shows only the missing-expression hint on a blank submit after a refused roll', async () => {
+    render(
+      <DiceRoller
+        initialExpression="   "
+        onRoll={() => undefined}
+        error={new Error('Unexpected character "x" at position 2.')}
+      />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Roll' }))
+
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByRole('alert')).toHaveTextContent('Type a dice expression')
   })
 
   it('can hide the presets', () => {

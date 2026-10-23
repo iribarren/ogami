@@ -132,7 +132,7 @@
   ],
   "factSlots": [],
   "sceneTypes": [
-    {"key": "scene", "name": "Scene", "purpose": "Play out one scene.", "oracles": ["fate", "meaning-action", "meaning-subject", "random-event-focus"], "setup": [], "play": [], "closing": []}
+    {"key": "scene", "name": "Open scene", "purpose": "Play out one scene.", "oracles": ["fate", "meaning-action", "meaning-subject", "random-event-focus"], "setup": [], "play": [], "closing": []}
   ],
   "flows": [
     {

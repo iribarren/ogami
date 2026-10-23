@@ -1,10 +1,8 @@
 import { useMutationState } from '@tanstack/react-query'
 import { useId, type ReactNode } from 'react'
 
-import { Button } from '@/shared/ui/button'
-
 import { SceneCast } from '../cast/SceneCast'
-import { useSwitchSceneType, type Campaign } from '../campaigns/useCampaigns'
+import { type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
 import { isAttached } from './attachments'
@@ -12,6 +10,7 @@ import { NoteAttachments } from './NoteAttachments'
 import { isListedRandomEvent } from './randomEvents'
 import { RandomEventOffer } from './RandomEventOffer'
 import { playOrdinals, titleAddsToType, typeLabel } from './sceneLabels'
+import { SceneTypeOffer, type ListedScene } from './SceneTypeOffer'
 import { recordEntryKey, type JournalEntry } from './useJournal'
 
 /** Brings an entry just recorded into view, without moving focus (jsdom cannot scroll). */
@@ -126,6 +125,8 @@ export function Journal({
                             current={
                               current?.session === session.number && current.scene === scene.number
                             }
+                            scene={listed(sessions, session.number, scene.number)}
+                            sceneTypes={sceneTypes}
                           />
                         </JournalEntryView>
                         {current?.session === session.number && current.scene === scene.number && (
@@ -160,53 +161,6 @@ export function Journal({
   )
 }
 
-/**
- * "Switch to <Scene Type>" for the Scene Type the latest step of a rolled oracle table offers,
- * unless the scene already has it. Only offered in the current scene (a hook Scene has no type).
- */
-function SceneTypeOffer({
-  campaignId,
-  entry,
-  scene,
-  sceneTypes,
-}: {
-  campaignId: string
-  entry: JournalEntry
-  scene: ListedScene | undefined
-  sceneTypes: Campaign['sceneTypes']
-}) {
-  const switchSceneType = useSwitchSceneType(campaignId)
-  if (entry.content.kind !== 'oracle-table' || scene?.kind !== 'scene') {
-    return null
-  }
-  const offered = entry.content.steps.findLast((step) => step.sceneType !== null)?.sceneType
-  const target = sceneTypes.find(({ key }) => key === offered)
-  if (target === undefined || target.key === scene.sceneType) {
-    return null
-  }
-
-  return (
-    <div className="space-y-1">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={switchSceneType.isPending}
-        onClick={() => {
-          switchSceneType.mutate(target.key)
-        }}
-      >
-        Switch to {target.name}
-      </Button>
-      {switchSceneType.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {switchSceneType.error.message}
-        </p>
-      )}
-    </div>
-  )
-}
-
 /** The cast of a scene under its heading; nothing for a scene the campaign does not list. */
 function SceneCastHeader({
   scene,
@@ -214,8 +168,6 @@ function SceneCastHeader({
 }: { scene: ListedScene | undefined } & Omit<Parameters<typeof SceneCast>[0], 'scene'>) {
   return scene === undefined ? null : <SceneCast scene={scene} {...props} />
 }
-
-type ListedScene = Campaign['sessions'][number]['scenes'][number]
 
 /** The scene as the campaign lists it, which tells a hook Scene and a Scene Type. */
 function listed(sessions: Campaign['sessions'], sessionNumber: number, sceneNumber: number) {

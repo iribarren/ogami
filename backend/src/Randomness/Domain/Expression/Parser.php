@@ -84,14 +84,27 @@ final class Parser
 
         $integer = $this->expect(TokenType::Integer, self::OPERAND);
         if (TokenType::Dice === $this->peek()->type) {
-            return $this->dice($integer->integer());
+            return $this->dice($this->value($integer));
         }
 
-        if ($integer->integer() > DiceExpression::MAX_INTEGER) {
-            throw InvalidDiceExpression::integerOutOfRange(ltrim($integer->text, '0'), DiceExpression::MAX_INTEGER);
+        $value = $this->value($integer);
+        if ($value > DiceExpression::MAX_INTEGER) {
+            throw InvalidDiceExpression::integerOutOfRange($integer->written(), DiceExpression::MAX_INTEGER);
         }
 
-        return new Constant($integer->integer());
+        return new Constant($value);
+    }
+
+    /**
+     * The integer value of a token; a number too large for an integer is reported as written.
+     */
+    private function value(Token $integer): int
+    {
+        if ($integer->saturated()) {
+            throw InvalidDiceExpression::integerOutOfRange($integer->written(), DiceExpression::MAX_INTEGER);
+        }
+
+        return $integer->integer();
     }
 
     private function dice(int $count): Dice
@@ -102,7 +115,7 @@ final class Parser
             $this->advance();
             $sides = 100;
         } else {
-            $sides = $this->expect(TokenType::Integer, 'the number of sides or "%"')->integer();
+            $sides = $this->value($this->expect(TokenType::Integer, 'the number of sides or "%"'));
         }
 
         if (TokenType::Selector !== $this->peek()->type) {
@@ -110,7 +123,7 @@ final class Parser
         }
 
         $selector = Selector::fromToken($this->advance()->text);
-        $selectCount = $this->expect(TokenType::Integer, 'how many dice to keep or drop')->integer();
+        $selectCount = $this->value($this->expect(TokenType::Integer, 'how many dice to keep or drop'));
 
         return new Dice($count, $sides, $selector, $selectCount);
     }

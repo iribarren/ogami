@@ -54,13 +54,29 @@ final class Tokenizer
     }
 
     /**
+     * The length of the UTF-8 sequence a lead byte starts; ASCII and continuation bytes count as one.
+     */
+    private static function utf8SequenceLength(int $byte): int
+    {
+        return match (true) {
+            $byte >= 0xF0 => 4,
+            $byte >= 0xE0 => 3,
+            $byte >= 0xC0 => 2,
+            default => 1,
+        };
+    }
+
+    /**
      * The whole UTF-8 character at a byte offset, or its first byte as "\xNN" when it is not valid UTF-8,
      * so error messages always stay valid UTF-8.
      */
     private static function characterAt(string $notation, int $offset): string
     {
-        if (1 === preg_match('/\G./su', $notation, $match, 0, $offset)) {
-            return $match[0];
+        // Validate only the bytes of this character: invalid UTF-8 further on must not spoil a valid one here.
+        $lead = \ord($notation[$offset]);
+        $character = substr($notation, $offset, self::utf8SequenceLength($lead));
+        if (1 === preg_match('//u', $character)) {
+            return $character;
         }
 
         return \sprintf('\x%02X', \ord($notation[$offset]));

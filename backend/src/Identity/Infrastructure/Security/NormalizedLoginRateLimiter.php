@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Identity\Domain\Email;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
 use Symfony\Component\HttpFoundation\RateLimiter\PeekableRequestRateLimiterInterface;
@@ -48,7 +49,7 @@ final readonly class NormalizedLoginRateLimiter implements PeekableRequestRateLi
         }
 
         $normalized = $request->duplicate();
-        $normalized->attributes->set(SecurityRequestAttributes::LAST_USERNAME, strtolower(trim($username)));
+        $normalized->attributes->set(SecurityRequestAttributes::LAST_USERNAME, Email::normalize($username));
 
         return $normalized;
     }

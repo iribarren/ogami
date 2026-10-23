@@ -21,6 +21,9 @@ const kindNouns = { npc: 'NPC', thread: 'Thread', fact: 'Fact' } as const
 /** A link as shown: its target's name, resolved by the server. */
 type NamedLink = Fact['links'][number]
 
+/** A link is its kind and id: an NPC and a Thread may share an id. */
+const sameLink = (a: NamedLink, b: NamedLink) => a.kind === b.kind && a.id === b.id
+
 /** Links as the API takes them: a kind and an id, never the name it resolved. */
 const asRequest = (links: NamedLink[]): FactLink[] => links.map(({ kind, id }) => ({ kind, id }))
 
@@ -447,7 +450,7 @@ function LinksForm({
     ...campaign.facts
       .filter((held) => held.id !== fact.id)
       .map(({ id, label }) => ({ kind: 'fact' as const, id, name: label })),
-  ].filter(({ id: targetId }) => !draft.some((held) => held.id === targetId))
+  ].filter((target) => !draft.some((held) => sameLink(held, target)))
   const full = draft.length >= maxLinks
 
   function addLink() {
@@ -468,17 +471,17 @@ function LinksForm({
       <fieldset disabled={pending} className="space-y-3">
         {draft.length > 0 && (
           <ul className="flex flex-wrap gap-1">
-            {draft.map(({ kind, id: linkId, name }) => (
+            {draft.map((link) => (
               <li
-                key={linkId}
+                key={`${link.kind}:${link.id}`}
                 className="flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium"
               >
-                {name} ({kindNouns[kind]})
+                {link.name} ({kindNouns[link.kind]})
                 <button
                   type="button"
-                  aria-label={`Remove link ${name}`}
+                  aria-label={`Remove link ${link.name}`}
                   onClick={() => {
-                    setDraft(draft.filter((held) => held.id !== linkId))
+                    setDraft(draft.filter((held) => !sameLink(held, link)))
                   }}
                 >
                   <X aria-hidden="true" className="size-3" />
@@ -500,7 +503,7 @@ function LinksForm({
             >
               <option value="">Choose…</option>
               {targets.map(({ kind, id: targetId, name }) => (
-                <option key={targetId} value={`${kind}:${targetId}`}>
+                <option key={`${kind}:${targetId}`} value={`${kind}:${targetId}`}>
                   {kindNouns[kind]}: {name}
                 </option>
               ))}

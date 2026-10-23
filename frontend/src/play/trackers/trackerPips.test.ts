@@ -17,6 +17,11 @@ describe('trackerPips', () => {
     })
   })
 
+  it('counts from zero before the cutoff, so a high range draws no pips', () => {
+    // 10..14 counts as 14 points from zero: over the cutoff of 12, though only 4 above its minimum.
+    expect(trackerPips({ ...edgeTracker, min: 10, max: 14, value: 12 })).toBeNull()
+  })
+
   it('keeps the filled count inside the range', () => {
     expect(trackerPips({ ...edgeTracker, value: 9 })).toEqual({ total: 3, filled: 3 })
     expect(trackerPips({ ...edgeTracker, value: -4 })).toEqual({ total: 3, filled: 0 })

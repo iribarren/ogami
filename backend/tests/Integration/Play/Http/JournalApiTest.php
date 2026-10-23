@@ -206,6 +206,22 @@ final class JournalApiTest extends WebTestCase
         self::assertCount(3, $this->json());
     }
 
+    #[Test]
+    public function aRollForAQuestionOfAnEarlierSceneIsUnprocessable(): void
+    {
+        $id = $this->campaignInAScene(randomEvent: true);
+        $question = $this->askFate($id, 22);
+        $this->startScene($id, 'Inside');
+        $this->scriptRandomNumbers(6, 3);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/oracle-tables/weather', $id), ['forEntry' => $question]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => \sprintf('Journal entry "%s" was not recorded in the current scene, so its random event can no longer be rolled.', $question)], $this->json());
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        self::assertCount(1, $this->json());
+    }
+
     /**
      * @return iterable<string, array{string, ?string}>
      */

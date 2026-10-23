@@ -60,6 +60,9 @@ final class DiceExpressionLimitsTest extends TestCase
         yield '1001 sides' => ['1d1001', 'between 2 and 1000 sides, 1001 given'];
         yield 'literal too large' => ['1000001', 'between 0 and 1000000, 1000001 given'];
         yield 'literal overflowing an integer' => ['99999999999999999999999', 'between 0 and 1000000'];
+        yield 'dice count overflowing an integer' => ['99999999999999999999d6', 'between 0 and 1000000, 99999999999999999999 given'];
+        yield 'sides overflowing an integer' => ['1d00099999999999999999999', 'between 0 and 1000000, 99999999999999999999 given'];
+        yield 'selector count overflowing an integer' => ['4d6kh99999999999999999999', 'between 0 and 1000000, 99999999999999999999 given'];
         yield 'keep more dice than rolled' => ['4d6kh5', '"kh" keeps between 1 and 4 dice, 5 given'];
         yield 'keep no dice' => ['4d6kl0', '"kl" keeps between 1 and 4 dice, 0 given'];
         yield 'drop every die' => ['4d6dl4', '"dl" drops between 0 and 3 dice, 4 given'];

@@ -140,13 +140,14 @@ final readonly class CampaignJournal
 
     /**
      * The likelihood answer whose random event a roll on the oracle table answers, checked before
-     * anything is recorded: it is an entry of this campaign, its random event is that table, and
-     * no oracle table entry is tied to it yet. (The repository guards the last rule again against
+     * anything is recorded: it is an entry of this campaign, recorded in the current session and
+     * scene, its random event is that table, and no oracle table entry is tied to it yet. (The repository guards the last rule again against
      * a roll recorded at the same time.).
      *
      * @throws InvalidJournalEntryId    when the id is blank
      * @throws JournalEntryNotFound     when no entry of the campaign has this id
-     * @throws NotARandomEventQuestion  when the entry is no likelihood answer with this random event
+     * @throws NotARandomEventQuestion  when the entry is no likelihood answer with this random event, or is not in the current scene
+     * @throws NoCurrentScene           when the campaign has no current scene
      * @throws RandomEventAlreadyRolled when an oracle table entry is already tied to the entry
      */
     public function assertRandomEventQuestion(string $entryId, Campaign $campaign, string $oracleKey): void
@@ -159,6 +160,16 @@ final readonly class CampaignJournal
         $content = $entry->content();
         if (!$content instanceof LikelihoodContent || $content->randomEvent() !== $oracleKey) {
             throw NotARandomEventQuestion::of($entryId, $oracleKey);
+        }
+
+        $session = $campaign->currentSession();
+        $scene = $session?->currentScene();
+        if (!$session instanceof Session || !$scene instanceof Scene) {
+            throw NoCurrentScene::toRecordJournalEntry();
+        }
+
+        if ($entry->sessionNumber() !== $session->number() || $entry->sceneNumber() !== $scene->number()) {
+            throw NotARandomEventQuestion::notInCurrentScene($entryId);
         }
 
         foreach ($this->entries->ofCampaign($campaign->id()) as $recorded) {

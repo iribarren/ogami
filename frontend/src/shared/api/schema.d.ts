@@ -8893,7 +8893,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The "forEntry" id is blank, or that entry is not a likelihood answer whose random event is this oracle table. */
+            /** @description The "forEntry" id is blank, that entry is not a likelihood answer whose random event is this oracle table, or it was not recorded in the current scene. */
             422: {
                 headers: {
                     [name: string]: unknown;

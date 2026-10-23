@@ -22,6 +22,13 @@ final class EmailTest extends TestCase
     }
 
     #[Test]
+    public function normalizeTrimsAndLowercasesWithoutValidating(): void
+    {
+        self::assertSame('ada@example.com', Email::normalize('  Ada@Example.COM '));
+        self::assertSame('not an email', Email::normalize(' Not An Email '));
+    }
+
+    #[Test]
     public function addressesThatNormalizeAlikeAreEqual(): void
     {
         self::assertTrue(Email::fromString('ADA@example.com')->equals(Email::fromString('ada@example.com')));

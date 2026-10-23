@@ -7,6 +7,7 @@ namespace App\Studio\Application;
 use App\Shared\Application\Bus\QueryHandler;
 use App\Studio\Domain\Release\GameSystemRelease;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
+use App\Studio\Domain\Release\InvalidReleaseContent;
 
 final readonly class GetPublishedReleaseHandler implements QueryHandler
 {
@@ -17,6 +18,7 @@ final readonly class GetPublishedReleaseHandler implements QueryHandler
 
     /**
      * @throws PublishedReleaseNotFound
+     * @throws PublishedReleaseUnreadable when the release found no longer parses
      */
     public function __invoke(GetPublishedRelease $query): PublishedReleaseView
     {
@@ -28,6 +30,10 @@ final readonly class GetPublishedReleaseHandler implements QueryHandler
             throw PublishedReleaseNotFound::for($query->gameSystemKey, $query->version);
         }
 
-        return PublishedReleaseViews::of($release);
+        try {
+            return PublishedReleaseViews::of($release);
+        } catch (InvalidReleaseContent $exception) {
+            throw new PublishedReleaseUnreadable($release->gameSystemKey(), $release->version(), $exception->path(), $exception->reason(), $exception);
+        }
     }
 }

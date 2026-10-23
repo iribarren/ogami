@@ -20,13 +20,22 @@ final readonly class Email
      */
     public static function fromString(string $address): self
     {
-        $normalized = strtolower(trim($address));
+        $normalized = self::normalize($address);
 
         if (false === filter_var($normalized, \FILTER_VALIDATE_EMAIL)) {
             throw InvalidEmail::malformed($address);
         }
 
         return new self($normalized);
+    }
+
+    /**
+     * The canonical spelling of an address, valid or not, so callers that must
+     * treat malformed input alike (the login throttle) share one rule.
+     */
+    public static function normalize(string $address): string
+    {
+        return strtolower(trim($address));
     }
 
     public function toString(): string

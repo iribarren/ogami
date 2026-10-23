@@ -58,9 +58,9 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; Chrome replay of every finding | parent, inline (doc); Chrome worker (delegated) | [x] | |
-| T2 | 1 | P8: list fields in the character summary | writer (delegated) | [ ] | |
+| T2 | 1 | P8: list fields in the character summary | writer (delegated) | [x] | |
 | T3 | — | P12: dropped after the replay (content fix in T9) | — | [x] | — |
-| T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [ ] | |
+| T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | |
 | T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [ ] | |
 | T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [ ] | |
 | T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [ ] | |
@@ -78,6 +78,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 
 - 2026-10-23: code map done; P6 moved to B8b, P10 approved as an additive contract change, P11 hint stored at roll time, v5 content approved (user's calls). Feature doc created (10 tasks, four slices).
 - 2026-10-23 T1: Chrome replay done (see Problem and why); P12's journal code change dropped (content only).
+- 2026-10-24 T2: `summarize()` lists list items (<=40 characters joined, first item cut with an ellipsis, ` +N` for the rest; empty keeps `Label: 0`). RED: 3 of 4 new `sheetValues.test.ts` tests failed (one-item, many-items, long-item; the empty-list test passed on first run, it pins today's output); GREEN: 43 tests in `src/shared/sheet` + `src/play/characters`.
+- 2026-10-24 T4: a `number` field with `min 0`, `max 1` and a `'0'`/`'1'` draft renders as a checkbox in `SheetFields` (same draft values, no API change); a value outside 0..1 or any other range stays a number input. RED: 3 toggle tests failed (the legacy `2` and other-range tests passed on first run, they pin the fallback); GREEN: `SheetFields.test.tsx` 11/11. `play-hearts-and-rapiers.spec.ts` does not touch Conditions, so unchanged.
 
 ## Reviews
 

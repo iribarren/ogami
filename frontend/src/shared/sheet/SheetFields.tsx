@@ -1,6 +1,7 @@
 import { useId } from 'react'
 
 import { Button } from '@/shared/ui/button'
+import { Checkbox } from '@/shared/ui/checkbox'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
@@ -128,6 +129,16 @@ function GroupBox({
         ))}
       </div>
     </fieldset>
+  )
+}
+
+/** A number that can only be 0 or 1; a value outside that range (legacy data) stays editable as a number. */
+function isToggle(field: SheetFieldView, draft: Draft): boolean {
+  return (
+    field.type === 'number' &&
+    field.min === 0 &&
+    field.max === 1 &&
+    (draft === '0' || draft === '1')
   )
 }
 
@@ -267,6 +278,25 @@ function FieldControl({
   }
 
   const describedBy = field.hint === null ? undefined : hintId
+  if (isToggle(field, draft)) {
+    // A 0..1 number is a flag, such as a condition: same '0'/'1' draft as the number input.
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={id}
+            checked={draft === '1'}
+            aria-describedby={describedBy}
+            onCheckedChange={(checked) => {
+              onChange(checked === true ? '1' : '0')
+            }}
+          />
+          <Label htmlFor={id}>{field.label}</Label>
+        </div>
+        {hint}
+      </div>
+    )
+  }
   return (
     <div className="space-y-1">
       <Label htmlFor={id}>{field.label}</Label>

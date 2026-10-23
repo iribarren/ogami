@@ -77,11 +77,24 @@ export function ReleasesTab({
   }
   if (releases.data.length === 0) {
     return (
-      <section aria-label="Releases" className="space-y-2">
-        <p className="font-medium">Never published</p>
-        <p className="text-muted-foreground">
-          Publish the draft to create version 1. Releases appear here, newest first.
-        </p>
+      <section aria-label="Releases" className="w-full max-w-[400px] panel">
+        <div className="panel-head">
+          <IconTile size="sm">
+            <Package />
+          </IconTile>
+          <h2 className="font-heading text-panel-title">Releases</h2>
+        </div>
+        <div className="empty-state">
+          <IconTile size="sm">
+            <Package />
+          </IconTile>
+          <div className="space-y-1">
+            <p className="font-medium">Never published</p>
+            <p className="text-muted-foreground">
+              Publish the draft to create version 1. Releases appear here, newest first.
+            </p>
+          </div>
+        </div>
       </section>
     )
   }

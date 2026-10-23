@@ -62,7 +62,15 @@ export function PublishDialog({
           Publish
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          // The first field, not the Close button (whose tooltip would pop up at once).
+          event.preventDefault()
+          if (event.currentTarget instanceof HTMLElement) {
+            event.currentTarget.querySelector('textarea')?.focus()
+          }
+        }}
+      >
         <div className="flex items-start gap-3">
           <IconTile size="lg">
             <Upload />

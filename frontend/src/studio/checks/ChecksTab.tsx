@@ -393,12 +393,14 @@ function CheckRow({
 
   return (
     <li aria-current={selected ? 'true' : undefined} className="list-row">
-      <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="list-row-title">{typeof label === 'string' ? label : key}</span>
-        <span className="list-row-key break-all">{key}</span>
-        <Badge variant="secondary">{typeof dice === 'string' ? dice : 'no dice'}</Badge>
-        {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
-      </p>
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="list-row-title">{typeof label === 'string' ? label : key}</p>
+        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="list-row-key break-all">{key}</span>
+          <Badge variant="secondary">{typeof dice === 'string' ? dice : 'no dice'}</Badge>
+          {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
+        </p>
+      </div>
       <IconButton
         label={`Edit ${key}`}
         dense

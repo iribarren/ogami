@@ -56,6 +56,16 @@ describe('the publish dialog', () => {
     expect(dialog.getByText('0 / 2,000')).toBeInTheDocument()
   })
 
+  it('opens with the release notes focused, not the Close button', async () => {
+    const user = userEvent.setup()
+    renderPublishable()
+
+    const dialog = await openDialog(user)
+
+    expect(dialog.getByRole('textbox', { name: /Release notes/ })).toHaveFocus()
+    expect(dialog.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
   it('creates version 1 for a draft that was never published', async () => {
     const user = userEvent.setup()
     renderPublishable()

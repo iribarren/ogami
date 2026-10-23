@@ -121,7 +121,7 @@ describe('the GameSystem page', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('My draft!')
   })
 
-  it('lists the section counts with their editors still to come', async () => {
+  it('lists the section counts, each with a link to its editor tab', async () => {
     const user = userEvent.setup()
     renderDraft()
 
@@ -131,7 +131,11 @@ describe('the GameSystem page', () => {
     expect(items).toHaveLength(4)
     expect(items[0]).toHaveTextContent('Oracle tables')
     expect(items[0]).toHaveTextContent('2')
-    expect(items[0]).toHaveTextContent('Editor coming')
+    expect(items[0]).not.toHaveTextContent('Editor coming')
+    expect(within(items[0]).getByRole('link', { name: 'Open Oracle tables' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft?tab=oracles',
+    )
   })
 })
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Clapperboard } from 'lucide-react'
+import { ArrowLeft, Clapperboard } from 'lucide-react'
 
 import { EditorFrame } from '../../EditorFrame'
 import { StudioError } from '../../useGameSystems'
@@ -28,8 +28,9 @@ export function SceneTypeEditorPage({
     <Link
       to="/studio/game-systems/$key"
       params={{ key: gameSystemKey }}
-      className="text-sm underline-offset-4 hover:underline"
+      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
     >
+      <ArrowLeft aria-hidden="true" className="size-4" />
       Back to {gameSystemKey}
     </Link>
   )

@@ -67,7 +67,7 @@ function GameSystems() {
 
 function GameSystemCard({ gameSystem }: { gameSystem: GameSystemSummary }) {
   return (
-    <div className="flex gap-3 panel p-4">
+    <div className="flex h-full gap-3 panel p-4">
       <IconTile size="lg">
         <span className="font-heading text-xl font-bold">
           {gameSystem.name.trim().charAt(0).toUpperCase() || '?'}

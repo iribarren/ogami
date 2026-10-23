@@ -1,7 +1,7 @@
 # Feature: play-pbta-findings
 
 - **Locator:** `odd/tasks/play-pbta-findings.md` · Engram topic `odd/play-pbta-findings/tasks`
-- **Issue:** #253 · **Branch:** `fix/play-pbta-findings-2-check-breakdown` · **Status:** slice 2 in progress
+- **Issue:** #253 · **Branch:** `feat/play-pbta-findings-3-tag-scope` · **Status:** slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7e
@@ -61,8 +61,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | T2 | 1 | P8: list fields in the character summary | writer (delegated) | [x] | a6c200a |
 | T3 | — | P12: dropped after the replay (content fix in T9) | — | [x] | — |
 | T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | 65d3f43 |
-| T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [x] | |
-| T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [x] | |
+| T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [x] | 177dc27 |
+| T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [x] | 8f51169 |
 | T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [ ] | |
 | T8 | 3 | P10 Play: translator, `Tag`, `ItemRules`, `TagView`, `TagFields` filter; upgrade planner for tags that stop applying | writer (delegated) | [ ] | |
 | T9 | 4 | v5 content in Studio (Chrome): Climax check into the Climax scene (P12), sheet layout, scoped tags; re-export; preset tests | Chrome worker + writer (delegated) | [ ] | |
@@ -86,12 +86,15 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 - 2026-10-24 T5: `CheckContent` records `hint`, `modifierFormula` and `modifierTerms` (`{reference, label, value}`, one per formula reference, labels from the release sheet and tracker names via `ReferenceLabels`); both handlers record them; legacy entries read `null`/`null`/`[]`; malformed values fail closed. No real RED: the implementation was written before its tests; the one failure seen was a wrong sum in my own test. GREEN: `tests/Unit/Play` + `tests/Integration/Play`, including an API test for a check with and without a modifier and one for a legacy row.
 - 2026-10-24 T6: the check card shows the stored hint and the modifier breakdown (`Hands (4) + Edge (2)`), also at a zero modifier when a formula exists; legacy entries render as before. RED: 3 of 4 new `JournalEntryView.test.tsx` tests failed (the legacy test passed on first run, it pins today's output); GREEN: `src/play` + `src/shared/sheet` 528 tests, `tsc` clean.
 
+- 2026-10-24 R3-001..003 (slice 2 review): the card's `explainModifier` replaces every `{...}` token of the formula and lists the terms (`Hot (2), Edge (1)`) when one has no matching term; evaluation reads every formula reference (no short-circuit), so the breakdown cannot diverge, now pinned by evaluation-failure rows (`0 * {ghost}`, `min()`, repeated reference); a handler test asserts the hint, formula and terms the flow-step check records. RED: only the unmatched-reference card test failed; the PHP tests passed first run (no real RED, they pin existing behaviour); GREEN: `CheckTest` + `CompleteFlowStepCheckHandlerTest` 163, `JournalEntryView.test.tsx` 27.
+
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-ac9260f5b4d50984` (medium) | 7bdfe4a, a6c200a, 65d3f43 | Approved, acknowledged. R3-001 (blank list items summarise as "Gear: , "; no 40-character boundary test, `sheetValues.ts:68-83`): fixed in slice 2 | [#261](https://github.com/iribarren/ogami/pull/261) |
+| 2 | `review-8e36c20cc3a5f8aa` (medium) | 59bcccb, 177dc27, 8f51169 | Approved, acknowledged. R3-001 (warning: the breakdown re-reads every formula reference after evaluation, no test for a formula with unresolvable references, `Check.php:94`), R3-002 (no test asserts the content the flow-step check path records, `CompleteFlowStepHandler.php:289`), R3-003 (the card's token replacement relies on the formula text spelling references like the term tokens, no test for non-canonical input, `JournalEntryView.tsx:244-251`): fixed in slice 3 | [#262](https://github.com/iribarren/ogami/pull/262) |
 
 ## Next step
 
-Slice 2 writer: R3-001 fix, then T5 and T6.
+Slice 3 writer: slice 2 findings (R3-001, R3-002, R3-003), then T7 and T8.

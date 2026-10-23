@@ -53,7 +53,7 @@ final class CheckStepReleases
         $sceneType = new SceneType('job', 'Job', 'Do the job.', null, [], new StepList($inTheWorldTurn ? [$prompt('wrap')] : [$step, $prompt('pass'), $prompt('fumble')]), new StepList(), new StepList());
         $phase = new Phase('roam', 'Roaming', null, PhaseMode::Loop, SceneSelection::player(['job']), worldTurn: new StepList($inTheWorldTurn ? [$step, $prompt('pass')] : []));
         $checks = [
-            new Check('skill', 'Skill check', null, DiceExpression::fromString('1d10'), Formula::fromString('{hands} * 2'), new CheckDifficulty('Difficulty Value', 13, 9, 29), [
+            new Check('skill', 'Skill check', 'Sneak quietly.', DiceExpression::fromString('1d10'), Formula::fromString('{hands} * 2'), new CheckDifficulty('Difficulty Value', 13, 9, 29), [
                 new CheckBand('fail', 'Fail', Formula::fromString('{check:difficulty} - 1')),
                 new CheckBand('success', 'Success', Formula::fromString('{check:difficulty} + 4')),
                 new CheckBand('crit', 'Critical success'),

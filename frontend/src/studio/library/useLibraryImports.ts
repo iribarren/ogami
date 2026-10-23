@@ -7,6 +7,7 @@ import {
   explainedRefusals,
   gameSystemKey,
   gameSystemsKey,
+  invalidateOtherDraftReads,
   StudioError,
   studioError,
 } from '../useGameSystems'
@@ -18,9 +19,6 @@ export type LibraryImportPreview = components['schemas']['LibraryImportPreviewRe
 export type LibraryItemRef = components['schemas']['LibraryItemRefRequest']
 
 const importsSegment = 'library-imports'
-
-/** Where the segment sits in a key: right after the draft's key. */
-const importsSegmentIndex = gameSystemKey('').length
 
 export const libraryImportsKey = (key: string) => [...gameSystemKey(key), importsSegment] as const
 
@@ -84,12 +82,7 @@ function useImportsWrite<Variables>(
     mutationFn: write,
     onSuccess: (imports) => {
       queryClient.setQueryData(libraryImportsKey(key), imports)
-      void queryClient.invalidateQueries({
-        queryKey: gameSystemKey(key),
-        // The imports query is set from the answer: it is the only one under the draft's key
-        // with the imports segment right after it.
-        predicate: (query) => query.queryKey[importsSegmentIndex] !== importsSegment,
-      })
+      invalidateOtherDraftReads(queryClient, key, libraryImportsKey(key), imports.version)
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
     },
   })

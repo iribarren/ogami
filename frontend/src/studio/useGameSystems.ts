@@ -1,5 +1,6 @@
 import {
   hashKey,
+  type Query,
   type QueryClient,
   type QueryKey,
   useMutation,
@@ -69,18 +70,36 @@ export const validationKey = (key: string) => [...gameSystemKey(key), 'validatio
  * Every section of a draft (overview, narrative, oracles, sheet, checks, validation) shares one
  * draft version, and each cached read carries it. After a write, `written` is the query just set
  * from the write's answer; every other query under the draft's key holds the version that write
- * replaced, so it is marked stale: a sibling read that is not refetched would send a stale
- * `expectedVersion` with the next write.
+ * replaced. When the write answered the new draft `version`, the section reads (one segment below
+ * the draft's key, with a numeric `version`; releases and validation are not) take it at once, so
+ * a write sent before the refetch resolves carries the right `expectedVersion`. Every other query
+ * is marked stale and refetched.
  */
 export function invalidateOtherDraftReads(
   queryClient: QueryClient,
   key: string,
   written: QueryKey,
+  version?: number,
 ) {
-  void queryClient.invalidateQueries({
-    queryKey: gameSystemKey(key),
-    predicate: (query) => hashKey(query.queryKey) !== hashKey(written),
-  })
+  const draftKey = gameSystemKey(key)
+  const others = (query: Query) => hashKey(query.queryKey) !== hashKey(written)
+  if (version !== undefined) {
+    for (const query of queryClient.getQueryCache().findAll({ queryKey: draftKey })) {
+      const data: unknown = query.state.data
+      if (
+        others(query) &&
+        query.queryKey.length === draftKey.length + 1 &&
+        typeof data === 'object' &&
+        data !== null &&
+        !Array.isArray(data) &&
+        'version' in data &&
+        typeof data.version === 'number'
+      ) {
+        queryClient.setQueryData(query.queryKey, { ...data, version })
+      }
+    }
+  }
+  void queryClient.invalidateQueries({ queryKey: draftKey, predicate: others })
 }
 
 /** A 404 (unknown key, or someone else's) will not change by asking again. */

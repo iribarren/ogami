@@ -78,7 +78,7 @@ function useCheckWrite<Variables>(
     mutationFn: write,
     onSuccess: (checks) => {
       queryClient.setQueryData(checksKey(key), checks)
-      invalidateOtherDraftReads(queryClient, key, checksKey(key))
+      invalidateOtherDraftReads(queryClient, key, checksKey(key), checks.version)
     },
     onError: (error) => {
       if (error instanceof StudioError && error.status === 409) {

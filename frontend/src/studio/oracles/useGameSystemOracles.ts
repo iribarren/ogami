@@ -80,7 +80,7 @@ function useOracleWrite<Variables>(
     mutationFn: write,
     onSuccess: (oracles) => {
       queryClient.setQueryData(oraclesKey(key), oracles)
-      invalidateOtherDraftReads(queryClient, key, oraclesKey(key))
+      invalidateOtherDraftReads(queryClient, key, oraclesKey(key), oracles.version)
     },
   })
 }

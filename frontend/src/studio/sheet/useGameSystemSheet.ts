@@ -77,7 +77,7 @@ function useSheetWrite<Variables>(
     mutationFn: write,
     onSuccess: (sheet) => {
       queryClient.setQueryData(sheetKey(key), sheet)
-      invalidateOtherDraftReads(queryClient, key, sheetKey(key))
+      invalidateOtherDraftReads(queryClient, key, sheetKey(key), sheet.version)
     },
     onError: (error) => {
       if (error instanceof StudioError && error.status === 409) {

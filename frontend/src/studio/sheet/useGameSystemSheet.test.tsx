@@ -6,8 +6,8 @@ import { createQueryClient } from '@/app/queryClient'
 import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 
-import { sheet } from '../fixtures'
-import { narrativeKey } from '../narrative/useGameSystemNarrative'
+import { narrative, sheet } from '../fixtures'
+import { narrativeKey, useSaveNarrativeItem } from '../narrative/useGameSystemNarrative'
 import { gameSystemKey, validationKey } from '../useGameSystems'
 import {
   SheetError,
@@ -83,6 +83,58 @@ describe('the sheet writes', () => {
       message: 'index: out of range',
       paths: [],
     })
+  })
+
+  it('write the answered version into the other cached section reads, so the next write sends it', async () => {
+    const sent: unknown[] = []
+    const { client, wrapper } = setup({
+      [`POST ${base}/sheet/fields/pow/move`]: () => Response.json({ ...sheet, version: 8 }),
+      [`POST ${base}/narrative/tags`]: async (request) => {
+        sent.push(await request.json())
+        return Response.json({ ...narrative, version: 9 }, { status: 201 })
+      },
+    })
+    client.setQueryData(narrativeKey('my-draft'), { ...narrative, version: 7 })
+    const { result } = renderHook(
+      () => ({ move: useMoveSheetField('my-draft'), save: useSaveNarrativeItem('my-draft') }),
+      { wrapper },
+    )
+
+    result.current.move.mutate({ expectedVersion: 7, field: 'pow', index: 2 })
+
+    await waitFor(() => {
+      expect(result.current.move.isSuccess).toBe(true)
+    })
+    const cached = client.getQueryData<{ version: number }>(narrativeKey('my-draft'))
+    expect(cached?.version).toBe(8)
+    result.current.save.mutate({
+      expectedVersion: cached?.version ?? 0,
+      section: 'tags',
+      original: null,
+      item: { key: 'crew', label: 'Crew' },
+    })
+    await waitFor(() => {
+      expect(sent).toEqual([{ expectedVersion: 8, item: { key: 'crew', label: 'Crew' } }])
+    })
+  })
+
+  it('leave a cached query that is not a section read alone', async () => {
+    const { client, wrapper } = setup({
+      [`POST ${base}/sheet/fields/pow/move`]: () => Response.json({ ...sheet, version: 8 }),
+    })
+    const releases = [{ version: 3 }]
+    const release = { version: 3, notes: null }
+    client.setQueryData([...gameSystemKey('my-draft'), 'releases'], releases)
+    client.setQueryData([...gameSystemKey('my-draft'), 'releases', 3], release)
+    const { result } = renderHook(() => useMoveSheetField('my-draft'), { wrapper })
+
+    result.current.mutate({ expectedVersion: 7, field: 'pow', index: 2 })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    expect(client.getQueryData([...gameSystemKey('my-draft'), 'releases'])).toBe(releases)
+    expect(client.getQueryData([...gameSystemKey('my-draft'), 'releases', 3])).toBe(release)
   })
 
   it('use a generic message for a status the API does not explain', async () => {

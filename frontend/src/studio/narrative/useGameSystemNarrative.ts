@@ -81,7 +81,7 @@ function useNarrativeWrite<Variables>(
     mutationFn: write,
     onSuccess: (narrative) => {
       queryClient.setQueryData(narrativeKey(key), narrative)
-      invalidateOtherDraftReads(queryClient, key, narrativeKey(key))
+      invalidateOtherDraftReads(queryClient, key, narrativeKey(key), narrative.version)
     },
   })
 }

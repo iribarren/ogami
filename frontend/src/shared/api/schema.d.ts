@@ -2365,6 +2365,13 @@ export interface components {
              * @example Runs a faction or a crew.
              */
             hint: string | null;
+            /**
+             * @description The entity kinds that may carry the Tag; null when it applies to every kind.
+             * @example [
+             *       "npc"
+             *     ]
+             */
+            appliesTo: ("character" | "npc" | "thread")[] | null;
         };
         CheckDifficultyResponse: {
             /**

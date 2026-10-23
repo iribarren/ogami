@@ -404,8 +404,8 @@ final class Steps
             $step['tracker'] = Effects::tracker($step['tracker'], $path.'.tracker', $catalog);
         } elseif (isset($step['count'])) {
             $count = ReleaseFields::object($step['count'], $path.'.count', self::CONDITION_COUNT);
-            ReleaseFields::oneOf($count['of'], $path.'.count.of', self::ITEM_KINDS);
-            $count['tags'] = Effects::tags($count['tags'] ?? null, $path.'.count.tags', $catalog, $count['of']);
+            $of = ReleaseFields::oneOf($count['of'], $path.'.count.of', self::ITEM_KINDS);
+            $count['tags'] = Effects::tags($count['tags'] ?? null, $path.'.count.tags', $catalog, $of);
             $step['count'] = array_filter($count, static fn (mixed $field): bool => [] !== $field);
         } else {
             throw InvalidReleaseContent::at($path, 'requires tracker or count');
@@ -423,9 +423,9 @@ final class Steps
      */
     private static function pick(array $step, string $path, Catalog $catalog): array
     {
-        ReleaseFields::oneOf($step['of'], $path.'.of', self::ITEM_KINDS);
+        $of = ReleaseFields::oneOf($step['of'], $path.'.of', self::ITEM_KINDS);
         ReleaseFields::oneOf($step['mode'], $path.'.mode', ['random', 'choose']);
-        $step['tags'] = Effects::tags($step['tags'] ?? null, $path.'.tags', $catalog, $step['of']);
+        $step['tags'] = Effects::tags($step['tags'] ?? null, $path.'.tags', $catalog, $of);
 
         if (isset($step['count'])) {
             $count = ReleaseFields::object($step['count'], $path.'.count', self::PICK_COUNT);

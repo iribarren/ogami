@@ -177,7 +177,7 @@ final class ReleaseVersion2
         [$sceneTypeList, $sceneTypeKeys] = $sceneTypes;
         /** @var array<string, string> $fieldTypes */
         $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: array_column($tags[0], 'appliesTo', 'key'));
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: self::tagScopes($tags[0]));
         $checks = $stages->run(static fn (): array => Checks::validate($release['checks'], $fieldTypes, $catalog));
         if (null === $checks) {
             return null;
@@ -395,7 +395,25 @@ final class ReleaseVersion2
     }
 
     /**
-     * @return non-empty-list<string> unique entity kinds
+     * @param list<array<string, mixed>> $tags the canonical tags
+     *
+     * @return array<string, list<string>> the entity kinds of each tag that has a scope, by tag key
+     */
+    private static function tagScopes(array $tags): array
+    {
+        $scopes = [];
+        foreach ($tags as $tag) {
+            /** @var array{key: string, appliesTo?: list<string>} $tag */
+            if (isset($tag['appliesTo'])) {
+                $scopes[$tag['key']] = $tag['appliesTo'];
+            }
+        }
+
+        return $scopes;
+    }
+
+    /**
+     * @return list<string> unique entity kinds, at least one
      */
     private static function appliesTo(mixed $value, string $path): array
     {

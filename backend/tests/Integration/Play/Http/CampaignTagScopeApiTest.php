@@ -54,10 +54,7 @@ final class CampaignTagScopeApiTest extends WebTestCase
     {
         $id = $this->createCampaign();
 
-        $this->client->request('GET', '/api/campaigns/'.$id);
-
-        self::assertResponseIsSuccessful();
-        self::assertSame([['leader', null], ['ally', null], ['hostile', null], ['villain', ['npc']], ['goal', ['thread']], ['hero', ['character']]], array_map(static fn (array $tag): array => [$tag['key'], $tag['appliesTo']], $this->json()['tags']));
+        self::assertSame([['leader', null], ['ally', null], ['hostile', null], ['villain', ['npc']], ['goal', ['thread']], ['hero', ['character']]], array_map(static fn (array $tag): array => [$tag['key'], $tag['appliesTo']], $this->campaignList($id, 'tags')));
     }
 
     /**
@@ -80,6 +77,7 @@ final class CampaignTagScopeApiTest extends WebTestCase
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/%s', $id, $list), ['name' => 'First', 'tags' => [$own]]);
         self::assertResponseStatusCodeSame(201);
         $item = $this->json()['id'];
+        self::assertIsString($item);
 
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/%s', $id, $list), ['name' => 'Second', 'tags' => [$own, $tag]]);
         self::assertResponseStatusCodeSame(422);
@@ -89,8 +87,7 @@ final class CampaignTagScopeApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(422);
         self::assertSame(['error' => \sprintf('Tag "%s" does not apply to %s.', $tag, $kind)], $this->json());
 
-        $this->client->request('GET', '/api/campaigns/'.$id);
-        $items = $this->json()[$list];
+        $items = $this->campaignList($id, $list);
         self::assertCount(1, $items);
         self::assertSame([$own], $items[0]['tags']);
     }
@@ -99,8 +96,26 @@ final class CampaignTagScopeApiTest extends WebTestCase
     {
         $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => 'threads-npcs']);
         self::assertResponseStatusCodeSame(201);
+        $id = $this->json()['id'] ?? null;
+        self::assertIsString($id);
 
-        return $this->json()['id'];
+        return $id;
+    }
+
+    /**
+     * @return list<array<string, mixed>> a list of GET /api/campaigns/{id}: tags, npcs, threads or characters
+     */
+    private function campaignList(string $id, string $name): array
+    {
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        self::assertResponseIsSuccessful();
+        $items = $this->json()[$name] ?? null;
+        self::assertIsArray($items);
+
+        /** @var list<array<string, mixed>> $list */
+        $list = array_values($items);
+
+        return $list;
     }
 
     /**

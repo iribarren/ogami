@@ -38,23 +38,34 @@ final class ReleaseContentTagScopeTest extends TestCase
         return ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-threads-npcs'), $path, $value);
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function tags(ReleaseContent $content): array
+    {
+        /** @var list<array<string, mixed>> $tags */
+        $tags = $content->toArray()['tags'] ?? [];
+
+        return $tags;
+    }
+
     #[Test]
     public function aTagKeepsItsScopeInTheCanonicalForm(): void
     {
         $content = ReleaseContent::fromArray(self::release('tags.0.appliesTo', ['npc', 'thread']));
 
-        self::assertSame(['npc', 'thread'], $content->toArray()['tags'][0]['appliesTo'] ?? null);
+        self::assertSame(['npc', 'thread'], $this->tags($content)[0]['appliesTo'] ?? null);
         self::assertSame($content->hash(), ReleaseContent::fromArray($content->toArray())->hash());
     }
 
     #[Test]
     public function aTagWithoutAScopeOrWithANullOneHasNoScopeInTheCanonicalForm(): void
     {
-        $legacy = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-threads-npcs'))->toArray();
-        $null = ReleaseContent::fromArray(self::release('tags.1.appliesTo', null))->toArray();
+        $legacy = $this->tags(ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-threads-npcs')));
+        $null = $this->tags(ReleaseContent::fromArray(self::release('tags.1.appliesTo', null)));
 
-        self::assertArrayNotHasKey('appliesTo', $legacy['tags'][1]);
-        self::assertArrayNotHasKey('appliesTo', $null['tags'][1]);
+        self::assertArrayNotHasKey('appliesTo', $legacy[1]);
+        self::assertArrayNotHasKey('appliesTo', $null[1]);
     }
 
     /**
@@ -86,7 +97,8 @@ final class ReleaseContentTagScopeTest extends TestCase
     /**
      * The fixture with one more tag (index 3) that applies to the given kinds only.
      *
-     * @param list<string> $appliesTo
+     * @param list<string>  $appliesTo
+     * @param ?array<mixed> $release
      *
      * @return array<mixed>
      */

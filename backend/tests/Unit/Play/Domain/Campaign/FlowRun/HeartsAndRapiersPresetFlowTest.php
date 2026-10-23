@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
@@ -82,7 +83,9 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
         $campaign->endFlowScene(3, $this->release, self::at());
         $campaign->moveOn('scenes', $this->release, self::at());
 
-        self::assertSame(['climax', 'check-1'], [$campaign->flowRunView($this->release)?->progress?->phaseKey, self::position($campaign)[1]]);
+        // The confrontation is the opening of the Climax's one Swashbuckle scene, not of the phase.
+        $progress = $campaign->flowRunView($this->release)?->progress;
+        self::assertSame(['climax', 'Swashbuckle', ScenePart::SceneOpening, 'check-1'], [$progress?->phaseKey, $progress->sceneType ?? null, $progress->part ?? null, self::position($campaign)[1]]);
         $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'fight-daring', 2, 3), $this->release, self::at());
 
         self::assertSame([['xp', 0, 1]], array_map(static fn (SheetChange $change): array => [$change->field, $change->before, $change->after], $changes));

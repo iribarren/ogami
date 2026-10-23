@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderWithApi } from '@/test/renderWithApi'
 
 import { heatTracker, lostMineCampaign } from '../campaigns/fixtures'
+import type { Campaign } from '../campaigns/useCampaigns'
 import { recordedEntry, stormyWeather, lockedDoorAnswer } from '../journal/fixtures'
 import { OraclePanel } from './OraclePanel'
 
@@ -109,6 +110,19 @@ describe('OraclePanel', () => {
     await vi.waitFor(() => {
       expect(sent).toEqual([{ likelihood: 'even' }])
     })
+  })
+
+  it('asks for the chaos factor when the oracle comes without a chaosTracker at all', () => {
+    const [fate] = lostMineCampaign.likelihoodOracles
+    // An oracle as an older API sent it: the chaosTracker key is absent, not null.
+    const withoutTracker = Object.fromEntries(
+      Object.entries(fate ?? {}).filter(([key]) => key !== 'chaosTracker'),
+    ) as Campaign['likelihoodOracles'][number]
+    renderWithApi(
+      <OraclePanel campaignId={campaignId} tables={[]} likelihoodOracles={[withoutTracker]} />,
+    )
+
+    expect(within(oracleForm('Fate question')).getByLabelText('Chaos factor')).toBeInTheDocument()
   })
 
   it('shows the chaos factor a Tracker holds instead of asking for it, and sends none', async () => {

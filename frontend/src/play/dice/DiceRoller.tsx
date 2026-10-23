@@ -36,18 +36,25 @@ export function DiceRoller({
   presets = defaultPresets,
 }: DiceRollerProps) {
   const [expression, setExpression] = useState(initialExpression)
+  const [missing, setMissing] = useState(false)
   const inputId = useId()
   const blocked = disabled || pending
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (expression.trim() !== '' && !blocked) {
-      onRoll(expression)
+    if (blocked) {
+      return
     }
+    if (expression.trim() === '') {
+      setMissing(true)
+      return
+    }
+    onRoll(expression)
   }
 
   function rollPreset(preset: string) {
     setExpression(preset)
+    setMissing(false)
     onRoll(preset)
   }
 
@@ -62,6 +69,7 @@ export function DiceRoller({
             value={expression}
             onChange={(event) => {
               setExpression(event.target.value)
+              setMissing(false)
             }}
             placeholder="2d6+1"
             autoComplete="off"
@@ -95,6 +103,12 @@ export function DiceRoller({
             </Button>
           ))}
         </div>
+      )}
+
+      {missing && (
+        <p role="alert" className="text-sm text-destructive">
+          Type a dice expression
+        </p>
       )}
 
       {error && (

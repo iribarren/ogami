@@ -4,7 +4,7 @@ import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
-import { attachableIn, attachmentLabel } from './attachments'
+import { attachableIn, attachmentLabel, MAX_ATTACHMENTS } from './attachments'
 import { useJournal, useRecordNote } from './useJournal'
 
 /** The API's limit on a note (`NoteContent::MAX_LENGTH`), after trimming. */
@@ -36,6 +36,8 @@ export function NoteComposer({
   // Only results of the current scene count: after a scene change the old picks drop out. They
   // go in journal order, not in the order they were clicked.
   const attachments = attachable.filter(({ id }) => picked.has(id)).map(({ id }) => id)
+
+  const full = attachments.length >= MAX_ATTACHMENTS
 
   function toggle(id: string) {
     const next = new Set(picked)
@@ -95,6 +97,7 @@ export function NoteComposer({
                       type="checkbox"
                       className="size-4 accent-primary"
                       checked={picked.has(entry.id)}
+                      disabled={full && !picked.has(entry.id)}
                       onChange={() => {
                         toggle(entry.id)
                       }}
@@ -104,6 +107,11 @@ export function NoteComposer({
                 </li>
               ))}
             </ul>
+          )}
+          {open && full && (
+            <p className="text-sm text-muted-foreground">
+              Up to {MAX_ATTACHMENTS} results can be attached.
+            </p>
           )}
         </div>
       )}

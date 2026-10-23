@@ -159,7 +159,9 @@ function LikelihoodOracleForm({
   const [likelihood, setLikelihood] = useState(middleLevel?.key ?? '')
   const [question, setQuestion] = useState('')
   // An oracle that reads its chaos factor from a Tracker takes none from the player.
-  const askChaos = oracle.chaos !== null && oracle.chaosTracker === null
+  // An oracle that comes without the key at all (an older API) is one without a Tracker.
+  const chaosTracker = oracle.chaosTracker ?? null
+  const askChaos = oracle.chaos !== null && chaosTracker === null
   const [chaosFactor, setChaosFactor] = useState(
     askChaos && oracle.chaos !== null ? String(oracle.chaos.neutral) : '',
   )
@@ -226,8 +228,8 @@ function LikelihoodOracleForm({
             ))}
           </NativeSelect>
         </div>
-        {oracle.chaosTracker !== null && (
-          <TrackerChaosFactor campaignId={campaignId} trackerKey={oracle.chaosTracker} />
+        {chaosTracker !== null && (
+          <TrackerChaosFactor campaignId={campaignId} trackerKey={chaosTracker} />
         )}
         {askChaos && oracle.chaos !== null && (
           <div className="w-28 space-y-2">

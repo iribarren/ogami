@@ -1,5 +1,8 @@
 import type { JournalEntry } from './useJournal'
 
+/** The API's limit on the results a note attaches (`NoteContent::MAX_ATTACHMENTS`). */
+export const MAX_ATTACHMENTS = 20
+
 /**
  * Whether a result can be attached to a note: a roll, a table or a Likelihood oracle, or a check.
  * A random event result is not: it already belongs to its question (`NoteContent` rules).

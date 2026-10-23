@@ -246,6 +246,29 @@ describe('the Facts panel', () => {
     })
   })
 
+  it('tells an NPC and a Thread with the same id apart when linking', async () => {
+    const user = userEvent.setup()
+    const twin = { ...vaultThread, id: miraNpc.id, name: 'Mira, the thread' }
+    renderFacts({ ...lostMineWithFacts, threads: [...lostMineWithFacts.threads, twin] })
+
+    const panel = await facts()
+    await user.click(panel.getByRole('button', { name: 'Edit links of The oath' }))
+    const form = within(panel.getByRole('form', { name: 'Links of The oath' }))
+    await user.selectOptions(form.getByLabelText('Link to'), `npc:${miraNpc.id}`)
+    await user.click(form.getByRole('button', { name: 'Add link' }))
+
+    // Linking the NPC leaves the Thread with the same id on offer.
+    expect(form.getByRole('option', { name: 'Thread: Mira, the thread' })).toBeInTheDocument()
+    expect(form.queryByRole('option', { name: 'NPC: Mira Vane' })).not.toBeInTheDocument()
+    await user.selectOptions(form.getByLabelText('Link to'), `thread:${miraNpc.id}`)
+    await user.click(form.getByRole('button', { name: 'Add link' }))
+
+    // Removing one of the two removes only that one.
+    await user.click(form.getByRole('button', { name: `Remove link ${miraNpc.name}` }))
+    expect(form.getByRole('button', { name: 'Remove link Mira, the thread' })).toBeInTheDocument()
+    expect(form.getByRole('option', { name: 'NPC: Mira Vane' })).toBeInTheDocument()
+  })
+
   it('stops offering links at the limit of 20', async () => {
     const user = userEvent.setup()
     const many = Array.from({ length: 20 }, (_, index) => ({

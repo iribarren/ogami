@@ -10,4 +10,9 @@ final class UserNotFound extends \RuntimeException
     {
         return new self(\sprintf('No user with id "%s".', $id));
     }
+
+    public static function withEmail(string $email): self
+    {
+        return new self(\sprintf('No user with email "%s".', $email));
+    }
 }

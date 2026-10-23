@@ -7,9 +7,11 @@ namespace App\Identity\Infrastructure\Console;
 use App\Identity\Application\CreateUser;
 use App\Identity\Application\EmailAlreadyInUse;
 use App\Identity\Application\PasswordMustNotBeEmpty;
+use App\Identity\Application\ResetUserCredentials;
 use App\Identity\Application\UnknownRole;
 use App\Identity\Application\UserIdAlreadyInUse;
 use App\Identity\Application\UserIdGenerator;
+use App\Identity\Application\UserNotFound;
 use App\Identity\Domain\InvalidEmail;
 use App\Identity\Domain\Role;
 use App\Identity\Domain\UserMustHaveARole;
@@ -40,12 +42,19 @@ final class CreateUserConsoleCommand extends Command
             ->addArgument('email', InputArgument::REQUIRED, 'The email the user signs in with')
             ->addOption('role', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, \sprintf('A role (%s); repeat for several', $roles))
             ->addOption('password', null, InputOption::VALUE_REQUIRED, 'The password; asked for (hidden) when omitted in an interactive shell')
-            ->addOption('if-missing', null, InputOption::VALUE_NONE, 'Succeed without changes when a user with this email already exists (idempotent seeding)');
+            ->addOption('if-missing', null, InputOption::VALUE_NONE, 'Succeed without changes when a user with this email already exists (idempotent seeding)')
+            ->addOption('reset-existing', null, InputOption::VALUE_NONE, 'When a user with this email exists, set its password and roles to these and enable it');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        if (true === $input->getOption('if-missing') && true === $input->getOption('reset-existing')) {
+            $io->error('--if-missing leaves an existing user unchanged and --reset-existing changes it: give only one.');
+
+            return Command::FAILURE;
+        }
 
         /** @var string $email */
         $email = $input->getArgument('email');
@@ -73,6 +82,10 @@ final class CreateUserConsoleCommand extends Command
                 return Command::SUCCESS;
             }
 
+            if (true === $input->getOption('reset-existing')) {
+                return $this->reset($io, $email, $password, $roles);
+            }
+
             $io->error($exception->getMessage());
 
             return Command::FAILURE;
@@ -83,6 +96,24 @@ final class CreateUserConsoleCommand extends Command
         }
 
         $io->success(\sprintf('Created user %s with id %s', $email, $id));
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * @param list<string> $roles
+     */
+    private function reset(SymfonyStyle $io, string $email, string $password, array $roles): int
+    {
+        try {
+            $this->commandBus->dispatch(new ResetUserCredentials($email, $password, $roles));
+        } catch (UserNotFound|InvalidEmail|UnknownRole|PasswordMustNotBeEmpty|UserMustHaveARole $exception) {
+            $io->error($exception->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        $io->success(\sprintf('Reset user %s: password and roles set, user enabled', mb_strtolower(trim($email))));
 
         return Command::SUCCESS;
     }

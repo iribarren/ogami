@@ -6,7 +6,9 @@ namespace App\Tests\Integration\Identity;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\Role;
+use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\UserStatus;
 use App\Identity\Infrastructure\Console\CreateUserConsoleCommand;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -113,6 +115,115 @@ final class CreateUserConsoleCommandTest extends KernelTestCase
     }
 
     #[Test]
+    public function itResetsAnExistingUserWhenAskedToResetExisting(): void
+    {
+        $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['SOLO_PLAYER'], '--password' => 's3cret'],
+            ['interactive' => false],
+        );
+        $existing = $this->user('ada@example.com');
+
+        $exitCode = $this->tester->execute(
+            ['email' => ' Ada@Example.com', '--role' => ['GAME_MANAGER', 'OWNER'], '--password' => 'new-secret', '--reset-existing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString('Reset user ada@example.com', $this->tester->getDisplay());
+        $user = $this->user('ada@example.com');
+        self::assertTrue($existing->id()->equals($user->id()));
+        self::assertSame([Role::GameManager, Role::Owner], $user->roles());
+        self::assertTrue(password_verify('new-secret', $user->passwordHash()));
+        self::assertFalse(password_verify('s3cret', $user->passwordHash()));
+    }
+
+    #[Test]
+    public function itEnablesADisabledUserWhenAskedToResetExisting(): void
+    {
+        $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['SOLO_PLAYER'], '--password' => 's3cret'],
+            ['interactive' => false],
+        );
+        $users = self::getContainer()->get(UserRepository::class);
+        $ada = $this->user('ada@example.com');
+        $ada->disable();
+        $users->save($ada);
+
+        $exitCode = $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['SOLO_PLAYER'], '--password' => 's3cret', '--reset-existing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertSame(UserStatus::Active, $this->user('ada@example.com')->status());
+    }
+
+    #[Test]
+    public function itCreatesAMissingUserWhenAskedToResetExisting(): void
+    {
+        $exitCode = $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['OWNER'], '--password' => 's3cret', '--reset-existing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::SUCCESS, $exitCode, $this->tester->getDisplay());
+        self::assertStringContainsString('Created user', $this->tester->getDisplay());
+        self::assertSame([Role::Owner], $this->user('ada@example.com')->roles());
+    }
+
+    #[Test]
+    public function itLeavesAnExistingUserUntouchedWhenTheResetInputIsInvalid(): void
+    {
+        $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['SOLO_PLAYER'], '--password' => 's3cret'],
+            ['interactive' => false],
+        );
+
+        $exitCode = $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['OWNER', 'ADMIN'], '--password' => 'new-secret', '--reset-existing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertStringContainsString('"ADMIN" is not a role', $this->tester->getDisplay());
+        $user = $this->user('ada@example.com');
+        self::assertSame([Role::SoloPlayer], $user->roles());
+        self::assertTrue(password_verify('s3cret', $user->passwordHash()));
+    }
+
+    #[Test]
+    public function itRejectsResetExistingTogetherWithIfMissing(): void
+    {
+        $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['SOLO_PLAYER'], '--password' => 's3cret'],
+            ['interactive' => false],
+        );
+
+        $exitCode = $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['OWNER'], '--password' => 'other', '--reset-existing' => true, '--if-missing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertStringContainsString('--reset-existing', $this->tester->getDisplay());
+        $user = $this->user('ada@example.com');
+        self::assertSame([Role::SoloPlayer], $user->roles());
+        self::assertTrue(password_verify('s3cret', $user->passwordHash()));
+    }
+
+    #[Test]
+    public function itRejectsResetExistingTogetherWithIfMissingEvenForAMissingUser(): void
+    {
+        $exitCode = $this->tester->execute(
+            ['email' => 'ada@example.com', '--role' => ['OWNER'], '--password' => 's3cret', '--reset-existing' => true, '--if-missing' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertNull(self::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString('ada@example.com')));
+    }
+
+    #[Test]
     public function itRejectsAnUnknownRole(): void
     {
         $exitCode = $this->tester->execute(
@@ -140,5 +251,13 @@ final class CreateUserConsoleCommandTest extends KernelTestCase
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertStringContainsString('--password', $this->tester->getDisplay());
+    }
+
+    private function user(string $email): User
+    {
+        $user = self::getContainer()->get(UserRepository::class)->ofEmail(Email::fromString($email));
+        self::assertNotNull($user);
+
+        return $user;
     }
 }

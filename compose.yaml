@@ -94,8 +94,8 @@ services:
       HOME: /tmp
       CI: ${CI:-}
       E2E_BASE_URL: http://php
-      # Password of the users `make e2e-seed` creates.
-      E2E_PASSWORD: ${E2E_PASSWORD:-e2e-password-123}
+      # Password of the users `make e2e-seed` creates. No default here: the Makefile (`E2E_PASSWORD`) holds the only one.
+      E2E_PASSWORD: ${E2E_PASSWORD:-}
       # Mailpit's HTTP API, where the e2e tests read the account emails.
       MAILPIT_URL: ${MAILPIT_URL:-http://mailpit:8025}
     volumes:

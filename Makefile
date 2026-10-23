@@ -163,14 +163,14 @@ storybook: frontend-install ## Run Storybook at http://localhost:6006 (Ctrl+C to
 storybook-build: frontend-install ## Build the static Storybook into frontend/storybook-static
 	$(NODE_EXEC) pnpm build-storybook
 
-# Password of the seeded e2e users; the playwright service reads it from the environment.
+# Password of the seeded e2e users and the only default for it: the playwright service and the e2e tests read it from the environment.
 export E2E_PASSWORD ?= e2e-password-123
 
 .PHONY: e2e-seed
-e2e-seed: presets ## Migrate the dev database, publish the GameSystem presets and create the e2e users (idempotent)
-	$(PHP_EXEC) php bin/console app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
-	$(PHP_EXEC) php bin/console app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
-	$(PHP_EXEC) php bin/console app:user:create e2e-owner@example.test --role=OWNER --password="$(E2E_PASSWORD)" --if-missing --no-interaction
+e2e-seed: presets ## Migrate the dev database, publish the GameSystem presets and create the e2e users (idempotent; resets drifted users)
+	$(PHP_EXEC) php bin/console app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
+	$(PHP_EXEC) php bin/console app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
+	$(PHP_EXEC) php bin/console app:user:create e2e-owner@example.test --role=OWNER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
 
 .PHONY: e2e
 e2e: frontend-install e2e-seed ## Seed the e2e users and presets, then run the Playwright tests against the running stack (ARGS="--grep smoke")

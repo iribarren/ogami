@@ -4,7 +4,16 @@ import { expect, type Page } from '@playwright/test'
 export const player = 'e2e-player@example.test'
 export const manager = 'e2e-manager@example.test'
 export const owner = 'e2e-owner@example.test'
-export const password = process.env.E2E_PASSWORD ?? 'e2e-password-123'
+export const password = seededPassword()
+
+// The Makefile holds the only default and passes it through the playwright service.
+function seededPassword(): string {
+  const value = process.env.E2E_PASSWORD
+  if (value === undefined || value === '') {
+    throw new Error('E2E_PASSWORD is not set; run the tests with `make e2e`')
+  }
+  return value
+}
 
 /**
  * Fills the sign-in form on the current page and submits it. Asserts nothing, for scenarios that

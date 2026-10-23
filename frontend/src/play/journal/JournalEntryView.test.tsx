@@ -149,6 +149,76 @@ describe('JournalEntryView check entries', () => {
     expect(within(entry).getByText('Total').nextElementSibling).toHaveTextContent(/^12$/)
   })
 
+  it('explains the modifier with the value each reference read, and shows the hint', () => {
+    render(<JournalEntryView entry={skillCheckEntry} />)
+
+    const entry = screen.getByRole('article', { name: 'Check Skill check' })
+    expect(within(entry).getByText('Modifier').nextElementSibling).toHaveTextContent(
+      '+6 · Hands (4) + Edge (2)',
+    )
+    expect(within(entry).getByText('A stat against a Difficulty Value.')).toHaveClass(
+      'text-muted-foreground',
+    )
+  })
+
+  it('keeps the formula operators as written and replaces a repeated reference everywhere', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    const entry = {
+      ...skillCheckEntry,
+      content: {
+        ...content,
+        modifier: 3,
+        modifierFormula: '{hot} - {tracker:chaos} * 2 + {hot}',
+        modifierTerms: [
+          { reference: '{hot}', label: 'Hot', value: 2 },
+          { reference: '{tracker:chaos}', label: 'Chaos factor', value: 1 },
+        ],
+      },
+    }
+    render(<JournalEntryView entry={entry} />)
+
+    expect(screen.getByText('Modifier').nextElementSibling).toHaveTextContent(
+      '+3 · Hot (2) - Chaos factor (1) * 2 + Hot (2)',
+    )
+  })
+
+  it('still shows the breakdown when the modifier totals zero', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    const entry = {
+      ...skillCheckEntry,
+      content: {
+        ...content,
+        modifier: 0,
+        modifierFormula: '{hot} - 1',
+        modifierTerms: [{ reference: '{hot}', label: 'Hot', value: 1 }],
+      },
+    }
+    render(<JournalEntryView entry={entry} />)
+
+    expect(screen.getByText('Modifier').nextElementSibling).toHaveTextContent('0 · Hot (1) - 1')
+  })
+
+  it('renders an entry recorded before the breakdown as it always did', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    const legacy = {
+      ...skillCheckEntry,
+      content: { ...content, hint: null, modifierFormula: null, modifierTerms: [] },
+    }
+    render(<JournalEntryView entry={legacy} />)
+
+    expect(screen.getByText('Modifier').nextElementSibling).toHaveTextContent(/^\+6$/)
+    expect(screen.queryByText('A stat against a Difficulty Value.')).not.toBeInTheDocument()
+  })
+
   it('wraps the dice of a check in a well, and leaves the well out when no dice were rolled', () => {
     const { content } = skillCheckEntry
     if (content.kind !== 'check') {

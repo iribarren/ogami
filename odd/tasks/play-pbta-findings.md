@@ -61,8 +61,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | T2 | 1 | P8: list fields in the character summary | writer (delegated) | [x] | a6c200a |
 | T3 | — | P12: dropped after the replay (content fix in T9) | — | [x] | — |
 | T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | 65d3f43 |
-| T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [ ] | |
-| T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [ ] | |
+| T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [x] | |
+| T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [x] | |
 | T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [ ] | |
 | T8 | 3 | P10 Play: translator, `Tag`, `ItemRules`, `TagView`, `TagFields` filter; upgrade planner for tags that stop applying | writer (delegated) | [ ] | |
 | T9 | 4 | v5 content in Studio (Chrome): Climax check into the Climax scene (P12), sheet layout, scoped tags; re-export; preset tests | Chrome worker + writer (delegated) | [ ] | |
@@ -82,6 +82,9 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 - 2026-10-24 T4: a `number` field with `min 0`, `max 1` and a `'0'`/`'1'` draft renders as a checkbox in `SheetFields` (same draft values, no API change); a value outside 0..1 or any other range stays a number input. RED: 3 toggle tests failed (the legacy `2` and other-range tests passed on first run, they pin the fallback); GREEN: `SheetFields.test.tsx` 11/11. `play-hearts-and-rapiers.spec.ts` does not touch Conditions, so unchanged.
 
 - 2026-10-24 R3-001 (slice 1 review): `summarize()` skips blank (whitespace-only) list items; a list of only blank items reads `Label: 0`. RED: the new blank-items test failed (the 40/41-character boundary test passed on first run, it pins today's behaviour); GREEN: `sheetValues.test.ts` 6/6.
+
+- 2026-10-24 T5: `CheckContent` records `hint`, `modifierFormula` and `modifierTerms` (`{reference, label, value}`, one per formula reference, labels from the release sheet and tracker names via `ReferenceLabels`); both handlers record them; legacy entries read `null`/`null`/`[]`; malformed values fail closed. No real RED: the implementation was written before its tests; the one failure seen was a wrong sum in my own test. GREEN: `tests/Unit/Play` + `tests/Integration/Play`, including an API test for a check with and without a modifier and one for a legacy row.
+- 2026-10-24 T6: the check card shows the stored hint and the modifier breakdown (`Hands (4) + Edge (2)`), also at a zero modifier when a formula exists; legacy entries render as before. RED: 3 of 4 new `JournalEntryView.test.tsx` tests failed (the legacy test passed on first run, it pins today's output); GREEN: `src/play` + `src/shared/sheet` 528 tests, `tsc` clean.
 
 ## Reviews
 

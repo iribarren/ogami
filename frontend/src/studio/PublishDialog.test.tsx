@@ -7,7 +7,8 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { draft, published3, validDraft } from './fixtures'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { conflictMessage, focusNotes, PublishErrors } from './PublishDialog'
+import { conflictMessage, PublishErrors } from './PublishDialog'
+import { focusNotes } from './publishFocus'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })

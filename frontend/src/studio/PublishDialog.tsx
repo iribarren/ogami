@@ -19,6 +19,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
+import { focusNotes } from './publishFocus'
 import { nextVersion, usePublishGameSystem, type PublishRequest } from './useGameSystemReleases'
 import {
   StudioError,
@@ -46,23 +47,6 @@ const SHOWN_ERRORS = 3
  */
 export const conflictMessage =
   'Nothing was published: the draft equals the latest release, or another release was published meanwhile. Reload and try again.'
-
-/**
- * Opening the dialog focuses the first field, not the Close button (whose tooltip would pop up at
- * once). Without one, Radix focuses as usual, so focus never stays outside the modal.
- */
-// Exported for its unit test only.
-// eslint-disable-next-line react-refresh/only-export-components
-export function focusNotes(event: Event) {
-  const notes =
-    event.currentTarget instanceof HTMLElement
-      ? event.currentTarget.querySelector('textarea')
-      : null
-  if (notes !== null) {
-    event.preventDefault()
-    notes.focus()
-  }
-}
 
 /**
  * The "Publish" button and its dialog: the validation result, the version a publish creates and

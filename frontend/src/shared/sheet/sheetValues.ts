@@ -55,6 +55,33 @@ export function fromDraft(field: SheetFieldView, draft: Draft): SheetValue {
   return { current: Number(draft.current), max: Number(draft.max) }
 }
 
+const summaryLength = 40
+
+function cut(text: string): string {
+  return text.length > summaryLength ? `${text.slice(0, summaryLength)}…` : text
+}
+
+/**
+ * The items of a list that fit the summary budget, joined; an item that alone exceeds it is cut,
+ * and `+N` counts the items left out.
+ */
+function summarizeItems(items: string[]): string {
+  const shown: string[] = []
+  let length = 0
+  for (const item of items) {
+    length += item.length + (shown.length > 0 ? 2 : 0)
+    if (length > summaryLength) {
+      break
+    }
+    shown.push(item)
+  }
+  if (shown.length === 0) {
+    shown.push(cut(items[0] ?? ''))
+  }
+  const rest = items.length - shown.length
+  return rest > 0 ? `${shown.join(', ')} +${String(rest)}` : shown.join(', ')
+}
+
 /** One short phrase for a field's value, as the Characters list shows it. */
 export function summarize(
   field: SheetFieldView,
@@ -67,11 +94,10 @@ export function summarize(
   }
   const value = valueOrDefault(field, stored)
   if (typeof value === 'string') {
-    const shown = value.length > 40 ? `${value.slice(0, 40)}…` : value
-    return value === '' ? null : `${field.label}: ${shown}`
+    return value === '' ? null : `${field.label}: ${cut(value)}`
   }
   if (Array.isArray(value)) {
-    return `${field.label}: ${String(value.length)}`
+    return `${field.label}: ${value.length === 0 ? '0' : summarizeItems(value)}`
   }
   if (typeof value === 'object') {
     return `${field.label}: ${String(value.current)}/${String(value.max)}`

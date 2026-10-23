@@ -60,7 +60,7 @@ describe('the Characters panel', () => {
     expect(within(vi).getByText('Fixer')).toBeInTheDocument()
     expect(within(vi).getByText(/Role: Solo/)).toBeInTheDocument()
     expect(within(vi).getByText(/HP: 30\/40/)).toBeInTheDocument()
-    expect(within(vi).getByText(/Gear: 2/)).toBeInTheDocument()
+    expect(within(vi).getByText(/Gear: Knife, Agent/)).toBeInTheDocument()
     // A Character without values reads as the field defaults.
     expect(within(old).getByText(/Reflexes: 5/)).toBeInTheDocument()
     expect(within(old).getByText(/HP: 40\/40/)).toBeInTheDocument()

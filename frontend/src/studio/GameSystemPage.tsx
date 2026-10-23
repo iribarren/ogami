@@ -257,7 +257,9 @@ function GameSystemView({
               }}
             />
           )}
-          {tab === 'sections' && <Sections counts={gameSystem.sectionCounts} />}
+          {tab === 'sections' && (
+            <Sections gameSystemKey={gameSystem.key} counts={gameSystem.sectionCounts} />
+          )}
         </div>
       </div>
     </>
@@ -272,10 +274,16 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function Sections({ counts }: { counts: Record<string, number> }) {
+function Sections({
+  gameSystemKey,
+  counts,
+}: {
+  gameSystemKey: string
+  counts: Record<string, number>
+}) {
   return (
     <Panel title="Sections">
-      <SectionCounts counts={counts} editorComing />
+      <SectionCounts counts={counts} gameSystemKey={gameSystemKey} />
     </Panel>
   )
 }

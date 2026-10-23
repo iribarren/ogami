@@ -1,4 +1,4 @@
-import { Link, useParams } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 
 import type { GameSystemTab } from './gameSystemTabs'
@@ -33,19 +33,18 @@ const sectionTabs: Record<string, GameSystemTab> = {
 }
 
 /**
- * The items each section holds; the draft's list also links each section to its editor tab. The
- * compact form is one line for a card, and leaves out the sections without items.
+ * The items each section holds; with a `gameSystemKey` (the draft's list) each section links to its
+ * editor tab. The compact form is one line for a card, and leaves out the sections without items.
  */
 export function SectionCounts({
   counts,
-  editorComing = false,
+  gameSystemKey,
   compact = false,
 }: {
   counts: Record<string, number>
-  editorComing?: boolean
+  gameSystemKey?: string
   compact?: boolean
 }) {
-  const { key } = useParams({ strict: false })
   if (compact) {
     const filled = Object.entries(counts).filter(([, count]) => count > 0)
     return filled.length === 0 ? (
@@ -67,10 +66,10 @@ export function SectionCounts({
         <li key={name} className="flex items-baseline gap-3 px-4 py-3">
           <span className="font-medium">{sectionLabels[name] ?? name}</span>
           <span className="text-muted-foreground">{count}</span>
-          {editorComing && key !== undefined && name in sectionTabs && (
+          {gameSystemKey !== undefined && name in sectionTabs && (
             <Link
               to="/studio/game-systems/$key"
-              params={{ key }}
+              params={{ key: gameSystemKey }}
               search={{ tab: sectionTabs[name] }}
               aria-label={`Open ${sectionLabels[name] ?? name}`}
               className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

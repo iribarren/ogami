@@ -9,6 +9,7 @@ import { StoryProviders } from '@/test/StoryProviders'
 
 import { conflictMessage, PublishErrors } from './PublishDialog'
 import { focusNotes } from './publishFocus'
+import { typeText } from '@/test/typeText'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -176,7 +177,11 @@ describe('the publish dialog', () => {
 
     const dialog = await openDialog(user)
     await dialog.findByText('This creates version 1.')
-    await user.type(dialog.getByLabelText('Release notes (optional)'), '  Rebalanced the oracles. ')
+    await typeText(
+      user,
+      dialog.getByLabelText('Release notes (optional)'),
+      '  Rebalanced the oracles. ',
+    )
     expect(dialog.getByText('26 / 2,000')).toBeInTheDocument()
     await user.click(dialog.getByRole('button', { name: 'Publish version 1' }))
 
@@ -197,7 +202,7 @@ describe('the publish dialog', () => {
 
     const dialog = await openDialog(user)
     await dialog.findByText('This creates version 1.')
-    await user.type(dialog.getByLabelText('Release notes (optional)'), '   ')
+    await typeText(user, dialog.getByLabelText('Release notes (optional)'), '   ')
     const gets = () => fakeApi.requests.filter((r) => r === 'GET /api/studio/game-systems/my-draft')
     const before = gets().length
     await user.click(dialog.getByRole('button', { name: 'Publish version 1' }))

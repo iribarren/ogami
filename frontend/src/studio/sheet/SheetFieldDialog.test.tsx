@@ -6,6 +6,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, sheet, sheetUngrouped, validDraft } from '../fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -53,8 +54,8 @@ describe('adding a field', () => {
 
     await addField(user)
     expect(inDialog().getByRole('combobox', { name: 'Group' })).toHaveValue('Stats')
-    await user.type(inDialog().getByLabelText('Key'), 'luck')
-    await user.type(inDialog().getByLabelText('Label'), 'Luck')
+    await typeText(user, inDialog().getByLabelText('Key'), 'luck')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
 
     await waitFor(() => {
@@ -94,12 +95,12 @@ describe('adding a field', () => {
     const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
 
     await addField(user)
-    await user.type(inDialog().getByLabelText('Key'), 'story')
-    await user.type(inDialog().getByLabelText('Label'), 'Story')
-    await user.type(inDialog().getByLabelText('Hint'), 'Background')
+    await typeText(user, inDialog().getByLabelText('Key'), 'story')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Story')
+    await typeText(user, inDialog().getByLabelText('Hint'), 'Background')
     await chooseOption(user, 'Type', 'text', inDialog())
     await user.click(inDialog().getByLabelText('Multiline'))
-    await user.type(inDialog().getByLabelText('Max length'), '300')
+    await typeText(user, inDialog().getByLabelText('Max length'), '300')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
 
     await waitFor(() => {
@@ -130,8 +131,8 @@ describe('adding a field', () => {
     expect(inDialog().getByLabelText('Span')).toHaveValue('')
     await chooseOption(user, 'Group', 'Stats', inDialog())
     await chooseOption(user, 'Span', '2', inDialog())
-    await user.type(inDialog().getByLabelText('Key'), 'luck')
-    await user.type(inDialog().getByLabelText('Label'), 'Luck')
+    await typeText(user, inDialog().getByLabelText('Key'), 'luck')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
 
     await waitFor(() => {
@@ -149,8 +150,8 @@ describe('adding a field', () => {
     await addField(user)
     expect(inDialog().queryByLabelText('Span')).not.toBeInTheDocument()
     expect(inDialog().getByLabelText('Group')).toHaveValue('')
-    await user.type(inDialog().getByLabelText('Key'), 'luck')
-    await user.type(inDialog().getByLabelText('Label'), 'Luck')
+    await typeText(user, inDialog().getByLabelText('Key'), 'luck')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
 
     await waitFor(() => {
@@ -165,7 +166,7 @@ describe('adding a field', () => {
     const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
 
     await addField(user)
-    await user.type(inDialog().getByLabelText('Min'), 'low')
+    await typeText(user, inDialog().getByLabelText('Min'), 'low')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
 
     expect(inDialog().getByText('Give the field a key.')).toBeVisible()
@@ -184,8 +185,7 @@ describe('editing a field', () => {
     expect(inDialog().getByLabelText('Label')).toHaveValue('Power')
     expect(inDialog().getByLabelText('Max')).toHaveValue('18')
     expect(inDialog().getByLabelText('Span')).toHaveValue('2')
-    await user.clear(inDialog().getByLabelText('Max'))
-    await user.type(inDialog().getByLabelText('Max'), '20')
+    await replaceText(user, inDialog().getByLabelText('Max'), '20')
     await user.click(inDialog().getByRole('button', { name: 'Save field' }))
 
     await waitFor(() => {
@@ -213,8 +213,7 @@ describe('editing a field', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit hp' }))
     const hint = 'Characters on campaigns that upgrade later lose that value.'
     expect(inDialog().queryByText(hint)).not.toBeInTheDocument()
-    await user.clear(inDialog().getByLabelText('Key'))
-    await user.type(inDialog().getByLabelText('Key'), 'health')
+    await replaceText(user, inDialog().getByLabelText('Key'), 'health')
     expect(inDialog().getByText(hint)).toBeVisible()
     await user.click(inDialog().getByRole('button', { name: 'Save field' }))
 
@@ -231,8 +230,7 @@ describe('editing a field', () => {
     const { user } = await openSheet()
 
     await user.click(await screen.findByRole('button', { name: 'Edit dex' }))
-    await user.clear(inDialog().getByLabelText('Key'))
-    await user.type(inDialog().getByLabelText('Key'), 'agility')
+    await replaceText(user, inDialog().getByLabelText('Key'), 'agility')
 
     expect(inDialog().queryByText(/lose that value/)).not.toBeInTheDocument()
   })
@@ -264,8 +262,8 @@ describe('a refused save', () => {
     })
 
     await addField(user)
-    await user.type(inDialog().getByLabelText('Key'), 'luck')
-    await user.type(inDialog().getByLabelText('Label'), 'Luck')
+    await typeText(user, inDialog().getByLabelText('Key'), 'luck')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
     await user.click(inDialog().getByRole('button', { name: 'Create field' }))
 
     expect(await inDialog().findByText('duplicate field key "luck"')).toBeVisible()
@@ -355,8 +353,7 @@ describe('a refused save', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit dex' }))
-    await user.clear(inDialog().getByLabelText('Key'))
-    await user.type(inDialog().getByLabelText('Key'), 'pow')
+    await replaceText(user, inDialog().getByLabelText('Key'), 'pow')
     await user.click(inDialog().getByRole('button', { name: 'Save field' }))
     await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
 
@@ -450,8 +447,7 @@ describe('the formula of a derived field', () => {
   it('computes over the sample values typed in the preview', async () => {
     const { user } = await openSheet()
     const preview = within(await screen.findByRole('region', { name: 'Preview' }))
-    await user.clear(preview.getByLabelText('Power'))
-    await user.type(preview.getByLabelText('Power'), '7')
+    await replaceText(user, preview.getByLabelText('Power'), '7')
     await user.click(screen.getByRole('button', { name: 'Edit bonus' }))
 
     expect(inDialog().getByText('Value with the sample values: 8')).toBeVisible()
@@ -497,8 +493,7 @@ describe('the formula of a derived field', () => {
         (option) => option.value,
       )
 
-    await user.clear(key)
-    await user.type(key, 'bonus2')
+    await replaceText(user, key, 'bonus2')
     expect(await options()).toEqual(['', 'pow', 'hp', 'hp.max', 'dex', 'tracker:heat'])
     await retype(user, '{bonus} + 1')
     expect(inDialog().getByText('{bonus}: unknown field "bonus"')).toBeVisible()
@@ -506,8 +501,7 @@ describe('the formula of a derived field', () => {
     expect(inDialog().getByText(/depend on each other in a cycle: bonus2 -> bonus2/)).toBeVisible()
 
     // Taking another field's key: neither offers it as a field this one may read.
-    await user.clear(key)
-    await user.type(key, 'pow')
+    await replaceText(user, key, 'pow')
     expect(await options()).toEqual(['', 'hp', 'hp.max', 'dex', 'tracker:heat'])
     await retype(user, '{pow} + 1')
     expect(inDialog().getByText(/depend on each other in a cycle: pow -> pow/)).toBeVisible()

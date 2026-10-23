@@ -6,6 +6,7 @@ import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, narrativeFlows, oracles, validDraft } from '../fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -168,10 +169,9 @@ describe('the oracles tab', () => {
         },
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'rumours')
-      await user.type(inDialog().getByLabelText('Name'), 'Rumours')
-      await user.clear(inDialog().getByLabelText('Dice'))
-      await user.type(inDialog().getByLabelText('Dice'), '2d6')
+      await typeText(user, inDialog().getByLabelText('Key'), 'rumours')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Rumours')
+      await replaceText(user, inDialog().getByLabelText('Dice'), '2d6')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
 
       expect(await screen.findByText('Rumours')).toBeInTheDocument()
@@ -196,8 +196,8 @@ describe('the oracles tab', () => {
         },
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
       await chooseOption(user, 'Kind', 'weighted', inDialog())
       expect(inDialog().queryByLabelText('Dice')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Create table' }))
@@ -213,10 +213,9 @@ describe('the oracles tab', () => {
     it('does not send dice it cannot read', async () => {
       const { user } = await openDialog()
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
-      await user.clear(inDialog().getByLabelText('Dice'))
-      await user.type(inDialog().getByLabelText('Dice'), '4d6kh3')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
+      await replaceText(user, inDialog().getByLabelText('Dice'), '4d6kh3')
 
       expect(screen.getByText('Use dice like 1d6, 2d6 or d%.')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Create table' })).toBeDisabled()
@@ -231,8 +230,8 @@ describe('the oracles tab', () => {
         },
       })
 
-      await user.type(inDialog().getByLabelText('Key'), ' omens ')
-      await user.type(inDialog().getByLabelText('Name'), '  Omens ')
+      await typeText(user, inDialog().getByLabelText('Key'), ' omens ')
+      await typeText(user, inDialog().getByLabelText('Name'), '  Omens ')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
 
       await waitFor(() => {
@@ -256,8 +255,8 @@ describe('the oracles tab', () => {
         },
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
       expect(screen.queryByRole('button', { name: 'Create table' })).not.toBeInTheDocument()
@@ -288,8 +287,8 @@ describe('the oracles tab', () => {
         [`POST ${base}/oracle-tables`]: json({ error: 'Changed by another request.' }, 409),
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
       await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
 
@@ -309,8 +308,8 @@ describe('the oracles tab', () => {
         [`POST ${base}/oracle-tables`]: json({ error: 'Changed by another request.' }, 409),
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
       await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
 
@@ -339,8 +338,8 @@ describe('the oracles tab', () => {
           Response.json({ error: posts.shift() }, { status: 409 }),
       })
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
       await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
       await user.keyboard('{Escape}')
@@ -369,8 +368,8 @@ describe('the oracles tab', () => {
         'Changed again.',
       )
 
-      await user.type(inDialog().getByLabelText('Key'), 'omens')
-      await user.type(inDialog().getByLabelText('Name'), 'Omens')
+      await typeText(user, inDialog().getByLabelText('Key'), 'omens')
+      await typeText(user, inDialog().getByLabelText('Name'), 'Omens')
       await user.click(screen.getByRole('button', { name: 'Create table' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('Changed again.')
       release()
@@ -389,8 +388,8 @@ describe('the oracles tab', () => {
           [`POST ${base}/oracle-tables`]: json({ error: message }, status),
         })
 
-        await user.type(inDialog().getByLabelText('Key'), 'weather')
-        await user.type(inDialog().getByLabelText('Name'), 'Weather')
+        await typeText(user, inDialog().getByLabelText('Key'), 'weather')
+        await typeText(user, inDialog().getByLabelText('Name'), 'Weather')
         await user.click(screen.getByRole('button', { name: 'Create table' }))
 
         expect(await screen.findByRole('alert')).toHaveTextContent(message)

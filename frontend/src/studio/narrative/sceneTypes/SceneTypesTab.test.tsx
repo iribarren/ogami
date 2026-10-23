@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, narrativeFlows, narrativeScenes, narrativeV1, validDraft } from '../../fixtures'
+import { typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -119,9 +120,9 @@ describe('creating a Scene Type', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'New Scene Type' }))
-    await user.type(inDialog().getByLabelText('Key'), ' heist ')
-    await user.type(inDialog().getByLabelText('Name'), 'Heist')
-    await user.type(inDialog().getByLabelText('Purpose'), 'Steal it.')
+    await typeText(user, inDialog().getByLabelText('Key'), ' heist ')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Heist')
+    await typeText(user, inDialog().getByLabelText('Purpose'), 'Steal it.')
     await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
 
     const row = (await screen.findByRole('link', { name: 'Heist' })).closest('li')
@@ -143,9 +144,9 @@ describe('creating a Scene Type', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'New Scene Type' }))
-    await user.type(inDialog().getByLabelText('Key'), 'ambush')
-    await user.type(inDialog().getByLabelText('Name'), 'Again')
-    await user.type(inDialog().getByLabelText('Purpose'), 'Twice.')
+    await typeText(user, inDialog().getByLabelText('Key'), 'ambush')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Again')
+    await typeText(user, inDialog().getByLabelText('Purpose'), 'Twice.')
     await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(
@@ -163,8 +164,8 @@ describe('creating a Scene Type', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'New Scene Type' }))
-    await user.type(inDialog().getByLabelText('Key'), 'heist')
-    await user.type(inDialog().getByLabelText('Name'), 'Heist')
+    await typeText(user, inDialog().getByLabelText('Key'), 'heist')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Heist')
     await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(

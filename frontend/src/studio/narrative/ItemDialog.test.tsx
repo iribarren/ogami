@@ -8,6 +8,7 @@ import { narrative } from '../fixtures'
 import { ItemDialog } from './ItemDialog'
 import { tagForm } from './itemForms'
 import { tagToDraft } from './narrativeDraft'
+import { typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft/narrative'
 
@@ -39,7 +40,7 @@ describe('the item dialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit informer' }))
     const dialog = within(screen.getByRole('dialog'))
-    await user.type(dialog.getByLabelText('Hint'), 'Mine')
+    await typeText(user, dialog.getByLabelText('Hint'), 'Mine')
     await user.click(dialog.getByRole('button', { name: 'Save tag' }))
     await user.click(await dialog.findByRole('button', { name: 'Reload the latest version' }))
 
@@ -74,8 +75,8 @@ describe('the item dialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'New tag' }))
     const dialog = within(screen.getByRole('dialog'))
-    await user.type(dialog.getByLabelText('Key'), 'rival')
-    await user.type(dialog.getByLabelText('Label'), 'Rival')
+    await typeText(user, dialog.getByLabelText('Key'), 'rival')
+    await typeText(user, dialog.getByLabelText('Label'), 'Rival')
     expect(onSaved).not.toHaveBeenCalled()
     await user.click(dialog.getByRole('button', { name: 'Create tag' }))
 

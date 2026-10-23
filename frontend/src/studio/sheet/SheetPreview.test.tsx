@@ -6,6 +6,7 @@ import { readLayout, type LayoutDraft } from './layoutDraft'
 import { SheetPreview as Preview } from './SheetPreview'
 import type { GameSystemSheet } from './useGameSystemSheet'
 import { useSampleValues, useSheetSamples } from './useSheetSamples'
+import { replaceText } from '@/test/typeText'
 
 const stored = sheet as GameSystemSheet
 
@@ -55,8 +56,7 @@ describe('the sheet preview', () => {
     render(<SheetPreview sheet={stored} layoutDraft={null} />)
     expect(preview().getByLabelText('Bonus')).toHaveTextContent('1')
 
-    await user.clear(preview().getByLabelText('Power'))
-    await user.type(preview().getByLabelText('Power'), '7')
+    await replaceText(user, preview().getByLabelText('Power'), '7')
 
     expect(preview().getByLabelText('Bonus')).toHaveTextContent('8')
   })
@@ -75,8 +75,7 @@ describe('the sheet preview', () => {
     expect(preview().getByLabelText('Dexterity')).toHaveValue(10)
 
     // What is typed still wins.
-    await user.clear(preview().getByLabelText('Power'))
-    await user.type(preview().getByLabelText('Power'), '9')
+    await replaceText(user, preview().getByLabelText('Power'), '9')
     expect(preview().getByLabelText('Bonus')).toHaveTextContent('10')
   })
 
@@ -101,8 +100,7 @@ describe('the sheet preview', () => {
     )
     expect(preview().getByLabelText('Risk')).toHaveTextContent('0')
 
-    await user.clear(preview().getByLabelText('Heat'))
-    await user.type(preview().getByLabelText('Heat'), '4')
+    await replaceText(user, preview().getByLabelText('Heat'), '4')
     expect(preview().getByLabelText('Risk')).toHaveTextContent('8')
 
     await user.clear(preview().getByLabelText('Heat'))
@@ -162,8 +160,7 @@ describe('the sheet preview', () => {
   it('starts a sample again when its field changes type or disappears', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<SheetPreview sheet={stored} layoutDraft={null} />)
-    await user.clear(preview().getByLabelText('Power'))
-    await user.type(preview().getByLabelText('Power'), '7')
+    await replaceText(user, preview().getByLabelText('Power'), '7')
     const field = (type: string, extra = {}) => ({
       key: 'pow',
       label: 'Power',

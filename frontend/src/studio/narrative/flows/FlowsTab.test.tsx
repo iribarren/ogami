@@ -17,6 +17,7 @@ import {
 import { sheetKey } from '../../sheet/useGameSystemSheet'
 import { invalidateOtherDraftReads, validationKey } from '../../useGameSystems'
 import { narrativeKey } from '../useGameSystemNarrative'
+import { typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -347,8 +348,8 @@ describe('creating a flow', () => {
 
     await user.click(await screen.findByRole('button', { name: 'New flow' }))
     expect(inDialog().getByLabelText('First Scene Type')).toHaveValue('ambush')
-    await user.type(inDialog().getByLabelText('Key'), ' chase ')
-    await user.type(inDialog().getByLabelText('Name'), 'Chase')
+    await typeText(user, inDialog().getByLabelText('Key'), ' chase ')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Chase')
     await chooseOption(user, 'First Scene Type', 'Quiet', inDialog())
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
 
@@ -381,7 +382,7 @@ describe('creating a flow', () => {
     const { user } = await openTab({ [`POST ${base}/narrative/flows`]: json(body, status) })
 
     await user.click(await screen.findByRole('button', { name: 'New flow' }))
-    await user.type(inDialog().getByLabelText('Key'), 'heist')
+    await typeText(user, inDialog().getByLabelText('Key'), 'heist')
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(message)
@@ -407,7 +408,7 @@ describe('creating a flow', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'New flow' }))
-    await user.type(inDialog().getByLabelText('Key'), 'chase')
+    await typeText(user, inDialog().getByLabelText('Key'), 'chase')
     await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
     expect(await inDialog().findByRole('alert')).toHaveTextContent('was changed by another request')
     await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))

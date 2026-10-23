@@ -14,6 +14,7 @@ import {
   validDraft,
 } from './fixtures'
 import { packSystem } from './library/fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -297,7 +298,7 @@ describe('the metadata form', () => {
 
     const notice = within(await metadataForm()).getByLabelText('Notice')
     expect(notice).toHaveAccessibleDescription('23 / 2,000')
-    await user.type(notice, '!!')
+    await typeText(user, notice, '!!')
     expect(notice).toHaveAccessibleDescription('25 / 2,000')
   })
 
@@ -319,8 +320,7 @@ describe('the metadata form', () => {
     expect(form.getByText('The notice is limited to 2,000 characters.')).toBeInTheDocument()
     expect(form.getByRole('button', { name: 'Save' })).toBeDisabled()
 
-    await user.clear(notice)
-    await user.type(notice, 'Short again.')
+    await replaceText(user, notice, 'Short again.')
     expect(notice).not.toBeInvalid()
     expect(form.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
@@ -357,8 +357,7 @@ describe('the metadata form', () => {
 
     const form = within(await metadataForm())
     expect(form.getByLabelText('Theme')).toHaveTextContent('noir')
-    await user.clear(form.getByLabelText('Name'))
-    await user.type(form.getByLabelText('Name'), 'Renamed')
+    await replaceText(user, form.getByLabelText('Name'), 'Renamed')
     await chooseOption(user, 'Theme', 'neon', form)
     await user.click(form.getByRole('button', { name: 'Save' }))
 
@@ -531,8 +530,7 @@ describe('switching tabs', () => {
     })
 
     const form = within(await metadataForm())
-    await user.clear(form.getByLabelText('Name'))
-    await user.type(form.getByLabelText('Name'), 'Renamed')
+    await replaceText(user, form.getByLabelText('Name'), 'Renamed')
     await user.click(form.getByRole('button', { name: 'Save' }))
     await form.findByRole('status')
     await user.click(screen.getByRole('link', { name: 'Sections' }))
@@ -811,7 +809,7 @@ describe('a library pack', () => {
     const form = within(await metadataForm())
     expect(form.queryByLabelText('Theme')).not.toBeInTheDocument()
     expect(form.queryByLabelText('Notice')).not.toBeInTheDocument()
-    await user.type(form.getByLabelText('Name'), ' 2')
+    await typeText(user, form.getByLabelText('Name'), ' 2')
     await user.click(form.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

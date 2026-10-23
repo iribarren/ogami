@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { checks, draft, sheet, validDraft } from '../fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -90,8 +91,7 @@ describe('the test roll sandbox', () => {
       'Winthe rest',
     ])
 
-    await user.clear(sandbox.getByLabelText('Test difficulty'))
-    await user.type(sandbox.getByLabelText('Test difficulty'), '20')
+    await replaceText(user, sandbox.getByLabelText('Test difficulty'), '20')
 
     expect(bounds.getAllByRole('listitem')[0]).toHaveTextContent('Failup to 19')
   })
@@ -99,8 +99,7 @@ describe('the test roll sandbox', () => {
   it('follows the bands as they are edited, with a dash for a bound it cannot compute', async () => {
     const { user, sandbox, form } = await editCheck('skill')
 
-    await user.clear(form.getByLabelText('Band 1 formula'))
-    await user.type(form.getByLabelText('Band 1 formula'), '{{pow} + {{ghost}')
+    await replaceText(user, form.getByLabelText('Band 1 formula'), '{pow} + {ghost}')
 
     expect(
       within(sandbox.getByRole('list', { name: 'Band bounds' })).getAllByRole('listitem')[0],
@@ -114,7 +113,7 @@ describe('the test roll sandbox', () => {
     expect(bounds.getAllByRole('listitem')[0]).toHaveTextContent('Badup to 0')
     expect(sandbox.queryByRole('status')).toBeNull()
 
-    await user.type(sandbox.getByLabelText('Heat (Tracker)'), '50')
+    await typeText(user, sandbox.getByLabelText('Heat (Tracker)'), '50')
 
     expect(bounds.getAllByRole('listitem')[0]).toHaveTextContent('Badup to 50')
     expect(await sandbox.findByRole('status')).toHaveTextContent(
@@ -131,10 +130,8 @@ describe('the test roll sandbox', () => {
     await user.type(sandbox.getByLabelText('Power'), '7')
     await user.type(sandbox.getByLabelText('Hit points'), '5')
     await user.type(sandbox.getByLabelText('Heat (Tracker)'), '3')
-    await user.clear(sandbox.getByLabelText('Test difficulty'))
-    await user.type(sandbox.getByLabelText('Test difficulty'), '15')
-    await user.clear(sandbox.getByLabelText('Situational modifier'))
-    await user.type(sandbox.getByLabelText('Situational modifier'), '-2')
+    await replaceText(user, sandbox.getByLabelText('Test difficulty'), '15')
+    await replaceText(user, sandbox.getByLabelText('Situational modifier'), '-2')
     await user.click(roll(sandbox))
 
     const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
@@ -187,8 +184,7 @@ describe('the test roll sandbox', () => {
       [`PUT ${base}/checks/skill`]: record('save', Response.json(saved)),
       [rollPath]: record('roll', Response.json(rolled)),
     })
-    await user.clear(form.getByLabelText('Label'))
-    await user.type(form.getByLabelText('Label'), 'Skill roll')
+    await replaceText(user, form.getByLabelText('Label'), 'Skill roll')
     expect(sandbox.getByText(/Your unsaved edits are saved first/)).toBeVisible()
 
     await user.click(roll(sandbox))
@@ -212,8 +208,7 @@ describe('the test roll sandbox', () => {
       [`PUT ${base}/checks/skill`]: record('save', Response.json(saved)),
       [`POST ${base}/checks/craft/test-rolls`]: record('roll', Response.json(rolled)),
     })
-    await user.clear(form.getByLabelText('Key'))
-    await user.type(form.getByLabelText('Key'), 'craft')
+    await replaceText(user, form.getByLabelText('Key'), 'craft')
 
     await user.click(roll(sandbox))
 
@@ -230,8 +225,7 @@ describe('the test roll sandbox', () => {
       ),
       [rollPath]: record('roll', Response.json(rolled)),
     })
-    await user.clear(form.getByLabelText('Dice'))
-    await user.type(form.getByLabelText('Dice'), 'x')
+    await replaceText(user, form.getByLabelText('Dice'), 'x')
 
     await user.click(roll(sandbox))
 
@@ -383,8 +377,7 @@ describe('the test roll sandbox', () => {
     // The derived field follows the shared sample.
     expect(preview.getByLabelText('Bonus')).toHaveTextContent('8')
 
-    await user.clear(preview.getByLabelText('Power'))
-    await user.type(preview.getByLabelText('Power'), '9')
+    await replaceText(user, preview.getByLabelText('Power'), '9')
     await user.click(screen.getByRole('link', { name: 'Checks' }))
     await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
 
@@ -404,8 +397,7 @@ describe('the test roll sandbox', () => {
     })
     await user.click(screen.getByRole('link', { name: 'Sheet' }))
     const preview = within(await screen.findByRole('region', { name: 'Preview' }))
-    await user.clear(preview.getByLabelText('Hit points max'))
-    await user.type(preview.getByLabelText('Hit points max'), '8')
+    await replaceText(user, preview.getByLabelText('Hit points max'), '8')
 
     await user.click(screen.getByRole('link', { name: 'Checks' }))
     await user.click(await screen.findByRole('button', { name: 'Edit skill' }))

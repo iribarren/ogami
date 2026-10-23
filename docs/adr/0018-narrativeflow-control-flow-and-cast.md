@@ -79,6 +79,13 @@ This ADR amends ADR 0017. Decision numbers match the [feature doc](../../odd/tas
 ### Content
 
 15. **Tags.** A release declares `tags[] {key, label, hint?}`. Tags apply to NPCs, Characters and Threads, and the player may add free tags. They are not called "roles", which would clash with sheet fields such as Cyberpunk RED's Role.
+
+    *Addendum, 2026-10-24 (`play-pbta-findings`).* A tag may carry an optional `appliesTo`: a non-empty list of unique entity kinds, each `character`, `npc` or `thread`. Absent (or `null`), the tag applies to every kind, as before. The change is additive within schema version 2: old releases stay valid and read unchanged, and the canonical form omits an absent `appliesTo`.
+
+    - Studio refuses a release in which a flow step names a tag that does not apply to what the step targets: `createNpc` effects (npc), `createThread` effects (thread), and the tags of `pick` steps and `condition` counts (their `of`). The error path is the tag's path in the step.
+    - Play offers and accepts only the tags that apply to an entity's kind; a tag outside its scope is refused like an unknown tag.
+    - A release upgrade treats a tag that no longer applies to an entity as a tag the release removed.
+    - Why: a PbtA-style preset has tags such as "Villain" or "Ally" that make sense for NPCs only, and the unscoped list offered every tag on every form.
 16. **`pick`** filters by several tags (all must match), with mode `random` | `choose`, a count (`min` / `max`, one by default) and branches `found` / `none`.
 17. **Hints.** Trackers (7) and fact slots (8b) have an optional `hint`, shown where the value is shown or filled.
 18. **Counters have optional named `levels`**, e.g. lifestyle "Kibble / Prepak / Good prepak / Fresh food".

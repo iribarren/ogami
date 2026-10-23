@@ -63,7 +63,7 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | 65d3f43 |
 | T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [x] | 177dc27 |
 | T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [x] | 8f51169 |
-| T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [ ] | |
+| T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [x] | |
 | T8 | 3 | P10 Play: translator, `Tag`, `ItemRules`, `TagView`, `TagFields` filter; upgrade planner for tags that stop applying | writer (delegated) | [ ] | |
 | T9 | 4 | v5 content in Studio (Chrome): Climax check into the Climax scene (P12), sheet layout, scoped tags; re-export; preset tests | Chrome worker + writer (delegated) | [ ] | |
 | T10 | 4 | Close: roadmap B7e done, P6 on B8b, issue #253 ticked | parent, inline (doc) | [ ] | |
@@ -87,6 +87,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 - 2026-10-24 T6: the check card shows the stored hint and the modifier breakdown (`Hands (4) + Edge (2)`), also at a zero modifier when a formula exists; legacy entries render as before. RED: 3 of 4 new `JournalEntryView.test.tsx` tests failed (the legacy test passed on first run, it pins today's output); GREEN: `src/play` + `src/shared/sheet` 528 tests, `tsc` clean.
 
 - 2026-10-24 R3-001..003 (slice 2 review): the card's `explainModifier` replaces every `{...}` token of the formula and lists the terms (`Hot (2), Edge (1)`) when one has no matching term; evaluation reads every formula reference (no short-circuit), so the breakdown cannot diverge, now pinned by evaluation-failure rows (`0 * {ghost}`, `min()`, repeated reference); a handler test asserts the hint, formula and terms the flow-step check records. RED: only the unmatched-reference card test failed; the PHP tests passed first run (no real RED, they pin existing behaviour); GREEN: `CheckTest` + `CompleteFlowStepCheckHandlerTest` 163, `JournalEntryView.test.tsx` 27.
+
+- 2026-10-24 T7: optional `appliesTo` on a release tag (non-empty, unique `character`/`npc`/`thread`; `null` reads as absent and the canonical form omits it); `v2.schema.json` agrees; `Effects::tags` takes the target kind (`createNpc` npc, `createThread` thread, `pick` and condition `count` by their `of`) and `Catalog::tagAppliesTo` refuses a tag outside its scope at the tag's path (no other step kind carries tags); the Studio tag dialog has an "Applies to" group (none or all ticked sends no field); ADR 0018 §15 addendum. The Studio API passes `definition` through, so no OpenAPI change. RED: the new `ReleaseContentTagScopeTest` failed on `appliesTo: unknown property` before the implementation (the schema agreement rows were added with it); GREEN: `tests/Unit/Studio` 1,701, `tests/Integration/Studio` 657, `src/studio` Vitest 1,296.
 
 ## Reviews
 

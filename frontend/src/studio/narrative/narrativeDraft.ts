@@ -16,6 +16,13 @@ export type TrackerKind = 'counter' | 'clock'
 
 export const factSlotTypes = ['text', 'npc', 'thread'] as const
 
+/** The entity kinds a tag may be limited to (`appliesTo`), with the plural the form shows. */
+export const tagKinds = [
+  { kind: 'character', label: 'Characters' },
+  { kind: 'npc', label: 'NPCs' },
+  { kind: 'thread', label: 'Threads' },
+] as const
+
 export interface LevelDraft {
   /** Empty for the last level, which has no bound. */
   upTo: string
@@ -44,12 +51,14 @@ export interface TrackerDraft {
   foreign: StoredItem
 }
 
-/** A tag, or a fact slot (which adds `type`). */
+/** A tag (which adds `appliesTo`), or a fact slot (which adds `type`). */
 export interface LabelledDraft {
   key: string
   label: string
   hint: string
   type: string
+  /** The kinds a tag is limited to; empty (or every kind) means it applies to all. */
+  appliesTo: string[]
   extra: StoredItem
 }
 
@@ -203,17 +212,30 @@ export function trackerToItem(draft: TrackerDraft): ItemResult {
 }
 
 export function newLabelled(type = ''): LabelledDraft {
-  return { key: '', label: '', hint: '', type, extra: {} }
+  return { key: '', label: '', hint: '', type, appliesTo: [], extra: {} }
+}
+
+/** The kinds of a tag's `appliesTo`: none when absent or null, null when it holds something else. */
+function scopeOf(definition: StoredItem): string[] | null {
+  const value = definition.appliesTo
+  if (value === undefined || value === null) {
+    return []
+  }
+  const kinds: readonly unknown[] = tagKinds.map(({ kind }) => kind)
+  return Array.isArray(value) && value.every((kind) => kinds.includes(kind))
+    ? (value as string[])
+    : null
 }
 
 function labelledToDraft(definition: StoredItem, known: readonly string[]): LabelledDraft | null {
   const key = textOf(definition, 'key')
   const label = textOf(definition, 'label')
   const hint = textOf(definition, 'hint')
-  if (key === null || label === null || hint === null) {
+  const appliesTo = known.includes('appliesTo') ? scopeOf(definition) : []
+  if (key === null || label === null || hint === null || appliesTo === null) {
     return null
   }
-  return { key, label, hint, type: '', extra: unknownFields(definition, known) }
+  return { key, label, hint, type: '', appliesTo, extra: unknownFields(definition, known) }
 }
 
 function labelledToItem(draft: LabelledDraft, type: boolean): ItemResult {
@@ -224,12 +246,16 @@ function labelledToItem(draft: LabelledDraft, type: boolean): ItemResult {
       label: draft.label.trim(),
       ...(type ? { type: draft.type } : {}),
       ...(draft.hint.trim() === '' ? {} : { hint: draft.hint.trim() }),
+      // None or every kind is the same as no scope, which the release leaves out.
+      ...(draft.appliesTo.length === 0 || draft.appliesTo.length === tagKinds.length
+        ? {}
+        : { appliesTo: draft.appliesTo }),
     },
   }
 }
 
 export function tagToDraft(definition: StoredItem): LabelledDraft | null {
-  return labelledToDraft(definition, ['key', 'label', 'hint'])
+  return labelledToDraft(definition, ['key', 'label', 'hint', 'appliesTo'])
 }
 
 export const tagToItem = (draft: LabelledDraft) => labelledToItem(draft, false)

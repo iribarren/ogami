@@ -336,6 +336,55 @@ describe('creating', () => {
     expect(slot.sent[0]?.item).toEqual({ key: 'rumour', label: 'Rumour', type: 'thread' })
   })
 
+  it('limits a tag to the kinds ticked under "Applies to", and sends no scope when none or all are', async () => {
+    const tag = recorder(() => Response.json(narrative, { status: 201 }))
+    const { user } = await openNarrative({ [`POST ${base}/narrative/tags`]: tag.handler })
+
+    const create = async (key: string, kinds: string[]) => {
+      await user.click(await screen.findByRole('button', { name: 'New tag' }))
+      await typeText(user, inDialog().getByLabelText('Key'), key)
+      await typeText(user, inDialog().getByLabelText('Label'), key)
+      const group = inDialog().getByRole('group', { name: 'Applies to' })
+      for (const kind of kinds) {
+        await user.click(within(group).getByRole('checkbox', { name: kind }))
+      }
+      await user.click(inDialog().getByRole('button', { name: 'Create tag' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+    }
+    await create('villain', ['NPCs', 'Threads'])
+    await create('anyone', [])
+    await create('everyone', ['Characters', 'NPCs', 'Threads'])
+
+    expect(tag.sent.map((request) => request.item)).toEqual([
+      { key: 'villain', label: 'villain', appliesTo: ['npc', 'thread'] },
+      { key: 'anyone', label: 'anyone' },
+      { key: 'everyone', label: 'everyone' },
+    ])
+  })
+
+  it('shows the kinds a stored tag is limited to', async () => {
+    const scoped = {
+      ...narrative,
+      tags: [
+        {
+          key: 'informer',
+          definition: { key: 'informer', label: 'Informer', appliesTo: ['npc'] },
+          usedBy: [],
+        },
+      ],
+    }
+    const { user } = await openNarrative({ [`GET ${base}/narrative`]: () => Response.json(scoped) })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
+
+    const group = inDialog().getByRole('group', { name: 'Applies to' })
+    expect(within(group).getByRole('checkbox', { name: 'NPCs' })).toBeChecked()
+    expect(within(group).getByRole('checkbox', { name: 'Characters' })).not.toBeChecked()
+    expect(within(group).getByRole('checkbox', { name: 'Threads' })).not.toBeChecked()
+  })
+
   it('flags a number that is not whole and sends nothing', async () => {
     const saved = recorder(Response.json(narrative, { status: 201 }))
     const { user } = await openNarrative({ [`POST ${base}/narrative/trackers`]: saved.handler })

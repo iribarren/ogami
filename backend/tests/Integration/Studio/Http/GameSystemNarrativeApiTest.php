@@ -277,6 +277,7 @@ final class GameSystemNarrativeApiTest extends WebTestCase
     {
         yield 'a tracker' => ['trackers', 'trackers', ['key' => 'doom', 'name' => 'Doom', 'kind' => 'clock', 'segments' => 4]];
         yield 'a tag' => ['tags', 'tags', ['key' => 'gang', 'label' => 'Gang']];
+        yield 'a tag limited to some entity kinds' => ['tags', 'tags', ['key' => 'gang', 'label' => 'Gang', 'appliesTo' => ['npc', 'thread']]];
         yield 'a fact slot' => ['fact-slots', 'factSlots', ['key' => 'rival', 'label' => 'Rival', 'type' => 'npc']];
         yield 'a Scene Type' => ['scene-types', 'sceneTypes', ['key' => 'chase', 'name' => 'Chase', 'purpose' => 'Run.', 'oracles' => [], 'setup' => [], 'play' => [['key' => 'go', 'kind' => 'prompt', 'title' => 'Go']], 'closing' => []]];
         yield 'a flow' => ['flows', 'flows', ['key' => 'solo', 'name' => 'Solo', 'defaultView' => 'focus', 'oracles' => [], 'trackers' => [], 'phases' => [['key' => 'only', 'name' => 'Only', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['legwork']]]]]];
@@ -493,6 +494,8 @@ final class GameSystemNarrativeApiTest extends WebTestCase
     public static function invalidItems(): iterable
     {
         yield 'POST a key that is not a slug' => ['POST /mine/narrative/tags', ['key' => 'Not A Key', 'label' => 'Gang'], 'tags[0].key'];
+        yield 'POST a tag with an empty scope' => ['POST /mine/narrative/tags', ['key' => 'gang', 'label' => 'Gang', 'appliesTo' => []], 'tags[0].appliesTo'];
+        yield 'POST a tag scoped to an unknown kind' => ['POST /mine/narrative/tags', ['key' => 'gang', 'label' => 'Gang', 'appliesTo' => ['faction']], 'tags[0].appliesTo[0]'];
         yield 'POST an unknown property' => ['POST /mine/narrative/tags', ['key' => 'gang', 'label' => 'Gang', 'colour' => 'red'], 'tags[0].colour'];
         yield 'POST a counter with min above max' => ['POST /mine/narrative/trackers', ['key' => 'doom', 'name' => 'Doom', 'kind' => 'counter', 'min' => 5, 'max' => 1, 'initial' => 1], 'trackers[4]'];
         yield 'POST a Scene Type naming an unknown oracle' => ['POST /mine/narrative/scene-types', ['key' => 'chase', 'name' => 'Chase', 'purpose' => 'Run.', 'oracles' => [], 'setup' => [], 'play' => [['key' => 'ask', 'kind' => 'oracle', 'title' => 'Ask', 'oracle' => 'nowhere']], 'closing' => []], 'sceneTypes[5].play[0]'];

@@ -131,12 +131,16 @@ export function CheckSandbox({
                   input={input}
                   onChange={(value) => {
                     const field = catalog.fields.find(({ key }) => key === input.key)
+                    // The max of a track is shared with the Sheet preview: keep the one typed there.
+                    const held = sampleValues.samples[input.key]?.draft
+                    const heldMax =
+                      typeof held === 'object' && !Array.isArray(held) ? held.max : undefined
                     sampleValues.setSample(
                       input.key,
                       field?.type === 'track'
                         ? {
                             type: 'track',
-                            draft: { current: value, max: String(field.max ?? 0) },
+                            draft: { current: value, max: heldMax ?? String(field.max ?? 0) },
                           }
                         : { type: 'number', draft: value },
                     )

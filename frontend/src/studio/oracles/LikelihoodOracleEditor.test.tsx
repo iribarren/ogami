@@ -479,6 +479,20 @@ describe('the likelihood oracle editor', () => {
     observer.disconnect()
     expect(notFound).toBe(false)
   })
+
+  it('lets go of the renamed key when the navigation is refused, and leaves the URL to decide', async () => {
+    const renamed = saved([{ ...fate, definition: { ...fate.definition, key: 'luck' } }])
+    const { user, router } = await openEditor('fate', { [put]: json(renamed) })
+    vi.spyOn(router, 'navigate').mockRejectedValue(new Error('Navigation refused.'))
+
+    await replace(user, 'Key', 'luck')
+    await user.click(save())
+
+    expect(await screen.findByText(/no likelihood oracle/)).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe(
+      '/studio/game-systems/my-draft/likelihood-oracles/fate',
+    )
+  })
 })
 
 describe('the likelihood oracle editor page', () => {

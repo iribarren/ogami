@@ -6,5 +6,5 @@ const FALLBACK = '✦'
  */
 export function markInitial(name: string): string {
   const first = /[\p{L}\p{N}]/u.exec(name)?.[0]
-  return first === undefined ? FALLBACK : first.toLocaleUpperCase()
+  return first === undefined ? FALLBACK : first.toUpperCase()
 }

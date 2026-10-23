@@ -394,4 +394,27 @@ describe('the test roll sandbox', () => {
       ),
     ).toHaveValue('9')
   })
+
+  it('keeps the max of an open track shared with the Sheet preview when its current value is typed', async () => {
+    const openTrack = (field: { key: string }) =>
+      field.key === 'hp' ? { ...field, max: null } : field
+    const { user } = await editCheck('skill', {
+      [`GET ${base}/sheet`]: json({ ...sheet, fields: sheet.fields.map(openTrack) }),
+      [`GET ${base}/checks`]: json({ ...checks, fields: checks.fields.map(openTrack) }),
+    })
+    await user.click(screen.getByRole('link', { name: 'Sheet' }))
+    const preview = within(await screen.findByRole('region', { name: 'Preview' }))
+    await user.clear(preview.getByLabelText('Hit points max'))
+    await user.type(preview.getByLabelText('Hit points max'), '8')
+
+    await user.click(screen.getByRole('link', { name: 'Checks' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+    const sandbox = within(await screen.findByRole('region', { name: 'Test roll sandbox' }))
+    await user.type(sandbox.getByLabelText('Hit points'), '5')
+    await user.click(screen.getByRole('link', { name: 'Sheet' }))
+
+    const again = within(await screen.findByRole('region', { name: 'Preview' }))
+    expect(again.getByLabelText('Hit points current')).toHaveValue(5)
+    expect(again.getByLabelText('Hit points max')).toHaveValue(8)
+  })
 })

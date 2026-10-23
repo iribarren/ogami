@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { checks, checksV1, draft, validDraft } from '../fixtures'
+import { checks, checksV1, draft, sheet, validDraft } from '../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -789,6 +789,50 @@ describe('the checks tab', () => {
       await user.clear(form.getByLabelText('Modifier'))
       await user.type(form.getByLabelText('Modifier'), '{{pow}+{{tracker:heat}')
       expect(form.getByText('Reads Power, Heat')).toBeVisible()
+    })
+  })
+
+  describe('the formula previews', () => {
+    // pow defaults to 7: the sandbox starts it there, not at 0.
+    const sample = {
+      ...sheet,
+      fields: sheet.fields.map((field) => (field.key === 'pow' ? { ...field, default: 7 } : field)),
+    }
+
+    async function formulas(handlers: Record<string, FakeHandler>) {
+      const { user } = await openChecks(handlers)
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      await user.clear(form.getByLabelText('Modifier'))
+      await user.type(form.getByLabelText('Modifier'), '{{pow}+1')
+      await user.clear(form.getByLabelText('Band 1 formula'))
+      await user.type(form.getByLabelText('Band 1 formula'), '{{pow}*2')
+      return form
+    }
+
+    it('read the number fields at the sandbox defaults', async () => {
+      const form = await formulas({ [`GET ${base}/sheet`]: json(sample) })
+
+      await waitFor(() => {
+        expect(form.getByText('Value with the sample values: 8')).toBeVisible()
+      })
+      expect(form.getByText('Value with the sample values: 14')).toBeVisible()
+    })
+
+    it('read a number field as 0 while the sheet is still being read', async () => {
+      const form = await formulas({ [`GET ${base}/sheet`]: () => new Promise<Response>(() => {}) })
+
+      expect(form.getByText('Value with the sample values: 1')).toBeVisible()
+      expect(form.getByText('Value with the sample values: 0')).toBeVisible()
+    })
+
+    it('read a number field as 0 when the sheet could not be read', async () => {
+      const form = await formulas({ [`GET ${base}/sheet`]: json({ error: 'No' }, 500) })
+
+      await waitFor(() => {
+        expect(form.getByText('Value with the sample values: 1')).toBeVisible()
+      })
+      expect(form.getByText('Value with the sample values: 0')).toBeVisible()
     })
   })
 

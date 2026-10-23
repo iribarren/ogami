@@ -422,6 +422,7 @@ Done: `studio-ui-followups`, the `studio-ui-polish` follow-ups fixed in one slic
 ```text
 Start feature `followups-sweep` (ODD). Fix every item of GitHub issue #252: small findings earlier features logged and never picked up, each with its `path:line` and origin feature in the issue, plus the missing tests it lists (check the two marked "check first" before writing them). Test first for each fix. Group the items by area into one or two slices; tick them in the issue as they land. Out of scope: anything that needs a contract or API design decision (B7g).
 ```
+Done: `followups-sweep`, every item of #252 fixed in one slice: login throttle normalization, `/me` retry, journal append races, links by kind and id, unreadable releases through Play's port, the chaos input, dice literal and tokenizer messages, the sandbox track max, the 409 journal refetch, the current-scene `forEntry` rule, "Open scene" in mythic-style, the attachment cap and Scene Type offer, locale-free seal letters, and the missing tests (PR #257, closes #252); see [odd/tasks/followups-sweep.md](../odd/tasks/followups-sweep.md).
 
 **B7e. play-pbta-findings**
 

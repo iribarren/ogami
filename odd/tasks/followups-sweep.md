@@ -1,7 +1,7 @@
 # Feature: followups-sweep
 
 - **Locator:** `odd/tasks/followups-sweep.md` · Engram topic `odd/followups-sweep/tasks`
-- **Issue:** #252 · **Branch:** `fix/followups-sweep-1-sweep` · **Status:** in progress: slice 1
+- **Issue:** #252 · **Branch:** `fix/followups-sweep-1-sweep` · **Status:** done: slice 1 (PR #257)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7d
@@ -57,13 +57,13 @@ Each finding was logged by its origin feature (named in the issue) and left open
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
-| T2 | 1 | Backend Identity and dice: F1, F7a, F7b | writer (delegated) | [x] | |
-| T3 | 1 | Backend Play: F5 release port, F10 `forEntry` scene rule, F11 preset rename; tests M3, M4, M8 | writer (delegated) | [x] | |
-| T4 | 1 | Frontend auth and journal data: F2, F3, F9; test M1 | writer (delegated) | [x] | |
-| T5 | 1 | Frontend Play panels: F4, F6, F7c, F12a, F12b; tick M7 | writer (delegated) | [x] | |
-| T6 | 1 | Frontend Studio and shared: F8, F13; tests M2, M5, M6 | writer (delegated) | [x] | |
-| T7 | 1 | Slice 1 review fixes (review-a675d2d0d1693922) | writer (delegated) | [x] | |
+| T1 | 1 | This feature doc | parent, inline (doc only) | [x] | `cbc2784` |
+| T2 | 1 | Backend Identity and dice: F1, F7a, F7b | writer (delegated) | [x] | `cbc2784` |
+| T3 | 1 | Backend Play: F5 release port, F10 `forEntry` scene rule, F11 preset rename; tests M3, M4, M8 | writer (delegated) | [x] | `ec3109f`, `bf9f389` |
+| T4 | 1 | Frontend auth and journal data: F2, F3, F9; test M1 | writer (delegated) | [x] | `222fada` |
+| T5 | 1 | Frontend Play panels: F4, F6, F7c, F12a, F12b; tick M7 | writer (delegated) | [x] | `7137975`, `406c47f` |
+| T6 | 1 | Frontend Studio and shared: F8, F13; tests M2, M5, M6 | writer (delegated) | [x] | `14e0684` |
+| T7 | 1 | Slice 1 review fixes (review-a675d2d0d1693922) | writer (delegated) | [x] | `da966b8` |
 
 ## Applicable checks
 
@@ -79,13 +79,16 @@ Each finding was logged by its origin feature (named in the issue) and left open
 - T5: F4 links compared by kind and id (RED: same-id NPC and Thread; option key fixed too); F6 omitted `chaosTracker` read as null (RED: no Chaos factor input); F7c inline "Type a dice expression" alert (RED); F12a `MAX_ATTACHMENTS` with disabled boxes and hint (RED); F12b `SceneTypeOffer` moved to its own file and rendered by `NoteAttachments` (RED: no switch inside the note). M7 already covered by `CampaignPage.test.tsx:488-502`, no test added.
 - T6: F8 sandbox keeps the shared track max (RED: max typed in the Sheet preview reset to 0); F13 `toUpperCase()` (RED is a `toLocaleUpperCase` spy standing in for a locale, not a real locale run); M2 new `CheckStepForm.test.tsx` (proved: fails with the `key` removed); M5 refused navigation after a rename in `LikelihoodOracleEditor.test.tsx` and M6 `trackerPips` `{min: 10, max: 14}` pin existing behaviour (no RED).
 - T3 / F10: `assertRandomEventQuestion` requires the question in the current session and scene (`NotARandomEventQuestion::notInCurrentScene`, 422; OpenAPI description updated). RED in `RecordOracleTableResultHandlerTest` (earlier-scene question was accepted), GREEN after; one API test for the 422. Edit surface extended by the user for `CampaignJournal.php` and friends.
+- 2026-10-23: slice 1 reviewed (`review-a675d2d0d1693922`, approved and acknowledged), PR #257, issue #252 items ticked.
 - T7: review fixes. `useRecordEntry` re-invalidates the journal when `cancelQueries` dropped a read in flight (RED: a refetch carrying another entry was lost; test helper keeps every pending read). Hint replaces the stale roll error in `DiceRoller` (RED: two alerts). `Parser` bare constant goes through `value()` (same written-digit message; refactor, existing tests green), `Tokenizer::utf8SequenceLength`, `sameLink` doc comment moved, `markInitial` spy restored in `finally` (refactors, no RED).
+- 2026-10-23: feature done once #257 is merged.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-a675d2d0d1693922` | `cbc2784`…`bf9f389` (base `main` `4f30296`, 1,024 lines) | high; approved and acknowledged. Findings (all fixed in T7 `da966b8`, review skipped by the user): `useRecordEntry` cancelled foreign in-flight journal reads without re-reading (`useJournal.ts:73-76`); `sameLink` doc comment between `asRequest`'s comment and `asRequest` (`FactsPanel.tsx:25-26`); constant overflow path diverged from `value()` (`Parser.php:87`); bare UTF-8 lead-byte constants (`Tokenizer.php:63-64`); two alerts on a blank roll after a failed one (`DiceRoller.tsx:108-112`); unguarded spy restore (`markInitial.test.ts:22-26`). CI green on `bf9f389` | [#257](https://github.com/iribarren/ogami/pull/257) |
 
 ## Next step
 
-Slice 1: review, push and PR.
+None. Every finding is fixed (T7); all 21 items of #252 are ticked.

@@ -1,7 +1,7 @@
 # Feature: studio-ui-followups
 
 - **Locator:** `odd/tasks/studio-ui-followups.md` · Engram topic `odd/studio-ui-followups/tasks`
-- **Issue:** #249 · **Branch:** `fix/studio-ui-followups-1-followups` · **Status:** done: slice 1 in PR #250
+- **Issue:** #249 · **Branch:** `fix/studio-ui-followups-1-followups` · **Status:** done: slice 1 merged (PR #250)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-ui-polish` (PRs #240–#248)

@@ -6,9 +6,19 @@ import { createQueryClient } from '@/app/queryClient'
 import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 
+import { checksKey } from './checks/useGameSystemChecks'
 import { draft } from './fixtures'
+import { libraryImportsKey } from './library/useLibraryImports'
 import { narrativeKey } from './narrative/useGameSystemNarrative'
-import { gameSystemKey, useEditMetadata } from './useGameSystems'
+import { oraclesKey } from './oracles/useGameSystemOracles'
+import { sheetKey } from './sheet/useGameSystemSheet'
+import {
+  gameSystemKey,
+  invalidateOtherDraftReads,
+  sectionSegments,
+  useEditMetadata,
+  validationKey,
+} from './useGameSystems'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -39,5 +49,26 @@ describe('useEditMetadata', () => {
     })
     expect(client.getQueryData(gameSystemKey('my-draft'))).toEqual({ ...draft, name: 'Renamed' })
     expect(client.getQueryState(gameSystemKey('my-draft'))?.isInvalidated).toBe(false)
+  })
+})
+
+describe('invalidateOtherDraftReads', () => {
+  it('lists the segment of every section read key builder', () => {
+    const builders = [narrativeKey, oraclesKey, sheetKey, checksKey, libraryImportsKey]
+
+    expect(builders.map((build) => build('my-draft').at(-1))).toEqual(sectionSegments)
+  })
+
+  it('hands the new version only to the section reads, and only marks the rest stale', () => {
+    const { client } = setup({})
+    client.setQueryData(narrativeKey('my-draft'), { version: 5 })
+    client.setQueryData(validationKey('my-draft'), { version: 5, issues: [] })
+
+    invalidateOtherDraftReads(client, 'my-draft', gameSystemKey('my-draft'), 9)
+
+    expect(client.getQueryData(narrativeKey('my-draft'))).toEqual({ version: 9 })
+    expect(client.getQueryState(narrativeKey('my-draft'))?.isInvalidated).toBe(true)
+    expect(client.getQueryData(validationKey('my-draft'))).toEqual({ version: 5, issues: [] })
+    expect(client.getQueryState(validationKey('my-draft'))?.isInvalidated).toBe(true)
   })
 })

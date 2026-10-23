@@ -67,11 +67,24 @@ export const libraryPacksKey = ['studio', 'library', 'packs'] as const
 export const validationKey = (key: string) => [...gameSystemKey(key), 'validation'] as const
 
 /**
+ * The segments of the section reads that carry the draft version (`narrativeKey`, `oraclesKey`,
+ * `sheetKey`, `checksKey`, `libraryImportsKey`). Listed here, not imported, since those modules
+ * import this one; a test pins them to the key builders.
+ */
+export const sectionSegments: readonly string[] = [
+  'narrative',
+  'oracles',
+  'sheet',
+  'checks',
+  'library-imports',
+]
+
+/**
  * Every section of a draft (overview, narrative, oracles, sheet, checks, validation) shares one
  * draft version, and each cached read carries it. After a write, `written` is the query just set
  * from the write's answer; every other query under the draft's key holds the version that write
  * replaced. When the write answered the new draft `version`, the section reads (one segment below
- * the draft's key, with a numeric `version`; releases and validation are not) take it at once, so
+ * the draft's key, listed in `sectionSegments`; releases, validation and the GameSystem are not) take it at once, so
  * a write sent before the refetch resolves carries the right `expectedVersion`. Every other query
  * is marked stale and refetched.
  */
@@ -89,11 +102,10 @@ export function invalidateOtherDraftReads(
       if (
         others(query) &&
         query.queryKey.length === draftKey.length + 1 &&
+        sectionSegments.includes(String(query.queryKey[draftKey.length])) &&
         typeof data === 'object' &&
         data !== null &&
-        !Array.isArray(data) &&
-        'version' in data &&
-        typeof data.version === 'number'
+        !Array.isArray(data)
       ) {
         queryClient.setQueryData(query.queryKey, { ...data, version })
       }

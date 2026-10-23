@@ -111,7 +111,7 @@ export function DiceRoller({
         </p>
       )}
 
-      {error && (
+      {error && !missing && (
         <p role="alert" className="text-sm text-destructive">
           {error.message}
         </p>

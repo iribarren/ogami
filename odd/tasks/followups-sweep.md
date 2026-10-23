@@ -63,6 +63,7 @@ Each finding was logged by its origin feature (named in the issue) and left open
 | T4 | 1 | Frontend auth and journal data: F2, F3, F9; test M1 | writer (delegated) | [x] | |
 | T5 | 1 | Frontend Play panels: F4, F6, F7c, F12a, F12b; tick M7 | writer (delegated) | [x] | |
 | T6 | 1 | Frontend Studio and shared: F8, F13; tests M2, M5, M6 | writer (delegated) | [x] | |
+| T7 | 1 | Slice 1 review fixes (review-a675d2d0d1693922) | writer (delegated) | [x] | |
 
 ## Applicable checks
 
@@ -78,6 +79,7 @@ Each finding was logged by its origin feature (named in the issue) and left open
 - T5: F4 links compared by kind and id (RED: same-id NPC and Thread; option key fixed too); F6 omitted `chaosTracker` read as null (RED: no Chaos factor input); F7c inline "Type a dice expression" alert (RED); F12a `MAX_ATTACHMENTS` with disabled boxes and hint (RED); F12b `SceneTypeOffer` moved to its own file and rendered by `NoteAttachments` (RED: no switch inside the note). M7 already covered by `CampaignPage.test.tsx:488-502`, no test added.
 - T6: F8 sandbox keeps the shared track max (RED: max typed in the Sheet preview reset to 0); F13 `toUpperCase()` (RED is a `toLocaleUpperCase` spy standing in for a locale, not a real locale run); M2 new `CheckStepForm.test.tsx` (proved: fails with the `key` removed); M5 refused navigation after a rename in `LikelihoodOracleEditor.test.tsx` and M6 `trackerPips` `{min: 10, max: 14}` pin existing behaviour (no RED).
 - T3 / F10: `assertRandomEventQuestion` requires the question in the current session and scene (`NotARandomEventQuestion::notInCurrentScene`, 422; OpenAPI description updated). RED in `RecordOracleTableResultHandlerTest` (earlier-scene question was accepted), GREEN after; one API test for the 422. Edit surface extended by the user for `CampaignJournal.php` and friends.
+- T7: review fixes. `useRecordEntry` re-invalidates the journal when `cancelQueries` dropped a read in flight (RED: a refetch carrying another entry was lost; test helper keeps every pending read). Hint replaces the stale roll error in `DiceRoller` (RED: two alerts). `Parser` bare constant goes through `value()` (same written-digit message; refactor, existing tests green), `Tokenizer::utf8SequenceLength`, `sameLink` doc comment moved, `markInitial` spy restored in `finally` (refactors, no RED).
 
 ## Reviews
 

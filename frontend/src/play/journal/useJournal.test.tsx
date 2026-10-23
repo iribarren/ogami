@@ -18,7 +18,10 @@ const newNote = recordedEntry({ kind: 'note', text: 'A new note.', attachments: 
  */
 function setup(record: (answerRefetch: (entries: JournalEntry[]) => void) => FakeHandler) {
   let reads = 0
-  let answerRefetch: (entries: JournalEntry[]) => void = () => undefined
+  const answers: ((entries: JournalEntry[]) => void)[] = []
+  const answerRefetch = (entries: JournalEntry[]) => {
+    answers.at(-1)?.(entries)
+  }
   const { api } = createFakeApiClient({
     [`GET /api/campaigns/${campaignId}/journal`]: () => {
       reads += 1
@@ -26,9 +29,9 @@ function setup(record: (answerRefetch: (entries: JournalEntry[]) => void) => Fak
         return Response.json([gateNote])
       }
       return new Promise<Response>((resolve) => {
-        answerRefetch = (entries) => {
+        answers.push((entries) => {
           resolve(Response.json(entries))
-        }
+        })
       })
     },
     [`POST /api/campaigns/${campaignId}/journal/notes`]: (request) =>
@@ -51,8 +54,10 @@ function setup(record: (answerRefetch: (entries: JournalEntry[]) => void) => Fak
     client,
     ...hooks,
     reads: () => reads,
-    answerRefetch: (entries: JournalEntry[]) => {
-      answerRefetch(entries)
+    answerRefetch,
+    /** Answers the n-th refetch (1 is the first one after the initial read), even a dropped one. */
+    answerRefetchNumber: (n: number, entries: JournalEntry[]) => {
+      answers[n - 1]?.(entries)
     },
   }
 }
@@ -107,10 +112,31 @@ describe('useRecordEntry', () => {
     await startRefetchAndRecord(hooks)
     // The read started before the note was recorded now answers without it.
     await act(async () => {
-      hooks.answerRefetch([gateNote])
+      hooks.answerRefetchNumber(1, [gateNote])
       await new Promise((resolve) => setTimeout(resolve, 20))
     })
 
     expect(hooks.client.getQueryData(journalKey(campaignId))).toEqual([gateNote, newNote])
+  })
+
+  it('reads the journal again when it dropped a read in flight that another cause started', async () => {
+    const hooks = setup(() => () => Response.json(newNote, { status: 201 }))
+    const otherNote = recordedEntry({ kind: 'note', text: 'From another tab.', attachments: [] })
+
+    await startRefetchAndRecord(hooks)
+    // The dropped read would have carried another entry: the journal asks again.
+    await waitFor(() => {
+      expect(hooks.reads()).toBe(3)
+    })
+    await act(async () => {
+      hooks.answerRefetch([gateNote, otherNote, newNote])
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+
+    expect(hooks.client.getQueryData(journalKey(campaignId))).toEqual([
+      gateNote,
+      otherNote,
+      newNote,
+    ])
   })
 })

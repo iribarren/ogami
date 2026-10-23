@@ -87,11 +87,12 @@ final class Parser
             return $this->dice($this->value($integer));
         }
 
-        if ($integer->integer() > DiceExpression::MAX_INTEGER) {
-            throw InvalidDiceExpression::integerOutOfRange(ltrim($integer->text, '0'), DiceExpression::MAX_INTEGER);
+        $value = $this->value($integer);
+        if ($value > DiceExpression::MAX_INTEGER) {
+            throw InvalidDiceExpression::integerOutOfRange($integer->written(), DiceExpression::MAX_INTEGER);
         }
 
-        return new Constant($integer->integer());
+        return new Constant($value);
     }
 
     /**

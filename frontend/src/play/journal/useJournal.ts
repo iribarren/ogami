@@ -73,16 +73,21 @@ export function useRecordEntry<Variables>(
     onSuccess: async (entry) => {
       // A read already in flight started before this entry existed: its answer would overwrite
       // the append, so drop it first. One that finished with the entry leaves nothing to append.
-      await queryClient.cancelQueries({ queryKey: journalKey(campaignId) })
-      const cached = queryClient.getQueryData<JournalEntry[]>(journalKey(campaignId))
+      const key = journalKey(campaignId)
+      const reading = queryClient.isFetching({ queryKey: key }) > 0
+      await queryClient.cancelQueries({ queryKey: key })
+      const cached = queryClient.getQueryData<JournalEntry[]>(key)
       if (cached === undefined) {
-        void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+        void queryClient.invalidateQueries({ queryKey: key })
         return
       }
-      if (cached.some(({ id }) => id === entry.id)) {
-        return
+      if (!cached.some(({ id }) => id === entry.id)) {
+        queryClient.setQueryData(key, [...cached, entry])
       }
-      queryClient.setQueryData(journalKey(campaignId), [...cached, entry])
+      // The dropped read may have carried entries from elsewhere (another tab, a refocus): ask again.
+      if (reading) {
+        void queryClient.invalidateQueries({ queryKey: key })
+      }
     },
     onError: (error) => {
       if (refetchOnConflict && error instanceof CampaignError && error.status === 409) {

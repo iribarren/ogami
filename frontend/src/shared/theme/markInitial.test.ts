@@ -21,8 +21,10 @@ describe('markInitial', () => {
     // A stand-in for a locale (Turkish dotless i) that upper-cases differently: the seal must not follow it.
     const spy = vi.spyOn(String.prototype, 'toLocaleUpperCase').mockReturnValue('LOCALE')
 
-    expect(markInitial('ida')).toBe('I')
-
-    spy.mockRestore()
+    try {
+      expect(markInitial('ida')).toBe('I')
+    } finally {
+      spy.mockRestore()
+    }
   })
 })

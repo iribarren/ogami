@@ -21,9 +21,10 @@ const kindNouns = { npc: 'NPC', thread: 'Thread', fact: 'Fact' } as const
 /** A link as shown: its target's name, resolved by the server. */
 type NamedLink = Fact['links'][number]
 
-/** Links as the API takes them: a kind and an id, never the name it resolved. */
 /** A link is its kind and id: an NPC and a Thread may share an id. */
 const sameLink = (a: NamedLink, b: NamedLink) => a.kind === b.kind && a.id === b.id
+
+/** Links as the API takes them: a kind and an id, never the name it resolved. */
 const asRequest = (links: NamedLink[]): FactLink[] => links.map(({ kind, id }) => ({ kind, id }))
 
 const fits = (value: string, max: number) => value.trim() !== '' && value.trim().length <= max

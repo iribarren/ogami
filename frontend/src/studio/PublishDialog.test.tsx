@@ -7,7 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { draft, published3, validDraft } from './fixtures'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { conflictMessage, PublishErrors } from './PublishDialog'
+import { conflictMessage, focusNotes, PublishErrors } from './PublishDialog'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -347,5 +347,36 @@ describe('the errors of a publish', () => {
 
     expect(await screen.findAllByRole('listitem')).toHaveLength(1)
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+})
+
+describe('focusNotes', () => {
+  function openEvent(container: HTMLElement) {
+    const event = new Event('focus', { cancelable: true })
+    Object.defineProperty(event, 'currentTarget', { value: container })
+    return event
+  }
+
+  it('focuses the notes field and keeps Radix from focusing the Close button', () => {
+    const container = document.createElement('div')
+    container.innerHTML = '<button>Close</button><textarea></textarea>'
+    document.body.append(container)
+    const event = openEvent(container)
+
+    focusNotes(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(container.querySelector('textarea'))
+    container.remove()
+  })
+
+  it('leaves the default focus alone without a notes field', () => {
+    const container = document.createElement('div')
+    container.innerHTML = '<button>Close</button>'
+    const event = openEvent(container)
+
+    focusNotes(event)
+
+    expect(event.defaultPrevented).toBe(false)
   })
 })

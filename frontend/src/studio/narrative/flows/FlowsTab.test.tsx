@@ -56,7 +56,7 @@ describe('the Flows tab', () => {
     expect(heist).toHaveTextContent('Not used')
     expect(within(side).queryByText('Default')).not.toBeInTheDocument()
     expect(side).toHaveTextContent('1 phase')
-    expect(side).toHaveTextContent('Used by sceneTypes[0].play[1]')
+    expect(side).toHaveTextContent('Used by Scene Types · Ambush › Play › Step 2 “React”')
     const keys = within(screen.getByRole('region', { name: 'Flows' }))
       .getAllByRole('listitem')
       .map((item) => item.querySelector('.list-row-key')?.textContent)
@@ -405,7 +405,9 @@ describe('deleting a flow', () => {
 
     const button = await screen.findByRole('button', { name: 'Delete side-job' })
     expect(button).toBeDisabled()
-    expect(button).toHaveAccessibleDescription('Used by sceneTypes[0].play[1]')
+    expect(button).toHaveAccessibleDescription(
+      'Used by Scene Types · Ambush › Play › Step 2 “React”',
+    )
     expect(screen.getByRole('button', { name: 'Delete heist' })).toBeEnabled()
   })
 

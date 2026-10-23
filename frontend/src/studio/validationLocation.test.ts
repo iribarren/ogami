@@ -120,6 +120,12 @@ describe('splitting a warning', () => {
     expect(splitWarning('nothing at all')).toEqual({ reason: 'nothing at all' })
   })
 
+  it('treats a path-shaped prefix with an unknown head as part of the reason', () => {
+    expect(splitWarning('mystery[1]: has no steps')).toEqual({
+      reason: 'mystery[1]: has no steps',
+    })
+  })
+
   it('splits a warning that starts with a release path', () => {
     expect(splitWarning('flows[1]: has no steps')).toEqual({
       path: 'flows[1]',

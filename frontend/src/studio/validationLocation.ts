@@ -117,13 +117,12 @@ const overview: ErrorLocation = {
   target: { kind: 'tab', tab: 'overview' },
 }
 
-/** The first names of a release path, as `locateError` reads them. */
-const pathHeads = new Set([
-  'flows',
-  'sceneTypes',
-  'trackers',
-  'tags',
-  'factSlots',
+/**
+ * The first names of a release path, as `locateError` reads them: the item sections of its table
+ * (`sections`) and the heads it places by name.
+ */
+const pathHeads = new Set<string>([
+  ...Object.keys(sections),
   'oracles',
   'sheet',
   'checks',

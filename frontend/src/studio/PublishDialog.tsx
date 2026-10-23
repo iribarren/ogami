@@ -48,6 +48,23 @@ export const conflictMessage =
   'Nothing was published: the draft equals the latest release, or another release was published meanwhile. Reload and try again.'
 
 /**
+ * Opening the dialog focuses the first field, not the Close button (whose tooltip would pop up at
+ * once). Without one, Radix focuses as usual, so focus never stays outside the modal.
+ */
+// Exported for its unit test only.
+// eslint-disable-next-line react-refresh/only-export-components
+export function focusNotes(event: Event) {
+  const notes =
+    event.currentTarget instanceof HTMLElement
+      ? event.currentTarget.querySelector('textarea')
+      : null
+  if (notes !== null) {
+    event.preventDefault()
+    notes.focus()
+  }
+}
+
+/**
  * The "Publish" button and its dialog: the validation result, the version a publish creates and
  * optional release notes. A refusal is explained inside the dialog; success closes it and tells
  * the page which version was published.
@@ -69,20 +86,7 @@ export function PublishDialog({
           Publish
         </Button>
       </DialogTrigger>
-      <DialogContent
-        onOpenAutoFocus={(event) => {
-          // The first field, not the Close button (whose tooltip would pop up at once). Without
-          // one, Radix focuses as usual, so focus never stays outside the modal.
-          const notes =
-            event.currentTarget instanceof HTMLElement
-              ? event.currentTarget.querySelector('textarea')
-              : null
-          if (notes !== null) {
-            event.preventDefault()
-            notes.focus()
-          }
-        }}
-      >
+      <DialogContent onOpenAutoFocus={focusNotes}>
         <div className="flex items-start gap-3">
           <IconTile size="lg">
             <Upload />

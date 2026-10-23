@@ -411,6 +411,8 @@ Done: `studio-ui-polish`, the Studio screens rebuilt on the design canvas with t
 Start feature `studio-ui-followups` (ODD). Fix the follow-ups `studio-ui-polish` logged (its feature doc: Reviews row 9 and the T14 Progress line), in one slice. First the two review warnings: `splitWarning` in `validationLocation.ts` treats any first `': '` as a path delimiter, so a pathless warning containing one loses its first words and gets a misleading Go to field (split only when the prefix parses as a release path); `PublishDialog`'s `onOpenAutoFocus` prevents the default even when the notes field is absent, leaving focus outside the modal (fall back to the default focus). Then: a component test for the check Modifier and band previews at the sandbox defaults, including a pending or failed sheet read; readable locations through `locateError` for the "Used by" lines (Oracles, Trackers & tags, Scene Types) and the Publish dialog errors list; the check editor title with the label; Close and Cancel in the New GameSystem dialog; the Sheet tab's derived previews reading untyped number fields at the sandbox defaults. Frontend only; accessible names unchanged except new controls.
 ```
 
+Done: `studio-ui-followups`, the `studio-ui-polish` follow-ups fixed in one slice: warnings split only on a release path, the Publish dialog focus, readable "Used by" lines and Publish errors, the check editor title, Close and Cancel in New GameSystem, Sheet previews at the sandbox defaults, and every section write carrying the shared draft version into the other section reads (PR #250, closes #249); see [odd/tasks/studio-ui-followups.md](../odd/tasks/studio-ui-followups.md).
+
 **B8. rules-dice-pools**
 
 ```text

@@ -1,7 +1,7 @@
 # Feature: studio-ui-polish
 
 - **Locator:** `odd/tasks/studio-ui-polish.md` · Engram topic `odd/studio-ui-polish/tasks`
-- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-9-chrome-pass` · **Status:** done: slices 1–8 merged (PRs #240–#247); slice 9 in PR #248
+- **Issue:** #239 · **Branch:** `feat/studio-ui-polish-9-chrome-pass` · **Status:** done: slices 1–9 merged (PRs #240–#248)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `faster-checks` (PR #238)
@@ -219,4 +219,4 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 
 ## Next step
 
-None. The follow-ups (the slice 9 review findings in Reviews row 9 and the T14 follow-ups in Progress) are roadmap item B7c `studio-ui-followups`.
+None. The follow-ups (the slice 9 review findings in Reviews row 9 and the T14 follow-ups in Progress) were fixed by roadmap item B7c `studio-ui-followups` (PR #250).

@@ -59,8 +59,11 @@ final class Tokenizer
      */
     private static function characterAt(string $notation, int $offset): string
     {
-        if (1 === preg_match('/\G./su', $notation, $match, 0, $offset)) {
-            return $match[0];
+        // Validate only the bytes of this character: invalid UTF-8 further on must not spoil a valid one here.
+        $lead = \ord($notation[$offset]);
+        $character = substr($notation, $offset, $lead >= 0xF0 ? 4 : ($lead >= 0xE0 ? 3 : ($lead >= 0xC0 ? 2 : 1)));
+        if (1 === preg_match('//u', $character)) {
+            return $character;
         }
 
         return \sprintf('\x%02X', \ord($notation[$offset]));

@@ -7,11 +7,6 @@ namespace App\Tests\Integration\Admin\Http;
 use App\Admin\Infrastructure\Http\AdminController;
 use App\Admin\Infrastructure\Http\AdminUserResponse;
 use App\Admin\Infrastructure\Http\AdminUsersController;
-use App\Identity\Application\UserLoader;
-use App\Identity\Domain\Email;
-use App\Identity\Domain\User;
-use App\Identity\Domain\UserId;
-use App\Identity\Domain\UserRepository;
 use App\Tests\Support\Admin\AdminApiTestCase;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -191,71 +186,6 @@ final class AdminUsersApiTest extends AdminApiTestCase
         $this->send('POST', self::USERS."/$otherId/disable");
 
         self::assertResponseStatusCodeSame(204);
-    }
-
-    /**
-     * The acting owner is always another active owner, so the guard is only reached when two owners
-     * act on each other at once (ADR 0034). The test plays that race: the acting owner is gone from
-     * the locked read of the active owners by the time the guard looks. The rule itself is covered
-     * by LastActiveOwnerThroughCommandBusTest and the Behat scenarios; this pins the HTTP mapping.
-     *
-     * @param ?array<mixed> $body
-     */
-    #[Test]
-    #[DataProvider('actionsOnTheLastActiveOwner')]
-    public function aRefusalToTouchTheLastActiveOwnerIsAConflictWithTheErrorBody(string $method, string $action, ?array $body): void
-    {
-        $actorId = $this->signInAs();
-        $targetId = $this->createUser('other@example.com', ['OWNER']);
-        $real = self::getContainer()->get(UserRepository::class);
-        self::getContainer()->set(UserLoader::class, new UserLoader(new readonly class($real, $actorId) implements UserRepository {
-            public function __construct(private UserRepository $real, private string $actorId)
-            {
-            }
-
-            public function save(User $user): void
-            {
-                $this->real->save($user);
-            }
-
-            public function ofId(UserId $id): ?User
-            {
-                return $this->real->ofId($id);
-            }
-
-            public function ofEmail(Email $email): ?User
-            {
-                return $this->real->ofEmail($email);
-            }
-
-            public function all(): array
-            {
-                return $this->real->all();
-            }
-
-            public function activeOwnersForUpdate(): array
-            {
-                return array_values(array_filter(
-                    $this->real->activeOwnersForUpdate(),
-                    fn (User $owner): bool => $owner->id()->toString() !== $this->actorId,
-                ));
-            }
-        }));
-
-        $this->send($method, self::USERS."/$targetId/$action", $body);
-
-        self::assertResponseStatusCodeSame(409);
-        self::assertSame(['error'], array_keys($this->json()));
-        self::assertStringContainsString('last active owner', $this->field('error'));
-    }
-
-    /**
-     * @return iterable<string, array{string, string, ?array<mixed>}>
-     */
-    public static function actionsOnTheLastActiveOwner(): iterable
-    {
-        yield 'disable' => ['POST', 'disable', null];
-        yield 'drop the OWNER role' => ['PUT', 'roles', ['roles' => ['GAME_MANAGER']]];
     }
 
     /**

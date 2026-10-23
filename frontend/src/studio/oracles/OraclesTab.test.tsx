@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, oracles, validDraft } from '../fixtures'
+import { draft, narrativeFlows, oracles, validDraft } from '../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -21,6 +21,8 @@ async function openOracles(handlers: Record<string, FakeHandler> = {}) {
     [`GET ${base}`]: json(draft),
     [`GET ${base}/validation`]: json(validDraft),
     [`GET ${base}/oracles`]: json(oracles),
+    // Flows and Scene Types, so the "Used by" lines can name where an item is used.
+    [`GET ${base}/narrative`]: json(narrativeFlows),
     ...handlers,
   })
   await user.click(await screen.findByRole('link', { name: 'Oracles' }))
@@ -41,7 +43,9 @@ describe('the oracles tab', () => {
     expect(weather).toHaveTextContent('weather')
     expect(weather).toHaveTextContent('Ranged 1d6')
     expect(weather).toHaveTextContent('2 entries')
-    expect(weather).toHaveTextContent('Used by sceneTypes[1].play[0]')
+    expect(weather).toHaveTextContent('Used by Scene Types · Quiet › Play › Step 1')
+    // The raw release path stays available.
+    expect(within(weather).getByTitle('sceneTypes[1].play[0]')).toBeInTheDocument()
     expect(storm).toHaveTextContent('Weighted')
     expect(storm).toHaveTextContent('3 entries')
     expect(storm).toHaveTextContent('Not used')
@@ -53,7 +57,7 @@ describe('the oracles tab', () => {
     expect(likelihood.getByRole('listitem')).toHaveTextContent('Fate question')
     expect(likelihood.getByRole('listitem')).toHaveTextContent('2 levels')
     expect(likelihood.getByRole('listitem')).toHaveTextContent(
-      'Used by flows[0].phases[0].steps[1]',
+      'Used by Flows · Heist › 1. Setup › Steps 2',
     )
     expect(likelihood.getByRole('link', { name: 'Fate question' })).toHaveAttribute(
       'href',
@@ -81,7 +85,7 @@ describe('the oracles tab', () => {
 
     const button = await screen.findByRole('button', { name: 'Delete weather' })
     expect(button).toBeDisabled()
-    expect(button).toHaveAccessibleDescription('Used by sceneTypes[1].play[0]')
+    expect(button).toHaveAccessibleDescription('Used by Scene Types · Quiet › Play › Step 1')
     expect(screen.getByRole('button', { name: 'Delete storm-kind' })).toBeEnabled()
   })
 
@@ -500,7 +504,7 @@ describe('the oracles tab', () => {
 
       const button = await screen.findByRole('button', { name: 'Delete fate' })
       expect(button).toBeDisabled()
-      expect(button).toHaveAccessibleDescription('Used by flows[0].phases[0].steps[1]')
+      expect(button).toHaveAccessibleDescription('Used by Flows · Heist › 1. Setup › Steps 2')
       expect(screen.getByRole('button', { name: 'Delete omens' })).toBeEnabled()
     })
 

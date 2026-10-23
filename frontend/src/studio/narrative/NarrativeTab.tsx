@@ -1,5 +1,5 @@
 import { Gauge, Pencil, Plus, ScrollText, Tag, Trash2 } from 'lucide-react'
-import { useId, useState, type ReactNode } from 'react'
+import { Fragment, useId, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -15,6 +15,7 @@ import { IconButton } from '@/shared/ui/icon-button'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { StudioError } from '../useGameSystems'
+import { describeLocation, useNames, type LocatorNames } from '../validationLocation'
 import { ItemDialog, type ItemForm } from './ItemDialog'
 import { NarrativeGate } from './NarrativeGate'
 import { factSlotForm, tagForm, trackerForm } from './itemForms'
@@ -121,6 +122,7 @@ function ItemSection<Draft>({
   empty: string
   summary: (draft: Draft) => ReactNode
 }) {
+  const names = useNames(gameSystemKey)
   return (
     <section aria-label={title} className="self-start panel">
       <div className="panel-head">
@@ -161,6 +163,7 @@ function ItemSection<Draft>({
               form={form}
               titleField={titleField}
               summary={summary}
+              names={names}
             />
           ))}
         </ul>
@@ -169,11 +172,23 @@ function ItemSection<Draft>({
   )
 }
 
-export function UsedBy({ paths }: { paths: string[] }) {
+/**
+ * Where an item is used. With the draft's `names`, each path is said in words (group and trail, as
+ * the Validation tab does) and keeps the raw release path as its `title`; without, the raw paths.
+ */
+export function UsedBy({ paths, names }: { paths: string[]; names?: LocatorNames }) {
   return paths.length === 0 ? (
     <span className="text-muted-foreground">Not used</span>
   ) : (
-    <span className="break-all text-muted-foreground">Used by {paths.join(', ')}</span>
+    <span className="break-all text-muted-foreground">
+      Used by{' '}
+      {paths.map((path, index) => (
+        <Fragment key={`${String(index)}:${path}`}>
+          {index > 0 && ', '}
+          {names === undefined ? path : <span title={path}>{describeLocation(path, names)}</span>}
+        </Fragment>
+      ))}
+    </span>
   )
 }
 
@@ -184,6 +199,7 @@ function ItemRow<Draft>({
   form,
   titleField,
   summary,
+  names,
 }: {
   gameSystemKey: string
   item: NarrativeItem
@@ -191,6 +207,7 @@ function ItemRow<Draft>({
   form: ItemForm<Draft>
   titleField: 'name' | 'label'
   summary: (draft: Draft) => ReactNode
+  names: LocatorNames
 }) {
   const reasonId = useId()
   const draft = form.read(item.definition)
@@ -217,7 +234,7 @@ function ItemRow<Draft>({
           </p>
         )}
         <p id={reasonId} className="text-sm">
-          <UsedBy paths={item.usedBy} />
+          <UsedBy paths={item.usedBy} names={names} />
         </p>
       </div>
       <ItemDialog

@@ -114,7 +114,11 @@ describe('the publish dialog', () => {
 
     const dialog = await openDialog(user)
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent('oracles: must be an object')
+    // The reason and the place in words, not the raw path.
+    const alert = await dialog.findByRole('alert')
+    expect(alert).toHaveTextContent('must be an object')
+    expect(alert).toHaveTextContent('Oracles')
+    expect(alert).not.toHaveTextContent('oracles: must')
     expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
   })
 
@@ -135,8 +139,11 @@ describe('the publish dialog', () => {
 
     const alert = await dialog.findByRole('alert')
     expect(within(alert).getAllByRole('listitem')).toHaveLength(3)
-    expect(alert).toHaveTextContent('trackers[0].c: is wrong')
-    expect(alert).not.toHaveTextContent('trackers[0].d')
+    // Each error says where it is in words (the narrative names are read for it).
+    expect(alert).toHaveTextContent('is wrong')
+    expect(alert).toHaveTextContent('Trackers · 1 › C')
+    expect(alert).not.toHaveTextContent('Trackers · 1 › D')
+    expect(alert).not.toHaveTextContent('trackers[0]')
     expect(alert).toHaveTextContent('and 2 more')
     expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
   })

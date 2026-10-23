@@ -19,7 +19,9 @@ import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
 import { KeyHint } from '../KeyHint'
+import { UsedBy } from '../narrative/NarrativeTab'
 import { StudioError } from '../useGameSystems'
+import { useNames, type LocatorNames } from '../validationLocation'
 import { newLikelihood } from './likelihoodDraft'
 import { newTable } from './tableDraft'
 import {
@@ -37,6 +39,7 @@ import {
 /** The oracle tables and likelihood oracles of a draft, with where each is used. */
 export function OraclesTab({ gameSystemKey }: { gameSystemKey: string }) {
   const oracles = useGameSystemOracles(gameSystemKey)
+  const names = useNames(gameSystemKey)
 
   if (oracles.data === undefined) {
     if (oracles.isPending) {
@@ -58,26 +61,20 @@ export function OraclesTab({ gameSystemKey }: { gameSystemKey: string }) {
           Couldn&apos;t refresh the oracles. {oracles.error.message}
         </p>
       )}
-      <TablesList gameSystemKey={gameSystemKey} oracles={oracles.data} />
-      <LikelihoodList gameSystemKey={gameSystemKey} oracles={oracles.data} />
+      <TablesList gameSystemKey={gameSystemKey} oracles={oracles.data} names={names} />
+      <LikelihoodList gameSystemKey={gameSystemKey} oracles={oracles.data} names={names} />
     </section>
-  )
-}
-
-function UsedBy({ paths }: { paths: string[] }) {
-  return paths.length === 0 ? (
-    <span className="text-muted-foreground">Not used</span>
-  ) : (
-    <span className="break-all text-muted-foreground">Used by {paths.join(', ')}</span>
   )
 }
 
 function TablesList({
   gameSystemKey,
   oracles,
+  names,
 }: {
   gameSystemKey: string
   oracles: GameSystemOracles
+  names: LocatorNames
 }) {
   return (
     <section aria-label="Oracle tables" className="panel">
@@ -108,6 +105,7 @@ function TablesList({
               gameSystemKey={gameSystemKey}
               item={item}
               version={oracles.version}
+              names={names}
             />
           ))}
         </ul>
@@ -120,10 +118,12 @@ function TableRow({
   gameSystemKey,
   item,
   version,
+  names,
 }: {
   gameSystemKey: string
   item: OracleTableItem
   version: number
+  names: LocatorNames
 }) {
   const { definition, usedBy } = item
   const reasonId = useId()
@@ -150,7 +150,7 @@ function TableRow({
           </span>
         </p>
         <p id={reasonId} className="text-sm">
-          <UsedBy paths={usedBy} />
+          <UsedBy paths={usedBy} names={names} />
         </p>
       </div>
       <DeleteOracleDialog
@@ -264,9 +264,11 @@ function DeleteOracleDialog<Variables>({
 function LikelihoodList({
   gameSystemKey,
   oracles,
+  names,
 }: {
   gameSystemKey: string
   oracles: GameSystemOracles
+  names: LocatorNames
 }) {
   return (
     <section aria-label="Likelihood oracles" className="panel">
@@ -297,6 +299,7 @@ function LikelihoodList({
               gameSystemKey={gameSystemKey}
               item={item}
               version={oracles.version}
+              names={names}
             />
           ))}
         </ul>
@@ -309,10 +312,12 @@ function LikelihoodRow({
   gameSystemKey,
   item,
   version,
+  names,
 }: {
   gameSystemKey: string
   item: LikelihoodOracleItem
   version: number
+  names: LocatorNames
 }) {
   const { definition, usedBy } = item
   const reasonId = useId()
@@ -336,7 +341,7 @@ function LikelihoodRow({
           </span>
         </p>
         <p id={reasonId} className="text-sm">
-          <UsedBy paths={usedBy} />
+          <UsedBy paths={usedBy} names={names} />
         </p>
       </div>
       <DeleteOracleDialog

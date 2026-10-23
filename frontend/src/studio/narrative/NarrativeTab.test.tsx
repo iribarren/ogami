@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, narrative, narrativeV1, validDraft } from '../fixtures'
+import { draft, narrative, narrativeFlows, narrativeV1, validDraft } from '../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -20,7 +20,12 @@ async function openNarrative(handlers: Record<string, FakeHandler> = {}) {
     'GET /api/studio/game-systems': json([]),
     [`GET ${base}`]: json(draft),
     [`GET ${base}/validation`]: json(validDraft),
-    [`GET ${base}/narrative`]: json(narrative),
+    // Flows and Scene Types, so the "Used by" lines can name where an item is used.
+    [`GET ${base}/narrative`]: json({
+      ...narrative,
+      flows: narrativeFlows.flows,
+      sceneTypes: narrativeFlows.sceneTypes,
+    }),
     ...handlers,
   })
   await user.click(await screen.findByRole('link', { name: 'Trackers & tags' }))
@@ -58,12 +63,14 @@ describe('the trackers and tags tab', () => {
     expect(heat).toHaveTextContent('heat')
     expect(heat).toHaveTextContent('Counter 0 to 10')
     expect(heat).toHaveTextContent('2 levels')
-    expect(heat).toHaveTextContent('Used by flows[0].trackers')
+    expect(heat).toHaveTextContent('Used by Flows · Heist › Trackers')
     expect(alarm).toHaveTextContent('Clock, 6 segments')
     expect(alarm).toHaveTextContent('Not used')
     const tags = within(screen.getByRole('region', { name: 'Tags' }))
     expect(tags.getAllByRole('listitem')[0]).toHaveTextContent('Gang')
-    expect(tags.getAllByRole('listitem')[0]).toHaveTextContent('Used by sceneTypes[0].play[1]')
+    expect(tags.getAllByRole('listitem')[0]).toHaveTextContent(
+      'Used by Scene Types · Ambush › Play › Step 2',
+    )
     const slots = within(screen.getByRole('region', { name: 'Fact slots' }))
     expect(slots.getAllByRole('listitem')[0]).toHaveTextContent('Target')
     expect(slots.getAllByRole('listitem')[0]).toHaveTextContent('npc')
@@ -120,7 +127,7 @@ describe('deleting', () => {
 
     const button = await screen.findByRole('button', { name: 'Delete heat' })
     expect(button).toBeDisabled()
-    expect(button).toHaveAccessibleDescription('Used by flows[0].trackers')
+    expect(button).toHaveAccessibleDescription('Used by Flows · Heist › Trackers')
     expect(screen.getByRole('button', { name: 'Delete alarm' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Delete gang' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Delete client' })).toBeDisabled()

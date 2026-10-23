@@ -155,6 +155,12 @@ export function splitWarning(warning: string): { path?: string; reason: string }
   return { path: warning.slice(0, at), reason: warning.slice(at + 2) }
 }
 
+/** A path as one line of words: `Flows · One-shot › Trackers`. */
+export function describeLocation(path: string, names: LocatorNames): string {
+  const { group, trail } = locateError(path, names)
+  return [group, ...trail].join(' › ')
+}
+
 /** Where in the draft a validation path is, in words, and where to edit it. Never throws. */
 export function locateError(path: string, names: LocatorNames): ErrorLocation {
   const tokens = tokenize(path)

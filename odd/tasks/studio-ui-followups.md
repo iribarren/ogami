@@ -51,7 +51,7 @@ Out of scope: backend and API changes; new Studio screens; restyling beyond the 
 | T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
 | T2 | 1 | Review warnings: `splitWarning` splits only on a path prefix; Publish dialog falls back to the default focus without notes | writer (delegated) | [x] | |
 | T3 | 1 | Check Modifier and band preview component tests at the sandbox defaults, with the sheet read pending and failed | writer (delegated) | [x] | |
-| T4 | 1 | Readable "Used by" lines (Oracles, Trackers & tags, Scene Types) and Publish dialog errors through `locateError` | writer (delegated) | [ ] | |
+| T4 | 1 | Readable "Used by" lines (Oracles, Trackers & tags, Scene Types) and Publish dialog errors through `locateError` | writer (delegated) | [x] | |
 | T5 | 1 | Check editor title with the label; Close and Cancel in the New GameSystem dialog; Sheet derived previews read untyped number fields at the sandbox defaults | writer (delegated) | [ ] | |
 
 ## Applicable checks
@@ -63,6 +63,7 @@ Out of scope: backend and API changes; new Studio screens; restyling beyond the 
 - 2026-10-23: feature doc created (5 tasks, one slice); issue #249.
 - 2026-10-23: T2 done. `splitWarning` splits only when the prefix is a release path with a known head. RED: two new tests failed (`Note: ...` got a path `Note`); GREEN after. Publish focus: the notes textarea is always rendered, so the no-notes branch is unreachable in the app; the focus-inside-dialog test pins behaviour (no RED).
 - 2026-10-23: T3 done. Three `ChecksTab` tests: Modifier and band previews at the sandbox default (pow default 7 gives 8 and 14), and at 0-based fallback with the sheet pending and failed. Pin existing behaviour: no RED, no bug found.
+- 2026-10-23: T4 done. `UsedBy` (exported from `NarrativeTab`, reused by `OraclesTab`) takes optional `names` and renders each path via `describeLocation` (new in `validationLocation.ts`) with the raw path as `title`; Trackers & tags and both Oracle lists pass `useNames`. `PublishErrors` renders each error through `WarningText` (reason plus location). RED: Oracles/Narrative/Publish tests with the new text failed (7 failures), GREEN after. Not done: Scene Types and Flows lists use the same `UsedBy` without `names` (their files and tests are outside the writer's edit surface); delete-error messages unchanged.
 
 ## Reviews
 

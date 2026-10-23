@@ -41,4 +41,14 @@ describe('summarize a list field', () => {
     expect(summarize(gear, [long])).toBe(`Gear: ${'x'.repeat(40)}…`)
     expect(summarize(gear, [long, 'Cloak'])).toBe(`Gear: ${'x'.repeat(40)}… +1`)
   })
+
+  it('fits exactly 40 characters and cuts at 41', () => {
+    expect(summarize(gear, ['x'.repeat(40)])).toBe(`Gear: ${'x'.repeat(40)}`)
+    expect(summarize(gear, ['x'.repeat(41)])).toBe(`Gear: ${'x'.repeat(40)}…`)
+  })
+
+  it('skips blank items, and a list of only blank items reads like an empty one', () => {
+    expect(summarize(gear, ['Rapier', '  ', '', 'Cloak'])).toBe('Gear: Rapier, Cloak')
+    expect(summarize(gear, ['', ' '])).toBe('Gear: 0')
+  })
 })

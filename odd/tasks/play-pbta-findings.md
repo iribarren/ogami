@@ -1,7 +1,7 @@
 # Feature: play-pbta-findings
 
 - **Locator:** `odd/tasks/play-pbta-findings.md` · Engram topic `odd/play-pbta-findings/tasks`
-- **Issue:** #253 · **Branch:** `fix/play-pbta-findings-1-sheet-journal` · **Status:** slice 1 in progress
+- **Issue:** #253 · **Branch:** `fix/play-pbta-findings-2-check-breakdown` · **Status:** slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7e
@@ -57,10 +57,10 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; Chrome replay of every finding | parent, inline (doc); Chrome worker (delegated) | [x] | |
-| T2 | 1 | P8: list fields in the character summary | writer (delegated) | [x] | |
+| T1 | 1 | This feature doc; Chrome replay of every finding | parent, inline (doc); Chrome worker (delegated) | [x] | 7bdfe4a |
+| T2 | 1 | P8: list fields in the character summary | writer (delegated) | [x] | a6c200a |
 | T3 | — | P12: dropped after the replay (content fix in T9) | — | [x] | — |
-| T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | |
+| T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | 65d3f43 |
 | T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [ ] | |
 | T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [ ] | |
 | T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [ ] | |
@@ -81,11 +81,14 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 - 2026-10-24 T2: `summarize()` lists list items (<=40 characters joined, first item cut with an ellipsis, ` +N` for the rest; empty keeps `Label: 0`). RED: 3 of 4 new `sheetValues.test.ts` tests failed (one-item, many-items, long-item; the empty-list test passed on first run, it pins today's output); GREEN: 43 tests in `src/shared/sheet` + `src/play/characters`.
 - 2026-10-24 T4: a `number` field with `min 0`, `max 1` and a `'0'`/`'1'` draft renders as a checkbox in `SheetFields` (same draft values, no API change); a value outside 0..1 or any other range stays a number input. RED: 3 toggle tests failed (the legacy `2` and other-range tests passed on first run, they pin the fallback); GREEN: `SheetFields.test.tsx` 11/11. `play-hearts-and-rapiers.spec.ts` does not touch Conditions, so unchanged.
 
+- 2026-10-24 R3-001 (slice 1 review): `summarize()` skips blank (whitespace-only) list items; a list of only blank items reads `Label: 0`. RED: the new blank-items test failed (the 40/41-character boundary test passed on first run, it pins today's behaviour); GREEN: `sheetValues.test.ts` 6/6.
+
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-ac9260f5b4d50984` (medium) | 7bdfe4a, a6c200a, 65d3f43 | Approved, acknowledged. R3-001 (blank list items summarise as "Gear: , "; no 40-character boundary test, `sheetValues.ts:68-83`): fixed in slice 2 | [#261](https://github.com/iribarren/ogami/pull/261) |
 
 ## Next step
 
-Slice 1 writer (T2, T4).
+Slice 2 writer: R3-001 fix, then T5 and T6.

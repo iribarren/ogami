@@ -97,7 +97,8 @@ export function summarize(
     return value === '' ? null : `${field.label}: ${cut(value)}`
   }
   if (Array.isArray(value)) {
-    return `${field.label}: ${value.length === 0 ? '0' : summarizeItems(value)}`
+    const items = value.filter((item) => item.trim() !== '')
+    return `${field.label}: ${items.length === 0 ? '0' : summarizeItems(items)}`
   }
   if (typeof value === 'object') {
     return `${field.label}: ${String(value.current)}/${String(value.max)}`

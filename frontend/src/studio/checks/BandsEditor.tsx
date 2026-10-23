@@ -33,10 +33,10 @@ import {
 } from './checkDraft'
 import {
   checkFormulaDiagnostics,
+  type Catalog,
   checkReferences,
   declaredDifficulty,
 } from './checkFormulaDiagnostics'
-import type { GameSystemChecks } from './useGameSystemChecks'
 
 type Kind = UpToDraft['kind']
 
@@ -86,7 +86,7 @@ export function BandsEditor({
    * position it had before, null for the new one, so what is known by position follows the bands.
    */
   onChange: (bands: BandDraft[], order?: (number | null)[]) => void
-  catalog: Pick<GameSystemChecks, 'fields' | 'trackers'>
+  catalog: Catalog
   difficulty: DifficultyDraft | null
   /** The other checks whose bands can be copied. */
   copyFrom: BandSource[]
@@ -347,7 +347,7 @@ function UpToInput({
   name: string
   upTo: UpToDraft
   onChange: (upTo: UpToDraft) => void
-  catalog: Pick<GameSystemChecks, 'fields' | 'trackers'>
+  catalog: Catalog
   references: ReturnType<typeof checkReferences>
   declared: ReturnType<typeof declaredDifficulty>
   error?: string

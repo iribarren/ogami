@@ -21,6 +21,8 @@ import { BandsEditor, type BandSource } from './BandsEditor'
 import { CheckSandbox } from './CheckSandbox'
 import { TextField } from '../narrative/TextField'
 import { FormulaInput } from '../sheet/FormulaInput'
+import { previewTemplate } from '../sheet/previewTemplate'
+import { useGameSystemSheet } from '../sheet/useGameSystemSheet'
 import { StudioError } from '../useGameSystems'
 import {
   blankCheck,
@@ -39,6 +41,7 @@ import {
 } from './checkDraft'
 import { checkFormulaDiagnostics, checkReads, checkReferences } from './checkFormulaDiagnostics'
 import { checkAnswer } from './checkError'
+import { sampleDefaults } from './checkSandbox'
 import {
   CheckError,
   useDeleteCheck,
@@ -604,6 +607,16 @@ function CheckEditor({
   const [localBands, setLocalBands] = useState<BandErrorMap>({})
   const [publishedBands, setPublishedBands] = useState<BandErrorMap>({})
   const { error } = save
+  // The previews read a number field at the value the test roll starts it at.
+  const sheet = useGameSystemSheet(gameSystemKey)
+  const catalog = useMemo(
+    () => ({
+      ...start,
+      defaults:
+        sheet.data === undefined ? {} : sampleDefaults(previewTemplate(sheet.data, null).fields),
+    }),
+    [start, sheet.data],
+  )
   const references = useMemo(() => checkReferences(start, 'modifier', false), [start])
   const modifierDiagnostics = useMemo(
     () =>
@@ -612,10 +625,10 @@ function CheckEditor({
         : checkFormulaDiagnostics({
             formula: draft.modifier,
             scope: 'modifier',
-            catalog: start,
+            catalog,
             difficulty: null,
           }),
-    [draft.modifier, start],
+    [draft.modifier, catalog],
   )
   const reads = useMemo(() => checkReads(draft.modifier, start), [draft.modifier, start])
   const difficultyId = useId()
@@ -838,7 +851,7 @@ function CheckEditor({
                 setPublishedBands((held) => followBands(held, order))
               }
             }}
-            catalog={start}
+            catalog={catalog}
             difficulty={draft.difficulty}
             copyFrom={copyFrom}
             error={shown.bands}

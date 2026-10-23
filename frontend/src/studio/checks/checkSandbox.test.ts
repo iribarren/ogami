@@ -2,7 +2,7 @@ import type { SheetFieldView } from '@/shared/sheet/types'
 
 import type { Sample } from '../sheet/useSheetSamples'
 import type { BandDraft, DifficultyDraft } from './checkDraft'
-import { resolveSandbox, type SandboxState } from './checkSandbox'
+import { resolveSandbox, sampleDefaults, type SandboxState } from './checkSandbox'
 
 const field = (key: string, extra: Partial<SheetFieldView> = {}): SheetFieldView => ({
   key,
@@ -300,5 +300,19 @@ describe('the sandbox', () => {
     )
 
     expect(bounds.slice(0, 2)).toEqual([{ kind: 'unknown' }, { kind: 'unknown' }])
+  })
+})
+
+describe('sampleDefaults', () => {
+  it('gives each number field the value the sandbox starts it at, held within its range', () => {
+    expect(
+      sampleDefaults([
+        field('pow', { min: 2, max: 18 }),
+        field('dex', { default: 10 }),
+        field('low', { default: 1, min: 3 }),
+        field('hp', { type: 'track', max: 12 }),
+        field('bonus', { type: 'derived', formula: '{pow} + 1' }),
+      ]),
+    ).toEqual({ pow: 2, dex: 10, low: 3 })
   })
 })

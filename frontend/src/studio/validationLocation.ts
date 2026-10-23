@@ -1,6 +1,10 @@
+import { useMemo } from 'react'
+
 import type { GameSystemTab } from './gameSystemTabs'
 import { phaseHooks } from './narrative/flows/flowDraft'
 import { hookLabels, nodePath } from './narrative/flows/flowNode'
+import { useGameSystemNarrative, type NarrativeItem } from './narrative/useGameSystemNarrative'
+import { useGameSystemOracles } from './oracles/useGameSystemOracles'
 
 /** An item of the draft as the editors read it: its key and its definition as in a release. */
 export interface NamedItem {
@@ -111,6 +115,14 @@ const overview: ErrorLocation = {
   group: 'Draft',
   trail: [],
   target: { kind: 'tab', tab: 'overview' },
+}
+
+/** A warning is `"path: reason"`; one without a path is only its reason. Splits at the first `': '`. */
+export function splitWarning(warning: string): { path?: string; reason: string } {
+  const at = warning.indexOf(': ')
+  return at === -1
+    ? { reason: warning }
+    : { path: warning.slice(0, at), reason: warning.slice(at + 2) }
 }
 
 /** Where in the draft a validation path is, in words, and where to edit it. Never throws. */
@@ -240,4 +252,30 @@ function flowLocation(group: string, flow: NamedItem, rest: Token[]): ErrorLocat
       : { kind: 'phase', phase: phaseAt },
   )
   return { group, trail: [phaseLabel, ...words(after)], target: { ...target, node } }
+}
+
+/** The draft's item names, from the narrative and oracle reads; empty until they arrive (or when they fail). */
+export function useNames(gameSystemKey: string): LocatorNames {
+  const narrative = useGameSystemNarrative(gameSystemKey)
+  const oracles = useGameSystemOracles(gameSystemKey)
+  const narrativeData = narrative.data
+  const oraclesData = oracles.data
+  return useMemo(() => {
+    const items = (list: NarrativeItem[] | undefined): NamedItem[] => list ?? []
+    const oracleItems = (list: { definition: object }[] | undefined): NamedItem[] =>
+      (list ?? []).map(({ definition }) => {
+        const record = definition as Record<string, unknown>
+        return { key: typeof record.key === 'string' ? record.key : '', definition: record }
+      })
+    return {
+      ...noNames,
+      flows: items(narrativeData?.flows),
+      sceneTypes: items(narrativeData?.sceneTypes),
+      trackers: items(narrativeData?.trackers),
+      tags: items(narrativeData?.tags),
+      factSlots: items(narrativeData?.factSlots),
+      tables: oracleItems(oraclesData?.tables),
+      likelihood: oracleItems(oraclesData?.likelihood),
+    }
+  }, [narrativeData, oraclesData])
 }

@@ -65,6 +65,21 @@ describe('checkFormulaDiagnostics', () => {
     )
   })
 
+  it('reads a number field at the default the test roll starts it at, else 0', () => {
+    const defaults = { pow: 4 }
+    const read = (formula: string, withDefaults?: Record<string, number>) =>
+      checkFormulaDiagnostics({
+        formula,
+        scope: 'modifier',
+        catalog: { ...catalog, defaults: withDefaults },
+        difficulty: null,
+      })
+
+    expect(read('{pow}', defaults).result).toEqual({ value: 4 })
+    expect(read('{pow}').result).toEqual({ value: 0 })
+    expect(read('{hp}', defaults).result).toEqual({ value: 0 })
+  })
+
   it('has no cycle check: a derived field reads fine, with no value', () => {
     expect(run('{edge}')).toEqual({ error: null, result: { reason: 'incomplete value' } })
   })

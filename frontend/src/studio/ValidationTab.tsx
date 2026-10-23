@@ -13,21 +13,18 @@ import {
   TriangleAlert,
   UserRound,
 } from 'lucide-react'
-import { useMemo, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { DieShape } from '@/shared/ui/die-shape'
 import { IconTile } from '@/shared/ui/icon-tile'
 
-import { useGameSystemNarrative, type NarrativeItem } from './narrative/useGameSystemNarrative'
-import { useGameSystemOracles } from './oracles/useGameSystemOracles'
 import { useGameSystemValidation } from './useGameSystems'
 import {
   locateError,
-  noNames,
+  splitWarning,
+  useNames,
   type ErrorLocation,
-  type LocatorNames,
-  type NamedItem,
   type Target,
 } from './validationLocation'
 
@@ -57,32 +54,6 @@ function groupIcon(target: Target): ReactNode {
     case 'tab':
       return tabIcons[target.tab] ?? <BookOpen />
   }
-}
-
-/** The draft's item names, from the narrative and oracle reads; empty until they arrive (or when they fail). */
-function useNames(gameSystemKey: string): LocatorNames {
-  const narrative = useGameSystemNarrative(gameSystemKey)
-  const oracles = useGameSystemOracles(gameSystemKey)
-  const narrativeData = narrative.data
-  const oraclesData = oracles.data
-  return useMemo(() => {
-    const items = (list: NarrativeItem[] | undefined): NamedItem[] => list ?? []
-    const oracleItems = (list: { definition: object }[] | undefined): NamedItem[] =>
-      (list ?? []).map(({ definition }) => {
-        const record = definition as Record<string, unknown>
-        return { key: typeof record.key === 'string' ? record.key : '', definition: record }
-      })
-    return {
-      ...noNames,
-      flows: items(narrativeData?.flows),
-      sceneTypes: items(narrativeData?.sceneTypes),
-      trackers: items(narrativeData?.trackers),
-      tags: items(narrativeData?.tags),
-      factSlots: items(narrativeData?.factSlots),
-      tables: oracleItems(oraclesData?.tables),
-      likelihood: oracleItems(oraclesData?.likelihood),
-    }
-  }, [narrativeData, oraclesData])
 }
 
 interface Row {
@@ -169,6 +140,32 @@ function GoToField({ gameSystemKey: key, target }: { gameSystemKey: string; targ
   )
 }
 
+/** One error or warning: its icon, the message, where it is in words and the way to the field. */
+function IssueRow({
+  gameSystemKey: key,
+  icon,
+  message,
+  detail,
+  target,
+}: {
+  gameSystemKey: string
+  icon: ReactNode
+  message: string
+  detail?: string
+  target?: Target
+}) {
+  return (
+    <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+      {icon}
+      <div className="min-w-0 flex-1">
+        <p>{message}</p>
+        {detail !== undefined && <p className="text-xs text-muted-foreground">{detail}</p>}
+      </div>
+      {target !== undefined && <GoToField gameSystemKey={key} target={target} />}
+    </li>
+  )
+}
+
 /**
  * The Validation section: whether the draft would be accepted as a release, every error grouped by
  * the section and item it is in with a link to the field, then the warnings.
@@ -245,22 +242,19 @@ export function ValidationTab({ gameSystemKey, pack }: { gameSystemKey: string; 
           </div>
           <ul className="divide-y panel-body">
             {group.rows.map((row, index) => (
-              <li
+              <IssueRow
                 key={`${String(index)}:${row.path}`}
-                className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
-              >
-                <CircleAlert
-                  aria-hidden="true"
-                  className="mt-0.5 size-4 shrink-0 text-destructive"
-                />
-                <div className="min-w-0 flex-1">
-                  <p>{row.message}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {row.where.trail.length > 0 ? row.where.trail.join(' › ') : row.path}
-                  </p>
-                </div>
-                <GoToField gameSystemKey={gameSystemKey} target={row.where.target} />
-              </li>
+                gameSystemKey={gameSystemKey}
+                icon={
+                  <CircleAlert
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0 text-destructive"
+                  />
+                }
+                message={row.message}
+                detail={row.where.trail.length > 0 ? row.where.trail.join(' › ') : row.path}
+                target={row.where.target}
+              />
             ))}
           </ul>
         </section>
@@ -286,11 +280,27 @@ export function ValidationTab({ gameSystemKey, pack }: { gameSystemKey: string; 
             <h2 className="font-heading text-panel-title">Warnings</h2>
             <span className="ml-auto count-pill">{warnings.length}</span>
           </div>
-          <ul className="list-disc space-y-1 panel-body pl-9 text-sm">
-            {warnings.map((warning, index) => (
-              // Warnings can repeat, so the position is part of the key.
-              <li key={`${String(index)}:${warning}`}>{warning}</li>
-            ))}
+          <ul className="divide-y panel-body text-sm">
+            {warnings.map((warning, index) => {
+              const { path, reason } = splitWarning(warning)
+              const where = path === undefined ? undefined : locateError(path, names)
+              return (
+                <IssueRow
+                  // Warnings can repeat, so the position is part of the key.
+                  key={`${String(index)}:${warning}`}
+                  gameSystemKey={gameSystemKey}
+                  icon={
+                    <TriangleAlert
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0 text-warning"
+                    />
+                  }
+                  message={reason}
+                  detail={where && [where.group, ...where.trail].join(' › ')}
+                  target={where?.target}
+                />
+              )
+            })}
           </ul>
         </section>
       )}

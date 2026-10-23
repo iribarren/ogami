@@ -44,14 +44,19 @@ describe('the publish dialog', () => {
       'GET /api/studio/game-systems/noir-detective/validation': json({
         valid: true,
         errors: [],
-        warnings: ['flows[1]: has no steps', 'flows[1]: has no steps'],
+        warnings: ['flows[1]: has no steps', 'flows[1]: has no steps', 'no location at all'],
       }),
     })
 
     const dialog = await openDialog(user)
 
     expect(await dialog.findByText('This creates version 4.')).toBeInTheDocument()
-    expect(dialog.getAllByRole('listitem')).toHaveLength(2)
+    expect(dialog.getAllByRole('listitem')).toHaveLength(3)
+    // The reason and the place in words, not the raw path.
+    expect(dialog.getAllByText('has no steps')).toHaveLength(2)
+    expect(dialog.getAllByText('Flows · 2')).toHaveLength(2)
+    expect(dialog.queryByText(/flows\[1\]/)).not.toBeInTheDocument()
+    expect(dialog.getByText('no location at all')).toBeInTheDocument()
     expect(dialog.getByRole('button', { name: 'Publish version 4' })).toBeEnabled()
     expect(dialog.getByText('0 / 2,000')).toBeInTheDocument()
   })

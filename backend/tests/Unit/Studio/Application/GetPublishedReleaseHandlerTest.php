@@ -7,8 +7,10 @@ namespace App\Tests\Unit\Studio\Application;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\GetPublishedReleaseHandler;
 use App\Studio\Application\PublishedReleaseNotFound;
+use App\Studio\Application\PublishedReleaseUnreadable;
 use App\Studio\Application\PublishedReleaseView;
 use App\Studio\Domain\Release\GameSystemRelease;
+use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
@@ -20,6 +22,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(GetPublishedReleaseHandler::class)]
 #[CoversClass(PublishedReleaseView::class)]
 #[CoversClass(PublishedReleaseNotFound::class)]
+#[CoversClass(PublishedReleaseUnreadable::class)]
 final class GetPublishedReleaseHandlerTest extends TestCase
 {
     private InMemoryGameSystemReleaseRepository $releases;
@@ -86,6 +89,50 @@ final class GetPublishedReleaseHandlerTest extends TestCase
         $this->expectExceptionMessageIsOrContains('No published release v3 of GameSystem "free-journal".');
 
         ($this->handler)(new GetPublishedRelease('free-journal', 3));
+    }
+
+    #[Test]
+    public function aStoredReleaseThatNoLongerParsesIsUnreadable(): void
+    {
+        $this->releases->add($this->withStoredContent('r-3', 3, ['schemaVersion' => 1]));
+
+        try {
+            ($this->handler)(new GetPublishedRelease('free-journal', 3));
+            self::fail('Expected PublishedReleaseUnreadable.');
+        } catch (PublishedReleaseUnreadable $exception) {
+            self::assertSame('free-journal', $exception->gameSystemKey);
+            self::assertSame(3, $exception->version);
+            self::assertInstanceOf(InvalidReleaseContent::class, $exception->getPrevious());
+            self::assertSame($exception->getPrevious()->path(), $exception->path);
+            self::assertSame($exception->getPrevious()->reason(), $exception->reason);
+        }
+    }
+
+    /**
+     * A release whose stored content no longer parses, which publish() itself refuses to create.
+     *
+     * @param array<string, mixed> $content
+     */
+    private function withStoredContent(string $id, int $version, array $content): GameSystemRelease
+    {
+        $reflection = new \ReflectionClass(GameSystemRelease::class);
+        $release = $reflection->newInstanceWithoutConstructor();
+        $stored = [
+            'id' => $id,
+            'gameSystemKey' => 'free-journal',
+            'version' => $version,
+            'schemaVersion' => 1,
+            'content' => $content,
+            'contentHash' => 'stale',
+            'publishedAt' => new \DateTimeImmutable('2026-10-07T10:00:00+00:00'),
+            'notes' => null,
+            'librarySources' => null,
+        ];
+        foreach ($stored as $property => $value) {
+            $reflection->getProperty($property)->setValue($release, $value);
+        }
+
+        return $release;
     }
 
     private function publish(string $id, string $name, int $version, string $at): void

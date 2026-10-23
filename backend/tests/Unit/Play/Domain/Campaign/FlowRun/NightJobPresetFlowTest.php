@@ -103,6 +103,40 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
         self::assertSame([['crew'], ['client']], array_map(static fn (Npc $npc): array => $npc->tags(), $campaign->npcs()));
     }
 
+    #[Test]
+    public function theGuideWordingPointsAtTheControlsThePlayerHas(): void
+    {
+        $campaign = self::guided($this->release, 'heist');
+        $campaign->startSession(self::at(), $this->release);
+
+        self::assertSame(
+            'A crew of two to four is plenty. Give each person a role and a street name, and say what they are good at. Start with your own character.',
+            $this->release->sceneType('crew')?->tips,
+        );
+
+        $campaign->pickSceneType('crew', $this->release, self::at());
+        $this->createYourCharacter($campaign);
+        $campaign->completeFlowStep('first', self::prompt('Ada, a netrunner'), $this->release, self::at());
+        $campaign->skipFlowStep('second', $this->release, self::at());
+        $campaign->skipFlowStep('wheelman', $this->release, self::at());
+        $campaign->endFlowScene(1, $this->release, self::at());
+        $campaign->pickSceneType('briefing', $this->release, self::at());
+        $client = $campaign->flowRunView($this->release)?->step;
+        self::assertSame(['Who is the client?', 'Roll for a client. Not a fit? Use Refill in the Facts panel.'], [$client?->title, $client?->tip]);
+    }
+
+    #[Test]
+    public function theRaisedAlarmStepIsTitledAfterWhatThePlayerFaces(): void
+    {
+        $campaign = $this->inTheHeist();
+        $campaign->setTrackerValue($this->release->tracker('alarm') ?? self::fail('No alarm.'), 4, self::at());
+        $campaign->pickSceneType('grab', $this->release, self::at());
+
+        $notice = $campaign->flowRunView($this->release)?->step;
+
+        self::assertSame(['Security is on alert', 'Guards are tense and doors are watched. Let it shape the scene.'], [$notice?->title, $notice?->tip]);
+    }
+
     /**
      * @return iterable<string, array{int, bool}> the alarm and whether the heist scene asks what you notice
      */

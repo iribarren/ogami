@@ -254,6 +254,7 @@ final class LikelihoodOracleAskTest extends TestCase
         yield 'unknown level' => [self::definition(), 'maybe', null, 'There is no likelihood level "maybe"; the levels are "impossible", "unlikely", "likely", "certain".'];
         yield 'chaos factor below the minimum' => [self::definition(), 'likely', 0, 'The chaos factor is between 1 and 9, 0 given.'];
         yield 'chaos factor above the maximum' => [self::definition(), 'likely', 10, 'The chaos factor is between 1 and 9, 10 given.'];
+        yield 'unknown level is reported before a bad chaos factor' => [self::definition(), 'maybe', 99, 'There is no likelihood level "maybe"; the levels are "impossible", "unlikely", "likely", "certain".'];
         yield 'chaos factor without chaos' => [self::definition(chaos: false), 'likely', 5, 'This likelihood oracle has no chaos factor, 5 given.'];
     }
 

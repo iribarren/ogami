@@ -133,6 +133,19 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
         self::assertSame(65, $this->current($campaign, 'sanity'));
     }
 
+    #[Test]
+    public function aPowerThatWasNeverSetDefaultsToFiftyForSanity(): void
+    {
+        $campaign = self::guided($this->release, 'kingsport-mystery');
+        $campaign->startSession(self::at(), $this->release);
+
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], [], $this->release);
+        $changes = $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at());
+
+        self::assertEquals([new SheetChange('sanity', 99, 50)], $changes);
+        self::assertSame(50, $this->current($campaign, 'sanity'));
+    }
+
     /**
      * @return iterable<string, array{string, int, ?int, int, int}> the Sanity step, the d100 against Sanity 65, the die of the loss rolled (none on a success), the Sanity lost and the dread raised
      */

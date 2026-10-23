@@ -53,11 +53,11 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
-| T2 | 1 | One e2e password default; `--reset-existing` seeding (Identity command, console option, `make e2e-seed`, README) | writer (delegated) | [x] | |
-| T3 | 1 | Faster Studio editor Vitest tests | writer (delegated) | [x] | |
-| T4 | 1 | Overlap deletions (a)–(c), `OwnedCampaignsTest`, Admin `LastActiveOwner` 409 API test | writer (delegated) | [x] | |
-| T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
+| T1 | 1 | This feature doc | parent, inline (doc only) | [x] | `be0f4f8` |
+| T2 | 1 | One e2e password default; `--reset-existing` seeding (Identity command, console option, `make e2e-seed`, README) | writer (delegated) | [x] | `9a3a2f9` |
+| T3 | 1 | Faster Studio editor Vitest tests | writer (delegated) | [x] | `58d5e73` |
+| T4 | 1 | Overlap deletions (a)–(c), `OwnedCampaignsTest`, Admin `LastActiveOwner` 409 API test | writer (delegated) | [x] | `80fd615` |
+| T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [x] | |
 | T6 | 2 | CI Docker layer caching, measured; merged only if it shortens wall time | writer (delegated) | [ ] | |
 
 ## Applicable checks
@@ -73,12 +73,14 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 - 2026-10-23 T2: RED 7 handler unit errors (class missing) and 6 console errors (`--reset-existing` unknown), then GREEN 7 + 15 tests. `make e2e`: 26 of 28 passed on the first run; the 2 Studio failures were timeouts or flakes (`studio-flow-editor` passed on rerun, 3 times; it also passes on `main`). Sign-in with the seeded password works.
 - 2026-10-23 T3: no RED (speed only). Root cause is not key-by-key typing: each input event re-renders the whole editor (React dev render about 40–50 ms per change, 150–600 ms for an initial render), so cost scales with events, not keystrokes. `user.type` of multi-character text became one paste event (`typeText`, `replaceText` in `frontend/src/test/typeText.ts`). Sequential run of the 4 slowest files: 71.4 s to 65.7 s (-8%); parallel Studio run 721 s to 705 s (run-to-run noise about 10–20%, so not a reliable measure). The 40% target is not reachable from the tests: it needs a production render change (memoised cards) or tooling. Green: 1,287 Studio tests.
 - 2026-10-23 T4: no RED (pinning tests and deletions). Deleted 32 tests (7 duplicates of another layer, 25 copies of the ownership check), added `OwnedCampaignsTest` (4 cases) and an Admin `LastActiveOwner` 409 case (2 datasets); PHPUnit on `tests/Unit`, `Admin` and `Play`: 5,095 passing. The 409 is unreachable over HTTP without a race (the acting owner is always a second active owner), so the test plays the race with a decorated repository.
+- 2026-10-23 T5: no RED (pinning tests). Added `CampaignJournalTest` (owner gets the campaign, another player's is not found) and a `ResetUserCredentials` handler case (last active owner reset to SOLO_PLAYER succeeds); docblocks say so.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-2be05bb2e09e0f68` | `be0f4f8`…`80fd615` (base `main` `3a94385`, 1,425 lines) | medium; approved and acknowledged. Findings: R3 journal ownership coverage (warning) and R3 reset bypasses the owner guard (suggestion), both fixed in T5 | [#258](https://github.com/iribarren/ogami/pull/258) |
 
 ## Next step
 
-Slice 1: T2–T4 by one writer, then review.
+Slice 1: user merges #258. Then T6 (slice 2): compare the job times of #258's CI run and decide on Docker layer caching.

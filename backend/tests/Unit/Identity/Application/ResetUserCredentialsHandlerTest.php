@@ -49,6 +49,18 @@ final class ResetUserCredentialsHandlerTest extends TestCase
     }
 
     #[Test]
+    public function itMayDropOwnerFromTheLastActiveOwner(): void
+    {
+        $this->users->save(User::register(UserId::fromString('user-root'), Email::fromString('root@example.com'), 'old-hash', [Role::Owner], new \DateTimeImmutable('2026-10-18T09:00:00+00:00')));
+
+        ($this->handler)(new ResetUserCredentials('root@example.com', 'new-secret', ['SOLO_PLAYER']));
+
+        $root = $this->users->ofEmail(Email::fromString('root@example.com'));
+        self::assertNotNull($root);
+        self::assertSame([Role::SoloPlayer], $root->roles());
+    }
+
+    #[Test]
     public function itEnablesADisabledUser(): void
     {
         $this->ada()->disable();

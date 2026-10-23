@@ -16,8 +16,9 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The one place that says whose campaign a player can reach. The handlers that start with it
- * do not repeat the rule in their own tests.
+ * The one place that says whose campaign a player can reach. The handlers reach it through
+ * OwnedCampaigns, directly or through CampaignJournal, and they do not repeat the rule in their
+ * own tests: it is tested here and in CampaignJournalTest.
  */
 #[CoversClass(OwnedCampaigns::class)]
 #[CoversClass(CampaignNotFound::class)]

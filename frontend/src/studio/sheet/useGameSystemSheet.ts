@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
-import { gameSystemKey, StudioError, studioError, validationKey } from '../useGameSystems'
+import {
+  gameSystemKey,
+  invalidateOtherDraftReads,
+  StudioError,
+  studioError,
+} from '../useGameSystems'
 import type { LayoutRequest } from './layoutDraft'
 import type { StoredField } from './sheetDraft'
 
@@ -58,7 +63,8 @@ export function useGameSystemSheet(key: string) {
 /**
  * Every write answers with the whole sheet and the new version: it replaces the cached one, so
  * the next write carries the right `expectedVersion`. The draft changed, so what the GameSystem
- * page shows and its validation are refetched. A 409 means the cached version is stale, so the
+ * page shows, its validation and every other section read are refetched: they carry the version
+ * this write replaced. A 409 means the cached version is stale, so the
  * sheet is refetched too: the next write must not carry the version that was just refused.
  */
 function useSheetWrite<Variables>(
@@ -71,8 +77,7 @@ function useSheetWrite<Variables>(
     mutationFn: write,
     onSuccess: (sheet) => {
       queryClient.setQueryData(sheetKey(key), sheet)
-      void queryClient.invalidateQueries({ queryKey: gameSystemKey(key), exact: true })
-      void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+      invalidateOtherDraftReads(queryClient, key, sheetKey(key))
     },
     onError: (error) => {
       if (error instanceof StudioError && error.status === 409) {

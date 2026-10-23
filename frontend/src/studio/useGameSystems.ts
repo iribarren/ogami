@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  hashKey,
+  type QueryClient,
+  type QueryKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 
 import type { components } from '@/shared/api/schema'
@@ -57,6 +64,24 @@ export const gameSystemKey = (key: string) => [...gameSystemsKey, key] as const
 /** The library packs list (`useLibraryPacks`); a discarded pack drops out of it. */
 export const libraryPacksKey = ['studio', 'library', 'packs'] as const
 export const validationKey = (key: string) => [...gameSystemKey(key), 'validation'] as const
+
+/**
+ * Every section of a draft (overview, narrative, oracles, sheet, checks, validation) shares one
+ * draft version, and each cached read carries it. After a write, `written` is the query just set
+ * from the write's answer; every other query under the draft's key holds the version that write
+ * replaced, so it is marked stale: a sibling read that is not refetched would send a stale
+ * `expectedVersion` with the next write.
+ */
+export function invalidateOtherDraftReads(
+  queryClient: QueryClient,
+  key: string,
+  written: QueryKey,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: gameSystemKey(key),
+    predicate: (query) => hashKey(query.queryKey) !== hashKey(written),
+  })
+}
 
 /** A 404 (unknown key, or someone else's) will not change by asking again. */
 const retryUnlessNotFound = (failureCount: number, error: Error) =>
@@ -145,7 +170,7 @@ export function useCreateGameSystem() {
 
 /**
  * `PUT /api/studio/game-systems/{key}/metadata`: replaces the whole metadata. The answer
- * replaces the cached GameSystem; the list and the validation are refetched.
+ * replaces the cached GameSystem; the list and every other read of the draft are refetched.
  */
 export function useEditMetadata(key: string) {
   const api = useApiClient()
@@ -165,7 +190,7 @@ export function useEditMetadata(key: string) {
     onSuccess: (gameSystem) => {
       queryClient.setQueryData(gameSystemKey(key), gameSystem)
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
-      void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+      invalidateOtherDraftReads(queryClient, key, gameSystemKey(key))
     },
   })
 }

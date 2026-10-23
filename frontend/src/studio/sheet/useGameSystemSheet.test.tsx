@@ -7,6 +7,7 @@ import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 
 import { sheet } from '../fixtures'
+import { narrativeKey } from '../narrative/useGameSystemNarrative'
 import { gameSystemKey, validationKey } from '../useGameSystems'
 import {
   SheetError,
@@ -120,6 +121,20 @@ describe('the sheet writes', () => {
       expect(result.current.read.data?.version).toBe(8)
     })
     expect(fakeApi.requests.filter((request) => request === `GET ${base}/sheet`)).toHaveLength(1)
+  })
+
+  it('mark the other section reads stale: they carry the version this write replaced', async () => {
+    const { client, wrapper } = setup({
+      [`POST ${base}/sheet/fields/pow/move`]: () => Response.json({ ...sheet, version: 8 }),
+    })
+    client.setQueryData(narrativeKey('my-draft'), { version: 7 })
+    const { result } = renderHook(() => useMoveSheetField('my-draft'), { wrapper })
+
+    result.current.mutate({ expectedVersion: 7, field: 'pow', index: 2 })
+
+    await waitFor(() => {
+      expect(client.getQueryState(narrativeKey('my-draft'))?.isInvalidated).toBe(true)
+    })
   })
 
   it('mark the GameSystem page and its validation stale after a write', async () => {

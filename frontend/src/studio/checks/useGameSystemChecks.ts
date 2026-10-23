@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
-import { gameSystemKey, StudioError, studioError, validationKey } from '../useGameSystems'
+import {
+  gameSystemKey,
+  invalidateOtherDraftReads,
+  StudioError,
+  studioError,
+} from '../useGameSystems'
 import type { StoredCheck } from './checkDraft'
 
 export type GameSystemChecks = components['schemas']['GameSystemChecksResponse']
@@ -59,7 +64,8 @@ export function useGameSystemChecks(key: string) {
 /**
  * Every write answers with the whole checks read model and the new version: it replaces the
  * cached one, so the next write carries the right `expectedVersion`. The draft changed, so what
- * the GameSystem page shows and its validation are refetched. A 409 means the cached version is
+ * the GameSystem page shows, its validation and every other section read are refetched: they
+ * carry the version this write replaced. A 409 means the cached version is
  * stale, so the checks are refetched too: the next write must not carry the version just refused.
  */
 function useCheckWrite<Variables>(
@@ -72,8 +78,7 @@ function useCheckWrite<Variables>(
     mutationFn: write,
     onSuccess: (checks) => {
       queryClient.setQueryData(checksKey(key), checks)
-      void queryClient.invalidateQueries({ queryKey: gameSystemKey(key), exact: true })
-      void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+      invalidateOtherDraftReads(queryClient, key, checksKey(key))
     },
     onError: (error) => {
       if (error instanceof StudioError && error.status === 409) {

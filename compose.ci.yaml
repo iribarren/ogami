@@ -1,0 +1,13 @@
+# CI only (.github/workflows/ci.yml adds it after compose.yaml): build the php
+# image with GitHub Actions' cache, so unchanged layers (the PHP extensions take
+# most of the build) are reused across runs. The node image is not cached: it
+# builds in about 20s, less than the cache round trip costs. A failed cache
+# export (throttling, two jobs writing the same scope) must not fail the build.
+# Local development never loads this file.
+services:
+  php:
+    build:
+      cache_from:
+        - type=gha,scope=php
+      cache_to:
+        - type=gha,scope=php,mode=max,ignore-error=true

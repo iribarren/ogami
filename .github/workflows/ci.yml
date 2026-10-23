@@ -18,7 +18,8 @@ permissions:
 
 env:
   # Skip compose.override.yaml (host ports, Xdebug host mapping): CI needs none of it.
-  DOCKER_COMPOSE: docker compose -f compose.yaml
+  # compose.ci.yaml builds the images with the GitHub Actions layer cache.
+  DOCKER_COMPOSE: docker compose -f compose.yaml -f compose.ci.yaml
 
 jobs:
   backend:
@@ -34,8 +35,22 @@ jobs:
           path: backend/vendor
           key: vendor-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
 
-      - name: Build and start php + database
-        run: make build up SERVICES=php
+      # A BuildKit builder that can read and write the GitHub Actions cache
+      # (compose.ci.yaml), and the runtime token that cache needs. Pinned to
+      # commit SHAs because the runtime action handles that token.
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124 # v3.1.0
+
+      - name: Build the php image
+        run: make build SERVICES=php
+
+      # Only the image build needs the cache token: clear it, so the installs and
+      # tests that run next cannot write cache entries.
+      - name: Drop the cache token
+        run: echo "ACTIONS_RUNTIME_TOKEN=" >> "$GITHUB_ENV"
+
+      - name: Start php + database
+        run: make up SERVICES=php
 
       - name: QA (PHPStan + PHPat, PHP-CS-Fixer, Rector)
         run: make backend-qa
@@ -96,8 +111,22 @@ jobs:
           path: frontend/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
 
-      - name: Build and start every service
-        run: make build up
+      # A BuildKit builder that can read and write the GitHub Actions cache
+      # (compose.ci.yaml), and the runtime token that cache needs. Pinned to
+      # commit SHAs because the runtime action handles that token.
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124 # v3.1.0
+
+      - name: Build the images
+        run: make build
+
+      # Only the image build needs the cache token: clear it, so the installs and
+      # tests that run next cannot write cache entries.
+      - name: Drop the cache token
+        run: echo "ACTIONS_RUNTIME_TOKEN=" >> "$GITHUB_ENV"
+
+      - name: Start every service
+        run: make up
 
       - name: OpenAPI spec and TypeScript types are up to date
         run: make api-check

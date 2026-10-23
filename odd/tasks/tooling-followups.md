@@ -1,7 +1,7 @@
 # Feature: tooling-followups
 
 - **Locator:** `odd/tasks/tooling-followups.md` · Engram topic `odd/tooling-followups/tasks`
-- **Issue:** #254 · **Branch:** `chore/tooling-followups-1-tests` · **Status:** slice 1 in progress
+- **Issue:** #254 · **Branch:** `chore/tooling-followups-2-ci-cache` · **Status:** done: slice 1 (PR #258), slice 2 (PR #260)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7f
@@ -57,8 +57,9 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 | T2 | 1 | One e2e password default; `--reset-existing` seeding (Identity command, console option, `make e2e-seed`, README) | writer (delegated) | [x] | `9a3a2f9` |
 | T3 | 1 | Faster Studio editor Vitest tests | writer (delegated) | [x] | `58d5e73` |
 | T4 | 1 | Overlap deletions (a)–(c), `OwnedCampaignsTest`, Admin `LastActiveOwner` 409 API test | writer (delegated) | [x] | `80fd615` |
-| T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [x] | |
-| T6 | 2 | CI Docker layer caching, measured; merged only if it shortens wall time | writer (delegated) | [ ] | |
+| T5 | 1 | Slice 1 review fixes, if any; then the Admin 409 test dropped and follow-up #259 recorded (user's calls) | writer (delegated); parent, inline (test drop, roadmap) | [x] | `59b6cbd`, `6acf68a`, `7560a37` |
+| T6 | 2 | CI Docker layer caching, measured; merged only if it shortens wall time | parent, inline (two small CI files, design already measured) | [x] | `46aff16` |
+| T7 | 2 | Slice 2 review fixes | parent, inline (two small CI files) | [x] | |
 
 ## Applicable checks
 
@@ -76,13 +77,18 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 - 2026-10-23 T5: no RED (pinning tests). Added `CampaignJournalTest` (owner gets the campaign, another player's is not found) and a `ResetUserCredentials` handler case (last active owner reset to SOLO_PLAYER succeeds); docblocks say so.
 - 2026-10-23: the Admin `LastActiveOwner` 409 API test dropped (user's call: the faked race was too hacky); `AdminUsersApiTest` is back to its `main` version.
 - 2026-10-23: the 40% Studio Vitest target is moved to follow-up #259 (roadmap B7h, user's call): it needs a production render change, and Vitest no longer decides CI wall time (CI Vitest step 204s to 149s on #258; the Backend job, 322s, is now the slowest).
+- 2026-10-23: slice 1 merged (#258). Its CI run 39989156358: Frontend 276s (Vitest 149s), Full stack 277s (build and `up` 110s), Backend 322s (build and `up` 105s), so the Backend job now sets the wall time. In the Backend build, the php image takes about 86s, 73s of it the `install-php-extensions` layer.
+- 2026-10-23 T6: `compose.ci.yaml` adds GitHub Actions cache (`type=gha`, one scope per image, `mode=max`) to the php and node builds; CI adds it to `DOCKER_COMPOSE` and sets up a buildx builder plus the cache runtime token. The Makefile targets are unchanged (ADR 0008). Measurement (run 40014147519): the cold first attempt was slower while it filled the cache (Backend 381s, build 141s). The warm re-run gave Backend 270s (build 34s, was 105s), Full stack 201s (build 37s, was 110s), Frontend 250s (build 35s, was 21s: buildx setup and cache import cost more than the small node build). Wall time 322s to 270s (-16%), so it stays. A new base image digest (`--pull`) or a Dockerfile change misses the cache once; GitHub evicts cache entries unused for 7 days.
+- 2026-10-23: slice 2 measured and kept; PR #260 closes #254.
+- 2026-10-23 T7: review fixes. `cache_to` sets `ignore-error=true`. The node image is no longer cached (the Frontend job drops buildx: its build was 21s and became 35s with the cache). The actions are pinned to commit SHAs (setup-buildx v3.12.0, github-runtime v3.1.0). `make build` and `make up` are now separate steps, with `ACTIONS_RUNTIME_TOKEN` cleared between them so installs and tests cannot write cache entries. Feature done once #260 is merged.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
-| 1 | `review-2be05bb2e09e0f68` | `be0f4f8`…`80fd615` (base `main` `3a94385`, 1,425 lines) | medium; approved and acknowledged. Findings: R3 journal ownership coverage (warning) and R3 reset bypasses the owner guard (suggestion), both fixed in T5 | [#258](https://github.com/iribarren/ogami/pull/258) |
+| 1 | `review-2be05bb2e09e0f68` | `be0f4f8`…`80fd615` (base `main` `3a94385`, 1,425 lines) | medium; approved and acknowledged. Findings: R3 journal ownership coverage (warning) and R3 reset bypasses the owner guard (suggestion), both fixed in T5 (`59b6cbd`). Reviews of the later candidates (T5; the test drop and #259 docs) offered and skipped by the user | [#258](https://github.com/iribarren/ogami/pull/258) |
+| 2 | `review-f037004548fbe752` | `46aff16`, `550e521` (base `main` `abb157a`, 50 lines) | high (CI shell); the first offer was skipped, then reviewed on the closing candidate: approved and acknowledged. Findings, all fixed in T7: cache token readable by every later step (R1), actions on movable tags (R1, R3), a failed cache export fails the build (R4, R3), node cache with no benefit (R2), wording of this row (R2). Not fixed: the setup block repeated in two jobs (R2 suggestion), since two short copies don't justify a composite action | [#260](https://github.com/iribarren/ogami/pull/260) |
 
 ## Next step
 
-Slice 1: user merges #258. Then T6 (slice 2): compare the job times of #258's CI run and decide on Docker layer caching.
+None. Every item of #254 is done; the Studio render cost has follow-up #259 (roadmap B7h).

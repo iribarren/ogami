@@ -436,6 +436,7 @@ Start feature `play-pbta-findings` (ODD). Fix the `preset-pbta` Play findings in
 ```text
 Start feature `tooling-followups` (ODD). Do the tooling and test-suite items of GitHub issue #254: one e2e password default instead of three, `--if-missing` seeding that repairs drifted e2e credentials, faster Studio editor Vitest tests (fewer key-by-key `user.type` calls where the test does not need them), an audit of the overlap between handler unit, Behat and API tests with a short proposal before deleting any, and CI Docker layer caching only if it measurably shortens CI. `chore/` branches.
 ```
+Done: `tooling-followups`, every item of #254 in two slices: one e2e password default and `app:user:create --reset-existing` seeding, Studio Vitest pasting instead of typing key by key (CI Vitest 204s to 149s; the rest of the speed-up is follow-up #259, B7h), an overlap audit with 32 duplicate tests removed, and CI Docker layer caching (CI wall time 322s to 270s with a warm cache).
 
 **B7g. release-api-followups**
 

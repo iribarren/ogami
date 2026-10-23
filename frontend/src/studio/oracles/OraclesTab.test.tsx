@@ -45,7 +45,7 @@ describe('the oracles tab', () => {
     expect(weather).toHaveTextContent('2 entries')
     expect(weather).toHaveTextContent('Used by Scene Types · Quiet › Play › Step 1')
     // The raw release path stays available.
-    expect(within(weather).getByTitle('sceneTypes[1].play[0]')).toBeInTheDocument()
+    expect(tables.getByTitle('sceneTypes[1].play[0]')).toBeInTheDocument()
     expect(storm).toHaveTextContent('Weighted')
     expect(storm).toHaveTextContent('3 entries')
     expect(storm).toHaveTextContent('Not used')

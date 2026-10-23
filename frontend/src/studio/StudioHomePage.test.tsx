@@ -103,6 +103,26 @@ describe('the New GameSystem dialog', () => {
     return { ...rendered, form: await screen.findByRole('form', { name: 'New GameSystem' }) }
   }
 
+  it('closes with the Close button and with Cancel', async () => {
+    const user = userEvent.setup()
+    await openDialog({}, user)
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'New GameSystem' }))
+    await user.click(
+      within(await screen.findByRole('form', { name: 'New GameSystem' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    )
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
   it('creates a blank draft and opens it', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []

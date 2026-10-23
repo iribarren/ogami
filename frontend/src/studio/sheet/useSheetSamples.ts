@@ -4,6 +4,7 @@ import { integer } from '@/shared/sheet/derivedValues'
 import { toDraft, type Draft } from '@/shared/sheet/sheetValues'
 import type { SheetFieldView, SheetTemplateView, TrackerReading } from '@/shared/sheet/types'
 
+import { sampleDefaults } from '../checks/checkSandbox'
 import type { LayoutDraft } from './layoutDraft'
 import { previewTemplate } from './previewTemplate'
 import type { GameSystemSheet } from './useGameSystemSheet'
@@ -72,7 +73,7 @@ export interface SheetSamples {
 
 /**
  * What the Sheet tab derives from the shared sample values: the template with the layout being
- * edited, one draft per field, the Tracker readings. A sample is dropped when its field is gone
+ * edited, one draft per field (an untyped number at the sandbox default), the Tracker readings. A sample is dropped when its field is gone
  * or changed type.
  */
 export function useSheetSamples(
@@ -89,10 +90,13 @@ export function useSheetSamples(
     keepOnly(template.fields)
   }, [keepOnly, template.fields])
 
+  // An untyped number starts where the check sandbox starts it: its default held within its range.
+  const starts = sampleDefaults(template.fields)
   const drafts = Object.fromEntries(
     template.fields.map((field) => [
       field.key,
-      kept[field.key]?.draft ?? toDraft(field, undefined),
+      kept[field.key]?.draft ??
+        (field.type === 'number' ? String(starts[field.key]) : toDraft(field, undefined)),
     ]),
   )
 

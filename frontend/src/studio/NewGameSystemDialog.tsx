@@ -1,16 +1,18 @@
 import { useId, useState, type SubmitEvent } from 'react'
 
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { IconButton } from '@/shared/ui/icon-button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
@@ -41,12 +43,19 @@ export function NewGameSystemDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New GameSystem</DialogTitle>
-          <DialogDescription>
-            Start from a blank draft, or copy a published release under a new key.
-          </DialogDescription>
-        </DialogHeader>
+        <div className="flex items-start gap-3">
+          <DialogHeader className="min-w-0 flex-1">
+            <DialogTitle>New GameSystem</DialogTitle>
+            <DialogDescription>
+              Start from a blank draft, or copy a published release under a new key.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogClose asChild>
+            <IconButton label="Close">
+              <X />
+            </IconButton>
+          </DialogClose>
+        </div>
         <NewGameSystemForm />
       </DialogContent>
     </Dialog>
@@ -179,9 +188,16 @@ function NewGameSystemForm() {
             {create.error.message}
           </p>
         )}
-        <Button type="submit" disabled={!valid || create.isPending}>
-          Create GameSystem
-        </Button>
+        <div className="-mx-4 -mb-4 action-bar">
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button type="submit" disabled={!valid || create.isPending}>
+            Create GameSystem
+          </Button>
+        </div>
       </form>
     </>
   )

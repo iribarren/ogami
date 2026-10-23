@@ -25,6 +25,7 @@ use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
+use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
@@ -285,7 +286,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $character = $campaign->character(CharacterId::fromString($id)) ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
         $result = $check->perform($this->random, SheetValues::of($release->sheet(), $character->values(), $campaign->trackerValuesOf($release)), $difficulty, $command->situational ?? 0);
 
-        return [StepResult::check($id, $result), CheckContent::fromResult($id, $character->name(), $check, $result)];
+        return [StepResult::check($id, $result), CheckContent::fromResult($id, $character->name(), $check, $result, ReferenceLabels::of($release))];
     }
 
     /**

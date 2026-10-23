@@ -14,6 +14,7 @@ use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
+use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Check\UnknownCheck;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -65,6 +66,6 @@ final readonly class PerformCheckHandler implements CommandHandler
             $command->situational,
         );
 
-        $this->journal->record($command->entryId, $campaign, CheckContent::fromResult($character->id()->toString(), $character->name(), $check, $result));
+        $this->journal->record($command->entryId, $campaign, CheckContent::fromResult($character->id()->toString(), $character->name(), $check, $result, ReferenceLabels::of($release)));
     }
 }

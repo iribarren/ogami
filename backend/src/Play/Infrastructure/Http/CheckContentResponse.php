@@ -12,11 +12,12 @@ use OpenApi\Attributes as OA;
  * A Check performed for a Character on the server: the dice, the modifier from the sheet, the
  * Situational modifier, the Check difficulty, the total and the Outcome band.
  */
-#[OA\Schema(required: ['kind', 'characterId', 'characterName', 'checkKey', 'checkLabel', 'expression', 'groups', 'diceTotal', 'modifier', 'situational', 'difficulty', 'total', 'bandKey', 'bandLabel'])]
+#[OA\Schema(required: ['kind', 'characterId', 'characterName', 'checkKey', 'checkLabel', 'expression', 'groups', 'diceTotal', 'modifier', 'situational', 'difficulty', 'total', 'bandKey', 'bandLabel', 'hint', 'modifierFormula', 'modifierTerms'])]
 final readonly class CheckContentResponse
 {
     /**
-     * @param list<JournalDiceGroupResponse> $groups
+     * @param list<JournalDiceGroupResponse>  $groups
+     * @param list<CheckModifierTermResponse> $modifierTerms
      */
     private function __construct(
         #[OA\Property(enum: [CheckContent::KIND])]
@@ -51,6 +52,16 @@ final readonly class CheckContentResponse
         public string $bandKey,
         #[OA\Property(description: 'The label of the Outcome band when the check was performed.', example: 'Success')]
         public string $bandLabel,
+        #[OA\Property(description: 'The hint of the check when it was performed; null when it had none, and for entries recorded before hints were kept.', example: 'Roll +Hot to seduce.', nullable: true)]
+        public ?string $hint,
+        #[OA\Property(description: 'The text of the modifier formula; null for a check without one, and for entries recorded before the breakdown was kept.', example: '{hot} - 1', nullable: true)]
+        public ?string $modifierFormula,
+        #[OA\Property(
+            description: 'What each reference of the modifier formula read, in the order the formula first names them; empty without a formula.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: CheckModifierTermResponse::class)),
+        )]
+        public array $modifierTerms,
     ) {
     }
 
@@ -71,6 +82,9 @@ final readonly class CheckContentResponse
             $content->total(),
             $content->bandKey(),
             $content->bandLabel(),
+            $content->hint(),
+            $content->modifierFormula(),
+            array_map(CheckModifierTermResponse::of(...), $content->modifierTerms()),
         );
     }
 }

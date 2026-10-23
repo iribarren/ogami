@@ -200,6 +200,7 @@ function CheckView({ content }: { content: CheckContent }) {
       <p className="font-medium">
         {content.characterName} · {content.checkLabel}
       </p>
+      {content.hint !== null && <p className="text-sm text-muted-foreground">{content.hint}</p>}
       <p className="flex flex-wrap items-baseline gap-2">
         <span className="sr-only">Outcome:</span>
         <span className="text-2xl font-bold">{content.bandLabel}</span>
@@ -213,7 +214,17 @@ function CheckView({ content }: { content: CheckContent }) {
         <Detail term="Dice">
           <span className="font-mono">{content.expression}</span> = {content.diceTotal}
         </Detail>
-        {content.modifier !== 0 && <Detail term="Modifier">{signed(content.modifier)}</Detail>}
+        {(content.modifier !== 0 || content.modifierFormula !== null) && (
+          <Detail term="Modifier">
+            {signed(content.modifier)}
+            {content.modifierFormula !== null && content.modifierTerms.length > 0 && (
+              <span className="text-muted-foreground">
+                {' · '}
+                {explainModifier(content.modifierFormula, content.modifierTerms)}
+              </span>
+            )}
+          </Detail>
+        )}
         {content.situational !== 0 && (
           <Detail term="Situational">{signed(content.situational)}</Detail>
         )}
@@ -224,6 +235,19 @@ function CheckView({ content }: { content: CheckContent }) {
       </dl>
     </>
   )
+}
+
+/**
+ * The modifier formula with each reference replaced by its label and the value it had, e.g.
+ * `{hot} - 1` as `Hot (2) - 1`; the operators stay as written.
+ */
+function explainModifier(formula: string, terms: CheckContent['modifierTerms']) {
+  const byReference = new Map(terms.map((term) => [term.reference, term]))
+  const tokens = terms.map((term) => term.reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return formula.replace(new RegExp(tokens.join('|'), 'g'), (reference) => {
+    const term = byReference.get(reference)
+    return term ? `${term.label} (${String(term.value)})` : reference
+  })
 }
 
 /** A modifier with its sign, so a bonus and a penalty read alike. */

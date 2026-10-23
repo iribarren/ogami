@@ -41,6 +41,16 @@ final class ContentData
     }
 
     /**
+     * A string or null for a field older entries do not store: absent reads as null.
+     *
+     * @param array<mixed> $data
+     */
+    public static function optionalString(array $data, string $field): ?string
+    {
+        return null === ($data[$field] ?? null) ? null : self::string($data, $field);
+    }
+
+    /**
      * @param array<mixed> $data
      */
     public static function int(array $data, string $field): int
@@ -102,6 +112,18 @@ final class ContentData
         }
 
         return $items;
+    }
+
+    /**
+     * A list of arrays for a field older entries do not store: absent reads as an empty list.
+     *
+     * @param array<mixed> $data
+     *
+     * @return list<array<mixed>>
+     */
+    public static function optionalListOfArrays(array $data, string $field): array
+    {
+        return \array_key_exists($field, $data) ? self::listOfArrays($data, $field) : [];
     }
 
     /**

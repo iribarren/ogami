@@ -6,6 +6,7 @@ namespace App\Play\Domain\GameSystem\Check;
 
 use App\Formula\Domain\Formula;
 use App\Formula\Domain\FormulaEvaluationFailed;
+use App\Formula\Domain\Reference;
 use App\Formula\Domain\ValueResolver;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\InvalidDiceExpression;
@@ -88,7 +89,9 @@ final readonly class Check
         }
 
         try {
-            $modifier = $this->modifier?->evaluate(new CheckValues($sheet, null)) ?? 0;
+            $modifierValues = new CheckValues($sheet, null);
+            $modifier = $this->modifier?->evaluate($modifierValues) ?? 0;
+            $terms = array_map(static fn (Reference $reference): ModifierTerm => new ModifierTerm($reference, $modifierValues->value($reference)), $this->modifier?->references() ?? []);
             $bandValues = new CheckValues($sheet, $effective);
             $bounds = array_map(static fn (CheckBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($bandValues) : $band->upTo, $this->bands);
             $roll = $this->dice->roll($random);
@@ -105,7 +108,7 @@ final readonly class Check
         // The last band has no bound and catches the rest, so a band always matches.
         $index = array_find_key($bounds, static fn (?int $bound): bool => null === $bound || $total <= $bound) ?? \count($this->bands) - 1;
 
-        return new CheckResult($roll, $modifier, $situational, $effective, $total, $this->bands[$index]);
+        return new CheckResult($roll, $modifier, $situational, $effective, $total, $this->bands[$index], $terms);
     }
 
     private function effectiveDifficulty(?int $given): ?int

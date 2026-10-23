@@ -172,7 +172,7 @@ export const fateDoubleEvent: JournalEntry = {
   },
 }
 
-/** A "Skill check" by Vi against a difficulty, from a sheet roll: 7 + 6 + 2 = 15 is a success. */
+/** A "Skill check" by Vi against a difficulty, from a sheet roll: 7 + 6 (Hands 4 + Edge 2) + 2 = 15 is a success. */
 export const skillCheckEntry: JournalEntry = {
   id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7007',
   sessionNumber: 2,
@@ -195,6 +195,12 @@ export const skillCheckEntry: JournalEntry = {
     total: 15,
     bandKey: 'success',
     bandLabel: 'Success',
+    hint: 'A stat against a Difficulty Value.',
+    modifierFormula: '{hands} + {edge}',
+    modifierTerms: [
+      { reference: '{hands}', label: 'Hands', value: 4 },
+      { reference: '{edge}', label: 'Edge', value: 2 },
+    ],
   },
 }
 
@@ -218,6 +224,9 @@ export const luckCheckEntry: JournalEntry = {
     total: 12,
     bandKey: 'bad',
     bandLabel: 'Bad luck',
+    hint: null,
+    modifierFormula: null,
+    modifierTerms: [],
   },
 }
 

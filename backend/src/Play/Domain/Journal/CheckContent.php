@@ -6,23 +6,34 @@ namespace App\Play\Domain\Journal;
 
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckResult;
+use App\Play\Domain\GameSystem\Check\ModifierTerm;
+use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 
 /**
  * A Check of the pinned release performed for a Character (ADR 0024): the Character and the check
  * as they were named then, the dice rolled, the modifier read from the sheet, the situational
  * modifier, the Check difficulty that applied, the total and the Outcome band it fell in.
  *
+ * The content also keeps the check's hint and, for a check with a modifier, the formula and what each
+ * reference of it read, so the card explains the modifier as it was then; entries stored before
+ * these were recorded read with no hint, no formula and no terms.
+ *
  * @phpstan-import-type DiceGroupData from RollContent
+ *
+ * @phpstan-type ModifierTermData array{reference: string, label: string, value: int}
  */
 final readonly class CheckContent implements JournalEntryContent
 {
     public const string KIND = 'check';
 
     /**
-     * @param string              $expression the normalized notation of the check's dice, e.g. "1d10"
-     * @param list<DiceGroupData> $groups     the dice groups in notation order, as a roll stores them
-     * @param int                 $diceTotal  the value of the dice expression, counting kept dice only
-     * @param ?int                $difficulty null when the check declares no difficulty
+     * @param string                 $expression      the normalized notation of the check's dice, e.g. "1d10"
+     * @param list<DiceGroupData>    $groups          the dice groups in notation order, as a roll stores them
+     * @param int                    $diceTotal       the value of the dice expression, counting kept dice only
+     * @param ?int                   $difficulty      null when the check declares no difficulty
+     * @param ?string                $hint            the check's hint when it was performed
+     * @param ?string                $modifierFormula null when the check has no modifier
+     * @param list<ModifierTermData> $modifierTerms   what each reference of the formula read; empty without a formula
      */
     private function __construct(
         private string $characterId,
@@ -38,13 +49,16 @@ final readonly class CheckContent implements JournalEntryContent
         private int $total,
         private string $bandKey,
         private string $bandLabel,
+        private ?string $hint,
+        private ?string $modifierFormula,
+        private array $modifierTerms,
     ) {
     }
 
     /**
      * @throws InvalidJournalEntryContent when the Character id is blank
      */
-    public static function fromResult(string $characterId, string $characterName, Check $check, CheckResult $result): self
+    public static function fromResult(string $characterId, string $characterName, Check $check, CheckResult $result, ReferenceLabels $labels): self
     {
         return self::of(
             $characterId,
@@ -60,6 +74,9 @@ final readonly class CheckContent implements JournalEntryContent
             $result->total,
             $result->band->key,
             $result->band->label,
+            $check->hint,
+            $check->modifier?->toString(),
+            array_map(static fn (ModifierTerm $term): array => ['reference' => $term->token(), 'label' => $labels->label($term->reference), 'value' => $term->value], $result->modifierTerms),
         );
     }
 
@@ -84,13 +101,33 @@ final readonly class CheckContent implements JournalEntryContent
             ContentData::int($data, 'total'),
             ContentData::string($data, 'bandKey'),
             ContentData::string($data, 'bandLabel'),
+            ContentData::optionalString($data, 'hint'),
+            ContentData::optionalString($data, 'modifierFormula'),
+            self::termsFromArray($data),
         );
     }
 
     /**
-     * @param list<DiceGroupData> $groups
+     * @param array<mixed> $data
      *
-     * @throws InvalidJournalEntryContent when an id or key is blank, or the total is not the dice plus the modifiers
+     * @return list<ModifierTermData>
+     *
+     * @throws InvalidJournalEntryContent
+     */
+    private static function termsFromArray(array $data): array
+    {
+        return array_map(static fn (array $term): array => [
+            'reference' => ContentData::string($term, 'reference'),
+            'label' => ContentData::string($term, 'label'),
+            'value' => ContentData::int($term, 'value'),
+        ], ContentData::optionalListOfArrays($data, 'modifierTerms'));
+    }
+
+    /**
+     * @param list<DiceGroupData>    $groups
+     * @param list<ModifierTermData> $modifierTerms
+     *
+     * @throws InvalidJournalEntryContent when an id, key or formula is blank, there are terms without a formula, or the total is not the dice plus the modifiers
      */
     private static function of(
         string $characterId,
@@ -106,6 +143,9 @@ final readonly class CheckContent implements JournalEntryContent
         int $total,
         string $bandKey,
         string $bandLabel,
+        ?string $hint,
+        ?string $modifierFormula,
+        array $modifierTerms,
     ): self {
         foreach (['A Character id' => $characterId, 'A check key' => $checkKey, 'A band key' => $bandKey] as $what => $value) {
             if ('' === trim($value)) {
@@ -113,12 +153,20 @@ final readonly class CheckContent implements JournalEntryContent
             }
         }
 
+        if (null !== $modifierFormula && '' === trim($modifierFormula)) {
+            throw InvalidJournalEntryContent::blank('A modifier formula');
+        }
+
+        if (null === $modifierFormula && [] !== $modifierTerms) {
+            throw InvalidJournalEntryContent::malformed('modifierTerms', 'empty when the check has no modifier formula');
+        }
+
         // A sum that overflows the integers is a float, and never equals the total.
         if ($diceTotal + $modifier + $situational !== $total) {
             throw InvalidJournalEntryContent::malformed('total', 'the dice total plus the modifier and the situational modifier');
         }
 
-        return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel);
+        return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel, $hint, $modifierFormula, $modifierTerms);
     }
 
     public function kind(): string
@@ -194,8 +242,26 @@ final readonly class CheckContent implements JournalEntryContent
         return $this->bandLabel;
     }
 
+    public function hint(): ?string
+    {
+        return $this->hint;
+    }
+
+    public function modifierFormula(): ?string
+    {
+        return $this->modifierFormula;
+    }
+
     /**
-     * @return array{kind: string, characterId: string, characterName: string, checkKey: string, checkLabel: string, expression: string, groups: list<DiceGroupData>, diceTotal: int, modifier: int, situational: int, difficulty: ?int, total: int, bandKey: string, bandLabel: string}
+     * @return list<ModifierTermData> one per reference of the formula, in the order it first names them
+     */
+    public function modifierTerms(): array
+    {
+        return $this->modifierTerms;
+    }
+
+    /**
+     * @return array{kind: string, characterId: string, characterName: string, checkKey: string, checkLabel: string, expression: string, groups: list<DiceGroupData>, diceTotal: int, modifier: int, situational: int, difficulty: ?int, total: int, bandKey: string, bandLabel: string, hint: ?string, modifierFormula: ?string, modifierTerms: list<ModifierTermData>}
      */
     public function toArray(): array
     {
@@ -214,6 +280,9 @@ final readonly class CheckContent implements JournalEntryContent
             'total' => $this->total,
             'bandKey' => $this->bandKey,
             'bandLabel' => $this->bandLabel,
+            'hint' => $this->hint,
+            'modifierFormula' => $this->modifierFormula,
+            'modifierTerms' => $this->modifierTerms,
         ];
     }
 }

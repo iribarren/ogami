@@ -26,6 +26,7 @@ import {
   useGameSystemValidation,
   type GameSystem,
 } from './useGameSystems'
+import { locateError, splitWarning, useNames, type LocatorNames } from './validationLocation'
 
 /** The API's limit on release notes (`GameSystemRelease::MAX_NOTES_LENGTH`), in characters like the server counts them. */
 const MAX_NOTES_LENGTH = 2000
@@ -62,7 +63,15 @@ export function PublishDialog({
           Publish
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          // The first field, not the Close button (whose tooltip would pop up at once).
+          event.preventDefault()
+          if (event.currentTarget instanceof HTMLElement) {
+            event.currentTarget.querySelector('textarea')?.focus()
+          }
+        }}
+      >
         <div className="flex items-start gap-3">
           <IconTile size="lg">
             <Upload />
@@ -234,6 +243,21 @@ export function PublishErrors({
   )
 }
 
+/** A warning's reason, with the place it is in, in words, under it. */
+function WarningText({ warning, names }: { warning: string; names: LocatorNames }) {
+  const { path, reason } = splitWarning(warning)
+  if (path === undefined) {
+    return reason
+  }
+  const { group, trail } = locateError(path, names)
+  return (
+    <>
+      {reason}
+      <span className="block text-xs text-muted-foreground">{[group, ...trail].join(' › ')}</span>
+    </>
+  )
+}
+
 function ValidationSummary({
   validation,
   version,
@@ -243,6 +267,7 @@ function ValidationSummary({
   version: number
   gameSystemKey: string
 }) {
+  const names = useNames(key)
   if (validation.isPending) {
     return <p className="text-muted-foreground">Validating the draft…</p>
   }
@@ -276,7 +301,9 @@ function ValidationSummary({
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {warnings.map((warning, index) => (
               // Warnings can repeat, so the position is part of the key.
-              <li key={`${String(index)}:${warning}`}>{warning}</li>
+              <li key={`${String(index)}:${warning}`}>
+                <WarningText warning={warning} names={names} />
+              </li>
             ))}
           </ul>
         </Alert>

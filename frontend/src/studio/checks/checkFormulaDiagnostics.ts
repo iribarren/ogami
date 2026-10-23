@@ -17,7 +17,10 @@ import type { GameSystemChecks } from './useGameSystemChecks'
 /** Where a formula sits in a check: the modifier never reads `{check:…}`, a band bound may. */
 export type CheckFormulaScope = 'modifier' | 'band'
 
-type Catalog = Pick<GameSystemChecks, 'fields' | 'trackers'>
+export type Catalog = Pick<GameSystemChecks, 'fields' | 'trackers'> & {
+  /** The value a number field reads when nobody typed a sample: the sandbox's start; 0 without one. */
+  defaults?: Record<string, number>
+}
 
 /** The difficulty a check declares, as far as the form says: its default, when that is a whole number. */
 export interface DeclaredDifficulty {
@@ -58,7 +61,7 @@ function checkProblem(
  * typed, by the publisher's rules: a syntax error, then the first reference it may not read (an
  * unknown field or tracker, `.max` of a field that is not a track, `{check:…}` where it is not
  * allowed). There is no cycle check: a check formula is read by nothing. Otherwise a value over
- * sample values: number and track fields 0, a track's max, a tracker's initial value and the
+ * sample values: number fields their default (the test roll's start, else 0), track fields 0, a track's max, a tracker's initial value and the
  * difficulty's default; a derived field has no sample, so a formula that reads one has no value.
  * The positions are the publisher's: 1-based, in the text without its outer whitespace.
  */
@@ -110,7 +113,10 @@ export function checkFormulaDiagnostics({
       return catalog.trackers.find(({ key }) => key === reference.key)?.initial ?? undefined
     }
     const field = catalog.fields.find(({ key }) => key === reference.key)
-    if (field?.type === 'number' || (field?.type === 'track' && reference.kind === 'field')) {
+    if (field?.type === 'number') {
+      return catalog.defaults?.[field.key] ?? 0
+    }
+    if (field?.type === 'track' && reference.kind === 'field') {
       return 0
     }
     return field?.type === 'track' ? (field.max ?? undefined) : undefined

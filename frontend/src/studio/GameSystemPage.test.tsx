@@ -121,7 +121,7 @@ describe('the GameSystem page', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('My draft!')
   })
 
-  it('lists the section counts with their editors still to come', async () => {
+  it('lists the section counts, each with a link to its editor tab', async () => {
     const user = userEvent.setup()
     renderDraft()
 
@@ -131,7 +131,16 @@ describe('the GameSystem page', () => {
     expect(items).toHaveLength(4)
     expect(items[0]).toHaveTextContent('Oracle tables')
     expect(items[0]).toHaveTextContent('2')
-    expect(items[0]).toHaveTextContent('Editor coming')
+    expect(items[0]).not.toHaveTextContent('Editor coming')
+    expect(
+      within(screen.getByRole('region', { name: 'Sections' })).getAllByRole('link', {
+        name: /^Open /,
+      }),
+    ).toHaveLength(4)
+    expect(screen.getByRole('link', { name: 'Open Oracle tables' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft?tab=oracles',
+    )
   })
 })
 
@@ -565,7 +574,11 @@ describe('the validation tab', () => {
       { path: 'oracles.tables[0].entries[1].text', message: 'must not be blank' },
       { path: 'mystery[2]', message: 'is odd' },
     ],
-    warnings: ['flows[1]: has no steps'],
+    warnings: [
+      'flows[0].phases[1].mode: a loop may never end; check its exit',
+      'flows[1]: has no steps',
+      'no location at all',
+    ],
   }
   const names = {
     'GET /api/studio/game-systems/my-draft/narrative': json(narrativeFlows),
@@ -583,7 +596,7 @@ describe('the validation tab', () => {
     await openSeveral()
 
     expect(await screen.findByText('The draft is not valid yet')).toBeInTheDocument()
-    expect(screen.getByText(/4 errors block publishing\. 1 warning does not\./)).toBeInTheDocument()
+    expect(screen.getByText(/4 errors block publishing\. 3 warnings do not\./)).toBeInTheDocument()
   })
 
   it('says "1 error blocks publishing" for one', async () => {
@@ -636,7 +649,25 @@ describe('the validation tab', () => {
     expect(await screen.findByText('Technical paths')).toBeInTheDocument()
     expect(screen.getByText('mystery[2]: is odd')).toBeInTheDocument()
     const warnings = screen.getByRole('region', { name: 'Warnings' })
-    expect(within(warnings).getByText('flows[1]: has no steps')).toBeInTheDocument()
+    expect(within(warnings).getByText('has no steps')).toBeInTheDocument()
+  })
+
+  it('shows each warning with its reason, its place in words and a link to the field', async () => {
+    await openSeveral()
+
+    const warnings = await screen.findByRole('region', { name: 'Warnings' })
+    const [loop, noSteps, bare] = within(warnings).getAllByRole('listitem')
+    expect(loop).toHaveTextContent('a loop may never end; check its exit')
+    expect(loop).toHaveTextContent('Flows · Heist › 2. The job › Mode')
+    expect(loop).not.toHaveTextContent('flows[0]')
+    const links = within(warnings).getAllByRole('link', { name: 'Go to field' })
+    expect(links).toHaveLength(2)
+    expect(links[0]).toHaveAttribute(
+      'href',
+      '/studio/game-systems/my-draft/flows/heist?node=phases.1',
+    )
+    expect(noSteps).toHaveTextContent('has no steps')
+    expect(bare).toHaveTextContent('no location at all')
   })
 
   it('names the items by position when the draft cannot be read', async () => {
@@ -687,7 +718,8 @@ describe('the validation tab', () => {
 
     const warnings = await screen.findAllByRole('listitem')
     expect(warnings).toHaveLength(2)
-    expect(warnings[0]).toHaveTextContent('oracles.tables[0]: has no entries')
+    expect(warnings[0]).toHaveTextContent('has no entries')
+    expect(warnings[0]).not.toHaveTextContent('oracles.tables[0]')
   })
 
   it('shows why the validation could not be loaded', async () => {

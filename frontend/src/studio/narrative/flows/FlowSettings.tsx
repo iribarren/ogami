@@ -124,6 +124,7 @@ export function FlowSettings({
         <div className="space-y-1">
           <CheckList
             legend="Oracle shortcuts"
+            variant="pills"
             options={options}
             value={draft.oracles}
             error={errors.oracles}
@@ -135,6 +136,7 @@ export function FlowSettings({
         <div className="space-y-1">
           <CheckList
             legend="Trackers"
+            variant="pills"
             options={context.trackers}
             value={draft.trackers}
             error={errors.trackers}

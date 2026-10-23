@@ -104,6 +104,13 @@ function startOf(field: SheetFieldView): number {
   return Math.min(Math.max(start, field.min ?? -Infinity), field.max ?? Infinity)
 }
 
+/** What the sandbox starts each number field at when nobody typed, by key; the formula previews read the same. */
+export function sampleDefaults(template: SheetFieldView[]): Record<string, number> {
+  return Object.fromEntries(
+    template.filter((held) => held.type === 'number').map((held) => [held.key, startOf(held)]),
+  )
+}
+
 /**
  * The sandbox of a check as the form holds it: the sample inputs with their problems, the band
  * bounds computed for these samples with the formula kernel, and the request a roll would send.

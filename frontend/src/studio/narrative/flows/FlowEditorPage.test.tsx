@@ -1036,10 +1036,15 @@ describe('the outline', () => {
 
 describe('the header of the flow editor page', () => {
   const system = { [`GET ${base.replace('/narrative', '')}`]: json(gameSystem) }
+  // Split once: a message may contain `: ` itself.
+  const errorOf = (error: string) => {
+    const at = error.indexOf(': ')
+    return { path: error.slice(0, at), message: error.slice(at + 2) }
+  }
   const validation = (error: string | null, warnings: string[]) =>
     json({
       valid: error === null,
-      errors: error === null ? [] : [{ path: error.split(': ')[0], message: error.split(': ')[1] }],
+      errors: error === null ? [] : [errorOf(error)],
       warnings,
     })
   const check = `GET ${base}/validation`

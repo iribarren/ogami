@@ -186,6 +186,35 @@ describe('the issues of each flow', () => {
     release()
   })
 
+  it('shows the counts of a validation read after the narrative, which was read once', async () => {
+    let release: () => void = () => undefined
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await openTab({
+      [`GET ${base}/validation`]: async () => {
+        await pending
+        return Response.json({ ...flowWarnings, warnings: ['flows[0]: odd'] })
+      },
+    })
+
+    await row('Heist')
+    expect(screen.queryByText(/issue/)).not.toBeInTheDocument()
+    release()
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+  })
+
+  it('keeps the counts when the narrative is refetched and comes back unchanged', async () => {
+    const { queryClient } = await openTab({
+      [`GET ${base}/validation`]: json({ ...flowWarnings, warnings: ['flows[0]: odd'] }),
+    })
+
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+    await queryClient.refetchQueries({ queryKey: narrativeKey('my-draft') })
+
+    expect(within(await row('Heist')).getByText('1 issue')).toBeInTheDocument()
+  })
+
   it('shows no count once the narrative has changed until the validation is read again', async () => {
     let narrative: unknown = narrativeFlows
     const { queryClient } = await openTab({

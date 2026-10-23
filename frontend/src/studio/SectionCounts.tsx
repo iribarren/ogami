@@ -1,3 +1,8 @@
+import { Link } from '@tanstack/react-router'
+import { ArrowRight } from 'lucide-react'
+
+import type { GameSystemTab } from './gameSystemTabs'
+
 /** How the release contract's section names read; an unknown name shows as it is. */
 const sectionLabels: Record<string, string> = {
   oracleTables: 'Oracle tables',
@@ -14,17 +19,30 @@ const sectionLabels: Record<string, string> = {
   flowSteps: 'Flow steps',
 }
 
+/** The tab of the GameSystem page that edits each section; the schema version 1 names have none. */
+const sectionTabs: Record<string, GameSystemTab> = {
+  oracleTables: 'oracles',
+  likelihoodOracles: 'oracles',
+  trackers: 'narrative',
+  factSlots: 'narrative',
+  tags: 'narrative',
+  sceneTypes: 'sceneTypes',
+  flows: 'flows',
+  sheetFields: 'sheet',
+  checks: 'checks',
+}
+
 /**
- * The items each section holds; the draft's list also says its editor is still to come. The
- * compact form is one line for a card, and leaves out the sections without items.
+ * The items each section holds; with a `gameSystemKey` (the draft's list) each section links to its
+ * editor tab. The compact form is one line for a card, and leaves out the sections without items.
  */
 export function SectionCounts({
   counts,
-  editorComing = false,
+  gameSystemKey,
   compact = false,
 }: {
   counts: Record<string, number>
-  editorComing?: boolean
+  gameSystemKey?: string
   compact?: boolean
 }) {
   if (compact) {
@@ -48,8 +66,17 @@ export function SectionCounts({
         <li key={name} className="flex items-baseline gap-3 px-4 py-3">
           <span className="font-medium">{sectionLabels[name] ?? name}</span>
           <span className="text-muted-foreground">{count}</span>
-          {editorComing && (
-            <span className="ml-auto text-sm text-muted-foreground">Editor coming</span>
+          {gameSystemKey !== undefined && name in sectionTabs && (
+            <Link
+              to="/studio/game-systems/$key"
+              params={{ key: gameSystemKey }}
+              search={{ tab: sectionTabs[name] }}
+              aria-label={`Open ${sectionLabels[name] ?? name}`}
+              className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Open
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
           )}
         </li>
       ))}

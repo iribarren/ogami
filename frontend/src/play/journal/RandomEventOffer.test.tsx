@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -7,7 +7,7 @@ import { renderWithApi } from '@/test/renderWithApi'
 import { lostMineCampaign } from '../campaigns/fixtures'
 import { fateDouble, fateDoubleEvent, gateNote, lockedDoorAnswer, stormyWeather } from './fixtures'
 import { RandomEventOffer } from './RandomEventOffer'
-import type { JournalEntry } from './useJournal'
+import { useJournal, type JournalEntry } from './useJournal'
 
 const campaignId = lostMineCampaign.id
 const rollPath = `POST /api/campaigns/${campaignId}/journal/oracle-tables/weather`
@@ -79,6 +79,43 @@ describe('RandomEventOffer', () => {
     await user.click(screen.getByRole('button', { name: 'Roll Weather' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('was already rolled')
+  })
+
+  it('reads the journal again when the event was already rolled, which drops the button', async () => {
+    const journalPath = `GET /api/campaigns/${campaignId}/journal`
+    let reads = 0
+    function JournalOffer() {
+      const journal = useJournal(campaignId)
+      return (
+        <RandomEventOffer
+          campaignId={campaignId}
+          entry={fateDouble}
+          entries={journal.data ?? [fateDouble]}
+          tables={lostMineCampaign.oracleTables}
+          tags={lostMineCampaign.tags}
+          current
+        />
+      )
+    }
+    const { fakeApi } = renderWithApi(<JournalOffer />, {
+      // Another tab rolled the event meanwhile: the second read holds it.
+      [journalPath]: () =>
+        Response.json(++reads === 1 ? [fateDouble] : [fateDouble, fateDoubleEvent]),
+      [rollPath]: () =>
+        Response.json(
+          { error: 'The random event of journal entry "x" was already rolled.' },
+          { status: 409 },
+        ),
+    })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Roll Weather' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Roll Weather' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Dense fog')).toBeInTheDocument()
+    expect(fakeApi.requests.filter((request) => request === journalPath)).toHaveLength(2)
   })
 
   it('offers no roll outside the current scene', () => {

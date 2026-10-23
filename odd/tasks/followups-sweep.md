@@ -60,7 +60,7 @@ Each finding was logged by its origin feature (named in the issue) and left open
 | T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
 | T2 | 1 | Backend Identity and dice: F1, F7a, F7b | writer (delegated) | [x] | |
 | T3 | 1 | Backend Play: F5 release port, F10 `forEntry` scene rule, F11 preset rename; tests M3, M4, M8 | writer (delegated) | [ ] F10 pending | |
-| T4 | 1 | Frontend auth and journal data: F2, F3, F9; test M1 | writer (delegated) | [ ] | |
+| T4 | 1 | Frontend auth and journal data: F2, F3, F9; test M1 | writer (delegated) | [x] | |
 | T5 | 1 | Frontend Play panels: F4, F6, F7c, F12a, F12b; tick M7 | writer (delegated) | [ ] | |
 | T6 | 1 | Frontend Studio and shared: F8, F13; tests M2, M5, M6 | writer (delegated) | [ ] | |
 
@@ -72,7 +72,7 @@ Each finding was logged by its origin feature (named in the issue) and left open
 ## Progress
 
 - 2026-10-23: feature doc created (6 tasks, one slice); issue #252.
-- T2: F1 `Email::normalize` shared by `fromString` and the login limiter; F7a `Token::written()/saturated()` so count, sides and selector count report the written digits; F7b `characterAt` validates only the character's own bytes. RED observed for all three (4 failing cases + undefined `normalize`), GREEN after.- T3 (without F10): F5 `PublishedReleaseUnreadable` (Studio) thrown by `GetPublishedReleaseHandler`, translated to `InvalidGameSystemRelease` by Play's adapter (no new factory: `::of` fits; the Studio exception carries key, version, path, reason); F11 mythic-style Scene Type is "Open scene" (RED on `MythicStylePresetFlowTest`, then GREEN); M3/M4/M8 pin existing behaviour (no RED), M3 asserts the wording the Play snapshot exposes (Scene Type tips, step title and tip; the Flow introduction is not in the snapshot). F5 tests are new-class tests. **F10 blocked:** the rule lives in `backend/src/Play/Application/CampaignJournal.php`, outside the allowed edit surfaces.
+- T2: F1 `Email::normalize` shared by `fromString` and the login limiter; F7a `Token::written()/saturated()` so count, sides and selector count report the written digits; F7b `characterAt` validates only the character's own bytes. RED observed for all three (4 failing cases + undefined `normalize`), GREEN after.- T3 (without F10): F5 `PublishedReleaseUnreadable` (Studio) thrown by `GetPublishedReleaseHandler`, translated to `InvalidGameSystemRelease` by Play's adapter (no new factory: `::of` fits; the Studio exception carries key, version, path, reason); F11 mythic-style Scene Type is "Open scene" (RED on `MythicStylePresetFlowTest`, then GREEN); M3/M4/M8 pin existing behaviour (no RED), M3 asserts the wording the Play snapshot exposes (Scene Type tips, step title and tip; the Flow introduction is not in the snapshot). F5 tests are new-class tests. **F10 blocked:** the rule lives in `backend/src/Play/Application/CampaignJournal.php`, outside the allowed edit surfaces.- T4: F2 `/me` retries once after 300 ms (RED: 500-then-200 test timed out; 401 stays a single request); F3 `cancelQueries` plus id check in `useRecordEntry` (RED: stale refetch dropped the append, a refetch holding the entry duplicated it; new `useJournal.test.tsx`); F9 `refetchOnConflict` for the oracle-table record (RED: no second journal read); M1 409 refetch of the Facts panel (pins existing behaviour, no RED).
 
 ## Reviews
 

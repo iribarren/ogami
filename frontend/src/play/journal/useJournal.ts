@@ -45,7 +45,9 @@ export function useJournal(campaignId: string) {
 
 /**
  * Shared by the record hooks (and the check hook): posts with `record` and appends the
- * recorded entry to the cached journal, so it appears without reloading the journal.
+ * recorded entry to the cached journal, so it appears without reloading the journal. With
+ * `refetchOnConflict`, a refusal of 409 reads the journal again: the entry the refusal is about
+ * was recorded by someone else.
  */
 export function useRecordEntry<Variables>(
   campaignId: string,
@@ -55,6 +57,7 @@ export function useRecordEntry<Variables>(
     error?: { error: string }
     response: Response
   }>,
+  { refetchOnConflict = false }: { refetchOnConflict?: boolean } = {},
 ) {
   const queryClient = useQueryClient()
 
@@ -67,13 +70,24 @@ export function useRecordEntry<Variables>(
       }
       throw campaignError(response, error, explainedRefusals, failure)
     },
-    onSuccess: (entry) => {
+    onSuccess: async (entry) => {
+      // A read already in flight started before this entry existed: its answer would overwrite
+      // the append, so drop it first. One that finished with the entry leaves nothing to append.
+      await queryClient.cancelQueries({ queryKey: journalKey(campaignId) })
       const cached = queryClient.getQueryData<JournalEntry[]>(journalKey(campaignId))
       if (cached === undefined) {
         void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
         return
       }
+      if (cached.some(({ id }) => id === entry.id)) {
+        return
+      }
       queryClient.setQueryData(journalKey(campaignId), [...cached, entry])
+    },
+    onError: (error) => {
+      if (refetchOnConflict && error instanceof CampaignError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+      }
     },
   })
 }
@@ -115,6 +129,8 @@ export function useRecordOracleTableResult(campaignId: string) {
         params: { path: { campaignId, oracleKey } },
         body: forEntry === undefined ? undefined : { forEntry },
       }),
+    // The random event may have been rolled elsewhere: the journal shows it then.
+    { refetchOnConflict: true },
   )
 }
 

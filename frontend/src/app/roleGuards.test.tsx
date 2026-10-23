@@ -64,6 +64,27 @@ describe('role-guarded areas', () => {
     },
   )
 
+  it('asks who is signed in once for an anonymous visitor: a 401 is an answer, not a failure to retry', async () => {
+    const { fakeApi } = renderAppAt('/play')
+
+    await screen.findByRole('heading', { level: 1, name: 'Sign in' })
+    expect(fakeApi.requests.filter((request) => request === 'GET /api/auth/me')).toHaveLength(1)
+  })
+
+  it('retries a failed lookup of the signed-in user once, so a blip does not break the page', async () => {
+    let calls = 0
+    const { fakeApi } = renderAppAt('/play', {
+      ...areaRequests['/play'],
+      'GET /api/auth/me': (request) =>
+        ++calls === 1
+          ? Response.json({ error: 'Down.' }, { status: 500 })
+          : signedInAs('SOLO_PLAYER')(request),
+    })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Play' })).toBeInTheDocument()
+    expect(fakeApi.requests.filter((request) => request === 'GET /api/auth/me')).toHaveLength(2)
+  })
+
   it('keeps the landing page public', async () => {
     renderAppAt('/')
 

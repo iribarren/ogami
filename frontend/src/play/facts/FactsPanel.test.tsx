@@ -280,6 +280,30 @@ describe('the Facts panel', () => {
     expect(form.getByLabelText('Text')).toHaveValue('Ashford')
   })
 
+  it('refetches the campaign when a change is refused with 409', async () => {
+    const user = userEvent.setup()
+    const { server } = renderFacts(lostMineWithFacts, {
+      [`PUT ${path}/facts/${oathFact.id}`]: () =>
+        Response.json({ error: 'Modified meanwhile.' }, { status: 409 }),
+    })
+
+    const panel = await facts()
+    server.campaign = {
+      ...lostMineWithFacts,
+      facts: lostMineWithFacts.facts.map((fact) =>
+        fact.id === oathFact.id
+          ? { ...fact, text: 'Always pay the debt.', value: 'Always pay the debt.' }
+          : fact,
+      ),
+    }
+    await user.click(panel.getByRole('button', { name: 'Edit The oath' }))
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    expect(await panel.findByText('Modified meanwhile.')).toBeInTheDocument()
+    await user.click(panel.getByRole('button', { name: 'Cancel' }))
+    expect(await panel.findByText('Always pay the debt.')).toBeInTheDocument()
+  })
+
   it('offers every NPC to fill an NPC slot', async () => {
     const user = userEvent.setup()
     renderFacts(lostMineWithFacts)

@@ -20,8 +20,11 @@ const currentUserQueryKey = ['auth', 'currentUser'] as const
 export function currentUserQueryOptions(api: ApiClient) {
   return queryOptions({
     queryKey: currentUserQueryKey,
-    // Guards wait on this query; fail fast instead of retrying a broken API.
-    retry: false,
+    // Guards wait on this query, so retry a failure only once and after a short pause: one
+    // blip should not break the page, a broken API should not hold it. A 401 is not a failure
+    // here (it resolves to `null`, signed out), so it is never retried.
+    retry: 1,
+    retryDelay: 300,
     queryFn: async ({ signal }): Promise<CurrentUser | null> => {
       const { data, response } = await api.GET('/api/auth/me', { signal })
       if (response.status === 401) {

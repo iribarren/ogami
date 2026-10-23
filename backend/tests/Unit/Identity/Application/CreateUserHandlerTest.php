@@ -14,7 +14,6 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\InvalidEmail;
 use App\Identity\Domain\Role;
 use App\Identity\Domain\UserId;
-use App\Identity\Domain\UserMustHaveARole;
 use App\Identity\Domain\UserStatus;
 use App\Tests\Support\Identity\FakePasswordHasher;
 use App\Tests\Support\Identity\FixedClock;
@@ -112,14 +111,6 @@ final class CreateUserHandlerTest extends TestCase
         }
 
         self::assertSame(0, $this->users->count());
-    }
-
-    #[Test]
-    public function itRejectsAnEmptyRoleList(): void
-    {
-        $this->expectException(UserMustHaveARole::class);
-
-        ($this->handler)(new CreateUser($this->ids->generate()->toString(), 'ada@example.com', 's3cret', []));
     }
 
     #[Test]

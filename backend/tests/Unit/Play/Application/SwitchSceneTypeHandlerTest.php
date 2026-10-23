@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\SwitchSceneType;
 use App\Play\Application\SwitchSceneTypeHandler;
@@ -107,16 +106,6 @@ final class SwitchSceneTypeHandlerTest extends TestCase
         $this->expectException(HookSceneHasNoSceneType::class);
 
         ($this->handler)(new SwitchSceneType('campaign-1', 'user-1', 'legwork'));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->startScene('At the gate');
-
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->handler)(new SwitchSceneType('campaign-1', 'user-2', 'legwork'));
     }
 
     private function startScene(string $title): void

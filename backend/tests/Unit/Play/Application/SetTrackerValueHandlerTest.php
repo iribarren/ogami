@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\SetTrackerValue;
 use App\Play\Application\SetTrackerValueHandler;
@@ -97,13 +96,5 @@ final class SetTrackerValueHandlerTest extends TestCase
         ($this->handler)(new SetTrackerValue('campaign-2', 'user-1', 'heat', 9));
 
         self::assertSame(['heat' => 5], $this->campaigns->ofId(CampaignId::fromString('campaign-2'))?->trackerValues());
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->handler)(new SetTrackerValue('campaign-1', 'user-2', 'heat', 2));
     }
 }

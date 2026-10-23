@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CompleteFlowStep;
 use App\Play\Application\CompleteFlowStepHandler;
 use App\Play\Domain\Campaign\Campaign;
@@ -223,14 +222,6 @@ final class CompleteFlowStepHandlerTest extends FlowRunHandlerTestCase
                 self::assertSame([], $this->journalOf($id));
             }
         }
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->complete(self::command('intro', text: 'Ada', userId: 'user-2'));
     }
 
     #[Test]

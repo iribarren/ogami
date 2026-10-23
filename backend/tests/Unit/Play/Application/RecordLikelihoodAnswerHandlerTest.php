@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordLikelihoodAnswerHandler;
 use App\Play\Domain\Campaign\Campaign;
@@ -141,16 +140,6 @@ final class RecordLikelihoodAnswerHandlerTest extends JournalTestCase
             self::assertInstanceOf($error, $exception);
             self::assertSame([], $this->journalOf('campaign-1'));
         }
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $handler = new RecordLikelihoodAnswerHandler($this->journal, new ScriptedRandomNumberGenerator(40));
-
-        $this->expectException(CampaignNotFound::class);
-
-        $handler(new RecordLikelihoodAnswer('entry-1', 'campaign-1', 'user-2', 'fate', 'even'));
     }
 
     #[Test]

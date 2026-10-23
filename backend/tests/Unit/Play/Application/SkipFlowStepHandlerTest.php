@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\SkipFlowStep;
 use App\Play\Application\SkipFlowStepHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -82,14 +81,6 @@ final class SkipFlowStepHandlerTest extends FlowRunHandlerTestCase
         $this->expectException(FlowRunNotActive::class);
 
         $this->skip(new SkipFlowStep('campaign-2', 'user-1', 'intro'));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->skip(new SkipFlowStep('campaign-1', 'user-2', 'intro'));
     }
 
     private function skip(SkipFlowStep $command): void

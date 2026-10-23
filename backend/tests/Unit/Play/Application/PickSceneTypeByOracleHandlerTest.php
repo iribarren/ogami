@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\PickSceneTypeByOracle;
 use App\Play\Application\PickSceneTypeByOracleHandler;
 use App\Play\Domain\Campaign\Campaign;
@@ -119,14 +118,6 @@ final class PickSceneTypeByOracleHandlerTest extends FlowRunHandlerTestCase
         $this->expectException(FlowRunNotActive::class);
 
         $this->pick(new PickSceneTypeByOracle('campaign-2', 'user-1'));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->pick(new PickSceneTypeByOracle('campaign-5', 'user-2'), 3);
     }
 
     private function pick(PickSceneTypeByOracle $command, int ...$rolls): void

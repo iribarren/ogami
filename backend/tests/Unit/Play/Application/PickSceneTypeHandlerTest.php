@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\PickSceneType;
 use App\Play\Application\PickSceneTypeHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -62,14 +61,6 @@ final class PickSceneTypeHandlerTest extends FlowRunHandlerTestCase
         $this->expectException(FlowRunNotActive::class);
 
         $this->pick(new PickSceneType('campaign-2', 'user-1', 'quiet'));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->pick(new PickSceneType('campaign-5', 'user-2', 'quiet'));
     }
 
     private function pick(PickSceneType $command): void

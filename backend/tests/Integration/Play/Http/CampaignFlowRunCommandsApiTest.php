@@ -497,57 +497,6 @@ final class CampaignFlowRunCommandsApiTest extends WebTestCase
     }
 
     #[Test]
-    public function aGuidedSessionWithoutASessionClosingEndsAtOnceAtTheScenePick(): void
-    {
-        $this->prepare('pick');
-        self::assertTrue(self::at($this->campaign(), 'flowRun', 'canEndSession'));
-
-        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
-
-        self::assertResponseStatusCodeSame(200);
-        self::assertSame([1, '2026-10-10T09:00:00+00:00'], [$this->json()['number'] ?? null, $this->json()['endedAt'] ?? null]);
-        self::assertSame([true, false], [self::at($this->campaign(), 'flowRun', 'waitsForSession'), self::at($this->campaign(), 'flowRun', 'canEndSession')]);
-    }
-
-    #[Test]
-    public function afterASceneThePickOfTheOnlySceneTypeWaitsSoTheSessionCanEndAndTheNextSessionPicksIt(): void
-    {
-        $this->prepare('closing');
-
-        $this->post('answer', ['stepKey' => 'wrap', 'text' => 'The crew split up']);
-
-        self::assertResponseStatusCodeSame(200);
-        $campaign = $this->json();
-        $cards = self::at($campaign, 'flowRun', 'pick', 'cards');
-        self::assertIsArray($cards);
-        self::assertSame([null, ['solo'], true, 'Scene: Solo'], [self::at($campaign, 'flowRun', 'step'), array_column($cards, 'key'), self::at($campaign, 'flowRun', 'canEndSession'), self::at($campaign, 'flowRun', 'next')]);
-
-        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
-        self::assertResponseStatusCodeSame(200);
-        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', self::CAMPAIGN));
-        self::assertResponseStatusCodeSame(201);
-
-        self::assertSame(['open', 'Solo'], [self::at($this->campaign(), 'flowRun', 'progress', 'part'), self::at($this->campaign(), 'flowRun', 'progress', 'sceneType')]);
-    }
-
-    #[Test]
-    public function aGuidedSessionWithASessionClosingEndsOnceItsHookSceneFinishes(): void
-    {
-        $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9303', GuidedReleases::content(sessionClosing: true) + ['sheet' => []], false));
-        $this->prepare('pick');
-
-        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions/current/end', self::CAMPAIGN));
-
-        self::assertResponseStatusCodeSame(200);
-        self::assertSame([1, null], [$this->json()['number'] ?? null, $this->json()['endedAt']]);
-        $campaign = $this->campaign();
-        self::assertSame(['sessionClosing', 'notes', 'Session ends', false], [self::at($campaign, 'flowRun', 'progress', 'part'), self::at($campaign, 'flowRun', 'step', 'key'), self::at($campaign, 'flowRun', 'next'), self::at($campaign, 'flowRun', 'canEndSession')]);
-        $this->post('skip', ['stepKey' => 'notes']);
-        self::assertResponseStatusCodeSame(200);
-        self::assertSame([null, true], [$this->json()['currentSessionNumber'], self::at($this->json(), 'flowRun', 'waitsForSession')]);
-    }
-
-    #[Test]
     public function aSessionClosingThatDoesNotFitTheSessionIsAConflict(): void
     {
         $this->commands->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9303', GuidedReleases::content(sessionClosing: true) + ['sheet' => []], false));

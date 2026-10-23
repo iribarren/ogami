@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\SceneTypes;
 use App\Play\Application\StartScene;
@@ -107,16 +106,6 @@ final class StartSceneHandlerTest extends TestCase
         $this->expectException(NoCurrentSession::class);
 
         ($this->handler)(new StartScene('campaign-1', 'user-1', 'At the gate'));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->startSession();
-
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->handler)(new StartScene('campaign-1', 'user-2', 'At the gate'));
     }
 
     private function startSession(string $campaignId = 'campaign-1'): void

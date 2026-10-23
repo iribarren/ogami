@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\ResumeGuidance;
 use App\Play\Application\ResumeGuidanceHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -43,14 +42,6 @@ final class ResumeGuidanceHandlerTest extends FlowRunHandlerTestCase
                 self::assertEquals($before, $this->stored($id));
             }
         }
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->resume(new ResumeGuidance('campaign-1', 'user-2'));
     }
 
     private function resume(ResumeGuidance $command): void

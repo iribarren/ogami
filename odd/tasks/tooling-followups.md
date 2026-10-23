@@ -54,9 +54,9 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
-| T2 | 1 | One e2e password default; `--reset-existing` seeding (Identity command, console option, `make e2e-seed`, README) | writer (delegated) | [ ] | |
-| T3 | 1 | Faster Studio editor Vitest tests | writer (delegated) | [ ] | |
-| T4 | 1 | Overlap deletions (a)–(c), `OwnedCampaignsTest`, Admin `LastActiveOwner` 409 API test | writer (delegated) | [ ] | |
+| T2 | 1 | One e2e password default; `--reset-existing` seeding (Identity command, console option, `make e2e-seed`, README) | writer (delegated) | [x] | |
+| T3 | 1 | Faster Studio editor Vitest tests | writer (delegated) | [x] | |
+| T4 | 1 | Overlap deletions (a)–(c), `OwnedCampaignsTest`, Admin `LastActiveOwner` 409 API test | writer (delegated) | [x] | |
 | T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
 | T6 | 2 | CI Docker layer caching, measured; merged only if it shortens wall time | writer (delegated) | [ ] | |
 
@@ -70,6 +70,9 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 ## Progress
 
 - 2026-10-23: feature doc created (6 tasks, two slices); issue #254; overlap proposal (a)–(c) approved by the user.
+- 2026-10-23 T2: RED 7 handler unit errors (class missing) and 6 console errors (`--reset-existing` unknown), then GREEN 7 + 15 tests. `make e2e`: 26 of 28 passed on the first run; the 2 Studio failures were timeouts or flakes (`studio-flow-editor` passed on rerun, 3 times; it also passes on `main`). Sign-in with the seeded password works.
+- 2026-10-23 T3: no RED (speed only). Root cause is not key-by-key typing: each input event re-renders the whole editor (React dev render about 40–50 ms per change, 150–600 ms for an initial render), so cost scales with events, not keystrokes. `user.type` of multi-character text became one paste event (`typeText`, `replaceText` in `frontend/src/test/typeText.ts`). Sequential run of the 4 slowest files: 71.4 s to 65.7 s (-8%); parallel Studio run 721 s to 705 s (run-to-run noise about 10–20%, so not a reliable measure). The 40% target is not reachable from the tests: it needs a production render change (memoised cards) or tooling. Green: 1,287 Studio tests.
+- 2026-10-23 T4: no RED (pinning tests and deletions). Deleted 32 tests (7 duplicates of another layer, 25 copies of the ownership check), added `OwnedCampaignsTest` (4 cases) and an Admin `LastActiveOwner` 409 case (2 datasets); PHPUnit on `tests/Unit`, `Admin` and `Play`: 5,095 passing. The 409 is unreachable over HTTP without a race (the acting owner is always a second active owner), so the test plays the race with a decorated repository.
 
 ## Reviews
 

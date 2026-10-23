@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\JournalEntryNotFound;
 use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordOracleTableResultHandler;
@@ -186,16 +185,6 @@ final class RecordOracleTableResultHandlerTest extends JournalTestCase
             self::assertSame('GameSystem "free-journal" v1 has no oracle table "treasure".', $exception->getMessage());
             self::assertSame([], $this->journalOf('campaign-1'));
         }
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $handler = new RecordOracleTableResultHandler($this->journal, new ScriptedRandomNumberGenerator(1));
-
-        $this->expectException(CampaignNotFound::class);
-
-        $handler(new RecordOracleTableResult('entry-1', 'campaign-1', 'user-2', 'weather'));
     }
 
     #[Test]

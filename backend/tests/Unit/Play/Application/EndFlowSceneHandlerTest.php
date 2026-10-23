@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\EndFlowScene;
 use App\Play\Application\EndFlowSceneHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -55,14 +54,6 @@ final class EndFlowSceneHandlerTest extends FlowRunHandlerTestCase
         $this->expectException(FlowRunNotActive::class);
 
         $this->end(new EndFlowScene('campaign-2', 'user-1', 1));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->end(new EndFlowScene('campaign-3', 'user-2', 1));
     }
 
     private function end(EndFlowScene $command): void

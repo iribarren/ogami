@@ -117,12 +117,47 @@ const overview: ErrorLocation = {
   target: { kind: 'tab', tab: 'overview' },
 }
 
-/** A warning is `"path: reason"`; one without a path is only its reason. Splits at the first `': '`. */
+/**
+ * The first names of a release path, as `locateError` reads them: the item sections of its table
+ * (`sections`) and the heads it places by name.
+ */
+const pathHeads = new Set<string>([
+  ...Object.keys(sections),
+  'oracles',
+  'sheet',
+  'checks',
+  'library',
+  'gameSystem',
+  'theme',
+])
+
+/** Whether `text` is wholly a release path: a known head, then `.names` and `[n]` positions. */
+function isReleasePath(text: string): boolean {
+  const [head] = tokenize(text)
+  return (
+    head !== undefined &&
+    'name' in head &&
+    pathHeads.has(head.name) &&
+    /^[A-Za-z_][\w-]*(\.[A-Za-z_][\w-]*|\[\d+\])*$/.test(text)
+  )
+}
+
+/**
+ * A warning is `"path: reason"`; one without a path is only its reason. Splits at the first `': '`,
+ * and only when what comes before it is a release path, so a colon in a sentence stays in it.
+ */
 export function splitWarning(warning: string): { path?: string; reason: string } {
   const at = warning.indexOf(': ')
-  return at === -1
-    ? { reason: warning }
-    : { path: warning.slice(0, at), reason: warning.slice(at + 2) }
+  if (at === -1 || !isReleasePath(warning.slice(0, at))) {
+    return { reason: warning }
+  }
+  return { path: warning.slice(0, at), reason: warning.slice(at + 2) }
+}
+
+/** A path as one line of words: `Flows · One-shot › Trackers`. */
+export function describeLocation(path: string, names: LocatorNames): string {
+  const { group, trail } = locateError(path, names)
+  return [group, ...trail].join(' › ')
 }
 
 /** Where in the draft a validation path is, in words, and where to edit it. Never throws. */

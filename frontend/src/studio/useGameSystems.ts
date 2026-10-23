@@ -1,4 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  hashKey,
+  type Query,
+  type QueryClient,
+  type QueryKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 
 import type { components } from '@/shared/api/schema'
@@ -57,6 +65,54 @@ export const gameSystemKey = (key: string) => [...gameSystemsKey, key] as const
 /** The library packs list (`useLibraryPacks`); a discarded pack drops out of it. */
 export const libraryPacksKey = ['studio', 'library', 'packs'] as const
 export const validationKey = (key: string) => [...gameSystemKey(key), 'validation'] as const
+
+/**
+ * The segments of the section reads that carry the draft version (`narrativeKey`, `oraclesKey`,
+ * `sheetKey`, `checksKey`, `libraryImportsKey`). Listed here, not imported, since those modules
+ * import this one; a test pins them to the key builders.
+ */
+export const sectionSegments: readonly string[] = [
+  'narrative',
+  'oracles',
+  'sheet',
+  'checks',
+  'library-imports',
+]
+
+/**
+ * Every section of a draft (overview, narrative, oracles, sheet, checks, validation) shares one
+ * draft version, and each cached read carries it. After a write, `written` is the query just set
+ * from the write's answer; every other query under the draft's key holds the version that write
+ * replaced. When the write answered the new draft `version`, the section reads (one segment below
+ * the draft's key, listed in `sectionSegments`; releases, validation and the GameSystem are not) take it at once, so
+ * a write sent before the refetch resolves carries the right `expectedVersion`. Every other query
+ * is marked stale and refetched.
+ */
+export function invalidateOtherDraftReads(
+  queryClient: QueryClient,
+  key: string,
+  written: QueryKey,
+  version?: number,
+) {
+  const draftKey = gameSystemKey(key)
+  const others = (query: Query) => hashKey(query.queryKey) !== hashKey(written)
+  if (version !== undefined) {
+    for (const query of queryClient.getQueryCache().findAll({ queryKey: draftKey })) {
+      const data: unknown = query.state.data
+      if (
+        others(query) &&
+        query.queryKey.length === draftKey.length + 1 &&
+        sectionSegments.includes(String(query.queryKey[draftKey.length])) &&
+        typeof data === 'object' &&
+        data !== null &&
+        !Array.isArray(data)
+      ) {
+        queryClient.setQueryData(query.queryKey, { ...data, version })
+      }
+    }
+  }
+  void queryClient.invalidateQueries({ queryKey: draftKey, predicate: others })
+}
 
 /** A 404 (unknown key, or someone else's) will not change by asking again. */
 const retryUnlessNotFound = (failureCount: number, error: Error) =>
@@ -145,7 +201,7 @@ export function useCreateGameSystem() {
 
 /**
  * `PUT /api/studio/game-systems/{key}/metadata`: replaces the whole metadata. The answer
- * replaces the cached GameSystem; the list and the validation are refetched.
+ * replaces the cached GameSystem; the list and every other read of the draft are refetched.
  */
 export function useEditMetadata(key: string) {
   const api = useApiClient()
@@ -165,7 +221,7 @@ export function useEditMetadata(key: string) {
     onSuccess: (gameSystem) => {
       queryClient.setQueryData(gameSystemKey(key), gameSystem)
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
-      void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+      invalidateOtherDraftReads(queryClient, key, gameSystemKey(key))
     },
   })
 }

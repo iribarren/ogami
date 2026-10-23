@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
-import { gameSystemKey, StudioError, studioError, validationKey } from '../useGameSystems'
+import {
+  gameSystemKey,
+  invalidateOtherDraftReads,
+  StudioError,
+  studioError,
+} from '../useGameSystems'
 import type { OracleTable, SaveTable } from './tableDraft'
 
 export type GameSystemOracles = components['schemas']['GameSystemOraclesResponse']
@@ -62,7 +67,8 @@ export function useGameSystemOracles(key: string) {
 /**
  * Every write answers with the whole oracles view and the new version: it replaces the cached
  * one, so the next write carries the right `expectedVersion`. The draft changed, so what the
- * GameSystem page shows (counts, "unpublished changes") and its validation are refetched.
+ * GameSystem page shows (counts, "unpublished changes"), its validation and every other section
+ * read are refetched: they carry the version this write replaced.
  */
 function useOracleWrite<Variables>(
   key: string,
@@ -74,8 +80,7 @@ function useOracleWrite<Variables>(
     mutationFn: write,
     onSuccess: (oracles) => {
       queryClient.setQueryData(oraclesKey(key), oracles)
-      void queryClient.invalidateQueries({ queryKey: gameSystemKey(key), exact: true })
-      void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+      invalidateOtherDraftReads(queryClient, key, oraclesKey(key), oracles.version)
     },
   })
 }

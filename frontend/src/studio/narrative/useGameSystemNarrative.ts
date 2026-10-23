@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
-import { gameSystemKey, StudioError, studioError, validationKey } from '../useGameSystems'
+import {
+  gameSystemKey,
+  invalidateOtherDraftReads,
+  StudioError,
+  studioError,
+} from '../useGameSystems'
 
 export type GameSystemNarrative = components['schemas']['GameSystemNarrativeResponse']
 export type NarrativeItem = components['schemas']['NarrativeItemResponse']
@@ -63,7 +68,8 @@ export function useGameSystemNarrative(key: string) {
 /**
  * Every write answers with the whole narrative view and the new version: it replaces the cached
  * one, so the next write carries the right `expectedVersion`. The draft changed, so what the
- * GameSystem page shows and its validation are refetched.
+ * GameSystem page shows, its validation and every other section read are refetched: they carry
+ * the version this write replaced.
  */
 function useNarrativeWrite<Variables>(
   key: string,
@@ -75,8 +81,7 @@ function useNarrativeWrite<Variables>(
     mutationFn: write,
     onSuccess: (narrative) => {
       queryClient.setQueryData(narrativeKey(key), narrative)
-      void queryClient.invalidateQueries({ queryKey: gameSystemKey(key), exact: true })
-      void queryClient.invalidateQueries({ queryKey: validationKey(key) })
+      invalidateOtherDraftReads(queryClient, key, narrativeKey(key), narrative.version)
     },
   })
 }

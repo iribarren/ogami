@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { useGameSystemValidation } from '../../useGameSystems'
+import { useNames, type LocatorNames } from '../../validationLocation'
 import { ItemDialog } from '../ItemDialog'
 import { flowForm } from '../itemForms'
 import { NarrativeGate } from '../NarrativeGate'
@@ -59,6 +60,7 @@ function useChangedAt(
 export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
   const validation = useGameSystemValidation(gameSystemKey)
+  const names = useNames(gameSystemKey)
   const noSceneTypes = useId()
   const updates = useQueryClient().getQueryState(narrativeKey(gameSystemKey))?.dataUpdateCount ?? 0
   const changedAt = useChangedAt(narrative.data, narrative.dataUpdatedAt, updates)
@@ -128,6 +130,7 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                     gameSystemKey={gameSystemKey}
                     item={item}
                     version={data.version}
+                    names={names}
                     // The validation numbers flows by their stored position, which is the order
                     // the narrative read model lists them in. A save refreshes both reads, the
                     // validation after the narrative: until it is read again its positions are
@@ -154,11 +157,13 @@ function FlowRow({
   item,
   version,
   issues,
+  names,
 }: {
   gameSystemKey: string
   item: NarrativeItem
   version: number
   issues: number
+  names: LocatorNames
 }) {
   const reasonId = useId()
   const draft = flowToDraft(item.definition)
@@ -201,7 +206,7 @@ function FlowRow({
           </p>
         )}
         <p id={reasonId} className="text-sm">
-          <UsedBy paths={item.usedBy} />
+          <UsedBy paths={item.usedBy} names={names} />
         </p>
       </div>
       <DeleteItemDialog

@@ -11,11 +11,13 @@ import { sceneTypeForm } from '../itemForms'
 import { NarrativeGate } from '../NarrativeGate'
 import { DeleteItemDialog, UsedBy } from '../NarrativeTab'
 import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarrative'
+import { useNames, type LocatorNames } from '../../validationLocation'
 import { sceneTypeToDraft, scenePartNames } from './sceneTypeDraft'
 
 /** The Scene Types of a draft in stored order, with where each is used; each opens its editor page. */
 export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
+  const names = useNames(gameSystemKey)
   // The Scene Type just created: it stays selected on the list, like other creates.
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -66,6 +68,7 @@ export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
                   item={item}
                   version={data.version}
                   selected={item.key === selected}
+                  names={names}
                 />
               ))}
             </ul>
@@ -81,11 +84,13 @@ function SceneTypeRow({
   item,
   version,
   selected,
+  names,
 }: {
   gameSystemKey: string
   item: NarrativeItem
   version: number
   selected: boolean
+  names: LocatorNames
 }) {
   const reasonId = useId()
   const draft = sceneTypeToDraft(item.definition)
@@ -124,7 +129,7 @@ function SceneTypeRow({
           </p>
         )}
         <p id={reasonId} className="text-sm">
-          <UsedBy paths={item.usedBy} />
+          <UsedBy paths={item.usedBy} names={names} />
         </p>
       </div>
       <DeleteItemDialog

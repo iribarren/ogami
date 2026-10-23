@@ -8,6 +8,7 @@ import { draft, published3, validDraft } from './fixtures'
 import { StoryProviders } from '@/test/StoryProviders'
 
 import { conflictMessage, PublishErrors } from './PublishDialog'
+import { focusNotes } from './publishFocus'
 
 function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
@@ -44,19 +45,26 @@ describe('the publish dialog', () => {
       'GET /api/studio/game-systems/noir-detective/validation': json({
         valid: true,
         errors: [],
-        warnings: ['flows[1]: has no steps', 'flows[1]: has no steps', 'no location at all'],
+        warnings: [
+          'flows[1]: has no steps',
+          'flows[1]: has no steps',
+          'no location at all',
+          'Heads up: this is only text',
+        ],
       }),
     })
 
     const dialog = await openDialog(user)
 
     expect(await dialog.findByText('This creates version 4.')).toBeInTheDocument()
-    expect(dialog.getAllByRole('listitem')).toHaveLength(3)
+    expect(dialog.getAllByRole('listitem')).toHaveLength(4)
     // The reason and the place in words, not the raw path.
     expect(dialog.getAllByText('has no steps')).toHaveLength(2)
     expect(dialog.getAllByText('Flows · 2')).toHaveLength(2)
     expect(dialog.queryByText(/flows\[1\]/)).not.toBeInTheDocument()
     expect(dialog.getByText('no location at all')).toBeInTheDocument()
+    // A colon alone is not a path: the whole warning stays, with no location.
+    expect(dialog.getByText('Heads up: this is only text')).toBeInTheDocument()
     expect(dialog.getByRole('button', { name: 'Publish version 4' })).toBeEnabled()
     expect(dialog.getByText('0 / 2,000')).toBeInTheDocument()
   })
@@ -69,6 +77,21 @@ describe('the publish dialog', () => {
 
     expect(dialog.getByRole('textbox', { name: /Release notes/ })).toHaveFocus()
     expect(dialog.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('keeps focus inside the dialog when the draft is invalid', async () => {
+    const user = userEvent.setup()
+    renderPublishable(draft, {
+      'GET /api/studio/game-systems/my-draft/validation': json({
+        valid: false,
+        errors: [{ path: 'oracles', message: 'must be an object' }],
+        warnings: [],
+      }),
+    })
+
+    await openDialog(user)
+
+    expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
   })
 
   it('creates version 1 for a draft that was never published', async () => {
@@ -92,7 +115,11 @@ describe('the publish dialog', () => {
 
     const dialog = await openDialog(user)
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent('oracles: must be an object')
+    // The reason and the place in words, not the raw path.
+    const alert = await dialog.findByRole('alert')
+    expect(alert).toHaveTextContent('must be an object')
+    expect(alert).toHaveTextContent('Oracles')
+    expect(alert).not.toHaveTextContent('oracles: must')
     expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
   })
 
@@ -113,8 +140,11 @@ describe('the publish dialog', () => {
 
     const alert = await dialog.findByRole('alert')
     expect(within(alert).getAllByRole('listitem')).toHaveLength(3)
-    expect(alert).toHaveTextContent('trackers[0].c: is wrong')
-    expect(alert).not.toHaveTextContent('trackers[0].d')
+    // Each error says where it is in words (the narrative names are read for it).
+    expect(alert).toHaveTextContent('is wrong')
+    expect(alert).toHaveTextContent('Trackers · 1 › C')
+    expect(alert).not.toHaveTextContent('Trackers · 1 › D')
+    expect(alert).not.toHaveTextContent('trackers[0]')
     expect(alert).toHaveTextContent('and 2 more')
     expect(dialog.getByRole('button', { name: 'Publish version 1' })).toBeDisabled()
   })
@@ -318,5 +348,36 @@ describe('the errors of a publish', () => {
 
     expect(await screen.findAllByRole('listitem')).toHaveLength(1)
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+})
+
+describe('focusNotes', () => {
+  function openEvent(container: HTMLElement) {
+    const event = new Event('focus', { cancelable: true })
+    Object.defineProperty(event, 'currentTarget', { value: container })
+    return event
+  }
+
+  it('focuses the notes field and keeps Radix from focusing the Close button', () => {
+    const container = document.createElement('div')
+    container.innerHTML = '<button>Close</button><textarea></textarea>'
+    document.body.append(container)
+    const event = openEvent(container)
+
+    focusNotes(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(container.querySelector('textarea'))
+    container.remove()
+  })
+
+  it('leaves the default focus alone without a notes field', () => {
+    const container = document.createElement('div')
+    container.innerHTML = '<button>Close</button>'
+    const event = openEvent(container)
+
+    focusNotes(event)
+
+    expect(event.defaultPrevented).toBe(false)
   })
 })

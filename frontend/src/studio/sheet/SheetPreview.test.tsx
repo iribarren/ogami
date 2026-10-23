@@ -61,6 +61,25 @@ describe('the sheet preview', () => {
     expect(preview().getByLabelText('Bonus')).toHaveTextContent('8')
   })
 
+  it('starts an untyped number field where the check sandbox does, within its range', async () => {
+    const user = userEvent.setup()
+    const ranged = {
+      ...stored,
+      fields: stored.fields.map((field) => (field.key === 'pow' ? { ...field, min: 4 } : field)),
+    }
+    render(<SheetPreview sheet={ranged} layoutDraft={null} />)
+
+    // No default, a minimum of 4: the sandbox starts it at 4, so the derived field reads 4 + 1.
+    expect(preview().getByLabelText('Power')).toHaveValue(4)
+    expect(preview().getByLabelText('Bonus')).toHaveTextContent('5')
+    expect(preview().getByLabelText('Dexterity')).toHaveValue(10)
+
+    // What is typed still wins.
+    await user.clear(preview().getByLabelText('Power'))
+    await user.type(preview().getByLabelText('Power'), '9')
+    expect(preview().getByLabelText('Bonus')).toHaveTextContent('10')
+  })
+
   it('feeds a derived field the sample Tracker value', async () => {
     const user = userEvent.setup()
     render(

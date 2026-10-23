@@ -7,6 +7,7 @@ import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
 import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 
 import { narrative } from '../fixtures'
+import { sheetKey } from '../sheet/useGameSystemSheet'
 import {
   NarrativeError,
   useDeleteNarrativeItem,
@@ -24,7 +25,7 @@ function setup(handlers: Record<string, FakeHandler>) {
       <ApiClientProvider client={api}>{children}</ApiClientProvider>
     </QueryClientProvider>
   )
-  return { fakeApi, wrapper }
+  return { client, fakeApi, wrapper }
 }
 
 const validation = () => Response.json({ valid: true, issues: [] })
@@ -160,5 +161,21 @@ describe('useSaveNarrativeItem', () => {
     })
 
     expect(versions).toEqual([5, 6])
+  })
+})
+
+describe('the narrative writes', () => {
+  it('mark the other section reads stale: they carry the version this write replaced', async () => {
+    const { client, wrapper } = setup({
+      [`DELETE ${base}/narrative/trackers/heat`]: () => Response.json({ ...narrative, version: 6 }),
+    })
+    client.setQueryData(sheetKey('my-draft'), { version: 5 })
+    const { result } = renderHook(() => useDeleteNarrativeItem('my-draft'), { wrapper })
+
+    result.current.mutate({ expectedVersion: 5, section: 'trackers', item: 'heat' })
+
+    await waitFor(() => {
+      expect(client.getQueryState(sheetKey('my-draft'))?.isInvalidated).toBe(true)
+    })
   })
 })

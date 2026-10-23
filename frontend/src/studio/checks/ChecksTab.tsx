@@ -713,7 +713,12 @@ function CheckEditor({
   const written = writeCheck(draft)
   const dirty = !('check' in written) || stored === undefined || !sameCheck(written.check, stored)
 
+  // The form is named by the key (what the list's buttons say); the heading shows the label.
   const title = original === null ? 'New check' : `Edit ${original}`
+  const heading =
+    original !== null && typeof stored?.label === 'string' && stored.label.trim() !== ''
+      ? `Edit ${stored.label}`
+      : title
 
   return (
     <div className="space-y-4">
@@ -722,7 +727,7 @@ function CheckEditor({
           <IconTile size="lg">
             <DieShape sides={20} inner />
           </IconTile>
-          <h3 className="font-heading text-lg font-semibold">{title}</h3>
+          <h3 className="font-heading text-lg font-semibold">{heading}</h3>
           {original !== null && (
             <div className="ml-auto flex gap-2">
               <Button

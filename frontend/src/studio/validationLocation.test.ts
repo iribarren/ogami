@@ -1,4 +1,4 @@
-import { locateError, type LocatorNames } from './validationLocation'
+import { locateError, splitWarning, type LocatorNames } from './validationLocation'
 
 const item = (key: string, definition: Record<string, unknown> = {}) => ({
   key,
@@ -109,5 +109,31 @@ describe('where a validation error is', () => {
     }
     expect(locateError('mystery[2]', names).trail).toEqual([])
     expect(locateError('gameSystem.credits.url', names).trail).toEqual(['Credits', 'Url'])
+  })
+})
+
+describe('splitting a warning', () => {
+  it('keeps every word of a pathless warning that contains a colon', () => {
+    expect(splitWarning('Note: the vault has no door')).toEqual({
+      reason: 'Note: the vault has no door',
+    })
+    expect(splitWarning('nothing at all')).toEqual({ reason: 'nothing at all' })
+  })
+
+  it('treats a path-shaped prefix with an unknown head as part of the reason', () => {
+    expect(splitWarning('mystery[1]: has no steps')).toEqual({
+      reason: 'mystery[1]: has no steps',
+    })
+  })
+
+  it('splits a warning that starts with a release path', () => {
+    expect(splitWarning('flows[1]: has no steps')).toEqual({
+      path: 'flows[1]',
+      reason: 'has no steps',
+    })
+    expect(splitWarning('oracles.tables[0].rows: empty: really')).toEqual({
+      path: 'oracles.tables[0].rows',
+      reason: 'empty: really',
+    })
   })
 })

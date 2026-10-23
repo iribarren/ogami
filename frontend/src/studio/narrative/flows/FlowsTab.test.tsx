@@ -14,7 +14,8 @@ import {
   narrativeV1,
   validDraft,
 } from '../../fixtures'
-import { validationKey } from '../../useGameSystems'
+import { sheetKey } from '../../sheet/useGameSystemSheet'
+import { invalidateOtherDraftReads, validationKey } from '../../useGameSystems'
 import { narrativeKey } from '../useGameSystemNarrative'
 
 const base = '/api/studio/game-systems/my-draft'
@@ -56,7 +57,7 @@ describe('the Flows tab', () => {
     expect(heist).toHaveTextContent('Not used')
     expect(within(side).queryByText('Default')).not.toBeInTheDocument()
     expect(side).toHaveTextContent('1 phase')
-    expect(side).toHaveTextContent('Used by sceneTypes[0].play[1]')
+    expect(side).toHaveTextContent('Used by Scene Types · Ambush › Play › Step 2 “React”')
     const keys = within(screen.getByRole('region', { name: 'Flows' }))
       .getAllByRole('listitem')
       .map((item) => item.querySelector('.list-row-key')?.textContent)
@@ -237,6 +238,31 @@ describe('the issues of each flow', () => {
     expect(await within(await row('Side job')).findByText('1 issue')).toBeInTheDocument()
   })
 
+  it('hides the counts after a write to another section until the validation is read again', async () => {
+    let reads = 0
+    let release: () => void = () => undefined
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { queryClient } = await openTab({
+      [`GET ${base}/validation`]: async () => {
+        if (++reads > 1) {
+          await pending
+        }
+        return Response.json({ ...flowWarnings, warnings: ['flows[0]: odd'] })
+      },
+    })
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+
+    invalidateOtherDraftReads(queryClient, 'my-draft', sheetKey('my-draft'), 9)
+
+    await waitFor(() => {
+      expect(screen.queryByText(/issue/)).not.toBeInTheDocument()
+    })
+    release()
+    expect(await within(await row('Heist')).findByText('1 issue')).toBeInTheDocument()
+  })
+
   it('shows no count after coming back to the tab when the narrative changed since the validation was read', async () => {
     const { user, queryClient } = await openTab({
       [`GET ${base}/validation`]: json({ ...flowWarnings, warnings: ['flows[0]: odd'] }),
@@ -405,7 +431,9 @@ describe('deleting a flow', () => {
 
     const button = await screen.findByRole('button', { name: 'Delete side-job' })
     expect(button).toBeDisabled()
-    expect(button).toHaveAccessibleDescription('Used by sceneTypes[0].play[1]')
+    expect(button).toHaveAccessibleDescription(
+      'Used by Scene Types · Ambush › Play › Step 2 “React”',
+    )
     expect(screen.getByRole('button', { name: 'Delete heist' })).toBeEnabled()
   })
 

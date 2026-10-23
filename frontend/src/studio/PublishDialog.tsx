@@ -19,6 +19,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
+import { focusNotes } from './publishFocus'
 import { nextVersion, usePublishGameSystem, type PublishRequest } from './useGameSystemReleases'
 import {
   StudioError,
@@ -26,7 +27,13 @@ import {
   useGameSystemValidation,
   type GameSystem,
 } from './useGameSystems'
-import { locateError, splitWarning, useNames, type LocatorNames } from './validationLocation'
+import {
+  describeLocation,
+  noNames,
+  splitWarning,
+  useNames,
+  type LocatorNames,
+} from './validationLocation'
 
 /** The API's limit on release notes (`GameSystemRelease::MAX_NOTES_LENGTH`), in characters like the server counts them. */
 const MAX_NOTES_LENGTH = 2000
@@ -63,15 +70,7 @@ export function PublishDialog({
           Publish
         </Button>
       </DialogTrigger>
-      <DialogContent
-        onOpenAutoFocus={(event) => {
-          // The first field, not the Close button (whose tooltip would pop up at once).
-          event.preventDefault()
-          if (event.currentTarget instanceof HTMLElement) {
-            event.currentTarget.querySelector('textarea')?.focus()
-          }
-        }}
-      >
+      <DialogContent onOpenAutoFocus={focusNotes}>
         <div className="flex items-start gap-3">
           <IconTile size="lg">
             <Upload />
@@ -208,14 +207,17 @@ function PublishForm({
 }
 
 /**
- * The errors that block a publish: the first three, then a link to the Validation tab for the rest.
+ * The errors that block a publish: the first three, each with the place it is in, in words, then a
+ * link to the Validation tab for the rest.
  */
 export function PublishErrors({
   errors,
   gameSystemKey: key,
+  names = noNames,
 }: {
   errors: string[]
   gameSystemKey: string
+  names?: LocatorNames
 }) {
   const more = errors.length - SHOWN_ERRORS
 
@@ -223,7 +225,9 @@ export function PublishErrors({
     <>
       <ul className="list-disc space-y-1 pl-5">
         {errors.slice(0, SHOWN_ERRORS).map((message, index) => (
-          <li key={`${String(index)}:${message}`}>{message}</li>
+          <li key={`${String(index)}:${message}`}>
+            <WarningText warning={message} names={names} />
+          </li>
         ))}
       </ul>
       {more > 0 && (
@@ -243,17 +247,16 @@ export function PublishErrors({
   )
 }
 
-/** A warning's reason, with the place it is in, in words, under it. */
+/** A warning's (or error's) reason, with the place it is in, in words, under it. */
 function WarningText({ warning, names }: { warning: string; names: LocatorNames }) {
   const { path, reason } = splitWarning(warning)
   if (path === undefined) {
     return reason
   }
-  const { group, trail } = locateError(path, names)
   return (
     <>
       {reason}
-      <span className="block text-xs text-muted-foreground">{[group, ...trail].join(' › ')}</span>
+      <span className="block text-xs text-muted-foreground">{describeLocation(path, names)}</span>
     </>
   )
 }
@@ -282,6 +285,7 @@ function ValidationSummary({
         <PublishErrors
           errors={errors.map(({ path, message }) => `${path}: ${message}`)}
           gameSystemKey={key}
+          names={names}
         />
       </Alert>
     )

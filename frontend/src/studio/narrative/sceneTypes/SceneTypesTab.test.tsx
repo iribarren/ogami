@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, narrativeScenes, narrativeV1, validDraft } from '../../fixtures'
+import { draft, narrativeFlows, narrativeScenes, narrativeV1, validDraft } from '../../fixtures'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -19,7 +19,7 @@ async function openTab(handlers: Record<string, FakeHandler> = {}) {
     'GET /api/studio/game-systems': json([]),
     [`GET ${base}`]: json(draft),
     [`GET ${base}/validation`]: json(validDraft),
-    [`GET ${base}/narrative`]: json(narrativeScenes),
+    [`GET ${base}/narrative`]: json(narrativeFlows),
     ...handlers,
   })
   await user.click(await screen.findByRole('link', { name: 'Scene Types' }))
@@ -41,7 +41,9 @@ describe('the Scene Types tab', () => {
     const quiet = await row('Quiet')
     expect(ambushRow).toHaveTextContent('ambush')
     expect(ambushRow).toHaveTextContent('setup 1 · play 2 · closing 1')
-    expect(ambushRow).toHaveTextContent('Used by flows[0].phases[0].selection.sceneTypes[0]')
+    expect(ambushRow).toHaveTextContent(
+      'Used by Flows · Heist › 1. Setup › Selection › Scene types 1',
+    )
     expect(within(ambushRow).getByRole('link', { name: 'Ambush' })).toHaveAttribute(
       'href',
       '/studio/game-systems/my-draft/scene-types/ambush',
@@ -177,7 +179,9 @@ describe('deleting a Scene Type', () => {
 
     const button = await screen.findByRole('button', { name: 'Delete ambush' })
     expect(button).toBeDisabled()
-    expect(button).toHaveAccessibleDescription('Used by flows[0].phases[0].selection.sceneTypes[0]')
+    expect(button).toHaveAccessibleDescription(
+      'Used by Flows · Heist › 1. Setup › Selection › Scene types 1',
+    )
     expect(screen.getByRole('button', { name: 'Delete quiet' })).toBeEnabled()
   })
 

@@ -215,14 +215,19 @@ export function newLabelled(type = ''): LabelledDraft {
   return { key: '', label: '', hint: '', type, appliesTo: [], extra: {} }
 }
 
-/** The kinds of a tag's `appliesTo`: none when absent or null, null when it holds something else. */
+/**
+ * The kinds of a tag's `appliesTo`: none when absent or null, null when it holds something else,
+ * including a repeated kind (the release requires them unique).
+ */
 function scopeOf(definition: StoredItem): string[] | null {
   const value = definition.appliesTo
   if (value === undefined || value === null) {
     return []
   }
   const kinds: readonly unknown[] = tagKinds.map(({ kind }) => kind)
-  return Array.isArray(value) && value.every((kind) => kinds.includes(kind))
+  return Array.isArray(value) &&
+    value.every((kind) => kinds.includes(kind)) &&
+    new Set(value).size === value.length
     ? (value as string[])
     : null
 }
@@ -246,8 +251,9 @@ function labelledToItem(draft: LabelledDraft, type: boolean): ItemResult {
       label: draft.label.trim(),
       ...(type ? { type: draft.type } : {}),
       ...(draft.hint.trim() === '' ? {} : { hint: draft.hint.trim() }),
-      // None or every kind is the same as no scope, which the release leaves out.
-      ...(draft.appliesTo.length === 0 || draft.appliesTo.length === tagKinds.length
+      // None or every kind is the same as no scope, which the release leaves out. Repeated kinds
+      // count once, so they cannot pass for a partial scope.
+      ...(new Set(draft.appliesTo).size === 0 || new Set(draft.appliesTo).size === tagKinds.length
         ? {}
         : { appliesTo: draft.appliesTo }),
     },

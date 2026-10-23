@@ -1,7 +1,7 @@
 # Feature: play-pbta-findings
 
 - **Locator:** `odd/tasks/play-pbta-findings.md` · Engram topic `odd/play-pbta-findings/tasks`
-- **Issue:** #253 · **Branch:** `feat/play-pbta-findings-3-tag-scope` · **Status:** slice 3 in progress
+- **Issue:** #253 · **Branch:** `fix/play-pbta-findings-4-preset-v5` · **Status:** slice 4 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7e
@@ -36,7 +36,7 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | P10 | Optional `appliesTo` on each tag (`character`, `npc`, `thread`; absent = all). Additive contract change with an ADR 0018 amendment; Studio validates that tags used by flow steps match the target kind; Play offers and accepts only tags that apply (user, 2026-10-23) |
 | P12 | Content only: move the Climax check into the Climax scene in v5 (user, 2026-10-23). The planned journal code change was dropped after the replay: the hook heading already names the phase opening and the empty scene is the current one |
 | P14/P19 | Code: a `number` field with `min 0` and `max 1` renders as a toggle (same draft values `0`/`1`, no API change). Content: a sheet layout in v5 (Stats and Conditions in columns) (user, 2026-10-23) |
-| Content | `hearts-and-rapiers` v5 published from Studio in Chrome (Climax check, sheet layout, scoped tags), re-exported to `backend/presets/` (user, 2026-10-23) |
+| Content | `hearts-and-rapiers` v5 (Climax check in the Climax scene opening, sheet layout in two columns, `villain`/`ally`/`crush` scoped to NPCs) edited in `backend/presets/hearts-and-rapiers.json`, published with `make presets` and re-exported in canonical form; Studio in Chrome was planned, but the Chrome extension was not connected (user, 2026-10-24) |
 
 ## Constraints
 
@@ -51,7 +51,7 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | 1 | `fix/play-pbta-findings-1-sheet-journal` | `fix(play): play-pbta-findings 1/4 sheet summary and condition toggles` | T1, T2, T4 | ~450: P8 ~120, P14 ~250, doc ~80 |
 | 2 | `fix/play-pbta-findings-2-check-breakdown` | `fix(play): play-pbta-findings 2/4 modifier breakdown and move hint` | T5–T6 | ~1,300: domain and persistence ~450, API and generated types ~400, result card ~300 |
 | 3 | `feat/play-pbta-findings-3-tag-scope` | `feat(studio): play-pbta-findings 3/4 tags scoped per entity` | T7–T8 | ~1,500: contract and Studio ~700, Play ~400, generated ~300, ADR ~80 |
-| 4 | `fix/play-pbta-findings-4-preset-v5` | `fix(presets): play-pbta-findings 4/4 hearts-and-rapiers v5` | T9–T10 | ~300; folded into slice 3 if it fits |
+| 4 | `fix/play-pbta-findings-4-preset-v5` | `fix(presets): play-pbta-findings 4/4 hearts-and-rapiers v5` | slice 3 findings, T9–T10 | ~400: findings ~150, preset and its tests ~200, doc ~50 |
 
 ## Tasks
 
@@ -63,9 +63,9 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | T4 | 1 | P14/P19: 0..1 number fields as toggles | writer (delegated) | [x] | 65d3f43 |
 | T5 | 2 | P9 + P11 backend: breakdown and hint recorded on `CheckContent` at roll time; response and OpenAPI | writer (delegated) | [x] | 177dc27 |
 | T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [x] | 8f51169 |
-| T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [x] | |
-| T8 | 3 | P10 Play: translator, `Tag`, `ItemRules`, `TagView`, `TagFields` filter; upgrade planner for tags that stop applying | writer (delegated) | [x] | |
-| T9 | 4 | v5 content in Studio (Chrome): Climax check into the Climax scene (P12), sheet layout, scoped tags; re-export; preset tests | Chrome worker + writer (delegated) | [ ] | |
+| T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [x] | fa54158 |
+| T8 | 3 | P10 Play: translator, `Tag`, `ItemRules`, `TagView`, `TagFields` filter; upgrade planner for tags that stop applying | writer (delegated) | [x] | 7d4a576 |
+| T9 | 4 | v5 content: Climax check into the Climax scene (P12), sheet layout, scoped tags; `make presets`, canonical export; preset tests | writer (delegated) | [ ] | |
 | T10 | 4 | Close: roadmap B7e done, P6 on B8b, issue #253 ticked | parent, inline (doc) | [ ] | |
 
 ## Applicable checks
@@ -87,6 +87,7 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 - 2026-10-24 T6: the check card shows the stored hint and the modifier breakdown (`Hands (4) + Edge (2)`), also at a zero modifier when a formula exists; legacy entries render as before. RED: 3 of 4 new `JournalEntryView.test.tsx` tests failed (the legacy test passed on first run, it pins today's output); GREEN: `src/play` + `src/shared/sheet` 528 tests, `tsc` clean.
 
 - 2026-10-24 R3-001..003 (slice 2 review): the card's `explainModifier` replaces every `{...}` token of the formula and lists the terms (`Hot (2), Edge (1)`) when one has no matching term; evaluation reads every formula reference (no short-circuit), so the breakdown cannot diverge, now pinned by evaluation-failure rows (`0 * {ghost}`, `min()`, repeated reference); a handler test asserts the hint, formula and terms the flow-step check records. RED: only the unmatched-reference card test failed; the PHP tests passed first run (no real RED, they pin existing behaviour); GREEN: `CheckTest` + `CompleteFlowStepCheckHandlerTest` 163, `JournalEntryView.test.tsx` 27.
+- 2026-10-24 R3-001..002 (slice 3 review): `TagFields` still lists a held Tag that is not offered but marks it "(no longer offered)" and its comment now says the player must untick it (the API refuses it); the Studio draft reads an `appliesTo` with a repeated kind as unreadable and counts distinct kinds when deciding the scope is every kind. RED: the new `TagFields` test and 3 of the 4 new `narrativeDraft` tests failed first (the fourth, a repeated-kind scope kept partial, was written with the fix in mind); GREEN: `src/play/lists` + `src/studio/narrative` 563 passed.
 
 - 2026-10-24 T7: optional `appliesTo` on a release tag (non-empty, unique `character`/`npc`/`thread`; `null` reads as absent and the canonical form omits it); `v2.schema.json` agrees; `Effects::tags` takes the target kind (`createNpc` npc, `createThread` thread, `pick` and condition `count` by their `of`) and `Catalog::tagAppliesTo` refuses a tag outside its scope at the tag's path (no other step kind carries tags); the Studio tag dialog has an "Applies to" group (none or all ticked sends no field); ADR 0018 §15 addendum. The Studio API passes `definition` through, so no OpenAPI change. RED: the new `ReleaseContentTagScopeTest` failed on `appliesTo: unknown property` before the implementation (the schema agreement rows were added with it); GREEN: `tests/Unit/Studio` 1,701, `tests/Integration/Studio` 657, `src/studio` Vitest 1,296.
 
@@ -98,7 +99,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 |---|---|---|---|---|
 | 1 | `review-ac9260f5b4d50984` (medium) | 7bdfe4a, a6c200a, 65d3f43 | Approved, acknowledged. R3-001 (blank list items summarise as "Gear: , "; no 40-character boundary test, `sheetValues.ts:68-83`): fixed in slice 2 | [#261](https://github.com/iribarren/ogami/pull/261) |
 | 2 | `review-8e36c20cc3a5f8aa` (medium) | 59bcccb, 177dc27, 8f51169 | Approved, acknowledged. R3-001 (warning: the breakdown re-reads every formula reference after evaluation, no test for a formula with unresolvable references, `Check.php:94`), R3-002 (no test asserts the content the flow-step check path records, `CompleteFlowStepHandler.php:289`), R3-003 (the card's token replacement relies on the formula text spelling references like the term tokens, no test for non-canonical input, `JournalEntryView.tsx:244-251`): fixed in slice 3 | [#262](https://github.com/iribarren/ogami/pull/262) |
+| 3 | `review-a15c22b9a05ea148` (medium) | 7727405, fa54158, 7d4a576, 090694d, 3c9d04e | Approved, acknowledged. R3-001 (`TagFields` keeps a held tag that no longer applies and its comment promises saving keeps it, but the API refuses it with a 422, `TagFields.tsx:50-85`), R3-002 (the Studio draft's `scopeOf` accepts duplicate kinds and `labelledToItem` compares the length, not the distinct kinds, `narrativeDraft.ts:219-252`): fixed in slice 4 | [#263](https://github.com/iribarren/ogami/pull/263) |
 
 ## Next step
 
-Slice 3 writer: slice 2 findings (R3-001, R3-002, R3-003), then T7 and T8.
+Slice 4 writer: slice 3 findings (R3-001, R3-002), then T9 (v5 preset JSON, `make presets`, canonical export, preset tests); T10 in the closing doc commit.

@@ -219,4 +219,4 @@ Every Studio list becomes a panel with a head (`IconTile` 32, title, `Plus` New/
 
 ## Next step
 
-None. Follow-ups for a later feature: the slice 9 review findings (Reviews row 9) and the T14 follow-ups in Progress.
+None. The follow-ups (the slice 9 review findings in Reviews row 9 and the T14 follow-ups in Progress) are roadmap item B7c `studio-ui-followups`.

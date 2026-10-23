@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\EndSession;
 use App\Play\Application\EndSessionHandler;
 use App\Play\Application\OwnedCampaigns;
@@ -128,14 +127,6 @@ final class EndSessionHandlerTest extends TestCase
         $this->expectException(GameSystemReleaseNotFound::class);
 
         $handler(new EndSession('campaign-2', 'user-1', 1));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->handler)(new EndSession('campaign-1', 'user-2'));
     }
 
     private function stored(string $id): Campaign

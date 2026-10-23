@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, neverPublished, published, withChanges, withLibraryChanges } from './fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 const gameManager = signedInAs('GAME_MANAGER')
 
@@ -142,8 +143,8 @@ describe('the New GameSystem dialog', () => {
       /^Lower case letters, digits and hyphens\./,
     )
     expect(within(form).queryByLabelText('Source GameSystem key')).not.toBeInTheDocument()
-    await user.type(within(form).getByLabelText('Key'), 'my-draft')
-    await user.type(within(form).getByLabelText('Name'), 'My draft')
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
     expect(create).toBeEnabled()
     await user.click(create)
 
@@ -172,16 +173,15 @@ describe('the New GameSystem dialog', () => {
 
     await user.click(screen.getByRole('radio', { name: 'Copy a release' }))
     const create = within(form).getByRole('button', { name: 'Create GameSystem' })
-    await user.type(within(form).getByLabelText('Key'), 'my-draft')
-    await user.type(within(form).getByLabelText('Name'), 'My draft')
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
     expect(create).toBeDisabled()
-    await user.type(within(form).getByLabelText('Source GameSystem key'), 'ironsworn')
+    await typeText(user, within(form).getByLabelText('Source GameSystem key'), 'ironsworn')
     await user.type(within(form).getByLabelText(/Source version/), 'x')
     expect(create).toBeDisabled()
     expect(within(form).getByText('The version is a whole number from 1.')).toBeInTheDocument()
-    await user.clear(within(form).getByLabelText(/Source version/))
-    await user.type(within(form).getByLabelText(/Source version/), '2')
-    await user.type(within(form).getByLabelText('Description (optional)'), 'My own take.')
+    await replaceText(user, within(form).getByLabelText(/Source version/), '2')
+    await typeText(user, within(form).getByLabelText('Description (optional)'), 'My own take.')
     await user.click(create)
 
     await waitFor(() => {
@@ -211,9 +211,9 @@ describe('the New GameSystem dialog', () => {
     )
 
     await user.click(screen.getByRole('radio', { name: 'Copy a release' }))
-    await user.type(within(form).getByLabelText('Key'), 'my-draft')
-    await user.type(within(form).getByLabelText('Name'), 'My draft')
-    await user.type(within(form).getByLabelText('Source GameSystem key'), 'ironsworn')
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
+    await typeText(user, within(form).getByLabelText('Source GameSystem key'), 'ironsworn')
     await user.click(within(form).getByRole('button', { name: 'Create GameSystem' }))
 
     await waitFor(() => {
@@ -232,8 +232,8 @@ describe('the New GameSystem dialog', () => {
       user,
     )
 
-    await user.type(within(form).getByLabelText('Key'), 'my-draft')
-    await user.type(within(form).getByLabelText('Name'), 'My draft')
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
     await user.click(within(form).getByRole('button', { name: 'Create GameSystem' }))
 
     expect(await within(form).findByRole('alert')).toHaveTextContent(message)
@@ -248,8 +248,8 @@ describe('the New GameSystem dialog', () => {
       user,
     )
 
-    await user.type(within(form).getByLabelText('Key'), 'my-draft')
-    await user.type(within(form).getByLabelText('Name'), 'My draft')
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
     await user.click(within(form).getByRole('button', { name: 'Create GameSystem' }))
 
     expect(await within(form).findByRole('alert')).toHaveTextContent(

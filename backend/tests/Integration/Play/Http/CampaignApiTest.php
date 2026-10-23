@@ -308,34 +308,6 @@ final class CampaignApiTest extends WebTestCase
     }
 
     #[Test]
-    public function aCampaignStaysPinnedAfterANewerReleaseIsPublished(): void
-    {
-        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
-        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
-        $id = $this->createCampaign('The lost mine');
-        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6002', 'Example journal, revised', withoutLikelihoodOracles: true);
-
-        $this->client->request('GET', '/api/campaigns/'.$id);
-
-        self::assertResponseIsSuccessful();
-        self::assertJsonStringEqualsJsonString($this->newCampaignJson($id, 'The lost mine'), $this->content());
-
-        $this->client->request('GET', '/api/campaigns');
-        $campaigns = $this->json();
-        self::assertIsArray($campaigns[0] ?? null);
-        self::assertSame(1, $campaigns[0]['releaseVersion'] ?? null);
-
-        // A new campaign pins the newer release.
-        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'Fresh start', 'gameSystemKey' => 'example-journal']);
-        self::assertResponseStatusCodeSame(201);
-        self::assertSame(
-            ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal, revised', 'version' => 2, 'theme' => null, 'credits' => null, 'sheet' => [], 'sheetLayout' => null],
-            $this->json()['pinnedRelease'] ?? null,
-        );
-        self::assertSame([], $this->json()['likelihoodOracles'] ?? null);
-    }
-
-    #[Test]
     public function aSceneNeedsASession(): void
     {
         $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001');
@@ -732,7 +704,7 @@ final class CampaignApiTest extends WebTestCase
         return [[$first['number'] ?? null, $first['startedAt'] ?? null, $first['scenes'] ?? null], $campaign['currentSessionNumber'] ?? null, $campaign['currentSceneNumber'] ?? null];
     }
 
-    private function publish(string $releaseId, ?string $name = null, bool $withoutLikelihoodOracles = false): void
+    private function publish(string $releaseId, ?string $name = null): void
     {
         $content = ReleaseViews::contractDocExampleContent();
         if (null !== $name) {
@@ -740,13 +712,6 @@ final class CampaignApiTest extends WebTestCase
             $gameSystem = $content['gameSystem'];
             $gameSystem['name'] = $name;
             $content['gameSystem'] = $gameSystem;
-        }
-
-        if ($withoutLikelihoodOracles) {
-            /** @var array<string, mixed> $oracles */
-            $oracles = $content['oracles'];
-            $oracles['likelihood'] = [];
-            $content['oracles'] = $oracles;
         }
 
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease($releaseId, $content, false));

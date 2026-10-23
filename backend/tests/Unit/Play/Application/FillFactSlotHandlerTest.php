@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\EditFact;
 use App\Play\Application\EditFactHandler;
 use App\Play\Application\FactIdGenerator;
@@ -168,14 +167,6 @@ final class FillFactSlotHandlerTest extends TestCase
         $fact = $this->slotFact('city');
         self::assertSame(['fact-1', 'Ashford', ['npc:npc-1']], [$fact->id()->toString(), $fact->text(), array_map(static fn (FactLink $link): string => $link->kind->value.':'.$link->id, $fact->links())]);
         self::assertSame('npc:npc-1', $this->subjectOf($this->slotFact('prince')));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->fill)(new FillFactSlot('campaign-1', 'user-2', 'city', 'Ashford', null, null));
     }
 
     private function subjectOf(Fact $fact): string

@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { catalog, emptyPack, myPack, otherPack, othersCatalog, packSystem } from './fixtures'
+import { typeText } from '@/test/typeText'
 
 const gameManager = signedInAs('GAME_MANAGER')
 
@@ -99,9 +100,13 @@ describe('the New pack dialog', () => {
 
     const create = form.getByRole('button', { name: 'Create pack' })
     expect(create).toBeDisabled()
-    await user.type(form.getByLabelText('Key'), 'fantasy-basics')
-    await user.type(form.getByLabelText('Name'), 'Fantasy basics')
-    await user.type(form.getByLabelText('Description (optional)'), 'Names, rumours and a tavern.')
+    await typeText(user, form.getByLabelText('Key'), 'fantasy-basics')
+    await typeText(user, form.getByLabelText('Name'), 'Fantasy basics')
+    await typeText(
+      user,
+      form.getByLabelText('Description (optional)'),
+      'Names, rumours and a tavern.',
+    )
     await user.click(create)
 
     await waitFor(() => {
@@ -126,8 +131,8 @@ describe('the New pack dialog', () => {
       },
     })
 
-    await user.type(form.getByLabelText('Key'), 'fantasy-basics')
-    await user.type(form.getByLabelText('Name'), 'Fantasy basics')
+    await typeText(user, form.getByLabelText('Key'), 'fantasy-basics')
+    await typeText(user, form.getByLabelText('Name'), 'Fantasy basics')
     await user.click(form.getByRole('button', { name: 'Create pack' }))
 
     await waitFor(() => {
@@ -143,8 +148,8 @@ describe('the New pack dialog', () => {
       'POST /api/studio/library/packs': json({ error: message }, status),
     })
 
-    await user.type(form.getByLabelText('Key'), 'fantasy-basics')
-    await user.type(form.getByLabelText('Name'), 'Fantasy basics')
+    await typeText(user, form.getByLabelText('Key'), 'fantasy-basics')
+    await typeText(user, form.getByLabelText('Name'), 'Fantasy basics')
     await user.click(form.getByRole('button', { name: 'Create pack' }))
 
     expect(await form.findByRole('alert')).toHaveTextContent(message)

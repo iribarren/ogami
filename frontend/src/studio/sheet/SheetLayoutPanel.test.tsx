@@ -6,6 +6,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, sheet, sheetUngrouped, validDraft } from '../fixtures'
+import { typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -152,7 +153,7 @@ describe('editing the layout', () => {
     expect(within(group(1)).getByLabelText('Name')).toHaveValue('Stats')
     expect(within(group(1)).getByLabelText('Columns')).toHaveValue('2')
     await user.clear(within(group(1)).getByLabelText('Name'))
-    await user.type(within(group(1)).getByLabelText('Name'), ' Attributes ')
+    await typeText(user, within(group(1)).getByLabelText('Name'), ' Attributes ')
     await saveLayout(user)
 
     await waitFor(() => {
@@ -182,7 +183,7 @@ describe('editing the layout', () => {
 
     await editLayout(user)
     await user.click(inDialog().getByRole('button', { name: 'Add group' }))
-    await user.type(within(group(4)).getByLabelText('Name'), 'Gear')
+    await typeText(user, within(group(4)).getByLabelText('Name'), 'Gear')
     await chooseOption(user, 'Columns', '3', within(group(4)))
     await user.click(within(group(4)).getByRole('button', { name: 'Move up' }))
     await user.click(within(group(4)).getByRole('button', { name: 'Delete group' }))
@@ -246,7 +247,7 @@ describe('editing the layout', () => {
     await editLayout(user)
     await user.clear(within(group(1)).getByLabelText('Name'))
     await user.clear(within(group(3)).getByLabelText('Name'))
-    await user.type(within(group(3)).getByLabelText('Name'), 'Health')
+    await typeText(user, within(group(3)).getByLabelText('Name'), 'Health')
     await saveLayout(user)
 
     expect(within(group(1)).getByText('Give the group a name.')).toBeVisible()
@@ -285,7 +286,7 @@ describe('the preview beside the layout dialog', () => {
     const { user } = await openSheet()
     await editLayout(user)
 
-    await user.type(within(group(1)).getByLabelText('Name'), ' and more')
+    await typeText(user, within(group(1)).getByLabelText('Name'), ' and more')
 
     expect(screen.getByText('Stats and more', { selector: 'legend' })).toBeInTheDocument()
 

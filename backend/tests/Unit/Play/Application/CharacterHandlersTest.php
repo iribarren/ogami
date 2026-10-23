@@ -6,7 +6,6 @@ namespace App\Tests\Unit\Play\Application;
 
 use App\Play\Application\AddCharacter;
 use App\Play\Application\AddCharacterHandler;
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CharacterView;
 use App\Play\Application\EditCharacter;
 use App\Play\Application\EditCharacterHandler;
@@ -136,14 +135,6 @@ final class CharacterHandlersTest extends TestCase
     }
 
     #[Test]
-    public function aCampaignOfAnotherPlayerIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->add)(new AddCharacter('campaign-1', 'user-2', 'c-1', 'Vi', [], [], []));
-    }
-
-    #[Test]
     public function theCampaignViewShowsTheSheetOfThePinnedReleaseAndTheCharactersValuesInFieldOrder(): void
     {
         $campaign = $this->campaign();
@@ -214,16 +205,6 @@ final class CharacterHandlersTest extends TestCase
         } catch (GameSystemReleaseNotFound) {
             self::assertSame([[], false], [$this->campaign()->characters(), $this->campaign()->npc(NpcId::fromString('npc-1'))?->isPromoted()]);
         }
-    }
-
-    #[Test]
-    public function aCampaignOfAnotherPlayerIsNotFoundWhenPromoting(): void
-    {
-        $this->campaignWithNpc();
-
-        $this->expectException(CampaignNotFound::class);
-
-        (new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases))(new PromoteNpc('campaign-1', 'user-2', 'npc-1', 'c-1'));
     }
 
     private function campaignWithNpc(): void

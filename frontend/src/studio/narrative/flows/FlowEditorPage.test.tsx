@@ -7,6 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft as gameSystem, narrativeFlows } from '../../fixtures'
 import { SelectionEditor } from './SelectionEditor'
+import { typeText } from '@/test/typeText'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -204,7 +205,7 @@ describe('the flow editor', () => {
     const { user } = await openEditor('heist', { [put]: saved.handler })
 
     await replace(user, flowName(), 'Big heist')
-    await user.type(content().getByLabelText('Description'), 'A big one.')
+    await typeText(user, content().getByLabelText('Description'), 'A big one.')
     await user.click(screen.getByLabelText('Default flow'))
     await chooseOption(user, 'Default view', 'Journal')
     await user.click(screen.getByRole('checkbox', { name: 'Fate' }))
@@ -213,7 +214,7 @@ describe('the flow editor', () => {
     await pickPhase(user, 1)
     await replace(user, content().getByLabelText('Name'), 'Prep')
     await chooseOption(user, 'Mode', 'Loop', content())
-    await user.type(content().getByLabelText('Act'), 'One')
+    await typeText(user, content().getByLabelText('Act'), 'One')
     await user.click(save())
 
     await waitFor(() => {

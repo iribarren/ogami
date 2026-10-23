@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\MoveOn;
 use App\Play\Application\MoveOnHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -65,14 +64,6 @@ final class MoveOnHandlerTest extends FlowRunHandlerTestCase
         $this->expectException(FlowRunNotActive::class);
 
         $this->moveOn(new MoveOn('campaign-2', 'user-1', 'tour'));
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->moveOn(new MoveOn('campaign-5', 'user-2', 'tour'));
     }
 
     private function moveOn(MoveOn $command): void

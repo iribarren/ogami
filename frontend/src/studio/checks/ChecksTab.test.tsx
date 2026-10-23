@@ -6,6 +6,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { checks, checksV1, draft, sheet, validDraft } from '../fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -155,9 +156,9 @@ describe('the checks tab', () => {
     expect(form.getByLabelText('Key')).toHaveAccessibleDescription(
       'Lower case letters, digits and hyphens.',
     )
-    await user.type(form.getByLabelText('Key'), 'grit')
-    await user.type(form.getByLabelText('Label'), 'Grit')
-    await user.type(form.getByLabelText('Dice'), '2d6')
+    await typeText(user, form.getByLabelText('Key'), 'grit')
+    await typeText(user, form.getByLabelText('Label'), 'Grit')
+    await typeText(user, form.getByLabelText('Dice'), '2d6')
     await user.click(form.getByRole('button', { name: 'Create check' }))
 
     expect(sent).toEqual([
@@ -199,8 +200,7 @@ describe('the checks tab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
     const form = within(screen.getByRole('form', { name: 'Edit luck' }))
-    await user.clear(form.getByLabelText('Key'))
-    await user.type(form.getByLabelText('Key'), 'fortune')
+    await replaceText(user, form.getByLabelText('Key'), 'fortune')
     await user.click(form.getByRole('button', { name: 'Save check' }))
 
     expect(sent).toEqual([
@@ -227,8 +227,7 @@ describe('the checks tab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
     const form = within(screen.getByRole('form', { name: 'Edit skill' }))
-    await user.clear(form.getByLabelText('Dice'))
-    await user.type(form.getByLabelText('Dice'), '2x6')
+    await replaceText(user, form.getByLabelText('Dice'), '2x6')
     await user.click(form.getByRole('button', { name: 'Save check' }))
 
     expect(await form.findByText('Unknown dice notation "2x6".')).toBeVisible()
@@ -275,7 +274,7 @@ describe('the checks tab', () => {
       version: 6,
       checks: [{ ...checks.checks[0], label: 'Theirs' }, checks.checks[1]],
     }
-    await user.type(form.getByLabelText('Label'), 'Mine')
+    await typeText(user, form.getByLabelText('Label'), 'Mine')
     await user.click(form.getByRole('button', { name: 'Save check' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
@@ -366,11 +365,11 @@ describe('the checks tab', () => {
       const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: handler })
 
       await user.click(form.getByRole('button', { name: 'Add band' }))
-      await user.type(form.getByLabelText('Band 4 key'), 'crit')
-      await user.type(form.getByLabelText('Band 4 label'), 'Critical')
+      await typeText(user, form.getByLabelText('Band 4 key'), 'crit')
+      await typeText(user, form.getByLabelText('Band 4 label'), 'Critical')
       // The old last band now needs a bound.
       await chooseOption(user, 'Band 3 bound', 'number', form)
-      await user.type(form.getByLabelText('Band 3 number'), '90')
+      await typeText(user, form.getByLabelText('Band 3 number'), '90')
       await user.click(form.getByRole('button', { name: 'Move down band 1' }))
       // Band 1 is now Middling and band 2 the Bad one.
       await user.click(form.getByRole('button', { name: 'Remove band 2' }))
@@ -418,8 +417,7 @@ describe('the checks tab', () => {
       const { sent, handler } = recorder(Response.json(checks))
       const { user, form } = await editLuck({ [`PUT ${base}/checks/luck`]: handler })
 
-      await user.clear(form.getByLabelText('Band 2 number'))
-      await user.type(form.getByLabelText('Band 2 number'), '4.5')
+      await replaceText(user, form.getByLabelText('Band 2 number'), '4.5')
       await user.click(form.getByRole('button', { name: 'Save check' }))
 
       expect(await form.findByText('Must be a whole number.')).toBeVisible()
@@ -613,16 +611,13 @@ describe('the checks tab', () => {
       await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
       const form = within(screen.getByRole('form', { name: 'Edit skill' }))
 
-      await user.clear(form.getByLabelText('Modifier'))
-      await user.type(form.getByLabelText('Modifier'), '{{check:difficulty}')
+      await replaceText(user, form.getByLabelText('Modifier'), '{check:difficulty}')
       expect(form.getByText(/the modifier cannot read a check reference/)).toBeVisible()
 
-      await user.clear(form.getByLabelText('Modifier'))
-      await user.type(form.getByLabelText('Modifier'), '{{pow}+2')
+      await replaceText(user, form.getByLabelText('Modifier'), '{pow}+2')
       expect(form.getByText('Value with the sample values: 2')).toBeVisible()
 
-      await user.clear(form.getByLabelText('Band 1 formula'))
-      await user.type(form.getByLabelText('Band 1 formula'), '{{nope}')
+      await replaceText(user, form.getByLabelText('Band 1 formula'), '{nope}')
       expect(form.getByText(/unknown field "nope"/)).toBeVisible()
       expect(form.getByRole('button', { name: 'Save check' })).toBeEnabled()
     })
@@ -683,8 +678,7 @@ describe('the checks tab', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
       const edit = within(screen.getByRole('form', { name: 'Edit skill' }))
-      await user.clear(edit.getByLabelText('Dice'))
-      await user.type(edit.getByLabelText('Dice'), '3d6')
+      await replaceText(user, edit.getByLabelText('Dice'), '3d6')
       await user.click(edit.getByRole('button', { name: 'Duplicate' }))
 
       const form = within(screen.getByRole('form', { name: 'New check' }))
@@ -784,11 +778,10 @@ describe('the checks tab', () => {
       // The band that was last needs a bound now: it starts as a number too.
       expect(form.getByLabelText('Band 3 bound')).toHaveValue('number')
       expect(form.queryByLabelText('Band 4 bound')).toBeNull()
-      await user.type(form.getByLabelText('Band 4 label'), 'Great hit')
+      await typeText(user, form.getByLabelText('Band 4 label'), 'Great hit')
       expect(form.getByLabelText('Band 4 key')).toHaveValue('great-hit')
 
-      await user.clear(form.getByLabelText('Band 4 key'))
-      await user.type(form.getByLabelText('Band 4 key'), 'great')
+      await replaceText(user, form.getByLabelText('Band 4 key'), 'great')
       await user.type(form.getByLabelText('Band 4 label'), '!')
       expect(form.getByLabelText('Band 4 key')).toHaveValue('great')
     })
@@ -796,7 +789,7 @@ describe('the checks tab', () => {
     it('does not rewrite the key of a stored band when its label changes', async () => {
       const { user, form } = await editLuck()
 
-      await user.type(form.getByLabelText('Band 2 label'), ' now')
+      await typeText(user, form.getByLabelText('Band 2 label'), ' now')
 
       expect(form.getByLabelText('Band 2 label')).toHaveValue('Middling now')
       expect(form.getByLabelText('Band 2 key')).toHaveValue('mid')
@@ -809,8 +802,7 @@ describe('the checks tab', () => {
       const form = within(screen.getByRole('form', { name: 'Edit skill' }))
       expect(form.getByText('Reads Power')).toBeVisible()
 
-      await user.clear(form.getByLabelText('Modifier'))
-      await user.type(form.getByLabelText('Modifier'), '{{pow}+{{tracker:heat}')
+      await replaceText(user, form.getByLabelText('Modifier'), '{pow}+{tracker:heat}')
       expect(form.getByText('Reads Power, Heat')).toBeVisible()
     })
   })
@@ -826,10 +818,8 @@ describe('the checks tab', () => {
       const { user } = await openChecks(handlers)
       await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
       const form = within(screen.getByRole('form', { name: 'Edit skill' }))
-      await user.clear(form.getByLabelText('Modifier'))
-      await user.type(form.getByLabelText('Modifier'), '{{pow}+1')
-      await user.clear(form.getByLabelText('Band 1 formula'))
-      await user.type(form.getByLabelText('Band 1 formula'), '{{pow}*2')
+      await replaceText(user, form.getByLabelText('Modifier'), '{pow}+1')
+      await replaceText(user, form.getByLabelText('Band 1 formula'), '{pow}*2')
       return form
     }
 
@@ -873,8 +863,7 @@ describe('the checks tab', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
       const form = within(screen.getByRole('form', { name: 'Edit skill' }))
-      await user.clear(form.getByLabelText('Label'))
-      await user.type(form.getByLabelText('Label'), 'Mine')
+      await replaceText(user, form.getByLabelText('Label'), 'Mine')
       await user.click(screen.getByRole('button', { name: 'Move up luck' }))
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'Move down luck' })).toBeEnabled()
@@ -898,8 +887,7 @@ describe('the checks tab', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
       const form = within(screen.getByRole('form', { name: 'Edit skill' }))
-      await user.clear(form.getByLabelText('Label'))
-      await user.type(form.getByLabelText('Label'), 'Mine')
+      await replaceText(user, form.getByLabelText('Label'), 'Mine')
       await user.click(screen.getByRole('button', { name: 'Delete luck' }))
       await user.click(inDialog().getByRole('button', { name: 'Delete the check' }))
       await waitFor(() => {

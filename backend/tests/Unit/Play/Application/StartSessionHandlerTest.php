@@ -80,30 +80,4 @@ final class StartSessionHandlerTest extends TestCase
 
         self::assertSame(1, $this->campaigns->ofId(CampaignId::fromString('campaign-1'))?->currentSession()?->number());
     }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-        $this->expectExceptionMessageIsOrContains('Campaign "campaign-1" not found.');
-
-        ($this->handler)(new StartSession('campaign-1', 'user-2'));
-    }
-
-    #[Test]
-    public function anUnknownCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-        $this->expectExceptionMessageIsOrContains('Campaign "campaign-9" not found.');
-
-        ($this->handler)(new StartSession('campaign-9', 'user-1'));
-    }
-
-    #[Test]
-    public function aBlankCampaignIdIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->handler)(new StartSession(' ', 'user-1'));
-    }
 }

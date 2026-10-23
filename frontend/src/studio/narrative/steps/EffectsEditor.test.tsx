@@ -7,6 +7,7 @@ import { effectsToDrafts, effectsToStored } from './effectDraft'
 import { effectPickers, every } from './effectFixtures'
 import { mapStepError, type StepError } from './stepError'
 import { chooseOption, listOptions } from '@/test/chooseOption'
+import { replaceText, typeText } from '@/test/typeText'
 
 /** The editor as a step card holds it: the drafts in state, the written effects exposed for checks. */
 const latest: { written: unknown[] } = { written: [] }
@@ -67,8 +68,7 @@ describe('the effects editor', () => {
       'tracker',
       async (user: ReturnType<typeof userEvent.setup>) => {
         await chooseOption(user, 'Tracker', 'alarm', card(1))
-        await user.clear(card(1).getByLabelText('Value'))
-        await user.type(card(1).getByLabelText('Value'), '-3')
+        await replaceText(user, card(1).getByLabelText('Value'), '-3')
       },
       { kind: 'tracker', tracker: 'alarm', op: 'add', value: -3 },
     ],
@@ -76,7 +76,7 @@ describe('the effects editor', () => {
       'tracker',
       async (user: ReturnType<typeof userEvent.setup>) => {
         await chooseOption(user, 'Value type', 'formula', card(1))
-        await user.type(card(1).getByLabelText('Value'), 'heat + 1')
+        await typeText(user, card(1).getByLabelText('Value'), 'heat + 1')
       },
       { kind: 'tracker', tracker: '', op: 'add', value: { formula: 'heat + 1' } },
     ],
@@ -99,15 +99,15 @@ describe('the effects editor', () => {
     [
       'sceneTitle',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.type(card(1).getByLabelText('Title'), 'Dawn')
+        await typeText(user, card(1).getByLabelText('Title'), 'Dawn')
       },
       { kind: 'sceneTitle', title: 'Dawn' },
     ],
     [
       'createNpc',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.type(card(1).getByLabelText('Name'), 'Vera')
-        await user.type(card(1).getByLabelText('Agenda'), 'Wants out')
+        await typeText(user, card(1).getByLabelText('Name'), 'Vera')
+        await typeText(user, card(1).getByLabelText('Agenda'), 'Wants out')
         await user.click(card(1).getByRole('checkbox', { name: 'Gang' }))
       },
       { kind: 'createNpc', name: 'Vera', agenda: 'Wants out', tags: ['gang'] },
@@ -115,7 +115,7 @@ describe('the effects editor', () => {
     [
       'createThread',
       async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.type(card(1).getByLabelText('Name'), 'The debt')
+        await typeText(user, card(1).getByLabelText('Name'), 'The debt')
       },
       { kind: 'createThread', name: 'The debt' },
     ],
@@ -123,7 +123,7 @@ describe('the effects editor', () => {
       'fillFact',
       async (user: ReturnType<typeof userEvent.setup>) => {
         await chooseOption(user, 'Fact slot', 'client', card(1))
-        await user.type(card(1).getByLabelText('Text'), 'A fence')
+        await typeText(user, card(1).getByLabelText('Text'), 'A fence')
       },
       { kind: 'fillFact', slot: 'client', text: 'A fence' },
     ],
@@ -133,7 +133,7 @@ describe('the effects editor', () => {
         await chooseOption(user, 'Sheet field', 'hands', card(1))
         await chooseOption(user, 'Operation', 'subtract', card(1))
         await chooseOption(user, 'Value type', 'dice', card(1))
-        await user.type(card(1).getByLabelText('Value'), '1d4')
+        await typeText(user, card(1).getByLabelText('Value'), '1d4')
       },
       { kind: 'sheet', field: 'hands', op: 'subtract', value: { dice: '1d4' } },
     ],

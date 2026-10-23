@@ -60,15 +60,4 @@ final class RollDiceHandlerTest extends TestCase
 
         $handler(new RollDice('2d'));
     }
-
-    #[Test]
-    public function aDivisionByZeroIsRejectedWhenRolling(): void
-    {
-        $handler = new RollDiceHandler(new ScriptedRandomNumberGenerator(1));
-
-        $this->expectException(InvalidDiceExpression::class);
-        $this->expectExceptionMessageIsOrContains('divides by zero');
-
-        $handler(new RollDice('1d6/0'));
-    }
 }

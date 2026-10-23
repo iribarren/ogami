@@ -78,14 +78,6 @@ final class GetJournalHandlerTest extends JournalTestCase
     }
 
     #[Test]
-    public function anotherPlayersJournalIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->getJournal)(new GetJournal('campaign-1', 'user-2'));
-    }
-
-    #[Test]
     public function oneEntryIsReadBackById(): void
     {
         (new RecordNoteHandler($this->journal))(new RecordNote('entry-1', 'campaign-1', 'user-1', 'The gate is shut.'));

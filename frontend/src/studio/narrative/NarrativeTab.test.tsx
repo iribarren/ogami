@@ -6,6 +6,7 @@ import { chooseOption } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, narrative, narrativeFlows, narrativeV1, validDraft } from '../fixtures'
+import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -249,15 +250,14 @@ describe('creating', () => {
 
     await user.click(await screen.findByRole('button', { name: 'New tracker' }))
     const dialog = inDialog()
-    await user.type(dialog.getByLabelText('Key'), 'stress')
-    await user.type(dialog.getByLabelText('Name'), 'Stress')
-    await user.clear(dialog.getByLabelText('Max'))
-    await user.type(dialog.getByLabelText('Max'), '6')
+    await typeText(user, dialog.getByLabelText('Key'), 'stress')
+    await typeText(user, dialog.getByLabelText('Name'), 'Stress')
+    await replaceText(user, dialog.getByLabelText('Max'), '6')
     await user.click(dialog.getByRole('button', { name: 'Add level' }))
     await user.click(dialog.getByRole('button', { name: 'Add level' }))
-    await user.type(dialog.getByLabelText('Level 1 label'), 'Calm')
+    await typeText(user, dialog.getByLabelText('Level 1 label'), 'Calm')
     await user.type(dialog.getByLabelText('Level 1 up to'), '2')
-    await user.type(dialog.getByLabelText('Level 2 label'), 'Frayed')
+    await typeText(user, dialog.getByLabelText('Level 2 label'), 'Frayed')
     expect(dialog.queryByLabelText('Level 2 up to')).not.toBeInTheDocument()
     await user.click(dialog.getByRole('button', { name: 'Create tracker' }))
 
@@ -286,14 +286,13 @@ describe('creating', () => {
 
     await user.click(await screen.findByRole('button', { name: 'New tracker' }))
     const dialog = inDialog()
-    await user.type(dialog.getByLabelText('Key'), 'doom')
-    await user.type(dialog.getByLabelText('Name'), 'Doom')
-    await user.type(dialog.getByLabelText('Hint'), 'It comes')
+    await typeText(user, dialog.getByLabelText('Key'), 'doom')
+    await typeText(user, dialog.getByLabelText('Name'), 'Doom')
+    await typeText(user, dialog.getByLabelText('Hint'), 'It comes')
     await chooseOption(user, 'Kind', 'clock', dialog)
     expect(dialog.queryByLabelText('Max')).not.toBeInTheDocument()
     expect(dialog.getByLabelText('Key')).toHaveValue('doom')
-    await user.clear(dialog.getByLabelText('Segments'))
-    await user.type(dialog.getByLabelText('Segments'), '8')
+    await replaceText(user, dialog.getByLabelText('Segments'), '8')
     await user.click(dialog.getByRole('button', { name: 'Create tracker' }))
 
     await waitFor(() => {
@@ -317,16 +316,16 @@ describe('creating', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'New tag' }))
-    await user.type(inDialog().getByLabelText('Key'), 'rival')
-    await user.type(inDialog().getByLabelText('Label'), 'Rival')
+    await typeText(user, inDialog().getByLabelText('Key'), 'rival')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Rival')
     await user.click(inDialog().getByRole('button', { name: 'Create tag' }))
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'New fact slot' }))
-    await user.type(inDialog().getByLabelText('Key'), 'rumour')
-    await user.type(inDialog().getByLabelText('Label'), 'Rumour')
+    await typeText(user, inDialog().getByLabelText('Key'), 'rumour')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Rumour')
     await chooseOption(user, 'Type', 'thread', inDialog())
     await user.click(inDialog().getByRole('button', { name: 'Create fact slot' }))
 
@@ -342,10 +341,9 @@ describe('creating', () => {
     const { user } = await openNarrative({ [`POST ${base}/narrative/trackers`]: saved.handler })
 
     await user.click(await screen.findByRole('button', { name: 'New tracker' }))
-    await user.type(inDialog().getByLabelText('Key'), 'stress')
-    await user.type(inDialog().getByLabelText('Name'), 'Stress')
-    await user.clear(inDialog().getByLabelText('Max'))
-    await user.type(inDialog().getByLabelText('Max'), '2.5')
+    await typeText(user, inDialog().getByLabelText('Key'), 'stress')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Stress')
+    await replaceText(user, inDialog().getByLabelText('Max'), '2.5')
     await user.click(inDialog().getByRole('button', { name: 'Create tracker' }))
 
     expect(inDialog().getByLabelText('Max')).toBeInvalid()
@@ -360,8 +358,8 @@ describe('creating', () => {
     const { user } = await openNarrative({ [`POST ${base}/narrative/tags`]: saved.handler })
 
     await user.click(await screen.findByRole('button', { name: 'New tag' }))
-    await user.type(inDialog().getByLabelText('Key'), 'Bad Key')
-    await user.type(inDialog().getByLabelText('Label'), 'Rival')
+    await typeText(user, inDialog().getByLabelText('Key'), 'Bad Key')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Rival')
     await user.click(inDialog().getByRole('button', { name: 'Create tag' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(
@@ -386,8 +384,8 @@ describe('creating', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'New tag' }))
-    await user.type(inDialog().getByLabelText('Key'), 'rival')
-    await user.type(inDialog().getByLabelText('Label'), 'Rival')
+    await typeText(user, inDialog().getByLabelText('Key'), 'rival')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Rival')
     await user.click(inDialog().getByRole('button', { name: 'Create tag' }))
     expect(await inDialog().findByRole('alert')).toHaveTextContent('was changed by another request')
     await user.click(inDialog().getByRole('button', { name: 'Reload the latest version' }))
@@ -437,8 +435,7 @@ describe('editing', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit alarm' }))
-    await user.clear(inDialog().getByLabelText('Key'))
-    await user.type(inDialog().getByLabelText('Key'), 'siren')
+    await replaceText(user, inDialog().getByLabelText('Key'), 'siren')
     await user.click(inDialog().getByRole('button', { name: 'Save tracker' }))
 
     await waitFor(() => {
@@ -462,7 +459,7 @@ describe('editing', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
-    await user.type(inDialog().getByLabelText('Hint'), 'Knows the docks')
+    await typeText(user, inDialog().getByLabelText('Hint'), 'Knows the docks')
     await queryClient.refetchQueries({
       queryKey: ['studio', 'game-systems', 'my-draft', 'narrative'],
     })
@@ -497,7 +494,7 @@ describe('editing', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
-    await user.type(inDialog().getByLabelText('Hint'), 'Mine')
+    await typeText(user, inDialog().getByLabelText('Hint'), 'Mine')
     await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
     await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
 
@@ -524,7 +521,7 @@ describe('editing', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
-    await user.type(inDialog().getByLabelText('Hint'), 'Mine')
+    await typeText(user, inDialog().getByLabelText('Hint'), 'Mine')
     await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
     await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
 
@@ -546,7 +543,7 @@ describe('editing', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit informer' }))
-    await user.type(inDialog().getByLabelText('Hint'), 'Mine')
+    await typeText(user, inDialog().getByLabelText('Hint'), 'Mine')
     await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
     await user.click(await inDialog().findByRole('button', { name: 'Reload the latest version' }))
 
@@ -566,7 +563,7 @@ describe('editing', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit heat' }))
     const dialog = inDialog()
     await user.click(dialog.getByRole('button', { name: 'Add level' }))
-    await user.type(dialog.getByLabelText('Level 3 label'), 'Inferno')
+    await typeText(user, dialog.getByLabelText('Level 3 label'), 'Inferno')
     await user.click(dialog.getByRole('button', { name: 'Move level 3 up' }))
     expect(dialog.getByLabelText('Level 2 label')).toHaveValue('Inferno')
     expect(dialog.getByRole('button', { name: 'Move level 1 up' })).toBeDisabled()
@@ -608,8 +605,7 @@ describe('editing', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: 'Edit gang' }))
-    await user.clear(inDialog().getByLabelText('Key'))
-    await user.type(inDialog().getByLabelText('Key'), 'crew')
+    await replaceText(user, inDialog().getByLabelText('Key'), 'crew')
     await user.click(inDialog().getByRole('button', { name: 'Save tag' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(

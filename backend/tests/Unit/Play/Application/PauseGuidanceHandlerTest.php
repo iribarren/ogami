@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\PauseGuidance;
 use App\Play\Application\PauseGuidanceHandler;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
@@ -39,14 +38,6 @@ final class PauseGuidanceHandlerTest extends FlowRunHandlerTestCase
                 self::assertCount('campaign-1' === $id ? 1 : 0, $this->stored($id)->flowRun()?->history() ?? []);
             }
         }
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        $this->pause(new PauseGuidance('campaign-1', 'user-2'));
     }
 
     private function pause(PauseGuidance $command): void

@@ -6,6 +6,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { oracles, oraclesV1, stormRoll, narrativeScenes } from '../fixtures'
+import { replaceText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -214,8 +215,7 @@ describe('the table editor', () => {
     await openDetails(user, 1)
     await user.click(entry(1).getByRole('button', { name: 'Add effect' }))
     await chooseOption(user, 'Tracker', 'heat', entry(1))
-    await user.clear(entry(1).getByLabelText('Value'))
-    await user.type(entry(1).getByLabelText('Value'), 'x')
+    await replaceText(user, entry(1).getByLabelText('Value'), 'x')
 
     expect(save()).toBeDisabled()
     expect(entry(1).getByLabelText('Value')).toBeInvalid()

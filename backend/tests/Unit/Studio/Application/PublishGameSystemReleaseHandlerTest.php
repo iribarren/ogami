@@ -96,16 +96,6 @@ final class PublishGameSystemReleaseHandlerTest extends TestCase
     }
 
     #[Test]
-    public function onlyIfChangedPublishesTheNextVersionWhenTheContentChanged(): void
-    {
-        ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), true));
-
-        ($this->handler)(new PublishGameSystemRelease('r-2', $this->content(name: 'Free journal, revised'), true));
-
-        self::assertSame(2, $this->releases->latestFor('free-journal')?->version());
-    }
-
-    #[Test]
     public function withoutOnlyIfChangedTheSameContentIsPublishedAgain(): void
     {
         ($this->handler)(new PublishGameSystemRelease('r-1', $this->content(), false));

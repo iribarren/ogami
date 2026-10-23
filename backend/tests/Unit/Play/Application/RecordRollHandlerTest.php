@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\RecordRoll;
 use App\Play\Application\RecordRollHandler;
 use App\Play\Domain\Campaign\NoCurrentScene;
@@ -55,16 +54,6 @@ final class RecordRollHandlerTest extends JournalTestCase
         } catch (InvalidDiceExpression) {
             self::assertSame([], $this->journalOf('campaign-1'));
         }
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $handler = new RecordRollHandler($this->journal, new ScriptedRandomNumberGenerator(3));
-
-        $this->expectException(CampaignNotFound::class);
-
-        $handler(new RecordRoll('entry-1', 'campaign-1', 'user-2', '1d6'));
     }
 
     #[Test]

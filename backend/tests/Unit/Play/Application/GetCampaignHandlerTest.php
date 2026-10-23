@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
-use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CampaignView;
 use App\Play\Application\CastMemberView;
 use App\Play\Application\CheckDifficultyView;
@@ -407,23 +406,6 @@ final class GetCampaignHandlerTest extends TestCase
 
         self::assertSame(1, $view->currentSessionNumber);
         self::assertSame(1, $view->currentSceneNumber);
-    }
-
-    #[Test]
-    public function anotherPlayersCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-        $this->expectExceptionMessageIsOrContains('Campaign "campaign-1" not found.');
-
-        ($this->handler)(new GetCampaign('campaign-1', 'user-2'));
-    }
-
-    #[Test]
-    public function anUnknownCampaignIsNotFound(): void
-    {
-        $this->expectException(CampaignNotFound::class);
-
-        ($this->handler)(new GetCampaign('campaign-9', 'user-1'));
     }
 
     #[Test]

@@ -200,7 +200,7 @@ final readonly class GameSystemController
 
     #[Route('/api/studio/game-systems/{key}/validation', name: 'api_studio_game_systems_validation', methods: ['GET'])]
     #[OA\Get(operationId: 'validateGameSystem', summary: 'Check whether one of my GameSystem drafts would be accepted as a release')]
-    #[OA\Response(response: 200, description: 'The verdict: the first error with its path when invalid, the authoring warnings when valid.', content: new OA\JsonContent(ref: new Model(type: GameSystemValidationResponse::class)))]
+    #[OA\Response(response: 200, description: 'The verdict: every error with its path when invalid, the authoring warnings when valid.', content: new OA\JsonContent(ref: new Model(type: GameSystemValidationResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]

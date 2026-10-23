@@ -13,11 +13,12 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { cn } from '@/shared/lib/utils'
 import { DieShape } from '@/shared/ui/die-shape'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import type { GameSystemTab } from './gameSystemTabs'
-import type { GameSystem } from './useGameSystems'
+import { useGameSystemValidation, type GameSystem } from './useGameSystems'
 
 interface Section {
   tab: GameSystemTab
@@ -71,7 +72,14 @@ const ship: Section[] = [
 ]
 
 /** The text of a section's count pill, or `undefined` when the page has no count for it. */
-function pillText(section: Section, gameSystem: GameSystem): string | undefined {
+function pillText(
+  section: Section,
+  gameSystem: GameSystem,
+  validationErrors: number,
+): string | undefined {
+  if (section.tab === 'validation') {
+    return validationErrors > 0 ? String(validationErrors) : undefined
+  }
   if (section.tab === 'releases') {
     return gameSystem.latestReleaseVersion === null
       ? undefined
@@ -98,6 +106,8 @@ export function SectionRail({
   onNavigate?: (tab: GameSystemTab) => void
 }) {
   const pack = gameSystem.kind === 'library-pack'
+  // The error count of the Validation item; no pill until the validation is read or when it fails.
+  const validationErrors = useGameSystemValidation(gameSystem.key).data?.errors.length ?? 0
   const groups = [
     { name: 'Author', sections: author },
     { name: 'Ship', sections: ship },
@@ -121,7 +131,7 @@ export function SectionRail({
               {name}
             </p>
             {shown.map((section) => {
-              const pill = pillText(section, gameSystem)
+              const pill = pillText(section, gameSystem, validationErrors)
               const pillId = `rail-count-${section.tab}`
               return (
                 <Link
@@ -139,7 +149,14 @@ export function SectionRail({
                   <IconTile size="rail">{section.icon}</IconTile>
                   <span className="flex-1">{section.label}</span>
                   {pill !== undefined && (
-                    <span id={pillId} aria-hidden="true" className="count-pill">
+                    <span
+                      id={pillId}
+                      aria-hidden="true"
+                      className={cn(
+                        'count-pill',
+                        section.tab === 'validation' && 'count-pill-error',
+                      )}
+                    >
                       {pill}
                     </span>
                   )}

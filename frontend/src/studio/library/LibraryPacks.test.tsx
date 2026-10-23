@@ -92,7 +92,7 @@ describe('the New pack dialog', () => {
       'GET /api/studio/game-systems/fantasy-basics': json(packSystem),
       'GET /api/studio/game-systems/fantasy-basics/validation': json({
         valid: true,
-        error: null,
+        errors: [],
         warnings: [],
       }),
     })

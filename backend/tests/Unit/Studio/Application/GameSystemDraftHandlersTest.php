@@ -13,6 +13,7 @@ use App\Studio\Application\EditGameSystemMetadataHandler;
 use App\Studio\Application\GameSystemPublication;
 use App\Studio\Application\GameSystemSummary;
 use App\Studio\Application\GameSystemValidation;
+use App\Studio\Application\GameSystemValidationError;
 use App\Studio\Application\GameSystemView;
 use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemHandler;
@@ -295,9 +296,26 @@ final class GameSystemDraftHandlersTest extends TestCase
         $validation = $this->validate('ann', 'my-copy');
 
         self::assertFalse($validation->valid);
-        self::assertStringStartsWith('oracles: ', (string) $validation->error);
+        self::assertEquals([new GameSystemValidationError('oracles', 'required')], $validation->errors);
         self::assertSame([], $validation->warnings);
         self::assertTrue($this->get('ann', 'my-copy')->hasUnpublishedChanges);
+    }
+
+    #[Test]
+    public function anInvalidDraftReportsEveryErrorWithItsPathAndReason(): void
+    {
+        $this->create('my-copy', 'My copy', 'ann');
+        $draft = $this->gameSystems->ofKey('my-copy');
+        self::assertNotNull($draft);
+        $document = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-contract-doc-example'), 'trackers.0.name', '');
+        $draft->restore(ReleaseArrays::with($document, 'theme', 'pastel'), $this->clock->now());
+
+        $validation = $this->validate('ann', 'my-copy');
+
+        self::assertFalse($validation->valid);
+        self::assertSame(['trackers[0].name', 'theme'], array_map(static fn (GameSystemValidationError $error): string => $error->path, $validation->errors));
+        self::assertStringNotContainsString('trackers[0].name', $validation->errors[0]->message);
+        self::assertStringStartsWith('must be one of', $validation->errors[1]->message);
     }
 
     #[Test]
@@ -307,10 +325,10 @@ final class GameSystemDraftHandlersTest extends TestCase
         $this->create('warned', 'Warned', 'ann', 'warning-heist');
         $this->create('plain', 'Plain', 'ann');
 
-        self::assertEquals(new GameSystemValidation(true, null, []), $this->validate('ann', 'plain'));
+        self::assertEquals(new GameSystemValidation(true, [], []), $this->validate('ann', 'plain'));
         $warned = $this->validate('ann', 'warned');
         self::assertTrue($warned->valid);
-        self::assertNull($warned->error);
+        self::assertSame([], $warned->errors);
         self::assertCount(1, $warned->warnings);
     }
 

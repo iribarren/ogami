@@ -1,15 +1,20 @@
 import type { GameSystemValidation } from '../../useGameSystems'
 
+/** Whether a path is the flow at `index` or goes into it (`flows[0].phases[1]…`, `flows[0].oracles[2]`). */
+const isAbout = (path: string, index: number) => {
+  const base = `flows[${String(index)}]`
+  return path === base || path.startsWith(`${base}.`) || path.startsWith(`${base}[`)
+}
+
 /**
- * How many of the validation's messages are about the flow at `index`: the first error, if any,
- * plus the warnings, whose path (the text before the first `: `) is `flows[index]` or goes into it
- * (`flows[0].phases[1]…`, `flows[0].oracles[2]`). The index is the flow's stored position, which
- * is the order of the narrative read model too.
+ * How many of the validation's errors and warnings are about the flow at `index`. An error says
+ * where it is in its `path`; a warning starts with its path, then `: `. The index is the flow's
+ * stored position, which is the order of the narrative read model too.
  */
 export function flowIssueCount(validation: GameSystemValidation, index: number): number {
-  const base = `flows[${String(index)}]`
-  const about = (message: string) =>
-    [`${base}:`, `${base}.`, `${base}[`].some((start) => message.startsWith(start))
-  const messages = [...(validation.error ? [validation.error.message] : []), ...validation.warnings]
-  return messages.filter(about).length
+  const paths = [
+    ...validation.errors.map((error) => error.path),
+    ...validation.warnings.map((warning) => warning.split(': ')[0] ?? warning),
+  ]
+  return paths.filter((path) => isAbout(path, index)).length
 }

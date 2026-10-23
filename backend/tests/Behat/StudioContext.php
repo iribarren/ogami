@@ -21,6 +21,7 @@ use App\Studio\Application\GameSystemNarrativeView;
 use App\Studio\Application\GameSystemOraclesView;
 use App\Studio\Application\GameSystemReleaseSummary;
 use App\Studio\Application\GameSystemReleaseView;
+use App\Studio\Application\GameSystemValidationError;
 use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemHandler;
 use App\Studio\Application\GetGameSystemNarrative;
@@ -405,7 +406,7 @@ final class StudioContext implements Context
     public function theDraftIsValid(string $user, string $key): void
     {
         $validation = (new ValidateGameSystemDraftHandler($this->owned))(new ValidateGameSystemDraft($user, $key));
-        Assert::assertTrue($validation->valid, (string) $validation->error);
+        Assert::assertTrue($validation->valid, implode('; ', array_map(static fn (GameSystemValidationError $error): string => $error->path.': '.$error->message, $validation->errors)));
     }
 
     #[Then('/^(?P<user>\w+)\'s draft "(?P<key>[^"]+)" is invalid at "(?P<path>[^"]+)"$/')]
@@ -413,7 +414,7 @@ final class StudioContext implements Context
     {
         $validation = (new ValidateGameSystemDraftHandler($this->owned))(new ValidateGameSystemDraft($user, $key));
         Assert::assertFalse($validation->valid);
-        Assert::assertStringStartsWith($path.': ', (string) $validation->error);
+        Assert::assertContains($path, array_map(static fn (GameSystemValidationError $error): string => $error->path, $validation->errors));
     }
 
     #[Then('the GameSystem is refused because the key is taken')]

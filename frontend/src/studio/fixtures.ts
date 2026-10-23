@@ -77,7 +77,7 @@ export const legacy: GameSystem = {
 /** A schema version 2 draft with one library import that changed in its pack. */
 export const draftWithLibraryChange: GameSystem = { ...draft, libraryChanges: 1 }
 
-export const validDraft = { valid: true, error: null, warnings: [] }
+export const validDraft = { valid: true, errors: [], warnings: [] }
 
 /** A published, changed GameSystem: the next publish creates version 4. */
 export const published3: GameSystem = {
@@ -470,14 +470,16 @@ export const narrativeFlows = {
 /** An invalid draft whose one error is about the second flow (no warnings; a test adds its own). */
 export const flowIssues = {
   valid: false,
-  error: { message: 'flows[1].phases[0].selection.table: unknown oracle table "places"' },
+  errors: [
+    { path: 'flows[1].phases[0].selection.table', message: 'unknown oracle table "places"' },
+  ],
   warnings: [],
 }
 
 /** A valid draft whose warnings are about the flows: two of the first, none of the second. */
 export const flowWarnings = {
   valid: true,
-  error: null,
+  errors: [],
   warnings: [
     'flows[0].phases[1]: no step ever ends the phase',
     'flows[0].oracles[0]: is not used by any step',

@@ -19,6 +19,8 @@ use App\Studio\Domain\Release\ReleaseOracles;
  * (FlowReferences::check()) are the flow coherence (ADR 0030). Publishing runs both, in that order;
  * the Studio editor runs the item rules only.
  *
+ * @phpstan-type Parts array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>, sheet: array<string, mixed>, checks: list<array<string, mixed>>}
+ *
  * @internal used by ReleaseContent only
  */
 final class ReleaseVersion2
@@ -90,50 +92,141 @@ final class ReleaseVersion2
      * @param array<string, mixed> $release       the checked top-level object (RELEASE fields)
      * @param bool                 $flowCoherence false to run the item rules only
      *
-     * @return array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>, sheet: array<string, mixed>, checks: list<array<string, mixed>>} "theme" and "tags" are left out when absent or empty
+     * @return Parts "theme" and "tags" are left out when absent or empty
+     *
+     * @throws InvalidReleaseContent the first error
      */
     public static function validate(array $release, bool $flowCoherence = true): array
     {
-        [$trackers, $trackerRanges] = self::trackers($release['trackers']);
-        $oracles = OraclesSection::validate($release['oracles'], 2);
-        self::chaosTrackers($oracles['likelihood'], $trackerRanges);
-        [$factSlots, $factSlotTypes] = self::factSlots($release['factSlots']);
-        [$tags, $tagKeys] = self::tags($release['tags'] ?? null);
+        return self::run($release, $flowCoherence, new Stages(false)) ?? throw new \LogicException('A failing stage throws when the errors are not collected.');
+    }
 
-        [$sceneTypes, $sceneTypeKeys] = self::sceneTypes($release['sceneTypes'], $oracles);
+    /**
+     * Every error validate() would reach, in the order it would reach them, so the first is the one
+     * it throws. A stage that fails stops the stages that read its output and the others still run.
+     *
+     * @param array<string, mixed> $release       the checked top-level object (RELEASE fields)
+     * @param bool                 $flowCoherence false to run the item rules only
+     *
+     * @return list<InvalidReleaseContent>
+     */
+    public static function errors(array $release, bool $flowCoherence = true): array
+    {
+        $stages = new Stages(true);
+        self::run($release, $flowCoherence, $stages);
 
+        return $stages->errors();
+    }
+
+    /**
+     * @param array<string, mixed> $release
+     *
+     * @return Parts|null the canonical parts; null when a stage failed (collecting only)
+     */
+    private static function run(array $release, bool $flowCoherence, Stages $stages): ?array
+    {
+        $sections = self::sections($release, $flowCoherence, $stages);
+        // The theme is read by nothing, so it is checked whatever happened before.
+        $theme = isset($release['theme']) ? $stages->run(static fn (): array => ['theme' => ReleaseFields::oneOf($release['theme'], 'theme', self::THEMES)]) : [];
+
+        return null === $sections || null === $theme ? null : [...$theme, ...$sections];
+    }
+
+    /**
+     * The stages and what each reads. A stage runs only when everything it reads came out valid:
+     *
+     * - trackers, oracles, fact slots and tags read nothing;
+     * - the chaos trackers read the trackers and the oracles; nothing reads them back;
+     * - the Scene Types (without steps) read the oracles (their shortcuts);
+     * - the sheet reads the trackers;
+     * - the checks read all of those, through the catalog;
+     * - the table entries, the Scene Type steps (each of the three parts on its own) and the flows
+     *   read the catalog with the checks;
+     * - the placeholders of the release read the tables, Scene Types and flows, and the flow
+     *   coherence runs when they are valid; it checks each flow on its own.
+     *
+     * @param array<string, mixed> $release
+     *
+     * @return Parts|null Parts without its theme
+     */
+    private static function sections(array $release, bool $flowCoherence, Stages $stages): ?array
+    {
+        $trackers = $stages->run(static fn (): array => self::trackers($release['trackers']));
+        $oracles = $stages->run(static fn (): array => OraclesSection::validate($release['oracles'], 2));
+        if (null !== $trackers && null !== $oracles) {
+            $stages->run(static function () use ($oracles, $trackers): bool {
+                self::chaosTrackers($oracles['likelihood'], $trackers[1]);
+
+                return true;
+            });
+        }
+
+        $factSlots = $stages->run(static fn (): array => self::factSlots($release['factSlots']));
+        $tags = $stages->run(static fn (): array => self::tags($release['tags'] ?? null));
+        $sceneTypes = null === $oracles ? null : $stages->run(static fn (): array => self::sceneTypes($release['sceneTypes'], $oracles));
         // Checks and sheet effects read the sheet, and flow steps read the checks, so both come before the steps.
-        $sheet = SheetFields::validate($release['sheet'], array_keys($trackerRanges));
+        $sheet = null === $trackers ? null : $stages->run(static fn (): array => SheetFields::validate($release['sheet'], array_keys($trackers[1])));
+        if (\in_array(null, [$trackers, $oracles, $factSlots, $tags, $sceneTypes, $sheet], true)) {
+            return null;
+        }
+
+        [$trackerList, $trackerRanges] = $trackers;
+        [$sceneTypeList, $sceneTypeKeys] = $sceneTypes;
         /** @var array<string, string> $fieldTypes */
         $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tagKeys, $factSlotTypes, fieldTypes: $fieldTypes);
-        [$checks, $checkShapes] = Checks::validate($release['checks'], $fieldTypes, $catalog);
-        $catalog = $catalog->withChecks($checkShapes);
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes);
+        $checks = $stages->run(static fn (): array => Checks::validate($release['checks'], $fieldTypes, $catalog));
+        if (null === $checks) {
+            return null;
+        }
 
-        $oracles['tables'] = self::tableEntries($oracles['tables'], $catalog);
-        foreach ($sceneTypes as $index => $sceneType) {
+        $catalog = $catalog->withChecks($checks[1]);
+        $tables = $stages->run(static fn (): array => self::tableEntries($oracles['tables'], $catalog));
+        $stepsValid = true;
+        foreach ($sceneTypeList as $index => $sceneType) {
             foreach (self::SCENE_TYPE_PARTS as $part) {
-                $sceneTypes[$index][$part] = Steps::list($sceneType[$part], \sprintf('sceneTypes[%d].%s', $index, $part), $catalog);
+                $steps = $stages->run(static fn (): array => Steps::list($sceneType[$part], \sprintf('sceneTypes[%d].%s', $index, $part), $catalog));
+                if (null === $steps) {
+                    $stepsValid = false;
+                } else {
+                    $sceneTypeList[$index][$part] = $steps;
+                }
             }
         }
 
-        $flows = self::flows($release['flows'], $oracles, $catalog);
-        FlowReferences::releasePlaceholders($oracles['tables'], $trackers, $sceneTypes, $flows, $factSlotTypes);
+        $flows = $stages->run(static fn (): array => self::flows($release['flows'], $oracles, $catalog));
+        if (null === $tables || !$stepsValid || null === $flows) {
+            return null;
+        }
+
+        $oracles['tables'] = $tables;
+        $placeholders = $stages->run(static function () use ($tables, $trackerList, $sceneTypeList, $flows, $factSlots): bool {
+            FlowReferences::releasePlaceholders($tables, $trackerList, $sceneTypeList, $flows, $factSlots[1]);
+
+            return true;
+        });
+        if (null === $placeholders) {
+            return null;
+        }
+
         if ($flowCoherence) {
-            FlowReferences::check($oracles['tables'], $sceneTypes, $flows, $factSlotTypes);
+            if ($stages->collecting()) {
+                $coherence = FlowReferences::errors($tables, $sceneTypeList, $flows, $factSlots[1]);
+                $stages->add($coherence);
+                if ([] !== $coherence) {
+                    return null;
+                }
+            } else {
+                FlowReferences::check($tables, $sceneTypeList, $flows, $factSlots[1]);
+            }
         }
 
-        $parts = [];
-        if (isset($release['theme'])) {
-            $parts['theme'] = ReleaseFields::oneOf($release['theme'], 'theme', self::THEMES);
+        $parts = ['oracles' => $oracles, 'trackers' => $trackerList, 'factSlots' => $factSlots[0]];
+        if ([] !== $tags[0]) {
+            $parts['tags'] = $tags[0];
         }
 
-        $parts = [...$parts, 'oracles' => $oracles, 'trackers' => $trackers, 'factSlots' => $factSlots];
-        if ([] !== $tags) {
-            $parts['tags'] = $tags;
-        }
-
-        return [...$parts, 'sceneTypes' => $sceneTypes, 'flows' => $flows, 'sheet' => $sheet, 'checks' => $checks];
+        return [...$parts, 'sceneTypes' => $sceneTypeList, 'flows' => $flows, 'sheet' => $sheet, 'checks' => $checks[0]];
     }
 
     /**

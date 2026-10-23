@@ -75,6 +75,7 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 - 2026-10-23 T4: no RED (pinning tests and deletions). Deleted 32 tests (7 duplicates of another layer, 25 copies of the ownership check), added `OwnedCampaignsTest` (4 cases) and an Admin `LastActiveOwner` 409 case (2 datasets); PHPUnit on `tests/Unit`, `Admin` and `Play`: 5,095 passing. The 409 is unreachable over HTTP without a race (the acting owner is always a second active owner), so the test plays the race with a decorated repository.
 - 2026-10-23 T5: no RED (pinning tests). Added `CampaignJournalTest` (owner gets the campaign, another player's is not found) and a `ResetUserCredentials` handler case (last active owner reset to SOLO_PLAYER succeeds); docblocks say so.
 - 2026-10-23: the Admin `LastActiveOwner` 409 API test dropped (user's call: the faked race was too hacky); `AdminUsersApiTest` is back to its `main` version.
+- 2026-10-23: the 40% Studio Vitest target is moved to follow-up #259 (roadmap B7h, user's call): it needs a production render change, and Vitest no longer decides CI wall time (CI Vitest step 204s to 149s on #258; the Backend job, 322s, is now the slowest).
 
 ## Reviews
 

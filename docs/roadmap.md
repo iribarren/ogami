@@ -80,6 +80,7 @@ Items here come after every feature defined above. Build them in this order: fix
 | B7e | `play-pbta-findings` | Play | B7 | Fix the `preset-pbta` Play findings no feature owns ([#253](https://github.com/iribarren/ogami/issues/253), [P6–P19](../odd/tasks/preset-pbta.md)): the Complication table by scene type, Strings in the summary, a modifier breakdown with Conditions, tags scoped per entity, the move hint on the result card, the climax roll placement, toggles for 0..1 Conditions and a shorter character form |
 | B7f | `tooling-followups` | Tooling | — | Tooling and test-suite follow-ups ([#254](https://github.com/iribarren/ogami/issues/254)): one e2e password default, `--if-missing` seeding that repairs drifted credentials, faster Studio Vitest typing, an overlap audit of unit, Behat and API tests, CI image layer caching if CI time hurts |
 | B7g | `release-api-followups` | Studio | — | Design first ([#255](https://github.com/iribarren/ogami/issues/255)): distinct publish 409 codes, what a release view shows, structured character creation (dice defaults, point budgets) and an NPC agenda from a later answer; record the decisions, then build or split into features |
+| B7h | `studio-editor-render-cost` | Studio | — | Profile the Studio editors and memoise the step and band cards so one input stops re-rendering the whole editor ([#259](https://github.com/iribarren/ogami/issues/259)). Faster Studio Vitest and possibly a snappier UI. Follow-up of `tooling-followups` (T3): worth it once the Frontend CI job is the slowest again or the editors feel slow |
 | B8 | `rules-dice-pools` | Rules | B4 | Close the pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md) once, across the contract, Play, the Studio check editor and the release upgrade planner: a dice count read from the sheet, counting successes per die, pushed rolls (re-roll the dice that did not succeed) and conditions as sheet effects |
 | B8b | `rules-flow-choices` | Rules | B7 | Close two flow gaps `preset-pbta` found ([S11, S12](../odd/tasks/preset-pbta.md#studio-findings)) across the contract, Play, the Studio flow editor and the release upgrade planner: sheet effects on `choice` options and `prompt` answers (end-of-session XP questions), and a `check` step that offers a set of checks for the player to pick (a PbtA move rolled with any stat). Then rework `hearts-and-rapiers` in Studio to use them |
 | B9 | `preset-vaesen` | Preset | B8 | A Vaesen preset on the Year Zero SRD, under Free League's free license: d6 pools, sixes as successes, pushed rolls and conditions from B8 |
@@ -440,6 +441,12 @@ Start feature `tooling-followups` (ODD). Do the tooling and test-suite items of 
 
 ```text
 Start feature `release-api-followups` (ODD). Design first, for the items in GitHub issue #255: distinct publish 409 codes (no changes, version race, library pack), what the Studio release view API should show, structured character creation (dice defaults, point budgets) and an NPC agenda that comes from a later answer. Propose the decisions (ADRs where they change the contract), get them approved, then build the small ones and turn the large ones into their own roadmap items.
+```
+
+**B7h. studio-editor-render-cost**
+
+```text
+Start feature `studio-editor-render-cost` (ODD). GitHub issue #259: the Studio editors re-render the whole editor on every input event, which dominates Vitest time and may slow the UI on large GameSystems. Profile one slow editor first, memoise the hot step and band cards, and measure the slowest Studio test files before and after with `--no-file-parallelism`. `fix/` branches.
 ```
 
 **B8. rules-dice-pools**

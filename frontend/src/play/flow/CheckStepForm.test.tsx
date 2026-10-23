@@ -11,13 +11,20 @@ describe('CheckStepForm', () => {
   it('starts each check step from its own values, not the previous step’s edits', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
-      <CheckStepForm campaign={campaign} step={checkStep} pending={false} onRoll={() => undefined} />,
+      <CheckStepForm
+        campaign={campaign}
+        step={checkStep}
+        pending={false}
+        onRoll={() => undefined}
+      />,
     )
     await user.clear(screen.getByLabelText('Situational modifier'))
     await user.type(screen.getByLabelText('Situational modifier'), '3')
     expect(screen.getByLabelText('Situational modifier')).toHaveValue(3)
 
-    rerender(<CheckStepForm campaign={campaign} step={next} pending={false} onRoll={() => undefined} />)
+    rerender(
+      <CheckStepForm campaign={campaign} step={next} pending={false} onRoll={() => undefined} />,
+    )
 
     expect(screen.getByLabelText('Situational modifier')).toHaveValue(0)
   })

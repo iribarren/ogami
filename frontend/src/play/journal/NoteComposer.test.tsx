@@ -61,13 +61,16 @@ describe('NoteComposer attachment limit', () => {
   it('disables the boxes left once 20 results are picked, with a hint', async () => {
     const rolls = Array.from({ length: 21 }, (_, index) =>
       recordedEntry(
-        { kind: 'roll', expression: `1d${String(index + 2)}`, total: 1, bandLabel: 'Fine' },
+        { kind: 'roll', expression: `1d${String(index + 2)}`, total: 1, groups: [] },
         `0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f80${String(index).padStart(2, '0')}`,
       ),
     )
-    renderWithApi(<NoteComposer campaignId={campaignId} disabled={false} current={{ session: 2, scene: 1 }} />, {
-      [journalPath]: () => Response.json(rolls),
-    })
+    renderWithApi(
+      <NoteComposer campaignId={campaignId} disabled={false} current={{ session: 2, scene: 1 }} />,
+      {
+        [journalPath]: () => Response.json(rolls),
+      },
+    )
     const user = await openPicker()
     const boxes = screen.getAllByRole('checkbox')
     expect(boxes).toHaveLength(21)
@@ -82,9 +85,9 @@ describe('NoteComposer attachment limit', () => {
     expect(left).toHaveLength(1)
     expect(left[0]).toBeDisabled()
     // The picked ones stay usable, so one can be dropped to make room.
-    const picked = screen.getAllByRole('checkbox')[0]!
+    const [picked] = screen.getAllByRole('checkbox')
     expect(picked).toBeEnabled()
-    await user.click(picked)
+    await user.click(picked ?? screen.getByRole('checkbox', { checked: true }))
     expect(left[0]).toBeEnabled()
   })
 })

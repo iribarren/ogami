@@ -120,6 +120,15 @@ final class RecordOracleTableResultHandlerTest extends JournalTestCase
     }
 
     #[Test]
+    public function aQuestionOfAnEarlierSceneIsNotAQuestionOfTheCurrentOne(): void
+    {
+        // The campaign is in session 1, scene 2: a question from scene 1 can no longer be answered.
+        $this->entries->add(JournalEntry::reconstitute(JournalEntryId::fromString('old-1'), CampaignId::fromString('campaign-1'), 1, 1, new \DateTimeImmutable(self::NOW), $this->likelihood('weather')));
+
+        $this->assertRefused(NotARandomEventQuestion::class, 'old-1');
+    }
+
+    #[Test]
     public function anEntryThatIsNotALikelihoodAnswerIsNotAQuestion(): void
     {
         $this->entries->add($this->journal->entry('note-1', $this->ownedCampaigns->get('campaign-1', 'user-1'), NoteContent::of('A note'), new \DateTimeImmutable(self::NOW)));

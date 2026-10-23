@@ -203,7 +203,7 @@ final readonly class JournalController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, its pinned release has no oracle table with this key, or no entry of the campaign has the "forEntry" id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign has no current scene, the generated entry id is already taken, or the random event of the "forEntry" question was already rolled (also when two rolls arrive at once).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'A body is sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'The "forEntry" id is blank, or that entry is not a likelihood answer whose random event is this oracle table.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The "forEntry" id is blank, that entry is not a likelihood answer whose random event is this oracle table, or it was not recorded in the current scene.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function recordOracleTableResult(string $campaignId, string $oracleKey, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $forEntry = null;

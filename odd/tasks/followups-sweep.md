@@ -59,7 +59,7 @@ Each finding was logged by its origin feature (named in the issue) and left open
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
 | T2 | 1 | Backend Identity and dice: F1, F7a, F7b | writer (delegated) | [x] | |
-| T3 | 1 | Backend Play: F5 release port, F10 `forEntry` scene rule, F11 preset rename; tests M3, M4, M8 | writer (delegated) | [ ] F10 pending | |
+| T3 | 1 | Backend Play: F5 release port, F10 `forEntry` scene rule, F11 preset rename; tests M3, M4, M8 | writer (delegated) | [x] | |
 | T4 | 1 | Frontend auth and journal data: F2, F3, F9; test M1 | writer (delegated) | [x] | |
 | T5 | 1 | Frontend Play panels: F4, F6, F7c, F12a, F12b; tick M7 | writer (delegated) | [x] | |
 | T6 | 1 | Frontend Studio and shared: F8, F13; tests M2, M5, M6 | writer (delegated) | [x] | |
@@ -77,6 +77,7 @@ Each finding was logged by its origin feature (named in the issue) and left open
 - T4: F2 `/me` retries once after 300 ms (RED: 500-then-200 test timed out; 401 stays a single request); F3 `cancelQueries` plus id check in `useRecordEntry` (RED: stale refetch dropped the append, a refetch holding the entry duplicated it; new `useJournal.test.tsx`); F9 `refetchOnConflict` for the oracle-table record (RED: no second journal read); M1 409 refetch of the Facts panel (pins existing behaviour, no RED).
 - T5: F4 links compared by kind and id (RED: same-id NPC and Thread; option key fixed too); F6 omitted `chaosTracker` read as null (RED: no Chaos factor input); F7c inline "Type a dice expression" alert (RED); F12a `MAX_ATTACHMENTS` with disabled boxes and hint (RED); F12b `SceneTypeOffer` moved to its own file and rendered by `NoteAttachments` (RED: no switch inside the note). M7 already covered by `CampaignPage.test.tsx:488-502`, no test added.
 - T6: F8 sandbox keeps the shared track max (RED: max typed in the Sheet preview reset to 0); F13 `toUpperCase()` (RED is a `toLocaleUpperCase` spy standing in for a locale, not a real locale run); M2 new `CheckStepForm.test.tsx` (proved: fails with the `key` removed); M5 refused navigation after a rename in `LikelihoodOracleEditor.test.tsx` and M6 `trackerPips` `{min: 10, max: 14}` pin existing behaviour (no RED).
+- T3 / F10: `assertRandomEventQuestion` requires the question in the current session and scene (`NotARandomEventQuestion::notInCurrentScene`, 422; OpenAPI description updated). RED in `RecordOracleTableResultHandlerTest` (earlier-scene question was accepted), GREEN after; one API test for the 422. Edit surface extended by the user for `CampaignJournal.php` and friends.
 
 ## Reviews
 
@@ -85,4 +86,4 @@ Each finding was logged by its origin feature (named in the issue) and left open
 
 ## Next step
 
-Slice 1: F10 (T3) is pending: it needs `backend/src/Play/Application/CampaignJournal.php`; then review, push and PR.
+Slice 1: review, push and PR.

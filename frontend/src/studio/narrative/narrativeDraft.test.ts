@@ -170,6 +170,39 @@ describe('a tag draft', () => {
   it('is not editable with a label that is not text', () => {
     expect(tagToDraft({ key: 'gang', label: ['Gang'] })).toBeNull()
   })
+
+  it('reads and gives back a scope limited to some kinds, in the order stored', () => {
+    const scoped = { key: 'gang', label: 'Gang', appliesTo: ['thread', 'npc'] }
+    const draft = tagToDraft(scoped)
+
+    expect(draft).toMatchObject({ appliesTo: ['thread', 'npc'] })
+    expect(tagToItem(draft ?? newMissing())).toEqual({ item: scoped })
+  })
+
+  it.each([
+    ['no kind', []],
+    ['every kind', ['character', 'npc', 'thread']],
+  ])('omits the scope when it holds %s, since the tag then applies to all', (_name, appliesTo) => {
+    const draft = tagToDraft({ key: 'gang', label: 'Gang' })
+
+    expect(tagToItem({ ...(draft ?? newMissing()), appliesTo })).toEqual({
+      item: { key: 'gang', label: 'Gang' },
+    })
+  })
+
+  it('reads a null scope as none', () => {
+    expect(tagToDraft({ key: 'gang', label: 'Gang', appliesTo: null })).toMatchObject({
+      appliesTo: [],
+    })
+  })
+
+  it.each([
+    ['not a list', 'npc'],
+    ['an unknown kind', ['faction']],
+    ['not text', [3]],
+  ])('is not editable with a scope that is %s', (_name, appliesTo) => {
+    expect(tagToDraft({ key: 'gang', label: 'Gang', appliesTo })).toBeNull()
+  })
 })
 
 describe('a fact slot draft', () => {

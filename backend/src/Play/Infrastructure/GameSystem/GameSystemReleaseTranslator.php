@@ -419,6 +419,7 @@ final readonly class GameSystemReleaseTranslator
                 $this->string($view, $tag['key'] ?? null, $path.'.key'),
                 $this->string($view, $tag['label'] ?? null, $path.'.label'),
                 $this->optionalString($view, $tag['hint'] ?? null, $path.'.hint'),
+                $this->tagScope($view, $tag['appliesTo'] ?? null, $path.'.appliesTo'),
             );
         }
 
@@ -1215,6 +1216,32 @@ final readonly class GameSystemReleaseTranslator
         $int = $this->int($view, $value, $path);
 
         return $int < $min || $int > $max ? throw $this->invalid($view, $path, \sprintf('must be between %d and %d.', $min, $max)) : $int;
+    }
+
+    /**
+     * The entity kinds a Tag is limited to; absent or null (every kind) is the empty list.
+     *
+     * @return list<ItemKind>
+     */
+    private function tagScope(PublishedReleaseView $view, mixed $value, string $path): array
+    {
+        if (null === $value) {
+            return [];
+        }
+
+        $list = $this->list($view, $value, $path);
+        if ([] === $list) {
+            throw $this->invalid($view, $path, 'must not be empty.');
+        }
+
+        $kinds = [];
+        foreach ($list as $index => $kind) {
+            $kindPath = \sprintf('%s[%d]', $path, $index);
+            $kinds[] = ItemKind::tryFrom($name = $this->string($view, $kind, $kindPath))
+                ?? throw $this->invalid($view, $kindPath, \sprintf('unknown entity kind "%s".', $name));
+        }
+
+        return $kinds;
     }
 
     private function itemKind(PublishedReleaseView $view, mixed $kind, string $path): ItemKind

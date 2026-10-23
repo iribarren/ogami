@@ -71,7 +71,10 @@ final class ReleaseVersion2
         'clock' => ['key' => true, 'name' => true, 'hint' => false, 'kind' => true, 'segments' => true],
     ];
     private const array FACT_SLOT = ['key' => true, 'label' => true, 'type' => true, 'hint' => false];
-    private const array TAG = ['key' => true, 'label' => true, 'hint' => false];
+    private const array TAG = ['key' => true, 'label' => true, 'hint' => false, 'appliesTo' => false];
+
+    /** The entity kinds a tag may be limited to; absent, it applies to all of them. */
+    public const array TAG_KINDS = ['character', 'npc', 'thread'];
     private const array SCENE_TYPE = ['key' => true, 'name' => true, 'purpose' => true, 'tips' => false, 'oracles' => true, 'setup' => true, 'play' => true, 'closing' => true];
     private const array FLOW = [
         'key' => true, 'name' => true, 'description' => false, 'introduction' => false, 'default' => false, 'defaultView' => true,
@@ -174,7 +177,7 @@ final class ReleaseVersion2
         [$sceneTypeList, $sceneTypeKeys] = $sceneTypes;
         /** @var array<string, string> $fieldTypes */
         $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes);
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: self::tagScopes($tags[0]));
         $checks = $stages->run(static fn (): array => Checks::validate($release['checks'], $fieldTypes, $catalog));
         if (null === $checks) {
             return null;
@@ -378,10 +381,55 @@ final class ReleaseVersion2
                 ReleaseFields::text($tag['hint'], $path.'.hint', 0, self::MAX_HINT_LENGTH);
             }
 
+            // A null scope means the same as absent, and canonical form leaves it out.
+            if (isset($tag['appliesTo'])) {
+                $tag['appliesTo'] = self::appliesTo($tag['appliesTo'], $path.'.appliesTo');
+            } else {
+                unset($tag['appliesTo']);
+            }
+
             $tags[] = $tag;
         }
 
         return [$tags, $keys];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $tags the canonical tags
+     *
+     * @return array<string, list<string>> the entity kinds of each tag that has a scope, by tag key
+     */
+    private static function tagScopes(array $tags): array
+    {
+        $scopes = [];
+        foreach ($tags as $tag) {
+            /** @var array{key: string, appliesTo?: list<string>} $tag */
+            if (isset($tag['appliesTo'])) {
+                $scopes[$tag['key']] = $tag['appliesTo'];
+            }
+        }
+
+        return $scopes;
+    }
+
+    /**
+     * @return list<string> unique entity kinds, at least one
+     */
+    private static function appliesTo(mixed $value, string $path): array
+    {
+        $kinds = [];
+        foreach (ReleaseFields::sizedList($value, $path, 1, \count(self::TAG_KINDS), 'kinds') as $index => $kind) {
+            $kindPath = \sprintf('%s[%d]', $path, $index);
+            $kind = ReleaseFields::oneOf($kind, $kindPath, self::TAG_KINDS);
+            if (\in_array($kind, $kinds, true)) {
+                throw InvalidReleaseContent::at($kindPath, \sprintf('duplicate kind "%s"', $kind));
+            }
+
+            $kinds[] = $kind;
+        }
+
+        /* @var non-empty-list<string> $kinds */
+        return $kinds;
     }
 
     /**

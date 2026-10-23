@@ -75,6 +75,23 @@ final class GameSystemReleaseTranslatorThreadsNpcsTest extends TestCase
     }
 
     #[Test]
+    public function aTagReadsItsScopeAndAnUnscopedOneAppliesToEveryKind(): void
+    {
+        $content = ReleaseArrays::with(ReleaseViews::fixtureContent(self::FIXTURE), 'tags.2.appliesTo', ['npc', 'thread']);
+        $content = ReleaseArrays::with($content, 'tags.1.appliesTo', null);
+
+        $tags = $this->translate($content)->tags();
+
+        self::assertEquals(new Tag('hostile', 'Hostile', 'Works against the player.', [ItemKind::Npc, ItemKind::Thread]), $tags[2]);
+        self::assertSame([ItemKind::Npc, ItemKind::Thread], $tags[2]->appliesTo);
+        self::assertSame([[], [true, true, true], [true, true, false]], [
+            $tags[0]->appliesTo,
+            array_map($tags[1]->isFor(...), ItemKind::cases()),
+            array_map($tags[2]->isFor(...), ItemKind::cases()),
+        ]);
+    }
+
+    #[Test]
     public function itMapsAPickStepWithEveryField(): void
     {
         self::assertEquals(
@@ -192,6 +209,9 @@ final class GameSystemReleaseTranslatorThreadsNpcsTest extends TestCase
         $pickPath = 'sceneTypes[0].play[0]';
         yield 'tags' => ['tags', 'leader', 'tags: must be a list.'];
         yield 'tag label' => ['tags.0.label', 5, 'tags[0].label: must be a string.'];
+        yield 'tag scope' => ['tags.0.appliesTo', 'npc', 'tags[0].appliesTo: must be a list.'];
+        yield 'tag scope kind' => ['tags.0.appliesTo', ['npc', 'faction'], 'tags[0].appliesTo[1]: unknown entity kind "faction".'];
+        yield 'empty tag scope' => ['tags.0.appliesTo', [], 'tags[0].appliesTo: must not be empty.'];
         yield 'duplicate tag key' => ['tags.1.key', 'leader', 'tags[1].key: duplicate key "leader".'];
         yield 'pick item kind' => [$pick.'.of', 'monster', $pickPath.'.of: unknown item kind "monster".'];
         yield 'pick mode' => [$pick.'.mode', 'dice', $pickPath.'.mode: unknown pick mode "dice".'];

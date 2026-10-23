@@ -24,6 +24,7 @@ final readonly class Catalog
      * @param array<string, true>                                    $tags             the tag keys of the release
      * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc or thread)
      * @param array<string, CheckShape>                              $checks           what steps may name of each check, by check key
+     * @param array<string, list<string>>                            $tagScopes        the entity kinds of each tag limited to some (a tag with no entry applies to all)
      * @param array<string, string>                                  $fieldTypes       the type of every sheet field by key (number, text, list, track or derived)
      */
     public function __construct(
@@ -35,6 +36,7 @@ final readonly class Catalog
         public array $factSlots = [],
         public array $checks = [],
         public array $fieldTypes = [],
+        public array $tagScopes = [],
     ) {
     }
 
@@ -43,7 +45,7 @@ final readonly class Catalog
      */
     public function withChecks(array $checks): self
     {
-        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes);
+        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes, $this->tagScopes);
     }
 
     /**
@@ -85,6 +87,14 @@ final readonly class Catalog
     public function hasTag(string $key): bool
     {
         return isset($this->tags[$key]);
+    }
+
+    /**
+     * Whether the tag may be carried by an entity of this kind (npc, thread or character).
+     */
+    public function tagAppliesTo(string $key, string $kind): bool
+    {
+        return !isset($this->tagScopes[$key]) || \in_array($kind, $this->tagScopes[$key], true);
     }
 
     public function hasFactSlot(string $key): bool

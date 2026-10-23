@@ -8,6 +8,7 @@ import { Area } from './steps/fields'
 import { TextField } from './TextField'
 import {
   factSlotTypes,
+  tagKinds,
   type FieldErrors,
   type LabelledDraft,
   type LevelDraft,
@@ -278,8 +279,54 @@ function LabelledFields({
   )
 }
 
+/** The kinds a tag may be carried by; none or every kind ticked means all. */
+function AppliesTo({
+  draft,
+  onChange,
+}: {
+  draft: LabelledDraft
+  onChange: (draft: LabelledDraft) => void
+}) {
+  const id = useId()
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">Applies to</legend>
+      <p className="text-sm text-muted-foreground">
+        Tick the kinds this tag is for; leave all or none ticked for every kind.
+      </p>
+      <div className="flex flex-wrap gap-4">
+        {tagKinds.map(({ kind, label }) => (
+          <div key={kind} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`${id}-${kind}`}
+              checked={draft.appliesTo.includes(kind)}
+              onChange={(event) => {
+                const others = draft.appliesTo.filter((other) => other !== kind)
+                // Keeps the schema order whatever the order of the ticks.
+                const next = tagKinds
+                  .map((known) => known.kind)
+                  .filter((known) =>
+                    known === kind ? event.target.checked : others.includes(known),
+                  )
+                onChange({ ...draft, appliesTo: next })
+              }}
+            />
+            <Label htmlFor={`${id}-${kind}`}>{label}</Label>
+          </div>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
 export function TagFields({ draft, onChange }: FieldsProps<LabelledDraft>) {
-  return <LabelledFields draft={draft} onChange={onChange} withType={false} />
+  return (
+    <>
+      <LabelledFields draft={draft} onChange={onChange} withType={false} />
+      <AppliesTo draft={draft} onChange={onChange} />
+    </>
+  )
 }
 
 export function FactSlotFields({ draft, onChange }: FieldsProps<LabelledDraft>) {

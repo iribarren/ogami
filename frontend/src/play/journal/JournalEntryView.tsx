@@ -239,14 +239,20 @@ function CheckView({ content }: { content: CheckContent }) {
 
 /**
  * The modifier formula with each reference replaced by its label and the value it had, e.g.
- * `{hot} - 1` as `Hot (2) - 1`; the operators stay as written.
+ * `{hot} - 1` as `Hot (2) - 1`; the operators and spacing stay as written. Every `{...}` in the
+ * formula must match a term; otherwise the terms are listed (`Hot (2), Edge (1)`) rather than
+ * showing a half-replaced formula.
  */
 function explainModifier(formula: string, terms: CheckContent['modifierTerms']) {
   const byReference = new Map(terms.map((term) => [term.reference, term]))
-  const tokens = terms.map((term) => term.reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  return formula.replace(new RegExp(tokens.join('|'), 'g'), (reference) => {
+  const describe = ({ label, value }: (typeof terms)[number]) => `${label} (${String(value)})`
+  const references = formula.match(/\{[^{}]*\}/g) ?? []
+  if (!references.every((reference) => byReference.has(reference))) {
+    return terms.map(describe).join(', ')
+  }
+  return formula.replace(/\{[^{}]*\}/g, (reference) => {
     const term = byReference.get(reference)
-    return term ? `${term.label} (${String(term.value)})` : reference
+    return term ? describe(term) : reference
   })
 }
 

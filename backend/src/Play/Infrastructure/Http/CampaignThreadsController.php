@@ -16,6 +16,7 @@ use App\Play\Application\ThreadView;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
+use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
@@ -80,7 +81,7 @@ final readonly class CampaignThreadsController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignLimitReached|CampaignModifiedConcurrently|ThreadAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidThread|UnknownReleaseTag $exception) {
+        } catch (InvalidThread|UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();
@@ -116,7 +117,7 @@ final readonly class CampaignThreadsController
         } catch (InvalidThread $exception) {
             // A blank id is not a value to fix: no Thread has it.
             return '' === trim($threadId) ? $this->blankThreadNotFound($threadId) : $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (UnknownReleaseTag $exception) {
+        } catch (UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();

@@ -185,6 +185,54 @@ describe('JournalEntryView check entries', () => {
     )
   })
 
+  it('replaces references in a formula spaced and nested however it was written', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    const entry = {
+      ...skillCheckEntry,
+      content: {
+        ...content,
+        modifier: 5,
+        modifierFormula: 'max({hot},{edge})+( {hot}*2 )',
+        modifierTerms: [
+          { reference: '{hot}', label: 'Hot', value: 2 },
+          { reference: '{edge}', label: 'Edge', value: 1 },
+        ],
+      },
+    }
+    render(<JournalEntryView entry={entry} />)
+
+    expect(screen.getByText('Modifier').nextElementSibling).toHaveTextContent(
+      '+5 · max(Hot (2),Edge (1))+( Hot (2)*2 )',
+    )
+  })
+
+  it('lists the terms when the formula names a reference no term matches', () => {
+    const { content } = skillCheckEntry
+    if (content.kind !== 'check') {
+      throw new Error('The fixture is no check entry.')
+    }
+    const entry = {
+      ...skillCheckEntry,
+      content: {
+        ...content,
+        modifier: 3,
+        modifierFormula: '{hot} + {edge} + {tracker:chaos}',
+        modifierTerms: [
+          { reference: '{hot}', label: 'Hot', value: 2 },
+          { reference: '{edge}', label: 'Edge', value: 1 },
+        ],
+      },
+    }
+    render(<JournalEntryView entry={entry} />)
+
+    const modifier = screen.getByText('Modifier').nextElementSibling
+    expect(modifier).toHaveTextContent('+3 · Hot (2), Edge (1)')
+    expect(modifier).not.toHaveTextContent('{')
+  })
+
   it('still shows the breakdown when the modifier totals zero', () => {
     const { content } = skillCheckEntry
     if (content.kind !== 'check') {

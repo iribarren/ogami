@@ -351,7 +351,13 @@ function ItemForm({
             />
           </div>
         )}
-        <TagFields id={id} releaseTags={releaseTags} held={item?.tags ?? []} free={free} />
+        <TagFields
+          id={id}
+          kind={kind}
+          releaseTags={releaseTags}
+          held={item?.tags ?? []}
+          free={free}
+        />
         <div className="space-y-1">
           <Label htmlFor={`${id}-weight`}>Weight</Label>
           <NativeSelect

@@ -72,6 +72,22 @@ final class CompleteFlowStepCheckHandlerTest extends TestCase
     }
 
     #[Test]
+    public function theEntryRecordsTheHintAndTheModifierBreakdownOfTheCheck(): void
+    {
+        $this->store(CheckStepReleases::step());
+
+        // 1d10 shows 3: hands 4 * 2 = 8, so 11 at the default difficulty 13.
+        $this->complete(new CompleteFlowStep('campaign-1', 'user-1', 'entry-1', 'sneak', null, null, null, null, null, 'ada'), 3);
+
+        $content = $this->entries->ofCampaign(CampaignId::fromString('campaign-1'))[0]->content()->toArray();
+        self::assertSame(['Sneak quietly.', '{hands} * 2', [['reference' => '{hands}', 'label' => 'Hands', 'value' => 4]]], [
+            $content['hint'],
+            $content['modifierFormula'],
+            $content['modifierTerms'],
+        ]);
+    }
+
+    #[Test]
     public function thePlayersDifficultyAndSituationalModifierApply(): void
     {
         $this->store(CheckStepReleases::step());

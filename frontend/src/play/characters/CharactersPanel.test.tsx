@@ -73,6 +73,26 @@ describe('the Characters panel', () => {
     expect((await characters()).getByText('No Characters yet.')).toBeInTheDocument()
   })
 
+  it('offers only the Tags that apply to Characters', async () => {
+    const user = userEvent.setup()
+    const villain = { key: 'villain', label: 'Villain', hint: null, appliesTo: ['npc' as const] }
+    const hero = { key: 'hero', label: 'Hero', hint: null, appliesTo: ['character' as const] }
+    renderCharacters({
+      ...lostMineWithCharacters,
+      characters: [],
+      tags: [...lostMineWithCharacters.tags, villain, hero],
+    })
+
+    const panel = await characters()
+    await user.click(panel.getByRole('button', { name: 'Add Character' }))
+
+    expect(panel.getAllByRole('checkbox').map((box) => box.getAttribute('value'))).toEqual([
+      'leader',
+      'ally',
+      'hero',
+    ])
+  })
+
   it('adds a Character with a name and Tags when the release has no sheet fields', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []

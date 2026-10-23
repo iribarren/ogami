@@ -48,6 +48,7 @@ use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\Lists\ThreadId;
@@ -67,6 +68,7 @@ use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\SnapshotLikelihoodOracle;
+use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Randomness\Domain\Oracle\OracleTableResult;
@@ -674,6 +676,7 @@ final class Campaign
      *
      * @throws InvalidNpc           when a value breaks a rule
      * @throws UnknownReleaseTag    when a Tag key is not in the pinned release
+     * @throws TagNotApplicable     when a Tag is limited to other kinds than the entity's
      * @throws NpcAlreadyExists     when the campaign holds an Npc with this id
      * @throws CampaignLimitReached when the campaign already holds 500 Npcs
      */
@@ -689,7 +692,7 @@ final class Campaign
         }
 
         $npc = Npc::of($id, $name, $agenda, $tags, $freeTags, $weight);
-        ItemRules::assertInRelease($npc->tags(), $release);
+        ItemRules::assertInRelease($npc->tags(), $release, ItemKind::Npc);
         $this->npcs = [...$this->npcs, $npc];
 
         return $npc;
@@ -704,13 +707,14 @@ final class Campaign
      * @throws UnknownNpc        when the campaign holds no Npc with this id
      * @throws InvalidNpc        when a value breaks a rule
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws TagNotApplicable  when a Tag is limited to other kinds than the entity's
      */
     public function editNpc(NpcId $id, string $name, ?string $agenda, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Npc
     {
         $this->assertPinned($release);
         $index = $this->npcIndex($id);
         $edited = $this->npcs[$index]->edited($name, $agenda, $tags, $freeTags, $weight);
-        ItemRules::assertInRelease($edited->tags(), $release);
+        ItemRules::assertInRelease($edited->tags(), $release, ItemKind::Npc);
         $this->npcs = $this->replaced($this->npcs, $index, $edited);
 
         return $edited;
@@ -754,6 +758,7 @@ final class Campaign
      * @throws CampaignLimitReached   when the campaign already holds 100 Characters
      * @throws CharacterAlreadyExists when the campaign holds a Character with this id
      * @throws UnknownReleaseTag      when a Tag key is not in the pinned release
+     * @throws TagNotApplicable       when a Tag is limited to other kinds than the entity's
      */
     public function promoteNpc(NpcId $npcId, CharacterId $characterId, GameSystemSnapshot $release): Character
     {
@@ -769,8 +774,10 @@ final class Campaign
         }
 
         $npc = $this->npcs[$index];
-        $character = Character::of($characterId, $npc->name(), $npc->tags(), $npc->freeTags(), CharacterValues::resolve($release->sheet(), []), $npcId);
-        ItemRules::assertInRelease($character->tags(), $release);
+        // A Tag limited to NPCs stays on the NPC: the Character takes the Tags that apply to Characters.
+        $tags = array_values(array_filter($npc->tags(), static fn (string $key): bool => !($tag = $release->tag($key)) instanceof Tag || $tag->isFor(ItemKind::Character)));
+        $character = Character::of($characterId, $npc->name(), $tags, $npc->freeTags(), CharacterValues::resolve($release->sheet(), []), $npcId);
+        ItemRules::assertInRelease($character->tags(), $release, ItemKind::Character);
         $this->npcs = $this->replaced($this->npcs, $index, $promoted);
         $this->characters = [...$this->characters, $character];
         $this->joinCurrentSession($characterId, $npcId);
@@ -802,6 +809,7 @@ final class Campaign
      *
      * @throws InvalidCharacter       when a value breaks a rule or does not fit the sheet
      * @throws UnknownReleaseTag      when a Tag key is not in the pinned release
+     * @throws TagNotApplicable       when a Tag is limited to other kinds than the entity's
      * @throws CharacterAlreadyExists when the campaign holds a Character with this id
      * @throws CampaignLimitReached   when the campaign already holds 100 Characters
      */
@@ -817,7 +825,7 @@ final class Campaign
         }
 
         $character = Character::of($id, $name, $tags, $freeTags, CharacterValues::resolve($release->sheet(), $values));
-        ItemRules::assertInRelease($character->tags(), $release);
+        ItemRules::assertInRelease($character->tags(), $release, ItemKind::Character);
         $this->characters = [...$this->characters, $character];
         $this->joinCurrentSession($id);
 
@@ -836,13 +844,14 @@ final class Campaign
      * @throws UnknownCharacter  when the campaign holds no Character with this id
      * @throws InvalidCharacter  when a value breaks a rule or does not fit the sheet
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws TagNotApplicable  when a Tag is limited to other kinds than the entity's
      */
     public function editCharacter(CharacterId $id, string $name, array $tags, array $freeTags, array $values, GameSystemSnapshot $release): Character
     {
         $this->assertPinned($release);
         $index = $this->characterIndex($id);
         $edited = $this->characters[$index]->edited($name, $tags, $freeTags, CharacterValues::resolve($release->sheet(), $values));
-        ItemRules::assertInRelease($edited->tags(), $release);
+        ItemRules::assertInRelease($edited->tags(), $release, ItemKind::Character);
         $this->characters = $this->replaced($this->characters, $index, $edited);
 
         return $edited;
@@ -887,6 +896,7 @@ final class Campaign
      *
      * @throws InvalidNpc        when a value breaks a rule
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws TagNotApplicable  when a Tag is limited to other kinds than the entity's
      * @throws NpcAlreadyExists  when an NPC already holds the generated id
      */
     public function createNpcByEffect(string $name, ?string $agenda, array $tags, GameSystemSnapshot $release): ?Npc
@@ -908,6 +918,7 @@ final class Campaign
      *
      * @throws InvalidThread       when a value breaks a rule
      * @throws UnknownReleaseTag   when a Tag key is not in the pinned release
+     * @throws TagNotApplicable    when a Tag is limited to other kinds than the entity's
      * @throws ThreadAlreadyExists when a Thread already holds the generated id
      */
     public function createThreadByEffect(string $name, array $tags, GameSystemSnapshot $release): ?Thread
@@ -1007,6 +1018,7 @@ final class Campaign
      *
      * @throws InvalidThread        when a value breaks a rule
      * @throws UnknownReleaseTag    when a Tag key is not in the pinned release
+     * @throws TagNotApplicable     when a Tag is limited to other kinds than the entity's
      * @throws ThreadAlreadyExists  when the campaign holds an Thread with this id
      * @throws CampaignLimitReached when the campaign already holds 500 Threads
      */
@@ -1022,7 +1034,7 @@ final class Campaign
         }
 
         $thread = Thread::of($id, $name, $tags, $freeTags, $weight);
-        ItemRules::assertInRelease($thread->tags(), $release);
+        ItemRules::assertInRelease($thread->tags(), $release, ItemKind::Thread);
         $this->threads = [...$this->threads, $thread];
 
         return $thread;
@@ -1037,13 +1049,14 @@ final class Campaign
      * @throws UnknownThread     when the campaign holds no Thread with this id
      * @throws InvalidThread     when a value breaks a rule
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws TagNotApplicable  when a Tag is limited to other kinds than the entity's
      */
     public function editThread(ThreadId $id, string $name, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Thread
     {
         $this->assertPinned($release);
         $index = $this->threadIndex($id);
         $edited = $this->threads[$index]->edited($name, $tags, $freeTags, $weight);
-        ItemRules::assertInRelease($edited->tags(), $release);
+        ItemRules::assertInRelease($edited->tags(), $release, ItemKind::Thread);
         $this->threads = $this->replaced($this->threads, $index, $edited);
 
         return $edited;
@@ -1460,9 +1473,9 @@ final class Campaign
 
         $planner = new ReleaseUpgradePlanner($pinned, $target);
         $draft = clone $this;
-        $draft->characters = array_map(static fn (Character $character): Character => Character::of($character->id(), $character->name(), $planner->keptTags($character->tags()), $character->freeTags(), $planner->fit($character)->values, $character->promotedFrom()), $this->characters);
-        $draft->npcs = array_map(static fn (Npc $npc): Npc => $npc->edited($npc->name(), $npc->agenda(), $planner->keptTags($npc->tags()), $npc->freeTags(), $npc->weight()), $this->npcs);
-        $draft->threads = array_map(static fn (Thread $thread): Thread => $thread->edited($thread->name(), $planner->keptTags($thread->tags()), $thread->freeTags(), $thread->weight()), $this->threads);
+        $draft->characters = array_map(static fn (Character $character): Character => Character::of($character->id(), $character->name(), $planner->keptTags($character->tags(), ItemKind::Character), $character->freeTags(), $planner->fit($character)->values, $character->promotedFrom()), $this->characters);
+        $draft->npcs = array_map(static fn (Npc $npc): Npc => $npc->edited($npc->name(), $npc->agenda(), $planner->keptTags($npc->tags(), ItemKind::Npc), $npc->freeTags(), $npc->weight()), $this->npcs);
+        $draft->threads = array_map(static fn (Thread $thread): Thread => $thread->edited($thread->name(), $planner->keptTags($thread->tags(), ItemKind::Thread), $thread->freeTags(), $thread->weight()), $this->threads);
         $draft->trackerValues = $planner->keptTrackerValues($this->trackerValues);
         $draft->facts = array_map(fn (Fact $fact): Fact => null !== $fact->slot() && !$target->factSlot($fact->slot()) instanceof FactSlot ? $planner->freed($fact, $this->npcs, $this->threads) : $fact, $this->facts);
         $draft->flowKey = $planner->targetFlowKey($this->flowKey);

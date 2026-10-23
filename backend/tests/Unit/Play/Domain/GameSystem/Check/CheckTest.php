@@ -206,6 +206,10 @@ final class CheckTest extends TestCase
         yield 'a modifier dividing by zero' => ['{hands} / {zero}', $bands];
         yield 'a modifier reading the difficulty' => ['{check:difficulty}', $bands];
         yield 'a modifier reading a field the sheet lacks' => ['{ghost}', $bands];
+        // Evaluation reads every reference (no short-circuit), so the breakdown never reads one evaluation did not.
+        yield 'a missing field times zero' => ['0 * {ghost}', $bands];
+        yield 'a missing field inside min()' => ['min({hands}, {ghost})', $bands];
+        yield 'a missing field after a repeated one' => ['{hands} + {hands} + {ghost}', $bands];
         yield 'a band dividing by zero' => [null, [new CheckBand('low', 'Low', Formula::fromString('{hands} / {zero}')), new CheckBand('high', 'High')]];
         yield 'a later band that fails' => [null, [new CheckBand('low', 'Low', 1), new CheckBand('mid', 'Mid', Formula::fromString('{hands} / {zero}')), new CheckBand('high', 'High')]];
         yield 'a band reading another check value' => [null, [new CheckBand('low', 'Low', Formula::fromString('{check:other}')), new CheckBand('high', 'High')]];

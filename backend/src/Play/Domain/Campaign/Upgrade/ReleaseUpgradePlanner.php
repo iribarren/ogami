@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
@@ -46,7 +47,7 @@ final readonly class ReleaseUpgradePlanner
         $upgrades = [];
         foreach ($characters as $character) {
             $changes = $this->fit($character)->changes;
-            $dropped = $this->droppedTags($character->tags());
+            $dropped = $this->droppedTags($character->tags(), ItemKind::Character);
             if ([] !== $changes || [] !== $dropped) {
                 $upgrades[] = new CharacterUpgrade($character->id()->toString(), $character->name(), $changes, $dropped);
             }
@@ -56,8 +57,8 @@ final readonly class ReleaseUpgradePlanner
             PinnedRelease::of($this->pinned->gameSystemKey(), $this->pinned->releaseVersion(), $this->pinned->name()),
             PinnedRelease::of($this->target->gameSystemKey(), $this->target->releaseVersion(), $this->target->name()),
             $upgrades,
-            $this->droppedFrom($npcs),
-            $this->droppedFrom($threads),
+            $this->droppedFrom($npcs, ItemKind::Npc),
+            $this->droppedFrom($threads, ItemKind::Thread),
             $this->trackerChanges($trackerValues),
             $this->unslotted($facts, $npcs, $threads),
             $this->flowChange($flowKey, $hasFlowRun),
@@ -106,11 +107,11 @@ final readonly class ReleaseUpgradePlanner
     /**
      * @param list<string> $tags release Tag keys
      *
-     * @return list<string> those the target release still has, as stored
+     * @return list<string> those the target release still has and still applies to this kind, as stored
      */
-    public function keptTags(array $tags): array
+    public function keptTags(array $tags, ItemKind $kind): array
     {
-        return array_values(array_filter($tags, fn (string $tag): bool => $this->target->tag($tag) instanceof Tag));
+        return array_values(array_filter($tags, fn (string $key): bool => ($tag = $this->target->tag($key)) instanceof Tag && $tag->isFor($kind)));
     }
 
     /**
@@ -253,9 +254,9 @@ final readonly class ReleaseUpgradePlanner
      *
      * @return list<string>
      */
-    private function droppedTags(array $tags): array
+    private function droppedTags(array $tags, ItemKind $kind): array
     {
-        return array_values(array_diff($tags, $this->keptTags($tags)));
+        return array_values(array_diff($tags, $this->keptTags($tags, $kind)));
     }
 
     /**
@@ -263,11 +264,11 @@ final readonly class ReleaseUpgradePlanner
      *
      * @return list<DroppedTags>
      */
-    private function droppedFrom(array $items): array
+    private function droppedFrom(array $items, ItemKind $kind): array
     {
         $dropped = [];
         foreach ($items as $item) {
-            $tags = $this->droppedTags($item->tags());
+            $tags = $this->droppedTags($item->tags(), $kind);
             if ([] !== $tags) {
                 $dropped[] = new DroppedTags($item->id()->toString(), $item->name(), $tags);
             }

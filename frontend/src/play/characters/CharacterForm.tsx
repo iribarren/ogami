@@ -94,7 +94,13 @@ export function CharacterForm({
             setDrafts({ ...drafts, [key]: draft })
           }}
         />
-        <TagFields id={id} releaseTags={releaseTags} held={character?.tags ?? []} free={free} />
+        <TagFields
+          id={id}
+          kind="character"
+          releaseTags={releaseTags}
+          held={character?.tags ?? []}
+          free={free}
+        />
         <div className="flex gap-2">
           <Button type="submit" size="sm">
             Save

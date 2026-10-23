@@ -106,11 +106,12 @@ final class Effects
     }
 
     /**
-     * A list of at most MAX_TAGS unique keys, each a tag of the release.
+     * A list of at most MAX_TAGS unique keys, each a tag of the release that applies to $kind (the
+     * kind of entity the step targets: npc, thread or character).
      *
      * @return list<string> the keys; empty when absent
      */
-    public static function tags(mixed $value, string $path, Catalog $catalog): array
+    public static function tags(mixed $value, string $path, Catalog $catalog, string $kind): array
     {
         if (null === $value) {
             return [];
@@ -126,6 +127,10 @@ final class Effects
 
             if (\in_array($key, $keys, true)) {
                 throw InvalidReleaseContent::at($tagPath, \sprintf('duplicate tag "%s"', $key));
+            }
+
+            if (!$catalog->tagAppliesTo($key, $kind)) {
+                throw InvalidReleaseContent::at($tagPath, \sprintf('tag "%s" does not apply to %ss', $key, $kind));
             }
 
             $keys[] = $key;
@@ -166,14 +171,14 @@ final class Effects
                     ReleaseFields::text($effect['agenda'], $path.'.agenda', 0, self::MAX_NPC_AGENDA_LENGTH);
                 }
 
-                $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog);
+                $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog, 'npc');
                 break;
             case 'createThread':
                 if (isset($effect['name'])) {
                     ReleaseFields::text($effect['name'], $path.'.name', 1, self::MAX_THREAD_NAME_LENGTH);
                 }
 
-                $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog);
+                $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog, 'thread');
                 break;
             case 'fillFact':
                 $effect['slot'] = self::factSlot($effect['slot'], $path.'.slot', $catalog);

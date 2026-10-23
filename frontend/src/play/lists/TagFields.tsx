@@ -49,27 +49,40 @@ export function TagChips({
 }
 
 /**
- * The release's Tags as checkboxes named `tags` (read from the form), then the free tags
- * editor. The checkboxes list the release's Tags, then the keys the release does not list that
- * the item holds, so saving keeps them.
+ * The release's Tags that apply to `kind` as checkboxes named `tags` (read from the form), then
+ * the free tags editor. After them come the Tags the item holds that are not offered (the release
+ * no longer lists them, or they no longer apply to this kind), so saving keeps them and the
+ * player can remove them.
  */
 export function TagFields({
   id,
+  kind,
   releaseTags,
   held,
   free,
 }: {
   id: string
+  /** What the form edits: a Tag limited to other kinds is not offered. */
+  kind: 'character' | 'npc' | 'thread'
   releaseTags: ReleaseTag[]
   /** The Tag keys the item holds. */
   held: string[]
   free: ReturnType<typeof useFreeTags>
 }) {
+  const offered = releaseTags.filter((tag) => tag.appliesTo?.includes(kind) ?? true)
   const options: ReleaseTag[] = [
-    ...releaseTags,
+    ...offered,
     ...held
-      .filter((key) => !releaseTags.some((tag) => tag.key === key))
-      .map((key) => ({ key, label: key, hint: null })),
+      .filter((key) => !offered.some((tag) => tag.key === key))
+      .map(
+        (key) =>
+          releaseTags.find((tag) => tag.key === key) ?? {
+            key,
+            label: key,
+            hint: null,
+            appliesTo: null,
+          },
+      ),
   ]
 
   return (

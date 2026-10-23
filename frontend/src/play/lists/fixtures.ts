@@ -7,8 +7,13 @@ type Tag = Campaign['tags'][number]
 export type Npc = Campaign['npcs'][number]
 export type Thread = Campaign['threads'][number]
 
-export const leaderTag: Tag = { key: 'leader', label: 'Leader', hint: 'Runs a faction or a crew.' }
-export const allyTag: Tag = { key: 'ally', label: 'Ally', hint: null }
+export const leaderTag: Tag = {
+  key: 'leader',
+  label: 'Leader',
+  hint: 'Runs a faction or a crew.',
+  appliesTo: null,
+}
+export const allyTag: Tag = { key: 'ally', label: 'Ally', hint: null, appliesTo: null }
 
 export const miraNpc: Npc = {
   id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001',

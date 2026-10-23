@@ -11465,7 +11465,8 @@
                 "required": [
                     "key",
                     "label",
-                    "hint"
+                    "hint",
+                    "appliesTo"
                 ],
                 "properties": {
                     "key": {
@@ -11481,6 +11482,22 @@
                         "description": "Shown as a tooltip where Tags are chosen; null when the Tag has none.",
                         "type": "string",
                         "example": "Runs a faction or a crew.",
+                        "nullable": true
+                    },
+                    "appliesTo": {
+                        "description": "The entity kinds that may carry the Tag; null when it applies to every kind.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "character",
+                                "npc",
+                                "thread"
+                            ]
+                        },
+                        "example": [
+                            "npc"
+                        ],
                         "nullable": true
                     }
                 },

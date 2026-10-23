@@ -1,7 +1,7 @@
 # Feature: tooling-followups
 
 - **Locator:** `odd/tasks/tooling-followups.md` · Engram topic `odd/tooling-followups/tasks`
-- **Issue:** #254 · **Branch:** `chore/tooling-followups-1-tests` · **Status:** slice 1 in progress
+- **Issue:** #254 · **Branch:** `chore/tooling-followups-2-ci-cache` · **Status:** slice 2 in progress (slice 1 merged, PR #258)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7f
@@ -57,8 +57,8 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 | T2 | 1 | One e2e password default; `--reset-existing` seeding (Identity command, console option, `make e2e-seed`, README) | writer (delegated) | [x] | `9a3a2f9` |
 | T3 | 1 | Faster Studio editor Vitest tests | writer (delegated) | [x] | `58d5e73` |
 | T4 | 1 | Overlap deletions (a)–(c), `OwnedCampaignsTest`, Admin `LastActiveOwner` 409 API test | writer (delegated) | [x] | `80fd615` |
-| T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [x] | |
-| T6 | 2 | CI Docker layer caching, measured; merged only if it shortens wall time | writer (delegated) | [ ] | |
+| T5 | 1 | Slice 1 review fixes, if any; then the Admin 409 test dropped and follow-up #259 recorded (user's calls) | writer (delegated); parent, inline (test drop, roadmap) | [x] | `59b6cbd`, `6acf68a`, `7560a37` |
+| T6 | 2 | CI Docker layer caching, measured; merged only if it shortens wall time | parent, inline (two small CI files, design already measured) | [ ] | |
 
 ## Applicable checks
 
@@ -76,13 +76,15 @@ Do the tooling and test-suite items of issue #254: one e2e password default, see
 - 2026-10-23 T5: no RED (pinning tests). Added `CampaignJournalTest` (owner gets the campaign, another player's is not found) and a `ResetUserCredentials` handler case (last active owner reset to SOLO_PLAYER succeeds); docblocks say so.
 - 2026-10-23: the Admin `LastActiveOwner` 409 API test dropped (user's call: the faked race was too hacky); `AdminUsersApiTest` is back to its `main` version.
 - 2026-10-23: the 40% Studio Vitest target is moved to follow-up #259 (roadmap B7h, user's call): it needs a production render change, and Vitest no longer decides CI wall time (CI Vitest step 204s to 149s on #258; the Backend job, 322s, is now the slowest).
+- 2026-10-23: slice 1 merged (#258). Its CI run 39989156358: Frontend 276s (Vitest 149s), Full stack 277s (build and `up` 110s), Backend 322s (build and `up` 105s), so the Backend job now sets the wall time. In the Backend build, the php image takes about 86s, 73s of it the `install-php-extensions` layer.
+- 2026-10-23 T6: `compose.ci.yaml` adds GitHub Actions cache (`type=gha`, one scope per image, `mode=max`) to the php and node builds; CI adds it to `DOCKER_COMPOSE` and sets up a buildx builder plus the cache runtime token. The Makefile targets are unchanged (ADR 0008). Measurement: pending (first PR run fills the cache, a re-run measures it warm).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
-| 1 | `review-2be05bb2e09e0f68` | `be0f4f8`…`80fd615` (base `main` `3a94385`, 1,425 lines) | medium; approved and acknowledged. Findings: R3 journal ownership coverage (warning) and R3 reset bypasses the owner guard (suggestion), both fixed in T5 | [#258](https://github.com/iribarren/ogami/pull/258) |
+| 1 | `review-2be05bb2e09e0f68` | `be0f4f8`…`80fd615` (base `main` `3a94385`, 1,425 lines) | medium; approved and acknowledged. Findings: R3 journal ownership coverage (warning) and R3 reset bypasses the owner guard (suggestion), both fixed in T5 (`59b6cbd`). Reviews of the later candidates (T5; the test drop and #259 docs) offered and skipped by the user | [#258](https://github.com/iribarren/ogami/pull/258) |
 
 ## Next step
 
-Slice 1: user merges #258. Then T6 (slice 2): compare the job times of #258's CI run and decide on Docker layer caching.
+T6: compare a warm-cache CI run of slice 2's PR with run 39989156358; merge only if wall time drops.

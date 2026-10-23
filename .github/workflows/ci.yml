@@ -18,7 +18,8 @@ permissions:
 
 env:
   # Skip compose.override.yaml (host ports, Xdebug host mapping): CI needs none of it.
-  DOCKER_COMPOSE: docker compose -f compose.yaml
+  # compose.ci.yaml builds the images with the GitHub Actions layer cache.
+  DOCKER_COMPOSE: docker compose -f compose.yaml -f compose.ci.yaml
 
 jobs:
   backend:
@@ -33,6 +34,11 @@ jobs:
         with:
           path: backend/vendor
           key: vendor-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+
+      # A BuildKit builder that can read and write the GitHub Actions cache
+      # (compose.ci.yaml), and the runtime token that cache needs.
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3
 
       - name: Build and start php + database
         run: make build up SERVICES=php
@@ -60,6 +66,11 @@ jobs:
           # Holds the pnpm store too (it lives inside node_modules in the container).
           path: frontend/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+
+      # A BuildKit builder that can read and write the GitHub Actions cache
+      # (compose.ci.yaml), and the runtime token that cache needs.
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3
 
       - name: Build and start node
         run: make build up SERVICES=node
@@ -95,6 +106,11 @@ jobs:
         with:
           path: frontend/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+
+      # A BuildKit builder that can read and write the GitHub Actions cache
+      # (compose.ci.yaml), and the runtime token that cache needs.
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3
 
       - name: Build and start every service
         run: make build up

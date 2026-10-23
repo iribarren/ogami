@@ -1,0 +1,17 @@
+# CI only (.github/workflows/ci.yml adds it after compose.yaml): build the images
+# with GitHub Actions' cache, so unchanged layers (the PHP extensions take most of
+# the php build) are reused across runs. Local development never loads this file.
+services:
+  php:
+    build:
+      cache_from:
+        - type=gha,scope=php
+      cache_to:
+        - type=gha,scope=php,mode=max
+
+  node:
+    build:
+      cache_from:
+        - type=gha,scope=node
+      cache_to:
+        - type=gha,scope=node,mode=max

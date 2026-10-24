@@ -82,6 +82,8 @@ Items here come after every feature defined above. Build them in this order: fix
 | B7g | `release-api-followups` | Studio | — | Design first ([#255](https://github.com/iribarren/ogami/issues/255)): distinct publish 409 codes, what a release view shows, structured character creation (dice defaults, point budgets) and an NPC agenda from a later answer; record the decisions, then build or split into features |
 | B7h | `studio-editor-render-cost` | Studio | — | Profile the Studio editors and memoise the step and band cards so one input stops re-rendering the whole editor ([#259](https://github.com/iribarren/ogami/issues/259)). Faster Studio Vitest and possibly a snappier UI. Follow-up of `tooling-followups` (T3): worth it once the Frontend CI job is the slowest again or the editors feel slow |
 | B7i | `play-derived-formula` | Play | — | Stop showing a derived field's raw formula (`{angry} + {frightened} + …`) on the Play sheet: hide it in Play, spell it with field labels as the check card does, or show it on demand ([#265](https://github.com/iribarren/ogami/issues/265), `SheetFields.tsx:187-189`). Follow-up of `play-pbta-findings` (P20) |
+| B7j | `release-diff` | Studio | — | The release detail shows the keys added, removed and changed per section against the previous release ([#255](https://github.com/iribarren/ogami/issues/255), [ADR 0038](adr/0038-studio-release-view.md)). Follow-up of `release-api-followups` |
+| B7k | `structured-character-creation` | Rules | — | Structured creation methods: a number field with a dice default rolled on the server when the Character is created, a sheet-level point budget over a set of number fields, and formula maxima for per-Character tracks ([#255](https://github.com/iribarren/ogami/issues/255), [ADR 0027](adr/0027-sheet-effects.md)). Size L, with its own ADR; `percentile-horror` is the first user |
 | B8 | `rules-dice-pools` | Rules | B4 | Close the pool gaps of [ADR 0024](adr/0024-structured-checks-without-scripting.md) once, across the contract, Play, the Studio check editor and the release upgrade planner: a dice count read from the sheet, counting successes per die, pushed rolls (re-roll the dice that did not succeed) and conditions as sheet effects |
 | B8b | `rules-flow-choices` | Rules | B7 | Close the flow gaps `preset-pbta` found ([S11, S12](../odd/tasks/preset-pbta.md#studio-findings), [P6](../odd/tasks/preset-pbta.md#playtest-findings)) across the contract, Play, the Studio flow editor and the release upgrade planner: sheet effects on `choice` options and `prompt` answers (end-of-session XP questions), and a `check` step that offers a set of checks for the player to pick (a PbtA move rolled with any stat). Then rework `hearts-and-rapiers` in Studio to use them |
 | B9 | `preset-vaesen` | Preset | B8 | A Vaesen preset on the Year Zero SRD, under Free League's free license: d6 pools, sixes as successes, pushed rolls and conditions from B8 |
@@ -450,6 +452,18 @@ Start feature `release-api-followups` (ODD). Design first, for the items in GitH
 
 ```text
 Start feature `studio-editor-render-cost` (ODD). GitHub issue #259: the Studio editors re-render the whole editor on every input event, which dominates Vitest time and may slow the UI on large GameSystems. Profile one slow editor first, memoise the hot step and band cards, and measure the slowest Studio test files before and after with `--no-file-parallelism`. `fix/` branches.
+```
+
+**B7j. release-diff**
+
+```text
+Start feature `release-diff` (ODD). In Studio, the release detail shows what changed against the previous release: the keys added, removed and changed per section (the outline of ADR 0038 gives the keys and names; compare the stored content for "changed"). Read-only, no new persistence. Studio never reads Play, so no campaign counts. Decide with the user how a changed item is shown before building.
+```
+
+**B7k. structured-character-creation**
+
+```text
+Start feature `structured-character-creation` (ODD). Design first, with its own ADR that amends ADR 0027:32. Direction: a number field can have a dice default, rolled on the server through Randomness when the Character is created; a sheet-level point budget covers a set of number fields and is checked at creation; formula maxima for per-Character tracks join it. `percentile-horror` is the first user (3d6x5 characteristics and a point budget, today explained in a tip). Every layer: contract and publisher, anti-corruption layer, Play character creation, the Studio sheet builder and the release upgrade planner (ADR 0035). Size L: slice it.
 ```
 
 **B8. rules-dice-pools**

@@ -16,6 +16,7 @@ final readonly class AddCharacter implements Command
      * @param list<string> $tags     release Tag keys of the pinned release
      * @param list<string> $freeTags
      * @param array<mixed> $values   sheet field key to value; a missing key takes the field default
+     * @param ?string      $method   "roll" or "points" (ADR 0040), null when the sheet needs no choice
      */
     public function __construct(
         public string $campaignId,
@@ -25,6 +26,7 @@ final readonly class AddCharacter implements Command
         public array $tags,
         public array $freeTags,
         public array $values,
+        public ?string $method = null,
     ) {
     }
 }

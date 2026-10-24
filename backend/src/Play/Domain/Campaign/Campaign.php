@@ -6,8 +6,10 @@ namespace App\Play\Domain\Campaign;
 
 use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
+use App\Play\Domain\Campaign\Characters\CharacterCreation;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\CharacterValues;
+use App\Play\Domain\Campaign\Characters\CreationMethod;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\Facts\Fact;
@@ -749,18 +751,22 @@ final class Campaign
 
     /**
      * Promotes the Npc to a new Character: its name, Tags and free tags, the default of every
-     * field of the pinned release's sheet, and the Npc recorded as its origin. The Npc, open or
+     * field of the pinned release's sheet (a dice default is rolled, a start max evaluated, as when
+     * a player creates by roll), and the Npc recorded as its origin. The Npc, open or
      * closed, ends closed and records the Character. While a session is under way the Character
      * joins its party and the current scene's cast, where it takes the Npc's place. All or nothing.
      *
+     * @param ?RandomNumberGenerator $random the source the sheet's dice defaults roll with
+     *
      * @throws UnknownNpc             when the campaign holds no Npc with this id
+     * @throws InvalidCharacter       when the sheet's start max cannot be computed
      * @throws NpcAlreadyPromoted     when the Npc was promoted already
      * @throws CampaignLimitReached   when the campaign already holds 100 Characters
      * @throws CharacterAlreadyExists when the campaign holds a Character with this id
      * @throws UnknownReleaseTag      when a Tag key is not in the pinned release
      * @throws TagNotApplicable       when a Tag is limited to other kinds than the entity's
      */
-    public function promoteNpc(NpcId $npcId, CharacterId $characterId, GameSystemSnapshot $release): Character
+    public function promoteNpc(NpcId $npcId, CharacterId $characterId, GameSystemSnapshot $release, ?RandomNumberGenerator $random = null): Character
     {
         $this->assertPinned($release);
         $index = $this->npcIndex($npcId);
@@ -776,7 +782,7 @@ final class Campaign
         $npc = $this->npcs[$index];
         // A Tag limited to NPCs stays on the NPC: the Character takes the Tags that apply to Characters.
         $tags = array_values(array_filter($npc->tags(), static fn (string $key): bool => !($tag = $release->tag($key)) instanceof Tag || $tag->isFor(ItemKind::Character)));
-        $character = Character::of($characterId, $npc->name(), $tags, $npc->freeTags(), CharacterValues::resolve($release->sheet(), []), $npcId);
+        $character = Character::of($characterId, $npc->name(), $tags, $npc->freeTags(), CharacterCreation::promoted($release->sheet(), $random), $npcId);
         ItemRules::assertInRelease($character->tags(), $release, ItemKind::Character);
         $this->npcs = $this->replaced($this->npcs, $index, $promoted);
         $this->characters = [...$this->characters, $character];
@@ -801,19 +807,22 @@ final class Campaign
     /**
      * Adds a Character at the end of the list. Values not given take the field default; the
      * Character stores one value per field of the pinned release's sheet. While a session is under
-     * way the Character joins its party and the current scene's cast.
+     * way the Character joins its party and the current scene's cast. The sheet may have the server
+     * roll fields and start tracks full from a formula, and have the player spend a point budget
+     * ($method, ADR 0040).
      *
-     * @param list<string> $tags     release Tag keys of the pinned release
-     * @param list<string> $freeTags
-     * @param array<mixed> $values   field key to value
+     * @param list<string>           $tags     release Tag keys of the pinned release
+     * @param list<string>           $freeTags
+     * @param array<mixed>           $values   field key to value
+     * @param ?RandomNumberGenerator $random   the source the sheet's dice defaults roll with
      *
-     * @throws InvalidCharacter       when a value breaks a rule or does not fit the sheet
+     * @throws InvalidCharacter       when a value breaks a rule or does not fit the sheet, or the method does not fit it
      * @throws UnknownReleaseTag      when a Tag key is not in the pinned release
      * @throws TagNotApplicable       when a Tag is limited to other kinds than the entity's
      * @throws CharacterAlreadyExists when the campaign holds a Character with this id
      * @throws CampaignLimitReached   when the campaign already holds 100 Characters
      */
-    public function addCharacter(CharacterId $id, string $name, array $tags, array $freeTags, array $values, GameSystemSnapshot $release): Character
+    public function addCharacter(CharacterId $id, string $name, array $tags, array $freeTags, array $values, GameSystemSnapshot $release, ?CreationMethod $method = null, ?RandomNumberGenerator $random = null): Character
     {
         $this->assertPinned($release);
         if (\count($this->characters) >= self::MAX_CHARACTERS) {
@@ -824,7 +833,7 @@ final class Campaign
             throw CharacterAlreadyExists::withId($id);
         }
 
-        $character = Character::of($id, $name, $tags, $freeTags, CharacterValues::resolve($release->sheet(), $values));
+        $character = Character::of($id, $name, $tags, $freeTags, CharacterCreation::values($release->sheet(), $values, $method, $random));
         ItemRules::assertInRelease($character->tags(), $release, ItemKind::Character);
         $this->characters = [...$this->characters, $character];
         $this->joinCurrentSession($id);

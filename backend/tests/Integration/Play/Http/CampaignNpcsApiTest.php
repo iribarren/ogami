@@ -13,9 +13,13 @@ use App\Play\Infrastructure\Http\CampaignNpcsController;
 use App\Play\Infrastructure\Http\NpcResponse;
 use App\Play\Infrastructure\Http\TagResponse;
 use App\Play\Infrastructure\Http\ThreadResponse;
+use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
+use App\Tests\Support\Play\CreationRelease;
 use App\Tests\Support\Play\ReleaseViews;
+use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
+use App\Tests\Support\Studio\ReleaseArrays;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -42,12 +46,22 @@ final class CampaignNpcsApiTest extends WebTestCase
     private const string MALFORMED = 'Send a JSON object with a string "name" and, optionally, a string or null "agenda", lists of strings or null "tags" and "freeTags", and an integer or null "weight", such as {"name": "Mira", "tags": ["ally"], "weight": 2}.';
 
     private KernelBrowser $client;
+    private RescriptableRandomNumberGenerator $random;
 
     protected function setUp(): void
     {
         $this->client = self::createClient();
         $this->client->disableReboot();
+        $this->random = new RescriptableRandomNumberGenerator();
+        self::getContainer()->set(RandomNumberGenerator::class, $this->random);
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001', ReleaseViews::fixtureContent('valid/v2-threads-npcs'), false));
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9012', CreationRelease::content(), false));
+        $unreadableStart = ReleaseArrays::with(CreationRelease::content(), 'gameSystem', ['key' => 'zero-start', 'name' => 'Zero start', 'description' => 'A start max that divides by a number field.']);
+        $unreadableStart = ReleaseArrays::with($unreadableStart, 'sheet', ['fields' => [
+            ['key' => 'zero', 'label' => 'Zero', 'type' => 'number'],
+            ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'startMax' => ['formula' => '10/{zero}']],
+        ]]);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9013', $unreadableStart, false));
     }
 
     #[Test]
@@ -371,6 +385,38 @@ final class CampaignNpcsApiTest extends WebTestCase
         self::assertSame(['open', null], $this->connection()->fetchNumeric("SELECT npcs->0->>'status', npcs->0->>'promotedTo' FROM play_campaign WHERE id = ?", [$id]));
     }
 
+    #[Test]
+    public function promotingAnNpcRollsTheDiceDefaultsAndStartsTheTrackFull(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::KEY);
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+        // Strength 3d6 = 4+5+6 -> 75, Constitution 2d6 = 3+4 -> 65, Luck 3d6 = 1+1+2 -> 20: the budget is not spent.
+        $this->random->script(4, 5, 6, 3, 4, 1, 1, 2);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['role' => '', 'str' => 75, 'con' => 65, 'luck' => 20, 'hp' => ['current' => 70, 'max' => 70]], $this->json()['values'] ?? null);
+    }
+
+    #[Test]
+    public function promotingAnNpcOnASheetWhoseStartMaxCannotBeComputedIsUnprocessableAndChangesNothing(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign('zero-start');
+        $npcId = $this->addNpc($id, ['name' => 'Mira']);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs/%s/promote', $id, $npcId));
+
+        self::assertResponseStatusCodeSame(422);
+        $error = $this->json()['error'] ?? null;
+        self::assertIsString($error);
+        self::assertStringStartsWith('The start max of field "hp" cannot be computed', $error);
+        self::assertSame(0, $this->connection()->fetchOne('SELECT jsonb_array_length(characters) FROM play_campaign WHERE id = ?', [$id]));
+        self::assertSame(['open', null], $this->connection()->fetchNumeric("SELECT npcs->0->>'status', npcs->0->>'promotedTo' FROM play_campaign WHERE id = ?", [$id]));
+    }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -547,9 +593,9 @@ final class CampaignNpcsApiTest extends WebTestCase
         return self::getContainer()->get(EntityManagerInterface::class)->getConnection();
     }
 
-    private function createCampaign(): string
+    private function createCampaign(string $gameSystemKey = 'threads-npcs'): string
     {
-        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => 'threads-npcs']);
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => $gameSystemKey]);
         self::assertResponseStatusCodeSame(201);
         $id = $this->json()['id'] ?? null;
         self::assertIsString($id);

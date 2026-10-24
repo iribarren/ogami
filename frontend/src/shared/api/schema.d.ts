@@ -1719,6 +1719,11 @@ export interface components {
                     max: number;
                 };
             } | null;
+            /**
+             * @description How to create the Character when adding it (ADR 0040): "roll" has the server roll the sheet's dice defaults, "points" spends the sheet's point budget (a value for each budget field). Required when the sheet's budget covers a field with a dice default; refused when the sheet cannot create that way. Ignored when editing.
+             * @enum {string|null}
+             */
+            method?: "roll" | "points" | null;
         };
         CharacterResponse: {
             /** Format: uuid */
@@ -1774,6 +1779,17 @@ export interface components {
              * @description The id of the NPC this Character was promoted from; null when it was created as a Character.
              */
             promotedFrom: string | null;
+        };
+        /** @enum {string} */
+        CharacterCreationErrorCode: "creation_method_required" | "creation_method_unavailable" | "value_set_at_creation" | "outside_creation_bounds" | "point_budget_exceeded";
+        CharacterCreationErrorResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            /**
+             * @description Which rule of structured character creation was broken; the client branches on this, never on the message. Absent for any other refusal.
+             * @enum {unknown|null}
+             */
+            code?: components["schemas"]["CharacterCreationErrorCode"] | null;
         };
         CampaignSummaryResponse: {
             /** Format: uuid */
@@ -5914,13 +5930,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, "values" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release. */
+            /** @description A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, "values" not an object, an unknown sheet field, a value of the wrong type or out of its bounds), the "method" is unknown or a Tag is not in the pinned release, or a rule of structured character creation is broken (the body then has a code): the method is missing or not available on the sheet, a value is sent for a field the server sets, a point budget value is out of bounds or the budget is exceeded. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["CharacterCreationErrorResponse"];
                 };
             };
         };
@@ -7429,7 +7445,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The new Character: the NPC's name, Tags and free tags, the default of every sheet field, and the NPC as its origin. Any request body is ignored. */
+            /** @description The new Character: the NPC's name, Tags and free tags, the default of every sheet field (dice defaults rolled, start max tracks full), and the NPC as its origin. Any request body is ignored. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -7474,7 +7490,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A Tag of the NPC is not in the pinned release. */
+            /** @description A Tag of the NPC is not in the pinned release, or the sheet's start max cannot be computed. */
             422: {
                 headers: {
                     [name: string]: unknown;

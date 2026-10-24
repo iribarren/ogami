@@ -1105,11 +1105,11 @@
                         }
                     },
                     "422": {
-                        "description": "A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, \"values\" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release.",
+                        "description": "A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, \"values\" not an object, an unknown sheet field, a value of the wrong type or out of its bounds), the \"method\" is unknown or a Tag is not in the pinned release, or a rule of structured character creation is broken (the body then has a code): the method is missing or not available on the sheet, a value is sent for a field the server sets, a point budget value is out of bounds or the budget is exceeded.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/CharacterCreationErrorResponse"
                                 }
                             }
                         }
@@ -3038,7 +3038,7 @@
                 ],
                 "responses": {
                     "201": {
-                        "description": "The new Character: the NPC's name, Tags and free tags, the default of every sheet field, and the NPC as its origin. Any request body is ignored.",
+                        "description": "The new Character: the NPC's name, Tags and free tags, the default of every sheet field (dice defaults rolled, start max tracks full), and the NPC as its origin. Any request body is ignored.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3088,7 +3088,7 @@
                         }
                     },
                     "422": {
-                        "description": "A Tag of the NPC is not in the pinned release.",
+                        "description": "A Tag of the NPC is not in the pinned release, or the sheet's start max cannot be computed.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10147,6 +10147,15 @@
                                 }
                             ]
                         }
+                    },
+                    "method": {
+                        "description": "How to create the Character when adding it (ADR 0040): \"roll\" has the server roll the sheet's dice defaults, \"points\" spends the sheet's point budget (a value for each budget field). Required when the sheet's budget covers a field with a dice default; refused when the sheet cannot create that way. Ignored when editing.",
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "roll",
+                            "points"
+                        ]
                     }
                 },
                 "type": "object"
@@ -10253,6 +10262,38 @@
                         "type": "string",
                         "format": "uuid",
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CharacterCreationErrorCode": {
+                "type": "string",
+                "enum": [
+                    "creation_method_required",
+                    "creation_method_unavailable",
+                    "value_set_at_creation",
+                    "outside_creation_bounds",
+                    "point_budget_exceeded"
+                ]
+            },
+            "CharacterCreationErrorResponse": {
+                "required": [
+                    "error"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "description": "Which rule of structured character creation was broken; the client branches on this, never on the message. Absent for any other refusal.",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CharacterCreationErrorCode"
+                            }
+                        ],
+                        "enum": "App\\Play\\Infrastructure\\Http\\CharacterCreationErrorCode"
                     }
                 },
                 "type": "object"

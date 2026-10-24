@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\Upgrade;
 
+use App\Formula\Domain\Formula;
+use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Characters\CharacterValues;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
+use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Lists\Npc;
@@ -67,7 +70,9 @@ final readonly class ReleaseUpgradePlanner
 
     /**
      * The Character's values on the target sheet: a kept value stays, the rest is changed as the
-     * decision table says. Derived fields hold no value and never appear.
+     * decision table says. Derived fields hold no value and never appear. An added field never
+     * rolls, so the plan stays deterministic (ADR 0040): a number field takes its default, a track
+     * with a start max starts full at that formula over the fitted values.
      */
     public function fit(Character $character): FittedValues
     {
@@ -75,6 +80,7 @@ final readonly class ReleaseUpgradePlanner
         $newSheet = $this->target->sheet();
         $values = [];
         $changes = [];
+        $starts = [];
         foreach ($newSheet->fields() as $field) {
             if ($field instanceof DerivedField) {
                 if (\array_key_exists($field->key, $stored)) {
@@ -86,6 +92,10 @@ final readonly class ReleaseUpgradePlanner
 
             if (!\array_key_exists($field->key, $stored)) {
                 $values[$field->key] = CharacterValues::initial($field);
+                if ($field instanceof TrackField && $field->startMax instanceof Formula) {
+                    $starts[$field->key] = [$field, \count($changes)];
+                }
+
                 $changes[] = new FieldChange($field->key, $field->label, FieldChangeKind::Added, null, $values[$field->key]);
 
                 continue;
@@ -97,11 +107,21 @@ final readonly class ReleaseUpgradePlanner
             }
         }
 
+        if ([] !== $starts) {
+            // Every start max reads number and derived fields only, so all see the fitted values.
+            $reader = SheetValues::of($newSheet, $values, []);
+            foreach ($starts as $key => [$field, $index]) {
+                $max = $this->startMax($field, $reader);
+                $values[$key] = ['current' => $max, 'max' => $max];
+                $changes[$index] = new FieldChange($key, $field->label, FieldChangeKind::Added, null, $values[$key]);
+            }
+        }
+
         foreach ($this->removedKeys($stored) as $key) {
             $changes[] = new FieldChange($key, $this->pinned->sheet()->field($key)->label ?? $key, FieldChangeKind::Removed, $stored[$key], null);
         }
 
-        return new FittedValues($values, $changes);
+        return new FittedValues($values, array_values($changes));
     }
 
     /**
@@ -165,6 +185,19 @@ final readonly class ReleaseUpgradePlanner
         }
 
         return $this->target->flow($flowKey)->key ?? $this->target->defaultFlow()->key ?? array_first($this->target->flows())->key ?? null;
+    }
+
+    /**
+     * The start max of a track added by the upgrade, inside the track limits; 0 when its formula
+     * cannot be computed, as a track added without one starts.
+     */
+    private function startMax(TrackField $field, SheetValues $reader): int
+    {
+        try {
+            return max(0, min(CharacterValues::MAX_TRACK, $field->startMax?->evaluate($reader) ?? 0));
+        } catch (FormulaEvaluationFailed) {
+            return 0;
+        }
     }
 
     /**

@@ -216,9 +216,9 @@ final class PlayContext implements Context
         $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases, $clock);
         $this->addNpc = new AddNpcHandler($owned, $campaigns, $this->releases);
         $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
-        $this->addCharacter = new AddCharacterHandler($owned, $campaigns, $this->releases);
+        $this->addCharacter = new AddCharacterHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator());
         $this->editCharacter = new EditCharacterHandler($owned, $campaigns, $this->releases);
-        $this->promoteNpc = new PromoteNpcHandler($owned, $campaigns, $this->releases);
+        $this->promoteNpc = new PromoteNpcHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator());
         $this->closeNpc = new CloseNpcHandler($owned, $campaigns);
         $this->reopenNpc = new ReopenNpcHandler($owned, $campaigns);
         $this->editCurrentSceneCast = new EditCurrentSceneCastHandler($owned, $campaigns);

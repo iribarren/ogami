@@ -1,7 +1,7 @@
 # Feature: structured-character-creation
 
 - **Locator:** `odd/tasks/structured-character-creation.md` · Engram topic `odd/structured-character-creation/tasks`
-- **Issue:** #270 · **Branch:** `feat/structured-character-creation-1-contract` · **Status:** in progress: slice 1
+- **Issue:** #270 · **Branch:** `feat/structured-character-creation-2-play-creation` · **Status:** in progress: slice 2
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7k (follow-up of `release-api-followups`, #255, and [ADR 0027](../../docs/adr/0027-sheet-effects.md))
@@ -61,12 +61,12 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; ADR 0040 (index; status lines of ADR 0027 and 0035; roadmap B7k link) | parent, inline | [x] | |
-| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
-| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [x] | |
-| T4 | 2 | Translator and Play sheet model read `roll`, `startMax` and `pointBudget` (fail closed on malformed) | | [ ] | |
-| T5 | 2 | Creation by method: `AddCharacterHandler` gets the random source; rolls, budget and `startMax` in the domain; NPC promotion; request `method` and 422 codes; API tests; regenerated OpenAPI and TS | | [ ] | |
-| T6 | 2 | Upgrade planner: added `startMax` track evaluated on the fitted values; added rolled number field takes its static initial value; plan tests | | [ ] | |
+| T1 | 1 | This feature doc; ADR 0040 (index; status lines of ADR 0027 and 0035; roadmap B7k link) | parent, inline | [x] | d9151ad |
+| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [x] | 7c05612 |
+| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [x] | 83f1407, 39af8f4 |
+| T4 | 2 | Translator and Play sheet model read `roll`, `startMax` and `pointBudget` (fail closed on malformed) | writer (delegated) | [x] | |
+| T5 | 2 | Creation by method: `AddCharacterHandler` gets the random source; rolls, budget and `startMax` in the domain; NPC promotion; request `method` and 422 codes; API tests; regenerated OpenAPI and TS | writer (delegated) | [x] | |
+| T6 | 2 | Upgrade planner: added `startMax` track evaluated on the fitted values; added rolled number field takes its static initial value; plan tests | writer (delegated) | [x] | |
 | T7 | 3 | Play creation form (Characters panel and `character` step): method choice, budget counter with creation bounds, rolled fields and `startMax` tracks shown as set at creation; fixtures, tests, story | | [ ] | |
 | T8 | 3 | `percentile-horror`: dice defaults, budget "Characteristic points" 460 (15–90), `startMax` for Hit and Magic points, Luck rolled by the `you` step effect, shorter tip; preset flow test | | [ ] | |
 | T9 | 4 | Studio point budget panel in the sheet builder | | [ ] | |
@@ -91,12 +91,16 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 
 - 2026-10-24: T2 done. Schema v2 gains `numberField.roll`, `trackField.startMax` and `sheet.pointBudget`; Studio validates them (`SheetFields`, `Formulas::startMax`, new `PointBudget`); drafts refuse deleting or renaming a field read by a `startMax` formula or listed in the budget; contract doc section added. RED: the new unit tests failed before the validator (unknown property, missing class), GREEN after. The translator test for the three refusals passed first time (Play unchanged). No OpenAPI change: Studio sheet fields cross the API as free-form objects.
 - 2026-10-24: T3 done. `sheetDraft` reads and writes `roll` and a track max mode (fixed, each Character, formula at creation); the dialog has a "Dice default" input and a "Max is" select with a `FormulaInput` over number and derived fields; server paths such as `roll.dice` land on their inputs. Dialog and draft tests written with the code, so they passed first time (no RED).
+- 2026-10-24: Slice 1 review fixes done (start max walk memoized per derived key; diamond and check-value cases). T4 done. The translator reads `roll`, `startMax` and `pointBudget` into `NumberField::$roll`, `TrackField::$startMax` and the new `PointBudget` on `SheetTemplate`; malformed shapes (types, unknown sub-keys, `startMax` with `max`, budget over a non-number or repeated field) are refused. Not exposed in API responses. No RED observed: the tests were written with the code and passed first time (the old refusal cases in the layout test were removed).
+- 2026-10-24: T5 done. `CharacterCreation` (domain) rolls dice defaults with the injected source (clamped to the field's own bounds), checks the budget and evaluates `startMax` after the other values (clamped 0..999; a formula that fails refuses the Character); `AddCharacterHandler` and `PromoteNpcHandler` take the `RandomNumberGenerator`; the request gains a nullable `method`; 422 bodies carry `{error, code}` for the five ADR 0040 codes (`CharacterCreationErrorCode`, derived from `InvalidCharacter::$refusal`), other 422s stay `{error}`. Method rule: no budget means `points` is unavailable (`roll` and null create as before); a budget with a rolled field needs `roll` or `points`; a budget with no rolled field is spent implicitly (`roll` unavailable, null or `points` accepted). By points every budget field needs a value (a missing one is `outside_creation_bounds`, not its default); a value for any server-set field is `value_set_at_creation`; edits are unchanged. Promotion rolls every dice default whatever the budget. Unknown `method` is a plain 422, a non-string a 400. Not exposed in API responses. Domain, handler, API (each code, promotion) tests; RED not observed: tests were written with the code, a first run failed only on test fixtures (DerivedField signature, NPC release id).
+- 2026-10-24: T6 done. An added `startMax` track starts full at its formula over the fitted values (clamped 0..999; an unreadable formula gives 0, a plan never fails); an added number field with `roll` already took `NumberField::initial()` (default, else 0 inside the bounds), so only a test was needed; the fingerprint is unchanged for releases without the new properties. RED: the start max plan test failed before the planner change (1 failure), the rolled-number test passed first time (existing behaviour). A field that is Reset into a `startMax` track (type change) still starts at 0.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
+| 1 | `review-7ab9c67fe0dd9325` (medium) | Approved and acknowledged. WARNING R3-startmax-unmemoized-walk (`Formulas.php:156-164`, the "known at creation" walk is not memoized per derived key) and SUGGESTION R3-startmax-check-ref-untested (`ReleaseContentCreationTest.php:159-168`, no check-reference case): fixed in slice 2 | #271 |
 
 ## Next step
 
-Slice 1: T2 (contract and publisher), T3 (Studio field dialog).
+Slice 2: slice 1 review fixes, T4 (translator and Play sheet model), T5 (creation by method), T6 (upgrade planner).

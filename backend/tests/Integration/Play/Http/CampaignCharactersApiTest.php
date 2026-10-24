@@ -14,9 +14,12 @@ use App\Play\Infrastructure\Http\CampaignNpcsController;
 use App\Play\Infrastructure\Http\CharacterResponse;
 use App\Play\Infrastructure\Http\PinnedReleaseResponse;
 use App\Play\Infrastructure\Http\SheetFieldResponse;
+use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
+use App\Tests\Support\Play\CreationRelease;
 use App\Tests\Support\Play\ReleaseViews;
+use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
 use App\Tests\Support\Studio\ReleaseArrays;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -58,13 +61,17 @@ final class CampaignCharactersApiTest extends WebTestCase
     ];
 
     private KernelBrowser $client;
+    private RescriptableRandomNumberGenerator $random;
 
     protected function setUp(): void
     {
         $this->client = self::createClient();
         $this->client->disableReboot();
+        $this->random = new RescriptableRandomNumberGenerator();
+        self::getContainer()->set(RandomNumberGenerator::class, $this->random);
         $content = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-sheet'), 'sceneTypes', []);
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9101', $content, false));
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', CreationRelease::content(), false));
     }
 
     #[Test]
@@ -592,6 +599,112 @@ final class CampaignCharactersApiTest extends WebTestCase
         }
     }
 
+    #[Test]
+    public function aCharacterCreatedByRollGetsTheRolledValuesAndAFullTrack(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::KEY);
+        // Strength 3d6 = 4+5+6 -> 75, Constitution 2d6 = 3+4 -> 65, Luck 3d6 = 1+1+2 -> 20.
+        $this->random->script(4, 5, 6, 3, 4, 1, 1, 2);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 'roll', 'values' => ['role' => 'Spy']]);
+
+        self::assertResponseStatusCodeSame(201);
+        $character = $this->json();
+        self::assertSame(['role' => 'Spy', 'str' => 75, 'con' => 65, 'luck' => 20, 'hp' => ['current' => 70, 'max' => 70]], $character['values'] ?? null);
+        self::assertSame(['half' => 70], $character['derived'] ?? null);
+        self::assertSame([$character], $this->campaignCharacters($id));
+    }
+
+    #[Test]
+    public function aCharacterCreatedByPointsKeepsTheSpentValuesAndTheServerRollsTheRest(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::KEY);
+        // Only Luck is rolled: 3+3+3 -> 45.
+        $this->random->script(3, 3, 3);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 60]]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['role' => '', 'str' => 40, 'con' => 60, 'luck' => 45, 'hp' => ['current' => 50, 'max' => 50]], $this->json()['values'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string, string, string}> the body, the campaign's game system, the code and the message
+     */
+    public static function refusedCreations(): iterable
+    {
+        yield 'no method on a sheet that offers both' => [['name' => 'Vi'], CreationRelease::KEY, 'creation_method_required', 'Choose how to create the Character: "roll" or "points".'];
+        yield 'points on a sheet without a budget' => [['name' => 'Vi', 'method' => 'points'], 'sheet', 'creation_method_unavailable', 'This sheet has no point budget to spend; create the Character without a method or by "roll".'];
+        yield 'a value for a rolled field' => [['name' => 'Vi', 'method' => 'roll', 'values' => ['luck' => 50]], CreationRelease::KEY, 'value_set_at_creation', 'Field "luck" is set when the Character is created; send no value for it.'];
+        yield 'a value for a rolled budget field when rolling' => [['name' => 'Vi', 'method' => 'roll', 'values' => ['str' => 50]], CreationRelease::KEY, 'value_set_at_creation', 'Field "str" is set when the Character is created; send no value for it.'];
+        yield 'a value for a start max track' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 40, 'hp' => ['current' => 5, 'max' => 5]]], CreationRelease::KEY, 'value_set_at_creation', 'Field "hp" is set when the Character is created; send no value for it.'];
+        yield 'a point value below the budget minimum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 10, 'con' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "str" must be 15 to 90 when spending points, got 10.'];
+        yield 'a point value above the budget maximum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 91]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" must be 15 to 90 when spending points, got 91.'];
+        yield 'a missing point value' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" is part of the point budget: give it a value.'];
+        yield 'more points than the budget' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 50, 'con' => 51]], CreationRelease::KEY, 'point_budget_exceeded', 'The point budget allows 100 points, 101 spent.'];
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    #[Test]
+    #[DataProvider('refusedCreations')]
+    public function aBrokenCreationRuleIsUnprocessableWithItsCodeAndChangesNothing(array $body, string $gameSystemKey, string $code, string $message): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign($gameSystemKey);
+        $this->random->script(1, 1, 1, 1, 1, 1, 1, 1);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), $body);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => $message, 'code' => $code], $this->json());
+        self::assertSame([], $this->campaignCharacters($id));
+    }
+
+    #[Test]
+    public function aMethodTheServerDoesNotKnowIsUnprocessableAndOneOfTheWrongTypeIsMalformed(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::KEY);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 'dice']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => 'The creation method is "roll" or "points".'], $this->json());
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 7]);
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame([], $this->campaignCharacters($id));
+    }
+
+    #[Test]
+    public function aSheetWithoutCreationRulesIgnoresAMethodOfRollAndCreatesAsBefore(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 'roll']);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(self::DEFAULT_VALUES, $this->json()['values'] ?? null);
+    }
+
+    #[Test]
+    public function editingACharacterStillAcceptsAnyValueOfARolledField(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::KEY);
+        $this->random->script(4, 5, 6, 3, 4, 1, 1, 2);
+        $characterId = $this->addCharacter($id, ['name' => 'Vi', 'method' => 'roll']);
+
+        $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/characters/%s', $id, $characterId), ['name' => 'Vi', 'values' => ['str' => 99, 'con' => 1, 'luck' => 7, 'hp' => ['current' => 3, 'max' => 90]]]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['role' => '', 'str' => 99, 'con' => 1, 'luck' => 7, 'hp' => ['current' => 3, 'max' => 90]], $this->json()['values'] ?? null);
+    }
+
     /**
      * @param array<string, mixed> $body
      */
@@ -679,9 +792,9 @@ final class CampaignCharactersApiTest extends WebTestCase
         return self::getContainer()->get(EntityManagerInterface::class)->getConnection();
     }
 
-    private function createCampaign(): string
+    private function createCampaign(string $gameSystemKey = 'sheet'): string
     {
-        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => 'sheet']);
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => $gameSystemKey]);
         self::assertResponseStatusCodeSame(201);
         $id = $this->json()['id'] ?? null;
         self::assertIsString($id);

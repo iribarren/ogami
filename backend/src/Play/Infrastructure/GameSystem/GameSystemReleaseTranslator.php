@@ -59,6 +59,7 @@ use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\PointBudget;
 use App\Play\Domain\GameSystem\Sheet\SheetGroup;
 use App\Play\Domain\GameSystem\Sheet\SheetLayout;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -110,11 +111,16 @@ final readonly class GameSystemReleaseTranslator
     private const int MAX_TEXT_FIELD_LENGTH = 2000;
     private const int MAX_LIST_FIELD_ITEMS = 100;
     private const int MAX_TRACK_FIELD_MAX = 999;
+    // The structured character creation limits of the contract (ADR 0040).
+    private const int MAX_ROLL_DICE_LENGTH = 100;
+    private const int MAX_START_MAX_FORMULA_LENGTH = 200;
+    private const int MAX_POINT_BUDGET_LABEL_LENGTH = 60;
+    private const int MAX_POINT_BUDGET_TOTAL = 1_000_000;
     private const array FIELD_PROPERTIES = [
-        'number' => ['min', 'max', 'default'],
+        'number' => ['min', 'max', 'default', 'roll'],
         'text' => ['multiline', 'maxLength'],
         'list' => ['itemLabel', 'maxItems'],
-        'track' => ['max'],
+        'track' => ['max', 'startMax'],
         'derived' => ['formula'],
     ];
 
@@ -766,7 +772,7 @@ final readonly class GameSystemReleaseTranslator
     {
         $sheet = $this->object($view, $value ?? [], 'sheet');
         foreach (array_keys($sheet) as $name) {
-            if (!\in_array($name, ['fields', 'columns', 'groups'], true)) {
+            if (!\in_array($name, ['fields', 'columns', 'groups', 'pointBudget'], true)) {
                 throw $this->invalid($view, 'sheet.'.$name, 'unknown property.');
             }
         }
@@ -790,7 +796,49 @@ final readonly class GameSystemReleaseTranslator
 
         $this->assertDerivedFieldsReadable($view, $fields, array_combine(array_keys($fields), $paths), $trackerKeys);
 
-        return new SheetTemplate(array_values($fields), $layout);
+        try {
+            return new SheetTemplate(array_values($fields), $layout, $this->pointBudget($view, $sheet['pointBudget'] ?? null));
+        } catch (\InvalidArgumentException $invalid) {
+            throw $this->invalid($view, 'sheet.pointBudget', $invalid->getMessage());
+        }
+    }
+
+    /**
+     * The point budget of the sheet (ADR 0040), or null when none is declared. Studio checks the
+     * bounds against the fields on publish; Play refuses the shapes it cannot represent.
+     */
+    private function pointBudget(PublishedReleaseView $view, mixed $value): ?PointBudget
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        $path = 'sheet.pointBudget';
+        $budget = $this->object($view, $value, $path);
+        $this->assertProperties($view, $budget, $path, ['label', 'total', 'fields', 'min', 'max']);
+
+        $keys = [];
+        foreach ($this->list($view, $budget['fields'] ?? null, $path.'.fields') as $index => $key) {
+            $keys[] = $this->key($view, $key, \sprintf('%s.fields[%d]', $path, $index));
+        }
+
+        if ([] === $keys || \count($keys) > self::MAX_SHEET_FIELDS) {
+            throw $this->invalid($view, $path.'.fields', \sprintf('must list between 1 and %d fields.', self::MAX_SHEET_FIELDS));
+        }
+
+        $min = $this->optionalInt($view, $budget['min'] ?? null, $path.'.min', -NumberField::LIMIT, NumberField::LIMIT);
+        $max = $this->optionalInt($view, $budget['max'] ?? null, $path.'.max', -NumberField::LIMIT, NumberField::LIMIT);
+        if (null !== $min && null !== $max && $max < $min) {
+            throw $this->invalid($view, $path.'.max', \sprintf('must be at least min (%d).', $min));
+        }
+
+        return new PointBudget(
+            $this->optionalInt($view, $budget['total'] ?? null, $path.'.total', 1, self::MAX_POINT_BUDGET_TOTAL) ?? throw $this->invalid($view, $path.'.total', 'required.'),
+            $keys,
+            null === ($budget['label'] ?? null) ? null : $this->boundedString($view, $budget['label'], $path.'.label', self::MAX_POINT_BUDGET_LABEL_LENGTH),
+            $min,
+            $max,
+        );
     }
 
     /**
@@ -1157,7 +1205,7 @@ final readonly class GameSystemReleaseTranslator
                 maxItems: $this->optionalInt($view, $field['maxItems'] ?? null, $path.'.maxItems', 1, self::MAX_LIST_FIELD_ITEMS),
             ),
             'derived' => new DerivedField(...$common, formula: $this->fieldFormula($view, $field['formula'] ?? null, $path.'.formula')),
-            default => new TrackField(...$common, max: $this->optionalInt($view, $field['max'] ?? null, $path.'.max', 1, self::MAX_TRACK_FIELD_MAX)),
+            default => $this->trackField($view, $common, $field, $path),
         };
     }
 
@@ -1187,7 +1235,43 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, $path.'.default', 'must be within min..max.');
         }
 
-        return new NumberField(...$common, min: $min, max: $max, default: $default);
+        $roll = $field['roll'] ?? null;
+        if (null !== $roll) {
+            $roll = $this->object($view, $roll, $path.'.roll');
+            $this->assertProperties($view, $roll, $path.'.roll', ['dice']);
+            if (\is_string($roll['dice'] ?? null) && mb_strlen($roll['dice']) > self::MAX_ROLL_DICE_LENGTH) {
+                throw $this->invalid($view, $path.'.roll.dice', \sprintf('must be at most %d characters.', self::MAX_ROLL_DICE_LENGTH));
+            }
+
+            $roll = $this->dice($view, $roll['dice'] ?? null, $path.'.roll.dice');
+        }
+
+        return new NumberField(...$common, min: $min, max: $max, default: $default, roll: $roll);
+    }
+
+    /**
+     * @param array{0: string, 1: string, 2: ?string, 3: ?string, span: int} $common key, label, hint, group, span
+     * @param array<mixed>                                                   $field
+     */
+    private function trackField(PublishedReleaseView $view, array $common, array $field, string $path): TrackField
+    {
+        $max = $this->optionalInt($view, $field['max'] ?? null, $path.'.max', 1, self::MAX_TRACK_FIELD_MAX);
+        $startMax = $field['startMax'] ?? null;
+        if (null === $startMax) {
+            return new TrackField(...$common, max: $max);
+        }
+
+        if (null !== $max) {
+            throw $this->invalid($view, $path.'.startMax', 'cannot be combined with max.');
+        }
+
+        $startMax = $this->object($view, $startMax, $path.'.startMax');
+        $this->assertProperties($view, $startMax, $path.'.startMax', ['formula']);
+        if (\is_string($startMax['formula'] ?? null) && mb_strlen($startMax['formula']) > self::MAX_START_MAX_FORMULA_LENGTH) {
+            throw $this->invalid($view, $path.'.startMax.formula', \sprintf('must be at most %d characters.', self::MAX_START_MAX_FORMULA_LENGTH));
+        }
+
+        return new TrackField(...$common, startMax: $this->fieldFormula($view, $startMax['formula'] ?? null, $path.'.startMax.formula'));
     }
 
     /**

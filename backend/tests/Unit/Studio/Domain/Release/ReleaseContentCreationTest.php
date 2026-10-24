@@ -160,6 +160,7 @@ final class ReleaseContentCreationTest extends TestCase
         yield 'not an object' => [['startMax' => '{half}'], 'sheet.fields[3].startMax'];
         yield 'bad syntax' => [['startMax' => ['formula' => '{half}+']], 'sheet.fields[3].startMax.formula'];
         yield 'unknown field' => [['startMax' => ['formula' => '{nobody}']], '{nobody}: unknown field "nobody"'];
+        yield 'a check value' => [['startMax' => ['formula' => '{check:difficulty}']], '{check:difficulty}: a start max formula cannot read a check value'];
         yield 'a track max' => [['startMax' => ['formula' => '{hp.max}']], '{hp.max}: a start max formula cannot read a track max'];
         yield 'a track' => [['startMax' => ['formula' => '{mp}']], '{mp}: field "mp" is a track field'];
         yield 'a text field' => [['startMax' => ['formula' => '{role}']], '{role}: field "role" is a text field'];
@@ -201,6 +202,26 @@ final class ReleaseContentCreationTest extends TestCase
         /** @var list<array<string, mixed>> $stored */
         $stored = $this->sheetOf($content)['fields'];
         self::assertSame(['formula' => '{bonus}+{str}'], $stored[4]['startMax'] ?? null);
+    }
+
+    #[Test]
+    public function aDerivedFieldSharedByTwoOthersIsJudgedOnceAndStillRefusedOverATrack(): void
+    {
+        $diamond = static fn (string $base): array => [
+            ['key' => 'str', 'label' => 'Strength', 'type' => 'number'],
+            ['key' => 'mp', 'label' => 'Magic points', 'type' => 'track'],
+            ['key' => 'shared', 'label' => 'Shared', 'type' => 'derived', 'formula' => $base],
+            ['key' => 'left', 'label' => 'Left', 'type' => 'derived', 'formula' => '{shared}+1'],
+            ['key' => 'right', 'label' => 'Right', 'type' => 'derived', 'formula' => '{shared}*2'],
+            ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'startMax' => ['formula' => '{left}+{right}']],
+        ];
+
+        $this->assertRefused($this->release($diamond('{mp}')), '{left}: derived field "left" reads {shared}');
+
+        $content = ReleaseContent::fromArray($this->release($diamond('{str}')));
+        /** @var list<array<string, mixed>> $stored */
+        $stored = $this->sheetOf($content)['fields'];
+        self::assertSame(['formula' => '{left}+{right}'], $stored[5]['startMax'] ?? null);
     }
 
     /**

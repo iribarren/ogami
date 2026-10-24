@@ -29,6 +29,7 @@ import { StudioError } from '../useGameSystems'
 import { SheetFieldDialog } from './SheetFieldDialog'
 import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
+import { SheetPointBudgetPanel } from './SheetPointBudgetPanel'
 import { SheetPreview } from './SheetPreview'
 import { useSheetSamples, type SampleValues, type SheetSamples } from './useSheetSamples'
 import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
@@ -206,6 +207,7 @@ function SheetFields({
           ))}
         </div>
       </div>
+      <SheetPointBudgetPanel gameSystemKey={gameSystemKey} sheet={data} />
       <SheetPreview sheet={data} samples={samples} />
     </section>
   )

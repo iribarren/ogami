@@ -683,6 +683,19 @@ export const sheet = {
   pointBudget: null,
 }
 
+/** The sheet with a point budget over Power and Dexterity, spent within 5 to 15 at creation. */
+export const sheetWithPointBudget = {
+  ...sheet,
+  version: 8,
+  pointBudget: {
+    label: 'Characteristic points',
+    total: 20,
+    fields: ['pow', 'dex'],
+    min: 5,
+    max: 15,
+  },
+}
+
 /** A sheet without declared groups: Play lists consecutive fields of one group together. */
 export const sheetUngrouped = {
   version: 4,

@@ -128,7 +128,7 @@ export function SheetLayoutPanel({
 }
 
 /** Refetches the sheet; calls `onLoaded` once it is the latest. A failed reload says so. */
-function ReloadLatest({
+export function ReloadLatest({
   gameSystemKey,
   onLoaded,
 }: {

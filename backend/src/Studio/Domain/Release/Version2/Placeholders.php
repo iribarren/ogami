@@ -57,4 +57,31 @@ final class Placeholders
             }
         }
     }
+
+    /**
+     * A "{step:key}" in a list that runs once reads the answer of a step that comes earlier in the
+     * list. The step itself and a later one are not answered yet when the text renders, so the
+     * placeholder could only show "—"; the one exception is the step's own effect text, which Play
+     * renders after the answer is recorded.
+     *
+     * @param array<string, int> $positions the position of each step key in the list
+     */
+    public static function checkAnswered(string $text, string $path, bool $effectText, array $positions, int $position): void
+    {
+        preg_match_all(self::PATTERN, $text, $matches, \PREG_SET_ORDER);
+        foreach ($matches as $match) {
+            $key = $match[2] ?? null;
+            if ('step' !== $match[1] || null === $key || !isset($positions[$key])) {
+                continue;
+            }
+
+            if ($positions[$key] > $position) {
+                throw InvalidReleaseContent::at($path, \sprintf('placeholder %s: step "%s" is answered after this one, so it can only render "—"', $match[0], $key));
+            }
+
+            if ($positions[$key] === $position && !$effectText) {
+                throw InvalidReleaseContent::at($path, \sprintf('placeholder %s: step "%s" is answered after this text is shown, so it can only render "—"', $match[0], $key));
+            }
+        }
+    }
 }

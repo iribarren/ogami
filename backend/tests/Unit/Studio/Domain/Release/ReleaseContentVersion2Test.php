@@ -107,6 +107,21 @@ final class ReleaseContentVersion2Test extends TestCase
     }
 
     /**
+     * The two-step phaseClosing list of the run-once "getaway" phase: "first", then "last".
+     *
+     * @param list<array<string, mixed>> $firstEffects
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function onceList(string $firstTitle, string $lastTitle = 'Last', array $firstEffects = []): array
+    {
+        return [
+            ['key' => 'first', 'kind' => 'prompt', 'title' => $firstTitle, 'effects' => $firstEffects],
+            ['key' => 'last', 'kind' => 'prompt', 'title' => $lastTitle],
+        ];
+    }
+
+    /**
      * The example plus a "noise" clock no flow uses and a "dawn" Scene Type no flow reaches.
      *
      * @return array<mixed>
@@ -179,6 +194,9 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'braces that are not placeholders' => [self::example('flows.0.phases.1.sceneOpening.1.prompt', 'A {Locked} door, {a b} and {}')];
         yield 'a step placeholder naming a step of a reachable Scene Type' => [self::example('flows.0.phases.0.sessionOpening.0.title', 'After {step:who-shoots}')];
         yield 'a tracker placeholder in effect text' => [self::example('sceneTypes.2.setup.0.effects.1.title', 'Alarm {tracker:alarm}')];
+        yield 'a step placeholder naming an earlier step of a run-once list' => [self::example('flows.0.phases.2.phaseClosing', self::onceList('First', 'Was {step:first} worth it?'))];
+        yield 'a step placeholder naming its own step in its effect text' => [self::example('flows.0.phases.2.phaseClosing.0.effects', [['kind' => 'sceneTitle', 'title' => 'You said {step:debrief}']])];
+        yield 'a step placeholder naming a later step of a list that repeats' => [self::example('flows.0.phases.0.sessionOpening', [['key' => 'recap', 'kind' => 'prompt', 'title' => 'Last time: {step:cliffhanger}'], ['key' => 'cliffhanger', 'kind' => 'prompt', 'title' => 'Cliffhanger']])];
         yield 'placeholders outside any flow naming the release' => [self::example('flows', [], self::scenes('sceneTypes.0.setup.0.prompt', '{tracker:heat} after {step:chase}'))];
     }
 
@@ -491,6 +509,9 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'answer placeholder in a step' => [self::example('sceneTypes.0.setup.0.tip', 'You said {answer}'), 'sceneTypes[0].setup[0].tip: placeholder {answer} is only allowed in effect text'];
         yield 'unknown tracker placeholder' => [self::example('sceneTypes.0.setup.0.title', 'At {tracker:noise}'), 'sceneTypes[0].setup[0].title: placeholder {tracker:noise}: unknown tracker "noise"'];
         yield 'unknown step placeholder' => [self::example('flows.0.phases.2.phaseClosing.0.title', 'Was {step:nowhere} worth it?'), 'flows[0].phases[2].phaseClosing[0].title: placeholder {step:nowhere}: unknown step "nowhere"'];
+        yield 'step placeholder naming a later step' => [self::example('flows.0.phases.2.phaseClosing', self::onceList('Was {step:last} worth it?')), 'flows[0].phases[2].phaseClosing[0].title: placeholder {step:last}: step "last" is answered after this one, so it can only render "—"'];
+        yield 'step placeholder naming its own step in its prompt' => [self::example('flows.0.phases.2.phaseClosing.0.prompt', 'You said {step:debrief}'), 'flows[0].phases[2].phaseClosing[0].prompt: placeholder {step:debrief}: step "debrief" is answered after this text is shown, so it can only render "—"'];
+        yield 'step placeholder naming a later step in effect text' => [self::example('flows.0.phases.2.phaseClosing', self::onceList('Fine', 'Last', [['kind' => 'sceneTitle', 'title' => 'Then {step:last}']])), 'flows[0].phases[2].phaseClosing[0].effects[0].title: placeholder {step:last}: step "last" is answered after this one, so it can only render "—"'];
         yield 'unknown placeholder outside any flow' => [self::scenes('sceneTypes.0.setup.0.prompt', 'At {step:nowhere}'), 'sceneTypes[0].setup[0].prompt: placeholder {step:nowhere}: unknown step "nowhere"'];
         yield 'tracker placeholder outside the flow' => [self::example('flows.0.phases.1.sceneOpening.1.prompt', 'Noise at {tracker:noise}', $noise), 'flows[0].phases[1].sceneOpening[1].prompt: placeholder {tracker:noise}: tracker "noise" is not one of the trackers of flow "heist"'];
         yield 'step placeholder outside the flow' => [self::example('flows.0.phases.2.phaseClosing.0.title', 'After {step:sunrise}', $noise), 'flows[0].phases[2].phaseClosing[0].title: placeholder {step:sunrise}: step "sunrise" is not in flow "heist" or its Scene Types'];

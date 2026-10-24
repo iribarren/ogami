@@ -63,7 +63,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 | T3 | 1 | Check band rows: extract `memo(BandRow)` from `checks/BandsEditor.tsx`, memoised formula diagnostics per row, stable `errors` and `onChange` in `ChecksTab`; render-count test | writer (delegated) | [x] | |
 | T4 | 1 | Sheet group cards: `memo(GroupFields)` with stable callbacks, `held` and `errors`; render-count test; update the "re-renders the whole editor" comment in `frontend/src/test/typeText.ts`; after-measurement of the five files | writer (delegated) | [x] | |
 | T5 | 1 | Test-time levers (user's call after T4 missed the target): React dev owner-stack capture off in `src/test/setup.ts`, `card()` in `StepListEditor.test.tsx` by label instead of role | parent, inline (two mechanical test edits, already profiled) | [x] | |
-| T6 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
+| T6 | 1 | Slice 1 review fixes: R3-001 `sameContent` compares non-plain values by reference, `useStableItems` documents its plain-data contract; R3-002 the ref-backed callbacks are documented as event-handler only | parent, inline (one helper, its test, two comments) | [x] | |
 
 ## Applicable checks
 
@@ -79,6 +79,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 - 2026-10-24 T4: RED on the previous code: editing group 2 of 3 drew 6 text fields instead of 1 (`SheetLayoutPanel.test.tsx`). GREEN after `memo(GroupFields)`, index-taking `useCallback` handlers over the functional `setDraft`, and stable per-group `errors` (`useStableItems`). The comment in `typeText.ts` now says the edited card and its editor re-render. `vitest run src/studio/sheet`: 11 files, 220 tests green.
 - 2026-10-24 After-measurement (`vitest run --no-file-parallelism`, five files, two runs; baseline in brackets): `StepListEditor` 26.0 / 26.0s [27.3], `ChecksTab` 20.2 / 20.4s [20.7], `FlowEditorPage` 17.4 / 17.5s [17.0], `SheetLayoutPanel` 15.1 / 15.2s [15.3], `SceneTypeEditorPage` 11.1 / 10.7s [14.2]; wall 96.4 / 96.1s [100.7], about 4.5% less. The 30% target is not met: the render count per input event is down to one card, but the time of these files is dominated by what is not card renders (mounting the editors, `user-event` and Radix interaction, the test API). The render-count tests are the acceptance check.
 - 2026-10-24 T5: no RED (speed only; no assertion changed). After the owner-stack pin in `src/test/setup.ts` and `card()` by label, the five files serially, two runs (T4 result, then the `main` baseline, in brackets): `StepListEditor` 19.2 / 19.6s [26.0; 27.3], `ChecksTab` 17.5 / 17.6s [20.3; 20.7], `FlowEditorPage` 14.7 / 15.4s [17.5; 17.0], `SheetLayoutPanel` 13.3 / 14.0s [15.2; 15.3], `SceneTypeEditorPage` 9.5 / 9.8s [10.9; 14.2]. Wall time 80.6 / 82.8s [96.3; 100.7], about 19% less than `main`. The 30% aim is not met; the floor is React dev rendering plus jsdom. Full Vitest: 125 files, 2,412 tests green (168.7s parallel). `make frontend-qa` passes.
+- 2026-10-24 T6: RED on the previous helper: the new `sameContent` test failed (`new Date(0)` vs `new Date(1)` counted as the same content). GREEN after non-plain objects compare by reference only: `useStableItems.test.ts` 5 tests, `narrative/steps` plus `BandsEditor` 184 tests green; `make frontend-qa` passes.
 
 ## Reviews
 

@@ -1,6 +1,10 @@
 import { useState } from 'react'
 
-/** Whether two values hold the same content: primitives, arrays and plain objects, compared deeply. */
+/**
+ * Whether two values hold the same content: primitives, arrays and plain objects, compared deeply.
+ * Anything else (a function, a Date, a Map, a class instance) is the same only when it is the same
+ * reference, so a changed one is never mistaken for an unchanged one.
+ */
 export function sameContent(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) {
     return true
@@ -16,6 +20,9 @@ export function sameContent(a: unknown, b: unknown): boolean {
       a.every((item, at) => sameContent(item, b[at]))
     )
   }
+  if (!isPlainObject(a) || !isPlainObject(b)) {
+    return false
+  }
   const left = a as Record<string, unknown>
   const right = b as Record<string, unknown>
   const keys = Object.keys(left)
@@ -25,10 +32,17 @@ export function sameContent(a: unknown, b: unknown): boolean {
   )
 }
 
+function isPlainObject(value: object): boolean {
+  const prototype: unknown = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
 /**
  * The items of a list that is rebuilt on every render, each keeping the reference it had last
  * time when its content is unchanged, so a memoised child that gets one item skips the render.
  * The array itself is new each time; hand its items to the children, not the array.
+ * Items must be plain data. A function or class instance built during render is new on every
+ * render, so it never matches and the update below would loop: build those outside render.
  */
 export function useStableItems<T>(items: T[]): T[] {
   const [kept, setKept] = useState(items)

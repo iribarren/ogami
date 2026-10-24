@@ -103,6 +103,8 @@ export function BandsEditor({
   const keyHintId = useId()
 
   // The rows are memoised, so what they call is stable and reads the latest bands from here.
+  // For event handlers only: a child's layout effect runs before this one in the same commit,
+  // so a callback called from there would still see the previous render's props.
   const latest = useRef({ bands, onChange })
   useLayoutEffect(() => {
     latest.current = { bands, onChange }

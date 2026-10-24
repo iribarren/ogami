@@ -18,6 +18,23 @@ describe('sameContent', () => {
     expect(sameContent([], {})).toBe(false)
     expect(sameContent(null, {})).toBe(false)
   })
+
+  it('compares what is not plain data by reference only', () => {
+    const day = new Date(0)
+    expect(sameContent(day, day)).toBe(true)
+    expect(sameContent(new Date(0), new Date(1))).toBe(false)
+    expect(sameContent(new Map([['a', 1]]), new Map([['a', 2]]))).toBe(false)
+    expect(sameContent(new Set([1]), new Set([2]))).toBe(false)
+    class Point {
+      readonly x: number
+      constructor(x: number) {
+        this.x = x
+      }
+    }
+    expect(sameContent(new Point(1), new Point(1))).toBe(false)
+    expect(sameContent({ at: new Date(0) }, { at: new Date(0) })).toBe(false)
+    expect(sameContent(Object.create(null), Object.create(null))).toBe(true)
+  })
 })
 
 describe('useStableItems', () => {

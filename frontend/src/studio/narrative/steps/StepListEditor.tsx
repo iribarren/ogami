@@ -623,6 +623,8 @@ export function StepListEditor({
         .filter((key) => key !== ''),
     ),
   )
+  // For event handlers only: a child's layout effect runs before this one in the same commit,
+  // so a callback called from there would still see the previous render's props.
   const latest = useRef({ steps, origins, onChange })
   useLayoutEffect(() => {
     latest.current = { steps, origins, onChange }

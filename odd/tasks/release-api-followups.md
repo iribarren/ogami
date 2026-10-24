@@ -28,7 +28,7 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 | Release view (ADR 0038, amends 0028's "viewed read-only (section counts)") | The release detail returns every summary field (it gains `librarySources`) plus an `outline`, keyed by section name like `sectionCounts`. Each section lists `{key, name}` in content order. `name` is the item's display name, or null when the item has none. `sectionCounts` stays. Studio's `ReleaseView` lists the outline instead of only counts. Out: a campaign count per release (Studio must not read Play: the dependency points the other way) and an HTTP download (ADR 0036 keeps export console-only). |
 | Release diff | Added, removed and changed keys per section against the previous release become a roadmap item (`release-diff`), not built here. |
 | Structured character creation | Becomes a roadmap item (`structured-character-creation`, L), with its own ADR in that feature. Direction: a number field can have a dice default, rolled on the server through Randomness when the Character is created. A sheet-level point budget covers a set of number fields and is checked at creation. Formula maxima for per-Character tracks join it (ADR 0027:32). |
-| NPC agenda from a later answer | No contract change. The contract doc describes the pattern: create the NPC in the step that has every answer it needs, and refer to earlier answers with `{step:key}`. Studio refuses a `{step:x}` placeholder in a step's texts or effects when `x` is that step itself or a step after it in the same flow, because such a placeholder can only render "—". This rule is safe because `next` must point forward (`Steps.php:81`). **Refined in T3:** Play records a step's answer before it renders that step's effects, so `{step:self}` is allowed in the step's own effect text and refused in its title, prompt and tip. Scene Types, sessions, scenes and looping phases repeat and can read a previous round's answer, so the rule covers only the `phaseOpening` and `phaseClosing` lists of a `mode: once` phase (the lists that run once, front to back); a key in another list is not checked. |
+| NPC agenda from a later answer | No contract change. The contract doc describes the pattern: create the NPC in the step that has every answer it needs, and refer to earlier answers with `{step:key}`. Studio refuses a `{step:x}` placeholder in a step's texts or effects when `x` is that step itself or a step after it in the same flow, because such a placeholder can only render "—". This rule is safe because `next` must point forward (`Steps.php:81`). **Refined in T3:** Play records a step's answer before it renders that step's effects, so `{step:self}` is allowed in the step's own effect text and refused in its title, prompt and tip. Scene Types, sessions, scenes and looping phases repeat and can read a previous round's answer, so the rule covers only the `phaseOpening` and `phaseClosing` lists of a `mode: once` phase (the lists that run once, front to back); a key in another list is not checked. **Refined in T5:** `phaseOpening` then `phaseClosing` count as one ordered sequence, so a closing step may name an opening step and an opening step may not name a closing one. |
 
 ## Constraints
 
@@ -51,7 +51,7 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 | T2 | 1 | `{error, code}` on the publish and restore 409s; PublishDialog and the restore UI branch on the code | writer (delegated) | [x] | |
 | T3 | 1 | Studio refuses forward and self `{step:x}` placeholders; the contract doc gains the NPC-agenda pattern note | writer (delegated) | [x] | |
 | T4 | 1 | Release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline | writer (delegated) | [x] | |
-| T5 | 1 | Review fixes, if any; closing doc commit | parent / writer | [ ] | |
+| T5 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [x] | |
 
 ## Acceptance criteria
 
@@ -70,8 +70,9 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 - 2026-10-24: Explored the four items of #255. The user approved every recommended decision. Feature doc written.
 - 2026-10-24: T1 done: ADRs 0037 and 0038 indexed, 0028 amended, roadmap B7j and B7k added.
 - 2026-10-24: T2 done: two enums and two response schemas (`PublishConflictCode`/`PublishConflictResponse`, `RestoreConflictCode`/`RestoreConflictResponse`) so each endpoint advertises only its own codes; PublishDialog and the restore dialog branch on `StudioError.code`; API test per code (the version race and the concurrent save reuse `duringRequest`).
-- 2026-10-24: T3 done: `Placeholders::checkAnswered`, called from `FlowReferences::checkFlow`; five unit cases RED then GREEN; all five presets still validate.
+- 2026-10-24: T3 done: `Placeholders::checkAnswered`, called from `FlowReferences::checkFlow`; three refusing and three accepting unit cases RED then GREEN; all five presets still validate.
 - 2026-10-24: T4 done: `ReleaseOutline::of` (Application, next to `SectionCounts`) builds the outline from the stored content for schema v1 and v2; the release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline and the library sources. Generated OpenAPI and TS in the next commit.
+- 2026-10-24: T5 done: review suggestions fixed: `phaseOpening` and `phaseClosing` of a run-once phase are checked as one sequence (opening may not name closing); API test that the release detail's `librarySources` equals the history row's.
 
 ## Reviews
 

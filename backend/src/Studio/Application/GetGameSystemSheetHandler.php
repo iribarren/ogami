@@ -34,6 +34,7 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
             1 === $gameSystem->schemaVersion() ? [] : $this->fields($sheet),
             1 === $gameSystem->schemaVersion() ? [] : $this->trackers($document),
             $latest instanceof \App\Studio\Domain\Release\GameSystemRelease ? $this->keys($this->fields($this->sheet($latest->content()->toArray()))) : [],
+            1 === $gameSystem->schemaVersion() ? null : $this->pointBudget($sheet['pointBudget'] ?? null),
         );
     }
 
@@ -45,6 +46,24 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
     private function sheet(array $document): array
     {
         return \is_array($document['sheet'] ?? null) ? $document['sheet'] : [];
+    }
+
+    /**
+     * @return SheetPointBudgetView|null null without a budget, or when the stored one has no integer total
+     */
+    private function pointBudget(mixed $budget): ?SheetPointBudgetView
+    {
+        if (!\is_array($budget) || !\is_int($budget['total'] ?? null)) {
+            return null;
+        }
+
+        return new SheetPointBudgetView(
+            \is_string($budget['label'] ?? null) ? $budget['label'] : null,
+            $budget['total'],
+            array_values(array_filter(\is_array($budget['fields'] ?? null) ? $budget['fields'] : [], \is_string(...))),
+            \is_int($budget['min'] ?? null) ? $budget['min'] : null,
+            \is_int($budget['max'] ?? null) ? $budget['max'] : null,
+        );
     }
 
     /**

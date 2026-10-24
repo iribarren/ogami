@@ -9077,6 +9077,216 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/sheet/point-budget": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Replace the point budget of the sheet of one of my GameSystem drafts: the total a Character spends over number fields at creation, with creation-only bounds for them",
+                "operationId": "saveSheetPointBudget",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveSheetPointBudgetRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet with the new point budget and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no integer \"expectedVersion\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields, layouts and point budgets.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The budget breaks the release contract's rules (the message starts with its path, \"sheet.pointBudget\" and the property: a missing or non-number total, a missing, non-list, unknown, non-number or repeated field, min above max, a total below the sum of the lowest values the fields can take), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Remove the point budget of the sheet of one of my GameSystem drafts: Characters are created without one",
+                "operationId": "removeSheetPointBudget",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet without a point budget and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields, layouts and point budgets.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The sheet has no point budget (the message starts with \"sheet.pointBudget\"), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/library-imports": {
             "get": {
                 "tags": [
@@ -16213,6 +16423,52 @@
                 },
                 "type": "object"
             },
+            "SheetPointBudgetResponse": {
+                "required": [
+                    "label",
+                    "total",
+                    "fields",
+                    "min",
+                    "max"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "What the points are called; null when the budget has no name.",
+                        "type": "string",
+                        "example": "Characteristic points",
+                        "nullable": true
+                    },
+                    "total": {
+                        "description": "The most a Character spends.",
+                        "type": "integer",
+                        "example": 460
+                    },
+                    "fields": {
+                        "description": "The keys of the number fields the budget covers.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "str",
+                            "con"
+                        ]
+                    },
+                    "min": {
+                        "description": "The least a covered field takes at creation; null when only the field's own minimum applies.",
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "The most a covered field takes at creation; null when only the field's own maximum applies.",
+                        "type": "integer",
+                        "example": 90,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemSheetResponse": {
                 "required": [
                     "version",
@@ -16221,7 +16477,8 @@
                     "groups",
                     "fields",
                     "trackers",
-                    "publishedFieldKeys"
+                    "publishedFieldKeys",
+                    "pointBudget"
                 ],
                 "properties": {
                     "version": {
@@ -16279,6 +16536,15 @@
                             "pow",
                             "hp"
                         ]
+                    },
+                    "pointBudget": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SheetPointBudgetResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What a Character spends over number fields at creation (ADR 0040); null when the sheet has no point budget."
                     }
                 },
                 "type": "object"
@@ -16396,6 +16662,56 @@
                         "description": "The draft version the client read; another save since then is refused (409).",
                         "type": "integer",
                         "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "SaveSheetPointBudgetRequest": {
+                "required": [
+                    "expectedVersion",
+                    "total",
+                    "fields"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "label": {
+                        "description": "What the points are called (1 to 60 characters); unnamed when left out.",
+                        "type": "string",
+                        "example": "Characteristic points",
+                        "nullable": true
+                    },
+                    "total": {
+                        "description": "The most a Character spends (1 to 1,000,000). It must cover the lowest values the fields can take.",
+                        "type": "integer",
+                        "example": 460
+                    },
+                    "fields": {
+                        "description": "The keys of the number fields the budget covers: at least one, distinct.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "str",
+                            "con"
+                        ],
+                        "minItems": 1
+                    },
+                    "min": {
+                        "description": "The least a covered field takes at creation, inside the field's own bounds; only the field's minimum when left out.",
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "The most a covered field takes at creation, inside the field's own bounds and at least min; only the field's maximum when left out.",
+                        "type": "integer",
+                        "example": 90,
+                        "nullable": true
                     }
                 },
                 "type": "object"

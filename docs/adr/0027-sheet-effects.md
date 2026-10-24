@@ -1,6 +1,6 @@
 # 0027. Sheet effects
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md)
 - **Date:** 2026-10-15
 
 ## Context
@@ -29,4 +29,4 @@ Almost every real system loses Hit points and Sanity: a failed Sanity check cost
 - Play's translator keeps refusing the `sheet` kind ("unknown effect kind") until slice 7 of `preset-real-system`, so a release using it can be published but not played. Slice 8 of `preset-real-system` made the `percentile-horror` preset the first to use it.
 - Slice 7 applies the effects in Play and records each change in the step's journal entry (field, before, after, dice rolled). An evaluation failure refuses the step and changes nothing.
 - A step's sheet change is a Character edit made by the Flow, not by the player; the player still edits the sheet by hand.
-- Structured creation methods (dice defaults, point budgets) and per-Character track maxima from formulas stay in the backlog.
+- Structured creation methods (dice defaults, point budgets) and per-Character track maxima from formulas are decided in [ADR 0040](0040-structured-character-creation.md).

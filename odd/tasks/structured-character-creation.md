@@ -1,0 +1,99 @@
+# Feature: structured-character-creation
+
+- **Locator:** `odd/tasks/structured-character-creation.md` · Engram topic `odd/structured-character-creation/tasks`
+- **Issue:** #270 · **Branch:** `feat/structured-character-creation-1-contract` · **Status:** in progress: slice 1
+- **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
+- **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
+- **Roadmap:** B7k (follow-up of `release-api-followups`, #255, and [ADR 0027](../../docs/adr/0027-sheet-effects.md))
+
+## Objective
+
+A sheet declares how a Character is created: number fields with a dice default rolled on the server, a point budget over a set of number fields, and per-Character tracks whose max starts from a formula. The server applies them when the Character is created. `percentile-horror` is the first user.
+
+## Problem and why
+
+- Percentile Horror explains creation in the `you` step tip (`backend/presets/percentile-horror.json:244`): roll 3d6 x 5 or (2d6 + 6) x 5 with the dice roller, or spend about 460 points (each characteristic 15–90), then copy `hp-max` and `mp-max` into the track maxima by hand. Nothing checks any of it.
+- A per-Character track (no `max`) starts at `{current: 0, max: 0}` (`CharacterValues::initial`, `backend/src/Play/Domain/Campaign/Characters/CharacterValues.php:110-119`); the player types the max (`frontend/src/shared/sheet/SheetFields.tsx:238-277`).
+- The Randomness kernel already parses `3d6*5` and `(2d6+6)*5` (`backend/src/Randomness/Domain/DiceExpression.php`); `3d6x5` is refused. Play already rolls `{dice}` sheet effects with the injected `RandomNumberGenerator` (`CompleteFlowStepHandler` → `Campaign::completeFlowStep` → `FlowRunContext::applySheetEffect`). `AddCharacterHandler` gets no random source today.
+- Creation (`Campaign::addCharacter`, `Campaign.php:816-833`), NPC promotion (`Campaign.php:779`) and the upgrade planner's added field (`ReleaseUpgradePlanner.php:87-89`) all fill missing values with `CharacterValues::initial`.
+- Play's translator refuses any new sheet or field property (`GameSystemReleaseTranslator.php:114-120`, `:767-772`, `:1131-1135`), so it keeps refusing until Play supports creation.
+
+## Decisions (approved by the user 2026-10-24)
+
+| Item | Decision |
+|---|---|
+| Methods | When the budget covers fields with a dice default, the player picks "Roll" or "Spend points". Rolled fields outside the budget are always rolled. The creation request gains a nullable method |
+| Budget | Spend at most `total`. The budget may set its own creation-only `min`/`max` per field (Percentile Horror: 15–90 while the fields stay 1–99) |
+| Track max | `startMax: {formula}` on a track (exclusive with `max`), evaluated once at creation after the rolls; the track starts full; its max then stays per-Character and editable |
+| Rolled values | The server always rolls dice-default fields; a value sent for one (or for a `startMax` track) is refused with 422. No journal entry |
+
+Decided while writing ADR 0040 (no product impact): one budget per sheet with an integer total; NPC promotion creates by `roll` and evaluates `startMax`; the upgrade planner never rolls (an added number field takes its static initial value, an added `startMax` track evaluates its formula on the fitted values); `3d6*5`, no `x` operator; new 422s carry ADR 0037 codes.
+
+## Contract (ADR 0040)
+
+Additive in schema version 2; existing releases keep their content hash.
+
+| Part | Shape | Rules |
+|---|---|---|
+| `number.roll` | optional `{dice}` | Kernel expression, 1–100 characters (same as `diceRef`). `default` stays allowed |
+| `track.startMax` | optional `{formula}` | 1–200 characters. Not with `max` (domain check). Reads `number` fields and `derived` fields that depend on no track and no tracker, directly or transitively |
+| `sheet.pointBudget` | optional `{label?, total, fields, min?, max?}` | `label` 1–60; `total` 1–1,000,000; `fields` 1–100 distinct keys of `number` fields; `min`/`max` sheet numbers, `min ≤ max`. Domain: each budget field keeps a value inside both its own and the budget bounds; the sum of the lowest such values is at most `total` |
+
+Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `method` (`roll` or `points`). Codes: `creation_method_required`, `creation_method_unavailable`, `value_set_at_creation`, `outside_creation_bounds`, `point_budget_exceeded`.
+
+## Constraints
+
+- Additive in schema version 2; no migration (Character values are JSONB already).
+- The translator refuses the new properties until slice 2, so a release using them is publishable but not playable in slice 1 (precedent: ADR 0027).
+- The upgrade plan stays deterministic (its fingerprint): no rolls there.
+- Planning heuristic: slice ceiling ~1,700 changed lines, including generated files.
+
+## Slice plan
+
+| # | Branch | PR title | Tasks | Forecast |
+|---|---|---|---|---|
+| 1 | `feat/structured-character-creation-1-contract` | `feat(studio): structured-character-creation 1/4 contract and field dialog` | T1–T3 | ~1,500: ADR and feature doc ~250, schema and contract doc ~120, Studio validator, in-use checks and unit tests ~650, field dialog (dice default, track max mode) with tests ~500 |
+| 2 | `feat/structured-character-creation-2-play-creation` | `feat(play): structured-character-creation 2/4 creation on the server` | T4–T6 | ~1,600: translator and Play sheet model ~350, creation methods, rolls, budget and `startMax` in the domain with promotion ~500, API (request, codes) with tests ~300, generated OpenAPI and TS ~150, upgrade planner ~300 |
+| 3 | `feat/structured-character-creation-3-creation-form` | `feat(play): structured-character-creation 3/4 creation form and Percentile Horror` | T7–T8 | ~1,300: creation form (method choice, budget counter, rolled and computed fields) with tests, fixtures and story ~1,000, preset and its flow test ~300 |
+| 4 | `feat/structured-character-creation-4-point-budget` | `feat(studio): structured-character-creation 4/4 point budget editor` | T9–T10 | ~1,000: point budget panel in the sheet builder (and its save path) with tests ~800, generated files if the API changes ~200; closing doc |
+
+## Tasks
+
+| ID | Slice | Task | Route | Status | Commit |
+|---|---|---|---|---|---|
+| T1 | 1 | This feature doc; ADR 0040 (index; status lines of ADR 0027 and 0035; roadmap B7k link) | parent, inline | [x] | |
+| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [ ] | |
+| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [ ] | |
+| T4 | 2 | Translator and Play sheet model read `roll`, `startMax` and `pointBudget` (fail closed on malformed) | | [ ] | |
+| T5 | 2 | Creation by method: `AddCharacterHandler` gets the random source; rolls, budget and `startMax` in the domain; NPC promotion; request `method` and 422 codes; API tests; regenerated OpenAPI and TS | | [ ] | |
+| T6 | 2 | Upgrade planner: added `startMax` track evaluated on the fitted values; added rolled number field takes its static initial value; plan tests | | [ ] | |
+| T7 | 3 | Play creation form (Characters panel and `character` step): method choice, budget counter with creation bounds, rolled fields and `startMax` tracks shown as set at creation; fixtures, tests, story | | [ ] | |
+| T8 | 3 | `percentile-horror`: dice defaults, budget "Characteristic points" 460 (15–90), `startMax` for Hit and Magic points, Luck rolled by the `you` step effect, shorter tip; preset flow test | | [ ] | |
+| T9 | 4 | Studio point budget panel in the sheet builder | | [ ] | |
+| T10 | 4 | Review fixes, Chrome pass, closing doc | | [ ] | |
+
+## Acceptance criteria
+
+- Releases without the new properties keep their content hash; presets are unchanged until T8.
+- The publisher refuses: `roll` with invalid dice; `startMax` with `max`; a `startMax` formula reading a track, a tracker, or a derived field that depends on one; a budget over a missing, non-number or repeated field; budget `min > max`; bounds that leave a field no value; a `total` below the sum of the lowest values.
+- Play creates a Character by `roll` (dice-default fields rolled with the injected source, clamped) or by `points` (budget checked, creation bounds), refuses values for server-set fields, and starts `startMax` tracks full. Each 422 code has an API test.
+- NPC promotion rolls and evaluates `startMax`. The upgrade plan stays deterministic.
+- Studio authors dice defaults, start formulas and the budget; Play's creation form offers the method, counts points and shows server-set fields.
+- Percentile Horror creates investigators by rolling or by spending 460 points, with Hit and Magic points set at creation.
+
+## Checks
+
+`make verify` once per slice. CI runs the full suites.
+
+## Progress
+
+- 2026-10-24: Explored every layer (contract, publisher, translator, Play creation, Randomness, Studio builder, upgrade planner, preset). The user chose the four creation decisions. Issue #270, ADR 0040 and this feature doc written.
+
+## Reviews
+
+| Slice | Lineage | Outcome | PR |
+|---|---|---|---|
+
+## Next step
+
+Slice 1: T2 (contract and publisher), T3 (Studio field dialog).

@@ -43,6 +43,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0037 | [API error codes](0037-api-error-codes.md) | Accepted |
 | 0038 | [Studio release view](0038-studio-release-view.md) | Accepted |
 | 0039 | [Release diff](0039-release-diff.md) | Accepted |
+| 0040 | [Structured character creation](0040-structured-character-creation.md) | Accepted |
 
 ## Template
 

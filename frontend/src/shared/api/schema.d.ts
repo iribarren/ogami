@@ -4528,6 +4528,60 @@ export interface components {
              */
             name: string | null;
         };
+        ReleaseChangesItemResponse: {
+            /**
+             * @description The item's key in its section; it matches the item of the previous release.
+             * @example heist-scenes
+             */
+            key: string;
+            /**
+             * @description The item's display name in this release (its name, or its label for a sheet field, fact slot, tag or check); null when it has none.
+             * @example Heist scenes
+             */
+            name: string | null;
+            /**
+             * @description The item's display name in the previous release; null when it had none. It differs from the name when the item was renamed.
+             * @example Heists
+             */
+            previousName: string | null;
+            /**
+             * @description The top-level properties of the item whose values differ, one only of the two releases has included, sorted by name; empty when the item is not an object.
+             * @example [
+             *       "bands",
+             *       "dice"
+             *     ]
+             */
+            fields: string[];
+        };
+        ReleaseChangesSectionResponse: {
+            /** @description The items whose key the previous release lacks, in this release's content order. */
+            added: components["schemas"]["ReleaseOutlineItemResponse"][];
+            /** @description The items of the previous release whose key this release lacks, in the previous release's content order. */
+            removed: components["schemas"]["ReleaseOutlineItemResponse"][];
+            /** @description The items in both releases whose content differs, in this release's content order. Moving an item is not a change. */
+            changed: components["schemas"]["ReleaseChangesItemResponse"][];
+            /**
+             * @description True when the items present in both releases are in another relative order.
+             * @example false
+             */
+            reordered: boolean;
+        };
+        ReleaseChangesResponse: {
+            /**
+             * @description The version it is compared with: the one before this release.
+             * @example 2
+             */
+            previousVersion: number;
+            /**
+             * @description The previous release's schema version.
+             * @example 2
+             */
+            previousSchemaVersion: number;
+            /** @description The changes by section name, as in sectionCounts and outline, every section present. Null when the previous release has another schema version than this one, as their sections differ and are not compared. */
+            sections: {
+                [key: string]: components["schemas"]["ReleaseChangesSectionResponse"];
+            } | null;
+        };
         GameSystemReleaseResponse: {
             /** @example 3 */
             version: number;
@@ -4569,6 +4623,8 @@ export interface components {
             outline: {
                 [key: string]: components["schemas"]["ReleaseOutlineItemResponse"][];
             };
+            /** @description What the release changed against the release before it (version N-1); null for the first release, or when that one is missing. */
+            changes: components["schemas"]["ReleaseChangesResponse"] | null;
         };
         /** @enum {string} */
         PublishConflictCode: "no_changes" | "release_exists" | "library_pack";

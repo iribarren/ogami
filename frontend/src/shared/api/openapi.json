@@ -15804,6 +15804,110 @@
                 },
                 "type": "object"
             },
+            "ReleaseChangesItemResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "previousName",
+                    "fields"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The item's key in its section; it matches the item of the previous release.",
+                        "type": "string",
+                        "example": "heist-scenes"
+                    },
+                    "name": {
+                        "description": "The item's display name in this release (its name, or its label for a sheet field, fact slot, tag or check); null when it has none.",
+                        "type": "string",
+                        "example": "Heist scenes",
+                        "nullable": true
+                    },
+                    "previousName": {
+                        "description": "The item's display name in the previous release; null when it had none. It differs from the name when the item was renamed.",
+                        "type": "string",
+                        "example": "Heists",
+                        "nullable": true
+                    },
+                    "fields": {
+                        "description": "The top-level properties of the item whose values differ, one only of the two releases has included, sorted by name; empty when the item is not an object.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "bands",
+                            "dice"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "ReleaseChangesSectionResponse": {
+                "required": [
+                    "added",
+                    "removed",
+                    "changed",
+                    "reordered"
+                ],
+                "properties": {
+                    "added": {
+                        "description": "The items whose key the previous release lacks, in this release's content order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReleaseOutlineItemResponse"
+                        }
+                    },
+                    "removed": {
+                        "description": "The items of the previous release whose key this release lacks, in the previous release's content order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReleaseOutlineItemResponse"
+                        }
+                    },
+                    "changed": {
+                        "description": "The items in both releases whose content differs, in this release's content order. Moving an item is not a change.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReleaseChangesItemResponse"
+                        }
+                    },
+                    "reordered": {
+                        "description": "True when the items present in both releases are in another relative order.",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "ReleaseChangesResponse": {
+                "required": [
+                    "previousVersion",
+                    "previousSchemaVersion",
+                    "sections"
+                ],
+                "properties": {
+                    "previousVersion": {
+                        "description": "The version it is compared with: the one before this release.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "previousSchemaVersion": {
+                        "description": "The previous release's schema version.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "sections": {
+                        "description": "The changes by section name, as in sectionCounts and outline, every section present. Null when the previous release has another schema version than this one, as their sections differ and are not compared.",
+                        "type": "object",
+                        "nullable": true,
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/ReleaseChangesSectionResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemReleaseResponse": {
                 "required": [
                     "version",
@@ -15814,7 +15918,8 @@
                     "librarySources",
                     "name",
                     "sectionCounts",
-                    "outline"
+                    "outline",
+                    "changes"
                 ],
                 "properties": {
                     "version": {
@@ -15874,6 +15979,15 @@
                                 "$ref": "#/components/schemas/ReleaseOutlineItemResponse"
                             }
                         }
+                    },
+                    "changes": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ReleaseChangesResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What the release changed against the release before it (version N-1); null for the first release, or when that one is missing."
                     }
                 },
                 "type": "object"

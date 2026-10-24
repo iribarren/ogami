@@ -1,5 +1,6 @@
-import { useEffect, useId, useState, type SubmitEvent } from 'react'
+import { memo, useCallback, useEffect, useId, useState, type SubmitEvent } from 'react'
 
+import { useStableItems } from '@/shared/lib/useStableItems'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -370,12 +371,23 @@ function LayoutForm({
     })
   }
 
-  const changeGroup = (index: number, changes: Partial<GroupDraft>) => {
+  // The group cards are memoised: these are stable, and the messages keep their reference while
+  // their content is the same.
+  const changeGroup = useCallback((index: number, changes: Partial<GroupDraft>) => {
     setDraft((current) => ({
       ...current,
       groups: current.groups.map((group, at) => (at === index ? { ...group, ...changes } : group)),
     }))
-  }
+  }, [])
+  const moveGroupAt = useCallback((index: number, direction: 'up' | 'down') => {
+    setDraft((current) => moveGroup(current, index, direction))
+  }, [])
+  const removeGroupAt = useCallback((index: number) => {
+    setDraft((current) => removeGroup(current, index))
+  }, [])
+  const groupErrors = useStableItems(
+    draft.groups.map((_, index) => ({ ...errors?.groups[index], ...answer?.groups[index] })),
+  )
 
   return (
     <form aria-label="Edit layout" className="space-y-4" onSubmit={handleSubmit}>
@@ -404,16 +416,10 @@ function LayoutForm({
           last={index === draft.groups.length - 1}
           sheetColumns={draft.columns}
           held={fieldsHeldBy(group, base.fields)}
-          errors={{ ...errors?.groups[index], ...answer?.groups[index] }}
-          onChange={(changes) => {
-            changeGroup(index, changes)
-          }}
-          onMove={(direction) => {
-            setDraft(moveGroup(draft, index, direction))
-          }}
-          onRemove={() => {
-            setDraft(removeGroup(draft, index))
-          }}
+          errors={groupErrors[index] ?? noGroupErrors}
+          onChange={changeGroup}
+          onMove={moveGroupAt}
+          onRemove={removeGroupAt}
         />
       ))}
       <Button
@@ -450,7 +456,11 @@ function LayoutForm({
   )
 }
 
-function GroupFields({
+type GroupErrors = Partial<Record<'name' | 'columns' | 'span', string>>
+
+const noGroupErrors: GroupErrors = {}
+
+const GroupFields = memo(function GroupFields({
   group,
   index,
   last,
@@ -466,10 +476,10 @@ function GroupFields({
   last: boolean
   sheetColumns: number
   held: number
-  errors: Partial<Record<'name' | 'columns' | 'span', string>>
-  onChange: (changes: Partial<GroupDraft>) => void
-  onMove: (direction: 'up' | 'down') => void
-  onRemove: () => void
+  errors: GroupErrors
+  onChange: (index: number, changes: Partial<GroupDraft>) => void
+  onMove: (index: number, direction: 'up' | 'down') => void
+  onRemove: (index: number) => void
 }) {
   const holdId = useId()
 
@@ -480,7 +490,7 @@ function GroupFields({
         label="Name"
         value={group.name}
         onChange={(name) => {
-          onChange({ name })
+          onChange(index, { name })
         }}
         error={errors.name}
       />
@@ -489,7 +499,7 @@ function GroupFields({
           label="Columns"
           value={String(group.columns)}
           onChange={(value) => {
-            onChange({ columns: Number(value) })
+            onChange(index, { columns: Number(value) })
           }}
           options={numbered(maxGroupColumns)}
           error={errors.columns}
@@ -498,7 +508,7 @@ function GroupFields({
           label="Span"
           value={String(group.span)}
           onChange={(value) => {
-            onChange({ span: Number(value) })
+            onChange(index, { span: Number(value) })
           }}
           options={numbered(sheetColumns)}
           error={errors.span}
@@ -511,7 +521,7 @@ function GroupFields({
           size="sm"
           disabled={index === 0}
           onClick={() => {
-            onMove('up')
+            onMove(index, 'up')
           }}
         >
           Move up
@@ -522,7 +532,7 @@ function GroupFields({
           size="sm"
           disabled={last}
           onClick={() => {
-            onMove('down')
+            onMove(index, 'down')
           }}
         >
           Move down
@@ -533,7 +543,9 @@ function GroupFields({
           size="sm"
           disabled={held > 0}
           aria-describedby={held > 0 ? holdId : undefined}
-          onClick={onRemove}
+          onClick={() => {
+            onRemove(index)
+          }}
         >
           Delete group
         </Button>
@@ -546,4 +558,4 @@ function GroupFields({
       )}
     </fieldset>
   )
-}
+})

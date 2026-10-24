@@ -454,6 +454,7 @@ Done: `release-api-followups`, every item of #255 in one slice (PR #266). ADR 00
 ```text
 Start feature `studio-editor-render-cost` (ODD). GitHub issue #259: the Studio editors re-render the whole editor on every input event, which dominates Vitest time and may slow the UI on large GameSystems. Profile one slow editor first, memoise the hot step and band cards, and measure the slowest Studio test files before and after with `--no-file-parallelism`. `fix/` branches.
 ```
+Done: `studio-editor-render-cost`, #259 in one slice (PR #267). Step cards, check band rows and sheet group cards are memoised, so an edit re-renders only its own card. The test setup stops React's dev owner-stack capture. The five slowest Studio test files run about 19% faster serially (100.7s to about 81.7s); the rest is React dev rendering plus jsdom.
 
 **B7j. release-diff**
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 
 import { Badge } from '@/shared/ui/badge'
@@ -12,6 +12,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Label } from '@/shared/ui/label'
+import { useStableItems } from '@/shared/lib/useStableItems'
 import { Select } from '@/shared/ui/select'
 import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
@@ -382,7 +383,11 @@ function boundName(step: EditedStep, context: StepContext): string {
   }
 }
 
-function StepCard({
+/**
+ * One step of the list. Memoised: the callbacks are the list's own, stable ones and take the
+ * position, so a card renders again only when its own step, messages or neighbours change.
+ */
+const StepCard = memo(function StepCard({
   step,
   index,
   total,
@@ -408,11 +413,15 @@ function StepCard({
   mine: StepError[]
   context: StepContext
   laterKeys: string[]
-  onChange: (step: StepDraft) => void
-  onMove: (by: number) => void
-  onDelete: () => void
-  onInnerRestructure: () => void
-  onItems: (count: number, change: (origin: (number | null)[]) => (number | null)[]) => void
+  onChange: (index: number, step: StepDraft) => void
+  onMove: (index: number, by: number) => void
+  onDelete: (index: number) => void
+  onInnerRestructure: (index: number) => void
+  onItems: (
+    index: number,
+    count: number,
+    change: (origin: (number | null)[]) => (number | null)[],
+  ) => void
 }) {
   const number = String(index + 1)
   const card = useRef<HTMLLIElement>(null)
@@ -464,7 +473,7 @@ function StepCard({
         label={`Move step ${number} up`}
         disabled={index === 0}
         onClick={() => {
-          onMove(-1)
+          onMove(index, -1)
         }}
       >
         <ChevronUp />
@@ -473,12 +482,18 @@ function StepCard({
         label={`Move step ${number} down`}
         disabled={index === total - 1}
         onClick={() => {
-          onMove(1)
+          onMove(index, 1)
         }}
       >
         <ChevronDown />
       </IconButton>
-      <IconButton label={`Delete step ${number}`} destructive onClick={onDelete}>
+      <IconButton
+        label={`Delete step ${number}`}
+        destructive
+        onClick={() => {
+          onDelete(index)
+        }}
+      >
         <Trash2 />
       </IconButton>
     </div>
@@ -522,9 +537,15 @@ function StepCard({
                 mine={mine}
                 context={context}
                 laterKeys={laterKeys}
-                onChange={onChange}
-                onInnerRestructure={onInnerRestructure}
-                onItems={onItems}
+                onChange={(changed) => {
+                  onChange(index, changed)
+                }}
+                onInnerRestructure={() => {
+                  onInnerRestructure(index)
+                }}
+                onItems={(count, change) => {
+                  onItems(index, count, change)
+                }}
               />
             </AnswerHint>
           </CollapsibleContent>
@@ -532,7 +553,7 @@ function StepCard({
       )}
     </li>
   )
-}
+})
 
 const noErrors: StepError[] = []
 
@@ -573,7 +594,9 @@ export function StepListEditor({
   }
   // A list replaced from outside has no known origins: its server messages are not shown on cards.
   const origins = origin.length === steps.length ? origin : steps.map(() => null)
-  const guides = stepGuides(steps, context)
+  // The cards are memoised: what the list derives for each keeps its reference while its content
+  // is the same, and the callbacks below are stable and read the latest list through `latest`.
+  const guides = useStableItems(stepGuides(steps, context))
   const messagesOf = (index: number) => {
     const from = origins[index]
     const moved = from === null || from === undefined ? undefined : itemOrigin[from]
@@ -591,6 +614,57 @@ export function StepListEditor({
         return at === -1 ? [] : [at === error.item ? error : { ...error, item: at }]
       })
   }
+  const mine = useStableItems(steps.map((_, index) => messagesOf(index)))
+  const laterKeys = useStableItems(
+    steps.map((_, index) =>
+      steps
+        .slice(index + 1)
+        .map(stepKey)
+        .filter((key) => key !== ''),
+    ),
+  )
+  // For event handlers only: a child's layout effect runs before this one in the same commit,
+  // so a callback called from there would still see the previous render's props.
+  const latest = useRef({ steps, origins, onChange })
+  useLayoutEffect(() => {
+    latest.current = { steps, origins, onChange }
+  })
+  const change = useCallback((index: number, changed: StepDraft) => {
+    const { steps: now, onChange: emit } = latest.current
+    emit(now.map((current, at) => (at === index ? changed : current)))
+  }, [])
+  const move = useCallback((index: number, by: number) => {
+    const { steps: now, origins: from, onChange: emit } = latest.current
+    setOrigin(moveItem(from, index, by))
+    emit(moveItem(now, index, by))
+  }, [])
+  const remove = useCallback((index: number) => {
+    const { steps: now, origins: from, onChange: emit } = latest.current
+    setOrigin(from.filter((_, at) => at !== index))
+    emit(now.filter((_, at) => at !== index))
+  }, [])
+  const items = useCallback(
+    (
+      index: number,
+      count: number,
+      changeOrigin: (origin: (number | null)[]) => (number | null)[],
+    ) => {
+      const from = latest.current.origins[index]
+      if (from !== null && from !== undefined) {
+        setItemOrigin((current) => ({
+          ...current,
+          [from]: changeOrigin(current[from] ?? Array.from({ length: count }, (_, at) => at)),
+        }))
+      }
+    },
+    [],
+  )
+  const restructure = useCallback((index: number) => {
+    const from = latest.current.origins[index]
+    if (from !== null && from !== undefined) {
+      setStale((current) => [...current, from])
+    }
+  }, [])
 
   return (
     <div className="space-y-3">
@@ -615,38 +689,14 @@ export function StepListEditor({
               current={current === index}
               answer={errors}
               guide={guides[index] ?? { bands: {}, nexts: {}, items: {} }}
-              mine={messagesOf(index)}
+              mine={mine[index] ?? noErrors}
               context={context}
-              laterKeys={steps
-                .slice(index + 1)
-                .map(stepKey)
-                .filter((key) => key !== '')}
-              onChange={(changed) => {
-                onChange(steps.map((current, at) => (at === index ? changed : current)))
-              }}
-              onMove={(by) => {
-                setOrigin(moveItem(origins, index, by))
-                onChange(moveItem(steps, index, by))
-              }}
-              onDelete={() => {
-                setOrigin(origins.filter((_, at) => at !== index))
-                onChange(steps.filter((_, at) => at !== index))
-              }}
-              onItems={(count, change) => {
-                const from = origins[index]
-                if (from !== null && from !== undefined) {
-                  setItemOrigin((current) => ({
-                    ...current,
-                    [from]: change(current[from] ?? Array.from({ length: count }, (_, at) => at)),
-                  }))
-                }
-              }}
-              onInnerRestructure={() => {
-                const from = origins[index]
-                if (from !== null && from !== undefined) {
-                  setStale((current) => [...current, from])
-                }
-              }}
+              laterKeys={laterKeys[index] ?? []}
+              onChange={change}
+              onMove={move}
+              onDelete={remove}
+              onItems={items}
+              onInnerRestructure={restructure}
             />
           ))}
         </ol>

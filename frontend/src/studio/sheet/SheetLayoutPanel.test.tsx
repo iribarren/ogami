@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -7,6 +7,19 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, sheet, sheetUngrouped, validDraft } from '../fixtures'
 import { typeText } from '@/test/typeText'
+
+/** Every group card draws one text field, so the fields drawn count the cards that rendered. */
+const drawn = vi.hoisted(() => ({ fields: 0 }))
+
+vi.mock('../narrative/TextField', async (importOriginal) => {
+  const { TextField: Real } = await importOriginal<typeof import('../narrative/TextField')>()
+  return {
+    TextField: (props: React.ComponentProps<typeof Real>) => {
+      drawn.fields += 1
+      return <Real {...props} />
+    },
+  }
+})
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -175,6 +188,30 @@ describe('editing the layout', () => {
     await waitFor(() => {
       expect(fakeApi.requests.filter((request) => request === `GET ${base}`)).toHaveLength(2)
     })
+  })
+
+  it('renders only the edited group card when one group changes', async () => {
+    const { user } = await openSheet()
+    await editLayout(user)
+    drawn.fields = 0
+
+    fireEvent.change(within(group(2)).getByLabelText('Name'), { target: { value: 'Vitals' } })
+
+    expect(within(group(2)).getByLabelText('Name')).toHaveValue('Vitals')
+    expect(drawn.fields).toBe(1)
+  })
+
+  it('keeps both of two quick edits on different groups', async () => {
+    const { user } = await openSheet()
+    await editLayout(user)
+
+    fireEvent.change(within(group(1)).getByLabelText('Name'), { target: { value: 'Core' } })
+    fireEvent.change(within(group(3)).getByLabelText('Name'), { target: { value: 'Journal' } })
+    fireEvent.change(within(group(1)).getByLabelText('Name'), { target: { value: 'Core stats' } })
+
+    expect(within(group(1)).getByLabelText('Name')).toHaveValue('Core stats')
+    expect(within(group(2)).getByLabelText('Name')).toHaveValue('Health')
+    expect(within(group(3)).getByLabelText('Name')).toHaveValue('Journal')
   })
 
   it('adds, reorders and deletes groups and sends the groups in that order', async () => {

@@ -1,5 +1,5 @@
 import { ChevronRight, Clapperboard, Layers, Route, Zap } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 import { Alert } from '@/shared/ui/alert'
@@ -73,7 +73,8 @@ export function FlowEditor({
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
-  const context = stepContext(narrative)
+  // Kept while the narrative is the same, so the step cards below can skip renders.
+  const context = useMemo(() => stepContext(narrative), [narrative])
   const node = resolveNode(draft, selected)
   const path = nodePath(node)
   useEffect(() => {

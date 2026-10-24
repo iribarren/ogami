@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ChevronDown, Plus, X } from 'lucide-react'
-import { useId, useMemo } from 'react'
+import { memo, useCallback, useId, useLayoutEffect, useMemo, useRef } from 'react'
 
 import { cn } from '@/shared/lib/utils'
 import { FieldError } from '@/shared/ui/alert'
@@ -28,6 +28,7 @@ import {
   maxBands,
   type BandDraft,
   type BandErrorMap,
+  type BandErrors,
   type DifficultyDraft,
   type UpToDraft,
 } from './checkDraft'
@@ -101,19 +102,35 @@ export function BandsEditor({
   )
   const keyHintId = useId()
 
-  const change = (index: number, next: (band: BandDraft) => BandDraft) => {
-    onChange(bands.map((band, at) => (at === index ? next(band) : band)))
-  }
-  const move = (index: number, to: number) => {
-    const next = [...bands]
+  // The rows are memoised, so what they call is stable and reads the latest bands from here.
+  // For event handlers only: a child's layout effect runs before this one in the same commit,
+  // so a callback called from there would still see the previous render's props.
+  const latest = useRef({ bands, onChange })
+  useLayoutEffect(() => {
+    latest.current = { bands, onChange }
+  })
+  const change = useCallback((index: number, next: (band: BandDraft) => BandDraft) => {
+    const { bands: now, onChange: emit } = latest.current
+    emit(now.map((band, at) => (at === index ? next(band) : band)))
+  }, [])
+  const move = useCallback((index: number, to: number) => {
+    const { bands: now, onChange: emit } = latest.current
+    const next = [...now]
     const [band] = next.splice(index, 1)
     if (band !== undefined) {
       next.splice(to, 0, band)
     }
-    const order: (number | null)[] = bands.map((_, at) => at)
+    const order: (number | null)[] = now.map((_, at) => at)
     order.splice(to, 0, ...order.splice(index, 1))
-    onChange(next, order)
-  }
+    emit(next, order)
+  }, [])
+  const remove = useCallback((index: number) => {
+    const { bands: now, onChange: emit } = latest.current
+    emit(
+      now.filter((_, at) => at !== index),
+      now.flatMap((_, at) => (at === index ? [] : [at])),
+    )
+  }, [])
   // A preset or a copy replaces every band: no message about the old ones stays.
   const replace = (next: BandDraft[]) => {
     onChange(
@@ -178,107 +195,150 @@ export function BandsEditor({
         </Button>
       </div>
       <ol className="space-y-2">
-        {bands.map((band, index) => {
-          const last = index === bands.length - 1
-          const found = errors[index] ?? {}
-          const name = `Band ${String(index + 1)}`
-          return (
-            // The bands have no identity of their own, so the position is the key.
-            <li key={index} className="space-y-2 well-row">
-              <div className="flex flex-wrap items-start gap-2">
-                <span aria-hidden="true" className="mt-1.5 count-pill">
-                  {index + 1}
-                </span>
-                <BandInput
-                  label={`${name} key`}
-                  placeholder="Key"
-                  className="w-32 flex-1"
-                  mono
-                  describedBy={keyHintId}
-                  value={band.key}
-                  onChange={(key) => {
-                    change(index, (held) => editBandKey(held, key))
-                  }}
-                  error={found.key}
-                />
-                <BandInput
-                  label={`${name} label`}
-                  placeholder="Label"
-                  className="w-40 flex-[2]"
-                  value={band.label}
-                  onChange={(label) => {
-                    change(index, (held) => editBandLabel(held, label))
-                  }}
-                  error={found.label}
-                />
-                {!last && (
-                  <UpToInput
-                    name={name}
-                    upTo={band.upTo}
-                    onChange={(upTo) => {
-                      change(index, (held) => ({ ...held, upTo }))
-                    }}
-                    catalog={catalog}
-                    references={references}
-                    declared={declared}
-                    error={found.upTo}
-                  />
-                )}
-                <div className="ml-auto flex">
-                  <IconButton
-                    label={`Move up ${name.toLowerCase()}`}
-                    dense
-                    disabled={index === 0}
-                    onClick={() => {
-                      move(index, index - 1)
-                    }}
-                  >
-                    <ArrowUp />
-                  </IconButton>
-                  <IconButton
-                    label={`Move down ${name.toLowerCase()}`}
-                    dense
-                    disabled={last}
-                    onClick={() => {
-                      move(index, index + 1)
-                    }}
-                  >
-                    <ArrowDown />
-                  </IconButton>
-                  <IconButton
-                    label={`Remove ${name.toLowerCase()}`}
-                    dense
-                    destructive
-                    disabled={bands.length <= 1}
-                    onClick={() => {
-                      onChange(
-                        bands.filter((_, at) => at !== index),
-                        bands.flatMap((_, at) => (at === index ? [] : [at])),
-                      )
-                    }}
-                  >
-                    <X />
-                  </IconButton>
-                </div>
-              </div>
-              {last && (
-                <>
-                  <p className="hint">
-                    The last band catches the rest: it has no bound.
-                    {droppedBound(band.upTo) && ' Its bound is dropped when you save.'}
-                  </p>
-                  {found.upTo && <FieldError>{found.upTo}</FieldError>}
-                </>
-              )}
-            </li>
-          )
-        })}
+        {bands.map((band, index) => (
+          // The bands have no identity of their own, so the position is the key.
+          <BandRow
+            key={index}
+            index={index}
+            band={band}
+            last={index === bands.length - 1}
+            removable={bands.length > 1}
+            found={errors[index] ?? noFound}
+            keyHintId={keyHintId}
+            catalog={catalog}
+            references={references}
+            declared={declared}
+            onChange={change}
+            onMove={move}
+            onRemove={remove}
+          />
+        ))}
       </ol>
       <KeyHint id={keyHintId}>Every band key follows this rule.</KeyHint>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
 }
+
+const noFound: BandErrors = {}
+
+/** One band of the list: its key, label and bound, and the buttons that move or remove it. */
+const BandRow = memo(function BandRow({
+  index,
+  band,
+  last,
+  removable,
+  found,
+  keyHintId,
+  catalog,
+  references,
+  declared,
+  onChange,
+  onMove,
+  onRemove,
+}: {
+  index: number
+  band: BandDraft
+  last: boolean
+  removable: boolean
+  found: BandErrors
+  keyHintId: string
+  catalog: Catalog
+  references: ReturnType<typeof checkReferences>
+  declared: ReturnType<typeof declaredDifficulty>
+  onChange: (index: number, next: (band: BandDraft) => BandDraft) => void
+  onMove: (index: number, to: number) => void
+  onRemove: (index: number) => void
+}) {
+  const name = `Band ${String(index + 1)}`
+
+  return (
+    <li className="space-y-2 well-row">
+      <div className="flex flex-wrap items-start gap-2">
+        <span aria-hidden="true" className="mt-1.5 count-pill">
+          {index + 1}
+        </span>
+        <BandInput
+          label={`${name} key`}
+          placeholder="Key"
+          className="w-32 flex-1"
+          mono
+          describedBy={keyHintId}
+          value={band.key}
+          onChange={(key) => {
+            onChange(index, (held) => editBandKey(held, key))
+          }}
+          error={found.key}
+        />
+        <BandInput
+          label={`${name} label`}
+          placeholder="Label"
+          className="w-40 flex-[2]"
+          value={band.label}
+          onChange={(label) => {
+            onChange(index, (held) => editBandLabel(held, label))
+          }}
+          error={found.label}
+        />
+        {!last && (
+          <UpToInput
+            name={name}
+            upTo={band.upTo}
+            onChange={(upTo) => {
+              onChange(index, (held) => ({ ...held, upTo }))
+            }}
+            catalog={catalog}
+            references={references}
+            declared={declared}
+            error={found.upTo}
+          />
+        )}
+        <div className="ml-auto flex">
+          <IconButton
+            label={`Move up ${name.toLowerCase()}`}
+            dense
+            disabled={index === 0}
+            onClick={() => {
+              onMove(index, index - 1)
+            }}
+          >
+            <ArrowUp />
+          </IconButton>
+          <IconButton
+            label={`Move down ${name.toLowerCase()}`}
+            dense
+            disabled={last}
+            onClick={() => {
+              onMove(index, index + 1)
+            }}
+          >
+            <ArrowDown />
+          </IconButton>
+          <IconButton
+            label={`Remove ${name.toLowerCase()}`}
+            dense
+            destructive
+            disabled={!removable}
+            onClick={() => {
+              onRemove(index)
+            }}
+          >
+            <X />
+          </IconButton>
+        </div>
+      </div>
+      {last && (
+        <>
+          <p className="hint">
+            The last band catches the rest: it has no bound.
+            {droppedBound(band.upTo) && ' Its bound is dropped when you save.'}
+          </p>
+          {found.upTo && <FieldError>{found.upTo}</FieldError>}
+        </>
+      )}
+    </li>
+  )
+})
 
 /** Whether saving would drop the bound: an empty number says nothing, so nothing is lost. */
 function droppedBound(upTo: UpToDraft): boolean {
@@ -352,6 +412,19 @@ function UpToInput({
   declared: ReturnType<typeof declaredDifficulty>
   error?: string
 }) {
+  const diagnostics = useMemo(
+    () =>
+      upTo.kind !== 'formula' || upTo.value.trim() === ''
+        ? null
+        : checkFormulaDiagnostics({
+            formula: upTo.value,
+            scope: 'band',
+            catalog,
+            difficulty: declared,
+          }),
+    [upTo, catalog, declared],
+  )
+
   return (
     <>
       <div className="w-36 space-y-1">
@@ -417,16 +490,7 @@ function UpToInput({
             onChange={(value) => {
               onChange({ kind: 'formula', value })
             }}
-            diagnostics={
-              upTo.value.trim() === ''
-                ? null
-                : checkFormulaDiagnostics({
-                    formula: upTo.value,
-                    scope: 'band',
-                    catalog,
-                    difficulty: declared,
-                  })
-            }
+            diagnostics={diagnostics}
             references={references}
             error={error}
           />

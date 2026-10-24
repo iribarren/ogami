@@ -175,6 +175,31 @@ final class ReleaseDiffTest extends TestCase
     }
 
     #[Test]
+    public function numericKeysSwappedAreReorderedAndNothingElse(): void
+    {
+        $before = ['trackers' => [['key' => '1', 'name' => 'One'], ['key' => '2', 'name' => 'Two']]];
+        $after = ['trackers' => [['key' => '2', 'name' => 'Two'], ['key' => '1', 'name' => 'One']]];
+
+        $trackers = $this->sections($after, $before)['trackers'];
+
+        self::assertTrue($trackers['reordered']);
+        self::assertSame([[], [], []], [$trackers['added'], $trackers['removed'], $trackers['changed']]);
+    }
+
+    #[Test]
+    public function numericKeysStayStringsInAddedRemovedAndChanged(): void
+    {
+        $before = ['trackers' => [['key' => '1', 'name' => 'One', 'max' => 1], ['key' => '2', 'name' => 'Two']]];
+        $after = ['trackers' => [['key' => '1', 'name' => 'One', 'max' => 2], ['key' => '3', 'name' => 'Three']]];
+
+        $trackers = $this->sections($after, $before)['trackers'];
+
+        self::assertSame([['key' => '3', 'name' => 'Three']], $trackers['added']);
+        self::assertSame([['key' => '2', 'name' => 'Two']], $trackers['removed']);
+        self::assertSame([['key' => '1', 'name' => 'One', 'previousName' => 'One', 'fields' => ['max']]], $trackers['changed']);
+    }
+
+    #[Test]
     public function releasesOfDifferentSchemaVersionsAreNotCompared(): void
     {
         self::assertNull(ReleaseDiff::of(['trackers' => []], 2, ['oracles' => []], 1));

@@ -242,6 +242,19 @@ final class GameSystemPublicationHandlersTest extends TestCase
     }
 
     #[Test]
+    public function aReleaseWhosePreviousVersionIsMissingHasNoChanges(): void
+    {
+        $every = ReleaseArrays::fixture('valid/v2-every-part');
+        $this->releases->add($this->release('mine', $every, 1));
+        $this->releases->add($this->release('mine', ReleaseArrays::with($every, 'flows.0.name', 'Renamed flow'), 3));
+
+        $third = (new GetGameSystemReleaseHandler($this->owned(), $this->releases))(new GetGameSystemRelease('ann', 'mine', 3));
+
+        self::assertSame(3, $third->summary->version);
+        self::assertNull($third->changes);
+    }
+
+    #[Test]
     public function anUnknownReleaseVersionIsNotFound(): void
     {
         $this->publish('ann', 'mine', null);

@@ -61,7 +61,7 @@ The release detail (`GET /api/studio/game-systems/{key}/releases/{version}`) gai
 | T1 | 1 | This feature doc; ADR 0039 (plus the README index) | parent, inline (feature doc); writer (delegated: ADR) | [x] | |
 | T2 | 1 | `ReleaseDiff` (Application, next to `ReleaseOutline`); the release detail gains `changes`; unit and API tests; generated OpenAPI and TS in their own commit | writer (delegated) | [x] | |
 | T3 | 1 | `ReleaseChanges` panel in `ReleaseView`, above the outline; tests, fixtures, story | writer (delegated) | [x] | |
-| T4 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [ ] | |
+| T4 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [x] | |
 
 ## Acceptance criteria
 
@@ -82,6 +82,7 @@ The release detail (`GET /api/studio/game-systems/{key}/releases/{version}`) gai
 - 2026-10-24: T1 done: ADR 0039 written and indexed; the feature doc committed with it.
 - 2026-10-24: T2 done: `ReleaseDiff` (shares `ReleaseOutline::entries`), `changes` in the release detail and its response classes, unit and API tests; OpenAPI and TS regenerated in the next commit.
 - 2026-10-24: T3 done: `ReleaseChanges` panel above the outline, fixtures, tests and a story.
+- 2026-10-24: T4 done: native review suggestions covered by tests only (a missing previous release gives `changes: null`; numeric-string keys keep string keys and reorder detection). Both passed on first run, so no production change.
 
 ## Reviews
 

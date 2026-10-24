@@ -27,9 +27,13 @@ export class StudioError extends Error {
 
   readonly status: number
 
-  constructor(message: string, status: number) {
+  /** Why the API refused, when its body carries a code (ADR 0037); `null` otherwise. */
+  readonly code: string | null
+
+  constructor(message: string, status: number, code: string | null = null) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -39,7 +43,7 @@ export const explainedRefusals = [400, 404, 409, 422] as const
 /** Uses the API's message for the statuses that explain the refusal, a generic one otherwise. */
 export function studioError(
   response: Response,
-  error: { error: string } | undefined,
+  error: { error: string; code?: string } | undefined,
   explained: readonly number[],
   failure: string,
 ) {
@@ -47,6 +51,7 @@ export function studioError(
   return new StudioError(
     reason ?? `${failure} failed with HTTP ${String(response.status)}.`,
     response.status,
+    reason === undefined ? null : (error?.code ?? null),
   )
 }
 

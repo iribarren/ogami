@@ -7,7 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { draft, published3, validDraft } from './fixtures'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { conflictMessage, PublishErrors } from './PublishDialog'
+import { PublishErrors } from './PublishDialog'
 import { focusNotes } from './publishFocus'
 import { typeText } from '@/test/typeText'
 
@@ -217,8 +217,22 @@ describe('the publish dialog', () => {
 
   it.each([
     [422, { error: 'notes: must not be blank.' }, 'notes: must not be blank.'],
-    [409, { error: 'No changes: "my-draft" is the same as its release v1.' }, conflictMessage],
-    [409, { error: 'Another release of my-draft v1 was published.' }, conflictMessage],
+    [
+      409,
+      { error: 'No changes: "my-draft" is the same as its release v1.', code: 'no_changes' },
+      'Nothing was published: nothing changed in the draft.',
+    ],
+    [
+      409,
+      { error: 'Another release of my-draft v1 was published.', code: 'release_exists' },
+      'Nothing was published: another release was published meanwhile. Reload and try again.',
+    ],
+    [
+      409,
+      { error: 'The library pack "my-draft" cannot be published.', code: 'library_pack' },
+      'Nothing was published: a library pack cannot be published.',
+    ],
+    [409, { error: 'Some other conflict.' }, 'Some other conflict.'],
     [400, { error: 'Send the notes as a string.' }, 'Send the notes as a string.'],
   ])('explains a %i refusal inside the dialog', async (status, body, message) => {
     const user = userEvent.setup()
@@ -240,7 +254,7 @@ describe('the publish dialog', () => {
     const { fakeApi } = renderPublishable(published3, {
       'GET /api/studio/game-systems/noir-detective': () => Response.json(latest),
       'POST /api/studio/game-systems/noir-detective/releases': json(
-        { error: 'Another release of noir-detective v4 was published.' },
+        { error: 'Another release of noir-detective v4 was published.', code: 'release_exists' },
         409,
       ),
     })
@@ -250,7 +264,9 @@ describe('the publish dialog', () => {
     latest = { ...published3, latestReleaseVersion: 4 }
     await user.click(dialog.getByRole('button', { name: 'Publish version 4' }))
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent(conflictMessage)
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'Nothing was published: another release was published meanwhile. Reload and try again.',
+    )
     expect(await dialog.findByRole('button', { name: 'Publish version 5' })).toBeEnabled()
     const before = fakeApi.requests.filter(
       (r) => r === 'GET /api/studio/game-systems/noir-detective',
@@ -264,6 +280,25 @@ describe('the publish dialog', () => {
       fakeApi.requests.filter((r) => r === 'GET /api/studio/game-systems/noir-detective').length,
     ).toBeGreaterThan(before)
     expect(dialog.getByText('This creates version 5.')).toBeInTheDocument()
+  })
+
+  it('says what has not changed since the latest release, with no Reload', async () => {
+    const user = userEvent.setup()
+    renderPublishable(published3, {
+      'POST /api/studio/game-systems/noir-detective/releases': json(
+        { error: 'No changes: the draft equals v3.', code: 'no_changes' },
+        409,
+      ),
+    })
+
+    const dialog = await openDialog(user)
+    await dialog.findByText('This creates version 4.')
+    await user.click(dialog.getByRole('button', { name: 'Publish version 4' }))
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'Nothing was published: nothing changed since v3. Edit the draft first.',
+    )
+    expect(dialog.queryByRole('button', { name: 'Reload' })).not.toBeInTheDocument()
   })
 
   it('shows a generic message for any other failure', async () => {

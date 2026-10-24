@@ -48,7 +48,7 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0037 and ADR 0038 (plus the README index); roadmap items `release-diff` and `structured-character-creation` | parent, inline (feature doc); writer (delegated: ADRs, roadmap) | [x] | |
-| T2 | 1 | `{error, code}` on the publish and restore 409s; PublishDialog and the restore UI branch on the code | writer (delegated) | [ ] | |
+| T2 | 1 | `{error, code}` on the publish and restore 409s; PublishDialog and the restore UI branch on the code | writer (delegated) | [x] | |
 | T3 | 1 | Studio refuses forward and self `{step:x}` placeholders; the contract doc gains the NPC-agenda pattern note | writer (delegated) | [ ] | |
 | T4 | 1 | Release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline | writer (delegated) | [ ] | |
 | T5 | 1 | Review fixes, if any; closing doc commit | parent / writer | [ ] | |
@@ -69,6 +69,7 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 
 - 2026-10-24: Explored the four items of #255. The user approved every recommended decision. Feature doc written.
 - 2026-10-24: T1 done: ADRs 0037 and 0038 indexed, 0028 amended, roadmap B7j and B7k added.
+- 2026-10-24: T2 done: two enums and two response schemas (`PublishConflictCode`/`PublishConflictResponse`, `RestoreConflictCode`/`RestoreConflictResponse`) so each endpoint advertises only its own codes; PublishDialog and the restore dialog branch on `StudioError.code`; API test per code (the version race and the concurrent save reuse `duringRequest`).
 
 ## Reviews
 

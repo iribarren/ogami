@@ -4552,12 +4552,26 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** @enum {string} */
+        PublishConflictCode: "no_changes" | "release_exists" | "library_pack";
+        PublishConflictResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            code: components["schemas"]["PublishConflictCode"];
+        };
         RestoreGameSystemRequest: {
             /**
              * @description The release version whose content replaces the draft.
              * @example 2
              */
             version: number;
+        };
+        /** @enum {string} */
+        RestoreConflictCode: "modified_concurrently" | "library_pack";
+        RestoreConflictResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            code: components["schemas"]["RestoreConflictCode"];
         };
         SheetGroupResponse2: {
             /**
@@ -11202,13 +11216,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The draft has no changes since the latest release, another publish took the version first, or the GameSystem is a library pack, which is never published; nothing was published. */
+            /** @description Nothing was published; the code says why: no_changes (the draft equals the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["PublishConflictResponse"];
                 };
             };
             /** @description A body was sent and it is not JSON. */
@@ -11341,13 +11355,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which has no releases to restore. */
+            /** @description The draft is unchanged; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no releases to restore). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RestoreConflictResponse"];
                 };
             };
             /** @description The body is not JSON. */

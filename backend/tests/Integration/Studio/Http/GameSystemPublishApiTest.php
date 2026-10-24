@@ -325,6 +325,7 @@ final class GameSystemPublishApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('No changes', $this->error());
+        self::assertSame('no_changes', $this->json()['code']);
         $this->client->request('GET', self::BASE.'/mine/releases');
         self::assertCount(1, $this->json());
     }
@@ -346,6 +347,36 @@ final class GameSystemPublishApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('mine v1 already exists', $this->error());
+        self::assertSame('release_exists', $this->json()['code']);
+    }
+
+    #[Test]
+    public function aLibraryPackRefusesToBePublishedWithTheLibraryPackCode(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->client->jsonRequest('POST', '/api/studio/library/packs', ['key' => 'generic', 'name' => 'Generic']);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->jsonRequest('POST', self::BASE.'/generic/releases', []);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('library_pack', $this->json()['code']);
+        self::assertStringContainsString('library pack', $this->error());
+        $this->assertNoReleases('generic');
+    }
+
+    #[Test]
+    public function aLibraryPackRefusesARestoreWithTheLibraryPackCode(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->client->jsonRequest('POST', '/api/studio/library/packs', ['key' => 'generic', 'name' => 'Generic']);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->jsonRequest('POST', self::BASE.'/generic/restore', ['version' => 1]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('library_pack', $this->json()['code']);
+        self::assertStringContainsString('library pack', $this->error());
     }
 
     #[Test]
@@ -440,6 +471,7 @@ final class GameSystemPublishApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('mine', $this->error());
+        self::assertSame('modified_concurrently', $this->json()['code']);
         self::getContainer()->get(EntityManagerInterface::class)->clear();
         $this->client->request('GET', self::BASE.'/mine');
         self::assertSame('Renamed', $this->json()['name']);

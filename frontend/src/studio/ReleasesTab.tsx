@@ -265,7 +265,8 @@ function RestoreDialog({
 }) {
   const [open, setOpen] = useState(false)
   const restore = useRestoreGameSystem(gameSystemKey)
-  const concurrent = restore.error instanceof StudioError && restore.error.status === 409
+  const concurrent =
+    restore.error instanceof StudioError && restore.error.code === 'modified_concurrently'
 
   return (
     <Dialog

@@ -169,7 +169,10 @@ describe('restoring a release into the draft', () => {
 
   it('offers a reload after a concurrent save (409)', async () => {
     const { dialog, user, fakeApi } = await openRestore({
-      [`POST ${base}/restore`]: json({ error: 'The GameSystem was changed; reload.' }, 409),
+      [`POST ${base}/restore`]: json(
+        { error: 'The GameSystem was changed; reload.', code: 'modified_concurrently' },
+        409,
+      ),
     })
 
     await user.click(dialog.getByRole('button', { name: 'Restore version 2' }))
@@ -181,6 +184,22 @@ describe('restoring a release into the draft', () => {
       expect(fakeApi.requests.filter((r) => r === `GET ${base}`).length).toBeGreaterThan(before)
     })
     expect(screen.queryByText(/Restored version/)).not.toBeInTheDocument()
+  })
+
+  it('says a library pack has no release to restore, with no reload', async () => {
+    const { dialog, user } = await openRestore({
+      [`POST ${base}/restore`]: json(
+        { error: 'The library pack cannot restore a release.', code: 'library_pack' },
+        409,
+      ),
+    })
+
+    await user.click(dialog.getByRole('button', { name: 'Restore version 2' }))
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent('cannot restore a release.')
+    expect(
+      dialog.queryByRole('button', { name: 'Reload the latest version' }),
+    ).not.toBeInTheDocument()
   })
 
   it.each([

@@ -8012,11 +8012,11 @@
                         }
                     },
                     "409": {
-                        "description": "The draft has no changes since the latest release, another publish took the version first, or the GameSystem is a library pack, which is never published; nothing was published.",
+                        "description": "Nothing was published; the code says why: no_changes (the draft equals the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published).",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/PublishConflictResponse"
                                 }
                             }
                         }
@@ -8193,11 +8193,11 @@
                         }
                     },
                     "409": {
-                        "description": "Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which has no releases to restore.",
+                        "description": "The draft is unchanged; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no releases to restore).",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/RestoreConflictResponse"
                                 }
                             }
                         }
@@ -15838,6 +15838,30 @@
                 },
                 "type": "object"
             },
+            "PublishConflictCode": {
+                "type": "string",
+                "enum": [
+                    "no_changes",
+                    "release_exists",
+                    "library_pack"
+                ]
+            },
+            "PublishConflictResponse": {
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "$ref": "#/components/schemas/PublishConflictCode"
+                    }
+                },
+                "type": "object"
+            },
             "RestoreGameSystemRequest": {
                 "required": [
                     "version"
@@ -15847,6 +15871,29 @@
                         "description": "The release version whose content replaces the draft.",
                         "type": "integer",
                         "example": 2
+                    }
+                },
+                "type": "object"
+            },
+            "RestoreConflictCode": {
+                "type": "string",
+                "enum": [
+                    "modified_concurrently",
+                    "library_pack"
+                ]
+            },
+            "RestoreConflictResponse": {
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "$ref": "#/components/schemas/RestoreConflictCode"
                     }
                 },
                 "type": "object"

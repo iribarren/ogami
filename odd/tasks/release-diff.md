@@ -1,7 +1,7 @@
 # Feature: release-diff
 
 - **Locator:** `odd/tasks/release-diff.md` · Engram topic `odd/release-diff/tasks`
-- **Issue:** #268 · **Branch:** `feat/release-diff-1-changes-panel` · **Status:** in progress: slice 1
+- **Issue:** #268 · **Branch:** `feat/release-diff-1-changes-panel` · **Status:** done: slice 1 (PR #269)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7j (follow-up of `release-api-followups`, #255)
@@ -58,10 +58,10 @@ The release detail (`GET /api/studio/game-systems/{key}/releases/{version}`) gai
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; ADR 0039 (plus the README index) | parent, inline (feature doc); writer (delegated: ADR) | [x] | |
-| T2 | 1 | `ReleaseDiff` (Application, next to `ReleaseOutline`); the release detail gains `changes`; unit and API tests; generated OpenAPI and TS in their own commit | writer (delegated) | [x] | |
-| T3 | 1 | `ReleaseChanges` panel in `ReleaseView`, above the outline; tests, fixtures, story | writer (delegated) | [x] | |
-| T4 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [x] | |
+| T1 | 1 | This feature doc; ADR 0039 (plus the README index) | parent, inline (feature doc); writer (delegated: ADR) | [x] | `a8e1c41` |
+| T2 | 1 | `ReleaseDiff` (Application, next to `ReleaseOutline`); the release detail gains `changes`; unit and API tests; generated OpenAPI and TS in their own commit | writer (delegated) | [x] | `2d2f367`, `8de265c` |
+| T3 | 1 | `ReleaseChanges` panel in `ReleaseView`, above the outline; tests, fixtures, story | writer (delegated) | [x] | `379e9b5` |
+| T4 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [x] | `502a2b3`, this closing doc commit |
 
 ## Acceptance criteria
 
@@ -83,12 +83,14 @@ The release detail (`GET /api/studio/game-systems/{key}/releases/{version}`) gai
 - 2026-10-24: T2 done: `ReleaseDiff` (shares `ReleaseOutline::entries`), `changes` in the release detail and its response classes, unit and API tests; OpenAPI and TS regenerated in the next commit.
 - 2026-10-24: T3 done: `ReleaseChanges` panel above the outline, fixtures, tests and a story.
 - 2026-10-24: T4 done: native review suggestions covered by tests only (a missing previous release gives `changes: null`; numeric-string keys keep string keys and reorder detection). Both passed on first run, so no production change.
+- 2026-10-24: Feature closed: slice 1 approved, PR #269 with CI green; every review finding is fixed.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
+| 1 | `review-903ace8da92b9647` | Medium risk, approved and acknowledged. Two suggestions, both fixed in T4 (tests only): R3-missing-previous-untested (`GetGameSystemReleaseHandler.php:59-62`) and R3-numeric-key-untested (`ReleaseDiff.php:89-97`). The user skipped the review of the T4 fix (41 lines) | [#269](https://github.com/iribarren/ogami/pull/269) |
 
 ## Next step
 
-Slice 1: T1–T3 by one writer, then native review, push and PR.
+None. Every review finding is fixed in T4.

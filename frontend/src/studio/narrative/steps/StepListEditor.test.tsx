@@ -53,8 +53,8 @@ function Saver({ stored }: { stored: unknown[] }) {
   )
 }
 
-const card = (number: number) =>
-  within(screen.getByRole('group', { name: `Step ${String(number)}` }))
+// A label query, not a role query: role names cost a jsdom getComputedStyle per candidate.
+const card = (number: number) => within(screen.getByLabelText(`Step ${String(number)}`))
 
 /** Opens the Add step menu and picks a kind, the way a person does. */
 async function addStep(user: UserEvent, kind = 'prompt') {

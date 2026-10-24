@@ -39,6 +39,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 | Cross-step derived props | `guide`, `mine` and `laterKeys` keep their previous reference when their content is unchanged (one small shared helper, e.g. `useStableArray` with a shallow or structural compare), so an unrelated card's memo holds |
 | Latest-state access in stable callbacks | Prefer the functional update form where the owner holds the state. Where the editor is controlled (`StepListEditor`), read the latest props through a ref that is updated in an effect, never during render, so the `react-hooks` lint rules pass |
 | Regression test | A render-count test per editor, without test-only hooks in production code: edit one card, then assert that the other cards did not re-render. Count renders with `vi.mock` on a leaf module rendered once per card (for example `StepKindTile`), or with `React.Profiler` `onRender` counts. Existing behaviour tests stay unchanged and must pass |
+| Test-time levers (2026-10-24, user's call) | After T4 gave only about 4.5%, a second profile (CPU profiles via `node:inspector`, five files serial, 98.4s) ranked the rest: role queries with a `name` filter about 30% (jsdom `getComputedStyle` per candidate; the `StepListEditor` `card()` helper alone 19%), React 19 dev `jsx()` capturing an `Error` stack per element about 17% (`react-jsx-runtime.development.js:329`), then React render and Radix Select mount as the floor. No gain from user-event `delay: null` or `pointerEventsCheck: Never`, the `threads`/`vmThreads` pools or a `getComputedStyle` cache; `--no-isolate` breaks a render-count test. Taken: fixes 1 (pin `recentlyCreatedOwnerStacks` high, test-only, guarded) and 2 (`card()` by label). Not taken: swapping `findByRole` waiters (loses role semantics, unmeasured). Going further needs another lever such as Vitest browser mode, out of scope |
 | Speed target | Aim for at least 30% less serial wall time on the five files (100.7s to about 70s). Record the actual numbers either way; the render-count tests are the acceptance check |
 
 ## Constraints
@@ -51,7 +52,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `fix/studio-editor-render-cost-1-memo-cards` | `fix(studio): studio-editor-render-cost 1/1 memoised editor cards` | T1–T4 | ~550: step cards and contexts ~180, check band rows ~100, sheet group cards ~40, render-count tests ~200, doc ~40 |
+| 1 | `fix/studio-editor-render-cost-1-memo-cards` | `fix(studio): studio-editor-render-cost 1/1 memoised editor cards` | T1–T5 | ~550: step cards and contexts ~180, check band rows ~100, sheet group cards ~40, render-count tests ~200, doc ~40 |
 
 ## Tasks
 
@@ -61,7 +62,8 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 | T2 | 1 | Step cards: `memo(StepCard)`, stable index callbacks, stable `guide`/`mine`/`laterKeys`, memoised `context` in `FlowEditor` and `SceneTypeEditor`, `memo` on step `BandsEditor`/`EffectsEditor` where their props become stable; render-count test | writer (delegated) | [x] | |
 | T3 | 1 | Check band rows: extract `memo(BandRow)` from `checks/BandsEditor.tsx`, memoised formula diagnostics per row, stable `errors` and `onChange` in `ChecksTab`; render-count test | writer (delegated) | [x] | |
 | T4 | 1 | Sheet group cards: `memo(GroupFields)` with stable callbacks, `held` and `errors`; render-count test; update the "re-renders the whole editor" comment in `frontend/src/test/typeText.ts`; after-measurement of the five files | writer (delegated) | [x] | |
-| T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
+| T5 | 1 | Test-time levers (user's call after T4 missed the target): React dev owner-stack capture off in `src/test/setup.ts`, `card()` in `StepListEditor.test.tsx` by label instead of role | parent, inline (two mechanical test edits, already profiled) | [x] | |
+| T6 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
 
 ## Applicable checks
 
@@ -76,6 +78,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 - 2026-10-24 T3: RED on the previous code: editing band 1 of 5 drew 14 inputs instead of the 3 of its row (`BandsEditor.test.tsx`), and band 2 of `luck` re-rendered 3 label inputs instead of 1 (`ChecksTab.test.tsx`). GREEN after `memo(BandRow)`, stable `change`/`move`/`remove` over a latest-bands ref, per-row diagnostics `useMemo`, memoised band errors and `useCallback` `changeBands` in `ChecksTab`. `vitest run src/studio/checks`: 8 files, 201 tests green.
 - 2026-10-24 T4: RED on the previous code: editing group 2 of 3 drew 6 text fields instead of 1 (`SheetLayoutPanel.test.tsx`). GREEN after `memo(GroupFields)`, index-taking `useCallback` handlers over the functional `setDraft`, and stable per-group `errors` (`useStableItems`). The comment in `typeText.ts` now says the edited card and its editor re-render. `vitest run src/studio/sheet`: 11 files, 220 tests green.
 - 2026-10-24 After-measurement (`vitest run --no-file-parallelism`, five files, two runs; baseline in brackets): `StepListEditor` 26.0 / 26.0s [27.3], `ChecksTab` 20.2 / 20.4s [20.7], `FlowEditorPage` 17.4 / 17.5s [17.0], `SheetLayoutPanel` 15.1 / 15.2s [15.3], `SceneTypeEditorPage` 11.1 / 10.7s [14.2]; wall 96.4 / 96.1s [100.7], about 4.5% less. The 30% target is not met: the render count per input event is down to one card, but the time of these files is dominated by what is not card renders (mounting the editors, `user-event` and Radix interaction, the test API). The render-count tests are the acceptance check.
+- 2026-10-24 T5: no RED (speed only; no assertion changed). After the owner-stack pin in `src/test/setup.ts` and `card()` by label, the five files serially, two runs (T4 result, then the `main` baseline, in brackets): `StepListEditor` 19.2 / 19.6s [26.0; 27.3], `ChecksTab` 17.5 / 17.6s [20.3; 20.7], `FlowEditorPage` 14.7 / 15.4s [17.5; 17.0], `SheetLayoutPanel` 13.3 / 14.0s [15.2; 15.3], `SceneTypeEditorPage` 9.5 / 9.8s [10.9; 14.2]. Wall time 80.6 / 82.8s [96.3; 100.7], about 19% less than `main`. The 30% aim is not met; the floor is React dev rendering plus jsdom. Full Vitest: 125 files, 2,412 tests green (168.7s parallel). `make frontend-qa` passes.
 
 ## Reviews
 

@@ -39,6 +39,7 @@ export function CharacterStepForm({
         sheet={sheetTemplate(campaign.pinnedRelease)}
         trackers={campaign.trackers}
         releaseTags={campaign.tags}
+        pointBudget={campaign.pinnedRelease.pointBudget}
         pending={pending || save.isPending}
         error={save.error?.message}
         onSubmit={(fields) => {

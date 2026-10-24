@@ -35,6 +35,7 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
         sheet={template}
         trackers={campaign.trackers}
         releaseTags={campaign.tags}
+        pointBudget={campaign.pinnedRelease.pointBudget}
         pending={save.isPending}
         error={save.error?.message}
         onSubmit={(fields: CharacterFields) => {

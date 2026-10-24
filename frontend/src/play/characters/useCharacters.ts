@@ -19,6 +19,8 @@ export interface CharacterFields {
   tags: string[]
   freeTags: string[]
   values: Character['values']
+  /** Only when adding: how a sheet with a point budget is created (ADR 0040). */
+  method?: 'roll' | 'points' | null
 }
 
 /**

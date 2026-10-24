@@ -30,6 +30,22 @@ describe('the preview template', () => {
     expect(template.layout?.groups.map((group) => group.name)).toEqual(['Stats', 'Health', 'Notes'])
   })
 
+  it('reads the dice default and the start max of a field, and none from other shapes', () => {
+    const fields = [
+      { key: 'str', label: 'Strength', type: 'number', roll: { dice: '3d6*5' } },
+      { key: 'hp', label: 'HP', type: 'track', startMax: { formula: '{str} / 10' } },
+      { key: 'luck', label: 'Luck', type: 'number', roll: '3d6', startMax: { formula: 7 } },
+    ]
+
+    const template = previewTemplate({ ...stored, fields, groups: null }, null)
+
+    expect(template.fields.map((field) => [field.roll, field.startMax])).toEqual([
+      ['3d6*5', null],
+      [null, '{str} / 10'],
+      [null, null],
+    ])
+  })
+
   it('has no layout when the sheet declares none or holds one the form cannot read', () => {
     expect(previewTemplate({ ...stored, groups: null }, null).layout).toBeNull()
     expect(

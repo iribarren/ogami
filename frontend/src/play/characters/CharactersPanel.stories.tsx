@@ -4,6 +4,7 @@ import { expect, userEvent, within } from 'storybook/test'
 import { StoryProviders } from '@/test/StoryProviders'
 
 import {
+  creationCampaign,
   initiativeField,
   lostMineWithCharacters,
   nightJobCampaign,
@@ -114,5 +115,19 @@ export const WithLayout: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Edit Vi' }))
     await expect(canvas.getByRole('group', { name: 'Stats' })).toBeInTheDocument()
     await expect(canvas.queryByRole('group', { name: 'Unused' })).not.toBeInTheDocument()
+  },
+}
+
+/** A release with structured creation: pick Roll or Spend points; rolled fields and the start max are set by the server. */
+export const CreationByPoints: Story = {
+  args: { campaign: creationCampaign },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Add Character' }))
+    await expect(canvas.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Spend points' }))
+    await expect(canvas.getByText('Characteristic points: 30 / 100')).toBeVisible()
+    await expect(canvas.getByLabelText('Luck')).toHaveTextContent('Rolled at creation: 3d6*5')
+    await expect(canvas.getByLabelText('Hit points')).toHaveTextContent('Set at creation')
   },
 }

@@ -7,6 +7,9 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { edgeTracker } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import {
+  creationBudget,
+  creationCampaign,
+  creationSheet,
   initiativeField,
   lostMineWithCharacters,
   nightJobCampaign,
@@ -419,5 +422,237 @@ describe('the Characters panel', () => {
     await user.click(panel.getByRole('button', { name: 'Cancel' }))
 
     expect(panel.queryByLabelText('Name')).not.toBeInTheDocument()
+  })
+})
+
+describe('creating a Character by the rules of the sheet', () => {
+  const created = { ...viCharacter, values: {} }
+
+  /** Adds a Character on `campaign`, recording the bodies sent; the form is returned. */
+  async function addCharacter(campaign: Campaign, sent: unknown[] = []) {
+    const user = userEvent.setup()
+    renderCharacters(
+      campaign,
+      { [`POST ${path}/characters`]: () => Response.json(created, { status: 201 }) },
+      sent,
+    )
+    const panel = await characters()
+    await user.click(panel.getByRole('button', { name: 'Add Character' }))
+    await user.type(panel.getByLabelText('Name'), 'Vi')
+    return { user, panel }
+  }
+
+  const bodyOf = (sent: unknown[]) => (sent[0] ?? {}) as { method?: unknown; values: object }
+
+  it('needs a method when the budget covers a rolled field, and sends the rolled path as roll', async () => {
+    const sent: unknown[] = []
+    const { user, panel } = await addCharacter(creationCampaign, sent)
+
+    expect(
+      panel.getByRole('radiogroup', { name: 'How do you create this Character?' }),
+    ).toBeVisible()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.click(panel.getByRole('radio', { name: 'Roll' }))
+    // Every dice field is shown as set by the server, with its dice; none has a control.
+    expect(panel.getByLabelText('Strength')).toHaveTextContent('Rolled at creation: 3d6*5')
+    expect(panel.getByLabelText('Constitution')).toHaveTextContent('Rolled at creation: (2d6+6)*5')
+    expect(panel.getByLabelText('Luck')).toHaveTextContent('Rolled at creation: 3d6*5')
+    expect(panel.getByLabelText('Hit points')).toHaveTextContent(
+      'Set at creation: ({str} + {con}) / 10',
+    )
+    expect(panel.queryByText(/Characteristic points:/)).not.toBeInTheDocument()
+    await user.type(panel.getByLabelText('Role'), 'Spy')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        { name: 'Vi', tags: [], freeTags: [], values: { role: 'Spy' }, method: 'roll' },
+      ])
+    })
+  })
+
+  it('sends the spent values by points and leaves the rolls outside the budget to the server', async () => {
+    const sent: unknown[] = []
+    const { user, panel } = await addCharacter(creationCampaign, sent)
+
+    await user.click(panel.getByRole('radio', { name: 'Spend points' }))
+    // Budget fields become inputs bounded by the budget; Luck, outside it, is still rolled.
+    const strength = panel.getByLabelText('Strength')
+    expect(strength).toHaveAttribute('min', '15')
+    expect(strength).toHaveAttribute('max', '90')
+    expect(panel.getByLabelText('Luck')).toHaveTextContent('Rolled at creation: 3d6*5')
+    expect(panel.getByText('Characteristic points: 30 / 100')).toBeInTheDocument()
+    await user.clear(strength)
+    await user.type(strength, '40')
+    await user.clear(panel.getByLabelText('Constitution'))
+    await user.type(panel.getByLabelText('Constitution'), '60')
+    expect(panel.getByText('Characteristic points: 100 / 100')).toBeInTheDocument()
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        {
+          name: 'Vi',
+          tags: [],
+          freeTags: [],
+          values: { role: '', str: 40, con: 60 },
+          method: 'points',
+        },
+      ])
+    })
+  })
+
+  it('turns the counter to an error and disables Save when more than the total is spent', async () => {
+    const { user, panel } = await addCharacter(creationCampaign)
+
+    await user.click(panel.getByRole('radio', { name: 'Spend points' }))
+    await user.clear(panel.getByLabelText('Strength'))
+    await user.type(panel.getByLabelText('Strength'), '60')
+    await user.clear(panel.getByLabelText('Constitution'))
+    await user.type(panel.getByLabelText('Constitution'), '50')
+
+    const counter = panel.getByText('Characteristic points: 110 / 100 (over budget)')
+    expect(counter).toHaveClass('text-destructive')
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.clear(panel.getByLabelText('Constitution'))
+    await user.type(panel.getByLabelText('Constitution'), '40')
+    expect(panel.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('spends an unrolled budget without a choice, labelled Points by default', async () => {
+    const sent: unknown[] = []
+    const plain = creationSheet.map((field) => ({ ...field, roll: null }))
+    const { user, panel } = await addCharacter(
+      {
+        ...creationCampaign,
+        pinnedRelease: {
+          ...creationCampaign.pinnedRelease,
+          sheet: plain,
+          pointBudget: { ...creationBudget, label: null },
+        },
+      },
+      sent,
+    )
+
+    expect(panel.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(panel.getByText('Points: 30 / 100')).toBeInTheDocument()
+    expect(panel.getByLabelText('Luck')).toHaveValue(1)
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(bodyOf(sent)).toMatchObject({
+        method: 'points',
+        values: { str: 15, con: 15, luck: 1 },
+      })
+    })
+  })
+
+  it('has the player set the non-dice budget fields of a mixed budget by roll, without a counter', async () => {
+    const sent: unknown[] = []
+    const sheet = creationSheet.map((field) =>
+      field.key === 'con' ? { ...field, roll: null } : field,
+    )
+    const { user, panel } = await addCharacter(
+      { ...creationCampaign, pinnedRelease: { ...creationCampaign.pinnedRelease, sheet } },
+      sent,
+    )
+
+    await user.click(panel.getByRole('radio', { name: 'Roll' }))
+    expect(panel.getByLabelText('Strength')).toHaveTextContent('Rolled at creation: 3d6*5')
+    const constitution = panel.getByLabelText('Constitution')
+    expect(constitution).toHaveAttribute('min', '15')
+    expect(constitution).toHaveAttribute('max', '90')
+    expect(panel.queryByText(/Characteristic points:/)).not.toBeInTheDocument()
+    await user.clear(constitution)
+    await user.type(constitution, '80')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(bodyOf(sent)).toMatchObject({ method: 'roll', values: { con: 80 } })
+    })
+    expect(bodyOf(sent).values).not.toHaveProperty('str')
+  })
+
+  it('creates a sheet without a budget as before, with no method, but still leaves rolled fields to the server', async () => {
+    const sent: unknown[] = []
+    const { user, panel } = await addCharacter(
+      {
+        ...creationCampaign,
+        pinnedRelease: { ...creationCampaign.pinnedRelease, pointBudget: null },
+      },
+      sent,
+    )
+
+    expect(panel.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(panel.getByLabelText('Strength')).toHaveTextContent('Rolled at creation: 3d6*5')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ name: 'Vi', tags: [], freeTags: [], values: { role: '' } }])
+    })
+  })
+
+  it('edits a Character with every field as an input and no method or counter', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    renderCharacters(
+      {
+        ...creationCampaign,
+        characters: [
+          {
+            ...viCharacter,
+            values: { role: 'Spy', str: 50, con: 60, luck: 45, hp: { current: 5, max: 11 } },
+          },
+        ],
+      },
+      { [`PUT ${path}/characters/${viCharacter.id}`]: () => Response.json(viCharacter) },
+      sent,
+    )
+
+    const panel = await characters()
+    await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
+
+    expect(panel.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(panel.queryByText(/Characteristic points:/)).not.toBeInTheDocument()
+    expect(panel.getByLabelText('Strength')).toHaveValue(50)
+    expect(panel.getByLabelText('Strength')).toHaveAttribute('max', '99')
+    expect(panel.getByLabelText('Luck')).toHaveValue(45)
+    expect(panel.getByLabelText('Hit points max')).not.toHaveAttribute('readonly')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        {
+          name: 'Vi',
+          tags: ['leader'],
+          freeTags: ['Fixer'],
+          values: { role: 'Spy', str: 50, con: 60, luck: 45, hp: { current: 5, max: 11 } },
+        },
+      ])
+    })
+  })
+
+  it('shows the message of a refused creation and keeps the form', async () => {
+    const user = userEvent.setup()
+    renderCharacters(creationCampaign, {
+      [`POST ${path}/characters`]: () =>
+        Response.json(
+          {
+            error: 'The point budget allows 100 points, 101 spent.',
+            code: 'point_budget_exceeded',
+          },
+          { status: 422 },
+        ),
+    })
+    const panel = await characters()
+    await user.click(panel.getByRole('button', { name: 'Add Character' }))
+    await user.type(panel.getByLabelText('Name'), 'Vi')
+    await user.click(panel.getByRole('radio', { name: 'Roll' }))
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    expect(await panel.findByRole('alert')).toHaveTextContent(
+      'The point budget allows 100 points, 101 spent.',
+    )
+    expect(panel.getByLabelText('Name')).toHaveValue('Vi')
   })
 })

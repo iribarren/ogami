@@ -33,18 +33,23 @@ const fieldSpans: Record<number, string> = {
  * The fields of the sheet as form controls. With a layout, the groups in declared order as boxes
  * in a grid of the sheet's columns, each with its own grid of columns and the fields' spans; a
  * group without fields renders nothing. Without one, consecutive fields with the same group sit
- * together under the group's name. The drafts are the form's state, kept by the caller.
+ * together under the group's name. The drafts are the form's state, kept by the caller. A field
+ * with an entry in `notes` is shown read-only with that text instead of a control: the server
+ * sets it when the Character is created.
  */
 export function SheetFields({
   template,
   drafts,
   derived,
+  notes = {},
   onChange,
 }: {
   template: SheetTemplateView
   drafts: Record<string, Draft>
   /** What derived fields show, by key; a field without an entry shows a dash. */
   derived: Record<string, DerivedResult>
+  /** Read-only text by field key, shown in place of the field's control. */
+  notes?: Record<string, string>
   onChange: (key: string, draft: Draft) => void
 }) {
   const control = (field: SheetFieldView) => (
@@ -53,6 +58,7 @@ export function SheetFields({
       field={field}
       draft={drafts[field.key] ?? toDraft(field, undefined)}
       derived={derived[field.key]}
+      note={notes[field.key]}
       onChange={(draft) => {
         onChange(field.key, draft)
       }}
@@ -146,11 +152,13 @@ function FieldControl({
   field,
   draft,
   derived,
+  note,
   onChange,
 }: {
   field: SheetFieldView
   draft: Draft
   derived: DerivedResult | undefined
+  note: string | undefined
   onChange: (draft: Draft) => void
 }) {
   const id = useId()
@@ -160,6 +168,18 @@ function FieldControl({
       {field.hint}
     </p>
   )
+
+  if (note !== undefined) {
+    return (
+      <div className="space-y-1">
+        <Label htmlFor={id}>{field.label}</Label>
+        <output id={id} className="block text-sm text-muted-foreground">
+          {note}
+        </output>
+        {hint}
+      </div>
+    )
+  }
 
   if (field.type === 'derived') {
     // Computed from the other fields: shown, never edited or submitted.

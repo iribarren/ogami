@@ -19,6 +19,10 @@ export interface SheetFieldView {
   itemLabel: string | null
   maxItems: number | null
   formula: string | null
+  /** Number: the dice expression the server rolls when a Character is created (ADR 0040); absent reads as none. */
+  roll?: string | null
+  /** Track: the formula it starts full at when a Character is created (ADR 0040). */
+  startMax?: string | null
   /** How many columns of its group the field takes. */
   span: number
 }

@@ -22,6 +22,8 @@ const base: SheetField = {
   itemLabel: null,
   maxItems: null,
   formula: null,
+  roll: null,
+  startMax: null,
   span: 1,
 }
 
@@ -143,4 +145,44 @@ export const sheetLayout: NonNullable<Campaign['pinnedRelease']['sheetLayout']> 
 export const nightJobWithChecks: Campaign = {
   ...nightJobCampaign,
   checks: [skillCheck, luckCheck],
+}
+
+const rolled = (key: string, label: string, roll: string): SheetField => ({
+  ...base,
+  key,
+  label,
+  type: 'number',
+  min: 1,
+  max: 99,
+  default: 1,
+  roll,
+})
+
+/** The sheet of a release with structured creation (ADR 0040): two rolled characteristics inside the budget, Luck rolled outside it, Hit points starting at a tenth of the two. */
+export const creationSheet: SheetField[] = [
+  { ...base, key: 'role', label: 'Role', type: 'text', maxLength: 40 },
+  rolled('str', 'Strength', '3d6*5'),
+  rolled('con', 'Constitution', '(2d6+6)*5'),
+  rolled('luck', 'Luck', '3d6*5'),
+  { ...base, key: 'hp', label: 'Hit points', type: 'track', startMax: '({str} + {con}) / 10' },
+]
+
+/** Spend 100 points over Strength and Constitution, 15 to 90 each, or roll them. */
+export const creationBudget: NonNullable<Campaign['pinnedRelease']['pointBudget']> = {
+  label: 'Characteristic points',
+  total: 100,
+  fields: ['str', 'con'],
+  min: 15,
+  max: 90,
+}
+
+/** `nightJobCampaign` on a release that creates Characters by roll or by points. */
+export const creationCampaign: Campaign = {
+  ...nightJobCampaign,
+  pinnedRelease: {
+    ...nightJobCampaign.pinnedRelease,
+    sheet: creationSheet,
+    pointBudget: creationBudget,
+  },
+  characters: [],
 }

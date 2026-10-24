@@ -5,6 +5,11 @@ import { fieldTypes, type FieldType } from './sheetDraft'
 import type { GameSystemSheet } from './useGameSystemSheet'
 
 const text = (value: unknown) => (typeof value === 'string' ? value : null)
+/** The string a stored `{dice}` or `{formula}` object holds under `property`. */
+const inner = (value: unknown, property: string) =>
+  typeof value === 'object' && value !== null && property in value
+    ? text((value as Record<string, unknown>)[property])
+    : null
 const count = (value: unknown) => (Number.isInteger(value) ? (value as number) : null)
 
 /**
@@ -54,6 +59,8 @@ export function previewTemplate(
       itemLabel: text(stored.itemLabel),
       maxItems: count(stored.maxItems),
       formula: text(stored.formula),
+      roll: inner(stored.roll, 'dice'),
+      startMax: inner(stored.startMax, 'formula'),
       span: count(stored.span) ?? 1,
     })
   }

@@ -111,10 +111,13 @@ final class Formulas
      */
     public static function startMax(array $starts, array $derived, array $fieldTypes): void
     {
+        // The verdict of each derived field, shared by the whole run so a field read by several
+        // formulas is walked once.
+        $known = [];
         foreach ($starts as ['path' => $path, 'formula' => $text]) {
             $formulaPath = $path.'.formula';
             foreach (self::parse($text, $formulaPath)->references() as $reference) {
-                $problem = self::startMaxProblem($reference, $derived, $fieldTypes);
+                $problem = self::startMaxProblem($reference, $derived, $fieldTypes, $known);
                 if (null !== $problem) {
                     throw InvalidReleaseContent::at($formulaPath, \sprintf('{%s}: %s', $reference->toString(), $problem));
                 }
@@ -125,9 +128,10 @@ final class Formulas
     /**
      * @param array<string, array{path: string, formula: string}> $derived
      * @param array<string, string>                               $fieldTypes
+     * @param array<string, ?string>                              $known      the problem found in each derived field already walked, null when it is known at creation
      * @param list<string>                                        $visited    the derived fields being followed
      */
-    private static function startMaxProblem(Reference $reference, array $derived, array $fieldTypes, array $visited = []): ?string
+    private static function startMaxProblem(Reference $reference, array $derived, array $fieldTypes, array &$known, array $visited = []): ?string
     {
         if (ReferenceKind::Tracker === $reference->kind) {
             return 'a start max formula cannot read a tracker, it is not known at creation';
@@ -158,9 +162,14 @@ final class Formulas
             return null;
         }
 
+        if (\array_key_exists($reference->key, $known)) {
+            return $known[$reference->key];
+        }
+
+        $known[$reference->key] = null;
         foreach (self::parse($derived[$reference->key]['formula'], $derived[$reference->key]['path'])->references() as $inner) {
-            if (null !== self::startMaxProblem($inner, $derived, $fieldTypes, [...$visited, $reference->key])) {
-                return \sprintf('derived field "%s" reads {%s}, which is not known at creation', $reference->key, $inner->toString());
+            if (null !== self::startMaxProblem($inner, $derived, $fieldTypes, $known, [...$visited, $reference->key])) {
+                return $known[$reference->key] = \sprintf('derived field "%s" reads {%s}, which is not known at creation', $reference->key, $inner->toString());
             }
         }
 

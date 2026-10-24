@@ -1,7 +1,7 @@
 # Feature: structured-character-creation
 
 - **Locator:** `odd/tasks/structured-character-creation.md` · Engram topic `odd/structured-character-creation/tasks`
-- **Issue:** #270 · **Branch:** `feat/structured-character-creation-1-contract` · **Status:** in progress: slice 1
+- **Issue:** #270 · **Branch:** `feat/structured-character-creation-2-play-creation` · **Status:** in progress: slice 2
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7k (follow-up of `release-api-followups`, #255, and [ADR 0027](../../docs/adr/0027-sheet-effects.md))
@@ -61,9 +61,9 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; ADR 0040 (index; status lines of ADR 0027 and 0035; roadmap B7k link) | parent, inline | [x] | |
-| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
-| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [x] | |
+| T1 | 1 | This feature doc; ADR 0040 (index; status lines of ADR 0027 and 0035; roadmap B7k link) | parent, inline | [x] | d9151ad |
+| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [x] | 7c05612 |
+| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [x] | 83f1407, 39af8f4 |
 | T4 | 2 | Translator and Play sheet model read `roll`, `startMax` and `pointBudget` (fail closed on malformed) | | [ ] | |
 | T5 | 2 | Creation by method: `AddCharacterHandler` gets the random source; rolls, budget and `startMax` in the domain; NPC promotion; request `method` and 422 codes; API tests; regenerated OpenAPI and TS | | [ ] | |
 | T6 | 2 | Upgrade planner: added `startMax` track evaluated on the fitted values; added rolled number field takes its static initial value; plan tests | | [ ] | |
@@ -96,7 +96,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
+| 1 | `review-7ab9c67fe0dd9325` (medium) | Approved and acknowledged. WARNING R3-startmax-unmemoized-walk (`Formulas.php:156-164`, the "known at creation" walk is not memoized per derived key) and SUGGESTION R3-startmax-check-ref-untested (`ReleaseContentCreationTest.php:159-168`, no check-reference case): fixed in slice 2 | #271 |
 
 ## Next step
 
-Slice 1: T2 (contract and publisher), T3 (Studio field dialog).
+Slice 2: slice 1 review fixes, T4 (translator and Play sheet model), T5 (creation by method), T6 (upgrade planner).

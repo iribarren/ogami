@@ -1,7 +1,7 @@
 # Feature: structured-character-creation
 
 - **Locator:** `odd/tasks/structured-character-creation.md` · Engram topic `odd/structured-character-creation/tasks`
-- **Issue:** #270 · **Branch:** `feat/structured-character-creation-3-creation-form` · **Status:** in progress: slice 3
+- **Issue:** #270 · **Branch:** `feat/structured-character-creation-4-preset-and-budget-api` · **Status:** in progress: slice 4
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7k (follow-up of `release-api-followups`, #255, and [ADR 0027](../../docs/adr/0027-sheet-effects.md))
@@ -56,7 +56,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 | 1 | `feat/structured-character-creation-1-contract` | `feat(studio): structured-character-creation 1/4 contract and field dialog` | T1–T3 | ~1,500: ADR and feature doc ~250, schema and contract doc ~120, Studio validator, in-use checks and unit tests ~650, field dialog (dice default, track max mode) with tests ~500 |
 | 2 | `feat/structured-character-creation-2-play-creation` | `feat(play): structured-character-creation 2/4 creation on the server` | T4–T6 | ~1,600: translator and Play sheet model ~350, creation methods, rolls, budget and `startMax` in the domain with promotion ~500, API (request, codes) with tests ~300, generated OpenAPI and TS ~150, upgrade planner ~300 |
 | 3 | `feat/structured-character-creation-3-creation-form` | `feat(play): structured-character-creation 3/4 creation form` | slice 2 review fixes, T7 | ~1,500: review fixes with generated files ~200; pinned release exposes `roll`, `startMax` and `pointBudget` ~250 and generated OpenAPI and TS ~150; creation form (method choice, budget counter, rolled and computed fields) with tests, fixtures and story ~900 |
-| 4 | `feat/structured-character-creation-4-point-budget` | `feat(studio): structured-character-creation 4/4 Percentile Horror and point budget editor` | T8–T10 | ~1,100: preset and its flow test ~300, point budget panel in the sheet builder (and its save path) with tests ~800; closing doc |
+| 4 | `feat/structured-character-creation-4-preset-and-budget-api` | `feat(studio): structured-character-creation 4/5 Percentile Horror and point budget API` | slice 3 review fix, T8, T9 | ~1,300: review fix ~40; preset and its flow test ~350; Studio point budget endpoints (save, remove, sheet response) with handler and API tests ~550; generated OpenAPI and TS ~350 |
+| 5 | `feat/structured-character-creation-5-budget-panel` | `feat(studio): structured-character-creation 5/5 point budget panel` | T10, T11 | ~800: point budget panel in the sheet builder with hooks, tests and story ~700; review fixes, Chrome pass, closing doc |
 
 ## Tasks
 
@@ -68,10 +69,11 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 | T4 | 2 | Translator and Play sheet model read `roll`, `startMax` and `pointBudget` (fail closed on malformed) | writer (delegated) | [x] | 981beba (slice 1 fixes), eb721fb |
 | T5 | 2 | Creation by method: `AddCharacterHandler` gets the random source; rolls, budget and `startMax` in the domain; NPC promotion; request `method` and 422 codes; API tests; regenerated OpenAPI and TS | writer (delegated) | [x] | cf51164 |
 | T6 | 2 | Upgrade planner: added `startMax` track evaluated on the fitted values; added rolled number field takes its static initial value; plan tests | writer (delegated) | [x] | 4837ba5 |
-| T7 | 3 | Pinned release exposes `roll`, `startMax` and `pointBudget`; Play creation form (Characters panel and `character` step): method choice, budget counter with creation bounds, rolled fields and `startMax` tracks shown as set at creation; fixtures, tests, story | writer (delegated: 2+ non-trivial files) | [x] | |
+| T7 | 3 | Pinned release exposes `roll`, `startMax` and `pointBudget`; Play creation form (Characters panel and `character` step): method choice, budget counter with creation bounds, rolled fields and `startMax` tracks shown as set at creation; fixtures, tests, story | writer (delegated: 2+ non-trivial files) | [x] | 0a7f325 (slice 2 fixes), 48ac7c3, aec9a42 |
 | T8 | 4 | `percentile-horror`: dice defaults, budget "Characteristic points" 460 (15–90), `startMax` for Hit and Magic points, Luck rolled by the `you` step effect, shorter tip; preset flow test | | [ ] | |
-| T9 | 4 | Studio point budget panel in the sheet builder | | [ ] | |
-| T10 | 4 | Review fixes, Chrome pass, closing doc | | [ ] | |
+| T9 | 4 | Studio point budget API: `PUT /sheet/point-budget` and `DELETE /sheet/point-budget` on the draft (validated like the release, 404/409/422), `pointBudget` on the sheet response; handler and API tests; regenerated OpenAPI and TS | | [ ] | |
+| T10 | 5 | Studio point budget panel in the sheet builder | | [ ] | |
+| T11 | 5 | Review fixes, Chrome pass, closing doc | | [ ] | |
 
 ## Acceptance criteria
 
@@ -97,6 +99,7 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 - 2026-10-24: T6 done. An added `startMax` track starts full at its formula over the fitted values (clamped 0..999; an unreadable formula gives 0, a plan never fails); an added number field with `roll` already took `NumberField::initial()` (default, else 0 inside the bounds), so only a test was needed; the fingerprint is unchanged for releases without the new properties. RED: the start max plan test failed before the planner change (1 failure), the rolled-number test passed first time (existing behaviour). A field that is Reset into a `startMax` track (type change) still starts at 0.
 - 2026-10-24: Slice 2 review fixes done. The 422 `code` property references the `CharacterCreationErrorCode` union (the class-name `enum` is gone, so the TS type is the five literals). By roll, a budget field without a dice default must be given and sit inside the budget and field bounds (a missing one is `outside_creation_bounds`, as by points); the total is not checked. Also fixed: a budget with nothing to roll and no method now checks the budget like points (it was skipped). RED: the two new domain tests failed before the change (2 failures); the mixed-budget API test passed first time (written after the domain change).
 - 2026-10-24: T7 done. The pinned release exposes `roll` and `startMax` per field and `pointBudget` (`PointBudgetResponse`, null without one); legacy releases read null for all three (API tests). The creation form (adding only; editing is unchanged) follows `creationPlan`: a Roll / Spend points choice when the budget covers a dice field (Save disabled until chosen), a budget with nothing to roll is spent implicitly and sends `method: "points"`, no budget sends no method; rolled numbers and `startMax` tracks are read-only ("Rolled at creation: <dice>", "Set at creation: <formula>") and never sent; budget fields are inputs bounded by field and budget bounds, with a "<label or Points>: spent / total" counter by points that turns to an error and disables Save when over; the 422 message shows in the form's error area and `CampaignError` carries the generated `code`. Shared `SheetFieldView.roll` and `startMax` are optional (Studio's `formulaDiagnostics.ts` builds a field and is outside this slice's surface). Frontend tests were written with the code and passed first time (no RED); the API exposure tests failed first on the old exact-shape assertions, then passed.
+- 2026-10-24: Slice 3 review fix done. `useCampaigns.test.ts` asserts `CampaignError.code` is set from a 422 body with a `code`, and `undefined` without one, for a null one, and for a status the API does not explain. No RED observed: the code already behaved so; the test pins it.
 
 ## Reviews
 
@@ -104,7 +107,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 |---|---|---|---|
 | 1 | `review-7ab9c67fe0dd9325` (medium) | Approved and acknowledged. WARNING R3-startmax-unmemoized-walk (`Formulas.php:156-164`, the "known at creation" walk is not memoized per derived key) and SUGGESTION R3-startmax-check-ref-untested (`ReleaseContentCreationTest.php:159-168`, no check-reference case): fixed in slice 2 | #271 |
 | 2 | `review-574dbb807677a9eb` (medium) | Approved and acknowledged. WARNING R3-error-code-enum-not-an-array (`CharacterCreationErrorResponse.php:19`, the OpenAPI enum is the class name, so the TS type is `unknown`) and SUGGESTION R3-mixed-budget-roll-unbounded (`CharacterCreation.php:40-43`, non-dice budget fields unbounded under roll; the user decided, see Decisions): fixed in slice 3 | #272 |
+| 3 | `review-2f0f16b76502855b` (medium) | Approved and acknowledged. SUGGESTION R3-campaign-error-code-unasserted (`frontend/src/play/campaigns/useCampaigns.ts:46`, no test asserts `CampaignError.code` for a 422 with a code, nor `undefined` without one): fixed in slice 4 | #273 |
 
 ## Next step
 
-Slice 3: slice 2 review fixes, T7 (pinned release exposes the creation properties; Play creation form). T8 (Percentile Horror) moved to slice 4 to keep slice 3 under the ceiling.
+Slice 4: slice 3 review fix, T8 (Percentile Horror), T9 (Studio point budget API). The Studio editor needs its own endpoints (no sheet write carries `pointBudget` today), so the old slice 4 (~2,000 lines) was split: the panel and the closing move to slice 5.

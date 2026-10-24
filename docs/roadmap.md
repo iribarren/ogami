@@ -447,6 +447,7 @@ Done: `tooling-followups`, every item of #254 in two slices: one e2e password de
 ```text
 Start feature `release-api-followups` (ODD). Design first, for the items in GitHub issue #255: distinct publish 409 codes (no changes, version race, library pack), what the Studio release view API should show, structured character creation (dice defaults, point budgets) and an NPC agenda that comes from a later answer. Propose the decisions (ADRs where they change the contract), get them approved, then build the small ones and turn the large ones into their own roadmap items.
 ```
+Done: `release-api-followups`, every item of #255 in one slice (PR #266). ADR 0037: `{error, code}` on errors the SPA branches on, with publish and restore 409 codes. ADR 0038: the release detail gains library sources and a contents outline. Studio refuses `{step:x}` placeholders that can only render "—", and the contract doc shows how to give an NPC an agenda from a later answer. The release diff and structured character creation became B7j and B7k.
 
 **B7h. studio-editor-render-cost**
 

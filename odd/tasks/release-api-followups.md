@@ -1,7 +1,7 @@
 # Feature: release-api-followups
 
 - **Locator:** `odd/tasks/release-api-followups.md` · Engram topic `odd/release-api-followups/tasks`
-- **Issue:** #255 · **Branch:** `feat/release-api-followups-1-codes-outline` · **Status:** slice 1 in progress
+- **Issue:** #255 · **Branch:** `feat/release-api-followups-1-codes-outline` · **Status:** done: slice 1 (PR #266)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7g
@@ -47,11 +47,11 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; ADR 0037 and ADR 0038 (plus the README index); roadmap items `release-diff` and `structured-character-creation` | parent, inline (feature doc); writer (delegated: ADRs, roadmap) | [x] | |
-| T2 | 1 | `{error, code}` on the publish and restore 409s; PublishDialog and the restore UI branch on the code | writer (delegated) | [x] | |
-| T3 | 1 | Studio refuses forward and self `{step:x}` placeholders; the contract doc gains the NPC-agenda pattern note | writer (delegated) | [x] | |
-| T4 | 1 | Release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline | writer (delegated) | [x] | |
-| T5 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [x] | |
+| T1 | 1 | This feature doc; ADR 0037 and ADR 0038 (plus the README index); roadmap items `release-diff` and `structured-character-creation` | parent, inline (feature doc); writer (delegated: ADRs, roadmap) | [x] | `75dd8aa` |
+| T2 | 1 | `{error, code}` on the publish and restore 409s; PublishDialog and the restore UI branch on the code | writer (delegated) | [x] | `189a07a` |
+| T3 | 1 | Studio refuses forward and self `{step:x}` placeholders; the contract doc gains the NPC-agenda pattern note | writer (delegated) | [x] | `e9ba02a` |
+| T4 | 1 | Release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline | writer (delegated) | [x] | `da17adf`, `8c7930f` |
+| T5 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [x] | `1d10c81` |
 
 ## Acceptance criteria
 
@@ -73,12 +73,14 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 - 2026-10-24: T3 done: `Placeholders::checkAnswered`, called from `FlowReferences::checkFlow`; three refusing and three accepting unit cases RED then GREEN; all five presets still validate.
 - 2026-10-24: T4 done: `ReleaseOutline::of` (Application, next to `SectionCounts`) builds the outline from the stored content for schema v1 and v2; the release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline and the library sources. Generated OpenAPI and TS in the next commit.
 - 2026-10-24: T5 done: review suggestions fixed: `phaseOpening` and `phaseClosing` of a run-once phase are checked as one sequence (opening may not name closing); API test that the release detail's `librarySources` equals the history row's.
+- 2026-10-24: Feature closed: every item of #255 is decided. The small ones are built in PR #266; the release diff (B7j) and structured character creation (B7k) are roadmap items.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
+| 1 | `review-90bbb333f359709e` | Medium risk, approved and acknowledged. Two suggestions, both fixed in T5: R3-once-phase-cross-list (`FlowReferences.php:130-135`) and R3-library-sources-detail-untested (`GameSystemPublishApiTest.php:375`). The user skipped the review of the T5 fix (56 lines) | [#266](https://github.com/iribarren/ogami/pull/266) |
 
 ## Next step
 
-The slice 1 writer builds T1–T4.
+None. Every review finding is fixed. B7j `release-diff` and B7k `structured-character-creation` are on the roadmap.

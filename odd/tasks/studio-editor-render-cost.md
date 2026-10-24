@@ -60,7 +60,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 | T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
 | T2 | 1 | Step cards: `memo(StepCard)`, stable index callbacks, stable `guide`/`mine`/`laterKeys`, memoised `context` in `FlowEditor` and `SceneTypeEditor`, `memo` on step `BandsEditor`/`EffectsEditor` where their props become stable; render-count test | writer (delegated) | [x] | |
 | T3 | 1 | Check band rows: extract `memo(BandRow)` from `checks/BandsEditor.tsx`, memoised formula diagnostics per row, stable `errors` and `onChange` in `ChecksTab`; render-count test | writer (delegated) | [x] | |
-| T4 | 1 | Sheet group cards: `memo(GroupFields)` with stable callbacks, `held` and `errors`; render-count test; update the "re-renders the whole editor" comment in `frontend/src/test/typeText.ts`; after-measurement of the five files | writer (delegated) | [ ] | |
+| T4 | 1 | Sheet group cards: `memo(GroupFields)` with stable callbacks, `held` and `errors`; render-count test; update the "re-renders the whole editor" comment in `frontend/src/test/typeText.ts`; after-measurement of the five files | writer (delegated) | [x] | |
 | T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
 
 ## Applicable checks
@@ -74,6 +74,8 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 - 2026-10-24: feature doc created (5 tasks, one slice); issue #259; baseline and profile recorded above.
 - 2026-10-24 T2: RED on `main` code: editing step 1 of 6 re-rendered 6 cards (`expected 6 to be 1`). GREEN after `memo(StepCard)`, stable index callbacks (latest list read through a ref set in `useLayoutEffect`), `useStableItems` for `guide`/`mine`/`laterKeys` and memoised `context`: 1 card. The two-quick-edits test passes before and after. Focused: `vitest run src/studio/narrative` 24 files, 529 tests green. Step `BandsEditor`/`EffectsEditor` not memoised: their props are inline closures of the step, so a memo would be dead.
 - 2026-10-24 T3: RED on the previous code: editing band 1 of 5 drew 14 inputs instead of the 3 of its row (`BandsEditor.test.tsx`), and band 2 of `luck` re-rendered 3 label inputs instead of 1 (`ChecksTab.test.tsx`). GREEN after `memo(BandRow)`, stable `change`/`move`/`remove` over a latest-bands ref, per-row diagnostics `useMemo`, memoised band errors and `useCallback` `changeBands` in `ChecksTab`. `vitest run src/studio/checks`: 8 files, 201 tests green.
+- 2026-10-24 T4: RED on the previous code: editing group 2 of 3 drew 6 text fields instead of 1 (`SheetLayoutPanel.test.tsx`). GREEN after `memo(GroupFields)`, index-taking `useCallback` handlers over the functional `setDraft`, and stable per-group `errors` (`useStableItems`). The comment in `typeText.ts` now says the edited card and its editor re-render. `vitest run src/studio/sheet`: 11 files, 220 tests green.
+- 2026-10-24 After-measurement (`vitest run --no-file-parallelism`, five files, two runs; baseline in brackets): `StepListEditor` 26.0 / 26.0s [27.3], `ChecksTab` 20.2 / 20.4s [20.7], `FlowEditorPage` 17.4 / 17.5s [17.0], `SheetLayoutPanel` 15.1 / 15.2s [15.3], `SceneTypeEditorPage` 11.1 / 10.7s [14.2]; wall 96.4 / 96.1s [100.7], about 4.5% less. The 30% target is not met: the render count per input event is down to one card, but the time of these files is dominated by what is not card renders (mounting the editors, `user-event` and Radix interaction, the test API). The render-count tests are the acceptance check.
 
 ## Reviews
 

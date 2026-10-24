@@ -105,6 +105,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 - 2026-10-25: Slice 4 review fix done (T11 part). `savePointBudget` passes every body key but `expectedVersion` (nulls still mean unset), so the release rules refuse an unknown property with a 422 on `sheet.pointBudget` instead of the API dropping it. RED: the new unknown-property case failed before the change (200), GREEN after.
 - 2026-10-25: T10 done. The Studio Sheet tab gains a Point budget panel (`SheetPointBudgetPanel`, after the Sheet fields panel): an empty state with "Add point budget", or a read view (label or "Points", total, field labels, creation range) with Edit and Remove; the editor follows the layout precedent (a dialog): label, total, checkboxes over the sheet's number fields only (Save disabled without one), creation min/max. `useSaveSheetPointBudget`/`useRemoveSheetPointBudget` sit on `useSheetWrite`; `sheetPointBudgetAnswer` maps `sheet.pointBudget.<label|total|min|max>` to inputs, `.fields`/`.fields[i]` to the list, the rest to the form; a 409 offers the (now exported) `ReloadLatest` and keeps what was typed. Client checks: total required, whole numbers. RED: the 20 panel tests failed with no panel; GREEN after (`sheetError` unit tests were written with the code, first-time pass). No e2e. T11 stays open for the Chrome pass and the closing doc.
 
+- 2026-10-25: Slice 5 review fix done (T11). The panel test for drafts stored before point budgets is named for what it covers: the API always sends `pointBudget`, null for such drafts, and the generated type makes the key required, so the panel needs no guard for a missing key. Test-only change; it passed before and after.
+
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |

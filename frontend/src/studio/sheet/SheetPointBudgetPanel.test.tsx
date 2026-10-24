@@ -145,10 +145,9 @@ describe('a sheet without a point budget', () => {
     expect(inDialog().getByRole('button', { name: 'Save point budget' })).toBeDisabled()
   })
 
-  it('reads a legacy sheet without a budget the same way', async () => {
-    const legacy: Record<string, unknown> = { ...sheet }
-    delete legacy.pointBudget
-    await openSheet({ [`GET ${base}/sheet`]: json({ ...legacy, pointBudget: null }) })
+  // The API reads a draft stored before point budgets with `pointBudget: null`, never without the key.
+  it('reads a draft stored before point budgets, sent with a null budget, the same way', async () => {
+    await openSheet({ [`GET ${base}/sheet`]: json({ ...sheet, pointBudget: null }) })
 
     expect(await screen.findByText('Characters are created without a point budget.')).toBeVisible()
   })

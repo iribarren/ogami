@@ -275,6 +275,15 @@ final class PresetsTest extends KernelTestCase
         self::assertInstanceOf(TrackField::class, $sanity);
         self::assertInstanceOf(TrackField::class, $hp);
         self::assertSame([99, null], [$sanity->max, $hp->max]);
+        self::assertSame('{hp-max}', $hp->startMax?->toString());
+
+        // Characters are created by rolling or by spending 460 points over the eight characteristics (ADR 0040).
+        $budget = $sheet->budget();
+        self::assertNotNull($budget);
+        self::assertSame([460, 15, 90, ['str', 'con', 'siz', 'dex', 'app', 'int', 'pow', 'edu']], [$budget->total, $budget->min, $budget->max, $budget->fields]);
+        $siz = $sheet->field('siz');
+        self::assertInstanceOf(NumberField::class, $siz);
+        self::assertSame('(2d6+6)*5', $siz->roll?->notation());
 
         $formulas = [];
         foreach (['hp-max', 'mp-max', 'starting-sanity'] as $key) {

@@ -680,6 +680,7 @@ export const sheet = {
   ],
   trackers: [{ key: 'heat', label: 'Heat', max: 10 }],
   publishedFieldKeys: ['hp'],
+  pointBudget: null,
 }
 
 /** A sheet without declared groups: Play lists consecutive fields of one group together. */
@@ -696,6 +697,7 @@ export const sheetUngrouped = {
   ],
   trackers: [],
   publishedFieldKeys: [],
+  pointBudget: null,
 }
 
 /** A schema version 1 draft's sheet: no fields. */

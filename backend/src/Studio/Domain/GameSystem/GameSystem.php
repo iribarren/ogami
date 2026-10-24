@@ -565,6 +565,39 @@ final class GameSystem
     }
 
     /**
+     * Replaces the whole point budget of the sheet (ADR 0040), the rules being the release's: a
+     * total, distinct number fields to spend it on, and optional creation-only bounds for them.
+     *
+     * @param array<array-key, mixed> $budget "label", "total", "fields", "min" and "max" as in a release document
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, or the budget breaks the release contract (the path starts with "sheet.pointBudget"); nothing changes
+     */
+    public function saveSheetPointBudget(array $budget, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('save a sheet point budget');
+        $this->sheetFields();
+        $this->replaceSheet([...$this->sheet(), 'pointBudget' => $budget], $now);
+    }
+
+    /**
+     * Drops the point budget: Characters are created without one.
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, the sheet has no point budget, or the draft would break the item rules
+     */
+    public function removeSheetPointBudget(\DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('remove a sheet point budget');
+        $this->sheetFields();
+        $sheet = $this->sheet();
+        if (!isset($sheet['pointBudget'])) {
+            throw InvalidReleaseContent::at('sheet.pointBudget', 'no point budget, there is nothing to remove');
+        }
+
+        unset($sheet['pointBudget']);
+        $this->replaceSheet($sheet, $now);
+    }
+
+    /**
      * Replaces the draft with a release document as published; only the key stays this GameSystem's.
      *
      * @param array<mixed> $releaseDocument e.g. ReleaseContent::toArray() of a release of this GameSystem

@@ -14,8 +14,10 @@ use App\Studio\Application\DeleteSheetField;
 use App\Studio\Application\GetGameSystemSheet;
 use App\Studio\Application\MoveSheetField;
 use App\Studio\Application\RemoveSheetLayout;
+use App\Studio\Application\RemoveSheetPointBudget;
 use App\Studio\Application\SaveSheetField;
 use App\Studio\Application\SaveSheetLayout;
+use App\Studio\Application\SaveSheetPointBudget;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
@@ -35,7 +37,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
  * The sheet of a game manager's GameSystem drafts: a read, one create, replace, delete and move
- * command per field, and the layout's save, declare and remove (security.yaml restricts these routes
+ * command per field, the layout's save, declare and remove, and the point budget's save and remove (security.yaml restricts these routes
  * to ROLE_GAME_MANAGER). Like the drafts,
  * they belong to their creator: another user's key is not found. Every write carries the draft
  * version the client read and answers with the sheet as it is now, new version included.
@@ -50,6 +52,7 @@ final readonly class GameSystemSheetController
     private const string MALFORMED_MOVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and an integer "index", the field\'s new position, such as {"expectedVersion": 3, "index": 0}.';
     private const string MALFORMED_DELETE = 'Send the draft version you read as an integer "expectedVersion" query parameter, such as ?expectedVersion=3.';
     private const string MALFORMED_LAYOUT = 'Send a JSON object with an integer "expectedVersion", the draft version you read, an optional "columns" and a "groups" list of objects, such as {"expectedVersion": 3, "columns": 2, "groups": [{"name": "Stats", "columns": 2}]}.';
+    private const string MALFORMED_POINT_BUDGET = 'Send a JSON object with an integer "expectedVersion", the draft version you read, an integer "total", a "fields" list of field keys and optionally a "label", "min" and "max", such as {"expectedVersion": 3, "total": 460, "fields": ["str", "con"], "min": 15, "max": 90}.';
     private const string MALFORMED_DECLARE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, such as {"expectedVersion": 3}.';
 
     public function __construct(
@@ -224,6 +227,55 @@ final readonly class GameSystemSheetController
         }
 
         return $this->write(new RemoveSheetLayout($user->id(), $key, $expectedVersion), $user, $key, Response::HTTP_OK);
+    }
+
+    #[Route('/api/studio/game-systems/{key}/sheet/point-budget', name: 'api_studio_game_systems_sheet_point_budget_save', methods: ['PUT'])]
+    #[OA\Put(operationId: 'saveSheetPointBudget', summary: 'Replace the point budget of the sheet of one of my GameSystem drafts: the total a Character spends over number fields at creation, with creation-only bounds for them')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: SaveSheetPointBudgetRequest::class)))]
+    #[OA\Response(response: 200, description: 'The draft\'s sheet with the new point budget and the new version.', content: new OA\JsonContent(ref: new Model(type: GameSystemSheetResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed or has no integer "expectedVersion".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields, layouts and point budgets.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The budget breaks the release contract\'s rules (the message starts with its path, "sheet.pointBudget" and the property: a missing or non-number total, a missing, non-list, unknown, non-number or repeated field, min above max, a total below the sum of the lowest values the fields can take), or the draft has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function savePointBudget(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the point budget as JSON.', self::MALFORMED_POINT_BUDGET);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        $expectedVersion = $body['expectedVersion'] ?? null;
+        if (!\is_int($expectedVersion)) {
+            return $this->error(self::MALFORMED_POINT_BUDGET, Response::HTTP_BAD_REQUEST);
+        }
+
+        // What is left out or null is unset; the publisher's rules refuse a malformed value with its path.
+        $budget = array_filter(array_intersect_key($body, array_flip(['label', 'total', 'fields', 'min', 'max'])), static fn (mixed $value): bool => null !== $value);
+
+        return $this->write(new SaveSheetPointBudget($user->id(), $key, $expectedVersion, $budget), $user, $key, Response::HTTP_OK);
+    }
+
+    #[Route('/api/studio/game-systems/{key}/sheet/point-budget', name: 'api_studio_game_systems_sheet_point_budget_remove', methods: ['DELETE'])]
+    #[OA\Delete(operationId: 'removeSheetPointBudget', summary: 'Remove the point budget of the sheet of one of my GameSystem drafts: Characters are created without one')]
+    #[OA\Parameter(name: 'expectedVersion', description: 'The draft version the client read; a query parameter because a DELETE has no body.', in: 'query', required: true, schema: new OA\Schema(type: 'integer', example: 3))]
+    #[OA\Response(response: 200, description: 'The draft\'s sheet without a point budget and the new version.', content: new OA\JsonContent(ref: new Model(type: GameSystemSheetResponse::class)))]
+    #[OA\Response(response: 400, description: 'The "expectedVersion" query parameter is missing or not an integer.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'Another request saved the draft meanwhile; reload it and try again. A library pack refuses sheet fields, layouts and point budgets.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'The sheet has no point budget (the message starts with "sheet.pointBudget"), or the draft has schema version 1; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function removePointBudget(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $expectedVersion = $this->expectedVersionParameter($request);
+        if (!\is_int($expectedVersion)) {
+            return $this->error(self::MALFORMED_DELETE, Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->write(new RemoveSheetPointBudget($user->id(), $key, $expectedVersion), $user, $key, Response::HTTP_OK);
     }
 
     /**

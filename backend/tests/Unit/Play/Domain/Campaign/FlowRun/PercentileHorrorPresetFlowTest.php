@@ -6,6 +6,9 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Characters\CreationMethod;
+use App\Play\Domain\Campaign\Characters\CreationRefusal;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
@@ -30,7 +33,8 @@ use PHPUnit\Framework\Attributes\Test;
  * investigation scenes with their branching checks, the loop that ends on clues or dread, the
  * confrontation and the epilogue. The investigator has Library use, Persuade, Psychology, Spot hidden,
  * Stealth and Power at 50 (unless a test says otherwise) and 12 Hit points; choosing them at the
- * character step sets their Sanity to their Power.
+ * character step sets their Sanity to their Power and rolls their Luck. Creation (ADR 0040) rolls or
+ * spends points on the eight characteristics and starts Hit and Magic points full.
  */
 #[CoversClass(FlowRun::class)]
 #[CoversClass(Campaign::class)]
@@ -118,32 +122,94 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function choosingTheInvestigatorSetsTheirSanityToTheirPower(): void
+    public function choosingTheInvestigatorSetsTheirSanityToTheirPowerAndRollsTheirLuck(): void
     {
         $this->pow = 65;
         $campaign = self::guided($this->release, 'kingsport-mystery');
         $campaign->startSession(self::at(), $this->release);
 
-        // A new Character's Sanity track starts full (99); the character step sets it to Power.
-        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['pow' => $this->pow], $this->release);
-        self::assertSame(99, $this->current($campaign, 'sanity'));
-        $changes = $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at());
+        // A new Character's Sanity and Luck tracks start full (99); the character step sets them.
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], $this->points(['pow' => $this->pow]), $this->release, CreationMethod::Points);
+        self::assertSame([99, 99], [$this->current($campaign, 'sanity'), $this->current($campaign, 'luck')]);
+        $changes = $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at(), new ScriptedRandomNumberGenerator(4, 5, 6));
 
-        self::assertEquals([new SheetChange('sanity', 99, 65)], $changes);
-        self::assertSame(65, $this->current($campaign, 'sanity'));
+        self::assertEquals([new SheetChange('sanity', 99, 65), new SheetChange('luck', 99, 75, '3d6*5', 75)], $changes);
+        self::assertSame([65, 75], [$this->current($campaign, 'sanity'), $this->current($campaign, 'luck')]);
     }
 
     #[Test]
-    public function aPowerThatWasNeverSetDefaultsToFiftyForSanity(): void
+    public function anInvestigatorRolledAtCreationStartsWithFullHitAndMagicPoints(): void
     {
         $campaign = self::guided($this->release, 'kingsport-mystery');
         $campaign->startSession(self::at(), $this->release);
 
-        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], [], $this->release);
-        $changes = $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at());
+        // In sheet order: Strength, Constitution, Size, Dexterity, Appearance, Intelligence, Power, Education.
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['occupation' => 'Reporter'], $this->release, CreationMethod::Roll, new ScriptedRandomNumberGenerator(
+            6, 5, 4,
+            4, 4, 4,
+            3, 3,
+            5, 5, 5,
+            2, 2, 2,
+            6, 6,
+            4, 4, 4,
+            1, 1,
+        ));
 
-        self::assertEquals([new SheetChange('sanity', 99, 50)], $changes);
-        self::assertSame(50, $this->current($campaign, 'sanity'));
+        $values = $campaign->character(CharacterId::fromString('inv'))?->values() ?? self::fail('No investigator.');
+        self::assertSame(
+            ['str' => 75, 'con' => 60, 'siz' => 60, 'dex' => 75, 'app' => 30, 'int' => 90, 'pow' => 60, 'edu' => 40],
+            array_intersect_key($values, array_flip(['str', 'con', 'siz', 'dex', 'app', 'int', 'pow', 'edu'])),
+        );
+        self::assertSame(['current' => 12, 'max' => 12], $values['hp']);
+        self::assertSame(['current' => 12, 'max' => 12], $values['mp']);
+    }
+
+    #[Test]
+    public function anInvestigatorBuiltWithPointsStartsWithFullHitAndMagicPoints(): void
+    {
+        $campaign = self::guided($this->release, 'kingsport-mystery');
+        $campaign->startSession(self::at(), $this->release);
+
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], $this->points(['con' => 70, 'siz' => 40, 'pow' => 85]), $this->release, CreationMethod::Points);
+
+        $values = $campaign->character(CharacterId::fromString('inv'))?->values() ?? self::fail('No investigator.');
+        self::assertSame(['current' => 11, 'max' => 11], $values['hp']);
+        self::assertSame(['current' => 17, 'max' => 17], $values['mp']);
+    }
+
+    #[Test]
+    public function spendingMoreThan460PointsOrLeavingTheBoundsIsRefused(): void
+    {
+        $campaign = self::guided($this->release, 'kingsport-mystery');
+        $campaign->startSession(self::at(), $this->release);
+
+        foreach ([
+            [['str' => 80, 'con' => 80, 'siz' => 80, 'dex' => 80], CreationRefusal::BudgetExceeded],
+            [['str' => 91], CreationRefusal::OutsideBounds],
+            [['str' => 14], CreationRefusal::OutsideBounds],
+        ] as [$overrides, $refusal]) {
+            try {
+                $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], $this->points($overrides), $this->release, CreationMethod::Points);
+                self::fail('The Character was accepted.');
+            } catch (InvalidCharacter $invalid) {
+                self::assertSame($refusal, $invalid->refusal, $invalid->getMessage());
+            }
+        }
+        self::assertNull($campaign->character(CharacterId::fromString('inv')));
+    }
+
+    #[Test]
+    public function aValueForHitPointsIsRefusedBecauseCreationSetsIt(): void
+    {
+        $campaign = self::guided($this->release, 'kingsport-mystery');
+        $campaign->startSession(self::at(), $this->release);
+
+        try {
+            $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], $this->points(['hp' => ['current' => 12, 'max' => 12]]), $this->release, CreationMethod::Points);
+            self::fail('The Character was accepted.');
+        } catch (InvalidCharacter $invalid) {
+            self::assertSame(CreationRefusal::ValueSetAtCreation, $invalid->refusal, $invalid->getMessage());
+        }
     }
 
     /**
@@ -633,8 +699,25 @@ final class PercentileHorrorPresetFlowTest extends FlowRunTestCase
 
     private function createInvestigator(Campaign $campaign): void
     {
-        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], ['occupation' => 'Reporter', 'library-use' => 50, 'persuade' => 50, 'psychology' => 50, 'spot-hidden' => 50, 'stealth' => 50, 'pow' => $this->pow, 'hp' => ['current' => $this->hp, 'max' => $this->hp]], $this->release);
-        $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at());
+        // Spent by points; a Power under the creation floor (15) and the Hit points, which creation sets,
+        // are put in place afterwards, as an edit or the game would.
+        $campaign->addCharacter(CharacterId::fromString('inv'), 'Inv', [], [], $this->points(['occupation' => 'Reporter', 'library-use' => 50, 'persuade' => 50, 'psychology' => 50, 'spot-hidden' => 50, 'stealth' => 50]), $this->release, CreationMethod::Points);
+        $campaign->changeCharacterValue(CharacterId::fromString('inv'), 'pow', $this->pow);
+        $campaign->changeCharacterValue(CharacterId::fromString('inv'), 'hp', ['current' => $this->hp, 'max' => $this->hp]);
+        $campaign->completeFlowStep('you', StepResult::character('inv'), $this->release, self::at(), new ScriptedRandomNumberGenerator(4, 4, 4));
+    }
+
+    /**
+     * The eight characteristics at 50 (400 of the 460 points), with the given ones replaced and the
+     * given other values added.
+     *
+     * @param array<string, mixed> $overrides
+     *
+     * @return array<string, mixed>
+     */
+    private function points(array $overrides = []): array
+    {
+        return [...array_fill_keys(['str', 'con', 'siz', 'dex', 'app', 'int', 'pow', 'edu'], 50), ...$overrides];
     }
 
     /**

@@ -17,6 +17,7 @@ final readonly class GameSystemSheetView
      * @param list<array<array-key, mixed>> $fields             the fields as stored, in order
      * @param list<SheetTrackerView>        $trackers           the draft's trackers, which derived fields may read as {tracker:key}
      * @param list<string>                  $publishedFieldKeys the field keys of the latest release of this GameSystem; none when it has no release
+     * @param SheetPointBudgetView|null     $pointBudget        the point budget; null when the sheet has none
      */
     public function __construct(
         public int $version,
@@ -26,6 +27,7 @@ final readonly class GameSystemSheetView
         public array $fields,
         public array $trackers,
         public array $publishedFieldKeys,
+        public ?SheetPointBudgetView $pointBudget = null,
     ) {
     }
 }

@@ -29,6 +29,19 @@ test('a solo player creates their investigator, chooses them at the first step a
   const characters = page.getByRole('region', { name: 'Characters' })
   await characters.getByRole('button', { name: 'Add Character' }).click()
   await characters.getByLabel('Name', { exact: true }).fill('Ida Crane')
+  // Spending points sets Power exactly: 65 plus seven characteristics at 55 is 450 of the 460.
+  await characters.getByRole('radio', { name: 'Spend points' }).check()
+  for (const label of [
+    'Strength',
+    'Constitution',
+    'Size',
+    'Dexterity',
+    'Appearance',
+    'Intelligence',
+    'Education',
+  ]) {
+    await characters.getByLabel(label, { exact: true }).fill('55')
+  }
   await characters.getByLabel('Power', { exact: true }).fill('65')
   await characters.getByRole('button', { name: 'Save' }).click()
   await expect(characters).toContainText('Ida Crane')

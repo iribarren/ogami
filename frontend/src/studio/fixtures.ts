@@ -116,6 +116,10 @@ export const releaseTwo = {
   ...releaseHistory[1],
   name: 'Noir detective (old name)',
   sectionCounts: { oracleTables: 1, trackers: 0 },
+  outline: {
+    oracleTables: [{ key: 'weather', name: 'Weather' }],
+    trackers: [],
+  },
 }
 
 /** The oracles of `draft` (version 7): one ranged and one weighted table, one in use, and a likelihood oracle. */

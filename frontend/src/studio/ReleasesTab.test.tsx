@@ -99,14 +99,17 @@ describe('the releases tab', () => {
     )
   })
 
-  it('shows a release read-only, with its name and section counts', async () => {
+  it('shows a release read-only, with its name and its items', async () => {
     const { user } = await openReleases()
 
     await user.click(await screen.findByRole('button', { name: 'View version 2' }))
 
     const view = within(await screen.findByRole('region', { name: 'Version 2' }))
-    expect(view.getByRole('heading')).toHaveTextContent('Version 2: Noir detective (old name)')
+    expect(view.getByRole('heading', { level: 2 })).toHaveTextContent(
+      'Version 2: Noir detective (old name)',
+    )
     expect(view.getByText('Oracle tables')).toBeInTheDocument()
+    expect(view.getByText('Weather')).toBeInTheDocument()
     expect(view.queryByText('Editor coming')).not.toBeInTheDocument()
     expect(view.getByText('Rebalanced the oracles.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'View version 2' }).closest('li')).toHaveAttribute(
@@ -114,6 +117,70 @@ describe('the releases tab', () => {
       'true',
     )
     expect(view.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('lists the items of each section, by display name and key', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        sectionCounts: { oracleTables: 2, trackers: 1, flows: 0 },
+        outline: {
+          oracleTables: [
+            { key: 'weather', name: 'Weather' },
+            { key: 'omens', name: null },
+          ],
+          trackers: [{ key: 'heat', name: 'Heat' }],
+          flows: [],
+        },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const view = within(await screen.findByRole('region', { name: 'Version 2' }))
+    const tables = within(view.getByRole('group', { name: 'Oracle tables' }))
+    expect(tables.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Weatherweather',
+      'omens',
+    ])
+    expect(within(view.getByRole('group', { name: 'Trackers' })).getByText('Heat')).toBeVisible()
+    expect(within(view.getByRole('group', { name: 'Flows' })).getByText('No items')).toBeVisible()
+  })
+
+  it('lists a schema version 1 release with its own section names', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        schemaVersion: 1,
+        sectionCounts: { oracles: 1, flowSteps: 1 },
+        outline: {
+          oracles: [{ key: 'weather', name: 'Weather' }],
+          flowSteps: [{ key: 'set-scene', name: 'Set the scene' }],
+        },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const view = within(await screen.findByRole('region', { name: 'Version 2' }))
+    expect(
+      within(view.getByRole('group', { name: 'Flow steps' })).getByText('Set the scene'),
+    ).toBeVisible()
+    expect(view.getByRole('group', { name: 'Oracles' })).toBeVisible()
+  })
+
+  it('shows the library sources of the release it views', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        librarySources: [{ section: 'tags', key: 'noble', pack: 'wild-tales' }],
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const view = within(await screen.findByRole('region', { name: 'Version 2' }))
+    expect(view.getByText('Library: wild-tales (noble)')).toBeVisible()
   })
 
   it('shows why a release could not be loaded', async () => {

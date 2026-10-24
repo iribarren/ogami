@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Studio\Infrastructure\Http;
 
 use App\Studio\Application\GameSystemReleaseView;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
  * One release of a GameSystem as its owner reads it.
  */
-#[OA\Schema(required: ['version', 'schemaVersion', 'publishedAt', 'notes', 'contentHash', 'name', 'sectionCounts'])]
+#[OA\Schema(required: ['version', 'schemaVersion', 'publishedAt', 'notes', 'contentHash', 'librarySources', 'name', 'sectionCounts', 'outline'])]
 final readonly class GameSystemReleaseResponse
 {
     /**
-     * @param array<string, int> $sectionCounts
+     * @param list<LibrarySourceResponse>|null                $librarySources
+     * @param array<string, int>                              $sectionCounts
+     * @param array<string, list<ReleaseOutlineItemResponse>> $outline
      */
     private function __construct(
         #[OA\Property(example: 3)]
@@ -27,6 +30,8 @@ final readonly class GameSystemReleaseResponse
         public ?string $notes,
         #[OA\Property(description: 'The full sha256 of the canonical content; a UI shows a short form.', example: '11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0')]
         public string $contentHash,
+        #[OA\Property(description: 'The library items the draft had imported when this release was published, for the history only (the release itself is self-contained); null when it recorded none, as for a release without imports.', type: 'array', items: new OA\Items(ref: new Model(type: LibrarySourceResponse::class)), nullable: true)]
+        public ?array $librarySources,
         #[OA\Property(description: 'The name the release was published under.', example: 'My system')]
         public string $name,
         #[OA\Property(
@@ -36,6 +41,12 @@ final readonly class GameSystemReleaseResponse
             additionalProperties: new OA\AdditionalProperties(type: 'integer'),
         )]
         public array $sectionCounts,
+        #[OA\Property(
+            description: 'The items of each section in content order, by the same section names as sectionCounts; each list is as long as its count.',
+            type: 'object',
+            additionalProperties: new OA\AdditionalProperties(type: 'array', items: new OA\Items(ref: new Model(type: ReleaseOutlineItemResponse::class))),
+        )]
+        public array $outline,
     ) {
     }
 
@@ -43,6 +54,9 @@ final readonly class GameSystemReleaseResponse
     {
         $summary = $view->summary;
 
-        return new self($summary->version, $summary->schemaVersion, $summary->publishedAt->format(\DATE_ATOM), $summary->notes, $summary->contentHash, $view->name, $view->sectionCounts);
+        $librarySources = null === $summary->librarySources ? null : array_map(LibrarySourceResponse::fromSource(...), $summary->librarySources);
+        $outline = array_map(static fn (array $items): array => array_map(ReleaseOutlineItemResponse::fromItem(...), $items), $view->outline);
+
+        return new self($summary->version, $summary->schemaVersion, $summary->publishedAt->format(\DATE_ATOM), $summary->notes, $summary->contentHash, $librarySources, $view->name, $view->sectionCounts, $outline);
     }
 }

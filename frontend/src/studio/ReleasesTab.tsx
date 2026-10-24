@@ -12,7 +12,7 @@ import {
 } from '@/shared/ui/dialog'
 import { IconTile } from '@/shared/ui/icon-tile'
 
-import { SectionCounts } from './SectionCounts'
+import { ReleaseOutline } from './ReleaseOutline'
 import {
   useGameSystemRelease,
   useGameSystemReleases,
@@ -209,7 +209,7 @@ function ReleaseView({
       </p>
     )
   }
-  const { name, schemaVersion, sectionCounts } = release.data
+  const { name, schemaVersion, librarySources, outline } = release.data
   return (
     <section
       aria-label={`Version ${String(version)}`}
@@ -246,7 +246,12 @@ function ReleaseView({
           {summary.notes}
         </p>
       )}
-      <SectionCounts counts={sectionCounts} />
+      {librarySources !== null && librarySources.length > 0 && (
+        <p className="text-sm break-words text-muted-foreground">
+          Library: {sourcesByPack(librarySources)}
+        </p>
+      )}
+      <ReleaseOutline outline={outline} />
     </section>
   )
 }

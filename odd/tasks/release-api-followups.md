@@ -49,8 +49,8 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0037 and ADR 0038 (plus the README index); roadmap items `release-diff` and `structured-character-creation` | parent, inline (feature doc); writer (delegated: ADRs, roadmap) | [x] | |
 | T2 | 1 | `{error, code}` on the publish and restore 409s; PublishDialog and the restore UI branch on the code | writer (delegated) | [x] | |
-| T3 | 1 | Studio refuses forward and self `{step:x}` placeholders; the contract doc gains the NPC-agenda pattern note | writer (delegated) | [ ] | |
-| T4 | 1 | Release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline | writer (delegated) | [ ] | |
+| T3 | 1 | Studio refuses forward and self `{step:x}` placeholders; the contract doc gains the NPC-agenda pattern note | writer (delegated) | [x] | |
+| T4 | 1 | Release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline | writer (delegated) | [x] | |
 | T5 | 1 | Review fixes, if any; closing doc commit | parent / writer | [ ] | |
 
 ## Acceptance criteria
@@ -71,6 +71,7 @@ Decide the four design items of issue #255, write ADRs where they change a contr
 - 2026-10-24: T1 done: ADRs 0037 and 0038 indexed, 0028 amended, roadmap B7j and B7k added.
 - 2026-10-24: T2 done: two enums and two response schemas (`PublishConflictCode`/`PublishConflictResponse`, `RestoreConflictCode`/`RestoreConflictResponse`) so each endpoint advertises only its own codes; PublishDialog and the restore dialog branch on `StudioError.code`; API test per code (the version race and the concurrent save reuse `duringRequest`).
 - 2026-10-24: T3 done: `Placeholders::checkAnswered`, called from `FlowReferences::checkFlow`; five unit cases RED then GREEN; all five presets still validate.
+- 2026-10-24: T4 done: `ReleaseOutline::of` (Application, next to `SectionCounts`) builds the outline from the stored content for schema v1 and v2; the release detail gains `librarySources` and `outline`; `ReleaseView` lists the outline and the library sources. Generated OpenAPI and TS in the next commit.
 
 ## Reviews
 

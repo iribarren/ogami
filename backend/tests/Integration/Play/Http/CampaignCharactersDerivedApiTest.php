@@ -64,7 +64,7 @@ final class CampaignCharactersDerivedApiTest extends WebTestCase
         /** @var array<string, array<string, mixed>> $fields */
         $fields = array_column((array) ($pinned['sheet'] ?? null), null, 'key');
         self::assertSame(
-            ['key' => 'guard', 'label' => 'Guard', 'hint' => null, 'group' => null, 'type' => 'derived', 'min' => null, 'max' => null, 'default' => null, 'multiline' => null, 'maxLength' => null, 'itemLabel' => null, 'maxItems' => null, 'formula' => '{reflexes} * 2 + {luck} + {tracker:chaos}', 'span' => 1],
+            ['key' => 'guard', 'label' => 'Guard', 'hint' => null, 'group' => null, 'type' => 'derived', 'min' => null, 'max' => null, 'default' => null, 'multiline' => null, 'maxLength' => null, 'itemLabel' => null, 'maxItems' => null, 'formula' => '{reflexes} * 2 + {luck} + {tracker:chaos}', 'roll' => null, 'startMax' => null, 'span' => 1],
             $fields['guard'] ?? null,
         );
         self::assertArrayHasKey('formula', $fields['reflexes']);

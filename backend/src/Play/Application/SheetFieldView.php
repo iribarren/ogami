@@ -13,7 +13,7 @@ use App\Play\Domain\GameSystem\Sheet\TrackField;
 
 /**
  * One field of the pinned release's character sheet. `type` is "number", "text", "list", "track" or "derived";
- * the properties of the other types are null. `span` is how many columns of its group the field takes (ADR 0031). A derived field holds its formula in the spelling the release gives it. Limits are resolved: a number's min and max default to
+ * the properties of the other types are null. `span` is how many columns of its group the field takes (ADR 0031). A derived field holds its formula in the spelling the release gives it. A number's `roll` is the normalized dice expression the server rolls at creation, a track's `startMax` the formula it starts full at (ADR 0040). Limits are resolved: a number's min and max default to
  * the contract's one million, a text's maxLength and a list's maxItems to their defaults.
  */
 final readonly class SheetFieldView
@@ -33,6 +33,8 @@ final readonly class SheetFieldView
         public ?int $maxItems = null,
         public ?string $formula = null,
         public int $span = 1,
+        public ?string $roll = null,
+        public ?string $startMax = null,
     ) {
     }
 
@@ -41,10 +43,10 @@ final readonly class SheetFieldView
         $common = ['key' => $field->key, 'label' => $field->label, 'hint' => $field->hint, 'group' => $field->group, 'span' => $field->span];
 
         return match (true) {
-            $field instanceof NumberField => new self(...$common, type: 'number', min: $field->min ?? -NumberField::LIMIT, max: $field->max ?? NumberField::LIMIT, default: $field->initial()),
+            $field instanceof NumberField => new self(...$common, type: 'number', min: $field->min ?? -NumberField::LIMIT, max: $field->max ?? NumberField::LIMIT, default: $field->initial(), roll: $field->roll?->notation()),
             $field instanceof TextField => new self(...$common, type: 'text', multiline: $field->multiline, maxLength: $field->limit()),
             $field instanceof ListField => new self(...$common, type: 'list', itemLabel: $field->itemLabel, maxItems: $field->limit()),
-            $field instanceof TrackField => new self(...$common, type: 'track', max: $field->max),
+            $field instanceof TrackField => new self(...$common, type: 'track', max: $field->max, startMax: $field->startMax?->toString()),
             $field instanceof DerivedField => new self(...$common, type: 'derived', formula: $field->formula->toString()),
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),
         };

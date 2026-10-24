@@ -93,13 +93,48 @@ final class CampaignCharactersApiTest extends WebTestCase
         $sheet = array_map(static fn (mixed $field): array => (array) $field, array_values($sheet));
         self::assertSame(['role', 'look', 'reflexes', 'luck', 'debt', 'hp', 'humanity', 'gear', 'cyberware'], array_column($sheet, 'key'));
         self::assertSame(
-            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'span' => 1],
+            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'roll' => null, 'startMax' => null, 'span' => 1],
             $sheet[0],
         );
         self::assertSame(['number', 1, 10, 4], [$sheet[2]['type'] ?? null, $sheet[2]['min'] ?? null, $sheet[2]['max'] ?? null, $sheet[2]['default'] ?? null]);
         self::assertSame(['number', -1_000_000, 1_000_000, 0], [$sheet[3]['type'] ?? null, $sheet[3]['min'] ?? null, $sheet[3]['max'] ?? null, $sheet[3]['default'] ?? null]);
         self::assertSame([['track', 40], ['track', null]], [[$sheet[5]['type'] ?? null, $sheet[5]['max'] ?? null], [$sheet[6]['type'] ?? null, $sheet[6]['max'] ?? null]]);
         self::assertSame([['list', 'Item', 20], ['list', null, 50]], [[$sheet[7]['type'] ?? null, $sheet[7]['itemLabel'] ?? null, $sheet[7]['maxItems'] ?? null], [$sheet[8]['type'] ?? null, $sheet[8]['itemLabel'] ?? null, $sheet[8]['maxItems'] ?? null]]);
+    }
+
+    #[Test]
+    public function thePinnedReleaseExposesTheCreationRulesOfItsSheet(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+
+        $this->client->request('GET', '/api/campaigns/'.$this->createCampaign(CreationRelease::KEY));
+
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        /** @var array<string, array<string, mixed>> $sheet */
+        $sheet = array_column((array) $pinned['sheet'], null, 'key');
+        self::assertSame(['3d6*5', '(2d6+6)*5', null, null], [$sheet['str']['roll'], $sheet['con']['roll'], $sheet['role']['roll'], $sheet['hp']['roll']]);
+        self::assertSame(['{half}', null, null], [$sheet['hp']['startMax'], $sheet['str']['startMax'], $sheet['half']['startMax']]);
+        self::assertSame(['label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90], $pinned['pointBudget'] ?? null);
+    }
+
+    #[Test]
+    public function aReleaseWithoutCreationRulesExposesNoneOfThem(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+
+        $this->client->request('GET', '/api/campaigns/'.$this->createCampaign());
+
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        self::assertArrayHasKey('pointBudget', $pinned);
+        self::assertNull($pinned['pointBudget']);
+        foreach ((array) $pinned['sheet'] as $field) {
+            $field = (array) $field;
+            self::assertArrayHasKey('roll', $field);
+            self::assertArrayHasKey('startMax', $field);
+            self::assertSame([null, null], [$field['roll'], $field['startMax']]);
+        }
     }
 
     #[Test]

@@ -1895,6 +1895,16 @@ export interface components {
              */
             formula: string | null;
             /**
+             * @description Number: the dice expression the server rolls for this field when a Character is created (ADR 0040); the Character is sent no value for it unless the field is spent from the point budget. Null for other types and for a number without one.
+             * @example 3d6*5
+             */
+            roll: string | null;
+            /**
+             * @description Track: the formula its max and current start at when a Character is created (ADR 0040), read over the other values; the max then stays per Character. Null for other types and for a track without one.
+             * @example ({con} + {siz}) / 10
+             */
+            startMax: string | null;
+            /**
              * @description How many columns of its group the field takes; 1 for a release without a layout.
              * @example 2
              */
@@ -1926,6 +1936,36 @@ export interface components {
             /** @description The groups in declared order. A field names its group; a group without fields renders nothing. */
             groups: components["schemas"]["SheetGroupResponse"][];
         };
+        PointBudgetResponse: {
+            /**
+             * @description What to call the points; null to call them "Points".
+             * @example Characteristic points
+             */
+            label: string | null;
+            /**
+             * @description The most points a player spends.
+             * @example 460
+             */
+            total: number;
+            /**
+             * @description The keys of the number fields the points are spent on.
+             * @example [
+             *       "str",
+             *       "con"
+             *     ]
+             */
+            fields: string[];
+            /**
+             * @description The lowest value a budget field takes when a Character is created; null when the budget adds no lower bound to the field's own.
+             * @example 15
+             */
+            min: number | null;
+            /**
+             * @description The highest value a budget field takes when a Character is created; null when the budget adds no upper bound to the field's own.
+             * @example 90
+             */
+            max: number | null;
+        };
         PinnedReleaseResponse: {
             /** @example ironsworn */
             gameSystemKey: string;
@@ -1945,6 +1985,8 @@ export interface components {
             sheet: components["schemas"]["SheetFieldResponse"][];
             /** @description How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together. */
             sheetLayout: components["schemas"]["SheetLayoutResponse"] | null;
+            /** @description The points a player may spend on number fields when creating a Character (ADR 0040); null when the sheet has no budget. */
+            pointBudget: components["schemas"]["PointBudgetResponse"] | null;
         };
         ItemRefResponse: {
             /**

@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
  * One field of the character sheet of a campaign's pinned release. The properties of the other
  * types than `type` are null.
  */
-#[OA\Schema(required: ['key', 'label', 'hint', 'group', 'type', 'min', 'max', 'default', 'multiline', 'maxLength', 'itemLabel', 'maxItems', 'formula', 'span'])]
+#[OA\Schema(required: ['key', 'label', 'hint', 'group', 'type', 'min', 'max', 'default', 'multiline', 'maxLength', 'itemLabel', 'maxItems', 'formula', 'roll', 'startMax', 'span'])]
 final readonly class SheetFieldResponse
 {
     private function __construct(
@@ -41,6 +41,10 @@ final readonly class SheetFieldResponse
         public ?int $maxItems,
         #[OA\Property(description: 'Derived: the formula, as the release writes it ({str}, {hp.max}, {tracker:chaos}, + - * /, min, max). Null for other types.', example: '{reflexes} + 4', nullable: true)]
         public ?string $formula,
+        #[OA\Property(description: 'Number: the dice expression the server rolls for this field when a Character is created (ADR 0040); the Character is sent no value for it unless the field is spent from the point budget. Null for other types and for a number without one.', example: '3d6*5', nullable: true)]
+        public ?string $roll,
+        #[OA\Property(description: 'Track: the formula its max and current start at when a Character is created (ADR 0040), read over the other values; the max then stays per Character. Null for other types and for a track without one.', example: '({con} + {siz}) / 10', nullable: true)]
+        public ?string $startMax,
         #[OA\Property(description: 'How many columns of its group the field takes; 1 for a release without a layout.', example: 2, minimum: 1)]
         public int $span,
     ) {
@@ -48,6 +52,6 @@ final readonly class SheetFieldResponse
 
     public static function fromView(SheetFieldView $view): self
     {
-        return new self($view->key, $view->label, $view->hint, $view->group, $view->type, $view->min, $view->max, $view->default, $view->multiline, $view->maxLength, $view->itemLabel, $view->maxItems, $view->formula, $view->span);
+        return new self($view->key, $view->label, $view->hint, $view->group, $view->type, $view->min, $view->max, $view->default, $view->multiline, $view->maxLength, $view->itemLabel, $view->maxItems, $view->formula, $view->roll, $view->startMax, $view->span);
     }
 }

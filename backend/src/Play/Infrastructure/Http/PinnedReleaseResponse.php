@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
 /**
  * The GameSystem release a campaign is pinned to (ADR 0014).
  */
-#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout'])]
+#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout', 'pointBudget'])]
 final readonly class PinnedReleaseResponse
 {
     /**
@@ -36,11 +36,13 @@ final readonly class PinnedReleaseResponse
         public array $sheet,
         #[OA\Property(ref: new Model(type: SheetLayoutResponse::class), description: 'How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together.', nullable: true)]
         public ?SheetLayoutResponse $sheetLayout,
+        #[OA\Property(ref: new Model(type: PointBudgetResponse::class), description: 'The points a player may spend on number fields when creating a Character (ADR 0040); null when the sheet has no budget.', nullable: true)]
+        public ?PointBudgetResponse $pointBudget,
     ) {
     }
 
     public static function fromView(PinnedReleaseView $view): self
     {
-        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout));
+        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout), PointBudgetResponse::fromBudget($view->pointBudget));
     }
 }

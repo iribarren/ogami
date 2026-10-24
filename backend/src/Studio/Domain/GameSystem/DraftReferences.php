@@ -200,7 +200,8 @@ final class DraftReferences
     }
 
     /**
-     * The places that name this sheet field key: derived field formulas, check modifiers and band
+     * The places that name this sheet field key: derived field formulas, start max formulas, the
+     * point budget's field list, check modifiers and band
      * formulas reading {key} or {key.max}, and sheet effects whose "field" is the key or whose
      * {formula} value reads it, in steps, outcomes and table entries. Flow formulas read trackers
      * only, so they never name a field.
@@ -217,6 +218,15 @@ final class DraftReferences
         foreach (self::objects($sheet['fields'] ?? null) as $index => $field) {
             if (null === $exceptField || $exceptField !== ($field['key'] ?? null)) {
                 $paths += self::sheetFormulaPaths($field['formula'] ?? null, $key, \sprintf('sheet.fields[%d].formula', $index));
+                $startMax = $field['startMax'] ?? null;
+                $paths += self::sheetFormulaPaths(\is_array($startMax) ? $startMax['formula'] ?? null : null, $key, \sprintf('sheet.fields[%d].startMax.formula', $index));
+            }
+        }
+
+        $budget = \is_array($sheet['pointBudget'] ?? null) ? $sheet['pointBudget'] : [];
+        foreach (\is_array($budget['fields'] ?? null) ? $budget['fields'] : [] as $index => $budgetField) {
+            if ($key === $budgetField) {
+                $paths[\sprintf('sheet.pointBudget.fields[%s]', $index)] = true;
             }
         }
 

@@ -42,7 +42,7 @@ test('a game manager lays out the sheet of a copied preset, adds a derived field
   await dialog.getByLabel('Key', { exact: true }).fill('luck')
   await dialog.getByLabel('Label', { exact: true }).fill('Luck')
   await chooseOption(page, 'Group', 'Extras', dialog)
-  await dialog.getByLabel('Default').fill('3')
+  await dialog.getByLabel('Default', { exact: true }).fill('3')
   await dialog.getByRole('button', { name: 'Create field' }).click()
   await expect(dialog).toBeHidden()
 

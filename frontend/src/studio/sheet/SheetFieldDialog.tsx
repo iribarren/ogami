@@ -20,12 +20,14 @@ import { FormulaInput, type ReferenceOption } from './FormulaInput'
 import {
   blankField,
   fieldTypes,
+  maxModes,
   readField,
   typeProperties,
   writeField,
   type FieldDraft,
   type FieldErrors,
   type FieldType,
+  type MaxMode,
 } from './sheetDraft'
 import { sheetFieldAnswer } from './sheetError'
 import {
@@ -95,6 +97,12 @@ const typeLabels: Record<FieldType, string> = {
   list: 'List',
   track: 'Track',
   derived: 'Derived',
+}
+
+const maxModeLabels: Record<MaxMode, string> = {
+  fixed: 'Fixed',
+  perCharacter: 'Each Character sets it',
+  startFormula: 'Formula at creation',
 }
 
 function FieldForm({
@@ -167,6 +175,14 @@ function FieldForm({
     })
   }, [draft.type, draft.formula, own, others, samples, base.trackers])
   const references = useMemo(() => readableReferences(others, base), [others, base])
+  // A start max formula is evaluated before the Character has any track or Tracker value.
+  const startReferences = useMemo(
+    () =>
+      others
+        .filter(({ type }) => type === 'number' || type === 'derived')
+        .map(({ key, label }) => ({ reference: key, label })),
+    [others],
+  )
 
   const change = (changes: Partial<FieldDraft>) => {
     setDraft((current) => ({ ...current, ...changes }))
@@ -307,6 +323,7 @@ function FieldForm({
         errors={shown}
         diagnostics={diagnostics}
         references={references}
+        startReferences={startReferences}
       />
       {message !== '' && (
         <p role="alert" className="text-sm text-destructive">
@@ -339,12 +356,15 @@ function TypeFields({
   errors,
   diagnostics,
   references,
+  startReferences,
 }: {
   draft: FieldDraft
   change: (changes: Partial<FieldDraft>) => void
   errors: Record<string, string | undefined>
   diagnostics: FormulaDiagnostics | null
   references: ReferenceOption[]
+  /** What a start max formula may read: number and derived fields. */
+  startReferences: ReferenceOption[]
 }) {
   const multilineId = useId()
   const text = (label: string, name: keyof FieldDraft) => (
@@ -365,6 +385,15 @@ function TypeFields({
           {text('Min', 'min')}
           {text('Max', 'max')}
           {text('Default', 'default')}
+          <TextField
+            label="Dice default"
+            value={draft.roll}
+            onChange={(roll) => {
+              change({ roll })
+            }}
+            error={errors.roll}
+            help="Rolled when a Character is created, e.g. 3d6*5. The default is used wherever nothing is rolled."
+          />
         </>
       )
     case 'text':
@@ -392,7 +421,31 @@ function TypeFields({
         </>
       )
     case 'track':
-      return text('Max', 'max')
+      return (
+        <>
+          <SelectField
+            label="Max is"
+            value={draft.maxMode}
+            onChange={(maxMode) => {
+              change({ maxMode: maxMode as MaxMode })
+            }}
+            options={maxModes.map((mode) => ({ value: mode, label: maxModeLabels[mode] }))}
+          />
+          {draft.maxMode === 'fixed' && text('Max', 'max')}
+          {draft.maxMode === 'startFormula' && (
+            <FormulaInput
+              label="Start max formula"
+              value={draft.startMax}
+              onChange={(startMax) => {
+                change({ startMax })
+              }}
+              diagnostics={null}
+              references={startReferences}
+              error={errors.startMax}
+            />
+          )}
+        </>
+      )
     case 'derived':
       return (
         <FormulaInput

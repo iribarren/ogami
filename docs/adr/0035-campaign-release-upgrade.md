@@ -1,6 +1,6 @@
 # 0035. Campaign release upgrade
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md)
 - **Date:** 2026-10-18
 
 ## Context

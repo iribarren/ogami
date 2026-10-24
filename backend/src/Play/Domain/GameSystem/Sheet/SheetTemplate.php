@@ -10,7 +10,8 @@ use App\Formula\Domain\InvalidFormula;
 /**
  * The character sheet a GameSystem release defines (ADR 0022): its fields in layout order. A
  * release without fields has an empty template, and its Characters have a name and tags only. The
- * layout (ADR 0031) is null when the release declares no groups.
+ * layout (ADR 0031) is null when the release declares no groups; the point budget (ADR 0040) when
+ * it declares none.
  */
 final readonly class SheetTemplate
 {
@@ -23,9 +24,9 @@ final readonly class SheetTemplate
     /**
      * @param list<Field> $fields in definition order
      *
-     * @throws \InvalidArgumentException when two fields share a key or derived fields read each other in a cycle
+     * @throws \InvalidArgumentException when two fields share a key, derived fields read each other in a cycle or the budget covers a field that is not a number field
      */
-    public function __construct(array $fields = [], private ?SheetLayout $layout = null)
+    public function __construct(array $fields = [], private ?SheetLayout $layout = null, private ?PointBudget $budget = null)
     {
         $byKey = [];
         foreach ($fields as $field) {
@@ -37,6 +38,12 @@ final readonly class SheetTemplate
         }
 
         $this->fields = $byKey;
+
+        foreach ($budget->fields ?? [] as $key) {
+            if (!($byKey[$key] ?? null) instanceof NumberField) {
+                throw new \InvalidArgumentException(\sprintf('The point budget covers "%s", which is not a number field.', $key));
+            }
+        }
 
         $formulas = [];
         foreach ($byKey as $key => $field) {
@@ -63,6 +70,11 @@ final readonly class SheetTemplate
     public function layout(): ?SheetLayout
     {
         return $this->layout;
+    }
+
+    public function budget(): ?PointBudget
+    {
+        return $this->budget;
     }
 
     public function field(string $key): ?Field

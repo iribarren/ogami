@@ -51,8 +51,9 @@ export function TagChips({
 /**
  * The release's Tags that apply to `kind` as checkboxes named `tags` (read from the form), then
  * the free tags editor. After them come the Tags the item holds that are not offered (the release
- * no longer lists them, or they no longer apply to this kind), so saving keeps them and the
- * player can remove them.
+ * no longer lists them, or they no longer apply to this kind), marked as such. They stay ticked so
+ * the player sees them, but the API refuses to save a Tag that is not offered: the player must
+ * untick them to save.
  */
 export function TagFields({
   id,
@@ -101,6 +102,9 @@ export function TagFields({
               />
               <span>
                 {tag.label}
+                {!offered.includes(tag) && (
+                  <span className="text-xs text-muted-foreground"> (no longer offered)</span>
+                )}
                 {tag.hint !== null && (
                   <span className="block text-xs text-muted-foreground">{tag.hint}</span>
                 )}

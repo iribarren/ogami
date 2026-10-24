@@ -318,6 +318,12 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['countdown'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
         self::assertSame(['swashbuckle', 'heart-to-heart', 'intrigue'], array_map(static fn (\App\Play\Domain\GameSystem\SceneType $type): string => $type->key, $snapshot->sceneTypes()));
         self::assertSame(['villain', 'ally', 'crush'], array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, $snapshot->tags()));
+        // The Tags name NPCs only: a Character or a Thread is not offered them.
+        foreach ($snapshot->tags() as $tag) {
+            self::assertTrue($tag->isFor(\App\Play\Domain\GameSystem\Flow\ItemKind::Npc), $tag->key);
+            self::assertFalse($tag->isFor(\App\Play\Domain\GameSystem\Flow\ItemKind::Character), $tag->key);
+            self::assertFalse($tag->isFor(\App\Play\Domain\GameSystem\Flow\ItemKind::Thread), $tag->key);
+        }
 
         self::assertSame(['toxic-power', 'story-element', 'romantic-complication', 'location', 'villains-next-move'], $snapshot->oracleTableKeys());
         foreach (['toxic-power' => 6, 'story-element' => 8, 'romantic-complication' => 8, 'location' => 8, 'villains-next-move' => 8] as $table => $entries) {
@@ -330,6 +336,9 @@ final class PresetsTest extends KernelTestCase
         foreach (['playbook' => TextField::class, 'daring' => NumberField::class, 'frightened' => NumberField::class, 'conditions-marked' => DerivedField::class, 'xp' => NumberField::class, 'strings' => ListField::class] as $key => $type) {
             self::assertInstanceOf($type, $sheet->field($key), $key);
         }
+        // Two columns: Identity and Progress span both, Stats and Conditions sit side by side.
+        $layout = $sheet->layout();
+        self::assertSame([2, [['Identity', 1, 2], ['Stats', 1, 1], ['Conditions', 1, 1], ['Progress', 1, 2]]], [$layout?->columns, array_map(static fn (\App\Play\Domain\GameSystem\Sheet\SheetGroup $group): array => [$group->name, $group->columns, $group->span], $layout->groups ?? [])]);
         self::assertCount(12, $snapshot->checks());
     }
 

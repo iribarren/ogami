@@ -275,17 +275,26 @@
         {
             "key": "villain",
             "label": "Villain",
-            "hint": "The one pulling the strings"
+            "hint": "The one pulling the strings",
+            "appliesTo": [
+                "npc"
+            ]
         },
         {
             "key": "ally",
             "label": "Ally",
-            "hint": "Someone on your side"
+            "hint": "Someone on your side",
+            "appliesTo": [
+                "npc"
+            ]
         },
         {
             "key": "crush",
             "label": "Crush",
-            "hint": "The person your heart is set on"
+            "hint": "The person your heart is set on",
+            "appliesTo": [
+                "npc"
+            ]
         }
     ],
     "sceneTypes": [
@@ -499,7 +508,26 @@
                             "swashbuckle"
                         ]
                     },
-                    "phaseOpening": [
+                    "phaseClosing": [
+                        {
+                            "key": "choice-1",
+                            "kind": "choice",
+                            "title": "Did you learn something about yourself or the villain?",
+                            "prompt": "Think back over the night. If you learned something about yourself or about the villain, mark 1 XP.",
+                            "mandatory": true,
+                            "options": [
+                                {
+                                    "key": "no",
+                                    "label": "No"
+                                },
+                                {
+                                    "key": "yes",
+                                    "label": "Yes"
+                                }
+                            ]
+                        }
+                    ],
+                    "sceneOpening": [
                         {
                             "key": "check-1",
                             "kind": "check",
@@ -518,25 +546,6 @@
                                             "value": 1
                                         }
                                     ]
-                                }
-                            ]
-                        }
-                    ],
-                    "phaseClosing": [
-                        {
-                            "key": "choice-1",
-                            "kind": "choice",
-                            "title": "Did you learn something about yourself or the villain?",
-                            "prompt": "Think back over the night. If you learned something about yourself or about the villain, mark 1 XP.",
-                            "mandatory": true,
-                            "options": [
-                                {
-                                    "key": "no",
-                                    "label": "No"
-                                },
-                                {
-                                    "key": "yes",
-                                    "label": "Yes"
                                 }
                             ]
                         }
@@ -666,6 +675,23 @@
                 "group": "Progress",
                 "type": "list",
                 "itemLabel": "String"
+            }
+        ],
+        "columns": 2,
+        "groups": [
+            {
+                "name": "Identity",
+                "span": 2
+            },
+            {
+                "name": "Stats"
+            },
+            {
+                "name": "Conditions"
+            },
+            {
+                "name": "Progress",
+                "span": 2
             }
         ]
     },

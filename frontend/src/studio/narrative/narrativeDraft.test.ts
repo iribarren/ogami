@@ -182,11 +182,20 @@ describe('a tag draft', () => {
   it.each([
     ['no kind', []],
     ['every kind', ['character', 'npc', 'thread']],
+    ['every kind, some repeated', ['character', 'npc', 'thread', 'npc']],
   ])('omits the scope when it holds %s, since the tag then applies to all', (_name, appliesTo) => {
     const draft = tagToDraft({ key: 'gang', label: 'Gang' })
 
     expect(tagToItem({ ...(draft ?? newMissing()), appliesTo })).toEqual({
       item: { key: 'gang', label: 'Gang' },
+    })
+  })
+
+  it('keeps a scope with a repeated kind partial, since it is not every kind', () => {
+    const draft = tagToDraft({ key: 'gang', label: 'Gang' })
+
+    expect(tagToItem({ ...(draft ?? newMissing()), appliesTo: ['npc', 'npc', 'npc'] })).toEqual({
+      item: { key: 'gang', label: 'Gang', appliesTo: ['npc', 'npc', 'npc'] },
     })
   })
 
@@ -200,6 +209,7 @@ describe('a tag draft', () => {
     ['not a list', 'npc'],
     ['an unknown kind', ['faction']],
     ['not text', [3]],
+    ['a list with a repeated kind', ['npc', 'npc']],
   ])('is not editable with a scope that is %s', (_name, appliesTo) => {
     expect(tagToDraft({ key: 'gang', label: 'Gang', appliesTo })).toBeNull()
   })

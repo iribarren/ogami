@@ -147,6 +147,125 @@ describe('the releases tab', () => {
     expect(within(view.getByRole('group', { name: 'Flows' })).getByText('No items')).toBeVisible()
   })
 
+  it('says the first release has nothing to compare', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({ ...releaseTwo, changes: null }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const view = within(await screen.findByRole('region', { name: 'Version 2' }))
+    expect(view.getByText('First release: nothing to compare.')).toBeVisible()
+    expect(view.queryByText(/Changes since version/)).not.toBeInTheDocument()
+  })
+
+  it('only notes both schema versions when the previous release has another one', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        changes: { previousVersion: 1, previousSchemaVersion: 1, sections: null },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const changes = within(await screen.findByRole('group', { name: 'Changes since version 1' }))
+    expect(
+      changes.getByText(
+        'Version 1 uses schema version 1 and this one 2, so their items are not compared.',
+      ),
+    ).toBeVisible()
+    expect(changes.queryByRole('group')).not.toBeInTheDocument()
+  })
+
+  it('lists the added, removed and changed items of the sections that changed', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        changes: {
+          previousVersion: 1,
+          previousSchemaVersion: 2,
+          sections: {
+            oracleTables: {
+              added: [{ key: 'omens', name: 'Omens' }],
+              removed: [{ key: 'fog', name: null }],
+              changed: [
+                {
+                  key: 'weather',
+                  name: 'Weather',
+                  previousName: 'Weather',
+                  fields: ['bands', 'dice'],
+                },
+                { key: 'tide', name: 'Tides', previousName: 'Tide', fields: [] },
+              ],
+              reordered: false,
+            },
+            trackers: { added: [], removed: [], changed: [], reordered: false },
+            tags: { added: [], removed: [], changed: [], reordered: false },
+          },
+        },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const changes = within(await screen.findByRole('group', { name: 'Changes since version 1' }))
+    const tables = within(changes.getByRole('group', { name: 'Oracle tables' }))
+    expect(tables.getByRole('heading')).toHaveTextContent(
+      'Oracle tables 1 added, 1 removed, 2 changed',
+    )
+    expect(tables.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      '+AddedOmensomens',
+      '−Removedfog',
+      '~ChangedWeatherweatherChanged: bands, dice',
+      '~ChangedTide → Tidestide',
+    ])
+    for (const symbol of ['+', '−', '~']) {
+      for (const marker of tables.getAllByText(symbol)) {
+        expect(marker).toHaveAttribute('aria-hidden', 'true')
+      }
+    }
+    expect(changes.queryByRole('group', { name: 'Trackers' })).not.toBeInTheDocument()
+    expect(changes.getByText('No changes: 2 sections')).toBeVisible()
+  })
+
+  it('says the order of the kept items changed', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        changes: {
+          previousVersion: 1,
+          previousSchemaVersion: 2,
+          sections: {
+            oracleTables: { added: [], removed: [], changed: [], reordered: true },
+            trackers: {
+              added: [{ key: 'heat', name: null }],
+              removed: [],
+              changed: [],
+              reordered: false,
+            },
+          },
+        },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const changes = within(await screen.findByRole('group', { name: 'Changes since version 1' }))
+    expect(changes.getByRole('group', { name: 'Oracle tables' })).toHaveTextContent('Order changed')
+    expect(changes.getByRole('group', { name: 'Trackers' })).toHaveTextContent('1 added')
+    expect(changes.queryByText(/^No changes/)).not.toBeInTheDocument()
+  })
+
+  it('says when nothing changed in any section', async () => {
+    const { user } = await openReleases()
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const changes = within(await screen.findByRole('group', { name: 'Changes since version 1' }))
+    expect(changes.getByText('No changes in any section.')).toBeVisible()
+  })
+
   it('lists a schema version 1 release with its own section names', async () => {
     const { user } = await openReleases({
       [`GET ${base}/releases/2`]: json({

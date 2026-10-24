@@ -120,6 +120,15 @@ export const releaseTwo = {
     oracleTables: [{ key: 'weather', name: 'Weather' }],
     trackers: [],
   },
+  /** Version 1 is the release before it; nothing in the two sections changed. */
+  changes: {
+    previousVersion: 1,
+    previousSchemaVersion: 2,
+    sections: {
+      oracleTables: { added: [], removed: [], changed: [], reordered: false },
+      trackers: { added: [], removed: [], changed: [], reordered: false },
+    },
+  },
 }
 
 /** The oracles of `draft` (version 7): one ranged and one weighted table, one in use, and a likelihood oracle. */

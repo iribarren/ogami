@@ -12,6 +12,7 @@ import {
 } from '@/shared/ui/dialog'
 import { IconTile } from '@/shared/ui/icon-tile'
 
+import { ReleaseChanges } from './ReleaseChanges'
 import { ReleaseOutline } from './ReleaseOutline'
 import {
   useGameSystemRelease,
@@ -209,7 +210,7 @@ function ReleaseView({
       </p>
     )
   }
-  const { name, schemaVersion, librarySources, outline } = release.data
+  const { name, schemaVersion, librarySources, outline, changes } = release.data
   return (
     <section
       aria-label={`Version ${String(version)}`}
@@ -251,6 +252,7 @@ function ReleaseView({
           Library: {sourcesByPack(librarySources)}
         </p>
       )}
+      <ReleaseChanges changes={changes} schemaVersion={schemaVersion} />
       <ReleaseOutline outline={outline} />
     </section>
   )

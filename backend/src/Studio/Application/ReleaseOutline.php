@@ -22,6 +22,21 @@ final class ReleaseOutline
      */
     public static function of(array $document, int $schemaVersion): array
     {
+        return array_map(
+            static fn (array $entries): array => array_map(static fn (array $entry): array => ['key' => $entry['key'], 'name' => $entry['name']], $entries),
+            self::entries($document, $schemaVersion),
+        );
+    }
+
+    /**
+     * The outline with each item as it is stored too, for what compares releases (ReleaseDiff).
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return array<string, list<array{key: string, name: string|null, item: mixed}>> by section name
+     */
+    public static function entries(array $document, int $schemaVersion): array
+    {
         if (1 === $schemaVersion) {
             return [
                 'oracles' => [...self::items($document, 'name', 'oracles', 'tables'), ...self::items($document, 'name', 'oracles', 'likelihood')],
@@ -45,7 +60,7 @@ final class ReleaseOutline
     /**
      * @param array<string, mixed> $document
      *
-     * @return list<array{key: string, name: string|null}>
+     * @return list<array{key: string, name: string|null, item: mixed}>
      */
     private static function items(array $document, string $nameField, string ...$path): array
     {
@@ -61,6 +76,7 @@ final class ReleaseOutline
             $items[] = [
                 'key' => \is_string($key) ? $key : '',
                 'name' => \is_string($name) && '' !== $name ? $name : null,
+                'item' => $item,
             ];
         }
 

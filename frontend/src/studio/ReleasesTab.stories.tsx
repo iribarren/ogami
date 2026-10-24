@@ -63,6 +63,45 @@ export const ReleaseView: Story = {
   },
 }
 
+export const ReleaseViewWithChanges: Story = {
+  parameters: {
+    api: {
+      [`GET ${base}/releases`]: json(releaseHistory),
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        changes: {
+          previousVersion: 1,
+          previousSchemaVersion: 2,
+          sections: {
+            oracleTables: {
+              added: [{ key: 'omens', name: 'Omens' }],
+              removed: [{ key: 'fog', name: null }],
+              changed: [
+                {
+                  key: 'weather',
+                  name: 'Forecast',
+                  previousName: 'Weather',
+                  fields: ['bands', 'dice'],
+                },
+              ],
+              reordered: true,
+            },
+            trackers: { added: [], removed: [], changed: [], reordered: false },
+          },
+        },
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole('button', { name: 'View version 2' }),
+    )
+    await expect(
+      await within(canvasElement).findByRole('group', { name: 'Changes since version 1' }),
+    ).toBeInTheDocument()
+  },
+}
+
 export const RestoreRefusedAsConcurrent: Story = {
   parameters: {
     api: {

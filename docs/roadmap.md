@@ -462,6 +462,8 @@ Done: `studio-editor-render-cost`, #259 in one slice (PR #267). Step cards, chec
 Start feature `release-diff` (ODD). In Studio, the release detail shows what changed against the previous release: the keys added, removed and changed per section (the outline of ADR 0038 gives the keys and names; compare the stored content for "changed"). Read-only, no new persistence. Studio never reads Play, so no campaign counts. Decide with the user how a changed item is shown before building.
 ```
 
+Done: `release-diff`, #268 in one slice (PR #269). ADR 0039: the release detail gains `changes` against version N-1 (null for the first release, no item comparison across a schema change); each section lists added, removed and changed items, a changed one with the top-level properties that differ and a rename as old → new, plus an "Order changed" note. Studio's release view shows them in a Changes panel above the outline.
+
 **B7k. structured-character-creation**
 
 ```text

@@ -42,6 +42,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0036 | [Export releases as preset files](0036-export-releases-as-preset-files.md) | Accepted |
 | 0037 | [API error codes](0037-api-error-codes.md) | Accepted |
 | 0038 | [Studio release view](0038-studio-release-view.md) | Accepted |
+| 0039 | [Release diff](0039-release-diff.md) | Accepted |
 
 ## Template
 

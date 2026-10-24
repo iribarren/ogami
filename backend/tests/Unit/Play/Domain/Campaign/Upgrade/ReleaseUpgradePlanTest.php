@@ -25,6 +25,7 @@ use App\Play\Domain\Campaign\Upgrade\UpgradeToAnotherGameSystem;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
@@ -33,6 +34,7 @@ use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
+use App\Randomness\Domain\DiceExpression;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -109,6 +111,63 @@ final class ReleaseUpgradePlanTest extends TestCase
             ],
             $plan->characters[0]->changes,
         );
+    }
+
+    #[Test]
+    public function anAddedTrackWithAStartMaxStartsFullAtItsFormulaOverTheFittedValues(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [new NumberField('str', 'Strength', max: 99), new NumberField('con', 'Constitution')]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        // Strength 120 is clamped to the new max of 90 first, and the start max reads the clamped value.
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['str' => 80, 'con' => 20], $pinned);
+        $target = UpgradeFixtures::release(2, [
+            new NumberField('str', 'Strength', max: 60),
+            new NumberField('con', 'Constitution'),
+            new DerivedField('half', 'Half', null, null, Formula::fromString('({str}+{con})/2')),
+            new TrackField('hp', 'Hit points', startMax: Formula::fromString('{half}+{missing}')),
+            new TrackField('mp', 'Magic points', startMax: Formula::fromString('{half}')),
+            new TrackField('big', 'Big', startMax: Formula::fromString('{str}*100')),
+        ]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        // hp reads a field that does not exist: it starts at 0 like a track added without a start max.
+        self::assertEquals(
+            [
+                new FieldChange('str', 'Strength', FieldChangeKind::Clamped, 80, 60),
+                new FieldChange('hp', 'Hit points', FieldChangeKind::Added, null, ['current' => 0, 'max' => 0]),
+                new FieldChange('mp', 'Magic points', FieldChangeKind::Added, null, ['current' => 40, 'max' => 40]),
+                new FieldChange('big', 'Big', FieldChangeKind::Added, null, ['current' => 999, 'max' => 999]),
+            ],
+            $plan->characters[0]->changes,
+        );
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        self::assertSame(['str' => 60, 'con' => 20, 'hp' => ['current' => 0, 'max' => 0], 'mp' => ['current' => 40, 'max' => 40], 'big' => ['current' => 999, 'max' => 999]], $campaign->characters()[0]->values());
+    }
+
+    #[Test]
+    public function anAddedNumberWithADiceDefaultTakesItsStaticInitialValueAndTheFingerprintIsStable(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [new NumberField('luck', 'Luck')]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['luck' => 2], $pinned);
+        $rolled = static fn (?int $default): GameSystemSnapshot => UpgradeFixtures::release(2, [
+            new NumberField('luck', 'Luck'),
+            new NumberField('str', 'Strength', min: 3, max: 18, default: $default, roll: DiceExpression::fromString('3d6')),
+        ]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $rolled(10));
+
+        self::assertEquals([new FieldChange('str', 'Strength', FieldChangeKind::Added, null, 10)], $plan->characters[0]->changes);
+        // Without a default the value is the one an added field has anyway: 0 moved inside the bounds.
+        self::assertEquals([new FieldChange('str', 'Strength', FieldChangeKind::Added, null, 3)], $campaign->planReleaseUpgrade($pinned, $rolled(null))->characters[0]->changes);
+        self::assertSame($plan->fingerprint(), $campaign->planReleaseUpgrade($pinned, $rolled(10))->fingerprint());
+
+        $campaign->upgradeRelease($pinned, $rolled(10), $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        self::assertSame(['luck' => 2, 'str' => 10], $campaign->characters()[0]->values());
     }
 
     #[Test]

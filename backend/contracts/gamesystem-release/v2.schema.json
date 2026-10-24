@@ -62,6 +62,9 @@
           "type": ["array", "null"],
           "maxItems": 20,
           "items": { "$ref": "#/$defs/sheetGroup" }
+        },
+        "pointBudget": {
+          "anyOf": [{ "$ref": "#/$defs/pointBudget" }, { "type": "null" }]
         }
       }
     },
@@ -111,7 +114,31 @@
         "type": { "const": "number" },
         "min": { "$ref": "#/$defs/sheetNumber" },
         "max": { "$ref": "#/$defs/sheetNumber" },
-        "default": { "$ref": "#/$defs/sheetNumber" }
+        "default": { "$ref": "#/$defs/sheetNumber" },
+        "roll": {
+          "description": "A dice default (ADR 0040): rolled by the server when a Character is created. The static default stays the value wherever nothing is rolled. The dice are checked by the domain.",
+          "anyOf": [{ "$ref": "#/$defs/diceRef" }, { "type": "null" }]
+        }
+      }
+    },
+    "pointBudget": {
+      "description": "The points a Character spends across number fields when it is created (ADR 0040). min and max bound those fields at creation only. min <= max, every field keeps a value inside both its own and these bounds, and the lowest values fit in total (checked by the domain).",
+      "type": "object",
+      "required": ["total", "fields"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
+        "total": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "fields": {
+          "description": "Keys of number fields of the sheet, each once (checked by the domain).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/key" }
+        },
+        "min": { "$ref": "#/$defs/sheetNumber" },
+        "max": { "$ref": "#/$defs/sheetNumber" }
       }
     },
     "sheetGroup": {
@@ -171,7 +198,11 @@
         "group": { "type": ["string", "null"], "minLength": 1, "maxLength": 60 },
         "span": { "$ref": "#/$defs/fieldSpan" },
         "type": { "const": "track" },
-        "max": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 }
+        "max": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 },
+        "startMax": {
+          "description": "A formula for the max a Character's track starts with (ADR 0040), not with max. It reads number fields and derived fields that depend on no track and no tracker (checked by the domain).",
+          "anyOf": [{ "$ref": "#/$defs/formulaRef" }, { "type": "null" }]
+        }
       }
     },
     "derivedField": {

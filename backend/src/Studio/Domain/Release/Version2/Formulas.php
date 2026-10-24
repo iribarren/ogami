@@ -100,6 +100,74 @@ final class Formulas
     }
 
     /**
+     * The start max formulas of the track fields (ADR 0040), evaluated once when a Character is
+     * created: they read number fields and derived fields that depend on neither a track nor a
+     * tracker, directly or through other derived fields. Runs after sheet(), so the derived
+     * formulas parse and never form a cycle.
+     *
+     * @param array<string, array{path: string, formula: string}> $starts     the track fields with a start max by key; the path is the one of the start max
+     * @param array<string, array{path: string, formula: string}> $derived    the derived fields by key
+     * @param array<string, string>                               $fieldTypes the type of every field of the sheet by key
+     */
+    public static function startMax(array $starts, array $derived, array $fieldTypes): void
+    {
+        foreach ($starts as ['path' => $path, 'formula' => $text]) {
+            $formulaPath = $path.'.formula';
+            foreach (self::parse($text, $formulaPath)->references() as $reference) {
+                $problem = self::startMaxProblem($reference, $derived, $fieldTypes);
+                if (null !== $problem) {
+                    throw InvalidReleaseContent::at($formulaPath, \sprintf('{%s}: %s', $reference->toString(), $problem));
+                }
+            }
+        }
+    }
+
+    /**
+     * @param array<string, array{path: string, formula: string}> $derived
+     * @param array<string, string>                               $fieldTypes
+     * @param list<string>                                        $visited    the derived fields being followed
+     */
+    private static function startMaxProblem(Reference $reference, array $derived, array $fieldTypes, array $visited = []): ?string
+    {
+        if (ReferenceKind::Tracker === $reference->kind) {
+            return 'a start max formula cannot read a tracker, it is not known at creation';
+        }
+
+        if (ReferenceKind::Check === $reference->kind) {
+            return 'a start max formula cannot read a check value';
+        }
+
+        if (ReferenceKind::TrackMax === $reference->kind) {
+            return 'a start max formula cannot read a track max, it is not known at creation';
+        }
+
+        $type = $fieldTypes[$reference->key] ?? null;
+        if (null === $type) {
+            return \sprintf('unknown field "%s"', $reference->key);
+        }
+
+        if ('number' === $type) {
+            return null;
+        }
+
+        if ('derived' !== $type) {
+            return \sprintf('field "%s" is a %s field, a start max formula reads number and derived fields only', $reference->key, $type);
+        }
+
+        if (\in_array($reference->key, $visited, true)) {
+            return null;
+        }
+
+        foreach (self::parse($derived[$reference->key]['formula'], $derived[$reference->key]['path'])->references() as $inner) {
+            if (null !== self::startMaxProblem($inner, $derived, $fieldTypes, [...$visited, $reference->key])) {
+                return \sprintf('derived field "%s" reads {%s}, which is not known at creation', $reference->key, $inner->toString());
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Why a sheet formula cannot read the reference, or null when it can. $difficulty is whether the
      * check the formula belongs to declares a difficulty, null outside the bands of a check.
      *

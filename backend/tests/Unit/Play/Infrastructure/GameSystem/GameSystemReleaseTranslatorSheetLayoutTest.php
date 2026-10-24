@@ -113,6 +113,10 @@ final class GameSystemReleaseTranslatorSheetLayoutTest extends TestCase
         yield 'columns 3' => [['columns' => 3, 'groups' => $stats], 'sheet.columns: must be between 1 and 2.'];
         yield 'columns string' => [['columns' => '2', 'groups' => $stats], 'sheet.columns: must be an integer.'];
         yield 'unknown sheet property' => [['layout' => []], 'sheet.layout: unknown property.'];
+        // Structured character creation (ADR 0040) is published by Studio, but Play refuses it until creation supports it.
+        yield 'point budget' => [['fields' => [['key' => 'str', 'label' => 'Strength', 'type' => 'number']], 'pointBudget' => ['total' => 10, 'fields' => ['str']]], 'sheet.pointBudget: unknown property.'];
+        yield 'dice default' => [['fields' => [['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'roll' => ['dice' => '3d6']]]], 'sheet.fields[0].roll: unknown property.'];
+        yield 'start max' => [['fields' => [['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'startMax' => ['formula' => '1']]]], 'sheet.fields[0].startMax: unknown property.'];
         yield 'groups object' => [['groups' => ['name' => 'Stats']], 'sheet.groups: must be a list.'];
         yield 'twenty-one groups' => [['groups' => array_map(static fn (int $i): array => ['name' => 'G'.$i], range(1, 21))], 'sheet.groups: at most 20 groups.'];
         yield 'group not an object' => [['groups' => ['Stats']], 'sheet.groups[0]: must be an object.'];

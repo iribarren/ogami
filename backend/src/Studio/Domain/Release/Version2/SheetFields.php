@@ -11,8 +11,9 @@ use App\Studio\Domain\Release\ReleaseFields;
 /**
  * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of five
  * types, each with its own closed set of properties; a "derived" field holds a formula (ADR 0023). An optional layout of groups
- * (SheetLayout, ADR 0031) places the fields in a grid. The canonical sheet is [] without fields or layout, so a release that never
- * used the sheet keeps its content hash.
+ * (SheetLayout, ADR 0031) places the fields in a grid. A number field may roll its value, a track start from a formula and the
+ * sheet declare a point budget when a Character is created (ADR 0040). The canonical sheet is [] without fields or layout, so a
+ * release that never used the sheet keeps its content hash.
  *
  * @internal
  */
@@ -29,22 +30,22 @@ final class SheetFields
     public const int MAX_TRACK = 999;
     public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
 
-    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false];
+    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false, 'pointBudget' => false];
     private const array COMMON = ['key' => true, 'label' => true, 'hint' => false, 'group' => false, 'span' => false, 'type' => true];
 
     /** The fields each type adds to COMMON, in schema order: name => required. */
     private const array TYPES = [
-        'number' => ['min' => false, 'max' => false, 'default' => false],
+        'number' => ['min' => false, 'max' => false, 'default' => false, 'roll' => false],
         'text' => ['multiline' => false, 'maxLength' => false],
         'list' => ['itemLabel' => false, 'maxItems' => false],
-        'track' => ['max' => false],
+        'track' => ['max' => false, 'startMax' => false],
         'derived' => ['formula' => true],
     ];
 
     /**
      * @param list<string> $trackerKeys the trackers of the release, which derived fields may read
      *
-     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>} no "fields" key when the sheet has none, no layout keys without a layout
+     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>, pointBudget?: array<string, mixed>} no "fields" key when the sheet has none, no layout or budget keys without them
      */
     public static function validate(mixed $value, array $trackerKeys = []): array
     {
@@ -53,6 +54,8 @@ final class SheetFields
         $fields = [];
         $keys = [];
         $derived = [];
+        $starts = [];
+        $byKey = [];
         foreach (ReleaseFields::sizedList($sheet['fields'] ?? [], 'sheet.fields', 0, self::MAX_FIELDS, 'fields') as $index => $field) {
             $path = \sprintf('sheet.fields[%d]', $index);
             $field = self::field($field, $path);
@@ -76,13 +79,22 @@ final class SheetFields
                 $derived[$key] = ['path' => $path, 'formula' => $formula];
             }
 
+            if (isset($field['startMax'])) {
+                /** @var array{formula: string} $startMax */
+                $startMax = $field['startMax'];
+                $starts[$key] = ['path' => $path.'.startMax', 'formula' => $startMax['formula']];
+            }
+
+            $byKey[$key] = $field;
+
             $fields[] = $field;
         }
 
         // A formula may read a field listed after it, so the references are checked once every field is known.
         Formulas::sheet($derived, $keys, $trackerKeys);
+        Formulas::startMax($starts, $derived, $keys);
 
-        return ([] === $fields ? [] : ['fields' => $fields]) + $layout;
+        return ([] === $fields ? [] : ['fields' => $fields]) + $layout + PointBudget::validate($sheet, $byKey);
     }
 
     /**
@@ -145,6 +157,11 @@ final class SheetFields
             throw InvalidReleaseContent::at($path.'.default', \sprintf('must be within min..max, %d is above max (%d)', $default, $max));
         }
 
+        if (isset($field['roll'])) {
+            $roll = ReleaseFields::object($field['roll'], $path.'.roll', ['dice' => true]);
+            $field['roll'] = ['dice' => Steps::dice($roll['dice'], $path.'.roll.dice')];
+        }
+
         return $field;
     }
 
@@ -193,6 +210,15 @@ final class SheetFields
     {
         if (isset($field['max'])) {
             ReleaseFields::integer($field['max'], $path.'.max', 1, self::MAX_TRACK);
+        }
+
+        if (isset($field['startMax'])) {
+            if (isset($field['max'])) {
+                throw InvalidReleaseContent::at($path.'.startMax', 'cannot be combined with max, a track has a fixed max or a formula for its start max');
+            }
+
+            $startMax = ReleaseFields::object($field['startMax'], $path.'.startMax', ['formula' => true]);
+            $field['startMax'] = ['formula' => ReleaseFields::text($startMax['formula'], $path.'.startMax.formula', 1, self::MAX_FORMULA_LENGTH)];
         }
 
         return $field;

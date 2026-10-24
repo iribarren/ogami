@@ -1,4 +1,4 @@
-import { useId, useState, type SubmitEvent } from 'react'
+import { useId, useMemo, useState, type SubmitEvent } from 'react'
 import { BookOpen, List, RotateCcw } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 
@@ -57,7 +57,8 @@ export function SceneTypeEditor({
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
-  const context = stepContext(narrative)
+  // Kept while the narrative is the same, so the step cards below can skip renders.
+  const context = useMemo(() => stepContext(narrative), [narrative])
   const options = [...context.tables, ...context.likelihood]
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
@@ -225,7 +226,7 @@ export function SceneTypeEditor({
                 context={context}
                 errors={answer.lists[part]}
                 onChange={(steps) => {
-                  setDraft({ ...draft, steps: { ...draft.steps, [part]: steps } })
+                  setDraft((now) => ({ ...now, steps: { ...now.steps, [part]: steps } }))
                 }}
               />
             </section>

@@ -16,7 +16,7 @@ final readonly class CharacterCreationErrorResponse
     private function __construct(
         #[OA\Property(description: 'A human-readable message.')]
         public string $error,
-        #[OA\Property(description: 'Which rule of structured character creation was broken; the client branches on this, never on the message. Absent for any other refusal.', enum: CharacterCreationErrorCode::class)]
+        #[OA\Property(description: 'Which rule of structured character creation was broken; the client branches on this, never on the message. Absent for any other refusal.')]
         public ?CharacterCreationErrorCode $code,
     ) {
     }

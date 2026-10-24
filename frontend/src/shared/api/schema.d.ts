@@ -1785,10 +1785,7 @@ export interface components {
         CharacterCreationErrorResponse: {
             /** @description A human-readable message. */
             error: string;
-            /**
-             * @description Which rule of structured character creation was broken; the client branches on this, never on the message. Absent for any other refusal.
-             * @enum {unknown|null}
-             */
+            /** @description Which rule of structured character creation was broken; the client branches on this, never on the message. Absent for any other refusal. */
             code?: components["schemas"]["CharacterCreationErrorCode"] | null;
         };
         CampaignSummaryResponse: {

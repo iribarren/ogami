@@ -10292,8 +10292,7 @@
                             {
                                 "$ref": "#/components/schemas/CharacterCreationErrorCode"
                             }
-                        ],
-                        "enum": "App\\Play\\Infrastructure\\Http\\CharacterCreationErrorCode"
+                        ]
                     }
                 },
                 "type": "object"

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Application;
 
+use App\Formula\Domain\Formula;
 use App\Play\Application\AddCharacter;
 use App\Play\Application\AddCharacterHandler;
 use App\Play\Application\CharacterView;
@@ -30,13 +31,16 @@ use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\PointBudget;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
+use App\Randomness\Domain\DiceExpression;
 use App\Tests\Support\Play\InMemoryCampaignRepository;
 use App\Tests\Support\Play\InMemoryPublishedGameSystemReleases;
 use App\Tests\Support\Play\UnreadablePublishedGameSystemReleases;
+use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -71,7 +75,7 @@ final class CharacterHandlersTest extends TestCase
         $this->campaigns = new InMemoryCampaignRepository();
         $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-12T09:00:00+00:00')));
         $owned = new OwnedCampaigns($this->campaigns);
-        $this->add = new AddCharacterHandler($owned, $this->campaigns, $this->releases);
+        $this->add = new AddCharacterHandler($owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator());
         $this->edit = new EditCharacterHandler($owned, $this->campaigns, $this->releases);
     }
 
@@ -161,7 +165,7 @@ final class CharacterHandlersTest extends TestCase
     {
         $this->campaignWithNpc();
 
-        (new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases))(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
+        (new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator()))(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
 
         $character = $this->character('c-1');
         self::assertSame(['Mira', ['ally'], ['Fence'], ['reflexes' => 4, 'hp' => ['current' => 40, 'max' => 40], 'role' => '', 'gear' => []], 'npc-1'], [$character?->name(), $character?->tags(), $character?->freeTags(), $character?->values(), $character?->promotedFrom()?->toString()]);
@@ -172,7 +176,7 @@ final class CharacterHandlersTest extends TestCase
     public function aPromotedNpcIsRefusedASecondPromotionAndNothingChanges(): void
     {
         $this->campaignWithNpc();
-        $promote = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases);
+        $promote = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator());
         $promote(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
 
         try {
@@ -186,7 +190,7 @@ final class CharacterHandlersTest extends TestCase
     #[Test]
     public function anUnknownNpcIsNotFoundBeforeTheReleaseIsRead(): void
     {
-        $handler = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)));
+        $handler = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)), new ScriptedRandomNumberGenerator());
 
         $this->expectException(UnknownNpc::class);
 
@@ -197,7 +201,7 @@ final class CharacterHandlersTest extends TestCase
     public function anUnreadablePinnedReleaseFailsThePromotionAndNothingChanges(): void
     {
         $this->campaignWithNpc();
-        $handler = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)));
+        $handler = new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, new UnreadablePublishedGameSystemReleases(GameSystemReleaseNotFound::for('heist', 1)), new ScriptedRandomNumberGenerator());
 
         try {
             $handler(new PromoteNpc('campaign-1', 'user-1', 'npc-1', 'c-1'));
@@ -205,6 +209,64 @@ final class CharacterHandlersTest extends TestCase
         } catch (GameSystemReleaseNotFound) {
             self::assertSame([[], false], [$this->campaign()->characters(), $this->campaign()->npc(NpcId::fromString('npc-1'))?->isPromoted()]);
         }
+    }
+
+    #[Test]
+    public function itCreatesByRollOrByPointsWithTheInjectedRandomSourceAndSavesTheCharacter(): void
+    {
+        $owned = new OwnedCampaigns($this->campaigns);
+        $this->releases->add($this->creationRelease());
+        $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'Rolls', PinnedRelease::of('rolls', 1, 'Rolls'), new \DateTimeImmutable('2026-10-12T09:00:00+00:00')));
+        // str 3d6 = 2+3+4 -> 45, luck 1d6 = 6 -> 6; hp starts full at str.
+        $add = new AddCharacterHandler($owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(2, 3, 4, 6, 2));
+
+        $add(new AddCharacter('campaign-2', 'user-1', 'c-1', 'Vi', [], [], [], 'roll'));
+        // By points only luck is rolled: 2.
+        $add(new AddCharacter('campaign-2', 'user-1', 'c-2', 'Bo', [], [], ['str' => 30], 'points'));
+
+        $campaign = $this->campaigns->ofId(CampaignId::fromString('campaign-2')) ?? throw new \LogicException('The campaign is there.');
+        self::assertSame(['str' => 45, 'luck' => 6, 'hp' => ['current' => 45, 'max' => 45]], $campaign->character(CharacterId::fromString('c-1'))?->values());
+        self::assertSame(['str' => 30, 'luck' => 2, 'hp' => ['current' => 30, 'max' => 30]], $campaign->character(CharacterId::fromString('c-2'))?->values());
+    }
+
+    #[Test]
+    public function aRefusedCreationOrAnUnknownMethodSavesNothing(): void
+    {
+        $owned = new OwnedCampaigns($this->campaigns);
+        $this->releases->add($this->creationRelease());
+        $this->campaigns->add(Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'Rolls', PinnedRelease::of('rolls', 1, 'Rolls'), new \DateTimeImmutable('2026-10-12T09:00:00+00:00')));
+        $add = new AddCharacterHandler($owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(1, 1, 1, 1));
+
+        foreach ([[[], null, 'creation_method_required'], [['str' => 99], 'points', 'outside'], [[], 'dice', 'unknown']] as [$values, $method]) {
+            try {
+                $add(new AddCharacter('campaign-2', 'user-1', 'c-1', 'Vi', [], [], $values, $method));
+                self::fail('The Character was accepted.');
+            } catch (InvalidCharacter) {
+                self::assertSame([], $this->campaigns->ofId(CampaignId::fromString('campaign-2'))?->characters());
+            }
+        }
+    }
+
+    #[Test]
+    public function aPromotionRollsTheSheetWithTheInjectedRandomSource(): void
+    {
+        $this->releases->add($this->creationRelease());
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'Rolls', PinnedRelease::of('rolls', 1, 'Rolls'), new \DateTimeImmutable('2026-10-12T09:00:00+00:00'));
+        $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $this->releases->get('rolls', 1));
+        $this->campaigns->add($campaign);
+
+        new PromoteNpcHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(2, 3, 4, 6))(new PromoteNpc('campaign-2', 'user-1', 'npc-1', 'c-1'));
+
+        self::assertSame(['str' => 45, 'luck' => 6, 'hp' => ['current' => 45, 'max' => 45]], $this->campaigns->ofId(CampaignId::fromString('campaign-2'))?->character(CharacterId::fromString('c-1'))?->values());
+    }
+
+    private function creationRelease(): GameSystemSnapshot
+    {
+        return new GameSystemSnapshot('rolls', 'Rolls', 1, null, [], [], sheet: new SheetTemplate([
+            new NumberField('str', 'Strength', min: 1, max: 99, roll: DiceExpression::fromString('3d6*5')),
+            new NumberField('luck', 'Luck', min: 1, max: 6, roll: DiceExpression::fromString('1d6')),
+            new TrackField('hp', 'Hit points', startMax: Formula::fromString('{str}')),
+        ], budget: new PointBudget(50, ['str'], min: 15, max: 90)));
     }
 
     private function campaignWithNpc(): void

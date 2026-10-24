@@ -33,6 +33,8 @@ final readonly class CharacterRequest
             new OA\Schema(required: ['current', 'max'], properties: [new OA\Property(property: 'current', type: 'integer'), new OA\Property(property: 'max', type: 'integer')], type: 'object'),
         ]))]
         public ?array $values,
+        #[OA\Property(description: 'How to create the Character when adding it (ADR 0040): "roll" has the server roll the sheet\'s dice defaults, "points" spends the sheet\'s point budget (a value for each budget field). Required when the sheet\'s budget covers a field with a dice default; refused when the sheet cannot create that way. Ignored when editing.', nullable: true, enum: ['roll', 'points'])]
+        public ?string $method,
     ) {
     }
 }

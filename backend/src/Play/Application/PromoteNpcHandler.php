@@ -19,6 +19,7 @@ use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandHandler;
 
 final readonly class PromoteNpcHandler implements CommandHandler
@@ -27,6 +28,7 @@ final readonly class PromoteNpcHandler implements CommandHandler
         private OwnedCampaigns $ownedCampaigns,
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
+        private RandomNumberGenerator $random,
     ) {
     }
 
@@ -34,7 +36,7 @@ final readonly class PromoteNpcHandler implements CommandHandler
      * @throws CampaignNotFound
      * @throws UnknownNpc                      when the campaign holds no NPC with this id
      * @throws InvalidNpc                      when the NPC id is blank
-     * @throws InvalidCharacter                when the Character id is blank
+     * @throws InvalidCharacter                when the Character id is blank or the sheet's start max cannot be computed
      * @throws NpcAlreadyPromoted              when the NPC was promoted already
      * @throws CampaignLimitReached            when the campaign already holds 100 Characters
      * @throws CharacterAlreadyExists          when the campaign holds a Character with this id
@@ -56,7 +58,7 @@ final readonly class PromoteNpcHandler implements CommandHandler
         $pinned = $campaign->pinnedRelease();
         // The sheet comes from the pinned release, never the latest one (ADR 0014).
         $release = $this->releases->get($pinned->gameSystemKey(), $pinned->releaseVersion());
-        $campaign->promoteNpc($npcId, CharacterId::fromString($command->characterId), $release);
+        $campaign->promoteNpc($npcId, CharacterId::fromString($command->characterId), $release, $this->random);
         $this->campaigns->save($campaign);
     }
 }

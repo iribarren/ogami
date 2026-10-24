@@ -19,6 +19,7 @@ use App\Play\Application\ReopenNpc;
 use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
+use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
@@ -178,12 +179,12 @@ final readonly class CampaignNpcsController
 
     #[Route('/api/campaigns/{campaignId}/npcs/{npcId}/promote', name: 'api_campaigns_npcs_promote', methods: ['POST'])]
     #[OA\Post(operationId: 'promoteNpc', summary: 'Promote an NPC of one of my campaigns to a Character; the NPC is closed for good')]
-    #[OA\Response(response: 201, description: 'The new Character: the NPC\'s name, Tags and free tags, the default of every sheet field, and the NPC as its origin. Any request body is ignored.', content: new OA\JsonContent(ref: new Model(type: CharacterResponse::class)))]
+    #[OA\Response(response: 201, description: 'The new Character: the NPC\'s name, Tags and free tags, the default of every sheet field (dice defaults rolled, start max tracks full), and the NPC as its origin. Any request body is ignored.', content: new OA\JsonContent(ref: new Model(type: CharacterResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it holds no NPC with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The NPC was promoted already, the campaign already holds 100 Characters, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A Tag of the NPC is not in the pinned release.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A Tag of the NPC is not in the pinned release, or the sheet\'s start max cannot be computed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function promote(string $campaignId, string $npcId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $characterId = $this->characterIds->generate()->toString();
@@ -195,7 +196,7 @@ final readonly class CampaignNpcsController
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InvalidNpc) {
             return $this->blankNpcNotFound($npcId);
-        } catch (UnknownReleaseTag|TagNotApplicable $exception) {
+        } catch (UnknownReleaseTag|TagNotApplicable|InvalidCharacter $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();

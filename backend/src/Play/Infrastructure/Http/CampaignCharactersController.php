@@ -64,7 +64,7 @@ final readonly class CampaignCharactersController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign already holds 100 Characters, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, "values" not an object, an unknown sheet field, a value of the wrong type or out of its bounds) or a Tag is not in the pinned release.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A value breaks a rule (blank or too long name, too many or repeated Tags or free tags, "values" not an object, an unknown sheet field, a value of the wrong type or out of its bounds), the "method" is unknown or a Tag is not in the pinned release, or a rule of structured character creation is broken (the body then has a code): the method is missing or not available on the sheet, a value is sent for a field the server sets, a point budget value is out of bounds or the budget is exceeded.', content: new OA\JsonContent(ref: new Model(type: CharacterCreationErrorResponse::class)))]
     public function add(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $fields = $this->fields($request);
@@ -72,14 +72,26 @@ final readonly class CampaignCharactersController
             return $fields;
         }
 
+        // The method belongs to creation: an edit ignores it.
+        $method = $request->toArray()['method'] ?? null;
+        if (null !== $method && !\is_string($method)) {
+            return $this->error(self::MALFORMED_CHARACTER, Response::HTTP_BAD_REQUEST);
+        }
+
         $characterId = $this->characterIds->generate()->toString();
         try {
-            $this->commandBus->dispatch(new AddCharacter($campaignId, $user->id(), $characterId, ...$fields));
+            $this->commandBus->dispatch(new AddCharacter($campaignId, $user->id(), $characterId, ...$fields, method: $method));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (CampaignLimitReached|CampaignModifiedConcurrently|CharacterAlreadyExists $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidCharacter|UnknownReleaseTag|TagNotApplicable $exception) {
+        } catch (InvalidCharacter $exception) {
+            $body = $exception->refusal instanceof \App\Play\Domain\Campaign\Characters\CreationRefusal
+                ? CharacterCreationErrorResponse::with(CharacterCreationErrorCode::of($exception->refusal), $exception->getMessage())
+                : CharacterCreationErrorResponse::withoutCode($exception->getMessage());
+
+            return new JsonResponse($body->toArray(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (UnknownReleaseTag|TagNotApplicable $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
             return $this->unreadableRelease();

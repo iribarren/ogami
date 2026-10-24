@@ -4516,6 +4516,18 @@ export interface components {
              */
             notes?: string | null;
         };
+        ReleaseOutlineItemResponse: {
+            /**
+             * @description The item's key in its section.
+             * @example heist-scenes
+             */
+            key: string;
+            /**
+             * @description The item's display name (its name, or its label for a sheet field, fact slot, tag or check); null when it has none.
+             * @example Heist scenes
+             */
+            name: string | null;
+        };
         GameSystemReleaseResponse: {
             /** @example 3 */
             version: number;
@@ -4536,6 +4548,8 @@ export interface components {
              * @example 11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0
              */
             contentHash: string;
+            /** @description The library items the draft had imported when this release was published, for the history only (the release itself is self-contained); null when it recorded none, as for a release without imports. */
+            librarySources: components["schemas"]["LibrarySourceResponse"][] | null;
             /**
              * @description The name the release was published under.
              * @example My system
@@ -4550,6 +4564,10 @@ export interface components {
              */
             sectionCounts: {
                 [key: string]: number;
+            };
+            /** @description The items of each section in content order, by the same section names as sectionCounts; each list is as long as its count. */
+            outline: {
+                [key: string]: components["schemas"]["ReleaseOutlineItemResponse"][];
             };
         };
         /** @enum {string} */

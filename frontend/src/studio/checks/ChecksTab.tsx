@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useId, useMemo, useState, type ReactNode, type SubmitEvent } from 'react'
+import { useCallback, useId, useMemo, useState, type ReactNode, type SubmitEvent } from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -33,6 +33,7 @@ import {
   readCheck,
   sameCheck,
   writeCheck,
+  type BandDraft,
   type BandErrorMap,
   type CheckDraft,
   type CheckErrors,
@@ -649,16 +650,28 @@ function CheckEditor({
             ? ` Used by ${error.paths.join(', ')}.`
             : ''
         }`
+  // The same object until a band message changes, so the band rows can skip renders.
+  const bandErrors = useMemo(
+    () => mergeBandErrors(localBands, publishedBands),
+    [localBands, publishedBands],
+  )
   const shown: CheckErrors = {
     ...errors,
     ...answer?.fields,
     // Per input: a refusal of a band's key does not hide the form's message about its label.
-    band: mergeBandErrors(localBands, publishedBands),
+    band: bandErrors,
   }
 
   const change = (changes: Partial<CheckDraft>) => {
     setDraft((current) => ({ ...current, ...changes }))
   }
+  const changeBands = useCallback((bands: BandDraft[], order?: (number | null)[]) => {
+    setDraft((current) => ({ ...current, bands }))
+    if (order !== undefined) {
+      setLocalBands((held) => followBands(held, order))
+      setPublishedBands((held) => followBands(held, order))
+    }
+  }, [])
   const changeDifficulty = (changes: Partial<DifficultyDraft>) => {
     setDraft((current) =>
       current.difficulty === null
@@ -849,18 +862,12 @@ function CheckEditor({
           </div>
           <BandsEditor
             bands={draft.bands}
-            onChange={(bands, order) => {
-              change({ bands })
-              if (order !== undefined) {
-                setLocalBands((held) => followBands(held, order))
-                setPublishedBands((held) => followBands(held, order))
-              }
-            }}
+            onChange={changeBands}
             catalog={catalog}
             difficulty={draft.difficulty}
             copyFrom={copyFrom}
             error={shown.bands}
-            errors={shown.band ?? {}}
+            errors={bandErrors}
           />
           {message !== '' && (
             <p role="alert" className="text-sm text-destructive">

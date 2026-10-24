@@ -8,6 +8,19 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { checks, checksV1, draft, sheet, validDraft } from '../fixtures'
 import { replaceText, typeText } from '@/test/typeText'
 
+/** The placeholders of the inputs drawn, so a test can count the band rows that rendered. */
+const drawn = vi.hoisted(() => ({ placeholders: [] as (string | undefined)[] }))
+
+vi.mock('@/shared/ui/input', async (importOriginal) => {
+  const { Input: Real } = await importOriginal<typeof import('@/shared/ui/input')>()
+  return {
+    Input: (props: React.ComponentProps<'input'>) => {
+      drawn.placeholders.push(props.placeholder)
+      return <Real {...props} />
+    },
+  }
+})
+
 const base = '/api/studio/game-systems/my-draft'
 
 function json(body: unknown, status = 200): FakeHandler {
@@ -561,6 +574,17 @@ describe('the checks tab', () => {
         expect(form.getByLabelText('Band 1 key')).toBeInvalid()
         expect(form.getByLabelText('Band 1 label')).toBeInvalid()
       })
+    })
+
+    it('renders only the edited band row when a band changes', async () => {
+      const { user, form } = await editLuck()
+      drawn.placeholders.length = 0
+
+      await replaceText(user, form.getByLabelText('Band 2 label'), 'Steady')
+
+      expect(form.getByLabelText('Band 2 label')).toHaveValue('Steady')
+      // Every band row has a label input: only the second one was drawn again.
+      expect(drawn.placeholders.filter((placeholder) => placeholder === 'Label')).toHaveLength(1)
     })
 
     it('shows the bands-level refusal under the bands', async () => {

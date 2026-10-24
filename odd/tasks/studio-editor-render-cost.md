@@ -59,7 +59,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc | parent, inline (doc only) | [x] | |
 | T2 | 1 | Step cards: `memo(StepCard)`, stable index callbacks, stable `guide`/`mine`/`laterKeys`, memoised `context` in `FlowEditor` and `SceneTypeEditor`, `memo` on step `BandsEditor`/`EffectsEditor` where their props become stable; render-count test | writer (delegated) | [x] | |
-| T3 | 1 | Check band rows: extract `memo(BandRow)` from `checks/BandsEditor.tsx`, memoised formula diagnostics per row, stable `errors` and `onChange` in `ChecksTab`; render-count test | writer (delegated) | [ ] | |
+| T3 | 1 | Check band rows: extract `memo(BandRow)` from `checks/BandsEditor.tsx`, memoised formula diagnostics per row, stable `errors` and `onChange` in `ChecksTab`; render-count test | writer (delegated) | [x] | |
 | T4 | 1 | Sheet group cards: `memo(GroupFields)` with stable callbacks, `held` and `errors`; render-count test; update the "re-renders the whole editor" comment in `frontend/src/test/typeText.ts`; after-measurement of the five files | writer (delegated) | [ ] | |
 | T5 | 1 | Slice 1 review fixes, if any | writer (delegated) | [ ] | |
 
@@ -73,6 +73,7 @@ Stop one input event from re-rendering the whole Studio editor. Memoise the step
 
 - 2026-10-24: feature doc created (5 tasks, one slice); issue #259; baseline and profile recorded above.
 - 2026-10-24 T2: RED on `main` code: editing step 1 of 6 re-rendered 6 cards (`expected 6 to be 1`). GREEN after `memo(StepCard)`, stable index callbacks (latest list read through a ref set in `useLayoutEffect`), `useStableItems` for `guide`/`mine`/`laterKeys` and memoised `context`: 1 card. The two-quick-edits test passes before and after. Focused: `vitest run src/studio/narrative` 24 files, 529 tests green. Step `BandsEditor`/`EffectsEditor` not memoised: their props are inline closures of the step, so a memo would be dead.
+- 2026-10-24 T3: RED on the previous code: editing band 1 of 5 drew 14 inputs instead of the 3 of its row (`BandsEditor.test.tsx`), and band 2 of `luck` re-rendered 3 label inputs instead of 1 (`ChecksTab.test.tsx`). GREEN after `memo(BandRow)`, stable `change`/`move`/`remove` over a latest-bands ref, per-row diagnostics `useMemo`, memoised band errors and `useCallback` `changeBands` in `ChecksTab`. `vitest run src/studio/checks`: 8 files, 201 tests green.
 
 ## Reviews
 

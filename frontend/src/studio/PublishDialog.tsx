@@ -42,11 +42,23 @@ const characterCount = (text: string) => Array.from(text).length
 const SHOWN_ERRORS = 3
 
 /**
- * The server answers 409 both for "no changes" and for a lost version race, in the same shape,
- * so one message covers both.
+ * What a publish 409 says per cause (`PublishConflictCode`, ADR 0037). Only `release_exists` is
+ * fixed by reloading; a 409 without a known code shows the API's own message.
  */
-export const conflictMessage =
-  'Nothing was published: the draft equals the latest release, or another release was published meanwhile. Reload and try again.'
+function publishConflictMessage(code: string | null, latest: number | null): string | null {
+  switch (code) {
+    case 'no_changes':
+      return latest === null
+        ? 'Nothing was published: nothing changed in the draft.'
+        : `Nothing was published: nothing changed since v${String(latest)}. Edit the draft first.`
+    case 'release_exists':
+      return 'Nothing was published: another release was published meanwhile. Reload and try again.'
+    case 'library_pack':
+      return 'Nothing was published: a library pack cannot be published.'
+    default:
+      return null
+  }
+}
 
 /**
  * The "Publish" button and its dialog: the validation result, the version a publish creates and
@@ -112,7 +124,12 @@ function PublishForm({
   const publish = usePublishGameSystem(gameSystem.key)
   const queryClient = useQueryClient()
   const notesId = useId()
-  const conflict = publish.error instanceof StudioError && publish.error.status === 409
+  const failure = publish.error instanceof StudioError ? publish.error : null
+  const conflict =
+    failure?.status === 409
+      ? publishConflictMessage(failure.code, gameSystem.latestReleaseVersion)
+      : null
+  const reloadable = failure?.code === 'release_exists'
   const notesLength = characterCount(notes)
   const notesTooLong = notesLength > MAX_NOTES_LENGTH
   const canPublish = validation.data?.valid === true && !notesTooLong && !publish.isPending
@@ -173,7 +190,7 @@ function PublishForm({
         <Alert
           role="alert"
           action={
-            conflict ? (
+            reloadable ? (
               <Button
                 type="button"
                 variant="outline"
@@ -188,7 +205,7 @@ function PublishForm({
             ) : undefined
           }
         >
-          {conflict ? conflictMessage : publish.error.message}
+          {conflict ?? publish.error.message}
         </Alert>
       )}
       <div className="-mx-4 -mb-4 action-bar">

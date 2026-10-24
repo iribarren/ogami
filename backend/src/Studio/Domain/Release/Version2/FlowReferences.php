@@ -114,6 +114,48 @@ final class FlowReferences
         self::checkTrackers($lists, $rolledTables, $tables, $flowTrackers, $flowKey);
         self::checkSceneTypeOracles($flow, $flowKey, $sceneTypes, $reachedSceneTypes);
         self::checkPlaceholders($lists, $rolledTables, $tables, $flowTrackers, self::stepKeys($lists), $factSlots, $flowKey);
+        self::checkAnsweredPlaceholders($flow, $flowIndex);
+    }
+
+    /**
+     * A phase that runs once runs its phaseOpening and then its phaseClosing once, front to back,
+     * as one sequence, so a step placeholder there must name an earlier step of either list.
+     * Lists that repeat (sessions, scenes, a looping phase, Scene Types) can read an answer a
+     * previous round gave, so they are not checked, nor are placeholders that name a step of
+     * another list.
+     *
+     * @param array<string, mixed> $flow
+     */
+    private static function checkAnsweredPlaceholders(array $flow, int $flowIndex): void
+    {
+        foreach (self::phases($flow) as $phaseIndex => $phase) {
+            if ('once' !== $phase['mode']) {
+                continue;
+            }
+
+            // phaseOpening then phaseClosing run as one sequence, so positions count across both lists.
+            $positions = [];
+            $offset = 0;
+            $lists = [];
+            foreach (StepParts::lists($phase, \sprintf('flows[%d].phases[%d]', $flowIndex, $phaseIndex), ['phaseOpening', 'phaseClosing']) as $path => $steps) {
+                foreach ($steps as $position => $step) {
+                    /** @var string $key */
+                    $key = $step['key'];
+                    $positions[$key] = $offset + $position;
+                }
+
+                $lists[] = [$path, $steps, $offset];
+                $offset += \count($steps);
+            }
+
+            foreach ($lists as [$path, $steps, $listOffset]) {
+                foreach ($steps as $position => $step) {
+                    foreach (StepParts::texts($step, \sprintf('%s[%d]', $path, $position)) as $textPath => [$text, $effectText]) {
+                        Placeholders::checkAnswered($text, $textPath, $effectText, $positions, $listOffset + $position);
+                    }
+                }
+            }
+        }
     }
 
     /**

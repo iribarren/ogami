@@ -265,6 +265,28 @@ final class LibraryImportApiTest extends WebTestCase
     }
 
     #[Test]
+    public function theReleaseDetailReturnsTheLibrarySourcesOfTheHistoryRow(): void
+    {
+        $this->library();
+        $this->importItem('scene-types', 'tavern', 1);
+        $this->client->jsonRequest('POST', self::GAME_SYSTEMS.'/my-game/releases', []);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game/releases');
+        $row = $this->json()[0];
+        self::assertIsArray($row);
+        $this->client->request('GET', self::GAME_SYSTEMS.'/my-game/releases/1');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            ['section' => 'oracles', 'key' => 'names', 'pack' => 'generic'],
+            ['section' => 'tags', 'key' => 'social', 'pack' => 'generic'],
+            ['section' => 'scene-types', 'key' => 'tavern', 'pack' => 'generic'],
+        ], $this->json()['librarySources']);
+        self::assertSame($row['librarySources'], $this->json()['librarySources']);
+    }
+
+    #[Test]
     public function updatingFromTheLibraryCopiesThePackItemAgainAndBumpsTheVersion(): void
     {
         $this->library();

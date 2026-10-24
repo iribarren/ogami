@@ -8,11 +8,13 @@ use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Domain\GameSystem\GameSystemRepository;
+use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Infrastructure\Http\GameSystemReleaseController;
 use App\Studio\Infrastructure\Http\GameSystemReleaseResponse;
 use App\Studio\Infrastructure\Http\GameSystemReleaseSummaryResponse;
 use App\Studio\Infrastructure\Http\PublishGameSystemRequest;
 use App\Studio\Infrastructure\Http\RestoreGameSystemRequest;
+use App\Tests\Support\Studio\ReleaseArrays;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -208,6 +210,8 @@ final class GameSystemPublishApiTest extends WebTestCase
         self::assertIsString($created['publishedAt']);
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/', $created['publishedAt']);
         self::assertSame(array_fill_keys(['oracleTables', 'likelihoodOracles', 'trackers', 'factSlots', 'tags', 'sceneTypes', 'flows', 'sheetFields', 'checks'], 0), $created['sectionCounts']);
+        self::assertSame(array_fill_keys(array_keys($created['sectionCounts']), []), $created['outline']);
+        self::assertArrayHasKey('librarySources', $created);
 
         $this->client->request('GET', self::BASE.'/mine/releases/1');
         self::assertResponseIsSuccessful();
@@ -325,6 +329,7 @@ final class GameSystemPublishApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('No changes', $this->error());
+        self::assertSame('no_changes', $this->json()['code']);
         $this->client->request('GET', self::BASE.'/mine/releases');
         self::assertCount(1, $this->json());
     }
@@ -346,6 +351,63 @@ final class GameSystemPublishApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('mine v1 already exists', $this->error());
+        self::assertSame('release_exists', $this->json()['code']);
+    }
+
+    #[Test]
+    public function theReleaseDetailOutlinesItsItemsAndMatchesTheHistoryRow(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('mine');
+        $this->replaceDocument('mine', ReleaseContent::fromArray(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-contract-doc-example'), 'gameSystem.key', 'mine'))->toArray());
+        $this->client->jsonRequest('POST', self::BASE.'/mine/releases', []);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->request('GET', self::BASE.'/mine/releases/1');
+        $detail = $this->json();
+        $this->client->request('GET', self::BASE.'/mine/releases');
+        $row = $this->json()[0];
+        self::assertIsArray($row);
+        $counts = $detail['sectionCounts'];
+        $outline = $detail['outline'];
+        self::assertIsArray($counts);
+        self::assertIsArray($outline);
+
+        self::assertSame($row['librarySources'], $detail['librarySources']);
+        self::assertSame(array_keys($counts), array_keys($outline));
+        self::assertSame($counts, array_map(static fn (mixed $items): int => \is_array($items) ? \count($items) : -1, $outline));
+        self::assertIsArray($outline['oracleTables']);
+        self::assertSame(['key' => 'heist-scenes', 'name' => 'Heist scenes'], $outline['oracleTables'][0]);
+        self::assertSame([['key' => 'heist', 'name' => 'Heist']], $outline['flows']);
+    }
+
+    #[Test]
+    public function aLibraryPackRefusesToBePublishedWithTheLibraryPackCode(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->client->jsonRequest('POST', '/api/studio/library/packs', ['key' => 'generic', 'name' => 'Generic']);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->jsonRequest('POST', self::BASE.'/generic/releases', []);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('library_pack', $this->json()['code']);
+        self::assertStringContainsString('library pack', $this->error());
+        $this->assertNoReleases('generic');
+    }
+
+    #[Test]
+    public function aLibraryPackRefusesARestoreWithTheLibraryPackCode(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->client->jsonRequest('POST', '/api/studio/library/packs', ['key' => 'generic', 'name' => 'Generic']);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->jsonRequest('POST', self::BASE.'/generic/restore', ['version' => 1]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('library_pack', $this->json()['code']);
+        self::assertStringContainsString('library pack', $this->error());
     }
 
     #[Test]
@@ -440,6 +502,7 @@ final class GameSystemPublishApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertStringContainsString('mine', $this->error());
+        self::assertSame('modified_concurrently', $this->json()['code']);
         self::getContainer()->get(EntityManagerInterface::class)->clear();
         $this->client->request('GET', self::BASE.'/mine');
         self::assertSame('Renamed', $this->json()['name']);

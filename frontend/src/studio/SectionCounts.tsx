@@ -2,22 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 
 import type { GameSystemTab } from './gameSystemTabs'
-
-/** How the release contract's section names read; an unknown name shows as it is. */
-const sectionLabels: Record<string, string> = {
-  oracleTables: 'Oracle tables',
-  likelihoodOracles: 'Likelihood oracles',
-  trackers: 'Trackers',
-  factSlots: 'Fact slots',
-  tags: 'Tags',
-  sceneTypes: 'Scene Types',
-  flows: 'Flows',
-  sheetFields: 'Sheet fields',
-  checks: 'Checks',
-  // Schema version 1.
-  oracles: 'Oracles',
-  flowSteps: 'Flow steps',
-}
+import { sectionLabels } from './sectionLabels'
 
 /** The tab of the GameSystem page that edits each section; the schema version 1 names have none. */
 const sectionTabs: Record<string, GameSystemTab> = {

@@ -199,6 +199,10 @@ A `{…}` matching `\{[a-z]+(:[a-z0-9-]+)?\}` in a step `title`, `prompt` or `ti
 
 Any other placeholder fails with "not supported in schema version 2".
 
+A `{step:key}` in a run-once list must name an earlier step. The run-once lists are the `phaseOpening` and `phaseClosing` of a phase with `mode: once`, which run as one sequence: opening first, then closing. So a closing step may name an opening step, and an opening step may not name a closing one. A step runs front to back there, so the step itself and every later step are not answered when the text renders, and the placeholder could only show "—". Studio refuses it at the placeholder's path, naming the step. The one exception is the step's own effect text, which Play renders after the answer is recorded (it reads like `{answer}`). Lists that repeat (a session's hooks, scene hooks, a looping phase, Scene Types) can read an answer from an earlier round, and a key in a list of another kind has no fixed order, so neither is checked.
+
+**Pattern: an NPC whose agenda comes from a later answer.** A `createNpc` effect renders its `name` and `agenda` once, when it fires, so a later answer cannot reach it. Create the NPC in the step that has every answer it needs, and refer to the earlier answers with `{step:key}`: for example, ask "Who do they serve?" and "What do they want?" first, then a last step whose effect is `createNpc` with `agenda: "{step:wants}, for {step:master}"`.
+
 ### Play behaviour of the NPC and Thread parts
 
 Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) plays them against the campaign's NPCs and Threads, which the player also edits at any time. The candidates of a `pick` and the items a `count` counts are the **open** items of the kind carrying **all** the listed tags; the player's free tags never match.

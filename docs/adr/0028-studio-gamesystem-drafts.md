@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-15
-- **Amended by:** [ADR 0036](0036-export-releases-as-preset-files.md) (export and the same-hash skip)
+- **Amended by:** [ADR 0036](0036-export-releases-as-preset-files.md) (export and the same-hash skip), [ADR 0038](0038-studio-release-view.md) (the release view lists an outline)
 
 ## Context
 

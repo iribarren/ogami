@@ -31,7 +31,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0025 | [Items and shops after the MVP](0025-items-and-shops-after-the-mvp.md) | Accepted |
 | 0026 | [Prompt inspiration tables and phase descriptions](0026-prompt-inspiration-and-phase-descriptions.md) | Accepted |
 | 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted |
-| 0028 | [Studio GameSystem drafts](0028-studio-gamesystem-drafts.md) | Accepted |
+| 0028 | [Studio GameSystem drafts](0028-studio-gamesystem-drafts.md) | Accepted, amended by 0036 and 0038 |
 | 0029 | [Studio oracle editor](0029-studio-oracle-editor.md) | Accepted |
 | 0030 | [Studio flow editor](0030-studio-flow-editor.md) | Accepted |
 | 0031 | [Sheet layout and Studio sheet builder](0031-sheet-layout-and-studio-sheet-builder.md) | Accepted |
@@ -40,6 +40,8 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0034 | [Admin user management, invitations and password reset](0034-admin-user-management.md) | Accepted |
 | 0035 | [Campaign release upgrade](0035-campaign-release-upgrade.md) | Accepted |
 | 0036 | [Export releases as preset files](0036-export-releases-as-preset-files.md) | Accepted |
+| 0037 | [API error codes](0037-api-error-codes.md) | Accepted |
+| 0038 | [Studio release view](0038-studio-release-view.md) | Accepted |
 
 ## Template
 

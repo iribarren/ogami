@@ -4516,6 +4516,18 @@ export interface components {
              */
             notes?: string | null;
         };
+        ReleaseOutlineItemResponse: {
+            /**
+             * @description The item's key in its section.
+             * @example heist-scenes
+             */
+            key: string;
+            /**
+             * @description The item's display name (its name, or its label for a sheet field, fact slot, tag or check); null when it has none.
+             * @example Heist scenes
+             */
+            name: string | null;
+        };
         GameSystemReleaseResponse: {
             /** @example 3 */
             version: number;
@@ -4536,6 +4548,8 @@ export interface components {
              * @example 11d93fc7adb574ab68471c10f7eea5b2c0d4f3a6b8e9d1c2a3b4c5d6e7f8a9b0
              */
             contentHash: string;
+            /** @description The library items the draft had imported when this release was published, for the history only (the release itself is self-contained); null when it recorded none, as for a release without imports. */
+            librarySources: components["schemas"]["LibrarySourceResponse"][] | null;
             /**
              * @description The name the release was published under.
              * @example My system
@@ -4551,6 +4565,17 @@ export interface components {
             sectionCounts: {
                 [key: string]: number;
             };
+            /** @description The items of each section in content order, by the same section names as sectionCounts; each list is as long as its count. */
+            outline: {
+                [key: string]: components["schemas"]["ReleaseOutlineItemResponse"][];
+            };
+        };
+        /** @enum {string} */
+        PublishConflictCode: "no_changes" | "release_exists" | "library_pack";
+        PublishConflictResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            code: components["schemas"]["PublishConflictCode"];
         };
         RestoreGameSystemRequest: {
             /**
@@ -4558,6 +4583,13 @@ export interface components {
              * @example 2
              */
             version: number;
+        };
+        /** @enum {string} */
+        RestoreConflictCode: "modified_concurrently" | "library_pack";
+        RestoreConflictResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            code: components["schemas"]["RestoreConflictCode"];
         };
         SheetGroupResponse2: {
             /**
@@ -11202,13 +11234,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The draft has no changes since the latest release, another publish took the version first, or the GameSystem is a library pack, which is never published; nothing was published. */
+            /** @description Nothing was published; the code says why: no_changes (the draft equals the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["PublishConflictResponse"];
                 };
             };
             /** @description A body was sent and it is not JSON. */
@@ -11341,13 +11373,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Another request saved the draft meanwhile (reload it and try again), or the GameSystem is a library pack, which has no releases to restore. */
+            /** @description The draft is unchanged; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no releases to restore). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RestoreConflictResponse"];
                 };
             };
             /** @description The body is not JSON. */

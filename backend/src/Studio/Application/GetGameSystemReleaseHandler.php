@@ -38,6 +38,7 @@ final readonly class GetGameSystemReleaseHandler implements QueryHandler
             GameSystemReleaseSummary::of($release),
             $gameSystem['name'],
             SectionCounts::of($document, $release->schemaVersion()),
+            ReleaseOutline::of($document, $release->schemaVersion()),
         );
     }
 }

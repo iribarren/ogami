@@ -1,7 +1,7 @@
 # Feature: play-pbta-findings
 
 - **Locator:** `odd/tasks/play-pbta-findings.md` · Engram topic `odd/play-pbta-findings/tasks`
-- **Issue:** #253 · **Branch:** `fix/play-pbta-findings-4-preset-v5` · **Status:** slice 4 in progress
+- **Issue:** #253 · **Branch:** `fix/play-pbta-findings-4-preset-v5` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7e
@@ -65,8 +65,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | T6 | 2 | P9 + P11 frontend: breakdown and hint on the result card | writer (delegated) | [x] | 8f51169 |
 | T7 | 3 | P10 contract and Studio: `appliesTo` on tags (schema, validation, Studio tag dialog, ADR 0018 amendment) | writer (delegated) | [x] | fa54158 |
 | T8 | 3 | P10 Play: translator, `Tag`, `ItemRules`, `TagView`, `TagFields` filter; upgrade planner for tags that stop applying | writer (delegated) | [x] | 7d4a576 |
-| T9 | 4 | v5 content: Climax check into the Climax scene (P12), sheet layout, scoped tags; `make presets`, canonical export; preset tests | writer (delegated) | [x] | |
-| T10 | 4 | Close: roadmap B7e done, P6 on B8b, issue #253 ticked | parent, inline (doc) | [ ] | |
+| T9 | 4 | v5 content: Climax check into the Climax scene (P12), sheet layout, scoped tags; `make presets`, canonical export; preset tests | writer (delegated) | [x] | a98bb61 |
+| T10 | 4 | Close: roadmap B7e done, P6 on B8b, issue #253 ticked | parent, inline (doc) | [x] | this closing commit |
 
 ## Applicable checks
 
@@ -93,6 +93,7 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 - 2026-10-24 T7: optional `appliesTo` on a release tag (non-empty, unique `character`/`npc`/`thread`; `null` reads as absent and the canonical form omits it); `v2.schema.json` agrees; `Effects::tags` takes the target kind (`createNpc` npc, `createThread` thread, `pick` and condition `count` by their `of`) and `Catalog::tagAppliesTo` refuses a tag outside its scope at the tag's path (no other step kind carries tags); the Studio tag dialog has an "Applies to" group (none or all ticked sends no field); ADR 0018 §15 addendum. The Studio API passes `definition` through, so no OpenAPI change. RED: the new `ReleaseContentTagScopeTest` failed on `appliesTo: unknown property` before the implementation (the schema agreement rows were added with it); GREEN: `tests/Unit/Studio` 1,701, `tests/Integration/Studio` 657, `src/studio` Vitest 1,296.
 
 - 2026-10-24 T8: Play reads `appliesTo` into `Tag` (`list<ItemKind>`, empty = every kind, `isFor()`; a malformed scope is an `InvalidGameSystemRelease` with its path); `ItemRules::assertInRelease` takes the kind and throws the new `TagNotApplicable` (422 like an unknown tag, mapped in the three controllers incl. promote); `TagView`/`TagResponse` expose `appliesTo` (nullable); `TagFields` offers only the tags that apply to the form's kind and still lists a held one that does not; the upgrade planner's `keptTags`/`droppedTags` take the kind, so a tag that stops applying drops like a removed one (same preview wording, applied on upgrade); promoting an NPC keeps on the Character only the tags that apply to Characters. RED: translator scope tests failed (`Tag` took no scope) and the new domain test errored on the missing classes before the implementation; the planner, handler and API tests passed first run once the code existed (no real RED); GREEN: `tests/Unit/Play` + `tests/Integration/Play` 2,672 + 1,002, `src/play` Vitest. `make api` regenerated `openapi.json` and `schema.d.ts` in their own commit.
+- 2026-10-24 T10: slice 4 PR #264; roadmap B7e done, P6 added to B8b, P20 follow-up #265 (B7i), issue #253 ticked. Local dev DB stays at v4 (it holds a Studio draft, so `make presets` refuses the key); publish v5 from Studio to play it locally.
 
 ## Reviews
 
@@ -101,7 +102,8 @@ Chrome replay (2026-10-23, campaign "Chrome Replay H&R 1" on v4, account `pbta-r
 | 1 | `review-ac9260f5b4d50984` (medium) | 7bdfe4a, a6c200a, 65d3f43 | Approved, acknowledged. R3-001 (blank list items summarise as "Gear: , "; no 40-character boundary test, `sheetValues.ts:68-83`): fixed in slice 2 | [#261](https://github.com/iribarren/ogami/pull/261) |
 | 2 | `review-8e36c20cc3a5f8aa` (medium) | 59bcccb, 177dc27, 8f51169 | Approved, acknowledged. R3-001 (warning: the breakdown re-reads every formula reference after evaluation, no test for a formula with unresolvable references, `Check.php:94`), R3-002 (no test asserts the content the flow-step check path records, `CompleteFlowStepHandler.php:289`), R3-003 (the card's token replacement relies on the formula text spelling references like the term tokens, no test for non-canonical input, `JournalEntryView.tsx:244-251`): fixed in slice 3 | [#262](https://github.com/iribarren/ogami/pull/262) |
 | 3 | `review-a15c22b9a05ea148` (medium) | 7727405, fa54158, 7d4a576, 090694d, 3c9d04e | Approved, acknowledged. R3-001 (`TagFields` keeps a held tag that no longer applies and its comment promises saving keeps it, but the API refuses it with a 422, `TagFields.tsx:50-85`), R3-002 (the Studio draft's `scopeOf` accepts duplicate kinds and `labelledToItem` compares the length, not the distinct kinds, `narrativeDraft.ts:219-252`): fixed in slice 4 | [#263](https://github.com/iribarren/ogami/pull/263) |
+| 4 | none (declined) | 053e93f, a98bb61 | Native review offered at medium risk; the user chose "Skip this time" (slice 3 findings and preset content only). Late findings: none from review; P20 (Chrome replay, raw derived formula) is follow-up [#265](https://github.com/iribarren/ogami/issues/265), roadmap B7i | [#264](https://github.com/iribarren/ogami/pull/264) |
 
 ## Next step
 
-Slice 4 writer: slice 3 findings (R3-001, R3-002), then T9 (v5 preset JSON, `make presets`, canonical export, preset tests); T10 in the closing doc commit.
+None. Every finding is fixed or tracked: P6 in B8b, P18 in B7g, P20 in #265 (B7i).

@@ -1,7 +1,7 @@
 # Feature: structured-character-creation
 
 - **Locator:** `odd/tasks/structured-character-creation.md` · Engram topic `odd/structured-character-creation/tasks`
-- **Issue:** #270 · **Branch:** `feat/structured-character-creation-5-budget-panel` · **Status:** in progress: slice 5 (last)
+- **Issue:** #270 · **Branch:** `feat/structured-character-creation-5-budget-panel` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B7k (follow-up of `release-api-followups`, #255, and [ADR 0027](../../docs/adr/0027-sheet-effects.md))
@@ -72,8 +72,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 | T7 | 3 | Pinned release exposes `roll`, `startMax` and `pointBudget`; Play creation form (Characters panel and `character` step): method choice, budget counter with creation bounds, rolled fields and `startMax` tracks shown as set at creation; fixtures, tests, story | writer (delegated: 2+ non-trivial files) | [x] | 0a7f325 (slice 2 fixes), 48ac7c3, aec9a42 |
 | T8 | 4 | `percentile-horror`: dice defaults, budget "Characteristic points" 460 (15–90), `startMax` for Hit and Magic points, Luck rolled by the `you` step effect, shorter tip; preset flow test | writer (delegated: 2+ non-trivial files) | [x] | 4b70e6e (slice 3 fix), 188a930, fbae809 (e2e) |
 | T9 | 4 | Studio point budget API: `PUT /sheet/point-budget` and `DELETE /sheet/point-budget` on the draft (validated like the release, 404/409/422), `pointBudget` on the sheet response; handler and API tests; regenerated OpenAPI and TS | writer (delegated: 2+ non-trivial files) | [x] | d892e0d |
-| T10 | 5 | Studio point budget panel in the sheet builder: hooks, panel (label, total, fields, creation min/max, save, remove), path-mapped errors, 409 reload; tests, fixtures, story | writer (delegated: 2+ non-trivial files) | [x] | |
-| T11 | 5 | Slice 4 review fix (unknown budget properties fail closed), Chrome pass, closing doc | writer (fix, delegated with T10); parent (Chrome pass, closing doc) | [ ] | |
+| T10 | 5 | Studio point budget panel in the sheet builder: hooks, panel (label, total, fields, creation min/max, save, remove), path-mapped errors, 409 reload; tests, fixtures, story | writer (delegated: 2+ non-trivial files) | [x] | ceda69b |
+| T11 | 5 | Slice 4 review fix (unknown budget properties fail closed), Chrome pass, closing doc | writer (fix, delegated with T10); parent (Chrome pass, closing doc) | [x] | c48c65e (slice 4 fix), 03e421a (slice 5 fix), this doc commit |
 
 ## Acceptance criteria
 
@@ -107,6 +107,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 
 - 2026-10-25: Slice 5 review fix done (T11). The panel test for drafts stored before point budgets is named for what it covers: the API always sends `pointBudget`, null for such drafts, and the generated type makes the key required, so the panel needs no guard for a missing key. Test-only change; it passed before and after.
 
+- 2026-10-25: T11 done. Chrome pass on a local draft: the Point budget panel shows its empty state, a total below the lowest sum lands its 422 on Total, save shows the read view (label, total, fields, creation range), Edit opens prefilled, Remove returns to the empty state; no console errors. PR #275 closes #270. Feature done.
+
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
@@ -115,7 +117,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 | 2 | `review-574dbb807677a9eb` (medium) | Approved and acknowledged. WARNING R3-error-code-enum-not-an-array (`CharacterCreationErrorResponse.php:19`, the OpenAPI enum is the class name, so the TS type is `unknown`) and SUGGESTION R3-mixed-budget-roll-unbounded (`CharacterCreation.php:40-43`, non-dice budget fields unbounded under roll; the user decided, see Decisions): fixed in slice 3 | #272 |
 | 3 | `review-2f0f16b76502855b` (medium) | Approved and acknowledged. SUGGESTION R3-campaign-error-code-unasserted (`frontend/src/play/campaigns/useCampaigns.ts:46`, no test asserts `CampaignError.code` for a 422 with a code, nor `undefined` without one): fixed in slice 4 | #273 |
 | 4 | `review-f77f7c16439c90f2` (medium) | Approved and acknowledged. SUGGESTION R3-api-drops-unknown-budget-properties (`GameSystemSheetController.php:256`, `array_intersect_key` drops unknown budget properties, so the API answers 200 where the domain would refuse with 422): fixed in slice 5 | #274 |
+| 5 | `review-cc1e7bc87e01f8b2` (medium) | Approved and acknowledged. SUGGESTION R3-legacy-sheet-test-not-legacy (`SheetPointBudgetPanel.test.tsx:148-154`, the legacy test served `pointBudget: null` like the default fixture while claiming to cover a missing key): fixed in T11 (03e421a) | #275 |
 
 ## Next step
 
-Slice 5 (last): slice 4 review fix, T10 (Studio point budget panel), then the Chrome pass and the closing doc (T11) on the same branch; the PR closes #270.
+None. Every review finding is fixed; the feature closes with PR #275.

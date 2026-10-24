@@ -470,6 +470,8 @@ Done: `release-diff`, #268 in one slice (PR #269). ADR 0039: the release detail 
 Start feature `structured-character-creation` (ODD). Design first, with its own ADR that amends ADR 0027:32. Direction: a number field can have a dice default, rolled on the server through Randomness when the Character is created; a sheet-level point budget covers a set of number fields and is checked at creation; formula maxima for per-Character tracks join it. `percentile-horror` is the first user (3d6x5 characteristics and a point budget, today explained in a tip). Every layer: contract and publisher, anti-corruption layer, Play character creation, the Studio sheet builder and the release upgrade planner (ADR 0035). Size L: slice it.
 ```
 
+Done: `structured-character-creation`, #270 in five slices (PRs #271–#275). ADR 0040: a number field can roll a dice default on the server at creation, a track can start full at a `startMax` formula, and a sheet can declare a point budget with creation bounds; the creation request gains `roll` or `points` with ADR 0037 codes. Play's creation form offers the method and counts points; Studio authors dice defaults, start formulas and the budget panel. `percentile-horror` creates investigators by rolling or by spending 460 points.
+
 **B8. rules-dice-pools**
 
 ```text

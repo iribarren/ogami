@@ -223,3 +223,50 @@ export function useRemoveSheetLayout(key: string) {
     throw sheetError(response, error, 'Removing the layout')
   })
 }
+
+/** What `PUT /sheet/point-budget` takes besides the version; optional bounds are left out when unset. */
+export type PointBudgetRequest = Omit<
+  components['schemas']['SaveSheetPointBudgetRequest'],
+  'expectedVersion'
+>
+
+/** `PUT /sheet/point-budget`: replaces the whole budget. */
+export function useSaveSheetPointBudget(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(
+    key,
+    async ({
+      expectedVersion,
+      budget,
+    }: {
+      expectedVersion: number
+      budget: PointBudgetRequest
+    }) => {
+      const { data, error, response } = await api.PUT(
+        '/api/studio/game-systems/{key}/sheet/point-budget',
+        { params: { path: { key } }, body: { expectedVersion, ...budget } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Saving the point budget')
+    },
+  )
+}
+
+/** `DELETE /sheet/point-budget?expectedVersion=N`: Characters are created without a budget. */
+export function useRemoveSheetPointBudget(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
+    const { data, error, response } = await api.DELETE(
+      '/api/studio/game-systems/{key}/sheet/point-budget',
+      { params: { path: { key }, query: { expectedVersion } } },
+    )
+    if (data !== undefined) {
+      return data
+    }
+    throw sheetError(response, error, 'Removing the point budget')
+  })
+}

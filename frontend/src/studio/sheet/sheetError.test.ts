@@ -1,4 +1,4 @@
-import { sheetFieldAnswer, sheetLayoutAnswer } from './sheetError'
+import { sheetFieldAnswer, sheetLayoutAnswer, sheetPointBudgetAnswer } from './sheetError'
 
 describe('reading a refusal for the field in the dialog', () => {
   it.each([
@@ -86,5 +86,36 @@ describe('reading a refusal for the layout dialog', () => {
     ['a message without a path', 'Something else'],
   ])('gives %s to the form, path and all', (_name, text) => {
     expect(sheetLayoutAnswer(text)).toEqual({ columns: null, groups: {}, form: text })
+  })
+})
+
+describe('reading a refusal for the point budget', () => {
+  it.each([
+    ['label', 'sheet.pointBudget.label: must be at most 60 characters'],
+    ['total', 'sheet.pointBudget.total: must be at least 1'],
+    ['min', 'sheet.pointBudget.min: must be a whole number'],
+    ['max', 'sheet.pointBudget.max: must be at least min (20), 10 given'],
+  ])('gives the %s message to its input, without its path', (name, text) => {
+    const answer = sheetPointBudgetAnswer(text)
+
+    expect(answer.inputs).toEqual({ [name]: text.slice(text.indexOf(': ') + 2) })
+    expect(answer.fields).toBeNull()
+    expect(answer.form).toBeNull()
+  })
+
+  it.each([
+    ['sheet.pointBudget.fields: must list at least one field', 'must list at least one field'],
+    ['sheet.pointBudget.fields[1]: duplicate field "pow"', 'duplicate field "pow"'],
+  ])('gives %s to the fields list', (text, message) => {
+    expect(sheetPointBudgetAnswer(text)).toEqual({ inputs: {}, fields: message, form: null })
+  })
+
+  it.each([
+    ['the budget as a whole', 'sheet.pointBudget: unknown field "bonus"'],
+    ['a property with no input', 'sheet.pointBudget.colour: unknown property'],
+    ['a field of the sheet', 'sheet.fields[1].label: must not be blank'],
+    ['a message without a path', 'Something else'],
+  ])('gives %s to the form, path and all', (_name, text) => {
+    expect(sheetPointBudgetAnswer(text)).toEqual({ inputs: {}, fields: null, form: text })
   })
 })

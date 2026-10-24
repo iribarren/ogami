@@ -252,8 +252,9 @@ final readonly class GameSystemSheetController
             return $this->error(self::MALFORMED_POINT_BUDGET, Response::HTTP_BAD_REQUEST);
         }
 
-        // What is left out or null is unset; the publisher's rules refuse a malformed value with its path.
-        $budget = array_filter(array_intersect_key($body, array_flip(['label', 'total', 'fields', 'min', 'max'])), static fn (mixed $value): bool => null !== $value);
+        // What is left out or null is unset; the publisher's rules refuse a malformed or unknown property with its path.
+        unset($body['expectedVersion']);
+        $budget = array_filter($body, static fn (mixed $value): bool => null !== $value);
 
         return $this->write(new SaveSheetPointBudget($user->id(), $key, $expectedVersion, $budget), $user, $key, Response::HTTP_OK);
     }

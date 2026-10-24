@@ -414,6 +414,7 @@ final class GameSystemSheetApiTest extends WebTestCase
         yield 'min above max' => [['total' => 100, 'fields' => ['pow'], 'min' => 50, 'max' => 40], 'sheet.pointBudget.max'];
         yield 'a min that is not a number' => [['total' => 100, 'fields' => ['pow'], 'min' => 'low'], 'sheet.pointBudget.min'];
         yield 'a total below the lowest values' => [['total' => 10, 'fields' => ['pow'], 'min' => 20], 'sheet.pointBudget.total'];
+        yield 'an unknown property' => [['total' => 100, 'fields' => ['pow'], 'bonus' => 3], 'sheet.pointBudget'];
         yield 'a label that is not text' => [['label' => 5, 'total' => 100, 'fields' => ['pow']], 'sheet.pointBudget.label'];
     }
 

@@ -10292,8 +10292,7 @@
                             {
                                 "$ref": "#/components/schemas/CharacterCreationErrorCode"
                             }
-                        ],
-                        "enum": "App\\Play\\Infrastructure\\Http\\CharacterCreationErrorCode"
+                        ]
                     }
                 },
                 "type": "object"
@@ -10404,6 +10403,8 @@
                     "itemLabel",
                     "maxItems",
                     "formula",
+                    "roll",
+                    "startMax",
                     "span"
                 ],
                 "properties": {
@@ -10485,6 +10486,18 @@
                         "example": "{reflexes} + 4",
                         "nullable": true
                     },
+                    "roll": {
+                        "description": "Number: the dice expression the server rolls for this field when a Character is created (ADR 0040); the Character is sent no value for it unless the field is spent from the point budget. Null for other types and for a number without one.",
+                        "type": "string",
+                        "example": "3d6*5",
+                        "nullable": true
+                    },
+                    "startMax": {
+                        "description": "Track: the formula its max and current start at when a Character is created (ADR 0040), read over the other values; the max then stays per Character. Null for other types and for a track without one.",
+                        "type": "string",
+                        "example": "({con} + {siz}) / 10",
+                        "nullable": true
+                    },
                     "span": {
                         "description": "How many columns of its group the field takes; 1 for a release without a layout.",
                         "type": "integer",
@@ -10546,6 +10559,52 @@
                 },
                 "type": "object"
             },
+            "PointBudgetResponse": {
+                "required": [
+                    "label",
+                    "total",
+                    "fields",
+                    "min",
+                    "max"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "What to call the points; null to call them \"Points\".",
+                        "type": "string",
+                        "example": "Characteristic points",
+                        "nullable": true
+                    },
+                    "total": {
+                        "description": "The most points a player spends.",
+                        "type": "integer",
+                        "example": 460
+                    },
+                    "fields": {
+                        "description": "The keys of the number fields the points are spent on.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "str",
+                            "con"
+                        ]
+                    },
+                    "min": {
+                        "description": "The lowest value a budget field takes when a Character is created; null when the budget adds no lower bound to the field's own.",
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    },
+                    "max": {
+                        "description": "The highest value a budget field takes when a Character is created; null when the budget adds no upper bound to the field's own.",
+                        "type": "integer",
+                        "example": 90,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "PinnedReleaseResponse": {
                 "required": [
                     "gameSystemKey",
@@ -10554,7 +10613,8 @@
                     "theme",
                     "credits",
                     "sheet",
-                    "sheetLayout"
+                    "sheetLayout",
+                    "pointBudget"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -10606,6 +10666,15 @@
                         ],
                         "nullable": true,
                         "description": "How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together."
+                    },
+                    "pointBudget": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PointBudgetResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The points a player may spend on number fields when creating a Character (ADR 0040); null when the sheet has no budget."
                     }
                 },
                 "type": "object"

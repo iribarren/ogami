@@ -72,6 +72,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         $content = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-sheet'), 'sceneTypes', []);
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9101', $content, false));
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', CreationRelease::content(), false));
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9103', CreationRelease::mixedContent(), false));
     }
 
     #[Test]
@@ -92,13 +93,48 @@ final class CampaignCharactersApiTest extends WebTestCase
         $sheet = array_map(static fn (mixed $field): array => (array) $field, array_values($sheet));
         self::assertSame(['role', 'look', 'reflexes', 'luck', 'debt', 'hp', 'humanity', 'gear', 'cyberware'], array_column($sheet, 'key'));
         self::assertSame(
-            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'span' => 1],
+            ['key' => 'role', 'label' => 'Role', 'hint' => 'What you do for the crew.', 'group' => 'Identity', 'type' => 'text', 'min' => null, 'max' => null, 'default' => null, 'multiline' => false, 'maxLength' => 200, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'roll' => null, 'startMax' => null, 'span' => 1],
             $sheet[0],
         );
         self::assertSame(['number', 1, 10, 4], [$sheet[2]['type'] ?? null, $sheet[2]['min'] ?? null, $sheet[2]['max'] ?? null, $sheet[2]['default'] ?? null]);
         self::assertSame(['number', -1_000_000, 1_000_000, 0], [$sheet[3]['type'] ?? null, $sheet[3]['min'] ?? null, $sheet[3]['max'] ?? null, $sheet[3]['default'] ?? null]);
         self::assertSame([['track', 40], ['track', null]], [[$sheet[5]['type'] ?? null, $sheet[5]['max'] ?? null], [$sheet[6]['type'] ?? null, $sheet[6]['max'] ?? null]]);
         self::assertSame([['list', 'Item', 20], ['list', null, 50]], [[$sheet[7]['type'] ?? null, $sheet[7]['itemLabel'] ?? null, $sheet[7]['maxItems'] ?? null], [$sheet[8]['type'] ?? null, $sheet[8]['itemLabel'] ?? null, $sheet[8]['maxItems'] ?? null]]);
+    }
+
+    #[Test]
+    public function thePinnedReleaseExposesTheCreationRulesOfItsSheet(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+
+        $this->client->request('GET', '/api/campaigns/'.$this->createCampaign(CreationRelease::KEY));
+
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        /** @var array<string, array<string, mixed>> $sheet */
+        $sheet = array_column((array) $pinned['sheet'], null, 'key');
+        self::assertSame(['3d6*5', '(2d6+6)*5', null, null], [$sheet['str']['roll'], $sheet['con']['roll'], $sheet['role']['roll'], $sheet['hp']['roll']]);
+        self::assertSame(['{half}', null, null], [$sheet['hp']['startMax'], $sheet['str']['startMax'], $sheet['half']['startMax']]);
+        self::assertSame(['label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90], $pinned['pointBudget'] ?? null);
+    }
+
+    #[Test]
+    public function aReleaseWithoutCreationRulesExposesNoneOfThem(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+
+        $this->client->request('GET', '/api/campaigns/'.$this->createCampaign());
+
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        self::assertArrayHasKey('pointBudget', $pinned);
+        self::assertNull($pinned['pointBudget']);
+        foreach ((array) $pinned['sheet'] as $field) {
+            $field = (array) $field;
+            self::assertArrayHasKey('roll', $field);
+            self::assertArrayHasKey('startMax', $field);
+            self::assertSame([null, null], [$field['roll'], $field['startMax']]);
+        }
     }
 
     #[Test]
@@ -644,6 +680,25 @@ final class CampaignCharactersApiTest extends WebTestCase
         yield 'a point value above the budget maximum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 91]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" must be 15 to 90 when spending points, got 91.'];
         yield 'a missing point value' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" is part of the point budget: give it a value.'];
         yield 'more points than the budget' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 50, 'con' => 51]], CreationRelease::KEY, 'point_budget_exceeded', 'The point budget allows 100 points, 101 spent.'];
+    }
+
+    #[Test]
+    public function byRollTheNonDiceBudgetFieldsOfAMixedBudgetAreBoundedButNotTotalled(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::MIXED_KEY);
+        $url = \sprintf('/api/campaigns/%s/characters', $id);
+        $this->random->script(4, 5, 6, 4, 5, 6);
+
+        $this->client->jsonRequest('POST', $url, ['name' => 'Vi', 'method' => 'roll', 'values' => ['san' => 95]]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => 'Field "san" must be 15 to 90 when creating by roll, got 95.', 'code' => 'outside_creation_bounds'], $this->json());
+        self::assertSame([], $this->campaignCharacters($id));
+
+        // 75 + 90 is over the 100 points, which rolling does not count.
+        $this->client->jsonRequest('POST', $url, ['name' => 'Vi', 'method' => 'roll', 'values' => ['san' => 90]]);
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['str' => 75, 'san' => 90], $this->json()['values'] ?? null);
     }
 
     /**

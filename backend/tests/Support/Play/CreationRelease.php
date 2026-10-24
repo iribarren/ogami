@@ -14,6 +14,7 @@ use App\Tests\Support\Studio\ReleaseArrays;
 final class CreationRelease
 {
     public const string KEY = 'creation';
+    public const string MIXED_KEY = 'creation-mixed';
 
     /**
      * @return array<mixed>
@@ -32,6 +33,25 @@ final class CreationRelease
                 ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'startMax' => ['formula' => '{half}']],
             ],
             'pointBudget' => ['label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90],
+        ]);
+    }
+
+    /**
+     * The same release with a budget that mixes dice and non-dice fields: Strength is rolled,
+     * Sanity (no dice default) is set by the player, 15 to 90, whatever the method.
+     *
+     * @return array<mixed>
+     */
+    public static function mixedContent(): array
+    {
+        $content = ReleaseArrays::with(self::content(), 'gameSystem', ['key' => self::MIXED_KEY, 'name' => 'Mixed creation', 'description' => 'A budget over a rolled and a chosen field.']);
+
+        return ReleaseArrays::with($content, 'sheet', [
+            'fields' => [
+                ['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'min' => 1, 'max' => 99, 'roll' => ['dice' => '3d6*5']],
+                ['key' => 'san', 'label' => 'Sanity', 'type' => 'number', 'min' => 1, 'max' => 99, 'default' => 50],
+            ],
+            'pointBudget' => ['label' => 'Points', 'total' => 100, 'fields' => ['str', 'san'], 'min' => 15, 'max' => 90],
         ]);
     }
 }

@@ -155,6 +155,43 @@ final class CharacterCreationTest extends TestCase
         $this->assertRefused(CreationRefusal::BudgetExceeded, static fn (): array => CharacterCreation::values($sheet, ['str' => 50, 'con' => 51], CreationMethod::Points, $random()));
     }
 
+    /**
+     * Strength is rolled; Sanity is a budget field with no dice default, so the player sets it.
+     */
+    private function mixedSheet(): SheetTemplate
+    {
+        return new SheetTemplate([
+            new NumberField('str', 'Strength', min: 1, max: 99, roll: DiceExpression::fromString('3d6*5')),
+            new NumberField('san', 'Sanity', min: 1, max: 99, default: 50),
+        ], budget: new PointBudget(100, ['str', 'san'], 'Points', 15, 90));
+    }
+
+    #[Test]
+    public function byRollThePlayerSetsTheNonDiceBudgetFieldsInsideTheBudgetBoundsWithoutATotal(): void
+    {
+        $random = static fn (): ScriptedRandomNumberGenerator => new ScriptedRandomNumberGenerator(4, 5, 6);
+
+        // 90 on its own is over the total of 100 once Strength is counted, and that is fine when rolling.
+        self::assertSame(['str' => 75, 'san' => 90], CharacterCreation::values($this->mixedSheet(), ['san' => 90], CreationMethod::Roll, $random()));
+        self::assertSame(15, CharacterCreation::values($this->mixedSheet(), ['san' => 15], CreationMethod::Roll, $random())['san']);
+
+        // 10 and 91 sit inside the field (1..99) and outside the budget (15..90); a missing value is not read as its default.
+        foreach ([['san' => 10], ['san' => 91], []] as $given) {
+            $this->assertRefused(CreationRefusal::OutsideBounds, fn (): array => CharacterCreation::values($this->mixedSheet(), $given, CreationMethod::Roll, $random()));
+        }
+
+        // A value for the rolled budget field is still refused.
+        $this->assertRefused(CreationRefusal::ValueSetAtCreation, fn (): array => CharacterCreation::values($this->mixedSheet(), ['str' => 50, 'san' => 50], CreationMethod::Roll, $random()));
+    }
+
+    #[Test]
+    public function aBudgetWithNothingToRollIsCheckedWithoutChoosingAMethod(): void
+    {
+        $sheet = new SheetTemplate([new NumberField('str', 'Strength', min: 1, max: 10), new NumberField('con', 'Constitution', min: 1, max: 10)], budget: new PointBudget(12, ['str', 'con']));
+
+        $this->assertRefused(CreationRefusal::BudgetExceeded, static fn (): array => CharacterCreation::values($sheet, ['str' => 7, 'con' => 6], null, null));
+    }
+
     #[Test]
     public function aPromotionRollsEveryDiceDefaultWhateverTheBudget(): void
     {

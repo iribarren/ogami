@@ -6,7 +6,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { initiativeField, sheet, viCharacter } from '../characters/fixtures'
+import { creationCampaign, initiativeField, sheet, viCharacter } from '../characters/fixtures'
 import { atStep, characterStep, guidedWithCharacters, promptStep } from './fixtures'
 import type { FlowStep } from './useFlowRun'
 
@@ -91,6 +91,32 @@ describe('a character step', () => {
       expect(sent['flow-run/answer']).toEqual([{ stepKey: 'crew', characterId: viCharacter.id }])
     })
     expect(sent.characters).toEqual([expect.objectContaining({ name: 'Vi' })])
+  })
+
+  it('asks for the creation method and sends it with the Character', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderStep(
+      characterStep,
+      {
+        characters: () => Response.json(viCharacter, { status: 201 }),
+        'flow-run/answer': answering(afterStep),
+      },
+      {
+        ...guidedWithCharacters(atStep(characterStep)),
+        pinnedRelease: creationCampaign.pinnedRelease,
+        characters: [],
+      },
+    )
+
+    const step = await card()
+    await user.type(step.getByLabelText('Name'), 'Vi')
+    expect(step.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.click(step.getByRole('radio', { name: 'Roll' }))
+    await user.click(step.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent.characters).toEqual([expect.objectContaining({ name: 'Vi', method: 'roll' })])
+    })
   })
 
   it('leaves derived fields out of the form and sends no value for them', async () => {

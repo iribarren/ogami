@@ -9,6 +9,8 @@ import { journalKey } from '../journal/useJournal'
 export type CampaignSummary = components['schemas']['CampaignSummaryResponse']
 export type Campaign = components['schemas']['CampaignResponse']
 export type GameSystemSummary = components['schemas']['GameSystemSummaryResponse']
+/** Which rule of structured character creation a 422 broke (ADR 0040); the message is for people. */
+export type CharacterCreationErrorCode = components['schemas']['CharacterCreationErrorCode']
 type CreateCampaignRequest = components['schemas']['CreateCampaignRequest']
 type StartSceneRequest = components['schemas']['StartSceneRequest']
 
@@ -20,17 +22,20 @@ export class CampaignError extends Error {
   override name = 'CampaignError'
 
   readonly status: number
+  /** Set on a refusal to add a Character that broke a creation rule. */
+  readonly code: CharacterCreationErrorCode | undefined
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: CharacterCreationErrorCode) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
 /** Uses the API's message for the statuses that explain the refusal, a generic one otherwise. */
 export function campaignError(
   response: Response,
-  error: { error: string } | undefined,
+  error: { error: string; code?: CharacterCreationErrorCode | null } | undefined,
   explained: readonly number[],
   failure: string,
 ) {
@@ -38,6 +43,7 @@ export function campaignError(
   return new CampaignError(
     reason ?? `${failure} failed with HTTP ${String(response.status)}.`,
     response.status,
+    explained.includes(response.status) ? (error?.code ?? undefined) : undefined,
   )
 }
 

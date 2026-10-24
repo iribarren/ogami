@@ -19,7 +19,8 @@ use App\Randomness\Domain\RandomNumberGenerator;
  * number field the player does not spend points on (clamped to the field's bounds) and starts a
  * track with a start max full, once the other values are in. A value given for one of those is
  * refused. By points the player sends a value for every budget field: each inside the field's own
- * bounds and the budget's, all together at most the total.
+ * bounds and the budget's, all together at most the total. By roll, when the budget mixes dice and
+ * non-dice fields, the player still sets the non-dice ones inside those bounds, with no total.
  *
  * A sheet without these properties creates exactly as CharacterValues::resolve() does.
  */
@@ -37,9 +38,13 @@ final class CharacterCreation
         $budget = $sheet->budget();
         self::assertMethod($sheet, $budget, $method);
 
-        $spent = CreationMethod::Points === $method && $budget instanceof PointBudget;
-        if ($spent) {
-            self::assertBudget($sheet, $budget, $given);
+        // Under roll the budget fields with a dice default are rolled and the player sets the others
+        // inside the budget's bounds, whatever they add up to. Otherwise (points, or a budget with
+        // nothing to roll, which assertMethod() lets through without a method) every budget field is spent.
+        $rolling = CreationMethod::Roll === $method;
+        $spent = !$rolling && $budget instanceof PointBudget;
+        if ($budget instanceof PointBudget) {
+            self::assertBudget($sheet, $budget, $given, $rolling);
         }
 
         return self::create($sheet, $given, $spent ? $budget : null, $random);
@@ -83,12 +88,16 @@ final class CharacterCreation
     /**
      * @param array<mixed> $given
      */
-    private static function assertBudget(SheetTemplate $sheet, PointBudget $budget, array $given): void
+    private static function assertBudget(SheetTemplate $sheet, PointBudget $budget, array $given, bool $rolling): void
     {
         $total = 0;
         foreach ($budget->fields as $key) {
             $field = $sheet->field($key);
             \assert($field instanceof NumberField);
+            if ($rolling && $field->roll instanceof DiceExpression) {
+                continue;
+            }
+
             if (!\array_key_exists($key, $given)) {
                 throw InvalidCharacter::refused(CreationRefusal::OutsideBounds, \sprintf('Field "%s" is part of the point budget: give it a value.', $key));
             }
@@ -100,13 +109,13 @@ final class CharacterCreation
 
             [$min, $max] = $budget->boundsOf($field);
             if ($given[$key] < $min || $given[$key] > $max) {
-                throw InvalidCharacter::refused(CreationRefusal::OutsideBounds, \sprintf('Field "%s" must be %d to %d when spending points, got %d.', $key, $min, $max, $given[$key]));
+                throw InvalidCharacter::refused(CreationRefusal::OutsideBounds, \sprintf('Field "%s" must be %d to %d when %s, got %d.', $key, $min, $max, $rolling ? 'creating by roll' : 'spending points', $given[$key]));
             }
 
             $total += $given[$key];
         }
 
-        if ($total > $budget->total) {
+        if (!$rolling && $total > $budget->total) {
             throw InvalidCharacter::refused(CreationRefusal::BudgetExceeded, \sprintf('The point budget allows %d points, %d spent.', $budget->total, $total));
         }
     }

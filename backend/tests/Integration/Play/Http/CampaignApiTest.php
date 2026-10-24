@@ -167,7 +167,7 @@ final class CampaignApiTest extends WebTestCase
         $this->client->request('GET', '/api/campaigns/'.$id);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['gameSystemKey' => 'minimal', 'gameSystemName' => 'Minimal', 'version' => 1, 'theme' => 'noir', 'credits' => null, 'sheet' => [], 'sheetLayout' => null], $this->json()['pinnedRelease'] ?? null);
+        self::assertSame(['gameSystemKey' => 'minimal', 'gameSystemName' => 'Minimal', 'version' => 1, 'theme' => 'noir', 'credits' => null, 'sheet' => [], 'sheetLayout' => null, 'pointBudget' => null], $this->json()['pinnedRelease'] ?? null);
     }
 
     #[Test]
@@ -275,7 +275,7 @@ final class CampaignApiTest extends WebTestCase
                 'id' => $id,
                 'name' => 'The lost mine',
                 'createdAt' => '2026-10-06T09:00:00+00:00',
-                'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null, 'sheet' => [], 'sheetLayout' => null],
+                'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null, 'sheet' => [], 'sheetLayout' => null, 'pointBudget' => null],
                 'sessions' => [
                     [
                         'number' => 1,
@@ -669,7 +669,7 @@ final class CampaignApiTest extends WebTestCase
             'id' => $id,
             'name' => $name,
             'createdAt' => '2026-10-06T09:00:00+00:00',
-            'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null, 'sheet' => [], 'sheetLayout' => null],
+            'pinnedRelease' => ['gameSystemKey' => 'example-journal', 'gameSystemName' => 'Example journal', 'version' => 1, 'theme' => null, 'credits' => null, 'sheet' => [], 'sheetLayout' => null, 'pointBudget' => null],
             'sessions' => [],
             'currentSessionNumber' => null,
             'currentSceneNumber' => null,

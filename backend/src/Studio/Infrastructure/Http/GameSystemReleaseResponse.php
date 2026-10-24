@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
 /**
  * One release of a GameSystem as its owner reads it.
  */
-#[OA\Schema(required: ['version', 'schemaVersion', 'publishedAt', 'notes', 'contentHash', 'librarySources', 'name', 'sectionCounts', 'outline'])]
+#[OA\Schema(required: ['version', 'schemaVersion', 'publishedAt', 'notes', 'contentHash', 'librarySources', 'name', 'sectionCounts', 'outline', 'changes'])]
 final readonly class GameSystemReleaseResponse
 {
     /**
@@ -47,6 +47,8 @@ final readonly class GameSystemReleaseResponse
             additionalProperties: new OA\AdditionalProperties(type: 'array', items: new OA\Items(ref: new Model(type: ReleaseOutlineItemResponse::class))),
         )]
         public array $outline,
+        #[OA\Property(ref: new Model(type: ReleaseChangesResponse::class), description: 'What the release changed against the release before it (version N-1); null for the first release, or when that one is missing.', nullable: true)]
+        public ?ReleaseChangesResponse $changes,
     ) {
     }
 
@@ -57,6 +59,6 @@ final readonly class GameSystemReleaseResponse
         $librarySources = null === $summary->librarySources ? null : array_map(LibrarySourceResponse::fromSource(...), $summary->librarySources);
         $outline = array_map(static fn (array $items): array => array_map(ReleaseOutlineItemResponse::fromItem(...), $items), $view->outline);
 
-        return new self($summary->version, $summary->schemaVersion, $summary->publishedAt->format(\DATE_ATOM), $summary->notes, $summary->contentHash, $librarySources, $view->name, $view->sectionCounts, $outline);
+        return new self($summary->version, $summary->schemaVersion, $summary->publishedAt->format(\DATE_ATOM), $summary->notes, $summary->contentHash, $librarySources, $view->name, $view->sectionCounts, $outline, null === $view->changes ? null : ReleaseChangesResponse::fromChanges($view->changes));
     }
 }

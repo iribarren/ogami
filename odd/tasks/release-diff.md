@@ -59,7 +59,7 @@ The release detail (`GET /api/studio/game-systems/{key}/releases/{version}`) gai
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0039 (plus the README index) | parent, inline (feature doc); writer (delegated: ADR) | [x] | |
-| T2 | 1 | `ReleaseDiff` (Application, next to `ReleaseOutline`); the release detail gains `changes`; unit and API tests; generated OpenAPI and TS in their own commit | writer (delegated) | [ ] | |
+| T2 | 1 | `ReleaseDiff` (Application, next to `ReleaseOutline`); the release detail gains `changes`; unit and API tests; generated OpenAPI and TS in their own commit | writer (delegated) | [x] | |
 | T3 | 1 | `ReleaseChanges` panel in `ReleaseView`, above the outline; tests, fixtures, story | writer (delegated) | [ ] | |
 | T4 | 1 | Review fixes, if any; closing doc commit | writer (delegated) | [ ] | |
 
@@ -80,6 +80,7 @@ The release detail (`GET /api/studio/game-systems/{key}/releases/{version}`) gai
 
 - 2026-10-24: Explored the release detail (backend handler, `ReleaseOutline`, `ReleaseView`). The user chose how changes show (changed properties, separate panel, order note). Issue #268 and this feature doc written.
 - 2026-10-24: T1 done: ADR 0039 written and indexed; the feature doc committed with it.
+- 2026-10-24: T2 done: `ReleaseDiff` (shares `ReleaseOutline::entries`), `changes` in the release detail and its response classes, unit and API tests; OpenAPI and TS regenerated in the next commit.
 
 ## Reviews
 

@@ -382,6 +382,34 @@ final class GameSystemPublishApiTest extends WebTestCase
     }
 
     #[Test]
+    public function theReleaseDetailListsWhatItChangedAgainstThePreviousReleaseAndTheFirstHasNone(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('mine');
+        $example = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-contract-doc-example'), 'gameSystem.key', 'mine');
+        $this->replaceDocument('mine', ReleaseContent::fromArray($example)->toArray());
+        $this->client->jsonRequest('POST', self::BASE.'/mine/releases', []);
+        self::assertResponseStatusCodeSame(201);
+        $this->replaceDocument('mine', ReleaseContent::fromArray(ReleaseArrays::with($example, 'flows.0.name', 'Big heist'))->toArray());
+        $this->client->jsonRequest('POST', self::BASE.'/mine/releases', []);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->client->request('GET', self::BASE.'/mine/releases/2');
+        $changes = $this->json()['changes'];
+        $this->client->request('GET', self::BASE.'/mine/releases/1');
+
+        self::assertIsArray($changes);
+        self::assertSame([1, 2], [$changes['previousVersion'], $changes['previousSchemaVersion']]);
+        $sections = $changes['sections'];
+        self::assertIsArray($sections);
+        self::assertIsArray($sections['flows']);
+        self::assertSame([['key' => 'heist', 'name' => 'Big heist', 'previousName' => 'Heist', 'fields' => ['name']]], $sections['flows']['changed']);
+        self::assertIsArray($sections['sceneTypes']);
+        self::assertSame([[], [], [], false], [$sections['sceneTypes']['added'], $sections['sceneTypes']['removed'], $sections['sceneTypes']['changed'], $sections['sceneTypes']['reordered']]);
+        self::assertNull($this->json()['changes']);
+    }
+
+    #[Test]
     public function aLibraryPackRefusesToBePublishedWithTheLibraryPackCode(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

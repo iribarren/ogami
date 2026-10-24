@@ -51,6 +51,34 @@ describe('reading a stored field', () => {
     ).toMatchObject({ type: 'text', multiline: true, maxLength: '' })
   })
 
+  it('reads a dice default and the mode of a track max', () => {
+    expect(
+      readField({ key: 'str', label: 'Strength', type: 'number', roll: { dice: '3d6*5' } }),
+    ).toMatchObject({ roll: '3d6*5' })
+    expect(readField({ key: 'hp', label: 'HP', type: 'track', max: 8 })).toMatchObject({
+      maxMode: 'fixed',
+      max: '8',
+    })
+    expect(readField({ key: 'hp', label: 'HP', type: 'track' })).toMatchObject({
+      maxMode: 'perCharacter',
+    })
+    expect(
+      readField({ key: 'hp', label: 'HP', type: 'track', startMax: { formula: '{con} / 2' } }),
+    ).toMatchObject({ maxMode: 'startFormula', startMax: '{con} / 2', max: '' })
+  })
+
+  it.each([
+    ['a dice default that is text', { key: 'a', label: 'A', type: 'number', roll: '3d6' }],
+    ['a dice default without dice', { key: 'a', label: 'A', type: 'number', roll: {} }],
+    ['a start max that is a list', { key: 'a', label: 'A', type: 'track', startMax: [] }],
+    [
+      'a start max formula that is a number',
+      { key: 'a', label: 'A', type: 'track', startMax: { formula: 4 } },
+    ],
+  ])('cannot read %s', (_name, stored) => {
+    expect(readField(stored)).toBeNull()
+  })
+
   it.each([
     ['an unknown type', { key: 'a', label: 'A', type: 'gauge' }],
     ['a key that is not text', { key: 4, label: 'A', type: 'text' }],
@@ -92,6 +120,37 @@ describe('writing a field', () => {
     })
     expect(writeField(filled({ type: 'derived', formula: '{pow} + 1' }), null)).toEqual({
       field: { key: 'luck', label: 'Luck', type: 'derived', formula: '{pow} + 1' },
+    })
+  })
+
+  it('sends a dice default as {dice}, trimmed, and leaves a blank one out', () => {
+    expect(writeField(filled({ type: 'number', roll: ' 3d6*5 ', default: '50' }), null)).toEqual({
+      field: { key: 'luck', label: 'Luck', type: 'number', default: 50, roll: { dice: '3d6*5' } },
+    })
+    expect(writeField(filled({ type: 'number', roll: '  ' }), null)).toEqual({
+      field: { key: 'luck', label: 'Luck', type: 'number' },
+    })
+  })
+
+  it('writes the max of a track by its mode only', () => {
+    const track = { type: 'track', max: '6', startMax: '{con}' } as const
+    expect(writeField(filled({ ...track, maxMode: 'fixed' }), null)).toEqual({
+      field: { key: 'luck', label: 'Luck', type: 'track', max: 6 },
+    })
+    expect(writeField(filled({ ...track, maxMode: 'perCharacter' }), null)).toEqual({
+      field: { key: 'luck', label: 'Luck', type: 'track' },
+    })
+    expect(writeField(filled({ ...track, maxMode: 'startFormula' }), null)).toEqual({
+      field: { key: 'luck', label: 'Luck', type: 'track', startMax: { formula: '{con}' } },
+    })
+  })
+
+  it('asks for the formula of a start max mode and ignores a stale dice default on other types', () => {
+    expect(
+      writeField(filled({ type: 'track', maxMode: 'startFormula', startMax: ' ' }), null),
+    ).toEqual({ errors: { startMax: 'Write the formula.' } })
+    expect(writeField(filled({ type: 'text', roll: '3d6', startMax: '{con}' }), null)).toEqual({
+      field: { key: 'luck', label: 'Luck', type: 'text' },
     })
   })
 

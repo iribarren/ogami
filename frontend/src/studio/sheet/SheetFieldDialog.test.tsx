@@ -90,6 +90,65 @@ describe('adding a field', () => {
     expect(inDialog().getByLabelText('Formula')).toBeVisible()
   })
 
+  it('sends a dice default of a number field as {dice}', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'str')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Strength')
+    await typeText(user, inDialog().getByLabelText('Dice default'), '3d6*5')
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toMatchObject({ type: 'number', roll: { dice: '3d6*5' } })
+    })
+  })
+
+  it('sets the max of a track fixed, by each Character or by a formula at creation', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'hp')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Hit points')
+    await chooseOption(user, 'Type', 'track', inDialog())
+    expect(inDialog().getByLabelText('Max')).toBeVisible()
+    await chooseOption(user, 'Max is', 'Each Character sets it', inDialog())
+    expect(inDialog().queryByLabelText('Max')).not.toBeInTheDocument()
+    expect(inDialog().queryByLabelText('Start max formula')).not.toBeInTheDocument()
+    await chooseOption(user, 'Max is', 'Formula at creation', inDialog())
+    await typeText(user, inDialog().getByLabelText('Start max formula'), '{pow} / 2')
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toEqual({
+        key: 'hp',
+        label: 'Hit points',
+        group: 'Stats',
+        type: 'track',
+        startMax: { formula: '{pow} / 2' },
+      })
+    })
+  })
+
+  it('offers number and derived fields only to a start max formula', async () => {
+    const { user } = await openSheet()
+
+    await addField(user)
+    await chooseOption(user, 'Type', 'track', inDialog())
+    await chooseOption(user, 'Max is', 'Formula at creation', inDialog())
+    await user.click(inDialog().getByRole('combobox', { name: 'Insert reference' }))
+
+    const options = (await screen.findAllByRole('option')).map((option) => option.textContent)
+    expect(options).toEqual([
+      'Insert reference…',
+      'Power {pow}',
+      'Dexterity {dex}',
+      'Bonus {bonus}',
+    ])
+  })
+
   it('sends the properties of a derived field and a multiline text field', async () => {
     const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
     const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
@@ -251,6 +310,24 @@ describe('a refused save', () => {
     expect(await inDialog().findByText('must be at least min (0), -1 given')).toBeVisible()
     expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
     expect(inDialog().getByLabelText('Max')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('puts the refusal of a dice default and of a start max on their inputs', async () => {
+    const { user } = await openSheet({
+      [`POST ${base}/sheet/fields`]: json(
+        { error: 'sheet.fields[4].roll.dice: invalid dice notation: unexpected "x"' },
+        422,
+      ),
+    })
+
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'str')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Strength')
+    await typeText(user, inDialog().getByLabelText('Dice default'), '3d6x5')
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    expect(await inDialog().findByText('invalid dice notation: unexpected "x"')).toBeVisible()
+    expect(inDialog().getByLabelText('Dice default')).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('maps a new field to the position after the last one', async () => {

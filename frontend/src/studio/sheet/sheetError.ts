@@ -21,17 +21,19 @@ const inputs = [
   'itemLabel',
   'maxItems',
   'formula',
+  'roll',
+  'startMax',
 ]
 
 /**
  * Reads the publisher's `path: message` for the field at `index` of the draft's sheet
- * (`sheet.fields[2].label: …`). A path of another field or of the layout, or of a property
+ * (`sheet.fields[2].label: …`); a path inside a property, such as `roll.dice`, goes to that property's input. A path of another field or of the layout, or of a property
  * the form has no input for, comes back whole as a form message.
  */
 export function sheetFieldAnswer(text: string, index: number): SheetFieldAnswer {
   const prefix = `sheet.fields[${String(index)}].`
   if (text.startsWith(prefix)) {
-    const match = /^(\w+): (.*)$/s.exec(text.slice(prefix.length))
+    const match = /^(\w+)(?:\.\w+)?: (.*)$/s.exec(text.slice(prefix.length))
     const [, property, message] = match ?? []
     if (property !== undefined && message !== undefined && inputs.includes(property)) {
       return { fields: { [property]: message }, form: null }

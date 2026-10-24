@@ -62,8 +62,8 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0040 (index; status lines of ADR 0027 and 0035; roadmap B7k link) | parent, inline | [x] | |
-| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [ ] | |
-| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [ ] | |
+| T2 | 1 | Contract: `v2.schema.json` (`roll`, `startMax`, `pointBudget`), the contract doc, Studio validator (`SheetFields`, `Formulas`) and the draft in-use checks (a field read by `startMax` or listed in the budget cannot be deleted); unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
+| T3 | 1 | Studio field dialog: dice default on a number field; track max as fixed, per-Character or start formula; `sheetDraft` and tests | writer (delegated) | [x] | |
 | T4 | 2 | Translator and Play sheet model read `roll`, `startMax` and `pointBudget` (fail closed on malformed) | | [ ] | |
 | T5 | 2 | Creation by method: `AddCharacterHandler` gets the random source; rolls, budget and `startMax` in the domain; NPC promotion; request `method` and 422 codes; API tests; regenerated OpenAPI and TS | | [ ] | |
 | T6 | 2 | Upgrade planner: added `startMax` track evaluated on the fitted values; added rolled number field takes its static initial value; plan tests | | [ ] | |
@@ -88,6 +88,9 @@ Creation request (`POST /api/campaigns/{id}/characters`) gains a nullable `metho
 ## Progress
 
 - 2026-10-24: Explored every layer (contract, publisher, translator, Play creation, Randomness, Studio builder, upgrade planner, preset). The user chose the four creation decisions. Issue #270, ADR 0040 and this feature doc written.
+
+- 2026-10-24: T2 done. Schema v2 gains `numberField.roll`, `trackField.startMax` and `sheet.pointBudget`; Studio validates them (`SheetFields`, `Formulas::startMax`, new `PointBudget`); drafts refuse deleting or renaming a field read by a `startMax` formula or listed in the budget; contract doc section added. RED: the new unit tests failed before the validator (unknown property, missing class), GREEN after. The translator test for the three refusals passed first time (Play unchanged). No OpenAPI change: Studio sheet fields cross the API as free-form objects.
+- 2026-10-24: T3 done. `sheetDraft` reads and writes `roll` and a track max mode (fixed, each Character, formula at creation); the dialog has a "Dice default" input and a "Max is" select with a `FormulaInput` over number and derived fields; server paths such as `roll.dice` land on their inputs. Dialog and draft tests written with the code, so they passed first time (no RED).
 
 ## Reviews
 

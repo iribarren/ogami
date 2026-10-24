@@ -12,6 +12,10 @@ export type StoredField = Record<string, unknown>
 export const fieldTypes = ['number', 'text', 'list', 'track', 'derived'] as const
 export type FieldType = (typeof fieldTypes)[number]
 
+/** How a track's max is set (ADR 0040): a fixed number, by each Character, or by a formula when the Character is created. */
+export const maxModes = ['fixed', 'perCharacter', 'startFormula'] as const
+export type MaxMode = (typeof maxModes)[number]
+
 /** The form state of one field: every input is text, and what is empty is not sent. */
 export interface FieldDraft {
   key: string
@@ -29,6 +33,12 @@ export interface FieldDraft {
   itemLabel: string
   maxItems: string
   formula: string
+  /** A number's dice default, as notation: stored as `{dice}`. */
+  roll: string
+  /** A track's start max formula: stored as `{formula}`. */
+  startMax: string
+  /** Which of a track's `max` and `startMax` is written; neither for each Character. */
+  maxMode: MaxMode
 }
 
 /** A message per input, keyed like the draft. */
@@ -50,6 +60,9 @@ export function blankField(groups: SheetGroup[] | null): FieldDraft {
     itemLabel: '',
     maxItems: '',
     formula: '',
+    roll: '',
+    startMax: '',
+    maxMode: 'fixed',
   }
 }
 
@@ -63,14 +76,20 @@ export const typeProperties = [
   'itemLabel',
   'maxItems',
   'formula',
+  'roll',
+  'startMax',
+  'maxMode',
 ] as const
 
 /** The stored properties each type writes besides the common ones. */
-const propertiesOf: Record<FieldType, readonly (typeof typeProperties)[number][]> = {
-  number: ['min', 'max', 'default'],
+const propertiesOf: Record<
+  FieldType,
+  readonly Exclude<(typeof typeProperties)[number], 'maxMode'>[]
+> = {
+  number: ['min', 'max', 'default', 'roll'],
   text: ['multiline', 'maxLength'],
   list: ['itemLabel', 'maxItems'],
-  track: ['max'],
+  track: ['max', 'startMax'],
   derived: ['formula'],
 }
 
@@ -101,6 +120,20 @@ export function readField(stored: StoredField): FieldDraft | null {
       readable = false
     }
   }
+  // `{dice: text}` or `{formula: text}` as the text of its one property.
+  const wrapped = (name: 'roll' | 'startMax', property: 'dice' | 'formula') => {
+    const value = stored[name]
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const inner = (value as Record<string, unknown>)[property]
+      if (typeof inner === 'string') {
+        draft[name] = inner
+        return
+      }
+    }
+    if (value !== undefined && value !== null) {
+      readable = false
+    }
+  }
   const integer = (name: 'span' | 'min' | 'max' | 'default' | 'maxLength' | 'maxItems') => {
     const value = stored[name]
     if (Number.isInteger(value)) {
@@ -123,9 +156,18 @@ export function readField(stored: StoredField): FieldDraft | null {
       }
     } else if (name === 'itemLabel' || name === 'formula') {
       text(name)
+    } else if (name === 'roll') {
+      wrapped(name, 'dice')
+    } else if (name === 'startMax') {
+      wrapped(name, 'formula')
     } else {
       integer(name)
     }
+  }
+
+  if (draft.type === 'track') {
+    draft.maxMode =
+      draft.startMax !== '' ? 'startFormula' : draft.max !== '' ? 'fixed' : 'perCharacter'
   }
 
   return readable && draft.key !== '' && draft.label !== '' ? draft : null
@@ -180,6 +222,14 @@ export function writeField(
   field.type = draft.type
 
   for (const name of propertiesOf[draft.type]) {
+    // A track writes the one of its max and start max that its mode names, and neither for each Character.
+    if (
+      draft.type === 'track' &&
+      ((name === 'max' && draft.maxMode !== 'fixed') ||
+        (name === 'startMax' && draft.maxMode !== 'startFormula'))
+    ) {
+      continue
+    }
     const value = draft[name]
     if (typeof value === 'boolean') {
       if (value) {
@@ -189,9 +239,13 @@ export function writeField(
     }
     const text = value.trim()
     if (text === '') {
-      if (name === 'formula') {
-        errors.formula = 'Write the formula.'
+      if (name === 'formula' || name === 'startMax') {
+        errors[name] = 'Write the formula.'
       }
+    } else if (name === 'roll') {
+      field.roll = { dice: text }
+    } else if (name === 'startMax') {
+      field.startMax = { formula: text }
     } else if (!integerProperties.has(name)) {
       field[name] = text
     } else if (wholeNumber.test(text)) {

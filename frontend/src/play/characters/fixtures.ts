@@ -25,6 +25,21 @@ const base: SheetField = {
   roll: null,
   startMax: null,
   span: 1,
+  options: null,
+}
+
+/** A conditions field (ADR 0041): three options a Character can be marked with, in this order. */
+export const conditionsField: SheetField = {
+  ...base,
+  key: 'wounds',
+  label: 'Wounds',
+  hint: 'Each costs a die.',
+  type: 'conditions',
+  options: [
+    { key: 'hurt', label: 'Hurt' },
+    { key: 'shaken', label: 'Shaken' },
+    { key: 'tired', label: 'Tired' },
+  ],
 }
 
 /** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes (each in its own group). */

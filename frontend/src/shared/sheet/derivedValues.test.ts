@@ -136,3 +136,34 @@ describe('computeDerived', () => {
     expect(computeDerived(sheet, drafts, [])).toEqual({})
   })
 })
+
+describe('computeDerived over a conditions field', () => {
+  const wounds: SheetFieldView = {
+    ...initiativeField,
+    key: 'wounds',
+    label: 'Wounds',
+    type: 'conditions',
+    formula: null,
+    options: [
+      { key: 'hurt', label: 'Hurt' },
+      { key: 'shaken', label: 'Shaken' },
+    ],
+  }
+
+  it('reads the count marked as the draft holds it', () => {
+    const fields = [wounds, derived('strain', '{wounds} * 2 + {reflexes}'), ...sheet]
+
+    expect(computeDerived(fields, { ...drafts, wounds: ['hurt', 'shaken'] }, [])).toEqual({
+      strain: { value: 11 },
+    })
+    expect(computeDerived(fields, { ...drafts, wounds: [] }, [])).toEqual({
+      strain: { value: 7 },
+    })
+  })
+
+  it('has no value without a draft, as the sheet never reads a missing field', () => {
+    expect(computeDerived([wounds, derived('strain', '{wounds}')], {}, [])).toEqual({
+      strain: { reason: 'incomplete value' },
+    })
+  })
+})

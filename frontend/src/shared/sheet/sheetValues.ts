@@ -2,7 +2,8 @@ import type { SheetFieldView, SheetValue } from './types'
 
 /**
  * What a field holds while it is edited: text as typed, so a number can be empty for a moment
- * (the browser then refuses the form), the rows of a list, a track's current and max.
+ * (the browser then refuses the form), the rows of a list, the marked option keys of a conditions
+ * field, a track's current and max.
  */
 export type Draft = string | string[] | { current: string; max: string }
 
@@ -22,6 +23,7 @@ export function valueOrDefault(field: SheetFieldView, stored: SheetValue | undef
     case 'text':
       return typeof stored === 'string' ? stored : ''
     case 'list':
+    case 'conditions':
       return Array.isArray(stored) ? stored : []
     case 'track':
       return typeof stored === 'object' && !Array.isArray(stored)
@@ -82,6 +84,11 @@ function summarizeItems(items: string[]): string {
   return rest > 0 ? `${shown.join(', ')} +${String(rest)}` : shown.join(', ')
 }
 
+/** The labels of the options a conditions field marks, in declared order; a key the field no longer declares is left out. */
+export function markedLabels(field: SheetFieldView, marked: string[]): string[] {
+  return (field.options ?? []).filter(({ key }) => marked.includes(key)).map(({ label }) => label)
+}
+
 /** One short phrase for a field's value, as the Characters list shows it. */
 export function summarize(
   field: SheetFieldView,
@@ -95,6 +102,10 @@ export function summarize(
   const value = valueOrDefault(field, stored)
   if (typeof value === 'string') {
     return value === '' ? null : `${field.label}: ${cut(value)}`
+  }
+  if (field.type === 'conditions' && Array.isArray(value)) {
+    const labels = markedLabels(field, value)
+    return `${field.label}: ${labels.length === 0 ? 'none' : summarizeItems(labels)}`
   }
   if (Array.isArray(value)) {
     const items = value.filter((item) => item.trim() !== '')

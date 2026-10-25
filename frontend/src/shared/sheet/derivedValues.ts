@@ -29,7 +29,7 @@ export function integer(text: string): number | undefined {
 /**
  * The derived values of the sheet as the form holds it, computed as the player types: the same
  * formulas and reference semantics as the server (`DerivedValues`), over the drafts of the number
- * and track fields and the Campaign's Tracker values. A value that cannot be computed, or depends
+ * and track fields, the count marked of the conditions fields and the Campaign's Tracker values. A value that cannot be computed, or depends
  * on one that cannot, is a reason instead; nothing here throws.
  */
 export function computeDerived(
@@ -79,6 +79,10 @@ export function computeDerived(
     }
     if (field?.type === 'number' && reference.kind === 'field' && typeof draft === 'string') {
       return integer(draft)
+    }
+    if (field?.type === 'conditions' && reference.kind === 'field' && Array.isArray(draft)) {
+      // A formula reads the count marked, as the server does.
+      return draft.length
     }
     if (field?.type === 'track' && typeof draft === 'object' && !Array.isArray(draft)) {
       return integer(reference.kind === 'trackMax' ? draft.max : draft.current)

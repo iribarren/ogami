@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { SheetFields } from './SheetFields'
@@ -169,5 +169,75 @@ describe('SheetFields with a 0..1 number field', () => {
   it('keeps a number input for any other range', () => {
     renderCondition('1', vi.fn(), { ...condition, max: 3 })
     expect(screen.getByRole('spinbutton', { name: 'Angry' })).toHaveValue(1)
+  })
+})
+
+describe('SheetFields with a conditions field', () => {
+  const wounds: SheetFieldView = {
+    ...field('wounds', null),
+    label: 'Wounds',
+    hint: 'Each costs a die.',
+    type: 'conditions',
+    options: [
+      { key: 'hurt', label: 'Hurt' },
+      { key: 'shaken', label: 'Shaken' },
+      { key: 'tired', label: 'Tired' },
+    ],
+  }
+
+  function renderWounds(draft: string[], onChange = vi.fn()) {
+    render(
+      <SheetFields
+        template={{ fields: [wounds], layout: null }}
+        drafts={{ wounds: draft }}
+        derived={{}}
+        onChange={onChange}
+      />,
+    )
+    return onChange
+  }
+
+  it('renders one checkbox per option, in declared order, checked when marked', () => {
+    renderWounds(['tired', 'hurt'])
+
+    const group = screen.getByRole('group', { name: 'Wounds' })
+    expect(
+      within(group)
+        .getAllByRole('checkbox')
+        .map((box) => box.getAttribute('aria-checked')),
+    ).toEqual(['true', 'false', 'true'])
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(3)
+    expect(screen.getByRole('checkbox', { name: 'Hurt' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Shaken' })).not.toBeChecked()
+    expect(screen.getByText('Each costs a die.')).toBeInTheDocument()
+  })
+
+  it('marks an option by adding its key to the draft', async () => {
+    const onChange = renderWounds(['hurt'])
+
+    await userEvent.setup().click(screen.getByRole('checkbox', { name: 'Tired' }))
+
+    expect(onChange).toHaveBeenCalledWith('wounds', ['hurt', 'tired'])
+  })
+
+  it('clears an option by taking its key out of the draft', async () => {
+    const onChange = renderWounds(['hurt', 'tired'])
+
+    await userEvent.setup().click(screen.getByRole('checkbox', { name: 'Hurt' }))
+
+    expect(onChange).toHaveBeenCalledWith('wounds', ['tired'])
+  })
+
+  it('has nothing to tick for a field without options', () => {
+    render(
+      <SheetFields
+        template={{ fields: [{ ...wounds, options: null }], layout: null }}
+        drafts={{}}
+        derived={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryAllByRole('checkbox')).toEqual([])
   })
 })

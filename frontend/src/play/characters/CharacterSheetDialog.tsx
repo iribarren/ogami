@@ -1,4 +1,4 @@
-import { valueOrDefault } from '@/shared/sheet/sheetValues'
+import { markedLabels, valueOrDefault } from '@/shared/sheet/sheetValues'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -17,6 +17,10 @@ function FieldValue({ field, character }: { field: SheetField; character: Charac
     return String(character.derived[field.key] ?? '—')
   }
   const value = valueOrDefault(field, character.values[field.key])
+  if (field.type === 'conditions' && Array.isArray(value)) {
+    const labels = markedLabels(field, value)
+    return labels.length === 0 ? 'None' : labels.join(', ')
+  }
   if (Array.isArray(value)) {
     return (
       <ul>

@@ -6,26 +6,36 @@ namespace App\Play\Infrastructure\Http;
 
 use App\Identity\Application\AuthenticatedUser;
 use App\Play\Application\CampaignNotFound;
+use App\Play\Application\CheckCannotBePushed;
 use App\Play\Application\GetJournal;
 use App\Play\Application\GetJournalEntry;
 use App\Play\Application\JournalEntryIdGenerator;
 use App\Play\Application\JournalEntryNotFound;
 use App\Play\Application\PerformCheck;
+use App\Play\Application\PushCheck;
 use App\Play\Application\RecordLikelihoodAnswer;
 use App\Play\Application\RecordNote;
 use App\Play\Application\RecordOracleTableResult;
 use App\Play\Application\RecordRoll;
+use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
+use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
+use App\Play\Domain\GameSystem\Check\CheckNotPushable;
+use App\Play\Domain\GameSystem\Check\InvalidCheckPicks;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Check\UnknownCheck;
+use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
+use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
+use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Play\Domain\Journal\CheckAlreadyPushed;
 use App\Play\Domain\Journal\InvalidJournalEntryContent;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
 use App\Play\Domain\Journal\InvalidNoteAttachment;
@@ -64,6 +74,8 @@ final readonly class JournalController
     private const string MALFORMED_ORACLE_TABLE = 'Send no body, or a JSON object with an optional string "forEntry", such as {"forEntry": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001"}.';
     private const string MALFORMED_ROLL = 'Send a JSON object with a string "expression", such as {"expression": "2d6+1"}.';
     private const string MALFORMED_LIKELIHOOD = 'Send a JSON object with a string "likelihood", and optionally an integer "chaosFactor" and a string "question", such as {"likelihood": "likely", "chaosFactor": 5, "question": "Is the door locked?"}.';
+
+    private const string MALFORMED_PUSH = 'Send no body, or a JSON object with an optional list of strings "picks", such as {"picks": ["hurt"]}.';
 
     private const string MALFORMED_CHECK = 'Send a JSON object with a string "check" and a string "character", and optionally an integer "difficulty" and an integer "situational", such as {"check": "skill", "character": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001", "difficulty": 15, "situational": -2}.';
 
@@ -191,6 +203,47 @@ final readonly class JournalController
             $campaignId,
             $user,
         );
+    }
+
+    #[Route('/api/campaigns/{campaignId}/journal/{entryId}/push', name: 'api_campaigns_journal_checks_push', methods: ['POST'])]
+    #[OA\Post(operationId: 'pushCheck', summary: 'Push the latest pool check of one of my campaigns: re-roll the dice that failed, pay the cost of the push and complete the entry')]
+    #[OA\RequestBody(required: false, content: new OA\JsonContent(ref: new Model(type: PushCheckRequest::class)))]
+    #[OA\Response(response: 200, description: 'The entry, completed with the push.', content: new OA\JsonContent(ref: new Model(type: JournalEntryResponse::class)))]
+    #[OA\Response(response: 400, description: 'The body is not valid JSON or not an object, or its "picks" is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it has no journal entry with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The entry cannot be pushed: it is not the latest entry of the journal, not the roll of a pool check, recorded by a Flow step, already pushed (also when two pushes arrive at once), or without a failed die; the pinned release no longer declares that pool check with a push, or the Character is gone; or the campaign was changed at the same time.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'A body is sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A band of the check or a value of the cost cannot be evaluated for the Character, or the picks do not fit the cost: one is missing, unknown, already marked or not asked for. Nothing changes.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function pushCheck(string $campaignId, string $entryId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $picks = [];
+        if ('' !== $request->getContent()) {
+            $body = $this->jsonBody($request, 'Send the push as JSON, or without a body.', self::MALFORMED_PUSH);
+            if ($body instanceof JsonResponse) {
+                return $body;
+            }
+
+            $picks = $body['picks'] ?? [];
+            if ((array_is_list($body) && [] !== $body) || !$this->isListOfStrings($picks)) {
+                return $this->error(self::MALFORMED_PUSH, Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        try {
+            $this->commandBus->dispatch(new PushCheck($entryId, $campaignId, $user->id(), $picks));
+
+            return new JsonResponse(JournalEntryResponse::fromView($this->queryBus->ask(new GetJournalEntry($entryId, $campaignId, $user->id()))));
+        } catch (CampaignNotFound|JournalEntryNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (CheckCannotBePushed|CheckNotPushable|CheckAlreadyPushed|CampaignModifiedConcurrently $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (CheckEvaluationFailed|FlowFormulaFailed|InvalidCheckPicks $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
+        }
     }
 
     #[Route('/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}', name: 'api_campaigns_journal_oracle_tables_record', methods: ['POST'])]

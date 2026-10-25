@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Persistence\Doctrine;
 
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Journal\CheckAlreadyPushed;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
@@ -67,6 +68,29 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
         }
     }
 
+    /**
+     * Updates the stored content in one conditional statement: it matches only while the stored
+     * check has no push part, so a concurrent push that got there first makes this one fail instead of
+     * overwriting it. Entries are loaded read-only objects (the content is immutable), so Doctrine
+     * cannot flush this change itself: the loaded copy is detached and the next read loads the update.
+     * It runs in the command bus transaction, which rolls back on the exception.
+     *
+     * @throws CheckAlreadyPushed when the stored entry was pushed already, also by a concurrent push
+     */
+    public function savePush(JournalEntry $pushed): void
+    {
+        $loaded = $this->ofId($pushed->id()) ?? throw new \LogicException(\sprintf('Journal entry "%s" is not kept.', $pushed->id()->toString()));
+        $updated = $this->entityManager->getConnection()->executeStatement(
+            "UPDATE play_journal_entry SET content = CAST(:content AS jsonb) WHERE id = :id AND content->'pool'->'push' IS NULL",
+            ['content' => json_encode($pushed->content()->toArray(), \JSON_THROW_ON_ERROR), 'id' => $pushed->id()->toString()],
+        );
+        $this->entityManager->detach($loaded);
+
+        if (1 !== $updated) {
+            throw CheckAlreadyPushed::entry($pushed->id());
+        }
+    }
+
     public function ofId(JournalEntryId $id): ?JournalEntry
     {
         // The column is a UUID: anything else cannot match and would make PostgreSQL fail.
@@ -89,5 +113,19 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
         )->setParameter('campaignId', $campaignId->toString())->getResult();
 
         return $entries;
+    }
+
+    public function latestOfCampaign(CampaignId $campaignId): ?JournalEntry
+    {
+        if (!Uuid::isValid($campaignId->toString())) {
+            return null;
+        }
+
+        $entry = $this->entityManager->createQuery(
+            'SELECT e FROM '.JournalEntry::class.' e WHERE e.campaignId = :campaignId ORDER BY e.recordedAt DESC, e.id DESC',
+        )->setParameter('campaignId', $campaignId->toString())->setMaxResults(1)->getOneOrNullResult();
+        \assert(null === $entry || $entry instanceof JournalEntry);
+
+        return $entry;
     }
 }

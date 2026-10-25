@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Support\Play;
 
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Journal\CheckAlreadyPushed;
+use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
@@ -13,7 +15,8 @@ use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
 
 /**
- * Entries are immutable, so keeping the instances is as safe as keeping copies.
+ * Entries are immutable but for a push, which replaces one by its pushed copy, so keeping the
+ * instances is as safe as keeping copies.
  */
 final class InMemoryJournalEntryRepository implements JournalEntryRepository
 {
@@ -41,6 +44,27 @@ final class InMemoryJournalEntryRepository implements JournalEntryRepository
         }
 
         $this->entries[$id] = $entry;
+    }
+
+    /**
+     * @throws CheckAlreadyPushed when the kept entry was pushed already, like the conditional update
+     */
+    public function savePush(JournalEntry $pushed): void
+    {
+        $kept = $this->entries[$pushed->id()->toString()] ?? throw new \LogicException(\sprintf('Journal entry "%s" is not kept.', $pushed->id()->toString()));
+        $content = $kept->content();
+        if ($content instanceof CheckContent && $content->pool()?->push instanceof \App\Play\Domain\Journal\CheckPushContent) {
+            throw CheckAlreadyPushed::entry($pushed->id());
+        }
+
+        $this->entries[$pushed->id()->toString()] = $pushed;
+    }
+
+    public function latestOfCampaign(CampaignId $campaignId): ?JournalEntry
+    {
+        $entries = $this->ofCampaign($campaignId);
+
+        return [] === $entries ? null : array_last($entries);
     }
 
     public function ofId(JournalEntryId $id): ?JournalEntry

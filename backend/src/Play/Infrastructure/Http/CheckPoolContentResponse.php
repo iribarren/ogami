@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Domain\Journal\CheckPoolContent;
+use App\Play\Domain\Journal\CheckPushContent;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
- * The pool part of a recorded check: the count and size of the pool, its dice and the successes.
+ * The pool part of a recorded check: the count and size of the pool, its dice and the successes as first
+ * rolled, and the push once the roll was pushed.
  */
-#[OA\Schema(required: ['count', 'countFormula', 'terms', 'size', 'sides', 'successAt', 'dice', 'successes'])]
+#[OA\Schema(required: ['count', 'countFormula', 'terms', 'size', 'sides', 'successAt', 'dice', 'successes', 'push'])]
 final readonly class CheckPoolContentResponse
 {
     /**
@@ -43,6 +45,8 @@ final readonly class CheckPoolContentResponse
         public array $dice,
         #[OA\Property(description: 'How many dice succeeded; the total of the check.', example: 2)]
         public int $successes,
+        #[OA\Property(ref: new Model(type: CheckPushContentResponse::class), description: 'The push of the roll; null until the roll is pushed, and for entries recorded before pushes. Once pushed, the dice and successes above stay the first roll.', nullable: true)]
+        public ?CheckPushContentResponse $push,
     ) {
     }
 
@@ -57,6 +61,7 @@ final readonly class CheckPoolContentResponse
             $pool->successAt,
             array_map(JournalPoolDieResponse::of(...), $pool->dice),
             $pool->successes,
+            $pool->push instanceof CheckPushContent ? CheckPushContentResponse::of($pool->push) : null,
         );
     }
 }

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Journal;
 
+use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Check\ModifierTerm;
 use App\Play\Domain\GameSystem\Check\PoolResult;
+use App\Play\Domain\GameSystem\Check\PushResult;
 use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 
 /**
@@ -23,6 +25,10 @@ use App\Play\Domain\GameSystem\Check\ReferenceLabels;
  * A pool check (ADR 0041) has a pool part instead of dice groups and a modifier: its dice with their
  * successes, the count and the size rolled; the dice total and the total are its successes. Entries
  * of dice checks, those stored before pools included, have no pool part and store the same array.
+ *
+ * A pool check can be pushed once (ADR 0041): the push completes this content, the only change a
+ * journal entry's content can take. The pool part keeps the first roll and gains the push part; the
+ * dice total, the total and the band are those after the push.
  *
  * @phpstan-import-type DiceGroupData from RollContent
  * @phpstan-import-type PoolData from CheckPoolContent
@@ -193,8 +199,9 @@ final readonly class CheckContent implements JournalEntryContent
                 throw InvalidJournalEntryContent::malformed('expression', 'the size and sides of the pool, such as "3d6"');
             }
 
-            if ($diceTotal !== $pool->successes || $total !== $pool->successes) {
-                throw InvalidJournalEntryContent::malformed('total', 'the successes of the pool');
+            $successes = $pool->push instanceof CheckPushContent ? $pool->push->successes : $pool->successes;
+            if ($diceTotal !== $successes || $total !== $successes) {
+                throw InvalidJournalEntryContent::malformed('total', $pool->push instanceof CheckPushContent ? 'the successes of the pool after the push' : 'the successes of the pool');
             }
         }
 
@@ -204,6 +211,25 @@ final readonly class CheckContent implements JournalEntryContent
         }
 
         return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel, $hint, $modifierFormula, $modifierTerms, $pool);
+    }
+
+    /**
+     * This check once its pool roll was pushed (ADR 0041): the push part is kept beside the first
+     * roll, and the totals and the band are those after the push. The cost's sheet changes are the
+     * ones the push applied to the Character.
+     *
+     * @param list<SheetChange> $changes
+     *
+     * @throws CheckAlreadyPushed         when the roll was pushed already
+     * @throws InvalidJournalEntryContent when the label is not 1 to 100 characters, or the push contradicts the first roll
+     * @throws \LogicException            when the check rolled dice, not a pool
+     */
+    public function pushed(string $label, PushResult $result, array $changes): self
+    {
+        $pool = $this->pool ?? throw new \LogicException(\sprintf('Check "%s" rolled dice, only a pool roll can be pushed.', $this->checkKey));
+        $push = CheckPushContent::fromResult($label, $result, $this->bandKey, $this->bandLabel, $changes);
+
+        return self::of($this->characterId, $this->characterName, $this->checkKey, $this->checkLabel, $this->expression, $this->groups, $push->successes, $this->modifier, $this->situational, $this->difficulty, $push->successes, $result->band->key, $result->band->label, $this->hint, $this->modifierFormula, $this->modifierTerms, $pool->pushed($push, $this->situational));
     }
 
     public function kind(): string

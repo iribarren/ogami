@@ -12,6 +12,7 @@ use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\DicePool;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\PoolRoll;
+use App\Randomness\Domain\PoolRollNotPushable;
 use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
@@ -21,7 +22,8 @@ use App\Randomness\Domain\RandomNumberGenerator;
  * is at least the total is the outcome, and the last band catches the rest.
  *
  * A check rolls a dice expression or a pool, never both (ADR 0041). A pool check has no modifier:
- * the situational modifier adds or removes dice, and the total is the number of successes.
+ * the situational modifier adds or removes dice, and the total is the number of successes. Only a
+ * pool check can declare a push, which re-rolls the dice that failed for a cost.
  */
 final readonly class Check
 {
@@ -31,7 +33,7 @@ final readonly class Check
     /**
      * @param list<CheckBand> $bands in band order, unique keys, only the last without an upper bound
      *
-     * @throws \InvalidArgumentException when there is neither dice nor a pool or both, a pool check has a modifier, there is no band,
+     * @throws \InvalidArgumentException when there is neither dice nor a pool or both, a pool check has a modifier, a check without a pool declares a push, there is no band,
      *                                   two bands share a key, a band but the last has no upper bound, the last has one,
      *                                   or literal upper bounds do not strictly increase
      */
@@ -44,6 +46,7 @@ final readonly class Check
         public ?CheckDifficulty $difficulty,
         public array $bands,
         public ?CheckPool $pool = null,
+        public ?CheckPush $push = null,
     ) {
         if ($dice instanceof DiceExpression === $pool instanceof CheckPool) {
             throw new \InvalidArgumentException(\sprintf('Check "%s" rolls either a dice expression or a pool.', $key));
@@ -51,6 +54,10 @@ final readonly class Check
 
         if ($pool instanceof CheckPool && $modifier instanceof Formula) {
             throw new \InvalidArgumentException(\sprintf('Check "%s" rolls a pool and has no modifier.', $key));
+        }
+
+        if ($push instanceof CheckPush && !$pool instanceof CheckPool) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" declares a push without rolling a pool.', $key));
         }
 
         if ([] === $bands) {
@@ -132,6 +139,40 @@ final readonly class Check
         $total = $roll->total() + $modifier + $situational;
 
         return new CheckResult($roll, $modifier, $situational, $effective, $total, $this->bandFor($bounds, $total), $terms);
+    }
+
+    /**
+     * Pushes a pool roll (ADR 0041): re-rolls every die that failed, once, and picks the band again
+     * for the new successes. Every band bound is evaluated first, against the current sheet and the
+     * difficulty the roll had, so a check that cannot be evaluated re-rolls nothing. The cost is not
+     * applied here.
+     *
+     * @param PoolRoll $roll       the roll as it was recorded
+     * @param ?int     $difficulty the Check difficulty that applied to the roll
+     *
+     * @throws CheckNotPushable      when the check declares no push, or every die of the roll succeeded
+     * @throws CheckEvaluationFailed when a band bound cannot be evaluated
+     */
+    public function push(RandomNumberGenerator $random, ValueResolver $sheet, PoolRoll $roll, ?int $difficulty): PushResult
+    {
+        if (!$this->push instanceof CheckPush) {
+            throw CheckNotPushable::noPush($this->key);
+        }
+
+        try {
+            $bandValues = new CheckValues($sheet, $difficulty);
+            $bounds = array_map(static fn (CheckBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($bandValues) : $band->upTo, $this->bands);
+        } catch (FormulaEvaluationFailed $failed) {
+            throw CheckEvaluationFailed::of($this->key, $failed);
+        }
+
+        try {
+            $pushed = $roll->push($random);
+        } catch (PoolRollNotPushable) {
+            throw CheckNotPushable::noFailedDie($this->key);
+        }
+
+        return new PushResult($pushed, $pushed->successes(), $this->bandFor($bounds, $pushed->successes()));
     }
 
     /**

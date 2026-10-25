@@ -79,8 +79,8 @@ final class GameSystemReleaseTranslatorSheetEffectsTest extends TestCase
         yield 'an option that is a number' => [self::FAIL_EFFECT, $effect('wounds', 'mark', ...['value' => 1]), $at.'.value: must be a string.'];
         yield 'an option that is a formula' => [self::FAIL_EFFECT, $effect('wounds', 'clear', ...['value' => ['formula' => '1']]), $at.'.value: must be a string.'];
         yield 'an option that breaks the key rule' => [self::FAIL_EFFECT, $effect('wounds', 'mark', ...['value' => 'Hurt']), $at.'.value: must be 1 to 64 characters among a-z, 0-9 and "-".'];
-        yield 'a mark without an option, a push-cost pick' => [self::FAIL_EFFECT, $effect('wounds', 'mark'), $at.'.value: a mark without an option is a pick the player makes in a push cost, which Play does not play yet.'];
-        yield 'a mark with an explicit null option' => [self::FAIL_EFFECT, $effect('wounds', 'mark', ...['value' => null]), $at.'.value: a mark without an option is a pick the player makes in a push cost, which Play does not play yet.'];
+        yield 'a mark without an option, a push-cost pick' => [self::FAIL_EFFECT, $effect('wounds', 'mark'), $at.'.value: a mark without an option is allowed only in a push cost, where the player picks the option.'];
+        yield 'a mark with an explicit null option' => [self::FAIL_EFFECT, $effect('wounds', 'mark', ...['value' => null]), $at.'.value: a mark without an option is allowed only in a push cost, where the player picks the option.'];
         yield 'a mark in a check step\'s own effects' => ['sceneTypes.0.play.0.effects', [$effect('wounds', 'clear')], 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step.'];
     }
 

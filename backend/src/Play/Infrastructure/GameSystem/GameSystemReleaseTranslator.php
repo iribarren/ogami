@@ -13,6 +13,7 @@ use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Check\CheckPool;
+use App\Play\Domain\GameSystem\Check\CheckPush;
 use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
@@ -1036,7 +1037,7 @@ final readonly class GameSystemReleaseTranslator
         foreach ($list as $index => $item) {
             $path = \sprintf('checks[%d]', $index);
             $check = $this->object($view, $item, $path);
-            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'difficulty', 'bands']);
+            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'push', 'difficulty', 'bands']);
             $key = $this->key($view, $check['key'] ?? null, $path.'.key');
             if (isset($checks[$key])) {
                 throw $this->invalid($view, $path.'.key', \sprintf('duplicate check key "%s".', $key));
@@ -1047,10 +1048,11 @@ final readonly class GameSystemReleaseTranslator
             $label = $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH);
             $hint = null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false);
             $pool = null === ($check['pool'] ?? null) ? null : $this->checkPool($view, $check, $path, $fields, $trackerKeys);
+            $push = null === ($check['push'] ?? null) ? null : $this->checkPush($view, $check, $path, $fields, $trackerKeys, $pool instanceof CheckPool);
             $dice = $pool instanceof CheckPool ? null : $this->dice($view, $check['dice'] ?? null, $path.'.dice');
             $bands = $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty);
             try {
-                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool);
+                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool, $push);
             } catch (\InvalidArgumentException $invalid) {
                 throw $this->invalid($view, $path.'.bands', $invalid->getMessage());
             }
@@ -1095,6 +1097,93 @@ final readonly class GameSystemReleaseTranslator
             return new CheckPool($count, $sides, $successAt);
         } catch (\InvalidArgumentException $invalid) {
             throw $this->invalid($view, $path, $invalid->getMessage());
+        }
+    }
+
+    /**
+     * The push of a pool check (ADR 0041): the label of its cost and the sheet and Tracker effects
+     * the cost applies. A mark without an option is a pick the player makes, allowed only here. The
+     * effects are checked against the sheet and the Trackers here, since the check of a release is
+     * not walked with the Flow's.
+     *
+     * @param array<mixed>         $check
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function checkPush(PublishedReleaseView $view, array $check, string $path, array $fields, array $trackerKeys, bool $pool): CheckPush
+    {
+        $path .= '.push';
+        if (!$pool) {
+            throw $this->invalid($view, $path, 'only a pool check can be pushed.');
+        }
+
+        $push = $this->object($view, $check['push'], $path);
+        $this->assertProperties($view, $push, $path, ['label', 'effects']);
+        $label = $this->boundedString($view, $push['label'] ?? null, $path.'.label', CheckPush::MAX_LABEL_LENGTH);
+        $raw = $this->list($view, $push['effects'] ?? [], $path.'.effects');
+        if (\count($raw) > CheckPush::MAX_EFFECTS) {
+            throw $this->invalid($view, $path.'.effects', \sprintf('at most %d effects.', CheckPush::MAX_EFFECTS));
+        }
+
+        foreach ($raw as $index => $item) {
+            $kind = $this->object($view, $item, \sprintf('%s.effects[%d]', $path, $index))['kind'] ?? null;
+            if ('sheet' !== $kind && 'tracker' !== $kind) {
+                throw $this->invalid($view, \sprintf('%s.effects[%d].kind', $path, $index), 'a push cost holds sheet and tracker effects only.');
+            }
+        }
+
+        $effects = [];
+        foreach ($this->effects($view, $raw, $path.'.effects', true, true) as $index => $effect) {
+            \assert($effect instanceof SheetEffect || $effect instanceof TrackerEffect);
+            $this->assertPushEffectReadsTheRelease($view, $effect, \sprintf('%s.effects[%d]', $path, $index), $fields, $trackerKeys);
+            $effects[] = $effect;
+        }
+
+        return new CheckPush($label, $effects);
+    }
+
+    /**
+     * A push cost changes a field and a Tracker the release declares, the way Studio checks on publish:
+     * mark and clear on a conditions field and one of its options, the other operations on a number
+     * or track field, and a formula that reads only what the sheet and the Trackers declare.
+     *
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function assertPushEffectReadsTheRelease(PublishedReleaseView $view, SheetEffect|TrackerEffect $effect, string $path, array $fields, array $trackerKeys): void
+    {
+        if ($effect instanceof TrackerEffect) {
+            if (!\in_array($effect->tracker, $trackerKeys, true)) {
+                throw $this->invalid($view, $path.'.tracker', \sprintf('unknown tracker "%s".', $effect->tracker));
+            }
+
+            $formula = $effect->value;
+        } else {
+            $field = $fields[$effect->field] ?? throw $this->invalid($view, $path.'.field', \sprintf('unknown sheet field "%s".', $effect->field));
+            if (SheetOperation::Mark === $effect->op || SheetOperation::Clear === $effect->op) {
+                if (!$field instanceof ConditionsField) {
+                    throw $this->invalid($view, $path.'.field', \sprintf('field "%s" is not a conditions field, mark and clear change conditions fields only.', $field->key));
+                }
+
+                if (\is_string($effect->value) && !$field->has($effect->value)) {
+                    throw $this->invalid($view, $path.'.value', \sprintf('unknown option "%s" of conditions field "%s".', $effect->value, $field->key));
+                }
+
+                return;
+            }
+
+            if (!$field instanceof NumberField && !$field instanceof TrackField) {
+                throw $this->invalid($view, $path.'.field', \sprintf('field "%s" is not a number or track field, add, subtract and set change those only.', $field->key));
+            }
+
+            $formula = $effect->value;
+        }
+
+        foreach ($formula instanceof Formula ? $formula->references() : [] as $reference) {
+            $problem = $this->derivedReferenceProblem($reference, $fields, $trackerKeys);
+            if (null !== $problem) {
+                throw $this->invalid($view, $path.'.value', \sprintf('{%s}: %s.', $reference->toString(), $problem));
+            }
         }
     }
 
@@ -1546,10 +1635,11 @@ final readonly class GameSystemReleaseTranslator
 
     /**
      * @param bool $sheet whether the list sits where a Character is known (a check outcome, a character step) and may hold sheet effects
+     * @param bool $pick  whether the list is a push cost, where a mark without an option is a pick the player makes
      *
      * @return list<Effect>
      */
-    private function effects(PublishedReleaseView $view, mixed $effects, string $path, bool $sheet = false): array
+    private function effects(PublishedReleaseView $view, mixed $effects, string $path, bool $sheet = false, bool $pick = false): array
     {
         $snapshots = [];
         foreach ($this->list($view, $effects, $path) as $index => $effect) {
@@ -1586,7 +1676,7 @@ final readonly class GameSystemReleaseTranslator
                     $this->string($view, $effect['slot'] ?? null, $effectPath.'.slot'),
                     $this->optionalString($view, $effect['text'] ?? null, $effectPath.'.text'),
                 ),
-                'sheet' => $this->sheetEffect($view, $effect, $effectPath),
+                'sheet' => $this->sheetEffect($view, $effect, $effectPath, $pick),
                 default => throw $this->invalid($view, $effectPath.'.kind', \sprintf('unknown effect kind "%s".', $kind)),
             };
         }
@@ -1596,8 +1686,9 @@ final readonly class GameSystemReleaseTranslator
 
     /**
      * @param array<array-key, mixed> $effect
+     * @param bool                    $pick   whether the effect is in a push cost, the one place a mark has no option
      */
-    private function sheetEffect(PublishedReleaseView $view, array $effect, string $path): SheetEffect
+    private function sheetEffect(PublishedReleaseView $view, array $effect, string $path, bool $pick = false): SheetEffect
     {
         $field = $this->string($view, $effect['field'] ?? null, $path.'.field');
         $op = SheetOperation::tryFrom($name = $this->string($view, $effect['op'] ?? null, $path.'.op'))
@@ -1608,8 +1699,8 @@ final readonly class GameSystemReleaseTranslator
 
         // An absent value and an explicit null read the same: a clear empties the field.
         $option = $effect['value'] ?? null;
-        if (null === $option && SheetOperation::Mark === $op) {
-            throw $this->invalid($view, $path.'.value', 'a mark without an option is a pick the player makes in a push cost, which Play does not play yet.');
+        if (null === $option && SheetOperation::Mark === $op && !$pick) {
+            throw $this->invalid($view, $path.'.value', 'a mark without an option is allowed only in a push cost, where the player picks the option.');
         }
 
         return new SheetEffect($field, $op, null === $option ? null : $this->key($view, $option, $path.'.value'));

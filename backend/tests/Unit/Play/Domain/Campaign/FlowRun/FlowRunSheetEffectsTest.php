@@ -162,15 +162,104 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
     }
 
     /**
-     * @param ?list<array<string, mixed>> $fail      the effects of the "fail" outcome, null for the fixture's
-     * @param ?list<array<string, mixed>> $pass      the effects of the "pass" outcome, null for the fixture's
-     * @param bool                        $mandatory whether the character step "you" is mandatory
+     * @return iterable<string, array{list<array<string, mixed>>, list<string>, SheetChange, list<string>}> the outcome's effects, the marks before, the change and the marks after
      */
-    private function sheetRelease(?array $fail = null, ?array $pass = null, bool $mandatory = true): GameSystemSnapshot
+    public static function conditionEffects(): iterable
+    {
+        $effect = static fn (string $op, ?string $option = null): array => ['kind' => 'sheet', 'field' => 'wounds', 'op' => $op] + (null === $option ? [] : ['value' => $option]);
+
+        yield 'mark adds the option' => [[$effect('mark', 'hurt')], [], new SheetChange('wounds', 0, 1), ['hurt']];
+        yield 'mark keeps the declared order' => [[$effect('mark', 'hurt')], ['shaken'], new SheetChange('wounds', 1, 2), ['hurt', 'shaken']];
+        yield 'mark of a marked option changes nothing' => [[$effect('mark', 'hurt')], ['hurt'], new SheetChange('wounds', 1, 1), ['hurt']];
+        yield 'clear of an option removes it' => [[$effect('clear', 'hurt')], ['hurt', 'shaken'], new SheetChange('wounds', 2, 1), ['shaken']];
+        yield 'clear of an unmarked option changes nothing' => [[$effect('clear', 'hurt')], ['shaken'], new SheetChange('wounds', 1, 1), ['shaken']];
+        yield 'clear without an option empties the field' => [[$effect('clear')], ['hurt', 'shaken'], new SheetChange('wounds', 2, 0), []];
+        yield 'clear of an empty field changes nothing' => [[$effect('clear')], [], new SheetChange('wounds', 0, 0), []];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $effects
+     * @param list<string>               $marked
+     * @param list<string>               $after
+     */
+    #[Test]
+    #[DataProvider('conditionEffects')]
+    public function markAndClearChangeTheMarkedOptionsOfAConditionsField(array $effects, array $marked, SheetChange $change, array $after): void
+    {
+        $release = $this->sheetRelease(fail: $effects, withConditions: true);
+        $campaign = $this->atTheShock($release, ['wounds' => $marked]);
+
+        $changes = $campaign->completeFlowStep('shock', $this->shocked($release, $campaign, 'ida', 90), $release, self::at());
+
+        self::assertEquals([$change], $changes);
+        self::assertSame($after, $this->value($campaign, 'ida', 'wounds'));
+        self::assertSame([], $this->value($campaign, 'bo', 'wounds'), 'Only the checked Character changes.');
+    }
+
+    #[Test]
+    public function aCharacterStoredBeforeTheFieldExistedIsMarkedFromNothing(): void
+    {
+        // Ida is created on a release without the field, as before the release that declares it.
+        $old = $this->sheetRelease();
+        $campaign = $this->atTheShock($old);
+        self::assertArrayNotHasKey('wounds', $campaign->character(CharacterId::fromString('ida'))?->values() ?? []);
+        $release = $this->sheetRelease(fail: [['kind' => 'sheet', 'field' => 'wounds', 'op' => 'mark', 'value' => 'shaken']], withConditions: true);
+
+        $changes = $campaign->completeFlowStep('shock', $this->shocked($release, $campaign, 'ida', 90), $release, self::at());
+
+        self::assertEquals([new SheetChange('wounds', 0, 1)], $changes);
+        self::assertSame(['shaken'], $this->value($campaign, 'ida', 'wounds'));
+    }
+
+    #[Test]
+    public function aMarkIsNotKeptWhenALaterEffectOfTheListFails(): void
+    {
+        $release = $this->sheetRelease(fail: [
+            ['kind' => 'sheet', 'field' => 'wounds', 'op' => 'mark', 'value' => 'hurt'],
+            ['kind' => 'sheet', 'field' => 'pow', 'op' => 'set', 'value' => ['formula' => '{pow} / ({hp} - {hp})']],
+        ], withConditions: true);
+        $campaign = $this->atTheShock($release);
+        $before = clone $campaign;
+
+        try {
+            $campaign->completeFlowStep('shock', $this->shocked($release, $campaign, 'ida', 90), $release, self::at());
+            self::fail('The step was completed.');
+        } catch (FlowFormulaFailed) {
+        }
+
+        self::assertEquals($before, $campaign);
+    }
+
+    #[Test]
+    public function aFormulaReadsTheCountMarkedAfterAnEarlierMark(): void
+    {
+        $release = $this->sheetRelease(fail: [
+            ['kind' => 'sheet', 'field' => 'wounds', 'op' => 'mark', 'value' => 'hurt'],
+            ['kind' => 'sheet', 'field' => 'pow', 'op' => 'set', 'value' => ['formula' => '{wounds} * 10']],
+        ], withConditions: true);
+        $campaign = $this->atTheShock($release, ['wounds' => ['shaken']]);
+
+        $changes = $campaign->completeFlowStep('shock', $this->shocked($release, $campaign, 'ida', 90), $release, self::at());
+
+        self::assertEquals([new SheetChange('wounds', 1, 2), new SheetChange('pow', 60, 20)], $changes);
+    }
+
+    /**
+     * @param ?list<array<string, mixed>> $fail           the effects of the "fail" outcome, null for the fixture's
+     * @param ?list<array<string, mixed>> $pass           the effects of the "pass" outcome, null for the fixture's
+     * @param bool                        $mandatory      whether the character step "you" is mandatory
+     * @param bool                        $withConditions whether the sheet also has the conditions field "wounds" (hurt, shaken)
+     */
+    private function sheetRelease(?array $fail = null, ?array $pass = null, bool $mandatory = true, bool $withConditions = false): GameSystemSnapshot
     {
         /** @var array{sheet: array{fields: list<array<string, mixed>>}} $content */
         $content = ReleaseViews::fixtureContent('valid/v2-sheet-effects');
-        $content = ReleaseArrays::with($content, 'sheet.fields', [...$content['sheet']['fields'], ['key' => 'luck', 'label' => 'Luck', 'type' => 'number']]);
+        $extra = [['key' => 'luck', 'label' => 'Luck', 'type' => 'number']];
+        if ($withConditions) {
+            $extra[] = ['key' => 'wounds', 'label' => 'Wounds', 'type' => 'conditions', 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'shaken', 'label' => 'Shaken']]];
+        }
+
+        $content = ReleaseArrays::with($content, 'sheet.fields', [...$content['sheet']['fields'], ...$extra]);
         $content = ReleaseArrays::with($content, 'flows', [['key' => 'play', 'name' => 'Play', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['dread'], 'phases' => [
             ['key' => 'prologue', 'name' => 'Prologue', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['setup']]],
         ]]]);
@@ -189,13 +278,15 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
 
     /**
      * Ida (Power 60) and Bo (Power 40) in the Setup scene, at the character step.
+     *
+     * @param array<string, mixed> $idaValues more values Ida starts with
      */
-    private function campaign(GameSystemSnapshot $release): Campaign
+    private function campaign(GameSystemSnapshot $release, array $idaValues = []): Campaign
     {
         $campaign = self::guided($release, 'play');
         // The only Scene Type of the selection is picked at once.
         $campaign->startSession(self::at(), $release);
-        $campaign->addCharacter(CharacterId::fromString('ida'), 'Ida', [], [], ['pow' => 60], $release);
+        $campaign->addCharacter(CharacterId::fromString('ida'), 'Ida', [], [], ['pow' => 60, ...$idaValues], $release);
         $campaign->addCharacter(CharacterId::fromString('bo'), 'Bo', [], [], ['pow' => 40], $release);
         $campaign->editCurrentSceneCast([], [CharacterId::fromString('ida'), CharacterId::fromString('bo')]);
 
@@ -204,10 +295,12 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
 
     /**
      * Ida completed "you" (Sanity 60), at the check step.
+     *
+     * @param array<string, mixed> $idaValues more values Ida starts with
      */
-    private function atTheShock(GameSystemSnapshot $release): Campaign
+    private function atTheShock(GameSystemSnapshot $release, array $idaValues = []): Campaign
     {
-        $campaign = $this->campaign($release);
+        $campaign = $this->campaign($release, $idaValues);
         $campaign->completeFlowStep('you', StepResult::character('ida'), $release, self::at());
         self::assertSame(['play', 'shock'], self::position($campaign));
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\Characters;
 
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
@@ -14,7 +15,8 @@ use App\Play\Domain\GameSystem\Sheet\TrackField;
 
 /**
  * The values of a Character against the sheet of the pinned release (ADR 0022). A number is an
- * integer, a text a string, a list a list of strings, a track {current, max}. Nothing is coerced
+ * integer, a text a string, a list a list of strings, a conditions field the list of its marked option keys
+ * (each a declared option, once, in declared order), a track {current, max}. Nothing is coerced
  * ("3" is not a number) and nothing is clamped; a value that breaks its field fails with
  * InvalidCharacter.
  *
@@ -97,6 +99,7 @@ final class CharacterValues
             $field instanceof NumberField => self::number($field->key, $value, $field->min ?? -NumberField::LIMIT, $field->max ?? NumberField::LIMIT),
             $field instanceof TextField => self::text($field->key, $value, $field->limit(), $field->multiline),
             $field instanceof ListField => self::items($field->key, $value, $field->limit()),
+            $field instanceof ConditionsField => self::conditions($field, $value),
             $field instanceof TrackField => self::track($field->key, $value, $field->max),
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),
         };
@@ -112,7 +115,7 @@ final class CharacterValues
         return match (true) {
             $field instanceof NumberField => $field->initial(),
             $field instanceof TextField => '',
-            $field instanceof ListField => [],
+            $field instanceof ListField, $field instanceof ConditionsField => [],
             $field instanceof TrackField => ['current' => $field->max ?? 0, 'max' => $field->max ?? 0],
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),
         };
@@ -178,6 +181,30 @@ final class CharacterValues
         }
 
         return $items;
+    }
+
+    /**
+     * The marked option keys of a conditions field, stored in the order the options are declared.
+     *
+     * @return list<string>
+     */
+    private static function conditions(ConditionsField $field, mixed $value): array
+    {
+        if (!\is_array($value) || !array_is_list($value)) {
+            throw InvalidCharacter::because(\sprintf('Field "%s" must be a list of option keys.', $field->key));
+        }
+
+        foreach ($value as $key) {
+            if (!\is_string($key) || !$field->has($key)) {
+                throw InvalidCharacter::because(\sprintf('Field "%s" has no option "%s".', $field->key, \is_string($key) ? $key : get_debug_type($key)));
+            }
+        }
+
+        if (\count(array_unique($value)) !== \count($value)) {
+            throw InvalidCharacter::because(\sprintf('Field "%s" marks an option twice.', $field->key));
+        }
+
+        return $field->ordered($value);
     }
 
     /**

@@ -55,6 +55,8 @@ use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\ConditionOption;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
@@ -110,6 +112,11 @@ final readonly class GameSystemReleaseTranslator
     private const int MAX_FIELD_ITEM_LABEL_LENGTH = 60;
     private const int MAX_TEXT_FIELD_LENGTH = 2000;
     private const int MAX_LIST_FIELD_ITEMS = 100;
+
+    // The conditions field limits of the contract (ADR 0041).
+    private const int MAX_CONDITION_OPTIONS = 20;
+
+    private const int MAX_CONDITION_LABEL_LENGTH = 60;
     private const int MAX_TRACK_FIELD_MAX = 999;
     // The structured character creation limits of the contract (ADR 0040).
     private const int MAX_ROLL_DICE_LENGTH = 100;
@@ -122,6 +129,7 @@ final readonly class GameSystemReleaseTranslator
         'list' => ['itemLabel', 'maxItems'],
         'track' => ['max', 'startMax'],
         'derived' => ['formula'],
+        'conditions' => ['options'],
     ];
 
     // The check limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
@@ -370,13 +378,32 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, $path.'.field', \sprintf('unknown sheet field "%s".', \is_string($key) ? $key : ''));
         }
 
-        if (!$field instanceof NumberField && !$field instanceof TrackField) {
-            $type = match (true) {
-                $field instanceof DerivedField => 'derived',
-                $field instanceof TextField => 'text',
-                default => 'list',
-            };
+        $type = match (true) {
+            $field instanceof NumberField => 'number',
+            $field instanceof TrackField => 'track',
+            $field instanceof DerivedField => 'derived',
+            $field instanceof TextField => 'text',
+            default => 'list',
+        };
+        $op = $effect['op'] ?? null;
+        if ('mark' === $op || 'clear' === $op) {
+            if (!$field instanceof ConditionsField) {
+                throw $this->invalid($view, $path.'.field', \sprintf('field "%s" is a %s field, mark and clear change conditions fields only.', $field->key, $type));
+            }
 
+            $option = $effect['value'] ?? null;
+            if (null !== $option && !$field->has(\is_string($option) ? $option : '')) {
+                throw $this->invalid($view, $path.'.value', \sprintf('unknown option "%s" of conditions field "%s".', \is_string($option) ? $option : '', $field->key));
+            }
+
+            return;
+        }
+
+        if ($field instanceof ConditionsField) {
+            throw $this->invalid($view, $path.'.field', \sprintf('field "%s" is a conditions field, add, subtract and set change number and track fields only.', $field->key));
+        }
+
+        if (!$field instanceof NumberField && !$field instanceof TrackField) {
             throw $this->invalid($view, $path.'.field', \sprintf('field "%s" is a %s field, a sheet effect changes number and track fields only.', $field->key, $type));
         }
 
@@ -977,7 +1004,7 @@ final readonly class GameSystemReleaseTranslator
             return $field instanceof TrackField ? null : \sprintf('field "%s" is not a track field, only a track field has a max', $reference->key);
         }
 
-        return $field instanceof NumberField || $field instanceof TrackField || $field instanceof DerivedField
+        return $field instanceof NumberField || $field instanceof TrackField || $field instanceof DerivedField || $field instanceof ConditionsField
             ? null
             : \sprintf('field "%s" is a text or list field, a formula reads number, track and derived fields only', $reference->key);
     }
@@ -1205,8 +1232,37 @@ final readonly class GameSystemReleaseTranslator
                 maxItems: $this->optionalInt($view, $field['maxItems'] ?? null, $path.'.maxItems', 1, self::MAX_LIST_FIELD_ITEMS),
             ),
             'derived' => new DerivedField(...$common, formula: $this->fieldFormula($view, $field['formula'] ?? null, $path.'.formula')),
+            'conditions' => new ConditionsField(...$common, options: $this->conditionOptions($view, $field['options'] ?? null, $path.'.options')),
             default => $this->trackField($view, $common, $field, $path),
         };
+    }
+
+    /**
+     * The options of a conditions field (ADR 0041): 1 to 20, each a key and a label, keys unique.
+     *
+     * @return list<ConditionOption>
+     */
+    private function conditionOptions(PublishedReleaseView $view, mixed $value, string $path): array
+    {
+        $list = $this->list($view, $value, $path);
+        if ([] === $list || \count($list) > self::MAX_CONDITION_OPTIONS) {
+            throw $this->invalid($view, $path, \sprintf('must list between 1 and %d options.', self::MAX_CONDITION_OPTIONS));
+        }
+
+        $options = [];
+        foreach ($list as $index => $raw) {
+            $optionPath = \sprintf('%s[%d]', $path, $index);
+            $option = $this->object($view, $raw, $optionPath);
+            $this->assertProperties($view, $option, $optionPath, ['key', 'label']);
+            $key = $this->key($view, $option['key'] ?? null, $optionPath.'.key');
+            if (isset($options[$key])) {
+                throw $this->invalid($view, $optionPath.'.key', \sprintf('duplicate option key "%s".', $key));
+            }
+
+            $options[$key] = new ConditionOption($key, $this->boundedString($view, $option['label'] ?? null, $optionPath.'.label', self::MAX_CONDITION_LABEL_LENGTH));
+        }
+
+        return array_values($options);
     }
 
     private function fieldFormula(PublishedReleaseView $view, mixed $value, string $path): Formula
@@ -1483,17 +1539,33 @@ final readonly class GameSystemReleaseTranslator
                     $this->string($view, $effect['slot'] ?? null, $effectPath.'.slot'),
                     $this->optionalString($view, $effect['text'] ?? null, $effectPath.'.text'),
                 ),
-                'sheet' => new SheetEffect(
-                    $this->string($view, $effect['field'] ?? null, $effectPath.'.field'),
-                    SheetOperation::tryFrom($op = $this->string($view, $effect['op'] ?? null, $effectPath.'.op'))
-                        ?? throw $this->invalid($view, $effectPath.'.op', \sprintf('unknown sheet operation "%s".', $op)),
-                    $this->sheetValue($view, $effect['value'] ?? null, $effectPath.'.value'),
-                ),
+                'sheet' => $this->sheetEffect($view, $effect, $effectPath),
                 default => throw $this->invalid($view, $effectPath.'.kind', \sprintf('unknown effect kind "%s".', $kind)),
             };
         }
 
         return $snapshots;
+    }
+
+    /**
+     * @param array<array-key, mixed> $effect
+     */
+    private function sheetEffect(PublishedReleaseView $view, array $effect, string $path): SheetEffect
+    {
+        $field = $this->string($view, $effect['field'] ?? null, $path.'.field');
+        $op = SheetOperation::tryFrom($name = $this->string($view, $effect['op'] ?? null, $path.'.op'))
+            ?? throw $this->invalid($view, $path.'.op', \sprintf('unknown sheet operation "%s".', $name));
+        if (SheetOperation::Mark !== $op && SheetOperation::Clear !== $op) {
+            return new SheetEffect($field, $op, $this->sheetValue($view, $effect['value'] ?? null, $path.'.value'));
+        }
+
+        // An absent value and an explicit null read the same: a clear empties the field.
+        $option = $effect['value'] ?? null;
+        if (null === $option && SheetOperation::Mark === $op) {
+            throw $this->invalid($view, $path.'.value', 'a mark without an option is a pick the player makes in a push cost, which Play does not play yet.');
+        }
+
+        return new SheetEffect($field, $op, null === $option ? null : $this->key($view, $option, $path.'.value'));
     }
 
     /**

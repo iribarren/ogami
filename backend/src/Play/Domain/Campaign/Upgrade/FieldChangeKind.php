@@ -8,7 +8,7 @@ namespace App\Play\Domain\Campaign\Upgrade;
  * What a release upgrade does to one stored Character value (ADR 0035): a new field gets its
  * initial value (added), a gone or now derived field loses its value (removed), a number or track
  * is moved inside its new bounds (clamped), a list over its new limit keeps its first items
- * (trimmed), and a value that cannot be fitted takes the new initial value (reset).
+ * (trimmed), a conditions field loses the marks of options it no longer declares (trimmed), and a value that cannot be fitted takes the new initial value (reset).
  */
 enum FieldChangeKind: string
 {

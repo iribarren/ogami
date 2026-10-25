@@ -26,6 +26,8 @@ use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\ConditionOption;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
@@ -71,6 +73,19 @@ final class ReleaseUpgradePlanTest extends TestCase
         yield 'a text that became a list is reset' => [new TextField('f', 'F'), new ListField('f', 'F'), 'abc', FieldChangeKind::Reset, []];
         yield 'a list that became a track is reset to the track start' => [new ListField('f', 'F'), new TrackField('f', 'F', max: 7), ['a'], FieldChangeKind::Reset, ['current' => 7, 'max' => 7]];
         yield 'a number that became a number with a default is kept' => [new NumberField('f', 'F'), new NumberField('f', 'F', default: 9), 2, null, 2];
+        yield 'a conditions field whose options are all kept is kept' => [self::conditions('hurt', 'shaken'), self::conditions('hurt', 'shaken', 'tired'), ['hurt', 'shaken'], null, ['hurt', 'shaken']];
+        yield 'a conditions field loses the marks of options it dropped' => [self::conditions('hurt', 'shaken', 'tired'), self::conditions('hurt', 'tired'), ['hurt', 'shaken', 'tired'], FieldChangeKind::Trimmed, ['hurt', 'tired']];
+        yield 'a conditions field whose marks are all dropped is emptied' => [self::conditions('hurt', 'shaken'), self::conditions('tired'), ['hurt'], FieldChangeKind::Trimmed, []];
+        yield 'a conditions field follows the new option order silently' => [self::conditions('hurt', 'shaken'), self::conditions('shaken', 'hurt'), ['hurt', 'shaken'], null, ['shaken', 'hurt']];
+        yield 'a conditions field with nothing marked is kept' => [self::conditions('hurt'), self::conditions('shaken'), [], null, []];
+        yield 'a list that became a conditions field is reset' => [new ListField('f', 'F'), self::conditions('hurt'), ['hurt'], FieldChangeKind::Reset, []];
+        yield 'a conditions field that became a list is reset' => [self::conditions('hurt'), new ListField('f', 'F'), ['hurt'], FieldChangeKind::Reset, []];
+        yield 'a number that became a conditions field is reset' => [new NumberField('f', 'F'), self::conditions('hurt'), 2, FieldChangeKind::Reset, []];
+    }
+
+    private static function conditions(string ...$options): ConditionsField
+    {
+        return new ConditionsField('f', 'F', options: array_values(array_map(static fn (string $key): ConditionOption => new ConditionOption($key, ucfirst($key)), $options)));
     }
 
     #[Test]
@@ -93,6 +108,33 @@ final class ReleaseUpgradePlanTest extends TestCase
         $change = $plan->characters[0]->changes[0];
         self::assertSame(['f', 'F', $kind, $value, $expected], [$change->fieldKey, $change->fieldName, $change->kind, $change->before, $change->after]);
         self::assertCount(1, $plan->characters[0]->changes);
+    }
+
+    #[Test]
+    public function aConditionsUpgradeIsDeterministicAndStoresTheFittedMarks(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [self::conditions('hurt', 'shaken', 'tired')]);
+        $target = UpgradeFixtures::release(2, [self::conditions('tired', 'hurt')]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['f' => ['hurt', 'shaken', 'tired']], $pinned);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame($plan->fingerprint(), $campaign->planReleaseUpgrade($pinned, $target)->fingerprint());
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+        self::assertSame(['f' => ['tired', 'hurt']], $campaign->character(CharacterId::fromString('c-1'))?->values());
+    }
+
+    #[Test]
+    public function aNewConditionsFieldIsAddedEmpty(): void
+    {
+        $pinned = UpgradeFixtures::release(1);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], [], $pinned);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, UpgradeFixtures::release(2, [self::conditions('hurt')]));
+
+        self::assertEquals([new FieldChange('f', 'F', FieldChangeKind::Added, null, [])], $plan->characters[0]->changes);
     }
 
     #[Test]

@@ -278,16 +278,20 @@ function RollResult({ result }: { result: CheckTestRoll }) {
         {reached && <p className="text-[13px] font-[550]">{reached.label}</p>}
       </div>
       <p className="flex flex-wrap items-baseline gap-x-3 font-mono text-xs text-muted-foreground">
-        <span className="font-mono">{dice.expression}</span>
-        <span className="tabular-nums">= {dice.total}</span>
-        {dice.groups.map((group, position) => (
-          <span key={position}>
-            {group.notation}:{' '}
-            {group.dice
-              .map((die) => (die.kept ? String(die.value) : `(${String(die.value)})`))
-              .join(' ')}
-          </span>
-        ))}
+        {dice !== null && (
+          <>
+            <span className="font-mono">{dice.expression}</span>
+            <span className="tabular-nums">= {dice.total}</span>
+            {dice.groups.map((group, position) => (
+              <span key={position}>
+                {group.notation}:{' '}
+                {group.dice
+                  .map((die) => (die.kept ? String(die.value) : `(${String(die.value)})`))
+                  .join(' ')}
+              </span>
+            ))}
+          </>
+        )}
         <span>Modifier {result.modifier}</span>
         <span>Situational {result.situational}</span>
         {result.difficulty !== null && <span>Difficulty {result.difficulty}</span>}

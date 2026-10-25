@@ -123,6 +123,9 @@ describe('pushing a pool check from the "Roll a check" dialog', () => {
 
     const dialog = await rollGrit(user)
     const [first, second] = await dialog.findAllByLabelText('Pick: Wounds')
+    if (first === undefined || second === undefined) {
+      throw new Error('The cost asks two picks.')
+    }
     await user.selectOptions(second, 'Shaken')
     await user.selectOptions(first, 'Shaken')
 

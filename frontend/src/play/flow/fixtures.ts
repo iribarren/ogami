@@ -39,6 +39,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     difficultyFixed: false,
     characters: [],
     inspiration: [],
+    pending: null,
     ...fields,
   }
 }

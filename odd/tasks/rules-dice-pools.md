@@ -1,7 +1,7 @@
 # Feature: rules-dice-pools
 
 - **Locator:** `odd/tasks/rules-dice-pools.md` · Engram topic `odd/rules-dice-pools/tasks`
-- **Issue:** #276 · **Branch:** `feat/rules-dice-pools-1-contract` · **Status:** in progress
+- **Issue:** #276 · **Branch:** `feat/rules-dice-pools-2-play-conditions` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B8 ([ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), closing three gaps of [ADR 0024](../../docs/adr/0024-structured-checks-without-scripting.md))
@@ -54,7 +54,7 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/rules-dice-pools-1-contract` | `feat(studio): rules-dice-pools 1/8 contract and publisher` | T1–T2 | ~1,400: ADR, feature doc, glossary ~300; schema and contract doc ~200; publisher (`Checks`, `SheetFields`, `Effects`, `Formulas`) with unit tests and fixtures ~900 |
-| 2 | `feat/rules-dice-pools-2-play-conditions` | `feat(play): rules-dice-pools 2/8 conditions on the sheet` | T3–T4 | ~1,500: translator and `ConditionsField`, values, formula count, `mark`/`clear` effects, upgrade fitting ~800; pinned release exposes options, sheet checkboxes, fixtures and tests ~400; generated OpenAPI and TS ~300 |
+| 2 | `feat/rules-dice-pools-2-play-conditions` | `feat(play): rules-dice-pools 2/8 conditions on the sheet` | T3a, T3–T4 | ~1,500: translator and `ConditionsField`, values, formula count, `mark`/`clear` effects, upgrade fitting ~800; pinned release exposes options, sheet checkboxes, fixtures and tests ~400; generated OpenAPI and TS ~300 |
 | 3 | `feat/rules-dice-pools-3-play-pools` | `feat(play): rules-dice-pools 3/8 pool checks` | T5–T6 | ~1,600: kernel pool roll ~250; translator, `Check::perform` pool path, `CheckContent` pool part, API ~650; check form pool size and journal success dice ~400; generated ~300 |
 | 4 | `feat/rules-dice-pools-4-sheet-push` | `feat(play): rules-dice-pools 4/8 pushed rolls from the sheet` | T7–T8 | ~1,600: kernel push, translator push, cost effects with condition picks, journal amendment, push endpoint and codes ~900; Push in the check dialog with the cost and picks ~400; generated ~300 |
 | 5 | `feat/rules-dice-pools-5-step-push` | `feat(play): rules-dice-pools 5/8 pushed rolls in a check step` | T9–T10 | ~1,500: FlowRun pending check step, Keep/Push command and endpoint, planner drops the pending roll ~800; step card Keep/Push ~400; generated ~300 |
@@ -67,7 +67,8 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0041 (index; status lines of ADR 0024, 0027, 0032, 0035; glossary; roadmap B8 link); issue #276 | parent, inline | [x] | ad46102 |
-| T2 | 1 | Contract: `v2.schema.json` (`pool`, `push`, `conditions` field, `mark`/`clear`), the contract doc, Studio validator (`Checks`, `SheetFields`, `Effects` placement and ops, `Formulas` count scope), fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
+| T2 | 1 | Contract: `v2.schema.json` (`pool`, `push`, `conditions` field, `mark`/`clear`), the contract doc, Studio validator (`Checks`, `SheetFields`, `Effects` placement and ops, `Formulas` count scope), fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | 1f6adb3 |
+| T3a | 2 | Slice 1 review fix: an explicit `null` `value` on `mark`/`clear` reads like an absent one (Studio `Effects`), proven by tests | writer (delegated) | [x] | |
 | T3 | 2 | Play conditions: translator reads the field and `mark`/`clear` (with an option; still refuses `pool`, `push` and a pick); `ConditionsField`, `CharacterValues`, `SheetValues` count, `FlowRunContext` effects; upgrade planner fitting; tests | writer (delegated) | [ ] | |
 | T4 | 2 | Pinned release exposes conditions options; Play sheet marks and clears them (checkboxes); character value API tests; fixtures; generated OpenAPI and TS | writer (delegated) | [ ] | |
 | T5 | 3 | Kernel pool roll (count, sides, threshold → faces and successes); translator reads `pool`; `Check::perform` pool path (size clamp, success total); `CheckContent` pool part; API responses; tests | writer (delegated) | [ ] | |
@@ -78,8 +79,8 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 | T10 | 5 | Step card shows the pending roll with Keep and Push; tests | writer (delegated) | [ ] | |
 | T11 | 6 | Studio test roll: pool checks against samples; push of a sandbox roll (faces sent back); API tests; generated | writer (delegated) | [ ] | |
 | T12 | 6 | Check editor Dice/Pool mode (count int or formula, sides, success at); sandbox shows success dice and Push; tests | writer (delegated) | [ ] | |
-| T13 | 7 | Check editor push section: cost label, sheet and tracker effects, `mark` with or without an option; tests and story | writer (delegated) | [ ] | |
-| T14 | 8 | Sheet builder conditions field (options editor); options referenced by effects cannot be deleted or renamed; formula diagnostics count it; flow editor `mark`/`clear`; tests | writer (delegated) | [ ] | |
+| T13 | 7 | Check editor push section: cost label, sheet and tracker effects, `mark` with or without an option; `DraftReferences` counts `check.push.effects` (slice 1 note); tests and story | writer (delegated) | [ ] | |
+| T14 | 8 | Sheet builder conditions field (options editor); options referenced by effects cannot be deleted or renamed (`DraftReferences` learns conditions options, slice 1 note); formula diagnostics count it; flow editor `mark`/`clear`; tests | writer (delegated) | [ ] | |
 | T15 | 8 | Chrome pass (author a pool check with push and a conditions field in Studio, publish, play it), closing doc | parent | [ ] | |
 
 ## Acceptance criteria
@@ -101,12 +102,14 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 - 2026-10-25: Explored every layer (kernel, contract, publisher, translator, Play checks and flow, journal, Studio editor and sandbox, upgrade planner). The user chose the conditions field and pending check steps. Issue #276, ADR 0041 and this feature doc written.
 - 2026-10-25: T2 contract and publisher: `pool`, `push`, the `conditions` field and `mark`/`clear` in `v2.schema.json`, `Checks`, `SheetFields`, `Effects`, `Formulas` (a conditions field reads as a number) and the contract doc; fixture `valid/v2-dice-pools.json` (also run through the schema by the agreement test).
 - 2026-10-25: T2 evidence. RED first: 83 of 146 tests failed in the four extended Studio test files (checks, sheet effects, sheet, formulas) before the publisher changed; GREEN after; `tests/Unit/Studio` 1893 tests OK. The agreement test's `v2-dice-pools` case failed before the schema change and passed after. Passed first time: the schema test `ReleaseSchemaDicePoolsTest` (written after the schema) and the Play translator refusals of `pool`, `push`, a `conditions` field, `mark` and `clear` (93 tests OK). One existing expectation changed: the Studio formula-scope message now lists conditions fields.
+- 2026-10-25: T3a evidence. The three new tests (explicit `null` `value` on `clear`, on a push-cost `mark`, and on a `mark` outside a push) passed first time: the validator already reads `null` like an absent `value` and the canonical form drops it; no source change was needed, the tests now pin the behaviour (R3).
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
+| 1 | review-72e9e9651173b257 (1f6adb3) | Approved, acknowledged. 1 suggestion: R3 explicit `null` `value` on `mark`/`clear` not proven to read like an absent one (`Studio/Domain/Release/Version2/Effects.php:250-256`), fixed in slice 2 (T3a). Writer notes moved to T13/T14: `DraftReferences` ignores `check.push.effects` and conditions options | [#277](https://github.com/iribarren/ogami/pull/277) |
 
 ## Next step
 
-Slice 1: native review of the T2 commit, then the PR.
+Slice 2 (T3a, T3, T4): conditions played on the sheet and by flow effects; then native review and the PR.

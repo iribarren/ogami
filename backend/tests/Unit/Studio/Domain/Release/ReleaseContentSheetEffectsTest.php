@@ -86,6 +86,43 @@ final class ReleaseContentSheetEffectsTest extends TestCase
         self::assertSame(['kind' => 'sheet', 'field' => 'physical', 'op' => 'clear', 'value' => 'hurt'], $outcomes[1]['effects'][1]);
     }
 
+    #[Test]
+    public function anExplicitNullValueReadsLikeAnAbsentOne(): void
+    {
+        $at = 'sceneTypes.0.play.0.outcomes.1.effects.0';
+        $release = ReleaseArrays::fixture('valid/v2-dice-pools');
+        $explicit = ReleaseArrays::with($release, $at, ['kind' => 'sheet', 'field' => 'mental', 'op' => 'clear', 'value' => null]);
+        /** @var array{sceneTypes: list<array{play: list<array{outcomes: list<array{effects: list<array<string, mixed>>}>}>}>} $canonical */
+        $canonical = ReleaseContent::fromArray($explicit)->toArray();
+
+        self::assertSame(['kind' => 'sheet', 'field' => 'mental', 'op' => 'clear'], $canonical['sceneTypes'][0]['play'][0]['outcomes'][1]['effects'][0]);
+        self::assertSame(ReleaseContent::fromArray($release)->hash(), ReleaseContent::fromArray($explicit)->hash());
+    }
+
+    #[Test]
+    public function anExplicitNullValueOnAMarkIsRefusedOutsideAPushCost(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-dice-pools'), 'sceneTypes.0.play.0.outcomes.0.effects.0', ['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark', 'value' => null]);
+
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains('a mark without an option is allowed only in the cost of a push');
+
+        ReleaseContent::fromArray($release);
+    }
+
+    #[Test]
+    public function anExplicitNullValueOnAPushCostMarkReadsLikeAnAbsentOne(): void
+    {
+        $release = ReleaseArrays::fixture('valid/v2-dice-pools');
+        $explicit = ReleaseArrays::with($release, 'checks.0.push.effects.0', ['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark', 'value' => null]);
+        $absent = ReleaseArrays::with($release, 'checks.0.push.effects.0', ['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark']);
+        /** @var array{checks: list<array{push: array{effects: list<array<string, mixed>>}}>} $canonical */
+        $canonical = ReleaseContent::fromArray($explicit)->toArray();
+
+        self::assertSame(['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark'], $canonical['checks'][0]['push']['effects'][0]);
+        self::assertSame(ReleaseContent::fromArray($absent)->hash(), ReleaseContent::fromArray($explicit)->hash());
+    }
+
     /**
      * @return iterable<string, array{string, mixed, string}> the path changed in valid/v2-dice-pools, its new value and the message
      */

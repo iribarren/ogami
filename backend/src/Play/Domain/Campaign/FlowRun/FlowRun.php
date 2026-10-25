@@ -14,6 +14,11 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckBand;
+use App\Play\Domain\GameSystem\Check\CheckPush;
+use App\Play\Domain\GameSystem\Check\CheckResult;
+use App\Play\Domain\GameSystem\Check\PoolResult;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
@@ -91,6 +96,11 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * instead, and a closeThread Effect closes the Threads picked. NPCs picked or created join the
  * Scene's cast.
  *
+ * A check step's pool roll that can be pushed (its check declares a push and a die failed) pends
+ * instead (ADR 0041): no answer, Effect or move until the player keeps it (its band) or pushes it
+ * (the pushed band), which completes the step like any other result. While it pends, every other
+ * command that moves the FlowRun is refused.
+ *
  * Paused, the FlowRun takes no command and the player plays freely; resuming goes on where it
  * stopped. A guided scene or hook Scene that is no longer the current scene when guidance resumes
  * or a session starts (the player started another by hand, or the session ended) is abandoned: the
@@ -143,6 +153,9 @@ final class FlowRun
     /** the items "{picked}" stands for in the current Scene, null when nothing was picked in it */
     private ?PickedItems $picked = null;
 
+    /** the current check step's roll waiting for Keep or Push, null when none does */
+    private ?PendingCheck $pendingCheck = null;
+
     /** @var list<FlowRunHistoryEntry> */
     private array $history = [];
 
@@ -159,7 +172,8 @@ final class FlowRun
     }
 
     /**
-     * Rebuilds a stored FlowRun, e.g. from persistence. No rule is checked again.
+     * Rebuilds a stored FlowRun, e.g. from persistence. No rule is checked again but one: a pending
+     * check is the current step's, while guidance is active.
      *
      * @param ?int                      $sessionNumber     the guided scene's or hook Scene's session, null outside one
      * @param ?int                      $sceneNumber       the guided scene's or hook Scene's number in it, null outside one
@@ -171,6 +185,9 @@ final class FlowRun
      * @param bool                      $sessionOpeningDue whether a session started whose opening has not run yet
      * @param ?PickedItems              $picked            the items "{picked}" stands for, null when nothing was picked in the Scene
      * @param bool                      $autoPickDue       whether the scene pick picks a selection's only Scene Type itself (a session started or a phase opened since the last scene)
+     * @param ?PendingCheck             $pendingCheck      the current check step's roll waiting for Keep or Push, else null
+     *
+     * @throws \InvalidArgumentException when the pending check is not the current step's, or guidance is not active
      */
     public static function reconstitute(
         FlowRunStatus $status,
@@ -193,7 +210,12 @@ final class FlowRun
         bool $sessionOpeningDue = false,
         ?PickedItems $picked = null,
         bool $autoPickDue = false,
+        ?PendingCheck $pendingCheck = null,
     ): self {
+        if ($pendingCheck instanceof PendingCheck && (FlowRunStatus::Active !== $status || $pendingCheck->stepKey !== $stepKey)) {
+            throw new \InvalidArgumentException(\sprintf('A pending check of step "%s" belongs to the current step of an active FlowRun.', $pendingCheck->stepKey));
+        }
+
         $flowRun = new self();
         $flowRun->status = $status;
         $flowRun->phaseIndex = $phaseIndex;
@@ -215,6 +237,7 @@ final class FlowRun
         $flowRun->sessionOpeningDue = $sessionOpeningDue;
         $flowRun->picked = $picked;
         $flowRun->autoPickDue = $autoPickDue;
+        $flowRun->pendingCheck = $pendingCheck;
 
         return $flowRun;
     }
@@ -223,6 +246,8 @@ final class FlowRun
      * A session started: its opening is due. While guidance is active the FlowRun goes on: on the way
      * to the scene pick (the session opening first), into a hook that waited for a session, or past a
      * guided scene or hook Scene of an earlier session (abandoned). Paused, it goes on when resumed.
+     *
+     * @throws CheckStepPending when a check step's roll waits for Keep or Push
      */
     public function sessionStarted(FlowRunContext $context): void
     {
@@ -230,6 +255,7 @@ final class FlowRun
             return;
         }
 
+        $this->assertNoPendingCheck();
         $this->sessionOpeningDue = true;
         if (FlowRunStatus::Active === $this->status) {
             $this->goOn($context);
@@ -237,18 +263,22 @@ final class FlowRun
     }
 
     /**
-     * Completes the current step with a result of its kind, records its answer text and advances.
+     * Completes the current step with a result of its kind, records its answer text and advances. A
+     * check step's roll that can be pushed pends instead (see resolvePendingCheck()).
      *
-     * @return list<SheetChange> what its sheet Effects changed, in apply order
+     * @param ?string $entryId the journal entry recording the result; a pending check keeps it
+     *
+     * @return list<SheetChange> what its sheet Effects changed, in apply order (none while a roll pends)
      *
      * @throws FlowRunNotActive        when the Flow is complete
+     * @throws CheckStepPending        when a roll pends, this step's included
      * @throws FlowRunPositionMismatch when the current step is not this one
      * @throws InvalidStepResult       when the result does not complete the step
      * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated
      *
      * @phpstan-impure
      */
-    public function completeStep(string $stepKey, StepResult $result, FlowRunContext $context): array
+    public function completeStep(string $stepKey, StepResult $result, FlowRunContext $context, ?string $entryId = null): array
     {
         $step = $this->expectStep($stepKey, $context);
         $kind = StepKind::of($step);
@@ -305,6 +335,11 @@ final class FlowRun
             }
 
             $outcome = $step->outcomeFor($check->band->key);
+            if ($this->pushable($step, $check, $context)) {
+                $this->pendingCheck = new PendingCheck($step->key, $entryId ?? throw new \LogicException(\sprintf('The roll of check step "%s" pends without its journal entry.', $step->key)), (string) $result->characterId, $check->difficulty, $check->band->key);
+
+                return [];
+            }
         } elseif ($step instanceof PromptStep && '' === $answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
@@ -329,12 +364,82 @@ final class FlowRun
     }
 
     /**
+     * The roll of the current check step that waits for Keep or Push. Changes nothing.
+     *
+     * @throws FlowRunNotActive        when guidance is paused or the Flow is complete
+     * @throws NoPendingCheck          when no roll pends
+     * @throws FlowRunPositionMismatch when the roll pends at another step, or the guided scene is no longer the current scene
+     */
+    public function pendingCheckAt(string $stepKey, FlowRunContext $context): PendingCheck
+    {
+        if (FlowRunStatus::Active !== $this->status) {
+            throw FlowRunNotActive::toPlay($this->status);
+        }
+
+        $pending = $this->pendingCheck ?? throw NoPendingCheck::toResolve();
+        if ($stepKey !== $pending->stepKey) {
+            throw FlowRunPositionMismatch::at(\sprintf('step "%s"', $stepKey), $this->where());
+        }
+
+        $this->assertInCurrentScene($context);
+
+        return $pending;
+    }
+
+    /**
+     * Completes the check step whose roll pends (ADR 0041) on a band: the band it rolled (Keep), or
+     * the band of the pushed roll (Push). The answer is the band's label, and the step's Effects and
+     * the band's Outcome apply as for a roll that completes the step at once.
+     *
+     * @param ?string $pushedBandKey the band of the pushed roll; null keeps the rolled one
+     *
+     * @return list<SheetChange> what its sheet Effects changed, in apply order
+     *
+     * @throws FlowRunNotActive        when guidance is paused or the Flow is complete
+     * @throws NoPendingCheck          when no roll pends
+     * @throws FlowRunPositionMismatch when the roll pends at another step, or the guided scene is no longer the current scene
+     * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated
+     *
+     * @phpstan-impure
+     */
+    public function resolvePendingCheck(string $stepKey, ?string $pushedBandKey, FlowRunContext $context): array
+    {
+        $pending = $this->pendingCheckAt($stepKey, $context);
+        $step = $this->currentStep($context->release, $context->flow);
+        $check = $step instanceof CheckStep ? $context->release->check($step->check) : null;
+        if (!$step instanceof CheckStep || !$check instanceof Check) {
+            throw new \LogicException(\sprintf('The roll of step "%s" pends on a check the release declares.', $pending->stepKey));
+        }
+
+        $bandKey = $pushedBandKey ?? $pending->bandKey;
+        $band = array_find($check->bands, static fn (CheckBand $band): bool => $band->key === $bandKey) ?? throw new \LogicException(\sprintf('Check "%s" has no band "%s".', $check->key, $bandKey));
+        $this->pendingCheck = null;
+        $this->answers[$step->key] = $band->label;
+        $outcome = $step->outcomeFor($band->key);
+
+        return $this->finish($step, $outcome, [...$step->effects, ...$outcome->effects ?? []], $band->label, $context, $pending->characterId);
+    }
+
+    /**
+     * Refuses a command that would move the FlowRun while a check step's roll waits for Keep or Push.
+     *
+     * @throws CheckStepPending
+     */
+    public function assertNoPendingCheck(): void
+    {
+        if ($this->pendingCheck instanceof PendingCheck) {
+            throw CheckStepPending::resolveFirst();
+        }
+    }
+
+    /**
      * What a check step needs before its dice are rolled: the Character must be in the scene (in the
      * session party outside one), and the player may send a difficulty only when the step fixes none.
      *
      * @return ?int the Check difficulty to perform with: the step's, evaluated now, else the given one (null for the check's default)
      *
      * @throws FlowRunNotActive        when the Flow is complete or guidance is paused
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is not this one
      * @throws InvalidStepResult       when the step is no check step, the Character is unknown or not in the scene, or the step fixes the difficulty and one is given
      * @throws FlowFormulaFailed       when the step's difficulty formula divides by zero or overflows
@@ -362,6 +467,7 @@ final class FlowRun
      * is recorded; the skip option's label is the "{answer}" of its Effects.
      *
      * @throws FlowRunNotActive        when the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is not this one
      * @throws StepCannotBeSkipped     when the step is mandatory
      */
@@ -383,6 +489,7 @@ final class FlowRun
      * @param int $sceneNumber the guided scene, by its number in the session
      *
      * @throws FlowRunNotActive        when the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not in open play in that scene
      */
     public function endScene(int $sceneNumber, FlowRunContext $context): void
@@ -400,6 +507,7 @@ final class FlowRun
      * Picks an offered Scene Type at the scene pick and starts its scene.
      *
      * @throws FlowRunNotActive        when the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
      * @throws SceneTypeNotOffered     when the pick does not offer it, or rolls on a table
      */
@@ -419,6 +527,7 @@ final class FlowRun
      * Picks the Scene Type of the entry rolled on the phase's oracle table and starts its scene.
      *
      * @throws FlowRunNotActive        when the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
      * @throws SceneTypeNotOffered     when the pick does not roll, the result is of another table or
      *                                 its entry names no Scene Type
@@ -448,6 +557,7 @@ final class FlowRun
      * @param string $phaseKey the phase to end, the current one
      *
      * @throws FlowRunNotActive        when guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current phase is another, or the guided scene or hook
      *                                 Scene is no longer the current scene
      * @throws MoveOnNotAllowed        when the phase plays once, or is closing
@@ -484,6 +594,7 @@ final class FlowRun
      * waits. The FlowRun then waits for the next session.
      *
      * @throws FlowRunNotActive            when guidance is paused or the Flow is complete
+     * @throws CheckStepPending            when a check step's roll waits for Keep or Push
      * @throws SessionCannotEndWhileGuided when the FlowRun is in a scene or a hook
      */
     public function endSession(FlowRunContext $context): void
@@ -500,12 +611,15 @@ final class FlowRun
      * Turns guidance off: the player plays freely, and resume() goes on where it stopped.
      *
      * @throws FlowRunNotActive when guidance is already paused or the Flow is complete
+     * @throws CheckStepPending when a check step's roll waits for Keep or Push
      */
     public function pause(\DateTimeImmutable $at): void
     {
         if (FlowRunStatus::Active !== $this->status) {
             throw FlowRunNotActive::toPause($this->status);
         }
+
+        $this->assertNoPendingCheck();
 
         $this->status = FlowRunStatus::Paused;
         $this->history[] = FlowRunHistoryEntry::paused($at);
@@ -517,9 +631,11 @@ final class FlowRun
      * on as after it.
      *
      * @throws FlowRunNotActive when guidance is not paused
+     * @throws CheckStepPending when a check step's roll waits for Keep or Push
      */
     public function resume(FlowRunContext $context): void
     {
+        $this->assertNoPendingCheck();
         if (FlowRunStatus::Paused !== $this->status) {
             throw FlowRunNotActive::toResume($this->status);
         }
@@ -543,9 +659,12 @@ final class FlowRun
      * does not run again). Paused, it stays where resume() goes on.
      *
      * @param ?string $from the scene's Scene Type key before the switch
+     *
+     * @throws CheckStepPending when a check step's roll waits for Keep or Push
      */
     public function followSceneTypeSwitch(?string $from, SceneType $to, FlowRunContext $context): void
     {
+        $this->assertNoPendingCheck();
         $this->history[] = FlowRunHistoryEntry::sceneTypeSwitch($context->at, (int) $context->sceneNumber(), $from, $to->key);
         if (FlowRunStatus::Active === $this->status && FlowRunStage::Scene === $this->stage && $this->inCurrentScene($context)) {
             $this->sceneType = $to->key;
@@ -603,7 +722,7 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description, FlowRunStatus::Paused === $this->status ? null : $this->sceneNumber),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null, $this->pendingCheck) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
@@ -770,6 +889,14 @@ final class FlowRun
     }
 
     /**
+     * The current check step's roll waiting for Keep or Push (ADR 0041), null when none does.
+     */
+    public function pendingCheck(): ?PendingCheck
+    {
+        return $this->pendingCheck;
+    }
+
+    /**
      * @return list<FlowRunHistoryEntry> in the order things happened
      */
     public function history(): array
@@ -778,7 +905,17 @@ final class FlowRun
     }
 
     /**
+     * Whether a check step's roll waits for Keep or Push: a pool roll with a die that failed, of a
+     * check that declares a push.
+     */
+    private function pushable(CheckStep $step, CheckResult $result, FlowRunContext $context): bool
+    {
+        return $context->release->check($step->check)?->push instanceof CheckPush && $result->pool instanceof PoolResult && $result->pool->roll->failures() > 0;
+    }
+
+    /**
      * @throws FlowRunNotActive
+     * @throws CheckStepPending
      * @throws FlowRunPositionMismatch
      */
     private function expectStep(string $stepKey, FlowRunContext $context): Step
@@ -824,13 +961,18 @@ final class FlowRun
     }
 
     /**
+     * Guidance is active and free to move: no roll waits for Keep or Push.
+     *
      * @throws FlowRunNotActive
+     * @throws CheckStepPending
      */
     private function assertActive(): void
     {
         if (FlowRunStatus::Active !== $this->status) {
             throw FlowRunNotActive::toPlay($this->status);
         }
+
+        $this->assertNoPendingCheck();
     }
 
     /**

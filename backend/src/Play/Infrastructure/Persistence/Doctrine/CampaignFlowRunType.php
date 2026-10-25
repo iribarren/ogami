@@ -9,6 +9,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
 use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\Hook;
@@ -25,7 +26,8 @@ use Doctrine\DBAL\Types\JsonType;
  *
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
- * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}]}, every
+ * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}],
+ * pendingCheck: {stepKey, entryId, characterId, difficulty, bandKey} or null}, every
  * field present (null where the FlowRun has none). The details are those of the event's
  * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
  * microseconds and UTC offset. Reading checks the shape and every enumerated value and fails on
@@ -36,7 +38,9 @@ use Doctrine\DBAL\Types\JsonType;
  * slice 7) lack picked: they read as nothing picked. Picked items need a Scene (they end with it), at
  * most 10 distinct ids, and a kind of NPC or Thread. Rows stored before the scene pick waited after a
  * scene (preset-mythic-flow slice 3, ADR 0020) lack autoPickDue: they read as waiting (false), so no
- * scene starts by surprise.
+ * scene starts by surprise. A pending check (ADR 0041) is the current step's while guidance is active,
+ * else the row fails to load; rows stored before check step rolls could pend (rules-dice-pools slice
+ * 5) lack pendingCheck: they read as none.
  *
  * Registered by its attribute (DoctrineBundle autoconfiguration), not in doctrine.yaml.
  */
@@ -60,6 +64,8 @@ final class CampaignFlowRunType extends JsonType
         if (!$value instanceof FlowRun) {
             throw InvalidType::new($value, self::NAME, [FlowRun::class, 'null']);
         }
+
+        $pending = $value->pendingCheck();
 
         return parent::convertToDatabaseValue([
             'status' => $value->status()->value,
@@ -89,6 +95,13 @@ final class CampaignFlowRunType extends JsonType
                 ],
                 $value->history(),
             ),
+            'pendingCheck' => $pending instanceof PendingCheck ? [
+                'stepKey' => $pending->stepKey,
+                'entryId' => $pending->entryId,
+                'characterId' => $pending->characterId,
+                'difficulty' => $pending->difficulty,
+                'bandKey' => $pending->bandKey,
+            ] : null,
         ], $platform);
     }
 
@@ -111,15 +124,22 @@ final class CampaignFlowRunType extends JsonType
             throw $this->malformed('picked', 'null outside a Scene');
         }
 
+        $status = $this->enum(FlowRunStatus::class, $data, 'status') ?? throw $this->malformed('status', $this->oneOf(FlowRunStatus::cases()));
+        $stepKey = $this->optionalString($data, 'stepKey');
+        $pending = $this->pendingCheck($data);
+        if ($pending instanceof PendingCheck && (FlowRunStatus::Active !== $status || $pending->stepKey !== $stepKey)) {
+            throw $this->malformed('pendingCheck', "the current step's, while guidance is active");
+        }
+
         return FlowRun::reconstitute(
-            $this->enum(FlowRunStatus::class, $data, 'status') ?? throw $this->malformed('status', $this->oneOf(FlowRunStatus::cases())),
+            $status,
             $this->int($data, 'phaseIndex'),
             $stage,
             $this->optionalInt($data, 'sessionNumber'),
             $sceneNumber,
             $this->optionalString($data, 'sceneType'),
             $this->enum(ScenePart::class, $data, 'part'),
-            $this->optionalString($data, 'stepKey'),
+            $stepKey,
             $this->int($data, 'sequencePosition'),
             $this->int($data, 'scenesPlayed'),
             $this->answers($this->field($data, 'answers')),
@@ -132,7 +152,29 @@ final class CampaignFlowRunType extends JsonType
             $this->bool($data, 'sessionOpeningDue', false),
             $picked,
             $this->bool($data, 'autoPickDue', false),
+            $pending,
         );
+    }
+
+    /**
+     * @return ?PendingCheck null for a row stored before check step rolls could pend, or without one
+     */
+    private function pendingCheck(mixed $data): ?PendingCheck
+    {
+        $pending = $this->field($data, 'pendingCheck');
+        if (null === $pending) {
+            return null;
+        }
+
+        if (!\is_array($pending) || array_is_list($pending)) {
+            throw $this->malformed('pendingCheck', 'an object or null');
+        }
+
+        try {
+            return new PendingCheck($this->string($pending, 'stepKey'), $this->string($pending, 'entryId'), $this->string($pending, 'characterId'), $this->optionalInt($pending, 'difficulty'), $this->string($pending, 'bandKey'));
+        } catch (\InvalidArgumentException $e) {
+            throw ValueNotConvertible::new('pendingCheck', self::NAME, \sprintf('Stored campaign FlowRun: "pendingCheck" is invalid: %s', $e->getMessage()));
+        }
     }
 
     /**

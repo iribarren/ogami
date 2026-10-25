@@ -12,7 +12,8 @@ use App\Play\Domain\GameSystem\Flow\Step;
  * fields of its kind, such as options, dice, oracle and likelihood, or table) and its title, prompt
  * and tip with their placeholders rendered. A mandatory step has no Skip. A pick step also shows
  * what it picks from (PickView). "fills" are the Fact slots any of its Effects may fill, in the
- * release's slot order.
+ * release's slot order. A check step whose roll waits for Keep or Push (ADR 0041) shows it as
+ * "pending".
  */
 final readonly class FlowStepView
 {
@@ -28,6 +29,7 @@ final readonly class FlowStepView
         public ?PickView $pick = null,
         public array $fills = [],
         public ?CheckView $check = null,
+        public ?PendingCheck $pending = null,
     ) {
     }
 }

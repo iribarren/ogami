@@ -21,6 +21,7 @@ use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
+use App\Play\Domain\Campaign\FlowRun\CheckStepPending;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowNote;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
@@ -31,6 +32,8 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\MoveOnNotAllowed;
+use App\Play\Domain\Campaign\FlowRun\NoPendingCheck;
+use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickCandidate;
 use App\Play\Domain\Campaign\FlowRun\PickCandidates;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
@@ -342,6 +345,7 @@ final class Campaign
      *                                     ended), or another session than the named one is
      * @throws SessionCannotEndWhileGuided when guidance is active and the FlowRun is in a scene or a hook
      * @throws CampaignLimitReached        when the session closing's hook Scene does not fit the session
+     * @throws CheckStepPending            when a check step's roll waits for Keep or Push
      */
     public function endSession(\DateTimeImmutable $endedAt, ?int $number = null, ?GameSystemSnapshot $release = null): Session
     {
@@ -445,9 +449,12 @@ final class Campaign
      *
      * @throws NoCurrentScene          when the current session has no scene, or no session is under way
      * @throws HookSceneHasNoSceneType when the current scene is a hook Scene
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      */
     public function switchSceneType(SceneType $sceneType, ?GameSystemSnapshot $release = null, ?\DateTimeImmutable $at = null): Scene
     {
+        // A roll waiting for Keep or Push belongs to the scene as it is.
+        $this->flowRun?->assertNoPendingCheck();
         $session = $this->currentSession();
         $scene = $session?->currentScene() ?? throw NoCurrentScene::toSwitchSceneType();
         $switched = $scene->withSceneType($sceneType->key);
@@ -1296,6 +1303,7 @@ final class Campaign
      * @return list<SheetChange> what the step's sheet Effects changed on the step's Character, in apply order
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is another
      * @throws InvalidStepResult       when the result does not complete the step
      * @throws CampaignLimitReached    when the next scene does not fit the session
@@ -1303,10 +1311,47 @@ final class Campaign
      *
      * @phpstan-impure
      */
-    public function completeFlowStep(string $stepKey, StepResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): array
+    public function completeFlowStep(string $stepKey, StepResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null, ?string $entryId = null): array
     {
         $draft = clone $this;
-        $changes = $draft->guided()->completeStep($stepKey, $result, $draft->flowContext($release, $at, $random));
+        $changes = $draft->guided()->completeStep($stepKey, $result, $draft->flowContext($release, $at, $random), $entryId);
+        $this->adopt($draft);
+
+        return $changes;
+    }
+
+    /**
+     * The roll of the FlowRun's current check step that waits for Keep or Push (ADR 0041). Changes nothing.
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws NoPendingCheck          when no roll pends
+     * @throws FlowRunPositionMismatch when the roll pends at another step, or the guided scene is no longer the current scene
+     */
+    public function pendingFlowCheck(string $stepKey, GameSystemSnapshot $release, \DateTimeImmutable $at): PendingCheck
+    {
+        return $this->guided()->pendingCheckAt($stepKey, $this->flowContext($release, $at));
+    }
+
+    /**
+     * Completes the check step whose roll pends on the rolled band (Keep) or the pushed one (Push),
+     * as completeFlowStep() completes a step. All or nothing.
+     *
+     * @param ?string $pushedBandKey the band of the pushed roll; null keeps the rolled one
+     *
+     * @return list<SheetChange> what the step's sheet Effects changed, in apply order
+     *
+     * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws NoPendingCheck          when no roll pends
+     * @throws FlowRunPositionMismatch when the roll pends at another step, or the guided scene is no longer the current scene
+     * @throws CampaignLimitReached    when the next scene does not fit the session
+     * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated; nothing changes
+     *
+     * @phpstan-impure
+     */
+    public function resolvePendingFlowCheck(string $stepKey, ?string $pushedBandKey, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): array
+    {
+        $draft = clone $this;
+        $changes = $draft->guided()->resolvePendingCheck($stepKey, $pushedBandKey, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
 
         return $changes;
@@ -1319,6 +1364,7 @@ final class Campaign
      * @return ?int the step's difficulty, else the given one (null for the check's default)
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is another
      * @throws InvalidStepResult       when the step is no check step, the Character is unknown or not in the scene, or the step fixes the difficulty and one is given
      * @throws FlowFormulaFailed       when the step's difficulty formula divides by zero or overflows
@@ -1332,6 +1378,7 @@ final class Campaign
      * Skips the FlowRun's current suggested step.
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is another
      * @throws StepCannotBeSkipped     when the step is mandatory
      * @throws CampaignLimitReached    when the next scene does not fit the session
@@ -1349,6 +1396,7 @@ final class Campaign
      * @param int $sceneNumber the guided scene, by its number in the session under way
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not in open play in that scene
      * @throws CampaignLimitReached    when the next scene does not fit the session
      */
@@ -1363,6 +1411,7 @@ final class Campaign
      * Picks a Scene Type the FlowRun's scene pick offers; its scene starts.
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
      * @throws SceneTypeNotOffered     when the pick does not offer it
      * @throws NoCurrentSession        when no session is under way
@@ -1379,6 +1428,7 @@ final class Campaign
      * Picks the Scene Type of the entry rolled on the oracle table the scene pick rolls on.
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not at the scene pick
      * @throws SceneTypeNotOffered     when the pick does not roll on that table, or the entry names no Scene Type
      * @throws NoCurrentSession        when no session is under way
@@ -1397,6 +1447,7 @@ final class Campaign
      * @param string $phaseKey the phase to end, by its key
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current phase is another, or the guided scene is no longer the current scene
      * @throws MoveOnNotAllowed        when the phase plays once
      * @throws CampaignLimitReached    when the next scene does not fit the session
@@ -1412,6 +1463,7 @@ final class Campaign
      * Pauses guidance: the player plays freely until it resumes.
      *
      * @throws FlowRunNotActive when the campaign plays freely, guidance is already paused or the Flow is complete
+     * @throws CheckStepPending when a check step's roll waits for Keep or Push
      */
     public function pauseGuidance(\DateTimeImmutable $at): void
     {
@@ -1425,6 +1477,7 @@ final class Campaign
      * abandoned and the FlowRun goes on at the scene pick.
      *
      * @throws FlowRunNotActive     when the campaign plays freely, guidance is not paused or the Flow is complete
+     * @throws CheckStepPending     when a check step's roll waits for Keep or Push
      * @throws CampaignLimitReached when the next scene does not fit the session
      */
     public function resumeGuidance(GameSystemSnapshot $release, \DateTimeImmutable $at): void

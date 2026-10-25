@@ -2457,6 +2457,33 @@ export interface components {
              */
             appliesTo: ("character" | "npc" | "thread")[] | null;
         };
+        CheckPoolResponse: {
+            /**
+             * @description How many dice when the release gives a number; null when a formula gives it.
+             * @example 4
+             */
+            count: number | null;
+            /**
+             * @description The formula that gives the number of dice from the sheet; null when the release gives a number.
+             * @example {agility} + {stealth}
+             */
+            countFormula: string | null;
+            /**
+             * @description The formula spelled in the labels players know; null when the release gives a number.
+             * @example Agility + Stealth
+             */
+            countText: string | null;
+            /**
+             * @description The faces of each die.
+             * @example 6
+             */
+            sides: number;
+            /**
+             * @description A die succeeds on this face or higher.
+             * @example 6
+             */
+            successAt: number;
+        };
         CheckDifficultyResponse: {
             /**
              * @description What the difficulty is called.
@@ -2493,10 +2520,12 @@ export interface components {
              */
             hint: string | null;
             /**
-             * @description The dice rolled, in dice notation.
+             * @description The dice rolled, in dice notation; null for a pool check.
              * @example 1d10
              */
-            dice: string;
+            dice: string | null;
+            /** @description The pool rolled, counted for successes; null for a check that rolls dice. */
+            pool: components["schemas"]["CheckPoolResponse"] | null;
             /** @description The difficulty the player sets when rolling; null when the check declares none. */
             difficulty: components["schemas"]["CheckDifficultyResponse"] | null;
         };
@@ -3301,6 +3330,56 @@ export interface components {
              */
             value: number;
         };
+        JournalPoolDieResponse: {
+            /**
+             * @description The group of dice the die belongs to; "pool" for the dice of a pool.
+             * @example pool
+             */
+            group: string;
+            /**
+             * @description The face the die landed on.
+             * @example 5
+             */
+            face: number;
+            /** @description Whether the die succeeded: its face reached the success threshold. */
+            success: boolean;
+        };
+        CheckPoolContentResponse: {
+            /**
+             * @description The number of dice the release asked for, before the Situational modifier: its number, or what its formula gave.
+             * @example 4
+             */
+            count: number;
+            /**
+             * @description The formula that gave the count; null when the release gave a number.
+             * @example {agility} + {stealth}
+             */
+            countFormula: string | null;
+            /** @description What each reference of the count formula read, in the order the formula first names them; empty without a formula. */
+            terms: components["schemas"]["CheckModifierTermResponse"][];
+            /**
+             * @description The dice rolled: the count plus the Situational modifier, kept between 1 and 100.
+             * @example 5
+             */
+            size: number;
+            /**
+             * @description The faces of each die.
+             * @example 6
+             */
+            sides: number;
+            /**
+             * @description A die succeeds on this face or higher.
+             * @example 6
+             */
+            successAt: number;
+            /** @description Every die rolled, in roll order. */
+            dice: components["schemas"]["JournalPoolDieResponse"][];
+            /**
+             * @description How many dice succeeded; the total of the check.
+             * @example 2
+             */
+            successes: number;
+        };
         CheckContentResponse: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3378,6 +3457,8 @@ export interface components {
             modifierFormula: string | null;
             /** @description What each reference of the modifier formula read, in the order the formula first names them; empty without a formula. */
             modifierTerms: components["schemas"]["CheckModifierTermResponse"][];
+            /** @description The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools. */
+            pool: components["schemas"]["CheckPoolContentResponse"] | null;
         };
         SheetChangeDiceResponse: {
             /**

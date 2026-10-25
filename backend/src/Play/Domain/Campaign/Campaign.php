@@ -1610,16 +1610,23 @@ final class Campaign
     }
 
     /**
-     * What the player sees of the FlowRun, which must be guiding: the view a FlowRun command acts on.
+     * What the player sees of the FlowRun, which must be guiding and free to move: the view a FlowRun
+     * command acts on.
      *
      * @throws FlowRunNotActive when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending when a check step's roll waits for Keep or Push
      * @throws UnknownFlow      when the pinned release has no Flow with the campaign's key
      */
     public function activeFlowRunView(GameSystemSnapshot $release): FlowRunView
     {
         $view = $this->flowRunView($release) ?? throw FlowRunNotActive::none();
+        if (FlowRunStatus::Active !== $view->status) {
+            throw FlowRunNotActive::toPlay($view->status);
+        }
 
-        return FlowRunStatus::Active === $view->status ? $view : throw FlowRunNotActive::toPlay($view->status);
+        $this->flowRun?->assertNoPendingCheck();
+
+        return $view;
     }
 
     /**

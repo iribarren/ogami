@@ -25,6 +25,7 @@ use App\Play\Domain\Campaign\CampaignLimitReached;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
+use App\Play\Domain\Campaign\FlowRun\CheckStepPending;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\SceneCannotStartWhileGuided;
 use App\Play\Domain\Campaign\FlowRun\SessionCannotEndWhileGuided;
@@ -176,7 +177,7 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new StartSession($campaignId, $user->id()));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (SessionAlreadyUnderWay|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
+        } catch (SessionAlreadyUnderWay|CheckStepPending|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (FlowFormulaFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -191,7 +192,7 @@ final readonly class CampaignController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'A check step\'s roll waits for Keep or Push; No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function endSession(string $campaignId, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
@@ -202,7 +203,7 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new EndSession($campaignId, $user->id(), $number));
         } catch (CampaignNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (NoCurrentSession|SessionCannotEndWhileGuided|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
+        } catch (NoCurrentSession|SessionCannotEndWhileGuided|CheckStepPending|CampaignLimitReached|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (FlowFormulaFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -259,7 +260,7 @@ final readonly class CampaignController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no Scene Type with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'A check step\'s roll waits for Keep or Push; The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function switchSceneType(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -278,7 +279,7 @@ final readonly class CampaignController
             $this->commandBus->dispatch(new SwitchSceneType($campaignId, $user->id(), $sceneType));
         } catch (CampaignNotFound|UnknownSceneType $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
-        } catch (NoCurrentScene|HookSceneHasNoSceneType|CampaignModifiedConcurrently $exception) {
+        } catch (NoCurrentScene|HookSceneHasNoSceneType|CheckStepPending|CampaignModifiedConcurrently $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (FlowFormulaFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);

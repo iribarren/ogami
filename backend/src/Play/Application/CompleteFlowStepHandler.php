@@ -11,6 +11,7 @@ use App\Play\Domain\Campaign\CampaignRepository;
 use App\Play\Domain\Campaign\ChaosFactorBoundToTracker;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
+use App\Play\Domain\Campaign\FlowRun\CheckStepPending;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
@@ -81,10 +82,13 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * when completing the step starts the next scene, and it is only added once the FlowRun accepts
      * the result: a refused step records nothing and leaves the campaign as it was. When the step's
      * sheet Effects changed its Character, a second entry records the changes right after it, and when the
-     * Flow decided something on its own (a band label, a Tracker, a switch...) a last one tells it.
+     * Flow decided something on its own (a band label, a Tracker, a switch...) a last one tells it. A
+     * check step's roll that can be pushed records its entry only: the step pends until Keep or Push
+     * (ResolvePendingFlowCheckHandler).
      *
      * @throws CampaignNotFound
      * @throws FlowRunNotActive                when the campaign plays freely, guidance is paused or the Flow is complete
+     * @throws CheckStepPending                when a check step's roll waits for Keep or Push, this step's included
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
      * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate, the Character is unknown or (check step) not in the scene, or a difficulty is sent for a step that fixes one
      * @throws FlowFormulaFailed               when a check step's difficulty formula, or an Effect's formula, cannot be evaluated
@@ -121,7 +125,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $at = $this->clock->now();
         [$result, $content] = $this->resultOf($command, $step, $campaign, $release, $at);
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
-        $changes = $campaign->completeFlowStep($step->key, $result, $release, $at, $this->random);
+        $changes = $campaign->completeFlowStep($step->key, $result, $release, $at, $this->random, $entry->id()->toString());
         $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($result, $campaign, $changes));
         $outcomeEntry = $this->journal->flowOutcome($this->entryIds, $campaign, $sheetEntry ?? $entry);
         // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent

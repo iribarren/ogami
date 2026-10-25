@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
+use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickView;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
@@ -24,7 +25,7 @@ use OpenApi\Attributes as OA;
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
  * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
-#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'difficulty', 'difficultyFixed', 'characters', 'inspiration'])]
+#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'difficulty', 'difficultyFixed', 'characters', 'inspiration', 'pending'])]
 final readonly class FlowStepResponse
 {
     /**
@@ -86,6 +87,8 @@ final readonly class FlowStepResponse
             items: new OA\Items(type: 'string', example: 'nouns'),
         )]
         public array $inspiration,
+        #[OA\Property(ref: new Model(type: FlowStepPendingResponse::class), description: 'The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused.', nullable: true)]
+        public ?FlowStepPendingResponse $pending,
     ) {
     }
 
@@ -117,6 +120,6 @@ final readonly class FlowStepResponse
         $step = $view->step;
         $checkView = $view->check;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []), $step instanceof PromptStep ? $step->inspiration : []);
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []), $step instanceof PromptStep ? $step->inspiration : [], $view->pending instanceof PendingCheck ? FlowStepPendingResponse::fromPending($view->pending) : null);
     }
 }

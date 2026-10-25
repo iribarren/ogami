@@ -6,8 +6,9 @@ namespace App\Play\Application;
 
 /**
  * The journal entry cannot be pushed as it stands (ADR 0041): the push of a roll is allowed on the
- * campaign's latest entry, a pool check rolled from the sheet, once, while a die failed, and only
- * while the pinned release still declares that check with that pool and a push.
+ * campaign's latest entry, a pool check rolled from the sheet, or on the roll a check step waits
+ * on; once, while a die failed, and only while the pinned release still declares that check with
+ * that pool and a push.
  */
 final class CheckCannotBePushed extends \DomainException
 {

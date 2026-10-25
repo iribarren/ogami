@@ -26,7 +26,7 @@ final readonly class CharacterResponse
         public array $tags,
         #[OA\Property(description: 'The player\'s own labels, as typed.', type: 'array', items: new OA\Items(type: 'string'), example: ['Fixer'])]
         public array $freeTags,
-        #[OA\Property(description: 'One value per field of the pinned release\'s sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list) or {current, max} (track). Empty when the release has no sheet.', type: 'object', example: ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 30, 'max' => 40], 'gear' => ['Knife']], additionalProperties: new OA\AdditionalProperties(oneOf: [
+        #[OA\Property(description: 'One value per field of the pinned release\'s sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions) or {current, max} (track). Empty when the release has no sheet.', type: 'object', example: ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 30, 'max' => 40], 'gear' => ['Knife']], additionalProperties: new OA\AdditionalProperties(oneOf: [
             new OA\Schema(type: 'integer'),
             new OA\Schema(type: 'string'),
             new OA\Schema(type: 'array', items: new OA\Items(type: 'string')),

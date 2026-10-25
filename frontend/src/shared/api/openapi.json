@@ -10312,7 +10312,7 @@
                         "nullable": true
                     },
                     "values": {
-                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
+                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [] or conditions [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
                         "type": "object",
                         "example": {
                             "role": "Solo",
@@ -10410,7 +10410,7 @@
                         ]
                     },
                     "values": {
-                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list) or {current, max} (track). Empty when the release has no sheet.",
+                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions) or {current, max} (track). Empty when the release has no sheet.",
                         "type": "object",
                         "example": {
                             "role": "Solo",
@@ -10598,6 +10598,24 @@
                 },
                 "type": "object"
             },
+            "ConditionOptionResponse": {
+                "required": [
+                    "key",
+                    "label"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The key a Character's marked list holds.",
+                        "type": "string",
+                        "example": "hurt"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Hurt"
+                    }
+                },
+                "type": "object"
+            },
             "SheetFieldResponse": {
                 "required": [
                     "key",
@@ -10615,7 +10633,8 @@
                     "formula",
                     "roll",
                     "startMax",
-                    "span"
+                    "span",
+                    "options"
                 ],
                 "properties": {
                     "key": {
@@ -10639,7 +10658,7 @@
                         "nullable": true
                     },
                     "type": {
-                        "description": "A number is an integer, a text a string, a list an array of strings and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
+                        "description": "A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
                         "type": "string",
                         "example": "number",
                         "enum": [
@@ -10647,6 +10666,7 @@
                             "text",
                             "list",
                             "track",
+                            "conditions",
                             "derived"
                         ]
                     },
@@ -10713,6 +10733,14 @@
                         "type": "integer",
                         "example": 2,
                         "minimum": 1
+                    },
+                    "options": {
+                        "description": "Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Null for other types.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ConditionOptionResponse"
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"

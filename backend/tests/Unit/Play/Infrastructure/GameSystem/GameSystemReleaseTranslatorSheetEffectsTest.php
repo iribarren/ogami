@@ -133,8 +133,10 @@ final class GameSystemReleaseTranslatorSheetEffectsTest extends TestCase
      */
     private function typed(array $content): array
     {
-        /* @var array<string, mixed> $content */
-        return $content;
+        /** @var array<string, mixed> $typed */
+        $typed = $content;
+
+        return $typed;
     }
 
     /**

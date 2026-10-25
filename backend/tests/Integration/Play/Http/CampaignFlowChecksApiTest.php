@@ -119,6 +119,34 @@ final class CampaignFlowChecksApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aPoolCheckStepRollsTheSizeTheFormulaGivesAndBranchesOnTheSuccesses(): void
+    {
+        $this->inScene('pooled');
+        // Ada's hands (4) and one extra die: five d6, succeeding on 5 or more; 5, 2, 6, 1, 3 are two successes.
+        $this->random->script(5, 2, 6, 1, 3);
+
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada', 'situational' => 1]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('after', self::at($this->json(), 'flowRun', 'step', 'key'));
+        $entries = $this->journal();
+        self::assertSame([['check', 'roll-it']], array_map(static fn (array $entry): array => [self::at($entry, 'kind'), self::at($entry, 'flowStep', 'key')], $entries));
+        $content = self::at($entries[0], 'content');
+        self::assertSame(['grip', 'some', 2, 2, '5d6', []], array_map(static fn (string $key): mixed => self::at($content, $key), ['checkKey', 'bandKey', 'total', 'diceTotal', 'expression', 'groups']));
+        $die = static fn (int $face): array => ['group' => 'pool', 'face' => $face, 'success' => $face >= 5];
+        self::assertSame([
+            'count' => 4,
+            'countFormula' => '{hands}',
+            'terms' => [['reference' => '{hands}', 'label' => 'Hands', 'value' => 4]],
+            'size' => 5,
+            'sides' => 6,
+            'successAt' => 5,
+            'dice' => [$die(5), $die(2), $die(6), $die(1), $die(3)],
+            'successes' => 2,
+        ], self::at($content, 'pool'));
+    }
+
+    #[Test]
     public function theSheetEffectsOfTheBandChangeTheCheckedCharacterAndAreJournaledAfterTheCheck(): void
     {
         $this->inScene('wounding');
@@ -218,6 +246,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         yield 'a difficulty over the max' => ['open', $ada + ['difficulty' => 30], 'Difficulty 30 is outside 9 to 29 of check "skill".'];
         yield 'a situational modifier over 100' => ['open', $ada + ['situational' => 101], 'The situational modifier must be between -100 and 100, 101 given.'];
         yield 'a check that cannot be evaluated' => ['broken', $ada, 'Check "broken" cannot be performed: The formula divides by zero.'];
+        yield 'a pool count that cannot be evaluated' => ['poolbroken', $ada, 'Check "pool-broken" cannot be performed: The formula divides by zero.'];
     }
 
     /**
@@ -320,6 +349,8 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         $content = ReleaseArrays::with($content, 'checks', [
             ...$base['checks'],
             ['key' => 'broken', 'label' => 'Broken', 'dice' => '1d6', 'modifier' => '{hands} / {zero}', 'bands' => [['key' => 'only', 'label' => 'Only']]],
+            ['key' => 'grip', 'label' => 'Grip', 'pool' => ['count' => ['formula' => '{hands}'], 'sides' => 6, 'successAt' => 5], 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'some', 'label' => 'Some', 'upTo' => 2], ['key' => 'lots', 'label' => 'Lots']]],
+            ['key' => 'pool-broken', 'label' => 'Pool broken', 'pool' => ['count' => ['formula' => '{hands} / {zero}'], 'sides' => 6, 'successAt' => 5], 'bands' => [['key' => 'only', 'label' => 'Only']]],
         ]);
         $step = static fn (string $check, array $changes = []): array => [
             ['key' => 'roll-it', 'kind' => 'check', 'title' => 'Roll it', 'check' => $check] + $changes,
@@ -331,7 +362,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         ]];
         $sheet = static fn (string $field, string $op, mixed $value): array => ['kind' => 'sheet', 'field' => $field, 'op' => $op, 'value' => $value];
         $failing = static fn (array ...$effects): array => ['difficulty' => 10, 'outcomes' => [['band' => 'fail', 'effects' => $effects]]];
-        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken'), 'wounding' => $step('skill', $failing($sheet('hands', 'subtract', ['dice' => '1d4']), $sheet('nerve', 'subtract', 3))), 'shaken' => $step('skill', $failing($sheet('nerve', 'subtract', 1), $sheet('hands', 'set', ['formula' => '{hands} / {zero}'])))];
+        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'pooled' => $step('grip'), 'poolbroken' => $step('pool-broken'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken'), 'wounding' => $step('skill', $failing($sheet('hands', 'subtract', ['dice' => '1d4']), $sheet('nerve', 'subtract', 3))), 'shaken' => $step('skill', $failing($sheet('nerve', 'subtract', 1), $sheet('hands', 'set', ['formula' => '{hands} / {zero}'])))];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],
             array_keys($sceneTypes),

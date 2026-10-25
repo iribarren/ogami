@@ -70,7 +70,7 @@ final class PercentileHorrorChecksTest extends TestCase
 
         self::assertCount(23, $keys);
         foreach ($this->release->checks() as $check) {
-            self::assertSame('1d100', $check->dice->notation(), $check->key);
+            self::assertSame('1d100', $check->dice?->notation(), $check->key);
             self::assertSame(['critical', 'extreme', 'hard', 'regular', 'failure', 'fumble'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $check->bands), $check->key);
         }
     }

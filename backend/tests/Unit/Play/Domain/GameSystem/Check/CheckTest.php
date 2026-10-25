@@ -44,7 +44,7 @@ final class CheckTest extends TestCase
     {
         $result = $this->skill()->perform(new ScriptedRandomNumberGenerator(7), $this->sheet(), null, 2);
 
-        self::assertSame(7, $result->roll->total());
+        self::assertSame(7, $result->roll?->total());
         self::assertSame([6, 2, 13, 15], [$result->modifier, $result->situational, $result->difficulty, $result->total]);
         self::assertSame('success', $result->band->key, 'Fail up to 12, success up to 17.');
     }

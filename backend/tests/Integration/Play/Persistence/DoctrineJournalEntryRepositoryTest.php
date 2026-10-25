@@ -14,6 +14,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\DoctrineJournalEntryRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType;
 use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryFlowStepType;
 use App\Tests\Support\Play\JournalEntryRepositoryContract;
+use App\Tests\Unit\Play\Domain\Journal\CheckPoolContentTest;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -162,5 +163,33 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
         self::assertSame(6, $this->entityManager->getConnection()->fetchOne(
             "SELECT datetime_precision FROM information_schema.columns WHERE table_name = 'play_journal_entry' AND column_name = 'recorded_at'",
         ));
+    }
+
+    #[Test]
+    public function aPoolCheckRoundTripsWithItsWholePoolPart(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->repository->add($entry);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($entry->id());
+
+        self::assertEquals($entry, $loaded);
+        self::assertSame($entry->content()->toArray(), $loaded?->content()->toArray());
+    }
+
+    #[Test]
+    public function aMalformedStoredPoolPartFailsToLoad(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->repository->add($entry);
+        $this->entityManager->getConnection()->executeStatement("UPDATE play_journal_entry SET content = jsonb_set(content, '{pool,successes}', '3') WHERE id = ?", [$entry->id()->toString()]);
+        $this->forgetLoaded();
+
+        $this->expectExceptionMessageIsOrContains('"successes" must be the number of dice that succeeded');
+
+        $this->repository->ofId($entry->id());
     }
 }

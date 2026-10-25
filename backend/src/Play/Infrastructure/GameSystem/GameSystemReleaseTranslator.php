@@ -12,6 +12,7 @@ use App\Formula\Domain\ReferenceKind;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
+use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
@@ -75,6 +76,7 @@ use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\DicePool;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\InvalidOracleTable;
@@ -1034,7 +1036,7 @@ final readonly class GameSystemReleaseTranslator
         foreach ($list as $index => $item) {
             $path = \sprintf('checks[%d]', $index);
             $check = $this->object($view, $item, $path);
-            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'difficulty', 'bands']);
+            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'difficulty', 'bands']);
             $key = $this->key($view, $check['key'] ?? null, $path.'.key');
             if (isset($checks[$key])) {
                 throw $this->invalid($view, $path.'.key', \sprintf('duplicate check key "%s".', $key));
@@ -1044,16 +1046,61 @@ final readonly class GameSystemReleaseTranslator
             $modifier = null === ($check['modifier'] ?? null) ? null : $this->checkFormula($view, $check['modifier'], $path.'.modifier', $fields, $trackerKeys, null);
             $label = $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH);
             $hint = null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false);
-            $dice = $this->dice($view, $check['dice'] ?? null, $path.'.dice');
+            $pool = null === ($check['pool'] ?? null) ? null : $this->checkPool($view, $check, $path, $fields, $trackerKeys);
+            $dice = $pool instanceof CheckPool ? null : $this->dice($view, $check['dice'] ?? null, $path.'.dice');
             $bands = $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty);
             try {
-                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands);
+                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool);
             } catch (\InvalidArgumentException $invalid) {
                 throw $this->invalid($view, $path.'.bands', $invalid->getMessage());
             }
         }
 
         return array_values($checks);
+    }
+
+    /**
+     * The pool of a check (ADR 0041): a count that is a number or a formula over the sheet, the
+     * sides and the face a die succeeds from. A pool check rolls no dice expression and has no modifier.
+     *
+     * @param array<mixed>         $check
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function checkPool(PublishedReleaseView $view, array $check, string $path, array $fields, array $trackerKeys): CheckPool
+    {
+        if (null !== ($check['dice'] ?? null)) {
+            throw $this->invalid($view, $path.'.pool', 'a check rolls dice or a pool, not both.');
+        }
+
+        if (null !== ($check['modifier'] ?? null)) {
+            throw $this->invalid($view, $path.'.modifier', 'a pool check has no modifier.');
+        }
+
+        $path .= '.pool';
+        $pool = $this->object($view, $check['pool'], $path);
+        $this->assertProperties($view, $pool, $path, ['count', 'sides', 'successAt']);
+        if (\is_array($pool['count'] ?? null)) {
+            $count = $this->object($view, $pool['count'], $path.'.count');
+            $this->assertProperties($view, $count, $path.'.count', ['formula']);
+            $count = $this->checkFormula($view, $count['formula'] ?? null, $path.'.count.formula', $fields, $trackerKeys, null);
+        } else {
+            $count = $this->requiredInt($view, $pool['count'] ?? null, $path.'.count', DicePool::MIN_COUNT, DicePool::MAX_COUNT);
+        }
+
+        $sides = $this->requiredInt($view, $pool['sides'] ?? null, $path.'.sides', DicePool::MIN_SIDES, DicePool::MAX_SIDES);
+        $successAt = $this->requiredInt($view, $pool['successAt'] ?? null, $path.'.successAt', 1, $sides);
+
+        try {
+            return new CheckPool($count, $sides, $successAt);
+        } catch (\InvalidArgumentException $invalid) {
+            throw $this->invalid($view, $path, $invalid->getMessage());
+        }
+    }
+
+    private function requiredInt(PublishedReleaseView $view, mixed $value, string $path, int $min, int $max): int
+    {
+        return $this->optionalInt($view, $value, $path, $min, $max) ?? throw $this->invalid($view, $path, 'must be an integer.');
     }
 
     private function dice(PublishedReleaseView $view, mixed $value, string $path): DiceExpression

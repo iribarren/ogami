@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Play\Infrastructure\Http;
 
 use App\Play\Domain\Journal\CheckContent;
+use App\Play\Domain\Journal\CheckPoolContent;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
  * A Check performed for a Character on the server: the dice, the modifier from the sheet, the
- * Situational modifier, the Check difficulty, the total and the Outcome band.
+ * Situational modifier, the Check difficulty, the total and the Outcome band. A pool check has a
+ * pool part instead of dice groups and a modifier, and its total is the successes.
  */
-#[OA\Schema(required: ['kind', 'characterId', 'characterName', 'checkKey', 'checkLabel', 'expression', 'groups', 'diceTotal', 'modifier', 'situational', 'difficulty', 'total', 'bandKey', 'bandLabel', 'hint', 'modifierFormula', 'modifierTerms'])]
+#[OA\Schema(required: ['kind', 'characterId', 'characterName', 'checkKey', 'checkLabel', 'expression', 'groups', 'diceTotal', 'modifier', 'situational', 'difficulty', 'total', 'bandKey', 'bandLabel', 'hint', 'modifierFormula', 'modifierTerms', 'pool'])]
 final readonly class CheckContentResponse
 {
     /**
@@ -62,6 +64,8 @@ final readonly class CheckContentResponse
             items: new OA\Items(ref: new Model(type: CheckModifierTermResponse::class)),
         )]
         public array $modifierTerms,
+        #[OA\Property(ref: new Model(type: CheckPoolContentResponse::class), description: 'The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools.', nullable: true)]
+        public ?CheckPoolContentResponse $pool,
     ) {
     }
 
@@ -85,6 +89,7 @@ final readonly class CheckContentResponse
             $content->hint(),
             $content->modifierFormula(),
             array_map(CheckModifierTermResponse::of(...), $content->modifierTerms()),
+            $content->pool() instanceof CheckPoolContent ? CheckPoolContentResponse::of($content->pool()) : null,
         );
     }
 }

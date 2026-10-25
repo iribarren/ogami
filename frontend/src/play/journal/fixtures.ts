@@ -272,6 +272,7 @@ export const sneakCheckEntry: JournalEntry = {
         { group: 'pool', face: 5, success: true },
       ],
       successes: 2,
+      push: null,
     },
   },
 }

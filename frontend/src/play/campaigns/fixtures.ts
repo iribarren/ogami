@@ -330,6 +330,7 @@ export const skillCheck: CampaignCheck = {
   hint: 'A stat and 1d10 against a Difficulty Value.',
   dice: '1d10',
   pool: null,
+  push: null,
   difficulty: { label: 'Difficulty Value', default: 13, min: 9, max: 29 },
 }
 
@@ -340,6 +341,7 @@ export const luckCheck: CampaignCheck = {
   hint: null,
   dice: 'd%',
   pool: null,
+  push: null,
   difficulty: null,
 }
 
@@ -356,6 +358,7 @@ export const sneakCheck: CampaignCheck = {
     sides: 6,
     successAt: 5,
   },
+  push: null,
   difficulty: null,
 }
 
@@ -366,6 +369,7 @@ export const gripCheck: CampaignCheck = {
   hint: null,
   dice: null,
   pool: { count: 4, countFormula: null, countText: null, sides: 6, successAt: 6 },
+  push: null,
   difficulty: null,
 }
 

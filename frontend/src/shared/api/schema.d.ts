@@ -1718,7 +1718,7 @@ export interface components {
              */
             freeTags?: string[] | null;
             /**
-             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
+             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [] or conditions [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
              * @example {
              *       "role": "Solo",
              *       "reflexes": 7,
@@ -1763,7 +1763,7 @@ export interface components {
              */
             freeTags: string[];
             /**
-             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list) or {current, max} (track). Empty when the release has no sheet.
+             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions) or {current, max} (track). Empty when the release has no sheet.
              * @example {
              *       "role": "Solo",
              *       "reflexes": 7,
@@ -1857,6 +1857,15 @@ export interface components {
              */
             url: string | null;
         };
+        ConditionOptionResponse: {
+            /**
+             * @description The key a Character's marked list holds.
+             * @example hurt
+             */
+            key: string;
+            /** @example Hurt */
+            label: string;
+        };
         SheetFieldResponse: {
             /**
              * @description The key Character values are stored under.
@@ -1873,11 +1882,11 @@ export interface components {
              */
             group: string | null;
             /**
-             * @description A number is an integer, a text a string, a list an array of strings and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
+             * @description A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
              * @example number
              * @enum {string}
              */
-            type: "number" | "text" | "list" | "track" | "derived";
+            type: "number" | "text" | "list" | "track" | "conditions" | "derived";
             /**
              * @description Number: the lowest value (-1000000 when the field sets none). Null for other types.
              * @example 1
@@ -1927,6 +1936,8 @@ export interface components {
              * @example 2
              */
             span: number;
+            /** @description Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Null for other types. */
+            options: components["schemas"]["ConditionOptionResponse"][] | null;
         };
         SheetGroupResponse: {
             /**

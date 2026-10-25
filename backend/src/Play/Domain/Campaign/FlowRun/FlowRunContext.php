@@ -7,6 +7,7 @@ namespace App\Play\Domain\Campaign\FlowRun;
 use App\Formula\Domain\Formula;
 use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Play\Domain\Campaign\Campaign;
+use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\CharacterValues;
 use App\Play\Domain\Campaign\Characters\SheetValues;
@@ -29,6 +30,7 @@ use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tracker;
@@ -273,7 +275,8 @@ final readonly class FlowRunContext
     /**
      * Applies a sheet Effect to a Character (ADR 0027): adds, subtracts or sets a literal, a formula
      * over the Character's sheet as it is now or a dice roll, clamped to the field (a track's current
-     * value to 0..its max, a number to its min and max, else the contract's limit).
+     * value to 0..its max, a number to its min and max, else the contract's limit). Mark and clear
+     * change a conditions field instead (ADR 0041): the change tells the count marked before and after.
      *
      * @throws FlowFormulaFailed when the value's formula divides by zero, overflows or reads a value the sheet lacks
      */
@@ -282,6 +285,10 @@ final readonly class FlowRunContext
         $id = CharacterId::fromString($characterId);
         $character = $this->campaign->character($id) ?? throw new \LogicException(\sprintf('The campaign has no Character "%s".', $characterId));
         $field = $this->release->sheet()->field($effect->field);
+        if ($field instanceof ConditionsField) {
+            return $this->applyConditionEffect($effect, $id, $character, $field);
+        }
+
         if (!$field instanceof NumberField && !$field instanceof TrackField) {
             throw new \LogicException(\sprintf('The pinned release has no number or track field "%s".', $effect->field));
         }
@@ -299,6 +306,10 @@ final readonly class FlowRunContext
             }
         }
 
+        if (!\is_int($value)) {
+            throw new \LogicException(\sprintf('Field "%s" takes a number, not an option key.', $field->key));
+        }
+
         $stored = $character->values()[$field->key] ?? CharacterValues::initial($field);
         $track = \is_array($stored) && \is_int($stored['current'] ?? null) && \is_int($stored['max'] ?? null) ? ['current' => $stored['current'], 'max' => $stored['max']] : null;
         $before = $track['current'] ?? (\is_int($stored) ? $stored : 0);
@@ -306,6 +317,7 @@ final readonly class FlowRunContext
             SheetOperation::Add => $before + $value,
             SheetOperation::Subtract => $before - $value,
             SheetOperation::Set => $value,
+            SheetOperation::Mark, SheetOperation::Clear => throw new \LogicException(\sprintf('Field "%s" is changed with a number, not marked or cleared.', $field->key)),
         };
         // A sum past the integers is a float; clamping brings it back within the bounds.
         [$min, $max] = $field instanceof TrackField
@@ -315,6 +327,37 @@ final readonly class FlowRunContext
         $this->campaign->changeCharacterValue($id, $field->key, $field instanceof TrackField ? ['current' => $after, 'max' => $max] : $after);
 
         return new SheetChange($field->key, $before, $after, $dice?->expression()->notation(), $dice?->total());
+    }
+
+    /**
+     * Marks an option of a conditions field (nothing changes when it is marked already), clears one
+     * (nothing changes when it is not marked) or, without an option, clears them all.
+     */
+    private function applyConditionEffect(SheetEffect $effect, CharacterId $id, Character $character, ConditionsField $field): SheetChange
+    {
+        $option = $effect->value;
+        if (!\is_string($option) && null !== $option) {
+            throw new \LogicException(\sprintf('Conditions field "%s" takes an option key, not a number or a formula.', $field->key));
+        }
+
+        if (null !== $option && !$field->has($option)) {
+            throw new \LogicException(\sprintf('Conditions field "%s" has no option "%s".', $field->key, $option));
+        }
+
+        $stored = $character->values()[$field->key] ?? CharacterValues::initial($field);
+        $before = \is_array($stored) ? array_values(array_filter($stored, \is_string(...))) : [];
+        if (null === $option && SheetOperation::Mark === $effect->op) {
+            throw new \LogicException(\sprintf('Marking conditions field "%s" needs an option.', $field->key));
+        }
+
+        $after = match ($effect->op) {
+            SheetOperation::Mark => $field->ordered([...$before, (string) $option]),
+            SheetOperation::Clear => null === $option ? [] : array_values(array_diff($before, [$option])),
+            default => throw new \LogicException(\sprintf('Conditions field "%s" is marked and cleared, not changed with "%s".', $field->key, $effect->op->value)),
+        };
+        $this->campaign->changeCharacterValue($id, $field->key, $after);
+
+        return new SheetChange($field->key, \count($before), \count($after));
     }
 
     /**

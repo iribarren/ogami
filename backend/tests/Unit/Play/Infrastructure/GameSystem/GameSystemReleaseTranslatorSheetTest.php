@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 
+use App\Formula\Domain\Formula;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
+use App\Play\Domain\GameSystem\Sheet\ConditionOption;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
+use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -34,6 +38,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextField::class)]
 #[CoversClass(ListField::class)]
 #[CoversClass(TrackField::class)]
+#[CoversClass(ConditionsField::class)]
 final class GameSystemReleaseTranslatorSheetTest extends TestCase
 {
     /**
@@ -133,6 +138,36 @@ final class GameSystemReleaseTranslatorSheetTest extends TestCase
         self::assertSame(['class', 'level', 'hp', 'notes', 'gear', 'treasure'], array_map(static fn (Field $field): string => $field->key, $sheet->fields()));
     }
 
+    #[Test]
+    public function itReadsAConditionsFieldWithItsOptionsInDeclaredOrder(): void
+    {
+        $sheet = $this->translate($this->withFields([
+            ['key' => 'physical', 'label' => 'Physical', 'type' => 'conditions', 'hint' => 'Each costs a die.', 'group' => 'Health', 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'exhausted', 'label' => 'Exhausted']]],
+            ['key' => 'strain', 'label' => 'Strain', 'type' => 'derived', 'formula' => '{physical} * 2'],
+        ]))->sheet();
+
+        self::assertEquals(
+            [
+                new ConditionsField('physical', 'Physical', 'Each costs a die.', 'Health', [new ConditionOption('hurt', 'Hurt'), new ConditionOption('exhausted', 'Exhausted')]),
+                new DerivedField('strain', 'Strain', null, null, Formula::fromString('{physical} * 2')),
+            ],
+            $sheet->fields(),
+        );
+        $physical = $sheet->field('physical');
+        self::assertInstanceOf(ConditionsField::class, $physical);
+        self::assertSame(['hurt', 'exhausted'], $physical->optionKeys());
+    }
+
+    #[Test]
+    public function itAcceptsAConditionsFieldWithTwentyOptionsOfSixtyCharacters(): void
+    {
+        $options = array_map(static fn (int $i): array => ['key' => 'o-'.$i, 'label' => str_repeat('l', 60)], range(1, 20));
+
+        $sheet = $this->translate($this->withFields([['key' => 'big', 'label' => 'Big', 'type' => 'conditions', 'options' => $options]]))->sheet();
+
+        self::assertCount(20, $sheet->field('big') instanceof ConditionsField ? $sheet->field('big')->options : []);
+    }
+
     /**
      * @return iterable<string, array{mixed, string}>
      */
@@ -142,6 +177,7 @@ final class GameSystemReleaseTranslatorSheetTest extends TestCase
         $text = ['key' => 'role', 'label' => 'Role', 'type' => 'text'];
         $list = ['key' => 'gear', 'label' => 'Gear', 'type' => 'list'];
         $track = ['key' => 'hp', 'label' => 'HP', 'type' => 'track'];
+        $conditions = static fn (int $options): array => ['key' => 'hurt', 'label' => 'Hurt', 'type' => 'conditions', 'options' => array_map(static fn (int $i): array => ['key' => 'o-'.$i, 'label' => 'Option '.$i], 0 === $options ? [] : range(1, $options))];
 
         yield 'fields not a list' => [['luck' => $number], 'sheet.fields: must be a list.'];
         yield 'too many fields' => [array_map(static fn (int $i): array => ['key' => 'f-'.$i] + $number, range(1, 101)), 'sheet.fields: at most 100 fields.'];
@@ -171,6 +207,17 @@ final class GameSystemReleaseTranslatorSheetTest extends TestCase
         yield 'maxItems above the limit' => [[['maxItems' => 101] + $list], 'sheet.fields[0].maxItems: must be between 1 and 100.'];
         yield 'track max zero' => [[['max' => 0] + $track], 'sheet.fields[0].max: must be between 1 and 999.'];
         yield 'track max above the limit' => [[['max' => 1000] + $track], 'sheet.fields[0].max: must be between 1 and 999.'];
+        yield 'a conditions field without options' => [[['key' => 'hurt', 'label' => 'Hurt', 'type' => 'conditions']], 'sheet.fields[0].options: must be a list.'];
+        yield 'a conditions field with an empty list' => [[$conditions(0)], 'sheet.fields[0].options: must list between 1 and 20 options.'];
+        yield 'a conditions field with too many options' => [[$conditions(21)], 'sheet.fields[0].options: must list between 1 and 20 options.'];
+        yield 'an option that is not an object' => [[['options' => ['hurt']] + $conditions(1)], 'sheet.fields[0].options[0]: must be an object.'];
+        yield 'an option with an unknown property' => [[['options' => [['key' => 'hurt', 'label' => 'Hurt', 'hint' => 'x']]] + $conditions(1)], 'sheet.fields[0].options[0].hint: unknown property.'];
+        yield 'an option with a bad key' => [[['options' => [['key' => 'Hurt', 'label' => 'Hurt']]] + $conditions(1)], 'sheet.fields[0].options[0].key: must be 1 to 64 characters among a-z, 0-9 and "-".'];
+        yield 'an option without a key' => [[['options' => [['label' => 'Hurt']]] + $conditions(1)], 'sheet.fields[0].options[0].key: must be a string.'];
+        yield 'an option with a blank label' => [[['options' => [['key' => 'hurt', 'label' => ' ']]] + $conditions(1)], 'sheet.fields[0].options[0].label: must not be blank.'];
+        yield 'an option label over the limit' => [[['options' => [['key' => 'hurt', 'label' => str_repeat('l', 61)]]] + $conditions(1)], 'sheet.fields[0].options[0].label: must be at most 60 characters.'];
+        yield 'a repeated option key' => [[['options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'hurt', 'label' => 'Again']]] + $conditions(1)], 'sheet.fields[0].options[1].key: duplicate option key "hurt".'];
+        yield 'a prop of another type on a conditions field' => [[['maxItems' => 3] + $conditions(1)], 'sheet.fields[0].maxItems: unknown property.'];
     }
 
     #[Test]

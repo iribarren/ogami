@@ -7,6 +7,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { edgeTracker } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import {
+  conditionsField,
   creationBudget,
   creationCampaign,
   creationSheet,
@@ -17,6 +18,16 @@ import {
   sheet,
   viCharacter,
 } from './fixtures'
+
+// Radix checkboxes in a form render a hidden input whose size it measures.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe = vi.fn()
+    unobserve = vi.fn()
+    disconnect = vi.fn()
+  },
+)
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
 
@@ -371,6 +382,97 @@ describe('the Characters panel', () => {
           },
         },
       ])
+    })
+  })
+
+  describe('conditions fields', () => {
+    const tiredVi = { ...viCharacter, values: { ...viCharacter.values, wounds: ['tired'] } }
+    const withWounds: Campaign = {
+      ...nightJobCampaign,
+      pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, conditionsField] },
+      characters: [tiredVi, oldCharacter],
+    }
+
+    it('summarizes the marks, and a Character without the field reads as none marked', async () => {
+      renderCharacters(withWounds)
+
+      const [vi, old] = (await characters()).getAllByRole('listitem') as [HTMLElement, HTMLElement]
+      expect(within(vi).getByText(/Wounds: Tired/)).toBeInTheDocument()
+      expect(within(old).getByText(/Wounds: none/)).toBeInTheDocument()
+    })
+
+    it('marks and clears options in the form and sends the marked keys with the whole Character', async () => {
+      const user = userEvent.setup()
+      const sent: unknown[] = []
+      renderCharacters(
+        withWounds,
+        { [`PUT ${path}/characters/${tiredVi.id}`]: () => Response.json(tiredVi) },
+        sent,
+      )
+
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
+      expect(panel.getByRole('checkbox', { name: 'Tired' })).toBeChecked()
+      expect(panel.getByRole('checkbox', { name: 'Hurt' })).not.toBeChecked()
+      await user.click(panel.getByRole('checkbox', { name: 'Hurt' }))
+      await user.click(panel.getByRole('checkbox', { name: 'Tired' }))
+      await user.click(panel.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(sent).toEqual([
+          {
+            name: 'Vi',
+            tags: ['leader'],
+            freeTags: ['Fixer'],
+            values: { ...viCharacter.values, wounds: ['hurt'] },
+          },
+        ])
+      })
+    })
+
+    it('starts a new Character with nothing marked and sends an empty list', async () => {
+      const user = userEvent.setup()
+      const sent: unknown[] = []
+      const { server } = renderCharacters(
+        { ...withWounds, characters: [] },
+        {
+          [`POST ${path}/characters`]: () => {
+            server.campaign = { ...server.campaign, characters: [viCharacter] }
+            return Response.json(viCharacter, { status: 201 })
+          },
+        },
+        sent,
+      )
+
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Add Character' }))
+      for (const box of panel.getAllByRole('checkbox', { name: /Hurt|Shaken|Tired/ })) {
+        expect(box).not.toBeChecked()
+      }
+      await user.type(panel.getByLabelText('Name'), 'Vi')
+      await user.click(panel.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect((sent[0] as { values: Record<string, unknown> }).values.wounds).toEqual([])
+    })
+
+    it('shows the refusal of an option the API does not know', async () => {
+      const user = userEvent.setup()
+      renderCharacters(withWounds, {
+        [`PUT ${path}/characters/${tiredVi.id}`]: () =>
+          Response.json({ error: 'Field "wounds" has no option "ghost".' }, { status: 422 }),
+      })
+
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
+      await user.click(panel.getByRole('button', { name: 'Save' }))
+
+      expect(await panel.findByRole('alert')).toHaveTextContent(
+        'Field "wounds" has no option "ghost".',
+      )
+      expect(panel.getByRole('checkbox', { name: 'Tired' })).toBeChecked()
     })
   })
 

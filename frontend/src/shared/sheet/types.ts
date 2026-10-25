@@ -10,7 +10,7 @@ export interface SheetFieldView {
   hint: string | null
   /** The name of its layout group; without a layout, consecutive fields with the same group render together. */
   group: string | null
-  type: 'number' | 'text' | 'list' | 'track' | 'derived'
+  type: 'number' | 'text' | 'list' | 'track' | 'conditions' | 'derived'
   min: number | null
   max: number | null
   default: number | null
@@ -25,6 +25,8 @@ export interface SheetFieldView {
   startMax?: string | null
   /** How many columns of its group the field takes. */
   span: number
+  /** Conditions: the options a Character can be marked with, in declared order (ADR 0041). */
+  options?: { key: string; label: string }[] | null
 }
 
 export interface SheetGroupView {
@@ -48,7 +50,7 @@ export interface SheetTemplateView {
   layout: SheetLayoutView | null
 }
 
-/** What a Character stores under a field: a number, text, the rows of a list or a track. */
+/** What a Character stores under a field: a number, text, the rows of a list, the marked option keys of a conditions field or a track. */
 export type SheetValue = number | string | string[] | { current: number; max: number }
 
 /** The value of a Tracker, which a derived field may read. */

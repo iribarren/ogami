@@ -36,6 +36,8 @@ use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
+use App\Play\Domain\GameSystem\Sheet\ConditionOption;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -839,8 +841,8 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         ));
         self::assertEquals(
             [
-                ['id' => 'c-1', 'name' => 'Vi', 'tags' => ['ally'], 'freeTags' => ['Fixer'], 'values' => ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12, 'max' => 40], 'gear' => ['Knife', 'Pistol']], 'promotedFrom' => null],
-                ['id' => 'c-2', 'name' => 'Mira', 'tags' => [], 'freeTags' => [], 'values' => ['role' => '', 'reflexes' => 4, 'hp' => ['current' => 40, 'max' => 40], 'gear' => []], 'promotedFrom' => null],
+                ['id' => 'c-1', 'name' => 'Vi', 'tags' => ['ally'], 'freeTags' => ['Fixer'], 'values' => ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12, 'max' => 40], 'gear' => ['Knife', 'Pistol'], 'wounds' => ['hurt', 'shaken']], 'promotedFrom' => null],
+                ['id' => 'c-2', 'name' => 'Mira', 'tags' => [], 'freeTags' => [], 'values' => ['role' => '', 'reflexes' => 4, 'hp' => ['current' => 40, 'max' => 40], 'gear' => [], 'wounds' => []], 'promotedFrom' => null],
             ],
             $this->storedList($id->toString(), 'characters'),
         );
@@ -918,6 +920,26 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $loaded = $this->repository->ofId($id);
         self::assertEquals($campaign, $loaded);
         self::assertSame(9, $loaded?->character(CharacterId::fromString('c-1'))?->values()['reflexes']);
+    }
+
+    #[Test]
+    public function theMarkedConditionsOfACharacterAreSavedAndReadBackInDeclaredOrder(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaignWithCharacters($id));
+        $this->forgetLoaded();
+        $campaign = $this->repository->ofId($id);
+        self::assertNotNull($campaign);
+        self::assertSame(['hurt', 'shaken'], $campaign->character(CharacterId::fromString('c-1'))?->values()['wounds']);
+
+        $campaign->changeCharacterValue(CharacterId::fromString('c-2'), 'wounds', ['shaken']);
+        $campaign->changeCharacterValue(CharacterId::fromString('c-1'), 'wounds', []);
+        $this->repository->save($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+        self::assertEquals($campaign, $loaded);
+        self::assertSame([[], ['shaken']], [$loaded?->character(CharacterId::fromString('c-1'))?->values()['wounds'], $loaded?->character(CharacterId::fromString('c-2'))?->values()['wounds']]);
     }
 
     #[Test]
@@ -1178,6 +1200,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             new NumberField('reflexes', 'Reflexes', min: 1, max: 10, default: 4),
             new TrackField('hp', 'Hit points', max: 40),
             new ListField('gear', 'Gear'),
+            new ConditionsField('wounds', 'Wounds', options: [new ConditionOption('hurt', 'Hurt'), new ConditionOption('shaken', 'Shaken')]),
         ]));
     }
 
@@ -1188,7 +1211,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     {
         $release = $this->releaseWithSheet();
         $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
-        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', ['ally'], ['Fixer'], ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12], 'gear' => ['Knife', 'Pistol']], $release);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', ['ally'], ['Fixer'], ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12], 'gear' => ['Knife', 'Pistol'], 'wounds' => ['shaken', 'hurt']], $release);
         $campaign->addCharacter(CharacterId::fromString('c-2'), 'Mira', [], [], [], $release);
 
         return $campaign;

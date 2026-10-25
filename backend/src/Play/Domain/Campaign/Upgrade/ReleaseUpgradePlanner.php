@@ -18,6 +18,7 @@ use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
@@ -217,7 +218,7 @@ final readonly class ReleaseUpgradePlanner
             return [CharacterValues::initial($field), FieldChangeKind::Reset];
         }
 
-        if ($this->normalized($valid) === $this->normalized($value)) {
+        if ($this->normalized($field, $valid) === $this->normalized($field, $value)) {
             return [$valid, null];
         }
 
@@ -226,20 +227,25 @@ final readonly class ReleaseUpgradePlanner
 
     /**
      * A track's keys sorted, so the same {current, max} stored in another key order is the same value;
-     * a list keeps its order.
+     * a list keeps its order, except the marked keys of a conditions field, which are a set.
      */
-    private function normalized(mixed $value): mixed
+    private function normalized(Field $field, mixed $value): mixed
     {
         if (\is_array($value) && !array_is_list($value)) {
             ksort($value);
+        }
+
+        if ($field instanceof ConditionsField && \is_array($value)) {
+            sort($value);
         }
 
         return $value;
     }
 
     /**
-     * Moves a number or track inside its bounds and cuts a list to its limit; anything else, or a
-     * value of the wrong shape, comes back unchanged for the validation to judge.
+     * Moves a number or track inside its bounds, cuts a list to its limit and a conditions field to the
+     * options it still declares, in their new order; anything else, or a value of the wrong shape,
+     * comes back unchanged for the validation to judge.
      *
      * @return array{mixed, ?FieldChangeKind}
      */
@@ -257,6 +263,12 @@ final readonly class ReleaseUpgradePlanner
 
         if ($field instanceof ListField && \is_array($value) && array_is_list($value) && \count($value) > $field->limit()) {
             return [\array_slice($value, 0, $field->limit()), FieldChangeKind::Trimmed];
+        }
+
+        if ($field instanceof ConditionsField && \is_array($value) && array_is_list($value)) {
+            $kept = $field->ordered(array_values(array_filter($value, \is_string(...))));
+
+            return [$kept, \count($kept) < \count($value) ? FieldChangeKind::Trimmed : null];
         }
 
         return [$value, null];

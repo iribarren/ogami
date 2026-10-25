@@ -211,6 +211,32 @@ function FieldControl({
     )
   }
 
+  if (field.type === 'conditions' && Array.isArray(draft)) {
+    // One checkbox per option; the marked keys are the draft, in the order they were ticked.
+    return (
+      <fieldset className="space-y-1" aria-describedby={field.hint === null ? undefined : hintId}>
+        <legend className="text-sm font-medium">{field.label}</legend>
+        {hint}
+        {(field.options ?? []).map((option) => (
+          <div key={option.key} className="flex items-center gap-2">
+            <Checkbox
+              id={`${id}-${option.key}`}
+              checked={draft.includes(option.key)}
+              onCheckedChange={(checked) => {
+                onChange(
+                  checked === true
+                    ? [...draft.filter((key) => key !== option.key), option.key]
+                    : draft.filter((key) => key !== option.key),
+                )
+              }}
+            />
+            <Label htmlFor={`${id}-${option.key}`}>{option.label}</Label>
+          </div>
+        ))}
+      </fieldset>
+    )
+  }
+
   if (Array.isArray(draft)) {
     const item = field.itemLabel ?? 'Item'
     return (

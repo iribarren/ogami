@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { CharacterSheetDialog } from './CharacterSheetDialog'
-import { initiativeField, oldCharacter, sheet, viCharacter } from './fixtures'
+import { conditionsField, initiativeField, oldCharacter, sheet, viCharacter } from './fixtures'
 
 /** The sheet with a derived field laid out inside the Stats group. */
 const withInitiative = [...sheet.slice(0, 3), initiativeField, ...sheet.slice(3)]
@@ -51,6 +51,27 @@ describe('CharacterSheetDialog', () => {
 
     const dialog = within(await screen.findByRole('dialog', { name: 'Old hand' }))
     expect(dialog.getByRole('group', { name: 'Stats' })).toHaveTextContent('Reflexes5')
+  })
+
+  it('shows the marked conditions by label, and None for a Character that never had the field', async () => {
+    const user = userEvent.setup()
+    const withWounds = [...sheet, conditionsField]
+    const { rerender } = render(
+      <CharacterSheetDialog
+        character={{ ...viCharacter, values: { ...viCharacter.values, wounds: ['tired', 'hurt'] } }}
+        sheet={withWounds}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Vi' }))
+    expect(dialog.getByText('Hurt, Tired')).toBeInTheDocument()
+    expect(dialog.queryByRole('checkbox')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    rerender(<CharacterSheetDialog character={viCharacter} sheet={withWounds} />)
+    await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
+    expect(within(await screen.findByRole('dialog')).getByText('None')).toBeInTheDocument()
   })
 
   it('closes on Escape', async () => {

@@ -323,18 +323,4 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
             self::assertSame(self::UNREADABLE.$message, $invalid->getMessage());
         }
     }
-
-    #[Test]
-    public function itStillRefusesAConditionsField(): void
-    {
-        /** @var array{sheet: array{fields: list<array<string, mixed>>}} $content */
-        $content = ReleaseViews::fixtureContent('valid/v2-dice-pools');
-        /** @var array<string, mixed> $content */
-        $content = ReleaseArrays::with($content, 'sheet', ['fields' => [$content['sheet']['fields'][2]]]);
-
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('GameSystem "dice-pools" v1 cannot be read by Play: sheet.fields[0].type: unknown field type "conditions".');
-
-        new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content, schemaVersion: 2));
-    }
 }

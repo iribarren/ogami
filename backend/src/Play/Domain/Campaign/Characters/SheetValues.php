@@ -8,6 +8,7 @@ use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Formula\Domain\Reference;
 use App\Formula\Domain\ReferenceKind;
 use App\Formula\Domain\ValueResolver;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -87,6 +88,7 @@ final class SheetValues implements ValueResolver
         $value = match (true) {
             $field instanceof NumberField && ReferenceKind::Field === $reference->kind => $stored,
             $field instanceof TrackField && \is_array($stored) => $stored[ReferenceKind::TrackMax === $reference->kind ? 'max' : 'current'] ?? null,
+            $field instanceof ConditionsField && ReferenceKind::Field === $reference->kind && \is_array($stored) => \count($stored),
             $field instanceof DerivedField && ReferenceKind::Field === $reference->kind => $this->computed[$field->key] ?? null,
             default => null,
         };

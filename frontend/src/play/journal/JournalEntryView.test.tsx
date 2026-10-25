@@ -371,6 +371,13 @@ describe('JournalEntryView icon tile', () => {
     expect(screen.queryByText('Modifier')).not.toBeInTheDocument()
   })
 
+  it('shows the situational modifier of a pool check once, in the size explanation', () => {
+    render(<JournalEntryView entry={sneakCheckEntry} />)
+
+    expect(screen.queryByText('Situational')).not.toBeInTheDocument()
+    expect(screen.getAllByText(/\+1 extra/)).toHaveLength(1)
+  })
+
   it('says one success in the singular and a fixed count without a formula', () => {
     const { content } = sneakCheckEntry
     if (content.kind !== 'check' || content.pool === null) {

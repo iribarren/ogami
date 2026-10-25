@@ -149,7 +149,7 @@ final readonly class CheckContent implements JournalEntryContent
      * @param list<ModifierTermData> $modifierTerms
      *
      * @throws InvalidJournalEntryContent when an id, key or formula is blank, there are terms without a formula, the total is not the dice plus the modifiers,
-     *                                    or a pool check has dice groups or a modifier, or a total that is not its successes
+     *                                    or a pool check has dice groups or a modifier, an expression that is not its size and sides, or a total that is not its successes
      */
     private static function of(
         string $characterId,
@@ -187,6 +187,10 @@ final readonly class CheckContent implements JournalEntryContent
         if ($pool instanceof CheckPoolContent) {
             if ([] !== $groups || 0 !== $modifier || null !== $modifierFormula) {
                 throw InvalidJournalEntryContent::malformed('pool', 'alone: a pool check has no dice groups and no modifier');
+            }
+
+            if (\sprintf('%dd%d', $pool->size, $pool->sides) !== $expression) {
+                throw InvalidJournalEntryContent::malformed('expression', 'the size and sides of the pool, such as "3d6"');
             }
 
             if ($diceTotal !== $pool->successes || $total !== $pool->successes) {

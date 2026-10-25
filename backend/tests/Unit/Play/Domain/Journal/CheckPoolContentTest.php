@@ -172,6 +172,9 @@ final class CheckPoolContentTest extends TestCase
         yield 'a face under 1' => [$with(['dice' => [$die(0, false), $die(2, false), $die(5, true)], 'successes' => 1]), '"face" must be between 1 and the sides'];
         yield 'a success that disagrees with its face' => [$with(['dice' => [$die(6, true), $die(2, true), $die(5, true)], 'successes' => 3]), '"success" must be whether the face reaches the success threshold'];
         yield 'successes that are not those of the dice' => [$with(['successes' => 3]), '"successes" must be the number of dice that succeeded'];
+        yield 'an expression with another size' => [['expression' => '4d6'] + $valid, '"expression" must be the size and sides of the pool'];
+        yield 'an expression with other sides' => [['expression' => '3d8'] + $valid, '"expression" must be the size and sides of the pool'];
+        yield 'an expression that is not dice notation' => [['expression' => 'pool'] + $valid, '"expression" must be the size and sides of the pool'];
         yield 'a total that is not the successes' => [['total' => 3, 'diceTotal' => 3] + $valid, '"total" must be the successes of the pool'];
         yield 'a dice total that is not the successes' => [['diceTotal' => 3] + $valid, '"total" must be the successes of the pool'];
         yield 'dice groups beside a pool' => [['groups' => [['notation' => '1d6', 'sides' => 6, 'dice' => [], 'subtotal' => 0]]] + $valid, '"pool" must be alone'];

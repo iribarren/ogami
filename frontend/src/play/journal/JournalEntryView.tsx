@@ -230,7 +230,8 @@ function CheckView({ content }: { content: CheckContent }) {
             )}
           </Detail>
         )}
-        {content.situational !== 0 && (
+        {/* A pool check shows its situational modifier once, as extra dice in the size explanation. */}
+        {content.pool === null && content.situational !== 0 && (
           <Detail term="Situational">{signed(content.situational)}</Detail>
         )}
         <Detail term={content.pool === null ? 'Total' : 'Successes'}>

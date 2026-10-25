@@ -36,20 +36,28 @@ final class Effects
         'createThread' => ['kind' => true, 'name' => false, 'tags' => false],
         'closeThread' => ['kind' => true],
         'fillFact' => ['kind' => true, 'slot' => true, 'text' => false],
-        'sheet' => ['kind' => true, 'field' => true, 'op' => true, 'value' => true],
+        'sheet' => ['kind' => true, 'field' => true, 'op' => true, 'value' => false],
     ];
 
     private const array TRACKER_REF = ['tracker' => true];
 
     /** The sheet field types a sheet effect may change. */
-    private const array CHANGEABLE_FIELDS = ['number', 'track'];
+    private const array CHANGEABLE_FIELDS = ['number', 'track', 'conditions'];
+
+    /** The operations of a number or track field and those of a conditions field (ADR 0041). */
+    private const array VALUE_OPS = ['add', 'subtract', 'set'];
+    private const array CONDITION_OPS = ['mark', 'clear'];
+
+    /** The kinds of effect a push cost holds (ADR 0041). */
+    private const array PUSH_KINDS = ['sheet', 'tracker'];
 
     /**
      * @param bool $sheet whether the list sits where a Character is known (a check outcome, a character step) and may hold sheet effects
+     * @param bool $push  whether the list is the cost of a check's push: sheet and tracker effects only, and a mark may leave the option to the player
      *
      * @return list<array<string, mixed>> canonical effects; empty when absent
      */
-    public static function list(mixed $value, string $path, Catalog $catalog, bool $sheet = false): array
+    public static function list(mixed $value, string $path, Catalog $catalog, bool $sheet = false, bool $push = false): array
     {
         if (null === $value) {
             return [];
@@ -57,7 +65,7 @@ final class Effects
 
         $effects = [];
         foreach (ReleaseFields::sizedList($value, $path, 0, self::MAX_EFFECTS, 'effects') as $index => $effect) {
-            $effects[] = self::effect($effect, \sprintf('%s[%d]', $path, $index), $catalog, $sheet);
+            $effects[] = self::effect($effect, \sprintf('%s[%d]', $path, $index), $catalog, $sheet || $push, $push);
         }
 
         return $effects;
@@ -142,9 +150,13 @@ final class Effects
     /**
      * @return array<string, mixed>
      */
-    private static function effect(mixed $value, string $path, Catalog $catalog, bool $sheet): array
+    private static function effect(mixed $value, string $path, Catalog $catalog, bool $sheet, bool $push): array
     {
         $kind = ReleaseFields::tag($value, $path, 'kind', array_keys(self::KINDS));
+        if ($push && !\in_array($kind, self::PUSH_KINDS, true)) {
+            throw InvalidReleaseContent::at($path.'.kind', \sprintf('a push cost allows sheet and tracker effects only, "%s" given', $kind));
+        }
+
         $effect = ReleaseFields::object($value, $path, self::KINDS[$kind]);
 
         switch ($kind) {
@@ -193,12 +205,10 @@ final class Effects
                 break;
             case 'sheet':
                 if (!$sheet) {
-                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step');
+                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step (and in the cost of a check push)');
                 }
 
-                $effect['field'] = self::sheetField($effect['field'], $path.'.field', $catalog);
-                ReleaseFields::oneOf($effect['op'], $path.'.op', ['add', 'subtract', 'set']);
-                $effect['value'] = self::sheetValue($effect['value'], $path.'.value', $catalog);
+                $effect = self::sheetEffect($effect, $path, $catalog, $push);
                 break;
         }
 
@@ -207,14 +217,61 @@ final class Effects
     }
 
     /**
-     * The key of a number or track field of the sheet.
+     * A sheet effect: add, subtract or set a number or track field, or mark or clear an option of
+     * a conditions field (ADR 0041).
+     *
+     * @param array<string, mixed> $effect
+     *
+     * @return array<string, mixed>
+     */
+    private static function sheetEffect(array $effect, string $path, Catalog $catalog, bool $push): array
+    {
+        $effect['field'] = self::sheetField($effect['field'], $path.'.field', $catalog);
+        $op = ReleaseFields::oneOf($effect['op'], $path.'.op', [...self::VALUE_OPS, ...self::CONDITION_OPS]);
+        $conditions = 'conditions' === $catalog->fieldType($effect['field']);
+        if ($conditions && \in_array($op, self::VALUE_OPS, true)) {
+            throw InvalidReleaseContent::at($path.'.op', \sprintf('field "%s" is a conditions field, add, subtract and set change number and track fields only', $effect['field']));
+        }
+
+        if (!$conditions && \in_array($op, self::CONDITION_OPS, true)) {
+            throw InvalidReleaseContent::at($path.'.op', \sprintf('field "%s" is a %s field, mark and clear change conditions fields only', $effect['field'], $catalog->fieldType($effect['field'])));
+        }
+
+        if (!$conditions) {
+            if (!isset($effect['value'])) {
+                throw InvalidReleaseContent::at($path.'.value', 'required');
+            }
+
+            $effect['value'] = self::sheetValue($effect['value'], $path.'.value', $catalog);
+
+            return $effect;
+        }
+
+        if (!isset($effect['value'])) {
+            if ('mark' === $op && !$push) {
+                throw InvalidReleaseContent::at($path.'.value', 'a mark without an option is allowed only in the cost of a push, where the player picks the option');
+            }
+
+            return $effect;
+        }
+
+        $option = ReleaseFields::key($effect['value'], $path.'.value');
+        if (!$catalog->hasConditionOption($effect['field'], $option)) {
+            throw InvalidReleaseContent::at($path.'.value', \sprintf('unknown option "%s" of conditions field "%s"', $option, $effect['field']));
+        }
+
+        return $effect;
+    }
+
+    /**
+     * The key of a number, track or conditions field of the sheet.
      */
     private static function sheetField(mixed $value, string $path, Catalog $catalog): string
     {
         $key = ReleaseFields::key($value, $path);
         $type = $catalog->fieldType($key) ?? throw InvalidReleaseContent::at($path, \sprintf('unknown sheet field "%s"', $key));
         if (!\in_array($type, self::CHANGEABLE_FIELDS, true)) {
-            throw InvalidReleaseContent::at($path, \sprintf('field "%s" is a %s field, a sheet effect changes number and track fields only', $key, $type));
+            throw InvalidReleaseContent::at($path, \sprintf('field "%s" is a %s field, a sheet effect changes number and track fields only (mark and clear change conditions fields)', $key, $type));
         }
 
         return $key;

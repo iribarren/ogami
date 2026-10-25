@@ -180,7 +180,7 @@ final class ReleaseContentFormulasTest extends TestCase
 
         // Sheet references.
         yield 'unknown field' => [self::sheet(self::fields('{dex}')), 'sheet.fields[4].formula: {dex}: unknown field "dex"'];
-        yield 'reading a text field' => [self::sheet(self::fields('{role}+1')), 'sheet.fields[4].formula: {role}: field "role" is a text field, a formula reads number, track and derived fields only'];
+        yield 'reading a text field' => [self::sheet(self::fields('{role}+1')), 'sheet.fields[4].formula: {role}: field "role" is a text field, a formula reads number, track, conditions and derived fields only'];
         yield 'reading a list field' => [self::sheet(self::fields('{gear}')), 'sheet.fields[4].formula: {gear}: field "gear" is a list field'];
         yield 'max of a number field' => [self::sheet(self::fields('{str.max}')), 'sheet.fields[4].formula: {str.max}: field "str" is a number field, only a track field has a max'];
         yield 'max of an unknown field' => [self::sheet(self::fields('{ghost.max}')), 'sheet.fields[4].formula: {ghost.max}: unknown field "ghost"'];
@@ -244,5 +244,50 @@ final class ReleaseContentFormulasTest extends TestCase
         $this->expectException(InvalidReleaseContent::class);
         $this->expectExceptionMessageIsOrContains('is not one of the trackers of flow "heist"');
         ReleaseContent::fromArray($example);
+    }
+
+    #[Test]
+    public function aFormulaReadsAConditionsFieldAsTheNumberMarked(): void
+    {
+        /** @var array{sheet: array{fields: list<array<string, mixed>>}, checks: list<array{pool?: array{count: array{formula: string}}, bands: list<array{upTo: array{formula: string}}>}>} $content */
+        $content = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-dice-pools'))->toArray();
+
+        self::assertSame('{physical} + {mental}', $content['sheet']['fields'][4]['formula'] ?? null);
+        self::assertSame('{agility} + {stealth} - {physical}', $content['checks'][0]['pool']['count']['formula'] ?? null);
+        self::assertSame('{check:difficulty} - 1 + {strain}', $content['checks'][1]['bands'][0]['upTo']['formula'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}> the path changed in valid/v2-dice-pools, the formula and the message
+     */
+    public static function conditionsFormulaRefusals(): iterable
+    {
+        yield 'a max of a conditions field in a derived field' => ['sheet.fields.4.formula', '{physical.max}', 'sheet.fields[4].formula: {physical.max}: field "physical" is a conditions field, only a track field has a max'];
+        yield 'a max of a conditions field in a pool count' => ['checks.0.pool.count.formula', '{physical.max}', 'checks[0].pool.count.formula: {physical.max}: field "physical" is a conditions field, only a track field has a max'];
+        yield 'an unknown field next to a conditions field' => ['sheet.fields.4.formula', '{physical} + {ghost}', 'sheet.fields[4].formula: {ghost}: unknown field "ghost"'];
+        yield 'a derived field reading itself through conditions' => ['sheet.fields.4.formula', '{strain} + {physical}', 'sheet.fields[4].formula: '];
+    }
+
+    #[Test]
+    #[DataProvider('conditionsFormulaRefusals')]
+    public function aConditionsFormulaOutOfScopeIsRefused(string $path, string $formula, string $message): void
+    {
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains($message);
+
+        ReleaseContent::fromArray(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-dice-pools'), $path, $formula));
+    }
+
+    #[Test]
+    public function aBandFormulaReadsConditionsButATrackerEffectValueStillReadsTrackersOnly(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-dice-pools'), 'checks.1.bands.0.upTo', ['formula' => '{tracker:dread} + {physical}']);
+
+        self::assertNotSame('', ReleaseContent::fromArray($release)->hash(), 'A band formula of a check reads the sheet, conditions included.');
+
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains('checks[0].push.effects[1].value.formula: {physical}: a flow formula reads trackers only');
+
+        ReleaseContent::fromArray(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-dice-pools'), 'checks.0.push.effects.1.value', ['formula' => '{physical}']));
     }
 }

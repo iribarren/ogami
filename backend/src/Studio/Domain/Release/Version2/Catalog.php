@@ -25,7 +25,8 @@ final readonly class Catalog
      * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc or thread)
      * @param array<string, CheckShape>                              $checks           what steps may name of each check, by check key
      * @param array<string, list<string>>                            $tagScopes        the entity kinds of each tag limited to some (a tag with no entry applies to all)
-     * @param array<string, string>                                  $fieldTypes       the type of every sheet field by key (number, text, list, track or derived)
+     * @param array<string, array<string, true>>                     $conditionOptions the option keys of each conditions field, by field key
+     * @param array<string, string>                                  $fieldTypes       the type of every sheet field by key (number, text, list, track, derived or conditions)
      */
     public function __construct(
         public array $trackers,
@@ -37,6 +38,7 @@ final readonly class Catalog
         public array $checks = [],
         public array $fieldTypes = [],
         public array $tagScopes = [],
+        public array $conditionOptions = [],
     ) {
     }
 
@@ -45,7 +47,7 @@ final readonly class Catalog
      */
     public function withChecks(array $checks): self
     {
-        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes, $this->tagScopes);
+        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes, $this->tagScopes, $this->conditionOptions);
     }
 
     /**
@@ -62,6 +64,14 @@ final readonly class Catalog
     public function fieldType(string $key): ?string
     {
         return $this->fieldTypes[$key] ?? null;
+    }
+
+    /**
+     * Whether a conditions field of the release declares an option by that key.
+     */
+    public function hasConditionOption(string $field, string $option): bool
+    {
+        return isset($this->conditionOptions[$field][$option]);
     }
 
     public function hasTracker(string $key): bool

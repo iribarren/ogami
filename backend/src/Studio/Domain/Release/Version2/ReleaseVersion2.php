@@ -177,7 +177,7 @@ final class ReleaseVersion2
         [$sceneTypeList, $sceneTypeKeys] = $sceneTypes;
         /** @var array<string, string> $fieldTypes */
         $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: self::tagScopes($tags[0]));
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: self::tagScopes($tags[0]), conditionOptions: self::conditionOptions($sheet['fields'] ?? []));
         $checks = $stages->run(static fn (): array => Checks::validate($release['checks'], $fieldTypes, $catalog));
         if (null === $checks) {
             return null;
@@ -410,6 +410,29 @@ final class ReleaseVersion2
         }
 
         return $scopes;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $fields the canonical sheet fields
+     *
+     * @return array<string, array<string, true>> the option keys of each conditions field, by field key
+     */
+    private static function conditionOptions(array $fields): array
+    {
+        $options = [];
+        foreach ($fields as $field) {
+            if ('conditions' !== $field['type']) {
+                continue;
+            }
+
+            /** @var string $key */
+            $key = $field['key'];
+            /** @var list<array{key: string}> $declared */
+            $declared = $field['options'];
+            $options[$key] = array_fill_keys(array_column($declared, 'key'), true);
+        }
+
+        return $options;
     }
 
     /**

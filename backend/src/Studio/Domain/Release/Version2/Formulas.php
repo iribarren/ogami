@@ -23,7 +23,8 @@ final class Formulas
     private const array FORMULA_REF = ['formula' => true];
 
     /** The sheet field types a formula may read as {key}. */
-    private const array READABLE_FIELDS = ['number', 'track', 'derived'];
+    /** A conditions field reads as the number of options marked (ADR 0041). */
+    private const array READABLE_FIELDS = ['number', 'track', 'conditions', 'derived'];
 
     /**
      * {formula: string} in a band "upTo" or a tracker effect "value": the formula reads trackers
@@ -209,7 +210,7 @@ final class Formulas
 
         return \in_array($type, self::READABLE_FIELDS, true)
             ? null
-            : \sprintf('field "%s" is a %s field, a formula reads number, track and derived fields only', $reference->key, $type);
+            : \sprintf('field "%s" is a %s field, a formula reads number, track, conditions and derived fields only', $reference->key, $type);
     }
 
     private static function parse(string $text, string $path): Formula

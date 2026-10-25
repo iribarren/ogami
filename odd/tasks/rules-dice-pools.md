@@ -66,8 +66,8 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; ADR 0041 (index; status lines of ADR 0024, 0027, 0032, 0035; glossary; roadmap B8 link); issue #276 | parent, inline | [x] | |
-| T2 | 1 | Contract: `v2.schema.json` (`pool`, `push`, `conditions` field, `mark`/`clear`), the contract doc, Studio validator (`Checks`, `SheetFields`, `Effects` placement and ops, `Formulas` count scope), fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [ ] | |
+| T1 | 1 | This feature doc; ADR 0041 (index; status lines of ADR 0024, 0027, 0032, 0035; glossary; roadmap B8 link); issue #276 | parent, inline | [x] | ad46102 |
+| T2 | 1 | Contract: `v2.schema.json` (`pool`, `push`, `conditions` field, `mark`/`clear`), the contract doc, Studio validator (`Checks`, `SheetFields`, `Effects` placement and ops, `Formulas` count scope), fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
 | T3 | 2 | Play conditions: translator reads the field and `mark`/`clear` (with an option; still refuses `pool`, `push` and a pick); `ConditionsField`, `CharacterValues`, `SheetValues` count, `FlowRunContext` effects; upgrade planner fitting; tests | writer (delegated) | [ ] | |
 | T4 | 2 | Pinned release exposes conditions options; Play sheet marks and clears them (checkboxes); character value API tests; fixtures; generated OpenAPI and TS | writer (delegated) | [ ] | |
 | T5 | 3 | Kernel pool roll (count, sides, threshold → faces and successes); translator reads `pool`; `Check::perform` pool path (size clamp, success total); `CheckContent` pool part; API responses; tests | writer (delegated) | [ ] | |
@@ -99,6 +99,8 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 ## Progress
 
 - 2026-10-25: Explored every layer (kernel, contract, publisher, translator, Play checks and flow, journal, Studio editor and sandbox, upgrade planner). The user chose the conditions field and pending check steps. Issue #276, ADR 0041 and this feature doc written.
+- 2026-10-25: T2 contract and publisher: `pool`, `push`, the `conditions` field and `mark`/`clear` in `v2.schema.json`, `Checks`, `SheetFields`, `Effects`, `Formulas` (a conditions field reads as a number) and the contract doc; fixture `valid/v2-dice-pools.json` (also run through the schema by the agreement test).
+- 2026-10-25: T2 evidence. RED first: 83 of 146 tests failed in the four extended Studio test files (checks, sheet effects, sheet, formulas) before the publisher changed; GREEN after; `tests/Unit/Studio` 1893 tests OK. The agreement test's `v2-dice-pools` case failed before the schema change and passed after. Passed first time: the schema test `ReleaseSchemaDicePoolsTest` (written after the schema) and the Play translator refusals of `pool`, `push`, a `conditions` field, `mark` and `clear` (93 tests OK). One existing expectation changed: the Studio formula-scope message now lists conditions fields.
 
 ## Reviews
 
@@ -107,4 +109,4 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 
 ## Next step
 
-Slice 1: T2 (contract and publisher).
+Slice 1: native review of the T2 commit, then the PR.

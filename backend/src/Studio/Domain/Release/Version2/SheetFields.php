@@ -9,9 +9,9 @@ use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseFields;
 
 /**
- * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of five
+ * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of six
  * types, each with its own closed set of properties; a "derived" field holds a formula (ADR 0023). An optional layout of groups
- * (SheetLayout, ADR 0031) places the fields in a grid. A number field may roll its value, a track start from a formula and the
+ * (SheetLayout, ADR 0031) places the fields in a grid. A conditions field (ADR 0041) declares the options a Character marks. A number field may roll its value, a track start from a formula and the
  * sheet declare a point budget when a Character is created (ADR 0040). The canonical sheet is [] without fields or layout, so a
  * release that never used the sheet keeps its content hash.
  *
@@ -28,6 +28,8 @@ final class SheetFields
     public const int MAX_ITEM_LABEL_LENGTH = 60;
     public const int MAX_LIST_ITEMS = 100;
     public const int MAX_TRACK = 999;
+    public const int MAX_CONDITION_OPTIONS = 20;
+    public const int MAX_OPTION_LABEL_LENGTH = 60;
     public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
 
     private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false, 'pointBudget' => false];
@@ -40,7 +42,10 @@ final class SheetFields
         'list' => ['itemLabel' => false, 'maxItems' => false],
         'track' => ['max' => false, 'startMax' => false],
         'derived' => ['formula' => true],
+        'conditions' => ['options' => true],
     ];
+
+    private const array OPTION = ['key' => true, 'label' => true];
 
     /**
      * @param list<string> $trackerKeys the trackers of the release, which derived fields may read
@@ -125,6 +130,7 @@ final class SheetFields
             'list' => self::list($field, $path),
             'track' => self::track($field, $path),
             'derived' => self::derived($field, $path),
+            'conditions' => self::conditions($field, $path),
         };
 
         return array_filter($field, static fn (mixed $part): bool => false !== $part);
@@ -234,6 +240,35 @@ final class SheetFields
     private static function derived(array $field, string $path): array
     {
         ReleaseFields::text($field['formula'], $path.'.formula', 1, self::MAX_FORMULA_LENGTH);
+
+        return $field;
+    }
+
+    /**
+     * The options a Character marks (ADR 0041): 1 to 20, each a key unique in the field and a label.
+     *
+     * @param array<string, mixed> $field
+     *
+     * @return array<string, mixed>
+     */
+    private static function conditions(array $field, string $path): array
+    {
+        $options = [];
+        $keys = [];
+        foreach (ReleaseFields::sizedList($field['options'], $path.'.options', 1, self::MAX_CONDITION_OPTIONS, 'options') as $index => $option) {
+            $optionPath = \sprintf('%s.options[%d]', $path, $index);
+            $option = ReleaseFields::object($option, $optionPath, self::OPTION);
+            $key = ReleaseFields::key($option['key'], $optionPath.'.key');
+            if (isset($keys[$key])) {
+                throw InvalidReleaseContent::at($optionPath.'.key', \sprintf('duplicate option key "%s"', $key));
+            }
+
+            $keys[$key] = true;
+            ReleaseFields::text($option['label'], $optionPath.'.label', 1, self::MAX_OPTION_LABEL_LENGTH);
+            $options[] = $option;
+        }
+
+        $field['options'] = $options;
 
         return $field;
     }

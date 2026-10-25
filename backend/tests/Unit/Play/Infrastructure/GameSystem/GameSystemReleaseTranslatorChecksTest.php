@@ -294,4 +294,47 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
             self::assertSame(self::UNREADABLE.$message, $invalid->getMessage());
         }
     }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}> the check and the message: Play refuses the shapes of ADR 0041 until the slices that play them
+     */
+    public static function unsupportedDicePoolShapes(): iterable
+    {
+        $pool = ['count' => 3, 'sides' => 6, 'successAt' => 6];
+
+        yield 'a pool beside dice' => [self::skill(['pool' => $pool]), 'checks[0].pool: unknown property.'];
+        yield 'a pool instead of dice' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => $pool]), 'checks[0].pool: unknown property.'];
+        yield 'a pool with a formula count' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => ['count' => ['formula' => '{hands}']] + $pool]), 'checks[0].pool: unknown property.'];
+        yield 'a push' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: unknown property.'];
+        yield 'a push with a pool' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => $pool, 'push' => ['label' => 'Push']]), 'checks[0].pool: unknown property.'];
+    }
+
+    /**
+     * @param array<string, mixed> $check
+     */
+    #[Test]
+    #[DataProvider('unsupportedDicePoolShapes')]
+    public function itStillRefusesPoolsAndPushes(array $check, string $message): void
+    {
+        try {
+            $this->translate([$check]);
+            self::fail('Play does not play pools or pushes yet.');
+        } catch (InvalidGameSystemRelease $invalid) {
+            self::assertSame(self::UNREADABLE.$message, $invalid->getMessage());
+        }
+    }
+
+    #[Test]
+    public function itStillRefusesAConditionsField(): void
+    {
+        /** @var array{sheet: array{fields: list<array<string, mixed>>}} $content */
+        $content = ReleaseViews::fixtureContent('valid/v2-dice-pools');
+        /** @var array<string, mixed> $content */
+        $content = ReleaseArrays::with($content, 'sheet', ['fields' => [$content['sheet']['fields'][2]]]);
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('GameSystem "dice-pools" v1 cannot be read by Play: sheet.fields[0].type: unknown field type "conditions".');
+
+        new GameSystemReleaseTranslator()->translate(ReleaseViews::of($content, schemaVersion: 2));
+    }
 }

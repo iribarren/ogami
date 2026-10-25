@@ -76,6 +76,8 @@ final class GameSystemReleaseTranslatorSheetEffectsTest extends TestCase
         yield 'a value of no form' => [self::FAIL_EFFECT.'.value', '1d6', $at.'.value: must be an integer, {"formula": string} or {"dice": string}.'];
         yield 'a value with a formula and dice' => [self::FAIL_EFFECT.'.value', ['formula' => '1', 'dice' => '1d6'], $at.'.value: must be an integer, {"formula": string} or {"dice": string}.'];
         yield 'a value that reads a tracker by reference' => [self::FAIL_EFFECT.'.value', ['tracker' => 'dread'], $at.'.value: must be an integer, {"formula": string} or {"dice": string}.'];
+        yield 'mark, which Play does not play yet' => [self::FAIL_EFFECT.'.op', 'mark', $at.'.op: unknown sheet operation "mark".'];
+        yield 'clear, which Play does not play yet' => [self::FAIL_EFFECT, ['kind' => 'sheet', 'field' => 'sanity', 'op' => 'clear'], $at.'.op: unknown sheet operation "clear".'];
         yield 'bad dice' => [self::FAIL_EFFECT.'.value', ['dice' => 'banana'], $at.'.value.dice: invalid dice notation: '];
         yield 'dice too long' => [self::FAIL_EFFECT.'.value', ['dice' => str_repeat('1', 101)], $at.'.value.dice: must be at most 100 characters.'];
         yield 'a formula syntax error' => [self::FAIL_EFFECT.'.value', ['formula' => '1 +'], $at.'.value.formula: '];

@@ -27,23 +27,24 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0021 | [Release credits for fan presets](0021-release-credits-for-fan-presets.md) | Accepted |
 | 0022 | [Character sheets in schema version 2](0022-character-sheets-in-schema-version-2.md) | Accepted, amended by 0023, 0024 and 0027 |
 | 0023 | [Formula kernel and derived values](0023-formula-kernel-and-derived-values.md) | Accepted, amended by 0024 |
-| 0024 | [Structured checks without scripting](0024-structured-checks-without-scripting.md) | Accepted |
+| 0024 | [Structured checks without scripting](0024-structured-checks-without-scripting.md) | Accepted, amended by 0041 |
 | 0025 | [Items and shops after the MVP](0025-items-and-shops-after-the-mvp.md) | Accepted |
 | 0026 | [Prompt inspiration tables and phase descriptions](0026-prompt-inspiration-and-phase-descriptions.md) | Accepted |
-| 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted |
+| 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted, amended by 0040 and 0041 |
 | 0028 | [Studio GameSystem drafts](0028-studio-gamesystem-drafts.md) | Accepted, amended by 0036 and 0038 |
 | 0029 | [Studio oracle editor](0029-studio-oracle-editor.md) | Accepted |
 | 0030 | [Studio flow editor](0030-studio-flow-editor.md) | Accepted |
 | 0031 | [Sheet layout and Studio sheet builder](0031-sheet-layout-and-studio-sheet-builder.md) | Accepted |
-| 0032 | [Studio check editor and test-roll sandbox](0032-studio-check-editor.md) | Accepted |
+| 0032 | [Studio check editor and test-roll sandbox](0032-studio-check-editor.md) | Accepted, amended by 0041 |
 | 0033 | [Studio library packs](0033-studio-library-packs.md) | Accepted |
 | 0034 | [Admin user management, invitations and password reset](0034-admin-user-management.md) | Accepted |
-| 0035 | [Campaign release upgrade](0035-campaign-release-upgrade.md) | Accepted |
+| 0035 | [Campaign release upgrade](0035-campaign-release-upgrade.md) | Accepted, amended by 0040 and 0041 |
 | 0036 | [Export releases as preset files](0036-export-releases-as-preset-files.md) | Accepted |
 | 0037 | [API error codes](0037-api-error-codes.md) | Accepted |
 | 0038 | [Studio release view](0038-studio-release-view.md) | Accepted |
 | 0039 | [Release diff](0039-release-diff.md) | Accepted |
 | 0040 | [Structured character creation](0040-structured-character-creation.md) | Accepted |
+| 0041 | [Dice pools, pushed rolls and conditions](0041-dice-pools-pushes-and-conditions.md) | Accepted |
 
 ## Template
 

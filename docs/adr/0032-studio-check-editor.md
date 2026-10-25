@@ -1,6 +1,6 @@
 # 0032. Studio check editor and test-roll sandbox
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0041](0041-dice-pools-pushes-and-conditions.md)
 - **Date:** 2026-10-17
 
 ## Context

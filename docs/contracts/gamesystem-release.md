@@ -256,6 +256,7 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 | `list` | `itemLabel?` (1–60), `maxItems?` (1–100) | Items are trimmed strings of 1–200 characters; `maxItems` defaults to 50. For inventory, cyberware and the like |
 | `track` | `max?` (1–999), `startMax?` | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full. `startMax` is a `{formula}` (1–200 characters) for the max a Character starts with; it is exclusive with `max` (domain check) and reads `number` fields and `derived` fields that depend, directly or through other derived fields, on no track and no tracker. `{key.max}`, tracks, `{tracker:key}`, `{check:…}` and unknown keys are rejected |
 | `derived` | `formula` (required, 1–200 characters) | A DerivedValue computed from other fields and trackers by a [formula](#formulas-adr-0023); a Character stores no value for it |
+| `conditions` | `options` (required): 1–20 of `{key, label (1–60)}` | A set of conditions a Character marks and clears ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)). Option keys follow the key rule and are unique in the field (domain check; two fields may reuse a key). The value is the marked keys, none at first. A formula reads the field as the number marked. `startMax` and `pointBudget` refuse it |
 
 Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. Sheet fields change through [sheet effects](#sheet-effects-adr-0027), which are also additive in schema version 2. Checks are described in [Checks](#checks-additive-in-schema-version-2). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
 
@@ -303,32 +304,33 @@ Play's translator reads the layout into the snapshot (none without groups), re-c
 
 ### Sheet effects (ADR 0027)
 
-A **sheet effect** changes a Character's `number` or `track` field. It is additive in schema version 2 ([ADR 0027](../adr/0027-sheet-effects.md)); every release valid before stays valid with the same hash.
+A **sheet effect** changes a Character's `number`, `track` or `conditions` field. It is additive in schema version 2 ([ADR 0027](../adr/0027-sheet-effects.md), conditions in [ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)); every release valid before stays valid with the same hash.
 
 | Part | Rules |
 |---|---|
 | `kind` | `sheet` |
-| `field` | The key of a sheet `number` field (its value) or `track` field (its current value). A `derived`, `text` or `list` field, and an unknown key, are rejected with distinct messages |
-| `op` | `add`, `subtract` or `set` |
-| `value` | An integer from −1,000 to 1,000; a `{formula}` (1–200 characters); or a `{dice}` (1–100 characters, no other property). The three forms are exclusive |
+| `field` | The key of a sheet `number` field (its value), `track` field (its current value) or `conditions` field (its marked keys). A `derived`, `text` or `list` field, and an unknown key, are rejected with distinct messages |
+| `op` | `add`, `subtract` or `set` on a `number` or `track` field; `mark` or `clear` on a `conditions` field. Each is refused on the other type |
+| `value` | For `add`, `subtract` and `set`, required: an integer from −1,000 to 1,000; a `{formula}` (1–200 characters); or a `{dice}` (1–100 characters, no other property). The three forms are exclusive. For `mark` and `clear`, optional: a string, the key of an option of that conditions field (an unknown option is rejected) |
 
-- **Placement.** Allowed only where a Character is known: a `check` step's `outcomes[].effects` (the checked Character) and a `character` step's own `effects` (the Character the step completes with). Anywhere else is a semantic error: other step kinds, a check step's own `effects`, bands, options, branches, `otherwise`, oracle table entries and Scene Type setup effects.
+- **Placement.** Allowed only where a Character is known: a `check` step's `outcomes[].effects` (the checked Character), a `character` step's own `effects` (the Character the step completes with) and a check's [`push.effects`](#checks-additive-in-schema-version-2) (the rolling Character). Anywhere else is a semantic error: other step kinds, a check step's own `effects`, bands, options, branches, `otherwise`, oracle table entries and Scene Type setup effects.
 - **Formula scope.** A `{formula}` value uses the sheet scope of that Character (see [Formulas](#formulas-adr-0023)): `number`, `track`, `.max`, `derived` and `{tracker:key}`; `{check:difficulty}` is rejected.
 - **Dice.** A `{dice}` value is a dice expression of the Randomness kernel, validated like a `roll` step's. Play rolls it with the injected random source when the effect is applied.
 - **Clamping.** The result clamps: a track to 0..its max, a number to its declared `min` and `max`.
+- **Mark and clear.** `mark` marks an option and `clear` clears it; `clear` without a `value` clears every option. `mark` without a `value` leaves the option to the player, so it is allowed only in a push cost, where the push request carries the pick; in an outcome or a character step it is a semantic error.
 - **Order.** Effects apply in list order with the step, all or nothing.
 - **Track start.** A track starts full. A `character` step's effect sets a different start, e.g. `{kind: sheet, field: sanity, op: set, value: {formula: "{pow}"}}`.
 
-Play's translator refuses the `sheet` kind (unknown effect kind) until `preset-real-system` slice 7, so a release using it can be published but not played yet.
+Play's translator refuses the `sheet` kind (unknown effect kind) until `preset-real-system` slice 7, so a release using it can be published but not played yet. It keeps refusing `mark` and `clear` (unknown sheet operation) until Play plays conditions ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)).
 
 ### Checks (additive in schema version 2)
 
-A release may define **checks** ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)): named rules whose total (`dice + modifier + situational modifier`) maps to an outcome band, the first whose `upTo` is at least the total; the last band catches the rest. Adding them is additive and only in schema version 2; every release valid before stays valid with the same hash. A schema version 1 `checks` must still be `[]`.
+A release may define **checks** ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)): named rules whose total (`dice + modifier + situational modifier`, or the successes of a [pool](#pool-and-push-adr-0041)) maps to an outcome band, the first whose `upTo` is at least the total; the last band catches the rest. Adding them is additive and only in schema version 2; every release valid before stays valid with the same hash. A schema version 1 `checks` must still be `[]`.
 
 | Part | Shape | Rules |
 |---|---|---|
 | `checks` | list of Check | At most 50; keys unique (domain check) |
-| Check | `{key, label (1–100), hint? (≤500), dice, modifier?, difficulty?, bands}` | `dice` is dice notation (≤100), parsed by the Randomness kernel (domain check). `modifier` is a sheet [formula](#formulas-adr-0023) of 1–200 characters |
+| Check | `{key, label (1–100), hint? (≤500), dice?, pool?, modifier?, difficulty?, push?, bands}` | Exactly one of `dice` and `pool`. `dice` is dice notation (≤100), parsed by the Randomness kernel (domain check). `modifier` is a sheet [formula](#formulas-adr-0023) of 1–200 characters, refused with a `pool`. See [Pool and push](#pool-and-push-adr-0041) |
 | `difficulty` | `{label (1–60), default, min?, max?}` | Integers from −1,000 to 1,000; `min ≤ default ≤ max` (domain check). The player sets it at roll time; band formulas read it as `{check:difficulty}` |
 | `bands` | list of `{key, label (1–100), upTo?: int \| {tracker: key} \| {formula: string}}` | 1–10; keys unique in the check; ordered as a [band](#bands-and-effects): every band but the last has `upTo`, the last omits it, literal `upTo` values strictly increase. A `{tracker}` names a tracker of the release; a `{formula}` is a sheet formula that may also read `{check:difficulty}` |
 
@@ -353,17 +355,45 @@ Optional `null` fields are left out of the canonical form; checks keep their aut
 
 Play's translator reads `checks` into the GameSystem snapshot and re-checks every rule above (a stored release is not trusted), failing closed on anything malformed. It reads a `check` step too and re-checks the rules of Studio's validator: the step's `check` exists, a `difficulty` is fixed only for a check that declares one (a literal within its `min`..`max`), and each `outcomes[].band` is a band of the check, once. Playing the step: the player picks a Character (one in the current Scene, else in the Session party), the server rolls the check, the band's outcome supplies `next` and `effects`, and a band without an outcome continues.
 
+#### Pool and push (ADR 0041)
+
+A check may roll a **pool** instead of a dice expression, and a pool check may be **pushed** once. Both are additive in schema version 2 ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)): every release valid before stays valid with the same hash, and a `null` of either is left out of the canonical form.
+
+| Part | Shape | Rules |
+|---|---|---|
+| `pool` | `{count, sides, successAt}`, exactly these properties | `count` is an integer from 1 to 100 or a `{formula}` (1–200 characters) in the sheet scope of a `modifier`. `sides` is an integer from 2 to 1,000. `successAt` is an integer from 1 to `sides`: a die succeeds when its face is at least `successAt`. The check total is the number of successes; bands and difficulty work on it as before |
+| `push` | `{label (1–100), effects? (0–10)}` | Only on a check with a `pool`. `label` names the cost. `effects` are `sheet` and `tracker` effects, applied with the push; sheet effects there follow the [sheet effect](#sheet-effects-adr-0027) rules (the rolling Character, the sheet formula scope) and may `mark` without an option |
+
+Domain checks, each failing with its path, such as `checks[0].pool.successAt` or `checks[0].push.effects[1].value`:
+
+- Both or neither of `dice` and `pool` is an error (`checks[0]`, `checks[0].dice`), and so is a `modifier` with a `pool` (`checks[0].modifier`): the count formula sizes the pool.
+- `successAt` is at most `sides`; a `count` formula reads only what a `modifier` may.
+- `push` without a `pool` is an error (`checks[0].push`); push effects of any kind but `sheet` and `tracker` are an error (`checks[0].push.effects[0].kind`).
+
+Example:
+
+```json
+{
+  "key": "sneak", "label": "Sneak",
+  "pool": {"count": {"formula": "{agility} + {stealth} - {physical}"}, "sides": 6, "successAt": 6},
+  "push": {"label": "Take a physical Condition", "effects": [{"kind": "sheet", "field": "physical", "op": "mark"}]},
+  "bands": [{"key": "fail", "label": "Failure", "upTo": 0}, {"key": "pass", "label": "Success"}]
+}
+```
+
+The fixture `valid/v2-dice-pools.json` has the whole release. Play's translator refuses `pool`, `push`, the `conditions` field type and the `mark` and `clear` operations (unknown property, unknown field type, unknown sheet operation) until the slices that play them, so a release using them can be published but not played yet.
+
 ### Formulas (ADR 0023)
 
-A **formula** is a string of 1–200 characters in six places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a sheet effect's `value: {formula}`, a check's `modifier` and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
+A **formula** is a string of 1–200 characters in seven places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a sheet effect's `value: {formula}`, a check's `modifier`, a pool's `count: {formula}` and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
 
 - Integers from 0 to 1,000,000, `+ - * /` with parentheses and unary minus, `min(a, b, …)` and `max(…)` with 2–10 arguments. Division rounds down. Intermediate results stay within ±1,000,000,000.
 - References are braced: `{key}` reads a field, `{key.max}` a `track` field's max, `{tracker:key}` a tracker's current value and `{check:difficulty}` a check's difficulty. Keys follow the key rule.
 
 | Scope | Where | Rules |
 |---|---|---|
-| Sheet | `derived` field `formula`, sheet effect `value` | `{key}` names a `number`, `track` or `derived` field; `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
-| Check | check `modifier`, check band `upTo` | The sheet scope: the references a `derived` formula may read. A band formula may also read `{check:difficulty}`, only when its check declares a `difficulty`; the modifier never reads a `{check:…}` reference, and no other check key exists |
+| Sheet | `derived` field `formula`, sheet effect `value` | `{key}` names a `number`, `track`, `conditions` or `derived` field (a `conditions` field reads as the number of options marked); `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field (a `conditions` field included) are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
+| Check | check `modifier`, check `pool.count`, check band `upTo` | The sheet scope: the references a `derived` formula may read. A band formula may also read `{check:difficulty}`, only when its check declares a `difficulty`; the modifier never reads a `{check:…}` reference, and no other check key exists |
 | Flow | band `upTo`, tracker effect `value`, check step `difficulty` | Only `{tracker:key}` references, to trackers of the release (and, as for `{tracker: key}`, of the flow); `{key}` and `{key.max}` are rejected because a flow formula reads trackers only |
 
 A syntax error is reported at the formula's path with the kernel's message. A `derived` field shares the key namespace and the `group` layout of the other field types. A `{formula}` band `upTo` still counts as an `upTo` for the "every band but the last" rule. Counter `levels` keep literal `upTo` only. A formula that fails at play time (division by zero, overflow) is an evaluation error, not a content error: it is Play's concern: a band or effect formula refuses the action with a 422 and the campaign stays as it was.

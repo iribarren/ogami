@@ -9,8 +9,9 @@ use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseFields;
 
 /**
- * The checks of a schema version 2 release (ADR 0024): a dice expression, an optional formula
- * modifier over the sheet, an optional difficulty the player sets at roll time, and outcome bands
+ * The checks of a schema version 2 release (ADR 0024): a dice expression or a pool (ADR 0041) that
+ * counts the dice at or above a threshold, an optional formula modifier over the sheet (never with
+ * a pool), an optional push a pool check may take once with its cost, an optional difficulty the player sets at roll time, and outcome bands
  * whose bounds are integers, trackers or formulas over the sheet (plus {check:difficulty} when the
  * check declares a difficulty). Returns the canonical checks and what check steps may name of each.
  *
@@ -26,8 +27,13 @@ final class Checks
     public const int MAX_HINT_LENGTH = 500;
     public const int MAX_DIFFICULTY_LABEL_LENGTH = 60;
     public const int MAX_DIFFICULTY = 1000;
+    public const int MAX_POOL_COUNT = 100;
+    public const int MIN_POOL_SIDES = 2;
+    public const int MAX_POOL_SIDES = 1000;
 
-    private const array CHECK = ['key' => true, 'label' => true, 'hint' => false, 'dice' => true, 'modifier' => false, 'difficulty' => false, 'bands' => true];
+    private const array CHECK = ['key' => true, 'label' => true, 'hint' => false, 'dice' => false, 'pool' => false, 'modifier' => false, 'difficulty' => false, 'push' => false, 'bands' => true];
+    private const array POOL = ['count' => true, 'sides' => true, 'successAt' => true];
+    private const array PUSH = ['label' => true, 'effects' => false];
     private const array DIFFICULTY = ['label' => true, 'default' => true, 'min' => false, 'max' => false];
     private const array BAND = ['key' => true, 'label' => true, 'upTo' => false];
     private const array FORMULA_REF = ['formula' => true];
@@ -55,8 +61,30 @@ final class Checks
                 ReleaseFields::text($check['hint'], $path.'.hint', 0, self::MAX_HINT_LENGTH);
             }
 
-            Steps::dice($check['dice'], $path.'.dice');
             $trackerKeys = array_keys($catalog->trackers);
+            if (isset($check['dice']) && isset($check['pool'])) {
+                throw InvalidReleaseContent::at($path, 'give either dice or pool, not both');
+            }
+
+            if (isset($check['pool'])) {
+                $check['pool'] = self::pool($check['pool'], $path.'.pool', $fieldTypes, $trackerKeys);
+                if (isset($check['modifier'])) {
+                    throw InvalidReleaseContent::at($path.'.modifier', 'a pool check has no modifier, its count formula sizes the pool');
+                }
+            } elseif (isset($check['dice'])) {
+                Steps::dice($check['dice'], $path.'.dice');
+            } else {
+                throw InvalidReleaseContent::at($path.'.dice', 'required unless the check declares a pool');
+            }
+
+            if (isset($check['push'])) {
+                if (!isset($check['pool'])) {
+                    throw InvalidReleaseContent::at($path.'.push', 'only a check with a pool can be pushed');
+                }
+
+                $check['push'] = self::push($check['push'], $path.'.push', $catalog);
+            }
+
             if (isset($check['modifier'])) {
                 $modifier = ReleaseFields::text($check['modifier'], $path.'.modifier', 1, Formula::MAX_LENGTH);
                 Formulas::check($modifier, $path.'.modifier', $fieldTypes, $trackerKeys, null);
@@ -77,6 +105,56 @@ final class Checks
         }
 
         return [$checks, $shapes];
+    }
+
+    /**
+     * {count, sides, successAt}: the count is an integer or a {formula} over the sheet, and a die
+     * succeeds when its face is at least successAt.
+     *
+     * @param array<string, string> $fieldTypes
+     * @param list<string>          $trackerKeys
+     *
+     * @return array{count: int|array{formula: string}, sides: int, successAt: int}
+     */
+    private static function pool(mixed $value, string $path, array $fieldTypes, array $trackerKeys): array
+    {
+        $pool = ReleaseFields::object($value, $path, self::POOL);
+        $count = $pool['count'];
+        if (\is_array($count) && [] !== $count && !array_is_list($count)) {
+            $ref = ReleaseFields::object($count, $path.'.count', self::FORMULA_REF);
+            $formula = ReleaseFields::text($ref['formula'], $path.'.count.formula', 1, Formula::MAX_LENGTH);
+            Formulas::check($formula, $path.'.count.formula', $fieldTypes, $trackerKeys, null);
+            $count = ['formula' => $formula];
+        } elseif (\is_int($count)) {
+            ReleaseFields::integer($count, $path.'.count', 1, self::MAX_POOL_COUNT);
+        } else {
+            throw InvalidReleaseContent::at($path.'.count', 'must be an integer or {formula: string}');
+        }
+
+        $sides = ReleaseFields::integer($pool['sides'], $path.'.sides', self::MIN_POOL_SIDES, self::MAX_POOL_SIDES);
+        $successAt = ReleaseFields::integer($pool['successAt'], $path.'.successAt', 1, self::MAX_POOL_SIDES);
+        if ($successAt > $sides) {
+            throw InvalidReleaseContent::at($path.'.successAt', \sprintf('must be at most sides (%d), %d given', $sides, $successAt));
+        }
+
+        return ['count' => $count, 'sides' => $sides, 'successAt' => $successAt];
+    }
+
+    /**
+     * {label, effects?}: the cost of the push, applied by sheet and tracker effects (ADR 0041).
+     *
+     * @return array{label: string, effects?: list<array<string, mixed>>}
+     */
+    private static function push(mixed $value, string $path, Catalog $catalog): array
+    {
+        $push = ReleaseFields::object($value, $path, self::PUSH);
+        $checked = ['label' => ReleaseFields::text($push['label'], $path.'.label', 1, self::MAX_LABEL_LENGTH)];
+        $effects = Effects::list($push['effects'] ?? null, $path.'.effects', $catalog, push: true);
+        if ([] !== $effects) {
+            $checked['effects'] = $effects;
+        }
+
+        return $checked;
     }
 
     /**

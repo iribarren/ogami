@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "dice-pools", "name": "Dice pools", "description": "Pool checks, a push with its cost and conditions fields, the way the contract shows them."},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [
+    {"key": "dread", "name": "Dread", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "prowl", "name": "Prowl", "purpose": "Get past the watch.", "oracles": [],
+      "setup": [],
+      "play": [
+        {
+          "key": "sneak-by", "kind": "check", "title": "Sneak past the guards", "check": "sneak",
+          "outcomes": [
+            {"band": "fail", "effects": [{"kind": "sheet", "field": "physical", "op": "mark", "value": "hurt"}]},
+            {"band": "pass", "effects": [{"kind": "sheet", "field": "mental", "op": "clear"}, {"kind": "sheet", "field": "physical", "op": "clear", "value": "hurt"}]}
+          ]
+        },
+        {"key": "slip-out", "kind": "prompt", "title": "Slip out"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "agility", "label": "Agility", "type": "number", "min": 1, "max": 5, "default": 3},
+      {"key": "stealth", "label": "Stealth", "type": "number", "min": 0, "max": 5, "default": 2},
+      {
+        "key": "physical", "label": "Physical conditions", "type": "conditions", "hint": "Each one costs a die.",
+        "options": [{"key": "hurt", "label": "Hurt"}, {"key": "exhausted", "label": "Exhausted"}]
+      },
+      {
+        "key": "mental", "label": "Mental conditions", "type": "conditions",
+        "options": [{"key": "shaken", "label": "Shaken"}]
+      },
+      {"key": "strain", "label": "Strain", "type": "derived", "formula": "{physical} + {mental}"}
+    ]
+  },
+  "checks": [
+    {
+      "key": "sneak", "label": "Sneak", "hint": "A pool of d6, a six is a success.",
+      "pool": {"count": {"formula": "{agility} + {stealth} - {physical}"}, "sides": 6, "successAt": 6},
+      "push": {
+        "label": "Take a physical Condition",
+        "effects": [
+          {"kind": "sheet", "field": "physical", "op": "mark"},
+          {"kind": "tracker", "tracker": "dread", "op": "add", "value": 1}
+        ]
+      },
+      "bands": [
+        {"key": "fail", "label": "Failure", "upTo": 0},
+        {"key": "pass", "label": "Success"}
+      ]
+    },
+    {
+      "key": "brawl", "label": "Brawl",
+      "pool": {"count": 3, "sides": 10, "successAt": 8},
+      "difficulty": {"label": "Difficulty", "default": 2, "min": 1, "max": 5},
+      "bands": [
+        {"key": "fail", "label": "Failure", "upTo": {"formula": "{check:difficulty} - 1 + {strain}"}},
+        {"key": "pass", "label": "Success"}
+      ]
+    }
+  ]
+}

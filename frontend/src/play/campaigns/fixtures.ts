@@ -329,6 +329,7 @@ export const skillCheck: CampaignCheck = {
   label: 'Skill check',
   hint: 'A stat and 1d10 against a Difficulty Value.',
   dice: '1d10',
+  pool: null,
   difficulty: { label: 'Difficulty Value', default: 13, min: 9, max: 29 },
 }
 
@@ -338,6 +339,33 @@ export const luckCheck: CampaignCheck = {
   label: 'Luck',
   hint: null,
   dice: 'd%',
+  pool: null,
+  difficulty: null,
+}
+
+/** A pool check whose dice come from the sheet: Agility + Stealth − Physical d6, a success on 5+. */
+export const sneakCheck: CampaignCheck = {
+  key: 'sneak',
+  label: 'Sneak',
+  hint: 'Count the sixes and fives.',
+  dice: null,
+  pool: {
+    count: null,
+    countFormula: '{agility} + {stealth} - {physical}',
+    countText: 'Agility + Stealth - Physical',
+    sides: 6,
+    successAt: 5,
+  },
+  difficulty: null,
+}
+
+/** A pool check with a fixed count: 4d6, a success on 6+. */
+export const gripCheck: CampaignCheck = {
+  key: 'grip',
+  label: 'Grip',
+  hint: null,
+  dice: null,
+  pool: { count: 4, countFormula: null, countText: null, sides: 6, successAt: 6 },
   difficulty: null,
 }
 

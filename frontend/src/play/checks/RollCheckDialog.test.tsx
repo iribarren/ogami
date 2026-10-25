@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { luckCheck } from '../campaigns/fixtures'
+import { gripCheck, luckCheck, sneakCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
 import { recordedEntry, skillCheckEntry } from '../journal/fixtures'
@@ -149,5 +149,30 @@ describe('the "Roll a check" dialog of the Characters panel', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
     expect(sent).toEqual([])
+  })
+
+  it('shows the dice of a pool check and labels the situational input as extra dice', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderCharacters(
+      { ...nightJobCampaign, checks: [sneakCheck, gripCheck] },
+      recorded,
+    )
+
+    const dialog = await openDialog(user)
+
+    expect(
+      dialog.getByText('Pool: Agility + Stealth − Physical d6, success on 5+'),
+    ).toBeInTheDocument()
+    expect(dialog.queryByLabelText('Situational modifier')).not.toBeInTheDocument()
+    expect(dialog.getByLabelText('Extra dice')).toHaveValue(0)
+    await user.selectOptions(dialog.getByLabelText('Check'), 'grip')
+    expect(dialog.getByText('Pool: 4d6, success on 6+')).toBeInTheDocument()
+    await user.clear(dialog.getByLabelText('Extra dice'))
+    await user.type(dialog.getByLabelText('Extra dice'), '-1')
+    await user.click(dialog.getByRole('button', { name: 'Roll' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ check: 'grip', character: viCharacter.id, situational: -1 }])
+    })
   })
 })

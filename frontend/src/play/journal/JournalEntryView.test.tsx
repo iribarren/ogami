@@ -13,6 +13,7 @@ import {
   plainAnswer,
   sanityLossEntry,
   skillCheckEntry,
+  sneakCheckEntry,
   stormyWeather,
 } from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
@@ -352,4 +353,47 @@ describe('JournalEntryView icon tile', () => {
       expect(article).toHaveAccessibleName(name)
     },
   )
+
+  it('renders a pool check with every die, the successes told by text, and the size explained', () => {
+    render(<JournalEntryView entry={sneakCheckEntry} />)
+
+    const dice = within(screen.getByRole('list', { name: 'Pool dice' })).getAllByRole('listitem')
+    expect(dice.map((die) => die.textContent)).toEqual([
+      '6 (success)',
+      '2 (no success)',
+      '5 (success)',
+    ])
+    expect(screen.getByText('Successes').nextElementSibling).toHaveTextContent('2 successes')
+    expect(screen.getByText('Pool').nextElementSibling).toHaveTextContent(
+      '3 d6, success on 5+ · Agility (2) + Stealth (1) - Physical (1) = 2 +1 extra',
+    )
+    expect(screen.queryByText('Dice')).not.toBeInTheDocument()
+    expect(screen.queryByText('Modifier')).not.toBeInTheDocument()
+  })
+
+  it('says one success in the singular and a fixed count without a formula', () => {
+    const { content } = sneakCheckEntry
+    if (content.kind !== 'check' || content.pool === null) {
+      throw new Error('The fixture is no pool check entry.')
+    }
+    const entry = {
+      ...sneakCheckEntry,
+      content: {
+        ...content,
+        total: 1,
+        situational: 0,
+        pool: {
+          ...content.pool,
+          count: 3,
+          countFormula: null,
+          terms: [],
+          successes: 1,
+        },
+      },
+    }
+    render(<JournalEntryView entry={entry} />)
+
+    expect(screen.getByText('Successes').nextElementSibling).toHaveTextContent('1 success')
+    expect(screen.getByText('Pool').nextElementSibling).toHaveTextContent('3 d6, success on 5+ · 3')
+  })
 })

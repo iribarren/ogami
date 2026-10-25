@@ -13,6 +13,7 @@ import {
   plainAnswer,
   sanityLossEntry,
   skillCheckEntry,
+  pushedGritEntry,
   sneakCheckEntry,
   stormyWeather,
 } from './fixtures'
@@ -369,6 +370,37 @@ describe('JournalEntryView icon tile', () => {
     )
     expect(screen.queryByText('Dice')).not.toBeInTheDocument()
     expect(screen.queryByText('Modifier')).not.toBeInTheDocument()
+  })
+
+  it('shows the situational modifier of a pool check once, in the size explanation', () => {
+    render(<JournalEntryView entry={sneakCheckEntry} />)
+
+    expect(screen.queryByText('Situational')).not.toBeInTheDocument()
+    expect(screen.getAllByText(/\+1 extra/)).toHaveLength(1)
+  })
+
+  it('shows a pushed pool check: the cost, the dice after the push with the re-rolled ones in text, the band change and the sheet changes', () => {
+    render(
+      <JournalEntryView entry={pushedGritEntry} sheet={[{ key: 'wounds', label: 'Wounds' }]} />,
+    )
+
+    expect(screen.getByText('Pushed: Take a Condition')).toBeInTheDocument()
+    expect(screen.getByText(/Rolled Weak, pushed to Strong/)).toBeInTheDocument()
+    const dice = within(screen.getByRole('list', { name: 'Pool dice' })).getAllByRole('listitem')
+    expect(dice.map((die) => die.textContent)).toEqual([
+      '6 (success)',
+      '5 (success)re-rolled',
+      '1 (no success)re-rolled',
+    ])
+    expect(screen.getByText('Successes').nextElementSibling).toHaveTextContent('2 successes')
+    expect(screen.getByText(/Vi: Wounds/)).toHaveTextContent('Vi: Wounds 0 → 1')
+  })
+
+  it('shows an unpushed pool check without a push line', () => {
+    render(<JournalEntryView entry={sneakCheckEntry} />)
+
+    expect(screen.queryByText(/Pushed:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('re-rolled')).not.toBeInTheDocument()
   })
 
   it('says one success in the singular and a fixed count without a formula', () => {

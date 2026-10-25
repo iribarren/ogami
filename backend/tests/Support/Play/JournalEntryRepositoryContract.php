@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Support\Play;
 
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Journal\CheckAlreadyPushed;
 use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
@@ -15,6 +16,8 @@ use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
+use App\Tests\Unit\Play\Domain\Journal\CheckPoolContentTest;
+use App\Tests\Unit\Play\Domain\Journal\CheckPushContentTest;
 use App\Tests\Unit\Play\Domain\Journal\OracleTableContentTest;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -56,6 +59,8 @@ trait JournalEntryRepositoryContract
                 'subtotal' => 14,
             ]],
         ]];
+        yield 'pool check' => [CheckPoolContentTest::sneak()->toArray()];
+        yield 'pushed pool check' => [CheckPushContentTest::pushedSneak()->toArray()];
         yield 'oracle table' => [[
             'kind' => 'oracle-table',
             'oracleKey' => 'weather',
@@ -275,6 +280,61 @@ trait JournalEntryRepositoryContract
         self::assertEquals($entry, $this->entries()->ofId(JournalEntryId::fromString('01890a5d-ac96-774b-bcce-b302099a9001')));
         self::assertNull($this->entries()->ofId(JournalEntryId::fromString('01890a5d-ac96-774b-bcce-b302099a9002')));
         self::assertNull($this->entries()->ofId(JournalEntryId::fromString('not-a-uuid')));
+    }
+
+    #[Test]
+    public function aPushCompletesTheStoredEntryOnceAndNothingElseOfItChanges(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->entries()->add($entry);
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:01:00'));
+        $this->forgetLoaded();
+        $pushed = ($this->entries()->ofId($entry->id()) ?? self::fail('The entry is kept.'))->pushedWith(CheckPushContentTest::pushedSneak());
+
+        $this->entries()->savePush($pushed);
+        $this->forgetLoaded();
+
+        self::assertEquals($pushed, $this->entries()->ofId($entry->id()));
+        self::assertEquals([$pushed, $this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:01:00')], $this->entries()->ofCampaign(CampaignId::fromString(self::CAMPAIGN)));
+    }
+
+    #[Test]
+    public function aSecondPushOfTheSameEntryIsRefusedAndKeepsTheFirst(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->entries()->add($entry);
+        $pushed = $entry->pushedWith(CheckPushContentTest::pushedSneak());
+        $this->entries()->savePush($pushed);
+        $this->forgetLoaded();
+
+        // Another request that loaded the entry before the first push finished pushes from the unpushed copy.
+        try {
+            $this->entries()->savePush($entry->pushedWith(CheckPushContentTest::pushedSneak()));
+            self::fail('A roll was pushed twice.');
+        } catch (CheckAlreadyPushed $exception) {
+            self::assertSame('The check of journal entry "01890a5d-ac96-774b-bcce-b302099a9001" was pushed already, and a roll is pushed once.', $exception->getMessage());
+        }
+
+        $this->forgetLoaded();
+        self::assertEquals($pushed, $this->entries()->ofId($entry->id()));
+    }
+
+    #[Test]
+    public function theLatestEntryIsTheLastOfTheCampaignInRecordingOrder(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $this->givenCampaign(self::OTHER_CAMPAIGN);
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:01:00'));
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9003', self::CAMPAIGN, '2026-10-06 10:01:00'));
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:00:00'));
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9009', self::OTHER_CAMPAIGN, '2026-10-06 12:00:00'));
+        $this->forgetLoaded();
+
+        self::assertSame('01890a5d-ac96-774b-bcce-b302099a9003', $this->entries()->latestOfCampaign(CampaignId::fromString(self::CAMPAIGN))?->id()->toString());
+        self::assertNull($this->entries()->latestOfCampaign(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8059')));
+        self::assertNull($this->entries()->latestOfCampaign(CampaignId::fromString('not-a-uuid')));
     }
 
     private function entry(string $id, string $campaignId, string $recordedAt, ?JournalEntryContent $content = null): JournalEntry

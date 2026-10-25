@@ -4917,6 +4917,125 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/journal/{entryId}/push": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Push the latest pool check of one of my campaigns: re-roll the dice that failed, pay the cost of the push and complete the entry",
+                "operationId": "pushCheck",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The entry, completed with the push.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JournalEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The body is not valid JSON or not an object, or its \"picks\" is not a list of strings.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it has no journal entry with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The entry cannot be pushed: it is not the latest entry of the journal, not the roll of a pool check, recorded by a Flow step, already pushed (also when two pushes arrive at once), or without a failed die; the pinned release no longer declares that pool check with a push, or the Character is gone; or the campaign was changed at the same time.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "A body is sent and it is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A band of the check or a value of the cost cannot be evaluated for the Character, or the picks do not fit the cost: one is missing, unknown, already marked or not asked for. Nothing changes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}": {
             "post": {
                 "tags": [
@@ -11891,6 +12010,28 @@
                 },
                 "type": "object"
             },
+            "CheckPushResponse": {
+                "required": [
+                    "label",
+                    "picks"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "The cost of the push, as the release words it.",
+                        "type": "string",
+                        "example": "Take a physical Condition"
+                    },
+                    "picks": {
+                        "description": "The sheet field of each option the player picks when pushing (the cost marks an option of it), in cost order; empty when the cost needs no pick. A field with every option marked needs no pick.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "physical"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "CheckDifficultyResponse": {
                 "required": [
                     "label",
@@ -11931,6 +12072,7 @@
                     "hint",
                     "dice",
                     "pool",
+                    "push",
                     "difficulty"
                 ],
                 "properties": {
@@ -11963,6 +12105,15 @@
                         ],
                         "nullable": true,
                         "description": "The pool rolled, counted for successes; null for a check that rolls dice."
+                    },
+                    "push": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckPushResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What a player can do after rolling a pool check: push it for a cost; null for a check that cannot be pushed."
                     },
                     "difficulty": {
                         "oneOf": [
@@ -13630,6 +13781,135 @@
                 },
                 "type": "object"
             },
+            "JournalPushDieResponse": {
+                "required": [
+                    "group",
+                    "face",
+                    "success",
+                    "rerolled"
+                ],
+                "properties": {
+                    "group": {
+                        "description": "The group of dice the die belongs to; \"pool\" for the dice of a pool.",
+                        "type": "string",
+                        "example": "pool"
+                    },
+                    "face": {
+                        "description": "The face the die shows after the push.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "success": {
+                        "description": "Whether the die succeeded: its face reached the success threshold.",
+                        "type": "boolean"
+                    },
+                    "rerolled": {
+                        "description": "Whether the push re-rolled the die: it failed before the push.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "SheetChangeDiceResponse": {
+                "required": [
+                    "expression",
+                    "total"
+                ],
+                "properties": {
+                    "expression": {
+                        "description": "The normalized notation of the dice rolled.",
+                        "type": "string",
+                        "example": "1d6"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 4
+                    }
+                },
+                "type": "object"
+            },
+            "SheetChangeResponse": {
+                "required": [
+                    "field",
+                    "before",
+                    "after",
+                    "dice"
+                ],
+                "properties": {
+                    "field": {
+                        "description": "The key of the sheet field: a number field, or a track field whose current value changed.",
+                        "type": "string",
+                        "example": "sanity"
+                    },
+                    "before": {
+                        "description": "The value before the effect.",
+                        "type": "integer",
+                        "example": 65
+                    },
+                    "after": {
+                        "description": "The value after the effect, clamped to the field.",
+                        "type": "integer",
+                        "example": 61
+                    },
+                    "dice": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SheetChangeDiceResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The dice the effect rolled; null when its value rolled none."
+                    }
+                },
+                "type": "object"
+            },
+            "CheckPushContentResponse": {
+                "required": [
+                    "label",
+                    "dice",
+                    "successes",
+                    "rolledBandKey",
+                    "rolledBandLabel",
+                    "changes"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "The cost of the push when it was pushed.",
+                        "type": "string",
+                        "example": "Take a physical Condition"
+                    },
+                    "dice": {
+                        "description": "Every die after the push, in roll order: the dice that succeeded keep their face, the others were re-rolled.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalPushDieResponse"
+                        }
+                    },
+                    "successes": {
+                        "description": "How many dice succeeded after the push; the total of the check now.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "rolledBandKey": {
+                        "description": "The key of the Outcome band the roll had before the push.",
+                        "type": "string",
+                        "example": "miss"
+                    },
+                    "rolledBandLabel": {
+                        "description": "The label of the Outcome band the roll had before the push.",
+                        "type": "string",
+                        "example": "Miss"
+                    },
+                    "changes": {
+                        "description": "What the cost changed on the sheet of the rolling Character, in apply order; Tracker changes are not listed.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetChangeResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "CheckPoolContentResponse": {
                 "required": [
                     "count",
@@ -13639,7 +13919,8 @@
                     "sides",
                     "successAt",
                     "dice",
-                    "successes"
+                    "successes",
+                    "push"
                 ],
                 "properties": {
                     "count": {
@@ -13686,6 +13967,15 @@
                         "description": "How many dice succeeded; the total of the check.",
                         "type": "integer",
                         "example": 2
+                    },
+                    "push": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckPushContentResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The push of the roll; null until the roll is pushed, and for entries recorded before pushes. Once pushed, the dice and successes above stay the first roll."
                     }
                 },
                 "type": "object"
@@ -13812,59 +14102,6 @@
                         ],
                         "nullable": true,
                         "description": "The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools."
-                    }
-                },
-                "type": "object"
-            },
-            "SheetChangeDiceResponse": {
-                "required": [
-                    "expression",
-                    "total"
-                ],
-                "properties": {
-                    "expression": {
-                        "description": "The normalized notation of the dice rolled.",
-                        "type": "string",
-                        "example": "1d6"
-                    },
-                    "total": {
-                        "type": "integer",
-                        "example": 4
-                    }
-                },
-                "type": "object"
-            },
-            "SheetChangeResponse": {
-                "required": [
-                    "field",
-                    "before",
-                    "after",
-                    "dice"
-                ],
-                "properties": {
-                    "field": {
-                        "description": "The key of the sheet field: a number field, or a track field whose current value changed.",
-                        "type": "string",
-                        "example": "sanity"
-                    },
-                    "before": {
-                        "description": "The value before the effect.",
-                        "type": "integer",
-                        "example": 65
-                    },
-                    "after": {
-                        "description": "The value after the effect, clamped to the field.",
-                        "type": "integer",
-                        "example": 61
-                    },
-                    "dice": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/SheetChangeDiceResponse"
-                            }
-                        ],
-                        "nullable": true,
-                        "description": "The dice the effect rolled; null when its value rolled none."
                     }
                 },
                 "type": "object"
@@ -14261,6 +14498,20 @@
                         "description": "The Situational modifier, from -100 to 100; omitted or null, 0.",
                         "type": "integer",
                         "example": -2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PushCheckRequest": {
+                "properties": {
+                    "picks": {
+                        "description": "The option the player picks for each mark without an option in the cost of the push, in cost order: each must be an unmarked option of its field at that point. A field whose options are all marked takes no pick. Omitted or null, no pick.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "hurt"
+                        },
                         "nullable": true
                     }
                 },

@@ -9,8 +9,11 @@ use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Check\CheckPool;
+use App\Play\Domain\GameSystem\Check\CheckPush;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
+use App\Play\Domain\GameSystem\Flow\SheetEffect;
+use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
@@ -78,6 +81,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
             ['key' => 'role', 'label' => 'Role', 'type' => 'text'],
             ['key' => 'edge', 'label' => 'Edge', 'type' => 'derived', 'formula' => '{hands} / 2'],
             ['key' => 'hp', 'label' => 'HP', 'type' => 'track'],
+            ['key' => 'wounds', 'label' => 'Wounds', 'type' => 'conditions', 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'shaken', 'label' => 'Shaken']]],
         ]]);
         /** @var array<string, mixed> $content */
         $content = ReleaseArrays::with($content, 'checks', $checks);
@@ -357,26 +361,84 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{array<string, mixed>, string}> the check and the message: Play refuses the shapes of ADR 0041 until the slices that play them
+     * @param array<string, mixed> $changes replaced in the push of the pool check "grit"
+     *
+     * @return array<string, mixed>
      */
-    public static function unsupportedPushShapes(): iterable
+    private static function grit(array $changes = []): array
     {
-        $pool = ['count' => 3, 'sides' => 6, 'successAt' => 6];
+        return self::skill(['dice' => null, 'modifier' => null, 'difficulty' => null, 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'hit', 'label' => 'Hit']], 'pool' => ['count' => 3, 'sides' => 6, 'successAt' => 6], 'push' => array_replace(['label' => 'Take a Condition'], $changes)]);
+    }
 
-        yield 'a push' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: unknown property.'];
-        yield 'a push with a pool' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => $pool, 'push' => ['label' => 'Push']]), 'checks[0].push: unknown property.'];
+    #[Test]
+    public function itReadsThePushOfAPoolCheckWithItsCost(): void
+    {
+        $snapshot = $this->translate([self::grit(['effects' => [
+            ['kind' => 'sheet', 'field' => 'hands', 'op' => 'subtract', 'value' => 1],
+            ['kind' => 'sheet', 'field' => 'wounds', 'op' => 'mark'],
+            ['kind' => 'sheet', 'field' => 'wounds', 'op' => 'mark', 'value' => 'hurt'],
+            ['kind' => 'sheet', 'field' => 'hp', 'op' => 'add', 'value' => ['formula' => '{hands} - {wounds}']],
+            ['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => 1],
+        ]])]);
+
+        $push = $snapshot->check('skill')?->push;
+        self::assertEquals(new CheckPush('Take a Condition', [
+            new SheetEffect('hands', SheetOperation::Subtract, 1),
+            new SheetEffect('wounds', SheetOperation::Mark),
+            new SheetEffect('wounds', SheetOperation::Mark, 'hurt'),
+            new SheetEffect('hp', SheetOperation::Add, Formula::fromString('{hands} - {wounds}')),
+            new TrackerEffect('alarm', TrackerOperation::Add, 1),
+        ]), $push);
+        self::assertSame(['wounds'], $push?->picks());
+    }
+
+    #[Test]
+    public function aPushWithoutEffectsIsAPushWithoutACost(): void
+    {
+        self::assertEquals(new CheckPush('Take a Condition'), $this->translate([self::grit()])->check('skill')?->push);
+        self::assertNull($this->translate([self::skill(['dice' => null, 'modifier' => null, 'difficulty' => null, 'bands' => [['key' => 'only', 'label' => 'Only']], 'pool' => ['count' => 3, 'sides' => 6, 'successAt' => 6]])])->check('skill')?->push);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}> the check and the message
+     */
+    public static function malformedPushes(): iterable
+    {
+        $effect = static fn (array $change): array => ['effects' => [array_replace(['kind' => 'sheet', 'field' => 'hands', 'op' => 'add', 'value' => 1], $change)]];
+
+        yield 'a push without a pool' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: only a pool check can be pushed.'];
+        yield 'a push that is a list' => [array_replace(self::grit(), ['push' => ['Push']]), 'checks[0].push: must be an object.'];
+        yield 'an unknown property' => [self::grit(['cost' => 1]), 'checks[0].push.cost: unknown property.'];
+        yield 'no label' => [self::grit(['label' => null]), 'checks[0].push.label: must be a string.'];
+        yield 'a blank label' => [self::grit(['label' => ' ']), 'checks[0].push.label: must not be blank.'];
+        yield 'a label over 100 characters' => [self::grit(['label' => str_repeat('a', 101)]), 'checks[0].push.label: must be at most 100 characters.'];
+        yield 'effects that are no list' => [self::grit(['effects' => 'none']), 'checks[0].push.effects: must be a list.'];
+        yield 'more than ten effects' => [self::grit(['effects' => array_fill(0, 11, ['kind' => 'sheet', 'field' => 'hands', 'op' => 'add', 'value' => 1])]), 'checks[0].push.effects: at most 10 effects.'];
+        yield 'an effect that is not an object' => [self::grit(['effects' => ['hands']]), 'checks[0].push.effects[0]: must be an object.'];
+        yield 'a scene effect' => [self::grit(['effects' => [['kind' => 'nextScene', 'sceneType' => 'setup']]]), 'checks[0].push.effects[0].kind: a push cost holds sheet and tracker effects only.'];
+        yield 'an effect without a kind' => [self::grit(['effects' => [['field' => 'hands']]]), 'checks[0].push.effects[0].kind: a push cost holds sheet and tracker effects only.'];
+        yield 'an unknown sheet field' => [self::grit($effect(['field' => 'ghost'])), 'checks[0].push.effects[0].field: unknown sheet field "ghost".'];
+        yield 'a number change of a conditions field' => [self::grit($effect(['field' => 'wounds'])), 'checks[0].push.effects[0].field: field "wounds" is not a number or track field, add, subtract and set change those only.'];
+        yield 'a number change of a text field' => [self::grit($effect(['field' => 'role'])), 'checks[0].push.effects[0].field: field "role" is not a number or track field, add, subtract and set change those only.'];
+        yield 'a mark of a number field' => [self::grit($effect(['op' => 'mark', 'value' => 'hurt'])), 'checks[0].push.effects[0].field: field "hands" is not a conditions field, mark and clear change conditions fields only.'];
+        yield 'an unknown option' => [self::grit($effect(['field' => 'wounds', 'op' => 'mark', 'value' => 'ghost'])), 'checks[0].push.effects[0].value: unknown option "ghost" of conditions field "wounds".'];
+        yield 'an unknown sheet field in a formula' => [self::grit($effect(['value' => ['formula' => '{ghost} + 1']])), 'checks[0].push.effects[0].value: {ghost}: unknown field "ghost".'];
+        yield 'a check reference in a formula' => [self::grit($effect(['value' => ['formula' => '{check:difficulty}']])), 'checks[0].push.effects[0].value: {check:difficulty}: a check reference is read only by the bands of a check.'];
+        yield 'an unknown tracker' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'ghost', 'op' => 'add', 'value' => 1]]]), 'checks[0].push.effects[0].tracker: unknown tracker "ghost".'];
+        yield 'an unknown tracker in a value' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => ['tracker' => 'ghost']]]]), 'checks[0].push.effects[0].value: {tracker:ghost}: unknown tracker "ghost".'];
+        yield 'a tracker effect that is malformed' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'multiply', 'value' => 1]]]), 'checks[0].push.effects[0].op: unknown tracker operation "multiply".'];
     }
 
     /**
      * @param array<string, mixed> $check
      */
     #[Test]
-    #[DataProvider('unsupportedPushShapes')]
-    public function itStillRefusesPushes(array $check, string $message): void
+    #[DataProvider('malformedPushes')]
+    public function itFailsClosedOnAMalformedPush(array $check, string $message): void
     {
         try {
             $this->translate([$check]);
-            self::fail('Play does not play pushes yet.');
+            self::fail('The push is malformed.');
         } catch (InvalidGameSystemRelease $invalid) {
             self::assertSame(self::UNREADABLE.$message, $invalid->getMessage());
         }

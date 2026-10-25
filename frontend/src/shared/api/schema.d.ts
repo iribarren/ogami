@@ -908,6 +908,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/journal/{entryId}/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push the latest pool check of one of my campaigns: re-roll the dice that failed, pay the cost of the push and complete the entry */
+        post: operations["pushCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/journal/oracle-tables/{oracleKey}": {
         parameters: {
             query?: never;
@@ -2484,6 +2501,15 @@ export interface components {
              */
             successAt: number;
         };
+        CheckPushResponse: {
+            /**
+             * @description The cost of the push, as the release words it.
+             * @example Take a physical Condition
+             */
+            label: string;
+            /** @description The sheet field of each option the player picks when pushing (the cost marks an option of it), in cost order; empty when the cost needs no pick. A field with every option marked needs no pick. */
+            picks: string[];
+        };
         CheckDifficultyResponse: {
             /**
              * @description What the difficulty is called.
@@ -2526,6 +2552,8 @@ export interface components {
             dice: string | null;
             /** @description The pool rolled, counted for successes; null for a check that rolls dice. */
             pool: components["schemas"]["CheckPoolResponse"] | null;
+            /** @description What a player can do after rolling a pool check: push it for a cost; null for a check that cannot be pushed. */
+            push: components["schemas"]["CheckPushResponse"] | null;
             /** @description The difficulty the player sets when rolling; null when the check declares none. */
             difficulty: components["schemas"]["CheckDifficultyResponse"] | null;
         };
@@ -3344,6 +3372,76 @@ export interface components {
             /** @description Whether the die succeeded: its face reached the success threshold. */
             success: boolean;
         };
+        JournalPushDieResponse: {
+            /**
+             * @description The group of dice the die belongs to; "pool" for the dice of a pool.
+             * @example pool
+             */
+            group: string;
+            /**
+             * @description The face the die shows after the push.
+             * @example 5
+             */
+            face: number;
+            /** @description Whether the die succeeded: its face reached the success threshold. */
+            success: boolean;
+            /** @description Whether the push re-rolled the die: it failed before the push. */
+            rerolled: boolean;
+        };
+        SheetChangeDiceResponse: {
+            /**
+             * @description The normalized notation of the dice rolled.
+             * @example 1d6
+             */
+            expression: string;
+            /** @example 4 */
+            total: number;
+        };
+        SheetChangeResponse: {
+            /**
+             * @description The key of the sheet field: a number field, or a track field whose current value changed.
+             * @example sanity
+             */
+            field: string;
+            /**
+             * @description The value before the effect.
+             * @example 65
+             */
+            before: number;
+            /**
+             * @description The value after the effect, clamped to the field.
+             * @example 61
+             */
+            after: number;
+            /** @description The dice the effect rolled; null when its value rolled none. */
+            dice: components["schemas"]["SheetChangeDiceResponse"] | null;
+        };
+        CheckPushContentResponse: {
+            /**
+             * @description The cost of the push when it was pushed.
+             * @example Take a physical Condition
+             */
+            label: string;
+            /** @description Every die after the push, in roll order: the dice that succeeded keep their face, the others were re-rolled. */
+            dice: components["schemas"]["JournalPushDieResponse"][];
+            /**
+             * @description How many dice succeeded after the push; the total of the check now.
+             * @example 3
+             */
+            successes: number;
+            /**
+             * @description The key of the Outcome band the roll had before the push.
+             * @example miss
+             */
+            rolledBandKey: string;
+            /**
+             * @description The label of the Outcome band the roll had before the push.
+             * @example Miss
+             */
+            rolledBandLabel: string;
+            /** @description What the cost changed on the sheet of the rolling Character, in apply order; Tracker changes are not listed. */
+            changes: components["schemas"]["SheetChangeResponse"][];
+        };
         CheckPoolContentResponse: {
             /**
              * @description The number of dice the release asked for, before the Situational modifier: its number, or what its formula gave.
@@ -3379,6 +3477,8 @@ export interface components {
              * @example 2
              */
             successes: number;
+            /** @description The push of the roll; null until the roll is pushed, and for entries recorded before pushes. Once pushed, the dice and successes above stay the first roll. */
+            push: components["schemas"]["CheckPushContentResponse"] | null;
         };
         CheckContentResponse: {
             /**
@@ -3459,34 +3559,6 @@ export interface components {
             modifierTerms: components["schemas"]["CheckModifierTermResponse"][];
             /** @description The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools. */
             pool: components["schemas"]["CheckPoolContentResponse"] | null;
-        };
-        SheetChangeDiceResponse: {
-            /**
-             * @description The normalized notation of the dice rolled.
-             * @example 1d6
-             */
-            expression: string;
-            /** @example 4 */
-            total: number;
-        };
-        SheetChangeResponse: {
-            /**
-             * @description The key of the sheet field: a number field, or a track field whose current value changed.
-             * @example sanity
-             */
-            field: string;
-            /**
-             * @description The value before the effect.
-             * @example 65
-             */
-            before: number;
-            /**
-             * @description The value after the effect, clamped to the field.
-             * @example 61
-             */
-            after: number;
-            /** @description The dice the effect rolled; null when its value rolled none. */
-            dice: components["schemas"]["SheetChangeDiceResponse"] | null;
         };
         SheetChangeContentResponse: {
             /**
@@ -3662,6 +3734,10 @@ export interface components {
              * @example -2
              */
             situational?: number | null;
+        };
+        PushCheckRequest: {
+            /** @description The option the player picks for each mark without an option in the cost of the push, in cost order: each must be an unmarked option of its field at that point. A field whose options are all marked takes no pick. Omitted or null, no pick. */
+            picks?: string[] | null;
         };
         RecordOracleTableResultRequest: {
             /**
@@ -9160,6 +9236,96 @@ export interface operations {
                 };
             };
             /** @description The pinned release has no check with this key, the campaign has no such Character, a difficulty is sent for a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pushCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PushCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The entry, completed with the push. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryResponse"];
+                };
+            };
+            /** @description The body is not valid JSON or not an object, or its "picks" is not a list of strings. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it has no journal entry with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The entry cannot be pushed: it is not the latest entry of the journal, not the roll of a pool check, recorded by a Flow step, already pushed (also when two pushes arrive at once), or without a failed die; the pinned release no longer declares that pool check with a push, or the Character is gone; or the campaign was changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A body is sent and it is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A band of the check or a value of the cost cannot be evaluated for the Character, or the picks do not fit the cost: one is missing, unknown, already marked or not asked for. Nothing changes. */
             422: {
                 headers: {
                     [name: string]: unknown;

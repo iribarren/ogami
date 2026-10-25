@@ -6,11 +6,12 @@ namespace App\Play\Application;
 
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckPool;
+use App\Play\Domain\GameSystem\Check\CheckPush;
 use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 
 /**
- * A Check of the campaign's pinned release as a player rolls it: the dice or the pool, and the difficulty it
- * asks for. The modifier formula and the Outcome bands stay in the release; the result names the band.
+ * A Check of the campaign's pinned release as a player rolls it: the dice or the pool, the difficulty it
+ * asks for and, for a pool check, its push. The modifier formula and the Outcome bands stay in the release; the result names the band.
  */
 final readonly class CheckView
 {
@@ -21,6 +22,7 @@ final readonly class CheckView
         public ?string $dice,
         public ?CheckDifficultyView $difficulty,
         public ?CheckPoolView $pool = null,
+        public ?CheckPushView $push = null,
     ) {
     }
 
@@ -35,6 +37,7 @@ final readonly class CheckView
             $check->dice?->notation(),
             $difficulty instanceof \App\Play\Domain\GameSystem\Check\CheckDifficulty ? new CheckDifficultyView($difficulty->label, $difficulty->default, $difficulty->min, $difficulty->max) : null,
             $check->pool instanceof CheckPool ? CheckPoolView::of($check->pool, $labels) : null,
+            $check->push instanceof CheckPush ? CheckPushView::of($check->push) : null,
         );
     }
 }

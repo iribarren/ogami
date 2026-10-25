@@ -8,6 +8,7 @@ use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Formula\Domain\Reference;
 use App\Formula\Domain\ReferenceKind;
 use App\Formula\Domain\ValueResolver;
+use App\Play\Domain\Campaign\CampaignEffects;
 
 /**
  * What a flow formula reads: the campaign's Trackers, nothing else (a sheet value has no place in a
@@ -16,7 +17,7 @@ use App\Formula\Domain\ValueResolver;
 final readonly class TrackerValues implements ValueResolver
 {
     public function __construct(
-        private FlowRunContext $context,
+        private CampaignEffects $effects,
     ) {
     }
 
@@ -26,6 +27,6 @@ final readonly class TrackerValues implements ValueResolver
             throw FormulaEvaluationFailed::unknownReference($reference);
         }
 
-        return $this->context->trackerValue($reference->key);
+        return $this->effects->trackerValue($reference->key);
     }
 }

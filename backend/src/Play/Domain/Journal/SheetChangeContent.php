@@ -36,6 +36,26 @@ final readonly class SheetChangeContent implements JournalEntryContent
             throw InvalidJournalEntryContent::blank('A Character id');
         }
 
+        $checked = self::checkedChanges($changes);
+
+        if ([] === $checked) {
+            throw InvalidJournalEntryContent::malformed('changes', 'a list of at least one change');
+        }
+
+        return new self($characterId, $characterName, $checked);
+    }
+
+    /**
+     * The changes of a sheet Effects list as the journal keeps them, each checked.
+     *
+     * @param list<array<mixed>> $changes each {field, before, after, dice: ?{expression, total}}, in apply order
+     *
+     * @return list<SheetChangeData>
+     *
+     * @throws InvalidJournalEntryContent when a field is blank or a change is malformed
+     */
+    public static function checkedChanges(array $changes): array
+    {
         $checked = [];
         foreach ($changes as $change) {
             $field = ContentData::string($change, 'field');
@@ -56,11 +76,7 @@ final readonly class SheetChangeContent implements JournalEntryContent
             ];
         }
 
-        if ([] === $checked) {
-            throw InvalidJournalEntryContent::malformed('changes', 'a list of at least one change');
-        }
-
-        return new self($characterId, $characterName, $checked);
+        return $checked;
     }
 
     /**

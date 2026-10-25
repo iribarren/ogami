@@ -20,4 +20,14 @@ final class InvalidDicePool extends \DomainException
     {
         return new self(\sprintf('A die of a pool succeeds from a face between 1 and its %d sides, %d given.', $sides, $successAt));
     }
+
+    public static function dice(int $size, int $given): self
+    {
+        return new self(\sprintf('A pool of this size holds %d dice, %d faces given.', $size, $given));
+    }
+
+    public static function face(int $face, int $sides): self
+    {
+        return new self(\sprintf('A die of a pool shows a face between 1 and %d, %d given.', $sides, $face));
+    }
 }

@@ -9,9 +9,12 @@ use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\NoCurrentScene;
 
 /**
- * One immutable record of a campaign's journal: a note, the result of a roll or an oracle, or a
- * choice, recorded in the campaign's current session and scene. An entry recorded by a Flow step
- * keeps a snapshot of that step.
+ * One record of a campaign's journal: a note, the result of a roll or an oracle, or a choice,
+ * recorded in the campaign's current session and scene. An entry recorded by a Flow step keeps a
+ * snapshot of that step.
+ *
+ * An entry is immutable but for one change: the push of a pool check completes its content once
+ * (ADR 0041, see pushedWith()). Nothing else about an entry ever changes.
  *
  * Ids are kept as strings (like Campaign), so an adapter can map them as plain columns.
  */
@@ -53,6 +56,33 @@ final readonly class JournalEntry
     public function followedBy(JournalEntryId $id, JournalEntryContent $content): self
     {
         return new self($id->toString(), $this->campaignId, $this->sessionNumber, $this->sceneNumber, $this->recordedAt, $content, $this->flowStep);
+    }
+
+    /**
+     * The same entry once its pool check was pushed: the only change an entry's content can take.
+     * It is a copy; the repository keeps it with JournalEntryRepository::savePush().
+     *
+     * @param CheckContent $pushed the content of this entry as CheckContent::pushed() returned it
+     *
+     * @throws CheckAlreadyPushed when this entry's check was pushed already
+     * @throws \LogicException    when this entry is not a pool check, or the content is not its pushed content
+     */
+    public function pushedWith(CheckContent $pushed): self
+    {
+        $current = $this->content;
+        if (!$current instanceof CheckContent || !$current->pool() instanceof CheckPoolContent) {
+            throw new \LogicException(\sprintf('Journal entry "%s" is not a pool check, only that can be pushed.', $this->id));
+        }
+
+        if ($current->pool()->push instanceof CheckPushContent) {
+            throw CheckAlreadyPushed::entry($this->id());
+        }
+
+        if (!$pushed->pool()?->push instanceof CheckPushContent || $pushed->checkKey() !== $current->checkKey() || $pushed->characterId() !== $current->characterId()) {
+            throw new \LogicException(\sprintf('The content is not the pushed content of journal entry "%s".', $this->id));
+        }
+
+        return new self($this->id, $this->campaignId, $this->sessionNumber, $this->sceneNumber, $this->recordedAt, $pushed, $this->flowStep);
     }
 
     /**

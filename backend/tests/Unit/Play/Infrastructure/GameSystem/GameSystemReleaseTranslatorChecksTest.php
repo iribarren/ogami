@@ -426,6 +426,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         yield 'a check reference in a formula' => [self::grit($effect(['value' => ['formula' => '{check:difficulty}']])), 'checks[0].push.effects[0].value: {check:difficulty}: a check reference is read only by the bands of a check.'];
         yield 'an unknown tracker' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'ghost', 'op' => 'add', 'value' => 1]]]), 'checks[0].push.effects[0].tracker: unknown tracker "ghost".'];
         yield 'an unknown tracker in a value' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => ['tracker' => 'ghost']]]]), 'checks[0].push.effects[0].value: {tracker:ghost}: unknown tracker "ghost".'];
+        yield 'a sheet field in a tracker formula' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'add', 'value' => ['formula' => '{hands} + 1']]]]), 'checks[0].push.effects[0].value: {hands}: a flow formula reads trackers only.'];
         yield 'a tracker effect that is malformed' => [self::grit(['effects' => [['kind' => 'tracker', 'tracker' => 'alarm', 'op' => 'multiply', 'value' => 1]]]), 'checks[0].push.effects[0].op: unknown tracker operation "multiply".'];
     }
 

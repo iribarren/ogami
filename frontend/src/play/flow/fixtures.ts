@@ -1,6 +1,7 @@
-import { lostMineCampaign, skillCheck } from '../campaigns/fixtures'
+import { gritCheck, lostMineCampaign, skillCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
+import { gritEntry } from '../journal/fixtures'
 import { allyTag, brannNpc, leaderTag, lostMineWithLists, miraNpc } from '../lists/fixtures'
 import type { FlowRun, FlowStep } from './useFlowRun'
 
@@ -39,6 +40,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     difficultyFixed: false,
     characters: [],
     inspiration: [],
+    pending: null,
     ...fields,
   }
 }
@@ -98,6 +100,17 @@ export const checkStep = step({
   prompt: 'Roll to get by unseen.',
   check: skillCheck.key,
   characters: [{ id: viCharacter.id, name: viCharacter.name }],
+})
+
+/** `checkStep` rolling the pushable "Grit": Vi's roll, `gritEntry`, pends until Keep or Push. */
+export const pendingGritStep = step({
+  key: 'sneak',
+  kind: 'check',
+  title: 'Slip past the guard',
+  prompt: 'Roll to get by unseen.',
+  check: gritCheck.key,
+  characters: [{ id: viCharacter.id, name: viCharacter.name }],
+  pending: { entryId: gritEntry.id, characterId: viCharacter.id },
 })
 
 type PickDetails = NonNullable<FlowStep['pick']>

@@ -19,8 +19,10 @@ use App\Play\Domain\Campaign\FlowRun\FlowNote;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
+use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
+use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
@@ -141,6 +143,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
             'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false, 'picked' => null,
             'autoPickDue' => false, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
+            'pendingCheck' => null,
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
     }
@@ -207,6 +210,14 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'picked with a repeated id' => [['picked' => ['kind' => 'npc', 'ids' => ['a', 'a']]], 'Stored campaign FlowRun: "picked" is invalid: Picked item ids must be distinct and not blank.'];
         yield 'picked with more than ten ids' => [['picked' => ['kind' => 'npc', 'ids' => array_map(strval(...), range(1, 11))]], 'Stored campaign FlowRun: "picked" is invalid: Picked items hold 1 to 10 ids, got 11.'];
         yield 'picked outside a Scene' => [['picked' => ['kind' => 'npc', 'ids' => ['a']], 'sceneNumber' => null], 'Stored campaign FlowRun: "picked" must be null outside a Scene.'];
+        $pending = ['stepKey' => 'case', 'entryId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'characterId' => 'ada', 'difficulty' => null, 'bandKey' => 'weak'];
+        $active = ['status' => 'active', 'part' => 'setup', 'stepKey' => 'case'];
+        yield 'a pending check that is no object' => [['pendingCheck' => 'weak'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be an object or null.'];
+        yield 'a pending check without an entry' => [['pendingCheck' => ['entryId' => null] + $pending] + $active, 'Stored campaign FlowRun: "entryId" must be a string.'];
+        yield 'a pending check with a difficulty that is no integer' => [['pendingCheck' => ['difficulty' => '13'] + $pending] + $active, 'Stored campaign FlowRun: "difficulty" must be an integer.'];
+        yield 'a pending check with a blank band' => [['pendingCheck' => ['bandKey' => ' '] + $pending] + $active, 'Stored campaign FlowRun: "pendingCheck" is invalid: A pending check needs a bandKey.'];
+        yield 'a pending check of another step' => [['pendingCheck' => $pending] + ['stepKey' => 'plan'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
+        yield 'a pending check while guidance is paused' => [['pendingCheck' => $pending] + ['status' => 'paused'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
         yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
         yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "sceneTypeSwitchIgnored", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
         yield 'malformed time' => [['history' => [['event' => 'paused', 'at' => 'yesterday', 'details' => []]]], 'Stored campaign FlowRun: "at" must be a time like 2026-10-06T10:00:00.000000+00:00.'];
@@ -292,6 +303,44 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         $this->forgetLoaded();
 
         self::assertNull($this->repository->ofId($id)?->flowRunView($release)?->progress?->sceneNumber);
+    }
+
+    /**
+     * A FlowRun stored before check step rolls could pend (rules-dice-pools slice 5, ADR 0041) has
+     * no pendingCheck: it reads as none.
+     */
+    #[Test]
+    public function aFlowRunStoredBeforePendingChecksReadsNone(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['pendingCheck']));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertNull($loaded?->flowRun()?->pendingCheck());
+        self::assertEquals($this->guidedCampaign($id->toString())->flowRun(), $loaded?->flowRun());
+    }
+
+    #[Test]
+    public function aPendingCheckRoundTripsWithTheWholeFlowRun(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $base = $this->guidedCampaign($id->toString());
+        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
+        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', 13, 'weak');
+        $flowRun = FlowRun::reconstitute(FlowRunStatus::Active, $run->phaseIndex(), FlowRunStage::Scene, 1, 1, 'legwork', ScenePart::Setup, 'case', $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), null, null, $run->switchCount(), $run->history(), null, $run->phaseOpened(), $run->sessionOpeningDue(), null, false, $pending);
+        $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals($pending, $loaded?->flowRun()?->pendingCheck());
+        self::assertEquals(['stepKey' => 'case', 'entryId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'characterId' => 'ada', 'difficulty' => 13, 'bandKey' => 'weak'], $this->storedFlowRun($id->toString())['pendingCheck']);
     }
 
     #[Test]

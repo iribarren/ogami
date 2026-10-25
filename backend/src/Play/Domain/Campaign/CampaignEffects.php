@@ -190,6 +190,12 @@ final readonly class CampaignEffects
 
         $stored = $character->values()[$field->key] ?? CharacterValues::initial($field);
         $before = \is_array($stored) ? array_values(array_filter($stored, \is_string(...))) : [];
+        // The player picks among the unmarked options (unmarkedOptions()), so a pick of a marked one
+        // is a caller's mistake, not a mark that changes nothing.
+        if (null !== $pick && \in_array($pick, $before, true)) {
+            throw new \LogicException(\sprintf('Conditions field "%s" has option "%s" marked already: a pick takes an unmarked option.', $field->key, $pick));
+        }
+
         $marked = $option ?? $pick;
         $after = match ($effect->op) {
             SheetOperation::Mark => null === $marked ? $before : $field->ordered([...$before, $marked]),

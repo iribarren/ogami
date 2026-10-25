@@ -15,6 +15,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryContentType;
 use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryFlowStepType;
 use App\Tests\Support\Play\JournalEntryRepositoryContract;
 use App\Tests\Unit\Play\Domain\Journal\CheckPoolContentTest;
+use App\Tests\Unit\Play\Domain\Journal\CheckPushContentTest;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -64,6 +65,22 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
     public function itIsThePortAdapter(): void
     {
         self::assertSame($this->repository, self::getContainer()->get(JournalEntryRepository::class));
+    }
+
+    #[Test]
+    public function aStoredNullPushReadsAsUnpushedAndThePushIsKept(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->repository->add($entry);
+        $this->entityManager->getConnection()->executeStatement("UPDATE play_journal_entry SET content = jsonb_set(content, '{pool,push}', 'null'::jsonb) WHERE id = ?", [$entry->id()->toString()]);
+        $this->forgetLoaded();
+        $pushed = ($this->repository->ofId($entry->id()) ?? self::fail('The entry is kept.'))->pushedWith(CheckPushContentTest::pushedSneak());
+
+        $this->repository->savePush($pushed);
+        $this->forgetLoaded();
+
+        self::assertEquals($pushed, $this->repository->ofId($entry->id()));
     }
 
     #[Test]

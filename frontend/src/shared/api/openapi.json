@@ -1588,7 +1588,7 @@
                         }
                     },
                     "409": {
-                        "description": "No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile.",
+                        "description": "A check step's roll waits for Keep or Push; No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1800,7 +1800,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile.",
+                        "description": "A check step's roll waits for Keep or Push; The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3757,7 +3757,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3868,7 +3868,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3979,7 +3979,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not offer this Scene Type (or rolls on a table), no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is not at the scene pick, the pick does not offer this Scene Type (or rolls on a table), no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4070,7 +4070,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not roll on a table or the entry rolled names no Scene Type, no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is not at the scene pick, the pick does not roll on a table or the entry rolled names no Scene Type, no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4171,7 +4171,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not in open play in that scene, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is not in open play in that scene, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4282,7 +4282,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is in another phase or its guided scene is no longer the current scene, the phase plays once, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is in another phase or its guided scene is no longer the current scene, the phase plays once, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4373,7 +4373,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is already paused or the Flow is complete, or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is already paused or the Flow is complete, a check step's roll waits for Keep or Push, or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4454,7 +4454,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is not paused or the Flow is complete, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is not paused or the Flow is complete, a check step's roll waits for Keep or Push, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4465,6 +4465,228 @@
                     },
                     "422": {
                         "description": "A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/flow-run/keep": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Keep the roll the current check step of the FlowRun of one of my campaigns waits on, and complete the step on its band",
+                "operationId": "keepFlowCheck",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/KeepFlowCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The campaign, with its FlowRun moved on.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no string \"stepKey\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, no roll waits for Keep or Push or it waits at another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A formula of a band bound or a tracker or sheet Effect value divides by zero, overflows or reads a sheet value that has none; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/flow-run/push": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Push the roll the current check step of the FlowRun of one of my campaigns waits on: re-roll the dice that failed, pay the cost and complete the step on the pushed band",
+                "operationId": "pushFlowCheck",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushFlowCheckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The campaign, with its FlowRun moved on; the journal entry of the roll is completed with the push.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"stepKey\", or its \"picks\" is not a list of strings.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, no roll waits for Keep or Push or it waits at another step; the roll was pushed already (also when two pushes arrive at once), the pinned release no longer declares that pool check with a push, or the Character is gone; the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A band of the check or a value of the cost cannot be evaluated for the Character, the picks do not fit the cost (one is missing, unknown, already marked or not asked for), or a formula of a band bound or a tracker or sheet Effect value divides by zero, overflows or reads a sheet value that has none; nothing changed.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11570,6 +11792,25 @@
                 },
                 "type": "object"
             },
+            "FlowStepPendingResponse": {
+                "required": [
+                    "entryId",
+                    "characterId"
+                ],
+                "properties": {
+                    "entryId": {
+                        "description": "The journal entry of the roll, as the journal lists it.",
+                        "type": "string",
+                        "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+                    },
+                    "characterId": {
+                        "description": "The Character who rolled, who pays the cost of a push.",
+                        "type": "string",
+                        "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c"
+                    }
+                },
+                "type": "object"
+            },
             "FlowStepResponse": {
                 "required": [
                     "key",
@@ -11589,7 +11830,8 @@
                     "difficulty",
                     "difficultyFixed",
                     "characters",
-                    "inspiration"
+                    "inspiration",
+                    "pending"
                 ],
                 "properties": {
                     "key": {
@@ -11708,6 +11950,15 @@
                             "type": "string",
                             "example": "nouns"
                         }
+                    },
+                    "pending": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowStepPendingResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused."
                     }
                 },
                 "type": "object"
@@ -13280,6 +13531,41 @@
                         "description": "The key of the phase the FlowRun is in; refused when it is in another.",
                         "type": "string",
                         "example": "tour"
+                    }
+                },
+                "type": "object"
+            },
+            "KeepFlowCheckRequest": {
+                "required": [
+                    "stepKey"
+                ],
+                "properties": {
+                    "stepKey": {
+                        "description": "The check step whose roll the player keeps; refused when no roll pends, or it pends at another step.",
+                        "type": "string",
+                        "example": "sneak"
+                    }
+                },
+                "type": "object"
+            },
+            "PushFlowCheckRequest": {
+                "required": [
+                    "stepKey"
+                ],
+                "properties": {
+                    "stepKey": {
+                        "description": "The check step whose roll the player pushes; refused when no roll pends, or it pends at another step.",
+                        "type": "string",
+                        "example": "sneak"
+                    },
+                    "picks": {
+                        "description": "The option the player picks for each mark without an option in the cost of the push, in cost order: each must be an unmarked option of its field at that point. A field whose options are all marked takes no pick. Omitted or null, no pick.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "hurt"
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"

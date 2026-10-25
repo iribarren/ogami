@@ -23,9 +23,13 @@ interface JournalEntryRepository
      * succeed, and nothing else of the entry changes. Within the command bus transaction, so a
      * failed push leaves the entry as it was.
      *
-     * @throws CheckAlreadyPushed when the stored entry was pushed already, also by a concurrent push
+     * @param bool $asLatest true also requires that the stored entry is still the campaign's latest
+     *                       (a push from the sheet); a Flow step's push takes its own entry wherever it is
+     *
+     * @throws CheckAlreadyPushed       when the stored entry was pushed already, also by a concurrent push
+     * @throws JournalEntryNotTheLatest with $asLatest, when the campaign has a later entry, also one a concurrent request recorded
      */
-    public function savePush(JournalEntry $pushed): void;
+    public function savePush(JournalEntry $pushed, bool $asLatest = false): void;
 
     public function ofId(JournalEntryId $id): ?JournalEntry;
 

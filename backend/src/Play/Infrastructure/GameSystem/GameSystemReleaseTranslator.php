@@ -1145,7 +1145,9 @@ final readonly class GameSystemReleaseTranslator
     /**
      * A push cost changes a field and a Tracker the release declares, the way Studio checks on publish:
      * mark and clear on a conditions field and one of its options, the other operations on a number
-     * or track field, and a formula that reads only what the sheet and the Trackers declare.
+     * or track field, and a formula that reads only what the sheet and the Trackers declare. A tracker
+     * effect's formula reads Trackers only (value() refuses the rest, as the publisher's flow formula
+     * does), since the push evaluates it over the campaign's Trackers, not a Character's sheet.
      *
      * @param array<string, Field> $fields
      * @param list<string>         $trackerKeys

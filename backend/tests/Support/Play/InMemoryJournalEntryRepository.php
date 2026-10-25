@@ -10,6 +10,7 @@ use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
+use App\Play\Domain\Journal\JournalEntryNotTheLatest;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
@@ -47,11 +48,16 @@ final class InMemoryJournalEntryRepository implements JournalEntryRepository
     }
 
     /**
-     * @throws CheckAlreadyPushed when the kept entry was pushed already, like the conditional update
+     * @throws CheckAlreadyPushed       when the kept entry was pushed already, like the conditional update
+     * @throws JournalEntryNotTheLatest with $asLatest, when the campaign has a later entry, like the conditional update
      */
-    public function savePush(JournalEntry $pushed): void
+    public function savePush(JournalEntry $pushed, bool $asLatest = false): void
     {
         $kept = $this->entries[$pushed->id()->toString()] ?? throw new \LogicException(\sprintf('Journal entry "%s" is not kept.', $pushed->id()->toString()));
+        if ($asLatest && !$this->latestOfCampaign($kept->campaignId())?->id()->equals($kept->id())) {
+            throw JournalEntryNotTheLatest::entry($pushed->id());
+        }
+
         $content = $kept->content();
         if ($content instanceof CheckContent && $content->pool()?->push instanceof \App\Play\Domain\Journal\CheckPushContent) {
             throw CheckAlreadyPushed::entry($pushed->id());

@@ -823,6 +823,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/flow-run/keep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep the roll the current check step of the FlowRun of one of my campaigns waits on, and complete the step on its band */
+        post: operations["keepFlowCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/flow-run/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push the roll the current check step of the FlowRun of one of my campaigns waits on: re-roll the dice that failed, pay the cost and complete the step on the pushed band */
+        post: operations["pushFlowCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/play/game-systems": {
         parameters: {
             query?: never;
@@ -2290,6 +2324,18 @@ export interface components {
              */
             hint: string | null;
         };
+        FlowStepPendingResponse: {
+            /**
+             * @description The journal entry of the roll, as the journal lists it.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b
+             */
+            entryId: string;
+            /**
+             * @description The Character who rolled, who pays the cost of a push.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c
+             */
+            characterId: string;
+        };
         FlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -2355,6 +2401,8 @@ export interface components {
             characters: components["schemas"]["ItemRefResponse"][];
             /** @description The keys of the oracle tables the prompt step offers as inspiration, in order; empty for the other kinds and for a prompt that offers none. The player may roll them; they never change the step. */
             inspiration: string[];
+            /** @description The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused. */
+            pending: components["schemas"]["FlowStepPendingResponse"] | null;
         };
         SceneTypeSummaryResponse: {
             /** @example legwork */
@@ -3108,6 +3156,22 @@ export interface components {
              * @example tour
              */
             phase: string;
+        };
+        KeepFlowCheckRequest: {
+            /**
+             * @description The check step whose roll the player keeps; refused when no roll pends, or it pends at another step.
+             * @example sneak
+             */
+            stepKey: string;
+        };
+        PushFlowCheckRequest: {
+            /**
+             * @description The check step whose roll the player pushes; refused when no roll pends, or it pends at another step.
+             * @example sneak
+             */
+            stepKey: string;
+            /** @description The option the player picks for each mark without an option in the cost of the push, in cost order: each must be an unmarked option of its field at that point. A field whose options are all marked takes no pick. Omitted or null, no pick. */
+            picks?: string[] | null;
         };
         GameSystemFlowResponse: {
             /**
@@ -6613,7 +6677,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile. */
+            /** @description A check step's roll waits for Keep or Push; No session is under way (none has started, or it has ended); while guided, the FlowRun is in a scene or a hook (a guided session ends at the scene pick), or the session closing does not fit the session; or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6782,7 +6846,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile. */
+            /** @description A check step's roll waits for Keep or Push; The campaign has no current scene, the current scene is a hook Scene, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8306,7 +8370,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id). */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8395,7 +8459,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8484,7 +8548,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not offer this Scene Type (or rolls on a table), no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is not at the scene pick, the pick does not offer this Scene Type (or rolls on a table), no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8560,7 +8624,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not at the scene pick, the pick does not roll on a table or the entry rolled names no Scene Type, no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is not at the scene pick, the pick does not roll on a table or the entry rolled names no Scene Type, no session is under way, the session holds the most scenes it can, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8640,7 +8704,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is not in open play in that scene, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is not in open play in that scene, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8729,7 +8793,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, the FlowRun is in another phase or its guided scene is no longer the current scene, the phase plays once, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun is in another phase or its guided scene is no longer the current scene, the phase plays once, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8805,7 +8869,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is already paused or the Flow is complete, or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is already paused or the Flow is complete, a check step's roll waits for Keep or Push, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8872,7 +8936,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is not paused or the Flow is complete, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is not paused or the Flow is complete, a check step's roll waits for Keep or Push, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8882,6 +8946,184 @@ export interface operations {
                 };
             };
             /** @description A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    keepFlowCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeepFlowCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The campaign, with its FlowRun moved on. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no string "stepKey". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, no roll waits for Keep or Push or it waits at another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A formula of a band bound or a tracker or sheet Effect value divides by zero, overflows or reads a sheet value that has none; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pushFlowCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushFlowCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The campaign, with its FlowRun moved on; the journal entry of the roll is completed with the push. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "stepKey", or its "picks" is not a list of strings. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, no roll waits for Keep or Push or it waits at another step; the roll was pushed already (also when two pushes arrive at once), the pinned release no longer declares that pool check with a push, or the Character is gone; the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A band of the check or a value of the cost cannot be evaluated for the Character, the picks do not fit the cost (one is missing, unknown, already marked or not asked for), or a formula of a band bound or a tracker or sheet Effect value divides by zero, overflows or reads a sheet value that has none; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -12,6 +12,7 @@ use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryContent;
 use App\Play\Domain\Journal\JournalEntryContents;
 use App\Play\Domain\Journal\JournalEntryId;
+use App\Play\Domain\Journal\JournalEntryNotTheLatest;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
@@ -319,6 +320,40 @@ trait JournalEntryRepositoryContract
 
         $this->forgetLoaded();
         self::assertEquals($pushed, $this->entries()->ofId($entry->id()));
+    }
+
+    #[Test]
+    public function aPushAsTheLatestEntryIsRefusedOnceALaterEntryIsKeptAndKeepsTheEntry(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $this->givenCampaign(self::OTHER_CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->entries()->add($entry);
+        // An earlier entry, one recorded at the same time with a smaller id and another campaign's later one do not count.
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00'));
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9009', self::OTHER_CAMPAIGN, '2026-10-06 12:00:00'));
+        $this->forgetLoaded();
+        $pushed = $entry->pushedWith(CheckPushContentTest::pushedSneak());
+
+        $this->entries()->savePush($pushed, asLatest: true);
+        $this->forgetLoaded();
+        self::assertEquals($pushed, $this->entries()->ofId($entry->id()));
+
+        $other = $this->entry('01890a5d-ac96-774b-bcce-b302099a9003', self::CAMPAIGN, '2026-10-06 10:01:00', CheckPoolContentTest::sneak());
+        $this->entries()->add($other);
+        // A note recorded at the same time with a larger id is later in recording order.
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9004', self::CAMPAIGN, '2026-10-06 10:01:00'));
+        $this->forgetLoaded();
+
+        try {
+            $this->entries()->savePush($other->pushedWith(CheckPushContentTest::pushedSneak()), asLatest: true);
+            self::fail('A push as the latest entry was kept with a later entry.');
+        } catch (JournalEntryNotTheLatest $exception) {
+            self::assertSame('Journal entry "01890a5d-ac96-774b-bcce-b302099a9003" is no longer the latest of its campaign.', $exception->getMessage());
+        }
+
+        $this->forgetLoaded();
+        self::assertEquals($other, $this->entries()->ofId($other->id()));
     }
 
     #[Test]

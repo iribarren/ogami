@@ -29,6 +29,7 @@ use App\Play\Domain\Journal\CheckPoolContent;
 use App\Play\Domain\Journal\InvalidJournalEntryId;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryId;
+use App\Play\Domain\Journal\JournalEntryNotTheLatest;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Randomness\Domain\DicePool;
 use App\Randomness\Domain\PoolRoll;
@@ -54,7 +55,7 @@ final readonly class PushCheckHandler implements CommandHandler
     /**
      * @throws CampaignNotFound
      * @throws JournalEntryNotFound            when the id is invalid or unknown, or the entry belongs to another campaign
-     * @throws CheckCannotBePushed             when the entry is not the latest, not a pool check, recorded by a Flow step, without a failed die,
+     * @throws CheckCannotBePushed             when the entry is not the latest (also when the push is kept), not a pool check, recorded by a Flow step, without a failed die,
      *                                         or the pinned check is gone, changed or has no push, or the Character is gone
      * @throws CheckAlreadyPushed              when the roll was pushed already, also by a concurrent push
      * @throws CheckEvaluationFailed           when a band of the check cannot be evaluated for the Character
@@ -68,8 +69,8 @@ final readonly class PushCheckHandler implements CommandHandler
     public function __invoke(PushCheck $command): void
     {
         $campaign = $this->journal->campaign($command->campaignId, $command->userId);
-        $release = $this->journal->pinnedSnapshot($campaign);
         $entry = $this->entry($command->entryId, $campaign);
+        $release = $this->journal->pinnedSnapshot($campaign);
         $content = $entry->content();
         $pool = $content instanceof CheckContent ? $content->pool() : null;
         if (!$content instanceof CheckContent || !$pool instanceof CheckPoolContent) {
@@ -93,7 +94,12 @@ final readonly class PushCheckHandler implements CommandHandler
         $changes = $this->applyCost($check->push, new CampaignEffects($campaign, $release, $this->random), $content->characterId(), $command->picks);
         $pushed = $entry->pushedWith($content->pushed($check->push->label, $result, $changes));
         $this->campaigns->save($campaign);
-        $this->entries->savePush($pushed);
+        try {
+            // The latest rule is checked again where the push is kept: an entry recorded meanwhile wins.
+            $this->entries->savePush($pushed, asLatest: true);
+        } catch (JournalEntryNotTheLatest) {
+            throw CheckCannotBePushed::notTheLatestEntry();
+        }
     }
 
     /**

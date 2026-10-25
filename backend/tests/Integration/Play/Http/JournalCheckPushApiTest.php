@@ -388,6 +388,17 @@ final class JournalCheckPushApiTest extends WebTestCase
     }
 
     #[Test]
+    public function anUnknownEntryIsNotFoundEvenWhenThePinnedReleaseCannotBeRead(): void
+    {
+        [$id] = $this->campaignInAScene();
+        $this->connection()->executeStatement('UPDATE studio_gamesystem_release SET schema_version = 99');
+
+        $this->push($id, self::ENTRY_ID_PREFIX.'99');
+
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    #[Test]
     public function anotherPlayersCampaignIsNotFoundEither(): void
     {
         [$id, $vi] = $this->campaignInAScene();
@@ -555,6 +566,41 @@ final class JournalCheckPushApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(['error' => \sprintf('Campaign "%s" was changed by another request. Reload it and try again.', $id)], $this->json());
+        self::assertSame($before, $this->state($id));
+    }
+
+    #[Test]
+    public function aPushThatAnEntryRecordedMeanwhileOvertakesIsAConflictAndKeepsNothing(): void
+    {
+        [$id, $vi] = $this->campaignInAScene();
+        $entry = $this->roll($id, $vi, 'grit', [1, 5, 1, 5]);
+        $before = $this->state($id);
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        // Another request records an entry after the handler read the latest one and before the push is kept (once, on the first flush).
+        $concurrentRecord = new readonly class($this->connection(), $entry['id']) {
+            public function __construct(private Connection $connection, private string $entryId)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement(
+                    "INSERT INTO play_journal_entry (id, campaign_id, session_number, scene_number, recorded_at, content, flow_step) SELECT '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f80ff', campaign_id, session_number, scene_number, recorded_at + interval '1 second', '{\"kind\": \"note\", \"text\": \"Meanwhile.\"}'::jsonb, NULL FROM play_journal_entry WHERE id = ? ON CONFLICT (id) DO NOTHING",
+                    [$this->entryId],
+                );
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentRecord);
+
+        try {
+            $this->random->script(5, 5);
+            $this->push($id, $entry['id']);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentRecord);
+        }
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'Only the latest entry of the journal can be pushed.'], $this->json());
         self::assertSame($before, $this->state($id));
     }
 

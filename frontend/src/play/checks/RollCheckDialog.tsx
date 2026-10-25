@@ -214,9 +214,16 @@ function PushOffer({
               id={`push-pick-${String(index)}`}
               value={chosen[index] ?? ''}
               onChange={(event) => {
+                const option = event.target.value
                 setChosen((current) => {
                   const next = [...current]
-                  next[index] = event.target.value
+                  next[index] = option
+                  // A later pick of the same field holding this option loses it: it is taken now.
+                  push.picks.forEach((other, after) => {
+                    if (after > index && other === field && next[after] === option) {
+                      next[after] = ''
+                    }
+                  })
                   return next
                 })
               }}

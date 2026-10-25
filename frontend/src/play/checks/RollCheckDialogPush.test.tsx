@@ -21,13 +21,27 @@ function pushable(marked: string[] = ['hurt']): Campaign {
   }
 }
 
-/** Renders the Play screen; `rolled` answers the roll, `push` the push, and `sent` collects the pushes' bodies. */
-function renderPush(campaign: Campaign, rolled: FakeHandler, push?: FakeHandler) {
+/**
+ * Renders the Play screen; `rolled` answers the roll, `push` the push, and `sent` collects the
+ * pushes' bodies. `reads` collects the campaign and journal reads, in order.
+ */
+function renderPush(
+  campaign: Campaign,
+  rolled: FakeHandler,
+  push?: FakeHandler,
+  reads: string[] = [],
+) {
   const sent: unknown[] = []
   renderAppAt(`/play/campaigns/${campaign.id}`, {
     'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
-    [`GET ${path}`]: () => Response.json(campaign),
-    [`GET ${path}/journal`]: () => Response.json([]),
+    [`GET ${path}`]: () => {
+      reads.push('campaign')
+      return Response.json(campaign)
+    },
+    [`GET ${path}/journal`]: () => {
+      reads.push('journal')
+      return Response.json([])
+    },
     [`POST ${path}/journal/checks`]: rolled,
     [`POST ${path}/journal/${gritEntry.id}/push`]: async (request: Request) => {
       sent.push(await request.clone().json())
@@ -80,6 +94,49 @@ describe('pushing a pool check from the "Roll a check" dialog', () => {
     await user.click(dialog.getByRole('button', { name: 'Done' }))
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('reads the campaign and the journal again after a push, since the cost changes the sheet', async () => {
+    const user = userEvent.setup()
+    const reads: string[] = []
+    renderPush(pushable(), rolledGrit, undefined, reads)
+
+    const dialog = await rollGrit(user)
+    await user.selectOptions(await dialog.findByLabelText('Pick: Wounds'), 'Tired')
+    const before = { ...countOf(reads) }
+    await user.click(dialog.getByRole('button', { name: 'Push' }))
+
+    await waitFor(() => {
+      expect(countOf(reads).campaign).toBeGreaterThan(before.campaign)
+    })
+    expect(countOf(reads).journal).toBeGreaterThan(before.journal)
+  })
+
+  it('clears a later pick when an earlier pick of the same field takes its option', async () => {
+    const user = userEvent.setup()
+    const twoPicks = {
+      ...gritCheck,
+      push: { label: 'Take two Conditions', picks: ['wounds', 'wounds'] },
+    }
+    const sent = renderPush({ ...pushable([]), checks: [twoPicks] }, rolledGrit)
+
+    const dialog = await rollGrit(user)
+    const [first, second] = await dialog.findAllByLabelText('Pick: Wounds')
+    await user.selectOptions(second, 'Shaken')
+    await user.selectOptions(first, 'Shaken')
+
+    expect(second).toHaveValue('')
+    expect(
+      within(second)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Choose', 'Hurt', 'Tired'])
+    expect(dialog.getByRole('button', { name: 'Push' })).toBeDisabled()
+    await user.selectOptions(second, 'Tired')
+    await user.click(dialog.getByRole('button', { name: 'Push' }))
+    await waitFor(() => {
+      expect(sent).toEqual([{ picks: ['shaken', 'tired'] }])
     })
   })
 
@@ -158,3 +215,11 @@ describe('pushing a pool check from the "Roll a check" dialog', () => {
     })
   })
 })
+
+/** How many times the campaign and the journal were read. */
+function countOf(reads: string[]) {
+  return {
+    campaign: reads.filter((read) => read === 'campaign').length,
+    journal: reads.filter((read) => read === 'journal').length,
+  }
+}

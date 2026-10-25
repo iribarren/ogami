@@ -9,6 +9,7 @@ use App\Play\Domain\Journal\CheckAlreadyPushed;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
 use App\Play\Domain\Journal\JournalEntryId;
+use App\Play\Domain\Journal\JournalEntryNotTheLatest;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
@@ -31,6 +32,9 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
      * (`content->>'forEntry'`), created by a migration: Doctrine cannot map an expression index.
      */
     public const string RANDOM_EVENT_UNIQUE_INDEX = 'uniq_play_journal_entry_random_event';
+
+    /** An entry of the campaign of entry e recorded after it, in latestOfCampaign() order. */
+    private const string LATER_ENTRY = 'SELECT 1 FROM play_journal_entry later WHERE later.campaign_id = e.campaign_id AND (later.recorded_at, later.id) > (e.recorded_at, e.id)';
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -70,25 +74,35 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
 
     /**
      * Updates the stored content in one conditional statement: it matches only while the stored
-     * check has no push part, so a concurrent push that got there first makes this one fail instead of
-     * overwriting it. Entries are loaded read-only objects (the content is immutable), so Doctrine
-     * cannot flush this change itself: the loaded copy is detached and the next read loads the update.
-     * It runs in the command bus transaction, which rolls back on the exception.
+     * check has no push part (absent or a JSON null, which reads the same) and, with $asLatest, while
+     * no entry of the campaign comes after it in recording order (recordedAt, then id, as
+     * latestOfCampaign()), so a concurrent push or record that got there first makes this one fail
+     * instead of overwriting it. Entries are loaded read-only objects (the content is immutable), so
+     * Doctrine cannot flush this change itself: the loaded copy is detached and the next read loads
+     * the update. It runs in the command bus transaction, which rolls back on the exception.
      *
-     * @throws CheckAlreadyPushed when the stored entry was pushed already, also by a concurrent push
+     * @throws CheckAlreadyPushed       when the stored entry was pushed already, also by a concurrent push
+     * @throws JournalEntryNotTheLatest with $asLatest, when the campaign has a later entry, also one a concurrent request recorded
      */
-    public function savePush(JournalEntry $pushed): void
+    public function savePush(JournalEntry $pushed, bool $asLatest = false): void
     {
         $loaded = $this->ofId($pushed->id()) ?? throw new \LogicException(\sprintf('Journal entry "%s" is not kept.', $pushed->id()->toString()));
         $updated = $this->entityManager->getConnection()->executeStatement(
-            "UPDATE play_journal_entry SET content = CAST(:content AS jsonb) WHERE id = :id AND content->'pool'->'push' IS NULL",
+            "UPDATE play_journal_entry e SET content = CAST(:content AS jsonb) WHERE e.id = :id AND COALESCE(e.content->'pool'->'push', 'null'::jsonb) = 'null'::jsonb"
+            .($asLatest ? ' AND NOT EXISTS ('.self::LATER_ENTRY.')' : ''),
             ['content' => json_encode($pushed->content()->toArray(), \JSON_THROW_ON_ERROR), 'id' => $pushed->id()->toString()],
         );
         $this->entityManager->detach($loaded);
 
-        if (1 !== $updated) {
-            throw CheckAlreadyPushed::entry($pushed->id());
+        if (1 === $updated) {
+            return;
         }
+
+        if ($asLatest && false !== $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM play_journal_entry e WHERE e.id = :id AND EXISTS ('.self::LATER_ENTRY.')', ['id' => $pushed->id()->toString()])) {
+            throw JournalEntryNotTheLatest::entry($pushed->id());
+        }
+
+        throw CheckAlreadyPushed::entry($pushed->id());
     }
 
     public function ofId(JournalEntryId $id): ?JournalEntry

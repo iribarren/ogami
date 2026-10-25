@@ -89,6 +89,21 @@ final class CampaignEffectsTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aPickOfAnOptionMarkedAlreadyIsRefusedAndChangesNothing(): void
+    {
+        [$effects, $campaign] = $this->effects(['wounds' => ['hurt']]);
+
+        try {
+            $effects->applySheetEffect(new SheetEffect('wounds', SheetOperation::Mark), 'ida', 'hurt');
+            self::fail('A pick marked an option marked already.');
+        } catch (\LogicException $logic) {
+            self::assertSame('Conditions field "wounds" has option "hurt" marked already: a pick takes an unmarked option.', $logic->getMessage());
+        }
+
+        self::assertSame(['hurt'], $this->value($campaign, 'wounds'));
+    }
+
+    #[Test]
     public function aNumberEffectAndATrackerEffectChangeTheCampaign(): void
     {
         [$effects, $campaign] = $this->effects();

@@ -277,6 +277,76 @@ export const sneakCheckEntry: JournalEntry = {
   },
 }
 
+type CheckEntryContent = Extract<JournalEntry['content'], { kind: 'check' }>
+
+/** The check entry of `gritCheck` for Vi: 3d6, a success on 5+, the dice 6, 2 and 3 (one success, band "weak"). */
+export const gritEntry: JournalEntry = recordedEntry(gritContent())
+
+/** `gritEntry` pushed: the 2 and the 3 re-rolled to 5 and 1, two successes, the band "strong"; the cost marked Hurt. */
+export const pushedGritEntry: JournalEntry = recordedEntry(
+  gritContent({
+    total: 2,
+    diceTotal: 2,
+    bandKey: 'strong',
+    bandLabel: 'Strong',
+    push: {
+      label: 'Take a Condition',
+      dice: [
+        { group: 'pool', face: 6, success: true, rerolled: false },
+        { group: 'pool', face: 5, success: true, rerolled: true },
+        { group: 'pool', face: 1, success: false, rerolled: true },
+      ],
+      successes: 2,
+      rolledBandKey: 'weak',
+      rolledBandLabel: 'Weak',
+      changes: [{ field: 'wounds', before: 0, after: 1, dice: null }],
+    },
+  }),
+)
+
+function gritContent({
+  push = null,
+  ...over
+}: Partial<CheckEntryContent> & {
+  push?: NonNullable<CheckEntryContent['pool']>['push']
+} = {}): CheckEntryContent {
+  return {
+    kind: 'check',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    checkKey: 'grit',
+    checkLabel: 'Grit',
+    expression: '3d6',
+    groups: [],
+    diceTotal: 1,
+    modifier: 0,
+    situational: 0,
+    difficulty: null,
+    total: 1,
+    bandKey: 'weak',
+    bandLabel: 'Weak',
+    hint: null,
+    modifierFormula: null,
+    modifierTerms: [],
+    pool: {
+      count: 3,
+      countFormula: null,
+      terms: [],
+      size: 3,
+      sides: 6,
+      successAt: 5,
+      dice: [
+        { group: 'pool', face: 6, success: true },
+        { group: 'pool', face: 2, success: false },
+        { group: 'pool', face: 3, success: false },
+      ],
+      successes: 1,
+      push,
+    },
+    ...over,
+  }
+}
+
 /** The journal of `lostMineCampaign`: every kind, in recorded order. */
 export const lostMineJournal: JournalEntry[] = [
   gateNote,

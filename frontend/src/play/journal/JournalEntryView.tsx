@@ -141,7 +141,7 @@ function EntryContent({
     case 'pick':
       return <PickView content={content} tags={tags} />
     case 'check':
-      return <CheckView content={content} />
+      return <CheckView content={content} sheet={sheet} />
     case 'sheet-change':
       return <SheetChangeView content={content} sheet={sheet} />
     case 'flowOutcome':
@@ -152,10 +152,25 @@ function EntryContent({
 /** What a Flow step's sheet Effects changed: one line per field, with the dice each rolled. */
 function SheetChangeView({ content, sheet }: { content: SheetChangeContent; sheet: FieldLabels }) {
   return (
+    <ChangeLines characterName={content.characterName} changes={content.changes} sheet={sheet} />
+  )
+}
+
+/** One line per sheet change, as a Flow step's Effects and the cost of a push both tell them. */
+function ChangeLines({
+  characterName,
+  changes,
+  sheet,
+}: {
+  characterName: string
+  changes: SheetChangeContent['changes']
+  sheet: FieldLabels
+}) {
+  return (
     <ul className="space-y-1 text-sm">
-      {content.changes.map((change, index) => (
+      {changes.map((change, index) => (
         <li key={index} className="tabular-nums">
-          {content.characterName}:{' '}
+          {characterName}:{' '}
           {sheet.find((field) => field.key === change.field)?.label ?? change.field} {change.before}{' '}
           → <strong>{change.after}</strong>
           {change.dice !== null && ` (${change.dice.expression}: ${String(change.dice.total)})`}
@@ -194,7 +209,8 @@ function flowNoteLine(note: FlowOutcomeContent['notes'][number]) {
 }
 
 /** A check: who rolled which check, the band it landed in, then the dice and how the total adds up. */
-function CheckView({ content }: { content: CheckContent }) {
+function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabels }) {
+  const push = content.pool?.push ?? null
   return (
     <>
       <p className="font-medium">
@@ -205,6 +221,15 @@ function CheckView({ content }: { content: CheckContent }) {
         <span className="sr-only">Outcome:</span>
         <span className="text-2xl font-bold">{content.bandLabel}</span>
       </p>
+      {push !== null && (
+        <p className="text-sm">
+          <strong>Pushed: {push.label}</strong>
+          {' · '}
+          {push.rolledBandKey === content.bandKey
+            ? `Rolled ${push.rolledBandLabel}, still ${content.bandLabel}`
+            : `Rolled ${push.rolledBandLabel}, pushed to ${content.bandLabel}`}
+        </p>
+      )}
       {content.groups.length > 0 && (
         <div className="rounded-md bg-well p-2 shadow-well">
           <DiceGroups groups={content.groups} />
@@ -240,18 +265,26 @@ function CheckView({ content }: { content: CheckContent }) {
           {content.difficulty !== null && <> vs {content.difficulty}</>}
         </Detail>
       </dl>
+      {push !== null && push.changes.length > 0 && (
+        <ChangeLines characterName={content.characterName} changes={push.changes} sheet={sheet} />
+      )}
     </>
   )
 }
 
 type CheckPool = NonNullable<CheckContent['pool']>
 
-/** Every die of a pool roll; a success is told by text for assistive tech and by weight and a ring, not by colour alone. */
+/**
+ * Every die of a pool roll, after the push when it was pushed; a success is told by text for
+ * assistive tech and by weight and a ring, and a die the push re-rolled by text too, not by colour alone.
+ */
 function PoolDice({ pool }: { pool: CheckPool }) {
+  const dice: { face: number; success: boolean; rerolled?: boolean }[] =
+    pool.push?.dice ?? pool.dice
   return (
     <div className="rounded-md bg-well p-2 shadow-well">
       <ul aria-label="Pool dice" className="flex flex-wrap gap-1.5">
-        {pool.dice.map((die, index) => (
+        {dice.map((die, index) => (
           <li
             // A pool can show the same face many times; the position is the identity.
             key={index}
@@ -263,6 +296,7 @@ function PoolDice({ pool }: { pool: CheckPool }) {
           >
             {die.face}
             <span className="sr-only">{die.success ? ' (success)' : ' (no success)'}</span>
+            {die.rerolled === true && <span className="block text-xs font-normal">re-rolled</span>}
           </li>
         ))}
       </ul>

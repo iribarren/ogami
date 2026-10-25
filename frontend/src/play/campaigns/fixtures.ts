@@ -373,6 +373,17 @@ export const gripCheck: CampaignCheck = {
   difficulty: null,
 }
 
+/** A pool check that can be pushed: 3d6, a success on 5+; the push costs a Condition of the field "wounds" the player picks. */
+export const gritCheck: CampaignCheck = {
+  key: 'grit',
+  label: 'Grit',
+  hint: null,
+  dice: null,
+  pool: { count: 3, countFormula: null, countText: null, sides: 6, successAt: 5 },
+  push: { label: 'Take a Condition', picks: ['wounds'] },
+  difficulty: null,
+}
+
 /** `freeJournal` as a release newer than the one `lostMineCampaign` is pinned to. */
 export const freeJournalV3: GameSystemSummary = { ...freeJournal, version: 3 }
 

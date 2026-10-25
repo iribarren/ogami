@@ -1,6 +1,6 @@
 # 0027. Sheet effects
 
-- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md)
+- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md) and [0041](0041-dice-pools-pushes-and-conditions.md)
 - **Date:** 2026-10-15
 
 ## Context

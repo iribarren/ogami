@@ -1,6 +1,6 @@
 # 0024. Structured checks without scripting
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0041](0041-dice-pools-pushes-and-conditions.md)
 - **Date:** 2026-10-13
 
 ## Context

@@ -21,6 +21,8 @@ export type CompleteFlowStepRequest = components['schemas']['CompleteFlowStepReq
 export type FlowRunCommand =
   | { type: 'answer'; body: CompleteFlowStepRequest }
   | { type: 'skip'; stepKey: string }
+  | { type: 'keep'; stepKey: string }
+  | { type: 'push'; stepKey: string; picks: string[] }
   | { type: 'pick'; sceneType: string }
   | { type: 'pickByRoll' }
   | { type: 'endScene'; sceneNumber: number }
@@ -80,6 +82,16 @@ export function useFlowRunCommand(campaignId: string) {
           ...params,
           body: { stepKey: command.stepKey },
         })
+      case 'keep':
+        return api.POST('/api/campaigns/{campaignId}/flow-run/keep', {
+          ...params,
+          body: { stepKey: command.stepKey },
+        })
+      case 'push':
+        return api.POST('/api/campaigns/{campaignId}/flow-run/push', {
+          ...params,
+          body: { stepKey: command.stepKey, picks: command.picks },
+        })
       case 'pick':
         return api.POST('/api/campaigns/{campaignId}/flow-run/pick', {
           ...params,
@@ -116,6 +128,8 @@ export function useFlowRunCommand(campaignId: string) {
 const failures: Record<FlowRunCommand['type'], string> = {
   answer: 'Answering the step',
   skip: 'Skipping the step',
+  keep: 'Keeping the roll',
+  push: 'Pushing the roll',
   pick: 'Picking the Scene Type',
   pickByRoll: 'Rolling the Scene Type',
   endScene: 'Ending the scene',

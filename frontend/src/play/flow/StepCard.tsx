@@ -12,6 +12,7 @@ import type { Campaign } from '../campaigns/useCampaigns'
 import { CharacterStepForm } from './CharacterStepForm'
 import { CheckStepForm } from './CheckStepForm'
 import { InspirationRolls } from './InspirationRolls'
+import { PendingCheckForm } from './PendingCheckForm'
 import { PickForm } from './PickForm'
 import type { FlowRunCommand, FlowStep } from './useFlowRun'
 
@@ -38,7 +39,8 @@ interface StepProps {
 
 /**
  * The step the FlowRun waits on, with the control that completes it by kind (the rolls happen on
- * the server) and "Skip" unless the step is mandatory. Key it by the step and its place (scene,
+ * the server) and "Skip" unless the step is mandatory. A check step whose roll pends offers Keep or
+ * Push instead of both. Key it by the step and its place (scene,
  * part), so the same step in the next scene of a loop starts with an empty form.
  */
 export function StepCard({ campaign, step, pending, onCommand, frame = false }: StepProps) {
@@ -84,7 +86,7 @@ export function StepCard({ campaign, step, pending, onCommand, frame = false }: 
         <InspirationRolls key={step.key} campaign={campaign} keys={step.inspiration} />
       )}
       <StepForm campaign={campaign} step={step} pending={pending} onCommand={onCommand} />
-      {!step.mandatory && (
+      {!step.mandatory && step.pending === null && (
         <Button
           type="button"
           variant="ghost"
@@ -192,6 +194,22 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
         />
       )
     case 'check':
+      if (step.pending !== null) {
+        return (
+          <PendingCheckForm
+            campaign={campaign}
+            stepKey={step.key}
+            pending={step.pending}
+            busy={pending}
+            onKeep={(stepKey) => {
+              onCommand({ type: 'keep', stepKey })
+            }}
+            onPush={(stepKey, picks) => {
+              onCommand({ type: 'push', stepKey, picks })
+            }}
+          />
+        )
+      }
       return <CheckStepForm campaign={campaign} step={step} pending={pending} onRoll={answer} />
   }
 }

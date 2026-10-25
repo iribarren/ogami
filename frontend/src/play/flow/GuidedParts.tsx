@@ -21,6 +21,8 @@ interface PartProps {
 const answersTheCard = (command: FlowRunCommand | undefined) =>
   command?.type === 'answer' ||
   command?.type === 'skip' ||
+  command?.type === 'keep' ||
+  command?.type === 'push' ||
   command?.type === 'pick' ||
   command?.type === 'pickByRoll'
 

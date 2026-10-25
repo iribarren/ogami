@@ -1,7 +1,7 @@
 # Feature: rules-dice-pools
 
 - **Locator:** `odd/tasks/rules-dice-pools.md` · Engram topic `odd/rules-dice-pools/tasks`
-- **Issue:** #276 · **Branch:** `feat/rules-dice-pools-2-play-conditions` · **Status:** in progress
+- **Issue:** #276 · **Branch:** `feat/rules-dice-pools-3-play-pools` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B8 ([ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), closing three gaps of [ADR 0024](../../docs/adr/0024-structured-checks-without-scripting.md))
@@ -55,7 +55,7 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 |---|---|---|---|---|
 | 1 | `feat/rules-dice-pools-1-contract` | `feat(studio): rules-dice-pools 1/8 contract and publisher` | T1–T2 | ~1,400: ADR, feature doc, glossary ~300; schema and contract doc ~200; publisher (`Checks`, `SheetFields`, `Effects`, `Formulas`) with unit tests and fixtures ~900 |
 | 2 | `feat/rules-dice-pools-2-play-conditions` | `feat(play): rules-dice-pools 2/8 conditions on the sheet` | T3a, T3–T4 | ~1,500: translator and `ConditionsField`, values, formula count, `mark`/`clear` effects, upgrade fitting ~800; pinned release exposes options, sheet checkboxes, fixtures and tests ~400; generated OpenAPI and TS ~300 |
-| 3 | `feat/rules-dice-pools-3-play-pools` | `feat(play): rules-dice-pools 3/8 pool checks` | T5–T6 | ~1,600: kernel pool roll ~250; translator, `Check::perform` pool path, `CheckContent` pool part, API ~650; check form pool size and journal success dice ~400; generated ~300 |
+| 3 | `feat/rules-dice-pools-3-play-pools` | `feat(play): rules-dice-pools 3/8 pool checks` | T5a, T5–T6 | ~1,650: slice 2 review fix ~50; kernel pool roll ~250; translator, `Check::perform` pool path, `CheckContent` pool part, API ~650; check form pool size and journal success dice ~400; generated ~300 |
 | 4 | `feat/rules-dice-pools-4-sheet-push` | `feat(play): rules-dice-pools 4/8 pushed rolls from the sheet` | T7–T8 | ~1,600: kernel push, translator push, cost effects with condition picks, journal amendment, push endpoint and codes ~900; Push in the check dialog with the cost and picks ~400; generated ~300 |
 | 5 | `feat/rules-dice-pools-5-step-push` | `feat(play): rules-dice-pools 5/8 pushed rolls in a check step` | T9–T10 | ~1,500: FlowRun pending check step, Keep/Push command and endpoint, planner drops the pending roll ~800; step card Keep/Push ~400; generated ~300 |
 | 6 | `feat/rules-dice-pools-6-studio-pool` | `feat(studio): rules-dice-pools 6/8 pool checks in the editor` | T11–T12 | ~1,600: test roll pool and sandbox push (backend) ~600; editor Dice/Pool mode and pool inputs, sandbox pool dice and Push ~700; generated ~300 |
@@ -68,9 +68,10 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0041 (index; status lines of ADR 0024, 0027, 0032, 0035; glossary; roadmap B8 link); issue #276 | parent, inline | [x] | ad46102 |
 | T2 | 1 | Contract: `v2.schema.json` (`pool`, `push`, `conditions` field, `mark`/`clear`), the contract doc, Studio validator (`Checks`, `SheetFields`, `Effects` placement and ops, `Formulas` count scope), fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | 1f6adb3 |
-| T3a | 2 | Slice 1 review fix: an explicit `null` `value` on `mark`/`clear` reads like an absent one (Studio `Effects`), proven by tests | writer (delegated) | [x] | |
-| T3 | 2 | Play conditions: translator reads the field and `mark`/`clear` (with an option; still refuses `pool`, `push` and a pick); `ConditionsField`, `CharacterValues`, `SheetValues` count, `FlowRunContext` effects; upgrade planner fitting; tests | writer (delegated) | [x] | |
-| T4 | 2 | Pinned release exposes conditions options; Play sheet marks and clears them (checkboxes); character value API tests; fixtures; generated OpenAPI and TS | writer (delegated) | [x] | |
+| T3a | 2 | Slice 1 review fix: an explicit `null` `value` on `mark`/`clear` reads like an absent one (Studio `Effects`), proven by tests | writer (delegated) | [x] | c472aa5 |
+| T3 | 2 | Play conditions: translator reads the field and `mark`/`clear` (with an option; still refuses `pool`, `push` and a pick); `ConditionsField`, `CharacterValues`, `SheetValues` count, `FlowRunContext` effects; upgrade planner fitting; tests | writer (delegated) | [x] | 4fb450d |
+| T4 | 2 | Pinned release exposes conditions options; Play sheet marks and clears them (checkboxes); character value API tests; fixtures; generated OpenAPI and TS | writer (delegated) | [x] | d6c05a1, b09f96d |
+| T5a | 3 | Slice 2 review fix: the upgrade planner's reading of a stored conditions list with a duplicate or a non-string entry (`ReleaseUpgradePlanner.php:268-272`) is pinned by tests (trimmed vs unchanged) | writer (delegated) | [x] | |
 | T5 | 3 | Kernel pool roll (count, sides, threshold → faces and successes); translator reads `pool`; `Check::perform` pool path (size clamp, success total); `CheckContent` pool part; API responses; tests | writer (delegated) | [ ] | |
 | T6 | 3 | Play check dialog and `check` step show the pool size; journal shows successes per die; tests and fixtures | writer (delegated) | [ ] | |
 | T7 | 4 | Kernel push; translator reads `push`; push of the latest journal entry from the sheet: re-roll, cost effects with picks, journal amendment, codes; API tests | writer (delegated) | [ ] | |
@@ -105,13 +106,15 @@ Play adds: a push request on the sheet's latest check entry (with condition pick
 - 2026-10-25: T3a evidence. The three new tests (explicit `null` `value` on `clear`, on a push-cost `mark`, and on a `mark` outside a push) passed first time: the validator already reads `null` like an absent `value` and the canonical form drops it; no source change was needed, the tests now pin the behaviour (R3).
 - 2026-10-25: T3 Play conditions: `ConditionsField` and `ConditionOption`, translator (`conditions` field, `mark`/`clear` with an option, `clear` without one; still refuses a `mark` without an option, `pool` and `push`), `CharacterValues` (marked keys, unique, declared, stored in declared order), `SheetValues` (count marked), `FlowRunContext` (mark, clear, clear all; the change tells the count before and after, so the journal shape is unchanged), `ReleaseUpgradePlanner` (drops marks of removed options as `trimmed`, follows the new order silently, a type change resets). RED: with `backend/src` stashed (new classes aside) the Play unit suite had 31 errors and 34 failures; GREEN after: `tests/Unit/Play` + `tests/Unit/Studio` 3729 OK, `tests/Integration/Play` 1022 OK (the Character round trip now holds a conditions value), PHPStan clean. Tests were written after the code for the value, count and planner rules, so RED there is the stash run, not a test-first run.
 - 2026-10-25: T4 API and UI: the pinned release's sheet field exposes `type: "conditions"` and `options [{key, label}]` (`SheetFieldView`, `SheetFieldResponse`, `ConditionOptionResponse`; `options` is null for other types); the values API takes and returns the marked keys. New `CampaignCharactersConditionsApiTest`: options in declared order, empty start, canonical order and count, 422 for unknown option, duplicate, string, number, object, null and a non-string item (nothing saved), the 409 on a concurrent POST and PUT carrying a conditions value, and a legacy Character without the field (reads empty, derived count 0). The shared sheet renders a conditions field as one checkbox per option inside the Character form (the form's Save is the existing values save path); the dialog and the panel summary list the marked labels read-only; `computeDerived` counts the marked keys. RED/GREEN: the frontend and API tests were written after the code and passed once the Radix `ResizeObserver` stub was added to `CharactersPanel.test.tsx` (as other test files do for checkboxes in a form); no separate RED run. Generated files (`frontend/src/shared/api/openapi.json`, `schema.d.ts`) are in the API commit. Studio TS needed no change (the union grew without breaking it).
+- 2026-10-25: T5a evidence: the planner already collapses a duplicate key and drops a non-string entry and reports both `trimmed` (a Character cannot store either, so the tests pin the private fitting rule by reflection); three new cases passed first time, no source change (R3).
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
 | 1 | review-72e9e9651173b257 (1f6adb3) | Approved, acknowledged. 1 suggestion: R3 explicit `null` `value` on `mark`/`clear` not proven to read like an absent one (`Studio/Domain/Release/Version2/Effects.php:250-256`), fixed in slice 2 (T3a). Writer notes moved to T13/T14: `DraftReferences` ignores `check.push.effects` and conditions options | [#277](https://github.com/iribarren/ogami/pull/277) |
+| 2 | review-30332141e457fa01 (c472aa5..b09f96d) | Approved, acknowledged. 1 suggestion: R3 no test for a stored conditions list with a duplicate or non-string entry in the upgrade planner (`Play/Domain/Campaign/Upgrade/ReleaseUpgradePlanner.php:268-272`), fixed in slice 3 (T5a) | [#278](https://github.com/iribarren/ogami/pull/278) |
 
 ## Next step
 
-Slice 2 (T3a, T3, T4): conditions played on the sheet and by flow effects; then native review and the PR.
+Slice 3 (T5a, T5, T6): pool checks played from the sheet and in `check` steps (no push yet); then native review and the PR.

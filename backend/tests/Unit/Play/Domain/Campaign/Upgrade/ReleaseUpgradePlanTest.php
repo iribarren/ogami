@@ -88,6 +88,35 @@ final class ReleaseUpgradePlanTest extends TestCase
         return new ConditionsField('f', 'F', options: array_values(array_map(static fn (string $key): ConditionOption => new ConditionOption($key, ucfirst($key)), $options)));
     }
 
+    /**
+     * A Character only ever stores well-formed values, so these shapes cannot come from one; the fitting
+     * still reads them the safe way (R3 of slice 2), pinned through the private fitting rule.
+     *
+     * @param list<mixed>  $stored
+     * @param list<string> $expected
+     */
+    #[Test]
+    #[DataProvider('malformedStoredConditions')]
+    public function aMalformedStoredConditionsListIsFittedAndReportedTrimmed(array $stored, array $expected): void
+    {
+        $field = self::conditions('hurt', 'shaken');
+        $planner = new ReleaseUpgradePlanner(UpgradeFixtures::release(1, [$field]), UpgradeFixtures::release(2, [$field]));
+
+        $fitted = new \ReflectionMethod($planner, 'fitValue')->invoke($planner, $field, $stored);
+
+        self::assertSame([$expected, FieldChangeKind::Trimmed], $fitted);
+    }
+
+    /**
+     * @return iterable<string, array{list<mixed>, list<string>}>
+     */
+    public static function malformedStoredConditions(): iterable
+    {
+        yield 'a duplicate key is collapsed' => [['hurt', 'hurt', 'shaken'], ['hurt', 'shaken']];
+        yield 'a non-string entry is dropped' => [['hurt', 3, null, 'shaken'], ['hurt', 'shaken']];
+        yield 'a duplicate and a non-string entry together' => [['shaken', 'shaken', 7], ['shaken']];
+    }
+
     #[Test]
     #[DataProvider('fieldRules')]
     public function aStoredValueIsFittedToTheNewField(Field $old, Field $new, mixed $value, ?FieldChangeKind $kind, mixed $expected): void

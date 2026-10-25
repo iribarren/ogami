@@ -13,8 +13,10 @@ use App\Studio\Application\DeleteCheck;
 use App\Studio\Application\GetGameSystemChecks;
 use App\Studio\Application\MoveCheck;
 use App\Studio\Application\SaveCheck;
+use App\Studio\Application\TestPushCheck;
 use App\Studio\Application\TestRollCheck;
 use App\Studio\Domain\Check\CheckTestRollFailed;
+use App\Studio\Domain\Check\CheckTestRollNotPushable;
 use App\Studio\Domain\Check\InvalidTestRoll;
 use App\Studio\Domain\GameSystem\CheckInUse;
 use App\Studio\Domain\GameSystem\CheckKeyTaken;
@@ -35,7 +37,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
  * The checks of a game manager's GameSystem drafts: a read and one create, replace, delete and move
- * command per check and a test roll (security.yaml restricts these routes to ROLE_GAME_MANAGER). Like the drafts,
+ * command per check, a test roll and the push of a test roll (security.yaml restricts these routes to ROLE_GAME_MANAGER). Like the drafts,
  * they belong to their creator: another user's key is not found. Every write carries the draft
  * version the client read and answers with the checks as they are now, new version included.
  */
@@ -48,6 +50,7 @@ final readonly class GameSystemCheckController
     private const string MALFORMED_SAVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and a "check" object, such as {"expectedVersion": 3, "check": {"key": "skill", "label": "Skill", "dice": "1d10", "bands": [{"key": "miss", "label": "Miss", "upTo": 7}, {"key": "hit", "label": "Hit"}]}}.';
     private const string MALFORMED_MOVE = 'Send a JSON object with an integer "expectedVersion", the draft version you read, and an integer "index", the check\'s new position, such as {"expectedVersion": 3, "index": 0}.';
     private const string MALFORMED_DELETE = 'Send the draft version you read as an integer "expectedVersion" query parameter, such as ?expectedVersion=3.';
+    private const string MALFORMED_TEST_PUSH = 'Send a JSON object with a list "faces", the face of each die of the roll to push, optionally with the "sheet", "trackers", "difficulty" and "situational" of that roll, such as {"faces": [1, 5, 6, 2], "sheet": {"hands": 4}, "difficulty": 13, "situational": -2}.';
     private const string MALFORMED_TEST_ROLL = 'Send a JSON object, optionally with "sheet" and "trackers" objects of integer samples and an integer "difficulty" and "situational", such as {"sheet": {"hands": 6}, "trackers": {"alarm": 2}, "difficulty": 13, "situational": -2}.';
 
     public function __construct(
@@ -168,8 +171,7 @@ final readonly class GameSystemCheckController
             return $body;
         }
 
-        // Request::toArray() decodes `{}` and `[]` alike and a list as an array, so only the raw body is a JSON object for sure.
-        if (!json_decode($request->getContent()) instanceof \stdClass) {
+        if (!$this->isJsonObject($request)) {
             return $this->error(self::MALFORMED_TEST_ROLL, Response::HTTP_BAD_REQUEST);
         }
 
@@ -182,6 +184,49 @@ final readonly class GameSystemCheckController
         } catch (InvalidTestRoll|CheckTestRollFailed|InvalidReleaseContent $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+    }
+
+    #[Route('/api/studio/game-systems/{key}/checks/{check}/test-rolls/push', name: 'api_studio_game_systems_checks_test_push', methods: ['POST'])]
+    #[OA\Post(operationId: 'testPushCheck', summary: 'Push a sandbox roll of a pool check of one of my GameSystem drafts: the client sends the faces of the roll with its samples and gets the failed dice re-rolled; never changes the draft, is never recorded and never applies the push cost')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: CheckTestPushRequest::class)))]
+    #[OA\Response(response: 200, description: 'The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied.', content: new OA\JsonContent(ref: new Model(type: CheckTestRollResponse::class)))]
+    #[OA\Response(response: 400, description: 'The body is not a JSON object, or has no list "faces".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'The user has no GameSystem with this key (another user\'s is not found either), or it has no check with the key in the path.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The check cannot be pushed: it declares no push (a dice check never does), or no die of the roll failed. As Play refuses the push of a roll that cannot be pushed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool for these samples (the message starts with "faces"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function testPush(string $key, string $check, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        $body = $this->jsonBody($request, 'Send the faces and the samples as JSON.', self::MALFORMED_TEST_PUSH);
+        if ($body instanceof JsonResponse) {
+            return $body;
+        }
+
+        if (!$this->isJsonObject($request) || !\array_key_exists('faces', $body)) {
+            return $this->error(self::MALFORMED_TEST_PUSH, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $query = new TestPushCheck($user->id(), $key, $check, $body['sheet'] ?? [], $body['trackers'] ?? [], $body['difficulty'] ?? null, $body['situational'] ?? null, $body['faces']);
+
+            return new JsonResponse(CheckTestRollResponse::fromView($this->queryBus->ask($query)));
+        } catch (GameSystemNotFound|CheckNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (CheckTestRollNotPushable $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
+        } catch (InvalidTestRoll|CheckTestRollFailed|InvalidReleaseContent $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    /**
+     * Request::toArray() decodes `{}` and `[]` alike and a list as an array, so only the raw body is a JSON object for sure.
+     */
+    private function isJsonObject(Request $request): bool
+    {
+        return json_decode($request->getContent()) instanceof \stdClass;
     }
 
     /**

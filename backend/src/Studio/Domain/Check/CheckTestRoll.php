@@ -10,14 +10,19 @@ use App\Formula\Domain\InvalidFormula;
 use App\Formula\Domain\ValueResolver;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\InvalidDiceExpression;
+use App\Randomness\Domain\InvalidDicePool;
+use App\Randomness\Domain\PoolRoll;
+use App\Randomness\Domain\PoolRollNotPushable;
 use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
  * A saved check as a test roll evaluates it, in the order of Play's Check::perform (ADR 0024, 0032):
  * the effective difficulty, the situational modifier, the modifier, the band bounds, the dice, the
  * overflow guard, the band. Studio cannot import Play, so it composes the same shared-kernel pieces
- * itself. The saved draft already passed the item rules, so nothing here enforces them again: bounds
- * that do not increase for the samples are returned as they are.
+ * itself. A check rolls dice or a pool (ADR 0041), never both; a pool check may declare a push, which
+ * the sandbox applies to the faces of an earlier roll. The saved draft already passed the item rules,
+ * so nothing here enforces them again: bounds that do not increase for the samples are returned as
+ * they are.
  */
 final readonly class CheckTestRoll
 {
@@ -26,14 +31,29 @@ final readonly class CheckTestRoll
 
     /**
      * @param non-empty-list<OutcomeBand> $bands in band order
+     *
+     * @throws \InvalidArgumentException when the check rolls both or neither of dice and a pool, a pool has a modifier, or a push has no pool
      */
     public function __construct(
         public string $key,
-        public DiceExpression $dice,
+        public ?DiceExpression $dice,
         public ?Formula $modifier,
         public ?CheckDifficultyRange $difficulty,
         public array $bands,
+        public ?CheckTestPool $pool = null,
+        public ?CheckTestPush $push = null,
     ) {
+        if ($dice instanceof DiceExpression === $pool instanceof CheckTestPool) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls dice or a pool, exactly one of them.', $key));
+        }
+
+        if ($pool instanceof CheckTestPool && $modifier instanceof Formula) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls a pool, which takes no modifier.', $key));
+        }
+
+        if ($push instanceof CheckTestPush && !$pool instanceof CheckTestPool) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" declares a push without a pool.', $key));
+        }
     }
 
     /**
@@ -53,24 +73,45 @@ final readonly class CheckTestRoll
 
         $where = \sprintf('check "%s"', $key);
         $dice = $check['dice'] ?? null;
+        $pool = $check['pool'] ?? null;
         $modifier = $check['modifier'] ?? null;
+        $push = $check['push'] ?? null;
+        if (null !== $dice && null !== $pool) {
+            throw CheckTestRollFailed::unreadable($where.' has both dice and a pool');
+        }
+
+        if (null === $dice && null === $pool) {
+            throw CheckTestRollFailed::unreadable($where.' has neither dice nor a pool');
+        }
+
+        if (null !== $pool && null !== $modifier) {
+            throw CheckTestRollFailed::unreadable($where.' has a modifier with a pool');
+        }
+
+        if (null !== $push && null === $pool) {
+            throw CheckTestRollFailed::unreadable($where.' has a push without a pool');
+        }
 
         try {
             return new self(
                 $key,
-                DiceExpression::fromString(\is_string($dice) ? $dice : throw CheckTestRollFailed::unreadable($where.' has no dice notation')),
+                null === $dice ? null : DiceExpression::fromString(\is_string($dice) ? $dice : throw CheckTestRollFailed::unreadable($where.' has dice that are not a string')),
                 null === $modifier ? null : Formula::fromString(\is_string($modifier) ? $modifier : throw CheckTestRollFailed::unreadable($where.' has a modifier that is not a string')),
                 self::difficulty($check['difficulty'] ?? null, $where),
                 self::bands($check['bands'] ?? null, $where),
+                null === $pool ? null : self::readPool($pool, $where),
+                null === $push ? null : self::readPush($push, $where),
             );
+        } catch (\InvalidArgumentException $invalid) {
+            throw CheckTestRollFailed::unreadable(\sprintf('%s has a pool that breaks the contract: %s', $where, rtrim($invalid->getMessage(), '.')), $invalid);
         } catch (InvalidDiceExpression|InvalidFormula $invalid) {
             throw CheckTestRollFailed::unreadable(\sprintf('%s has %s that does not parse: %s', $where, $invalid instanceof InvalidDiceExpression ? 'dice' : 'a formula', rtrim($invalid->getMessage(), '.')), $invalid);
         }
     }
 
     /**
-     * Rolls the dice and picks the band. The modifier and every band bound are evaluated first, so a
-     * check that cannot be evaluated rolls nothing.
+     * Rolls the dice or the pool and picks the band. The modifier or the pool count and every band
+     * bound are evaluated first, so a check that cannot be evaluated rolls nothing.
      *
      * @param ?int $difficulty the Check difficulty chosen for the roll; omitted, the declared default applies
      *
@@ -80,18 +121,25 @@ final readonly class CheckTestRoll
     public function perform(RandomNumberGenerator $random, ValueResolver $sheet, ?int $difficulty, int $situational): CheckTestRollResult
     {
         $effective = $this->effectiveDifficulty($difficulty);
-        if ($situational < self::MIN_SITUATIONAL || $situational > self::MAX_SITUATIONAL) {
-            throw InvalidTestRoll::outside('situational', self::MIN_SITUATIONAL, self::MAX_SITUATIONAL, $situational);
-        }
+        $this->assertSituational($situational);
 
         try {
             $modifier = $this->modifier?->evaluate(new CheckFormulaValues($sheet, null)) ?? 0;
-            $bandValues = new CheckFormulaValues($sheet, $effective);
-            $bounds = array_map(static fn (OutcomeBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($bandValues) : $band->upTo, $this->bands);
-            $roll = $this->dice->roll($random);
+            $count = $this->countOf($sheet);
+            $bounds = $this->boundsOf($sheet, $effective);
+            $roll = $this->dice?->roll($random);
+            $poolRoll = $this->pool?->pool($this->pool->sizeFor($count, $situational))->roll($random);
         } catch (FormulaEvaluationFailed|InvalidDiceExpression $failed) {
             throw CheckTestRollFailed::evaluation($this->key, $failed);
         }
+
+        if ($this->pool instanceof CheckTestPool && $poolRoll instanceof PoolRoll) {
+            $total = $poolRoll->successes();
+
+            return new CheckTestRollResult(null, 0, $situational, $effective, $total, $this->bands, $bounds, $this->bandFor($bounds, $total), $this->poolRollOf($poolRoll, $count), $this->push);
+        }
+
+        $roll ?? throw new \LogicException(\sprintf('Check "%s" rolls neither dice nor a pool.', $this->key));
 
         // The dice total can be close to PHP_INT_MAX, so adding the modifiers can leave the integers (as in the dice kernel).
         if (abs((float) $roll->total() + $modifier + $situational) >= (float) \PHP_INT_MAX) {
@@ -99,10 +147,100 @@ final readonly class CheckTestRoll
         }
 
         $total = $roll->total() + $modifier + $situational;
-        // The last band has no bound and catches the rest, so a band always matches.
-        $index = array_find_key($bounds, static fn (?int $bound): bool => null === $bound || $total <= $bound) ?? \count($this->bands) - 1;
 
-        return new CheckTestRollResult($roll, $modifier, $situational, $effective, $total, $this->bands, $bounds, $this->bands[$index]);
+        return new CheckTestRollResult($roll, $modifier, $situational, $effective, $total, $this->bands, $bounds, $this->bandFor($bounds, $total));
+    }
+
+    /**
+     * Pushes the roll a client holds (ADR 0041), statelessly: the pool is sized again for these samples,
+     * rebuilt from the faces of the roll, and every die that failed is re-rolled once. The band is
+     * picked again for the pushed successes. The cost is not applied: a test roll has no campaign.
+     *
+     * @param list<int> $faces the face of each die of the roll as it was shown, in roll order
+     *
+     * @throws CheckTestRollNotPushable when the check declares no push, or no die of the roll failed
+     * @throws InvalidTestRoll          when the difficulty or the situational modifier is not accepted, or the faces are not the roll of this pool
+     * @throws CheckTestRollFailed      when the pool count or a band bound cannot be evaluated; nothing is re-rolled
+     */
+    public function push(RandomNumberGenerator $random, ValueResolver $sheet, ?int $difficulty, int $situational, array $faces): CheckTestRollResult
+    {
+        if (!$this->pool instanceof CheckTestPool || !$this->push instanceof CheckTestPush) {
+            throw CheckTestRollNotPushable::noPush($this->key);
+        }
+
+        $effective = $this->effectiveDifficulty($difficulty);
+        $this->assertSituational($situational);
+
+        try {
+            $count = $this->countOf($sheet);
+            $bounds = $this->boundsOf($sheet, $effective);
+        } catch (FormulaEvaluationFailed $failed) {
+            throw CheckTestRollFailed::evaluation($this->key, $failed);
+        }
+
+        try {
+            $rolled = PoolRoll::ofFaces($this->pool->pool($this->pool->sizeFor($count, $situational)), $faces);
+        } catch (InvalidDicePool $invalid) {
+            throw InvalidTestRoll::at('faces', rtrim($invalid->getMessage(), '.'));
+        }
+
+        try {
+            $pushed = $rolled->push($random);
+        } catch (PoolRollNotPushable) {
+            throw CheckTestRollNotPushable::noFailedDie($this->key);
+        }
+
+        return new CheckTestRollResult(null, 0, $situational, $effective, $pushed->successes(), $this->bands, $bounds, $this->bandFor($bounds, $pushed->successes()), $this->poolRollOf($pushed, $count), $this->push, $rolled->successes());
+    }
+
+    private function assertSituational(int $situational): void
+    {
+        if ($situational < self::MIN_SITUATIONAL || $situational > self::MAX_SITUATIONAL) {
+            throw InvalidTestRoll::outside('situational', self::MIN_SITUATIONAL, self::MAX_SITUATIONAL, $situational);
+        }
+    }
+
+    /**
+     * What the pool's count reads for the samples: its number, or its formula over the sheet (without
+     * a difficulty, as Play); 0 for a check that rolls dice.
+     *
+     * @throws FormulaEvaluationFailed
+     */
+    private function countOf(ValueResolver $sheet): int
+    {
+        if (!$this->pool instanceof CheckTestPool) {
+            return 0;
+        }
+
+        return $this->pool->count instanceof Formula ? $this->pool->count->evaluate(new CheckFormulaValues($sheet, null)) : $this->pool->count;
+    }
+
+    /**
+     * @return list<?int> the evaluated upper bound of each band, in band order
+     *
+     * @throws FormulaEvaluationFailed
+     */
+    private function boundsOf(ValueResolver $sheet, ?int $difficulty): array
+    {
+        $values = new CheckFormulaValues($sheet, $difficulty);
+
+        return array_map(static fn (OutcomeBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($values) : $band->upTo, $this->bands);
+    }
+
+    /**
+     * The first band whose upper bound is at least the total. The last band has no bound and catches
+     * the rest, so a band always matches.
+     *
+     * @param list<?int> $bounds
+     */
+    private function bandFor(array $bounds, int $total): OutcomeBand
+    {
+        return $this->bands[array_find_key($bounds, static fn (?int $bound): bool => null === $bound || $total <= $bound) ?? \count($this->bands) - 1];
+    }
+
+    private function poolRollOf(PoolRoll $roll, int $count): CheckTestPoolRoll
+    {
+        return new CheckTestPoolRoll($roll, $count, $this->pool?->count instanceof Formula ? $this->pool->count->toString() : null);
     }
 
     private function effectiveDifficulty(?int $given): ?int
@@ -140,6 +278,48 @@ final readonly class CheckTestRoll
         }
 
         return new CheckDifficultyRange($default, $min, $max);
+    }
+
+    /**
+     * @throws CheckTestRollFailed       when the pool is not an object with a count (an integer or a formula), integer sides and an integer success threshold
+     * @throws \InvalidArgumentException when the pool is outside the kernel's bounds
+     * @throws InvalidFormula            when the count formula does not parse
+     */
+    private static function readPool(mixed $stored, string $where): CheckTestPool
+    {
+        if (!\is_array($stored) || array_is_list($stored)) {
+            throw CheckTestRollFailed::unreadable($where.' has a pool that is not an object');
+        }
+
+        $count = $stored['count'] ?? null;
+        $sides = $stored['sides'] ?? null;
+        $successAt = $stored['successAt'] ?? null;
+        if (!\is_int($sides) || !\is_int($successAt)) {
+            throw CheckTestRollFailed::unreadable($where.' has a pool without integer sides and success threshold');
+        }
+
+        if (\is_array($count)) {
+            $formula = $count['formula'] ?? null;
+            $count = Formula::fromString(\is_string($formula) ? $formula : throw CheckTestRollFailed::unreadable($where.' has a pool count without a formula'));
+        }
+
+        return new CheckTestPool(\is_int($count) || $count instanceof Formula ? $count : throw CheckTestRollFailed::unreadable($where.' has a pool count that is neither an integer nor a formula'), $sides, $successAt);
+    }
+
+    private static function readPush(mixed $stored, string $where): CheckTestPush
+    {
+        $label = \is_array($stored) ? $stored['label'] ?? null : null;
+        if (!\is_string($label) || '' === trim($label)) {
+            throw CheckTestRollFailed::unreadable($where.' has a push without a label');
+        }
+
+        // The cost is never applied in a test roll, but a push that is not an object with a list of effects is not a push.
+        $effects = $stored['effects'] ?? [];
+        if (!\is_array($effects) || !array_is_list($effects)) {
+            throw CheckTestRollFailed::unreadable($where.' has push effects that are not a list');
+        }
+
+        return new CheckTestPush($label);
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Formula\Domain\Formula;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
+use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
@@ -133,7 +134,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
 
         $check = $snapshot->check('slip-past');
         self::assertInstanceOf(Check::class, $check);
-        self::assertSame(['2d6', 'Alert level', 7], [$check->dice->notation(), $check->difficulty?->label, $check->difficulty?->default]);
+        self::assertSame(['2d6', 'Alert level', 7], [$check->dice?->notation(), $check->difficulty?->label, $check->difficulty?->default]);
         self::assertSame(['caught', 'through'], array_map(static fn (CheckBand $band): string => $band->key, $check->bands));
         $step = $snapshot->sceneType('infiltration')?->play->step('sneak-by');
         self::assertInstanceOf(CheckStep::class, $step);
@@ -295,30 +296,87 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         }
     }
 
+    #[Test]
+    public function itReadsAPoolWithANumberCountOrAFormulaCount(): void
+    {
+        $bands = [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'hit', 'label' => 'Hit']];
+        $snapshot = $this->translate([
+            ['key' => 'sneak', 'label' => 'Sneak', 'pool' => ['count' => ['formula' => '{hands} + {edge}'], 'sides' => 6, 'successAt' => 5], 'bands' => $bands],
+            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Dig in', 'pool' => ['count' => 4, 'sides' => 10, 'successAt' => 8], 'difficulty' => ['label' => 'Needed', 'default' => 2], 'bands' => $bands],
+        ]);
+
+        self::assertEquals([
+            new Check('sneak', 'Sneak', null, null, null, null, [new CheckBand('miss', 'Miss', 0), new CheckBand('hit', 'Hit')], new CheckPool(Formula::fromString('{hands} + {edge}'), 6, 5)),
+            new Check('grit', 'Grit', 'Dig in', null, null, new CheckDifficulty('Needed', 2), [new CheckBand('miss', 'Miss', 0), new CheckBand('hit', 'Hit')], new CheckPool(4, 10, 8)),
+        ], $snapshot->checks());
+    }
+
     /**
-     * @return iterable<string, array{array<string, mixed>, string}> the check and the message: Play refuses the shapes of ADR 0041 until the slices that play them
+     * @return iterable<string, array{array<string, mixed>, string}> the check and the message
      */
-    public static function unsupportedDicePoolShapes(): iterable
+    public static function malformedPools(): iterable
     {
         $pool = ['count' => 3, 'sides' => 6, 'successAt' => 6];
+        $with = static fn (array $change): array => self::skill(['dice' => null, 'modifier' => null, 'pool' => $change + $pool]);
 
-        yield 'a pool beside dice' => [self::skill(['pool' => $pool]), 'checks[0].pool: unknown property.'];
-        yield 'a pool instead of dice' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => $pool]), 'checks[0].pool: unknown property.'];
-        yield 'a pool with a formula count' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => ['count' => ['formula' => '{hands}']] + $pool]), 'checks[0].pool: unknown property.'];
-        yield 'a push' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: unknown property.'];
-        yield 'a push with a pool' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => $pool, 'push' => ['label' => 'Push']]), 'checks[0].pool: unknown property.'];
+        yield 'a pool beside dice' => [self::skill(['pool' => $pool, 'modifier' => null]), 'checks[0].pool: a check rolls dice or a pool, not both.'];
+        yield 'a pool with a modifier' => [self::skill(['dice' => null, 'pool' => $pool]), 'checks[0].modifier: a pool check has no modifier.'];
+        yield 'a pool that is not an object' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => '3d6']), 'checks[0].pool: must be an object.'];
+        yield 'a pool with an unknown property' => [$with(['hunger' => 1]), 'checks[0].pool.hunger: unknown property.'];
+        yield 'a missing count' => [$with(['count' => null]), 'checks[0].pool.count: must be an integer.'];
+        yield 'a count that is a string' => [$with(['count' => '3']), 'checks[0].pool.count: must be an integer.'];
+        yield 'a count of zero' => [$with(['count' => 0]), 'checks[0].pool.count: must be between 1 and 100.'];
+        yield 'a count over 100' => [$with(['count' => 101]), 'checks[0].pool.count: must be between 1 and 100.'];
+        yield 'a count object with another property' => [$with(['count' => ['formula' => '{hands}', 'min' => 1]]), 'checks[0].pool.count.min: unknown property.'];
+        yield 'a count object without a formula' => [$with(['count' => ['formula' => null]]), 'checks[0].pool.count.formula: must be a string.'];
+        yield 'a count formula that does not parse' => [$with(['count' => ['formula' => '{hands} +']]), 'checks[0].pool.count.formula: '];
+        yield 'a count formula reading an unknown field' => [$with(['count' => ['formula' => '{nope}']]), 'checks[0].pool.count.formula: {nope}: unknown field "nope".'];
+        yield 'a count formula reading a text field' => [$with(['count' => ['formula' => '{role}']]), 'checks[0].pool.count.formula: {role}: field "role" is a text or list field, a formula reads number, track and derived fields only.'];
+        yield 'a count formula reading a check value' => [$with(['count' => ['formula' => '{check:difficulty}']]), 'checks[0].pool.count.formula: {check:difficulty}: a check reference is read only by the bands of a check.'];
+        yield 'sides under 2' => [$with(['sides' => 1, 'successAt' => 1]), 'checks[0].pool.sides: must be between 2 and 1000.'];
+        yield 'sides over 1000' => [$with(['sides' => 1001]), 'checks[0].pool.sides: must be between 2 and 1000.'];
+        yield 'sides not an integer' => [$with(['sides' => 6.5]), 'checks[0].pool.sides: must be an integer.'];
+        yield 'a missing success threshold' => [$with(['successAt' => null]), 'checks[0].pool.successAt: must be an integer.'];
+        yield 'a success threshold under 1' => [$with(['successAt' => 0]), 'checks[0].pool.successAt: must be between 1 and 6.'];
+        yield 'a success threshold over the sides' => [$with(['successAt' => 7]), 'checks[0].pool.successAt: must be between 1 and 6.'];
     }
 
     /**
      * @param array<string, mixed> $check
      */
     #[Test]
-    #[DataProvider('unsupportedDicePoolShapes')]
-    public function itStillRefusesPoolsAndPushes(array $check, string $message): void
+    #[DataProvider('malformedPools')]
+    public function itFailsClosedOnAMalformedPool(array $check, string $message): void
     {
         try {
             $this->translate([$check]);
-            self::fail('Play does not play pools or pushes yet.');
+            self::fail('The pool is malformed.');
+        } catch (InvalidGameSystemRelease $invalid) {
+            self::assertStringStartsWith(self::UNREADABLE.$message, $invalid->getMessage());
+        }
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}> the check and the message: Play refuses the shapes of ADR 0041 until the slices that play them
+     */
+    public static function unsupportedPushShapes(): iterable
+    {
+        $pool = ['count' => 3, 'sides' => 6, 'successAt' => 6];
+
+        yield 'a push' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: unknown property.'];
+        yield 'a push with a pool' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => $pool, 'push' => ['label' => 'Push']]), 'checks[0].push: unknown property.'];
+    }
+
+    /**
+     * @param array<string, mixed> $check
+     */
+    #[Test]
+    #[DataProvider('unsupportedPushShapes')]
+    public function itStillRefusesPushes(array $check, string $message): void
+    {
+        try {
+            $this->translate([$check]);
+            self::fail('Play does not play pushes yet.');
         } catch (InvalidGameSystemRelease $invalid) {
             self::assertSame(self::UNREADABLE.$message, $invalid->getMessage());
         }

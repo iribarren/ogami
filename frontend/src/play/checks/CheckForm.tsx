@@ -18,6 +18,14 @@ export interface CheckRoll {
   situational?: number
 }
 
+/** "Pool: Agility + Stealth − Physical d6, success on 6+", or "4d6, success on 6+" for a fixed count. */
+function describePool(pool: NonNullable<CampaignCheck['pool']>) {
+  const success = `success on ${String(pool.successAt)}+`
+  return pool.countText === null
+    ? `Pool: ${String(pool.count)}d${String(pool.sides)}, ${success}`
+    : `Pool: ${pool.countText.replaceAll(' - ', ' − ')} d${String(pool.sides)}, ${success}`
+}
+
 /** The bounds of the Situational modifier (glossary). */
 const situationalRange = { min: -100, max: 100 }
 
@@ -119,6 +127,7 @@ export function CheckForm({
           <p className="font-medium">{check?.label}</p>
         )}
         {check?.hint != null && <p className="text-sm text-muted-foreground">{check.hint}</p>}
+        {check?.pool != null && <p className="text-sm">{describePool(check.pool)}</p>}
         {check?.difficulty != null &&
           (fixedDifficulty === null ? (
             <div className="space-y-1">
@@ -141,7 +150,9 @@ export function CheckForm({
             </p>
           ))}
         <div className="space-y-1">
-          <Label htmlFor={`${id}-situational`}>Situational modifier</Label>
+          <Label htmlFor={`${id}-situational`}>
+            {check?.pool != null ? 'Extra dice' : 'Situational modifier'}
+          </Label>
           <Input
             id={`${id}-situational`}
             type="number"
@@ -152,6 +163,11 @@ export function CheckForm({
               setSituational(event.target.value)
             }}
           />
+          {check?.pool != null && (
+            <p className="text-sm text-muted-foreground">
+              Adds dice to the pool; a negative number takes dice away (from 1 to 100 dice).
+            </p>
+          )}
         </div>
         <Button
           type="submit"

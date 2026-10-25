@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\GameSystem\Check;
 
+use App\Formula\Domain\Formula;
 use App\Formula\Domain\Reference;
 use App\Formula\Domain\ReferenceKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
@@ -39,5 +40,17 @@ final readonly class ReferenceLabels
         $label = $this->sheet->field($reference->key)->label ?? $reference->key;
 
         return ReferenceKind::TrackMax === $reference->kind ? $label.' max' : $label;
+    }
+
+    /**
+     * The formula as players read it: each reference replaced by its label, the rest as written.
+     */
+    public function spell(Formula $formula): string
+    {
+        return (string) preg_replace_callback(
+            '/\{([^{}]*)\}/',
+            fn (array $match): string => ($reference = Reference::fromInner($match[1])) instanceof Reference ? $this->label($reference) : $match[0],
+            $formula->toString(),
+        );
     }
 }

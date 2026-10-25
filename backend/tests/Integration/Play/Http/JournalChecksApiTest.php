@@ -79,6 +79,9 @@ final class JournalChecksApiTest extends WebTestCase
             ],
             ['key' => 'luck', 'label' => 'Luck', 'dice' => 'd%', 'bands' => [['key' => 'bad', 'label' => 'Bad', 'upTo' => 20], ['key' => 'good', 'label' => 'Good']]],
             ['key' => 'broken', 'label' => 'Broken', 'dice' => '1d6', 'modifier' => '{reflexes} / {debt}', 'bands' => [['key' => 'only', 'label' => 'Only']]],
+            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'pool' => ['count' => ['formula' => '{reflexes} + {luck}'], 'sides' => 6, 'successAt' => 5], 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'hit', 'label' => 'Hit']]],
+            ['key' => 'hands', 'label' => 'Hands', 'pool' => ['count' => 2, 'sides' => 10, 'successAt' => 8], 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'hit', 'label' => 'Hit']]],
+            ['key' => 'slip', 'label' => 'Slip', 'pool' => ['count' => ['formula' => '{reflexes} / {debt}'], 'sides' => 6, 'successAt' => 6], 'bands' => [['key' => 'only', 'label' => 'Only']]],
         ]);
         $bus = $container->get(CommandBus::class);
         $bus->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9201', $content, false));
@@ -101,10 +104,14 @@ final class JournalChecksApiTest extends WebTestCase
                 'label' => 'Skill check',
                 'hint' => 'A stat against a Difficulty Value.',
                 'dice' => '1d10',
+                'pool' => null,
                 'difficulty' => ['label' => 'Difficulty Value', 'default' => 13, 'min' => 9, 'max' => 29],
             ],
-            ['key' => 'luck', 'label' => 'Luck', 'hint' => null, 'dice' => '1d100', 'difficulty' => null],
-            ['key' => 'broken', 'label' => 'Broken', 'hint' => null, 'dice' => '1d6', 'difficulty' => null],
+            ['key' => 'luck', 'label' => 'Luck', 'hint' => null, 'dice' => '1d100', 'pool' => null, 'difficulty' => null],
+            ['key' => 'broken', 'label' => 'Broken', 'hint' => null, 'dice' => '1d6', 'pool' => null, 'difficulty' => null],
+            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} + {luck}', 'countText' => 'Reflexes + Luck', 'sides' => 6, 'successAt' => 5], 'difficulty' => null],
+            ['key' => 'hands', 'label' => 'Hands', 'hint' => null, 'dice' => null, 'pool' => ['count' => 2, 'countFormula' => null, 'countText' => null, 'sides' => 10, 'successAt' => 8], 'difficulty' => null],
+            ['key' => 'slip', 'label' => 'Slip', 'hint' => null, 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} / {debt}', 'countText' => 'Reflexes / Debt', 'sides' => 6, 'successAt' => 6], 'difficulty' => null],
         ], $campaign['checks'] ?? null);
     }
 
@@ -153,12 +160,109 @@ final class JournalChecksApiTest extends WebTestCase
                     ['reference' => '{reflexes}', 'label' => 'Reflexes', 'value' => 7],
                     ['reference' => '{luck}', 'label' => 'Luck', 'value' => -2],
                 ],
+                'pool' => null,
             ],
         ];
         self::assertJsonStringEqualsJsonString(json_encode($created, \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());
         // What was stored reads back as the same entry.
         $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
         self::assertJsonStringEqualsJsonString(json_encode([$created], \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());
+    }
+
+    #[Test]
+    public function aCharacterPerformsAPoolCheckSizedFromTheSheetAndExtraDice(): void
+    {
+        [$id, $vi] = $this->campaignInAScene();
+        // Reflexes 7 + luck -2 = 5 dice, one extra die: six dice, two succeed.
+        $this->random->script(1, 5, 6, 2, 4, 3);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $id), ['check' => 'grit', 'character' => $vi, 'situational' => 1]);
+
+        self::assertResponseStatusCodeSame(201);
+        $die = static fn (int $face): array => ['group' => 'pool', 'face' => $face, 'success' => $face >= 5];
+        $created = [
+            'id' => self::ENTRY_ID_PREFIX.'01',
+            'sessionNumber' => 1,
+            'sceneNumber' => 1,
+            'recordedAt' => '2026-10-14T09:00:00+00:00',
+            'kind' => 'check',
+            'flowStep' => null,
+            'content' => [
+                'kind' => 'check',
+                'characterId' => $vi,
+                'characterName' => 'Vi',
+                'checkKey' => 'grit',
+                'checkLabel' => 'Grit',
+                'expression' => '6d6',
+                'groups' => [],
+                'diceTotal' => 2,
+                'modifier' => 0,
+                'situational' => 1,
+                'difficulty' => null,
+                'total' => 2,
+                'bandKey' => 'hit',
+                'bandLabel' => 'Hit',
+                'hint' => 'Count the sixes.',
+                'modifierFormula' => null,
+                'modifierTerms' => [],
+                'pool' => [
+                    'count' => 5,
+                    'countFormula' => '{reflexes} + {luck}',
+                    'terms' => [
+                        ['reference' => '{reflexes}', 'label' => 'Reflexes', 'value' => 7],
+                        ['reference' => '{luck}', 'label' => 'Luck', 'value' => -2],
+                    ],
+                    'size' => 6,
+                    'sides' => 6,
+                    'successAt' => 5,
+                    'dice' => [$die(1), $die(5), $die(6), $die(2), $die(4), $die(3)],
+                    'successes' => 2,
+                ],
+            ],
+        ];
+        self::assertJsonStringEqualsJsonString(json_encode($created, \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());
+        // What was stored reads back as the same entry.
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+        self::assertJsonStringEqualsJsonString(json_encode([$created], \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());
+    }
+
+    #[Test]
+    public function aPoolCheckWithANumberCountRecordsNoFormulaAndKeepsAtLeastOneDie(): void
+    {
+        [$id, , $ada] = $this->campaignInAScene();
+        $this->random->script(9);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $id), ['check' => 'hands', 'character' => $ada, 'situational' => -50]);
+
+        self::assertResponseStatusCodeSame(201);
+        $content = $this->json()['content'] ?? null;
+        self::assertIsArray($content);
+        $pool = $content['pool'] ?? null;
+        self::assertIsArray($pool);
+        self::assertArrayHasKey('countFormula', $pool);
+        self::assertSame([2, null, [], 1, 1, 1, 'hit'], [$pool['count'] ?? null, $pool['countFormula'], $pool['terms'] ?? null, $pool['size'] ?? null, $pool['successes'] ?? null, $content['total'] ?? null, $content['bandKey'] ?? null]);
+    }
+
+    /**
+     * A row stored before pools has no pool part (a dice check): it reads as before, with no pool.
+     */
+    #[Test]
+    public function anEntryStoredWithoutAPoolPartReadsWithNoPool(): void
+    {
+        [$id, , $ada] = $this->campaignInAScene();
+        $this->random->script(8);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $id), ['check' => 'skill', 'character' => $ada]);
+        self::assertResponseStatusCodeSame(201);
+        $connection = self::getContainer()->get(Connection::class);
+        self::assertSame(0, $connection->fetchOne("SELECT count(*) FROM play_journal_entry WHERE jsonb_exists(content, 'pool')"), 'A dice check stores no pool part.');
+
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/journal', $id));
+
+        $entry = $this->json()[0] ?? null;
+        self::assertIsArray($entry);
+        $content = $entry['content'] ?? null;
+        self::assertIsArray($content);
+        self::assertSame([4, null], [$content['modifier'] ?? null, \array_key_exists('pool', $content) ? $content['pool'] : 'absent']);
     }
 
     #[Test]
@@ -267,6 +371,9 @@ final class JournalChecksApiTest extends WebTestCase
         yield 'a situational modifier under -100' => [['check' => 'skill', 'character' => '%ada%', 'situational' => -101], 'The situational modifier must be between -100 and 100, -101 given.'];
         yield 'a situational modifier over 100' => [['check' => 'skill', 'character' => '%ada%', 'situational' => 101], 'The situational modifier must be between -100 and 100, 101 given.'];
         yield 'a modifier that cannot be evaluated' => [['check' => 'broken', 'character' => '%ada%'], 'Check "broken" cannot be performed: The formula divides by zero.'];
+        yield 'a pool count that cannot be evaluated' => [['check' => 'slip', 'character' => '%ada%'], 'Check "slip" cannot be performed: The formula divides by zero.'];
+        yield 'a situational modifier over 100 on a pool' => [['check' => 'grit', 'character' => '%ada%', 'situational' => 101], 'The situational modifier must be between -100 and 100, 101 given.'];
+        yield 'a difficulty for a pool check without one' => [['check' => 'hands', 'character' => '%ada%', 'difficulty' => 2], 'Check "hands" declares no difficulty.'];
     }
 
     /**

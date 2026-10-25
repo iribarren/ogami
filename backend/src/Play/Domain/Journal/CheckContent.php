@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Play\Domain\Journal;
 
 use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Check\ModifierTerm;
+use App\Play\Domain\GameSystem\Check\PoolResult;
 use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 
 /**
@@ -18,7 +20,12 @@ use App\Play\Domain\GameSystem\Check\ReferenceLabels;
  * reference of it read, so the card explains the modifier as it was then; entries stored before
  * these were recorded read with no hint, no formula and no terms.
  *
+ * A pool check (ADR 0041) has a pool part instead of dice groups and a modifier: its dice with their
+ * successes, the count and the size rolled; the dice total and the total are its successes. Entries
+ * of dice checks, those stored before pools included, have no pool part and store the same array.
+ *
  * @phpstan-import-type DiceGroupData from RollContent
+ * @phpstan-import-type PoolData from CheckPoolContent
  *
  * @phpstan-type ModifierTermData array{reference: string, label: string, value: int}
  */
@@ -34,6 +41,7 @@ final readonly class CheckContent implements JournalEntryContent
      * @param ?string                $hint            the check's hint when it was performed
      * @param ?string                $modifierFormula null when the check has no modifier
      * @param list<ModifierTermData> $modifierTerms   what each reference of the formula read; empty without a formula
+     * @param ?CheckPoolContent      $pool            null for a dice check
      */
     private function __construct(
         private string $characterId,
@@ -52,6 +60,7 @@ final readonly class CheckContent implements JournalEntryContent
         private ?string $hint,
         private ?string $modifierFormula,
         private array $modifierTerms,
+        private ?CheckPoolContent $pool = null,
     ) {
     }
 
@@ -60,14 +69,22 @@ final readonly class CheckContent implements JournalEntryContent
      */
     public static function fromResult(string $characterId, string $characterName, Check $check, CheckResult $result, ReferenceLabels $labels): self
     {
+        if ($check->pool instanceof CheckPool && $result->pool instanceof PoolResult) {
+            $pool = CheckPoolContent::fromResult($check->pool, $result->pool, $result->situational, $labels);
+
+            return self::of($characterId, $characterName, $check->key, $check->label, \sprintf('%dd%d', $pool->size, $pool->sides), [], $pool->successes, 0, $result->situational, $result->difficulty, $result->total, $result->band->key, $result->band->label, $check->hint, null, [], $pool);
+        }
+
+        $roll = $result->roll ?? throw new \LogicException(\sprintf('The result of dice check "%s" has no roll.', $check->key));
+
         return self::of(
             $characterId,
             $characterName,
             $check->key,
             $check->label,
-            $result->roll->expression()->notation(),
-            RollContent::groupsOf($result->roll),
-            $result->roll->total(),
+            $roll->expression()->notation(),
+            RollContent::groupsOf($roll),
+            $roll->total(),
             $result->modifier,
             $result->situational,
             $result->difficulty,
@@ -87,6 +104,9 @@ final readonly class CheckContent implements JournalEntryContent
      */
     public static function fromArray(array $data): self
     {
+        $situational = ContentData::int($data, 'situational');
+        $pool = ContentData::optionalArray($data, 'pool');
+
         return self::of(
             ContentData::string($data, 'characterId'),
             ContentData::string($data, 'characterName'),
@@ -96,7 +116,7 @@ final readonly class CheckContent implements JournalEntryContent
             RollContent::groupsFromArray($data),
             ContentData::int($data, 'diceTotal'),
             ContentData::int($data, 'modifier'),
-            ContentData::int($data, 'situational'),
+            $situational,
             ContentData::nullableInt($data, 'difficulty'),
             ContentData::int($data, 'total'),
             ContentData::string($data, 'bandKey'),
@@ -104,6 +124,7 @@ final readonly class CheckContent implements JournalEntryContent
             ContentData::optionalString($data, 'hint'),
             ContentData::optionalString($data, 'modifierFormula'),
             self::termsFromArray($data),
+            null === $pool ? null : CheckPoolContent::fromArray($pool, $situational),
         );
     }
 
@@ -127,7 +148,8 @@ final readonly class CheckContent implements JournalEntryContent
      * @param list<DiceGroupData>    $groups
      * @param list<ModifierTermData> $modifierTerms
      *
-     * @throws InvalidJournalEntryContent when an id, key or formula is blank, there are terms without a formula, or the total is not the dice plus the modifiers
+     * @throws InvalidJournalEntryContent when an id, key or formula is blank, there are terms without a formula, the total is not the dice plus the modifiers,
+     *                                    or a pool check has dice groups or a modifier, or a total that is not its successes
      */
     private static function of(
         string $characterId,
@@ -146,6 +168,7 @@ final readonly class CheckContent implements JournalEntryContent
         ?string $hint,
         ?string $modifierFormula,
         array $modifierTerms,
+        ?CheckPoolContent $pool = null,
     ): self {
         foreach (['A Character id' => $characterId, 'A check key' => $checkKey, 'A band key' => $bandKey] as $what => $value) {
             if ('' === trim($value)) {
@@ -161,12 +184,22 @@ final readonly class CheckContent implements JournalEntryContent
             throw InvalidJournalEntryContent::malformed('modifierTerms', 'empty when the check has no modifier formula');
         }
 
+        if ($pool instanceof CheckPoolContent) {
+            if ([] !== $groups || 0 !== $modifier || null !== $modifierFormula) {
+                throw InvalidJournalEntryContent::malformed('pool', 'alone: a pool check has no dice groups and no modifier');
+            }
+
+            if ($diceTotal !== $pool->successes || $total !== $pool->successes) {
+                throw InvalidJournalEntryContent::malformed('total', 'the successes of the pool');
+            }
+        }
+
         // A sum that overflows the integers is a float, and never equals the total.
-        if ($diceTotal + $modifier + $situational !== $total) {
+        if (!$pool instanceof CheckPoolContent && $diceTotal + $modifier + $situational !== $total) {
             throw InvalidJournalEntryContent::malformed('total', 'the dice total plus the modifier and the situational modifier');
         }
 
-        return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel, $hint, $modifierFormula, $modifierTerms);
+        return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel, $hint, $modifierFormula, $modifierTerms, $pool);
     }
 
     public function kind(): string
@@ -260,8 +293,13 @@ final readonly class CheckContent implements JournalEntryContent
         return $this->modifierTerms;
     }
 
+    public function pool(): ?CheckPoolContent
+    {
+        return $this->pool;
+    }
+
     /**
-     * @return array{kind: string, characterId: string, characterName: string, checkKey: string, checkLabel: string, expression: string, groups: list<DiceGroupData>, diceTotal: int, modifier: int, situational: int, difficulty: ?int, total: int, bandKey: string, bandLabel: string, hint: ?string, modifierFormula: ?string, modifierTerms: list<ModifierTermData>}
+     * @return array{kind: string, characterId: string, characterName: string, checkKey: string, checkLabel: string, expression: string, groups: list<DiceGroupData>, diceTotal: int, modifier: int, situational: int, difficulty: ?int, total: int, bandKey: string, bandLabel: string, hint: ?string, modifierFormula: ?string, modifierTerms: list<ModifierTermData>, pool?: PoolData}
      */
     public function toArray(): array
     {
@@ -283,6 +321,6 @@ final readonly class CheckContent implements JournalEntryContent
             'hint' => $this->hint,
             'modifierFormula' => $this->modifierFormula,
             'modifierTerms' => $this->modifierTerms,
-        ];
+        ] + ($this->pool instanceof CheckPoolContent ? ['pool' => $this->pool->toArray()] : []);
     }
 }

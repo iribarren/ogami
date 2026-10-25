@@ -51,6 +51,23 @@ final class ContentData
     }
 
     /**
+     * An object for a field older entries do not store: absent or null reads as null.
+     *
+     * @param array<mixed> $data
+     *
+     * @return ?array<mixed>
+     */
+    public static function optionalArray(array $data, string $field): ?array
+    {
+        $value = $data[$field] ?? null;
+        if (null !== $value && (!\is_array($value) || array_is_list($value) && [] !== $value)) {
+            throw InvalidJournalEntryContent::malformed($field, 'an object or null');
+        }
+
+        return $value;
+    }
+
+    /**
      * @param array<mixed> $data
      */
     public static function int(array $data, string $field): int

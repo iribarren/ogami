@@ -210,10 +210,15 @@ function CheckView({ content }: { content: CheckContent }) {
           <DiceGroups groups={content.groups} />
         </div>
       )}
+      {content.pool !== null && <PoolDice pool={content.pool} />}
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <Detail term="Dice">
-          <span className="font-mono">{content.expression}</span> = {content.diceTotal}
-        </Detail>
+        {content.pool === null ? (
+          <Detail term="Dice">
+            <span className="font-mono">{content.expression}</span> = {content.diceTotal}
+          </Detail>
+        ) : (
+          <Detail term="Pool">{poolSize(content.pool, content.situational)}</Detail>
+        )}
         {(content.modifier !== 0 || content.modifierFormula !== null) && (
           <Detail term="Modifier">
             {signed(content.modifier)}
@@ -228,11 +233,57 @@ function CheckView({ content }: { content: CheckContent }) {
         {content.situational !== 0 && (
           <Detail term="Situational">{signed(content.situational)}</Detail>
         )}
-        <Detail term="Total">
+        <Detail term={content.pool === null ? 'Total' : 'Successes'}>
           <strong>{content.total}</strong>
+          {content.pool !== null && <> {content.total === 1 ? 'success' : 'successes'}</>}
           {content.difficulty !== null && <> vs {content.difficulty}</>}
         </Detail>
       </dl>
+    </>
+  )
+}
+
+type CheckPool = NonNullable<CheckContent['pool']>
+
+/** Every die of a pool roll; a success is told by text for assistive tech and by weight and a ring, not by colour alone. */
+function PoolDice({ pool }: { pool: CheckPool }) {
+  return (
+    <div className="rounded-md bg-well p-2 shadow-well">
+      <ul aria-label="Pool dice" className="flex flex-wrap gap-1.5">
+        {pool.dice.map((die, index) => (
+          <li
+            // A pool can show the same face many times; the position is the identity.
+            key={index}
+            className={
+              die.success
+                ? 'min-w-8 rounded-md border-2 border-foreground px-1.5 py-0.5 text-center font-bold'
+                : 'min-w-8 rounded-md border border-dashed border-muted-foreground px-1.5 py-0.5 text-center text-muted-foreground'
+            }
+          >
+            {die.face}
+            <span className="sr-only">{die.success ? ' (success)' : ' (no success)'}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** How many dice were rolled and why: the count (explained by the sheet values it read) and the extra dice. */
+function poolSize(pool: CheckPool, situational: number) {
+  const count =
+    pool.countFormula === null || pool.terms.length === 0
+      ? String(pool.count)
+      : `${explainModifier(pool.countFormula, pool.terms)} = ${String(pool.count)}`
+  const extra = situational === 0 ? '' : ` ${signed(situational)} extra`
+  return (
+    <>
+      {String(pool.size)} d{pool.sides}, success on {pool.successAt}+
+      <span className="text-muted-foreground">
+        {' · '}
+        {count}
+        {extra}
+      </span>
     </>
   )
 }

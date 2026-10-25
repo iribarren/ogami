@@ -9,7 +9,9 @@ use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Formula\Domain\Reference;
 use App\Formula\Domain\ValueResolver;
 use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\DicePool;
 use App\Randomness\Domain\InvalidDiceExpression;
+use App\Randomness\Domain\PoolRoll;
 use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
@@ -17,6 +19,9 @@ use App\Randomness\Domain\RandomNumberGenerator;
  * the sheet, an optional Check difficulty the player sets at roll time, and Outcome bands. The total
  * is the dice, plus the modifier, plus the situational modifier; the first band whose upper bound
  * is at least the total is the outcome, and the last band catches the rest.
+ *
+ * A check rolls a dice expression or a pool, never both (ADR 0041). A pool check has no modifier:
+ * the situational modifier adds or removes dice, and the total is the number of successes.
  */
 final readonly class Check
 {
@@ -26,18 +31,28 @@ final readonly class Check
     /**
      * @param list<CheckBand> $bands in band order, unique keys, only the last without an upper bound
      *
-     * @throws \InvalidArgumentException when there is no band, two bands share a key, a band but the last has no upper bound,
-     *                                   the last has one, or literal upper bounds do not strictly increase
+     * @throws \InvalidArgumentException when there is neither dice nor a pool or both, a pool check has a modifier, there is no band,
+     *                                   two bands share a key, a band but the last has no upper bound, the last has one,
+     *                                   or literal upper bounds do not strictly increase
      */
     public function __construct(
         public string $key,
         public string $label,
         public ?string $hint,
-        public DiceExpression $dice,
+        public ?DiceExpression $dice,
         public ?Formula $modifier,
         public ?CheckDifficulty $difficulty,
         public array $bands,
+        public ?CheckPool $pool = null,
     ) {
+        if ($dice instanceof DiceExpression === $pool instanceof CheckPool) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls either a dice expression or a pool.', $key));
+        }
+
+        if ($pool instanceof CheckPool && $modifier instanceof Formula) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls a pool and has no modifier.', $key));
+        }
+
         if ([] === $bands) {
             throw new \InvalidArgumentException(\sprintf('Check "%s" needs at least one band.', $key));
         }
@@ -71,8 +86,8 @@ final readonly class Check
     }
 
     /**
-     * Rolls the dice and picks the band. The modifier and every band bound are evaluated first, so a
-     * check that cannot be evaluated rolls nothing.
+     * Rolls the dice or the pool and picks the band. The modifier or the pool count and every band
+     * bound are evaluated first, so a check that cannot be evaluated rolls nothing.
      *
      * @param ?int $difficulty the Check difficulty chosen at roll time; omitted, the declared default applies
      *
@@ -89,15 +104,25 @@ final readonly class Check
         }
 
         try {
-            $modifierValues = new CheckValues($sheet, null);
-            $modifier = $this->modifier?->evaluate($modifierValues) ?? 0;
-            $terms = array_map(static fn (Reference $reference): ModifierTerm => new ModifierTerm($reference, $modifierValues->value($reference)), $this->modifier?->references() ?? []);
+            $sheetValues = new CheckValues($sheet, null);
+            $modifier = $this->modifier?->evaluate($sheetValues) ?? 0;
+            $terms = $this->termsOf($this->modifier, $sheetValues);
+            $count = $this->pool instanceof CheckPool ? $this->countOf($this->pool, $sheetValues) : 0;
             $bandValues = new CheckValues($sheet, $effective);
             $bounds = array_map(static fn (CheckBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($bandValues) : $band->upTo, $this->bands);
-            $roll = $this->dice->roll($random);
+            $roll = $this->dice?->roll($random);
+            $poolRoll = $this->pool instanceof CheckPool ? new DicePool(CheckPool::sizeFor($count, $situational), $this->pool->sides, $this->pool->successAt)->roll($random) : null;
         } catch (FormulaEvaluationFailed|InvalidDiceExpression $failed) {
             throw CheckEvaluationFailed::of($this->key, $failed);
         }
+
+        if ($poolRoll instanceof PoolRoll) {
+            $total = $poolRoll->successes();
+
+            return new CheckResult(null, 0, $situational, $effective, $total, $this->bandFor($bounds, $total), [], new PoolResult($count, $poolRoll, $this->termsOf($this->pool->count, $sheetValues)));
+        }
+
+        $roll ??= throw new \LogicException(\sprintf('Check "%s" rolls neither dice nor a pool.', $this->key));
 
         // The dice total can be close to PHP_INT_MAX, so adding the modifiers can leave the integers (as in the dice kernel).
         if (abs((float) $roll->total() + $modifier + $situational) >= (float) \PHP_INT_MAX) {
@@ -105,10 +130,35 @@ final readonly class Check
         }
 
         $total = $roll->total() + $modifier + $situational;
-        // The last band has no bound and catches the rest, so a band always matches.
-        $index = array_find_key($bounds, static fn (?int $bound): bool => null === $bound || $total <= $bound) ?? \count($this->bands) - 1;
 
-        return new CheckResult($roll, $modifier, $situational, $effective, $total, $this->bands[$index], $terms);
+        return new CheckResult($roll, $modifier, $situational, $effective, $total, $this->bandFor($bounds, $total), $terms);
+    }
+
+    /**
+     * The first band whose upper bound is at least the total. The last band has no bound and catches
+     * the rest, so a band always matches.
+     *
+     * @param list<?int> $bounds the evaluated upper bounds, in band order
+     */
+    private function bandFor(array $bounds, int $total): CheckBand
+    {
+        return $this->bands[array_find_key($bounds, static fn (?int $bound): bool => null === $bound || $total <= $bound) ?? \count($this->bands) - 1];
+    }
+
+    /**
+     * @throws FormulaEvaluationFailed
+     */
+    private function countOf(CheckPool $pool, CheckValues $values): int
+    {
+        return $pool->count instanceof Formula ? $pool->count->evaluate($values) : $pool->count;
+    }
+
+    /**
+     * @return list<ModifierTerm> what each reference of the formula reads, in the order it first names them
+     */
+    private function termsOf(int|Formula|null $formula, CheckValues $values): array
+    {
+        return array_map(static fn (Reference $reference): ModifierTerm => new ModifierTerm($reference, $values->value($reference)), $formula instanceof Formula ? $formula->references() : []);
     }
 
     private function effectiveDifficulty(?int $given): ?int

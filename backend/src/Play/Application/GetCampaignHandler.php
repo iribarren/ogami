@@ -15,6 +15,8 @@ use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
+use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -48,6 +50,7 @@ final readonly class GetCampaignHandler implements QueryHandler
         // Oracles come from the pinned release, never the latest one (ADR 0014).
         $snapshot = $this->releases->get($pinned->gameSystemKey(), $pinned->releaseVersion());
         $trackerValues = $campaign->trackerValuesOf($snapshot);
+        $labels = ReferenceLabels::of($snapshot);
 
         return new CampaignView(
             $campaign->id()->toString(),
@@ -65,7 +68,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map(FlowSummaryView::of(...), $snapshot->flows()),
             array_map(SceneTypeSummaryView::of(...), $snapshot->sceneTypes()),
             array_map(static fn (Tag $tag): TagView => new TagView($tag->key, $tag->label, $tag->hint, [] === $tag->appliesTo ? null : array_map(static fn (ItemKind $kind): string => $kind->value, $tag->appliesTo)), $snapshot->tags()),
-            array_map(CheckView::of(...), $snapshot->checks()),
+            array_map(static fn (Check $check): CheckView => CheckView::of($check, $labels), $snapshot->checks()),
             array_map(NpcView::of(...), $campaign->npcs()),
             array_map(ThreadView::of(...), $campaign->threads()),
             array_map(FactSlotView::of(...), $snapshot->factSlots()),

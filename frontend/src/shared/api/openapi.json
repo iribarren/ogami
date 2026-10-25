@@ -11851,6 +11851,46 @@
                 },
                 "type": "object"
             },
+            "CheckPoolResponse": {
+                "required": [
+                    "count",
+                    "countFormula",
+                    "countText",
+                    "sides",
+                    "successAt"
+                ],
+                "properties": {
+                    "count": {
+                        "description": "How many dice when the release gives a number; null when a formula gives it.",
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    },
+                    "countFormula": {
+                        "description": "The formula that gives the number of dice from the sheet; null when the release gives a number.",
+                        "type": "string",
+                        "example": "{agility} + {stealth}",
+                        "nullable": true
+                    },
+                    "countText": {
+                        "description": "The formula spelled in the labels players know; null when the release gives a number.",
+                        "type": "string",
+                        "example": "Agility + Stealth",
+                        "nullable": true
+                    },
+                    "sides": {
+                        "description": "The faces of each die.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "successAt": {
+                        "description": "A die succeeds on this face or higher.",
+                        "type": "integer",
+                        "example": 6
+                    }
+                },
+                "type": "object"
+            },
             "CheckDifficultyResponse": {
                 "required": [
                     "label",
@@ -11890,6 +11930,7 @@
                     "label",
                     "hint",
                     "dice",
+                    "pool",
                     "difficulty"
                 ],
                 "properties": {
@@ -11909,9 +11950,19 @@
                         "nullable": true
                     },
                     "dice": {
-                        "description": "The dice rolled, in dice notation.",
+                        "description": "The dice rolled, in dice notation; null for a pool check.",
                         "type": "string",
-                        "example": "1d10"
+                        "example": "1d10",
+                        "nullable": true
+                    },
+                    "pool": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckPoolResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The pool rolled, counted for successes; null for a check that rolls dice."
                     },
                     "difficulty": {
                         "oneOf": [
@@ -13555,6 +13606,90 @@
                 },
                 "type": "object"
             },
+            "JournalPoolDieResponse": {
+                "required": [
+                    "group",
+                    "face",
+                    "success"
+                ],
+                "properties": {
+                    "group": {
+                        "description": "The group of dice the die belongs to; \"pool\" for the dice of a pool.",
+                        "type": "string",
+                        "example": "pool"
+                    },
+                    "face": {
+                        "description": "The face the die landed on.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "success": {
+                        "description": "Whether the die succeeded: its face reached the success threshold.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "CheckPoolContentResponse": {
+                "required": [
+                    "count",
+                    "countFormula",
+                    "terms",
+                    "size",
+                    "sides",
+                    "successAt",
+                    "dice",
+                    "successes"
+                ],
+                "properties": {
+                    "count": {
+                        "description": "The number of dice the release asked for, before the Situational modifier: its number, or what its formula gave.",
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "countFormula": {
+                        "description": "The formula that gave the count; null when the release gave a number.",
+                        "type": "string",
+                        "example": "{agility} + {stealth}",
+                        "nullable": true
+                    },
+                    "terms": {
+                        "description": "What each reference of the count formula read, in the order the formula first names them; empty without a formula.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckModifierTermResponse"
+                        }
+                    },
+                    "size": {
+                        "description": "The dice rolled: the count plus the Situational modifier, kept between 1 and 100.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "sides": {
+                        "description": "The faces of each die.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "successAt": {
+                        "description": "A die succeeds on this face or higher.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "dice": {
+                        "description": "Every die rolled, in roll order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalPoolDieResponse"
+                        }
+                    },
+                    "successes": {
+                        "description": "How many dice succeeded; the total of the check.",
+                        "type": "integer",
+                        "example": 2
+                    }
+                },
+                "type": "object"
+            },
             "CheckContentResponse": {
                 "required": [
                     "kind",
@@ -13573,7 +13708,8 @@
                     "bandLabel",
                     "hint",
                     "modifierFormula",
-                    "modifierTerms"
+                    "modifierTerms",
+                    "pool"
                 ],
                 "properties": {
                     "kind": {
@@ -13667,6 +13803,15 @@
                         "items": {
                             "$ref": "#/components/schemas/CheckModifierTermResponse"
                         }
+                    },
+                    "pool": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckPoolContentResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools."
                     }
                 },
                 "type": "object"

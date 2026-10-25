@@ -201,6 +201,7 @@ export const skillCheckEntry: JournalEntry = {
       { reference: '{hands}', label: 'Hands', value: 4 },
       { reference: '{edge}', label: 'Edge', value: 2 },
     ],
+    pool: null,
   },
 }
 
@@ -227,6 +228,51 @@ export const luckCheckEntry: JournalEntry = {
     hint: null,
     modifierFormula: null,
     modifierTerms: [],
+    pool: null,
+  },
+}
+
+/** A pool check: Agility 2 + Stealth 1 - Physical 1 = 2 dice, one extra die, so 3d6 with a success on 5+. */
+export const sneakCheckEntry: JournalEntry = {
+  ...skillCheckEntry,
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7009',
+  flowStep: null,
+  content: {
+    kind: 'check',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    checkKey: 'sneak',
+    checkLabel: 'Sneak',
+    expression: '3d6',
+    groups: [],
+    diceTotal: 2,
+    modifier: 0,
+    situational: 1,
+    difficulty: null,
+    total: 2,
+    bandKey: 'hit',
+    bandLabel: 'Hit',
+    hint: 'Count the sixes and fives.',
+    modifierFormula: null,
+    modifierTerms: [],
+    pool: {
+      count: 2,
+      countFormula: '{agility} + {stealth} - {physical}',
+      terms: [
+        { reference: '{agility}', label: 'Agility', value: 2 },
+        { reference: '{stealth}', label: 'Stealth', value: 1 },
+        { reference: '{physical}', label: 'Physical', value: 1 },
+      ],
+      size: 3,
+      sides: 6,
+      successAt: 5,
+      dice: [
+        { group: 'pool', face: 6, success: true },
+        { group: 'pool', face: 2, success: false },
+        { group: 'pool', face: 5, success: true },
+      ],
+      successes: 2,
+    },
   },
 }
 

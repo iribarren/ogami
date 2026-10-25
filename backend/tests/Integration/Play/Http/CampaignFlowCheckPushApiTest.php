@@ -329,6 +329,46 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aKeepWhoseBandEffectDividesByZeroKeepsNothingAndTheRollStillPends(): void
+    {
+        $before = $this->rolled('brittle');
+
+        $this->keep(['stepKey' => 'roll-it']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('The formula "{agility} / ({zero} - 1)" cannot be evaluated: The formula divides by zero.', $this->error());
+        self::assertSame($before, $this->state());
+    }
+
+    #[Test]
+    public function aKeepWhileAnotherRequestSavesTheCampaignIsAConflictAndKeepsNothing(): void
+    {
+        $before = $this->rolled('gritty');
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        $concurrentSave = new readonly class($this->connection()) {
+            public function __construct(private Connection $connection)
+            {
+            }
+
+            public function preFlush(): void
+            {
+                $this->connection->executeStatement('UPDATE play_campaign SET version = version + 1 WHERE id = ?', [CampaignFlowCheckPushApiTest::campaignId()]);
+            }
+        };
+        $entityManager->getEventManager()->addEventListener([Events::preFlush], $concurrentSave);
+
+        try {
+            $this->keep(['stepKey' => 'roll-it']);
+        } finally {
+            $entityManager->getEventManager()->removeEventListener([Events::preFlush], $concurrentSave);
+        }
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => \sprintf('Campaign "%s" was changed by another request. Reload it and try again.', self::CAMPAIGN)], $this->json());
+        self::assertSame($before, $this->state());
+    }
+
+    #[Test]
     public function aPushWhileAnotherRequestSavesTheCampaignIsAConflictAndKeepsNothing(): void
     {
         $before = $this->rolled('gritty');
@@ -426,6 +466,7 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
             'steady' => $step('steady'),
             'cursed' => $step('cursed'),
             'fragile' => $step('grit', [['band' => 'strong', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
+            'brittle' => $step('grit', [['band' => 'weak', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
         ];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],

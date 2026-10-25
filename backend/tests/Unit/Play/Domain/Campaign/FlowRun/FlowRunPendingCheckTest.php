@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
+use App\Formula\Domain\Formula;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\CheckStepPending;
+use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
@@ -136,6 +138,58 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
         }
 
         self::assertEquals($before, $campaign);
+    }
+
+    #[Test]
+    public function pushOfAnotherStepIsRefusedAndNothingChanges(): void
+    {
+        $release = $this->gritRelease();
+        $campaign = $this->pending($release);
+        $before = clone $campaign;
+
+        try {
+            $campaign->resolvePendingFlowCheck('pass', 'strong', $release, self::at());
+            self::fail('Another step was resolved.');
+        } catch (FlowRunPositionMismatch $mismatch) {
+            self::assertSame('The FlowRun is at step "sneak", not at step "pass".', $mismatch->getMessage());
+        }
+
+        self::assertEquals($before, $campaign);
+        self::assertEquals(new PendingCheck('sneak', self::ENTRY, 'ada', null, 'weak'), self::flowRunOf($campaign)->pendingCheck());
+    }
+
+    /**
+     * Keep resolves on the rolled band "weak", Push on the pushed one "strong": the band Effect of
+     * the band taken fails to evaluate.
+     */
+    #[Test]
+    #[DataProvider('bandsWhoseEffectFails')]
+    public function aBandEffectThatFailsLeavesThePendingRollAndTheCampaignUnchanged(?string $pushedBandKey): void
+    {
+        $failing = new TrackerEffect('heat', TrackerOperation::Add, Formula::fromString('{tracker:heat} / 0'));
+        $release = CheckStepReleases::release(CheckStepReleases::step('grit', outcomes: ['weak' => new Outcome('fumble', [$failing]), 'strong' => new Outcome('pass', [$failing])]));
+        $campaign = $this->pending($release);
+        $before = clone $campaign;
+
+        try {
+            $campaign->resolvePendingFlowCheck('sneak', $pushedBandKey, $release, self::at());
+            self::fail('The band Effect did not fail.');
+        } catch (FlowFormulaFailed) {
+            self::addToAssertionCount(1);
+        }
+
+        self::assertEquals($before, $campaign);
+        self::assertEquals(new PendingCheck('sneak', self::ENTRY, 'ada', null, 'weak'), self::flowRunOf($campaign)->pendingCheck());
+        self::assertSame([['setup', 'sneak'], [], 10], [self::position($campaign), self::flowRunOf($campaign)->answers(), $this->heat($campaign, $release)]);
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function bandsWhoseEffectFails(): iterable
+    {
+        yield 'keep' => [null];
+        yield 'push' => ['strong'];
     }
 
     #[Test]

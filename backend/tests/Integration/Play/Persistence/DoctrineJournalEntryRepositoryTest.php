@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Journal\JournalEntryAlreadyExists;
+use App\Play\Domain\Journal\JournalEntryNotTheLatest;
 use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineJournalEntryRepository;
@@ -16,6 +17,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\JournalEntryFlowStepType;
 use App\Tests\Support\Play\JournalEntryRepositoryContract;
 use App\Tests\Unit\Play\Domain\Journal\CheckPoolContentTest;
 use App\Tests\Unit\Play\Domain\Journal\CheckPushContentTest;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -81,6 +83,70 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
         $this->forgetLoaded();
 
         self::assertEquals($pushed, $this->repository->ofId($entry->id()));
+    }
+
+    #[Test]
+    public function theSheetPushWaitsForAnUncommittedLaterEntryThenIsRefused(): void
+    {
+        // The test transaction (DAMA) hides this test's rows from other connections: the campaign is
+        // committed through a second connection, which then holds a later entry uncommitted.
+        $campaign = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001';
+        // @phpstan-ignore argument.type (the parameters of the entity manager's own connection)
+        $other = DriverManager::getConnection($this->entityManager->getConnection()->getParams());
+        $other->executeStatement(
+            "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions, tracker_values) VALUES (?, '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f5001', 'Concurrent', 'free-journal', 1, 'Free journal', '2026-10-05 10:00:00+00', '[]', '{}')",
+            [$campaign],
+        );
+
+        try {
+            $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9101', $campaign, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+            $other->executeStatement(
+                "INSERT INTO play_journal_entry (id, campaign_id, session_number, scene_number, recorded_at, content) VALUES (?, ?, 1, 1, '2026-10-06 10:00:00+00', CAST(? AS jsonb))",
+                [$entry->id()->toString(), $campaign, json_encode($entry->content()->toArray(), \JSON_THROW_ON_ERROR)],
+            );
+            $pushed = $entry->pushedWith(CheckPushContentTest::pushedSneak());
+
+            $other->beginTransaction();
+            $other->executeStatement(
+                "INSERT INTO play_journal_entry (id, campaign_id, session_number, scene_number, recorded_at, content) VALUES ('01890a5d-ac96-774b-bcce-b302099a9102', ?, 1, 1, '2026-10-06 11:00:00+00', '{\"kind\": \"note\", \"text\": \"Later\"}')",
+                [$campaign],
+            );
+
+            $connection = $this->entityManager->getConnection();
+            $connection->executeStatement("SET lock_timeout = '300ms'");
+            $connection->createSavepoint('concurrent');
+            $waited = false;
+            try {
+                $this->repository->savePush($pushed, asLatest: true);
+            } catch (\Throwable $exception) {
+                // It waits for the later entry instead of missing it.
+                $waited = str_contains($exception->getMessage(), 'lock timeout');
+            }
+            $connection->rollbackSavepoint('concurrent');
+            self::assertTrue($waited, 'The push went through while a later entry was being recorded.');
+
+            $other->commit();
+
+            // The savepoint releases the campaign lock the push takes, so the cleanup below can delete it.
+            $connection->createSavepoint('refused');
+            $refused = false;
+            try {
+                $this->repository->savePush($pushed, asLatest: true);
+            } catch (JournalEntryNotTheLatest) {
+                $refused = true;
+            } finally {
+                $connection->rollbackSavepoint('refused');
+            }
+
+            self::assertTrue($refused, 'The push of an entry that is no longer the latest was kept.');
+        } finally {
+            if ($other->isTransactionActive()) {
+                $other->rollBack();
+            }
+            $other->executeStatement('DELETE FROM play_journal_entry WHERE campaign_id = ?', [$campaign]);
+            $other->executeStatement('DELETE FROM play_campaign WHERE id = ?', [$campaign]);
+            $other->close();
+        }
     }
 
     #[Test]

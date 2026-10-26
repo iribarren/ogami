@@ -1,7 +1,7 @@
 # Feature: preset-vaesen
 
 - **Locator:** `odd/tasks/preset-vaesen.md` · Engram topic `odd/preset-vaesen/tasks`
-- **Issue:** #294 · **Branch:** `feat/preset-vaesen-2-point-budgets` · **Status:** in progress (slice 2)
+- **Issue:** #294 · **Branch:** `feat/preset-vaesen-3-budgets-ui` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B9 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), and `rules-flow-choices`, [ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md))
@@ -63,8 +63,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `feat/preset-vaesen-1-preset` | `feat(presets): preset-vaesen 1/4 lanterns of the mire` | T1–T4 | ~1,900: this doc and roadmap ~250; exported JSON ~1,600 (v1 is 1,580); `PresetsTest` ~100. Over the ceiling because the Studio export is one file: reviewed per commit (T1, T4) if reviewed |
 | 2 | `feat/preset-vaesen-2-point-budgets` | `feat(studio): preset-vaesen 2/4 several point budgets` | T5–T7 | ~1,500: ADR ~150; contract, publisher and contract doc ~120; Studio backend ~150 + tests ~250; Play translator, `SheetTemplate`, `CharacterCreation`, responses ~180 + tests ~200; generated OpenAPI and TS ~100; fixtures ~50 |
-| 3 | `feat/preset-vaesen-3-budgets-ui` | `feat(studio): preset-vaesen 3/4 point budgets in Studio and Play` | T8–T10 | ~900: slice 2 review fixes; Studio sheet budget list ~250 + tests and story ~200; Play character form one counter per budget ~125 + tests ~100; S27 kind list ~80; Chrome pass |
-| 4 | `feat/preset-vaesen-4-skill-budget` | `feat(presets): preset-vaesen 4/4 skill budget and tests` | T11–T13 | ~700: slice 3 review fixes; Lanterns skill budget in Studio, re-export (diff); flow unit test, e2e spec; follow-up issue for the UX findings; closing |
+| 3 | `feat/preset-vaesen-3-budgets-ui` | `feat(studio): preset-vaesen 3/4 point budgets in Studio and Play` | T8–T10 | ~1,300: slice 2 review fixes ~100; Studio sheet budget list ~450 + tests and story ~300; Play character form one counter per budget ~150 + tests ~150; S27 kind list ~80; no API change |
+| 4 | `feat/preset-vaesen-4-skill-budget` | `feat(presets): preset-vaesen 4/4 skill budget and tests` | T11–T14 | ~1,500: slice 3 review fixes; removal of the single-budget endpoint, view field and Play response field ~350 + generated OpenAPI and TS ~350; Lanterns skill budget in Studio, re-export (diff); flow unit test, e2e spec; follow-up issue for the UX findings; closing |
 
 Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Version2/PointBudget.php`; Studio `GameSystem.php:570-602`, `DraftReferences.php:237-242`, `SaveSheetPointBudget*`, `GameSystemSheetController.php:232-279`; Play translator `GameSystemReleaseTranslator.php:950-982`, `SheetTemplate.php:29,75`, `CharacterCreation.php:64-133`; frontend `studio/sheet/SheetPointBudgetPanel.tsx`, `play/characters/creation.ts`, `CharacterForm.tsx:163-169`. The upgrade planner does not read budgets. Turning `sheet.pointBudget` into an array changes the content hash of every release with a budget (`ReleaseContent.php:18-19`), so the ADR picks an additive property or schema version 3. Open design points for the ADR: a field in two budgets (refuse), roll-or-points per budget or per Character, budget keys in Studio routes and error paths. `docs/contracts/gamesystem-release.md:279` wrongly says Play refuses `pointBudget`.
 
@@ -76,15 +76,16 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T2 | 1 | Author `lanterns-of-the-mire` in Studio from the outline, sandbox-roll a pool and a push, publish v1; log every Studio friction under Studio findings | parent (browser, worker) | [x] | — |
 | T3 | 1 | Play a session in Play (browser): Prologue, Inquiry, Struggle, Respite, Unmasking, Aftermath; pushes from the sheet and from a step; fix content in Studio and republish; log Play findings and gaps | parent (browser, worker) | [x] | — |
 | T4 | 1 | Export the latest release to `backend/presets/lanterns-of-the-mire.json` unedited; `PresetsTest` (publishes, credits notice, 13 pool checks, push costs, conditions) | delegated writer (slice 1) | [x] | 43ab5a1 |
-| T5 | 2 | ADR: several point budgets per sheet (amends ADR 0040): shape, hash and legacy single budget, a field in one budget only, roll-or-points rule, Studio routes; contract doc | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | |
-| T6 | 2 | Contract, publisher and Studio backend: schema, validation, draft commands, in-use guards, views and API; tests; `make api` | delegated writer (Sonnet) | [x] | |
-| T7 | 2 | Play backend: translator reads both shapes, `SheetTemplate` budgets, `CharacterCreation` per budget, pinned release response; tests | delegated writer (Sonnet) | [x] | |
+| T5 | 2 | ADR: several point budgets per sheet (amends ADR 0040): shape, hash and legacy single budget, a field in one budget only, roll-or-points rule, Studio routes; contract doc | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | 35c7f86 |
+| T6 | 2 | Contract, publisher and Studio backend: schema, validation, draft commands, in-use guards, views and API; tests; `make api` | delegated writer (Sonnet) | [x] | 01bde98, 4b816a3 |
+| T7 | 2 | Play backend: translator reads both shapes, `SheetTemplate` budgets, `CharacterCreation` per budget, pinned release response; tests | delegated writer (Sonnet) | [x] | 8cd0e3a |
 | T8 | 3 | Studio sheet: a list of budgets (add, edit, remove), error paths; tests and story | delegated writer | [ ] | |
 | T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer | [ ] | |
 | T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer | [ ] | |
-| T11 | 4 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [ ] | |
-| T12 | 4 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [ ] | |
-| T13 | 4 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | delegated writer | [ ] | |
+| T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer | [ ] | |
+| T12 | 4 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [ ] | |
+| T13 | 4 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [ ] | |
+| T14 | 4 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | delegated writer | [ ] | |
 
 ## Studio findings
 
@@ -142,13 +143,16 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-26: T7 done (writer, Sonnet): translator reads `pointBudget` (key `points`) and `pointBudgets` into a list and refuses both, bad keys, duplicate keys and a field in two budgets; `SheetTemplate::budgets()` (keyed list, `PointBudget::$key`); `CharacterCreation` per ADR 0043 (rollable = covers a dice field; method required only when some budget is rollable; roll spends the non-rollable budgets, skips rollable ones but keeps their bounds; messages name the budget label); pinned release response adds `pointBudgets`. RED before code: new `CharacterCreationBudgetsTest`, `GameSystemReleaseTranslatorBudgetsTest` and API tests failed (33 errors and 2 failures in the Play unit suite, 5 failures in `CampaignCharactersApiTest`); GREEN after (Play unit and integration suites). Messages of the existing labelled-budget refusals now name the label (e.g. `"Points" allows 100 points, 101 spent.`); `PresetsTest` reads `budgets()[0]` and stays green.
 - 2026-10-26: The user approved a slice of about 2,700 changed lines (generated files included) over the ~1,700 ceiling, so T7 stays in slice 2; new stop line 2,900.
 - 2026-10-26: T5 done: [ADR 0043](../../docs/adr/0043-several-point-budgets.md) (docs only: structural readback, no runnable RED). Settled: a one-entry `pointBudgets` canonicalizes to the legacy `pointBudget` in the publisher, so every publish path hashes alike; a legacy budget reads as key `points`; a draft keeps a legacy budget as restored until a keyed write (a label-less one round-trips); keyed routes `…/sheet/point-budgets/{budget}`; the single-budget endpoint answers 409 `several_point_budgets` with two or more. Contract doc updated, its claim that Play refuses budgets fixed.
+- 2026-10-26: Slice 3 planned: ADR 0043 drops the single-budget endpoint, view field and Play's `pointBudget` in slice 3, but with the generated API that is ~700 more lines, past the ceiling; moved to slice 4 as T11 (T11–T13 renumbered T12–T14). Slice 3 has no API change.
+- 2026-10-26: Slice 2 review fixes (writer, Sonnet): A-W the malformed-list test now stores the damaged list unchecked and asserts `sheet.pointBudgets: must be a list` from the guard it names (written after the code; the old test threw in its fixture). B-S found unreachable: `PointBudget` refuses a repeated field first ("covers at least one field, each once"), so `SheetTemplate`'s two-budgets message cannot fire for one budget; the translator test now pins the real message and `SheetTemplate` is unchanged.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | — | ed44865, 43ab5a1 | Review on 43ab5a1 offered, skipped by the user; no findings | [#295](https://github.com/iribarren/ogami/pull/295) |
+| 2 | `review-87aecb3c8f1fd2f6` (35c7f86–01bde98), `review-47259e8074827396` (8cd0e3a–4b816a3) | 35c7f86, 01bde98, 8cd0e3a, 4b816a3 | Both parts approved and acknowledged; ~3,060 lines (user-approved oversize). Findings: A-W `GameSystemSheetPointBudgetsTest.php:205-210` the malformed-list test throws in its fixture, the guard is untested (fixed in slice 3); A-S `GameSystem.php:588-591` the single `PUT` renames a keyed one-entry budget to `points` (goes with the endpoint in T11); B-W `GetCampaignHandler.php:59` a several-budget release is playable but the Play form reads only `pointBudget` (fixed by T9); B-S `SheetTemplate.php:56-57` a field repeated in one budget gives a misleading message, untested (fixed in slice 3) | [#296](https://github.com/iribarren/ogami/pull/296) |
 
 ## Next step
 
-Slice 2 (T5–T7): ADR 0043 several point budgets, then contract, Studio and Play backend.
+Slice 3 (T8–T10): slice 2 review fixes, Studio budget list, Play counters per budget, S27.

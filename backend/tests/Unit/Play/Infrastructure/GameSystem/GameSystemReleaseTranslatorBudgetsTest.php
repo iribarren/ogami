@@ -116,6 +116,7 @@ final class GameSystemReleaseTranslatorBudgetsTest extends TestCase
         yield 'a field that is not a key' => [['pointBudgets' => [self::attributes(['fields' => ['Str']])]], 'sheet.pointBudgets[0].fields[0]'];
         yield 'min above max' => [['pointBudgets' => [self::attributes(), self::skills(['min' => 5])]], 'sheet.pointBudgets[1].max: must be at least min (5).'];
         yield 'a track field' => [['pointBudgets' => [self::attributes(['fields' => ['hp']])]], 'sheet.pointBudgets: The point budget covers "hp", which is not a number field.'];
+        yield 'a field repeated in one budget' => [['pointBudgets' => [self::attributes(['fields' => ['str', 'con', 'str']])]], 'sheet.pointBudgets: A point budget covers at least one field, each once.'];
         yield 'a field in two budgets' => [['pointBudgets' => [self::attributes(), self::skills(['fields' => ['lore', 'con']])]], 'sheet.pointBudgets: Field "con" is in budgets "attributes" and "skills".'];
     }
 

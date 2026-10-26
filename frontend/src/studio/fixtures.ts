@@ -516,6 +516,12 @@ export const stepPickers = {
       difficulty: { default: 13, min: 9, max: 29 },
     },
     { key: 'luck', name: 'Luck', bands: ['lose', 'win'], difficulty: null },
+    {
+      key: 'finesse',
+      name: 'Finesse check',
+      bands: ['success', 'fail', 'partial'],
+      difficulty: { default: 11, min: 5, max: 15 },
+    },
   ],
   trackers: [
     { key: 'heat', name: 'Heat' },
@@ -631,6 +637,46 @@ const lock = {
 
 /** A pick step and a check step. */
 export const stepListPickCheck = [find, lock]
+
+const sheetStress = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
+
+/** A choice whose option changes the sheet (its skip option cannot) and a prompt that does (ADR 0042). */
+export const stepListSheetEffects = [
+  {
+    key: 'learned',
+    kind: 'choice',
+    title: 'Did you learn something?',
+    skip: 'no',
+    options: [
+      { key: 'yes', label: 'Yes', effects: [sheetStress] },
+      { key: 'no', label: 'No' },
+    ],
+  },
+  { key: 'cost', kind: 'prompt', title: 'What does it cost?', effects: [sheetStress] },
+]
+
+/** A check step offering a set of two checks that share their bands (ADR 0042). */
+export const stepListCheckSet = [
+  {
+    key: 'defy',
+    kind: 'check',
+    title: 'Defy disaster',
+    checks: ['skill', 'finesse'],
+    difficulty: 12,
+  },
+]
+
+/** A table step that rolls another table in a Chase or a Hideout (ADR 0042). */
+export const stepListTableBySceneType = [
+  {
+    key: 'trouble',
+    kind: 'table',
+    title: 'Complication',
+    table: 'complications',
+    tableBySceneType: { chase: 'places', hideout: 'moods' },
+    otherwise: { next: 'end' },
+  },
+]
 
 /** A step list with a kind the editor does not edit yet and a step it cannot read. */
 export const stepListWithOtherKinds = [

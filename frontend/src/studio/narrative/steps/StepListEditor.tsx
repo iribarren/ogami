@@ -72,6 +72,7 @@ function StepFields({
   guide,
   mine,
   context,
+  setup,
   laterKeys,
   onChange,
   onInnerRestructure,
@@ -81,6 +82,8 @@ function StepFields({
   guide: StepGuide
   mine: StepError[]
   context: StepContext
+  /** Whether the list is a Scene Type's setup, where no Character is known yet. */
+  setup: boolean
   laterKeys: string[]
   onChange: (step: StepDraft) => void
   onInnerRestructure: () => void
@@ -102,12 +105,12 @@ function StepFields({
   const ownFields: Partial<Record<StepKind, string[]>> = {
     roll: ['dice'],
     oracle: ['oracle', 'likelihood'],
-    table: ['table'],
+    table: ['table', 'tableBySceneType'],
     choice: ['skip'],
     pick: ['of', 'mode', 'count.min', 'count.max'],
     check:
       step.kind === 'check'
-        ? ['check', ...(checkDifficulty(step, context).show ? ['difficulty'] : [])]
+        ? ['check', 'checks', ...(checkDifficulty(step, context).show ? ['difficulty'] : [])]
         : [],
   }
   const inline = ['key', 'title', 'prompt', 'tip', 'next', ...(ownFields[step.kind] ?? [])]
@@ -143,6 +146,7 @@ function StepFields({
   const loose = mine.filter((error) => error.index === null || !shown(error))
   const kindProps = {
     context,
+    setup,
     laterKeys,
     guide,
     mine,
@@ -344,7 +348,7 @@ function StepFields({
           label="Effects"
           effects={step.effects}
           context={context}
-          allowSheet={step.kind === 'character'}
+          allowSheet={step.kind === 'character' || (step.kind === 'prompt' && !setup)}
           errors={mine.filter(
             (error) =>
               error.band === null &&
@@ -373,7 +377,9 @@ function boundName(step: EditedStep, context: StepContext): string {
     key === '' ? '' : (items.find((item) => item.key === key)?.name ?? key)
   switch (step.kind) {
     case 'check':
-      return named(context.checks, step.check)
+      return step.checks === null
+        ? named(context.checks, step.check)
+        : `${String(step.checks.length)} checks`
     case 'table':
       return named(context.tables, step.table)
     case 'oracle':
@@ -396,6 +402,7 @@ const StepCard = memo(function StepCard({
   guide,
   mine,
   context,
+  setup,
   laterKeys,
   onChange,
   onMove,
@@ -412,6 +419,7 @@ const StepCard = memo(function StepCard({
   guide: StepGuide
   mine: StepError[]
   context: StepContext
+  setup: boolean
   laterKeys: string[]
   onChange: (index: number, step: StepDraft) => void
   onMove: (index: number, by: number) => void
@@ -536,6 +544,7 @@ const StepCard = memo(function StepCard({
                 guide={guide}
                 mine={mine}
                 context={context}
+                setup={setup}
                 laterKeys={laterKeys}
                 onChange={(changed) => {
                   onChange(index, changed)
@@ -570,11 +579,14 @@ export function StepListEditor({
   context,
   errors = noErrors,
   current,
+  setup = false,
   onChange,
 }: {
   steps: StepDraft[]
   context: StepContext
   errors?: StepError[]
+  /** Whether this is a Scene Type's setup list: its steps run before any Character is known, so a prompt's effects cannot change the sheet. */
+  setup?: boolean
   /** The position of the step to scroll to and mark, when the list is shown for one step. */
   current?: number
   onChange: (steps: StepDraft[]) => void
@@ -688,9 +700,10 @@ export function StepListEditor({
               total={steps.length}
               current={current === index}
               answer={errors}
-              guide={guides[index] ?? { bands: {}, nexts: {}, items: {} }}
+              guide={guides[index] ?? { bands: {}, scenes: {}, nexts: {}, items: {} }}
               mine={mine[index] ?? noErrors}
               context={context}
+              setup={setup}
               laterKeys={laterKeys[index] ?? []}
               onChange={change}
               onMove={move}

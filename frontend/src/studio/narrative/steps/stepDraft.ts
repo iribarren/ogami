@@ -88,7 +88,15 @@ export interface OptionDraft extends OutcomeDraft {
   label: string
 }
 
+/** A table step's table for one Scene Type (ADR 0042); the pair is read as typed, '' while a select is unset. */
+export interface SceneTableDraft {
+  sceneType: string
+  table: string
+}
+
 export const MAX_BRANCHES = 1000
+export const MIN_CHECKS = 2
+export const MAX_CHECKS = 10
 export const MAX_PICK_COUNT = 10
 export const MIN_OPTIONS = 2
 export const MAX_OPTIONS = 10
@@ -128,7 +136,14 @@ export type StepDraft =
       /** What the stored `branches` carries beyond the four answers. */
       branchesExtra: StoredItem
     })
-  | (StepBase & { kind: 'table'; table: string; branches: BranchDraft[]; otherwise: OutcomeDraft })
+  | (StepBase & {
+      kind: 'table'
+      table: string
+      /** The table each Scene Type rolls instead; null when the step has no map. A map has no branches. */
+      bySceneType: SceneTableDraft[] | null
+      branches: BranchDraft[]
+      otherwise: OutcomeDraft
+    })
   | (StepBase & { kind: 'choice'; options: OptionDraft[]; skip: string })
   | (StepBase & {
       kind: 'pick'
@@ -145,7 +160,10 @@ export type StepDraft =
     })
   | (StepBase & {
       kind: 'check'
+      /** The one check; '' while the step offers a set. */
       check: string
+      /** The checks the player picks from (2 to 10 sharing their band keys); null for a single check. */
+      checks: string[] | null
       /** Empty text is not saved. */
       difficulty: ValueDraft
       /** As stored: in the order of the check's bands once one is edited, strays (no such band, repeated) kept. */
@@ -250,6 +268,17 @@ function readBranches(stored: StoredItem): BranchDraft[] | null {
   return branches.includes(null) ? null : (branches as BranchDraft[])
 }
 
+/** The table by Scene Type as rows (null: none stored); undefined when it cannot be read. */
+function readSceneTables(stored: StoredItem): SceneTableDraft[] | null | undefined {
+  const map = stored.tableBySceneType
+  if (map === undefined) {
+    return null
+  }
+  return isObject(map) && Object.values(map).every((table) => typeof table === 'string')
+    ? Object.entries(map).map(([sceneType, table]) => ({ sceneType, table: table as string }))
+    : undefined
+}
+
 function readOptions(stored: StoredItem): OptionDraft[] | null {
   if (!Array.isArray(stored.options)) {
     return null
@@ -313,6 +342,11 @@ function readPick(stored: StoredItem, base: StepBase): StepDraft | null {
 
 function readCheck(stored: StoredItem, base: StepBase): StepDraft | null {
   const list = listOf(stored, 'outcomes')
+  // A step names one check or a set, never both: anything else is the publisher's to refuse, kept as stored.
+  const set = stored.checks === undefined ? null : stringsOf(stored, 'checks')
+  if (stored.checks !== undefined && (set === null || stored.check !== undefined)) {
+    return null
+  }
   const difficulty =
     stored.difficulty === undefined
       ? { form: 'integer' as const, text: '' }
@@ -325,12 +359,13 @@ function readCheck(stored: StoredItem, base: StepBase): StepDraft | null {
   return list === null ||
     difficulty === null ||
     outcomes.includes(null) ||
-    typeof stored.check !== 'string'
+    (set === null && typeof stored.check !== 'string')
     ? null
     : {
         ...base,
         kind: 'check',
-        check: stored.check,
+        check: set === null ? (stored.check as string) : '',
+        checks: set,
         difficulty,
         outcomes: outcomes as CheckOutcomeDraft[],
       }
@@ -387,10 +422,10 @@ export function stepToDraft(stored: unknown): StepDraft {
     roll: [...commonFields, 'dice', 'bands'],
     condition: [...commonFields, 'tracker', 'count', 'bands'],
     oracle: [...commonFields, 'oracle', 'likelihood', 'branches'],
-    table: [...commonFields, 'table', 'branches', 'otherwise'],
+    table: [...commonFields, 'table', 'tableBySceneType', 'branches', 'otherwise'],
     choice: [...commonFields, 'options', 'skip'],
     pick: [...commonFields, 'of', 'tags', 'mode', 'count', 'branches'],
-    check: [...commonFields, 'check', 'difficulty', 'outcomes'],
+    check: [...commonFields, 'check', 'checks', 'difficulty', 'outcomes'],
   }[kind]
   const base: StepBase = {
     key: key ?? '',
@@ -427,9 +462,13 @@ export function stepToDraft(stored: unknown): StepDraft {
       const branches = readBranches(stored)
       const otherwise =
         stored.otherwise === undefined ? emptyOutcome() : readOutcome(stored.otherwise)
-      return branches === null || otherwise === null || typeof stored.table !== 'string'
+      const bySceneType = readSceneTables(stored)
+      return branches === null ||
+        otherwise === null ||
+        bySceneType === undefined ||
+        typeof stored.table !== 'string'
         ? unreadable
-        : { ...base, kind, table: stored.table, branches, otherwise }
+        : { ...base, kind, table: stored.table, bySceneType, branches, otherwise }
     }
     case 'choice': {
       const options = readOptions(stored)
@@ -458,6 +497,8 @@ function freeKey(kind: StepKind, steps: StepDraft[]): string {
 export function newBand(): BandDraft {
   return { upTo: { form: 'integer', text: '' }, label: '', next: '', effects: [], extra: {} }
 }
+
+export const newSceneTable = (): SceneTableDraft => ({ sceneType: '', table: '' })
 
 export const newBranch = (): BranchDraft => ({ entry: '', ...emptyOutcome() })
 
@@ -515,7 +556,14 @@ export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
         branchesExtra: {},
       }
     case 'table':
-      return { ...base, kind, table: '', branches: [], otherwise: emptyOutcome() }
+      return {
+        ...base,
+        kind,
+        table: '',
+        bySceneType: null,
+        branches: [],
+        otherwise: emptyOutcome(),
+      }
     case 'choice': {
       const first = newOption([])
       return { ...base, kind, options: [first, newOption([first])], skip: '' }
@@ -534,7 +582,14 @@ export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
         branchesExtra: {},
       }
     case 'check':
-      return { ...base, kind, check: '', difficulty: { form: 'integer', text: '' }, outcomes: [] }
+      return {
+        ...base,
+        kind,
+        check: '',
+        checks: null,
+        difficulty: { form: 'integer', text: '' },
+        outcomes: [],
+      }
   }
 }
 
@@ -568,6 +623,58 @@ export function setBandOutcome(
   const rank = (name: string) => (bands.includes(name) ? bands.indexOf(name) : bands.length)
   entries.sort((a, b) => rank(a.outcome.band) - rank(b.outcome.band))
   return { outcomes: entries.map((entry) => entry.outcome), origin: entries.map((e) => e.from) }
+}
+
+/** The checks a check step names, in order: its one check, or its set. */
+export function checkKeysOf(step: Extract<EditedStep, { kind: 'check' }>): string[] {
+  return step.checks ?? (step.check === '' ? [] : [step.check])
+}
+
+/** Whether two checks have the same band keys, in any order. */
+export const sameBands = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((x) => b.includes(x))
+
+/**
+ * What is wrong with a set of checks, if anything: a size outside 2 to 10 or a repeat (always), and
+ * with the pickers' `context` a check the game system lacks or one with other band keys than the
+ * first, since a set shares one difficulty and one outcome per band.
+ */
+export function checkSetProblem(checks: string[], context?: StepContext): string | undefined {
+  if (
+    checks.length < MIN_CHECKS ||
+    checks.length > MAX_CHECKS ||
+    new Set(checks).size !== checks.length
+  ) {
+    return `A check set needs ${String(MIN_CHECKS)} to ${String(MAX_CHECKS)} distinct checks.`
+  }
+  if (context === undefined) {
+    return undefined
+  }
+  let first: string[] | undefined
+  for (const key of checks) {
+    const found = context.checks.find((check) => check.key === key)
+    if (found === undefined) {
+      return `Not a check of this game system: ${key}.`
+    }
+    if (first !== undefined && !sameBands(found.bands, first)) {
+      return `Check "${key}" has other band keys than the first check of the set.`
+    }
+    first ??= found.bands
+  }
+  return undefined
+}
+
+/** What is wrong with the rows of a table by Scene Type, if anything. */
+function sceneTablesProblem(rows: SceneTableDraft[]): string | undefined {
+  if (rows.length === 0) {
+    return 'Add a Scene Type, or turn the table by Scene Type off.'
+  }
+  if (rows.some((row) => row.sceneType === '' || row.table === '')) {
+    return 'Pick a Scene Type and a table for every row.'
+  }
+  return new Set(rows.map((row) => row.sceneType)).size === rows.length
+    ? undefined
+    : 'Each Scene Type can appear once.'
 }
 
 /**
@@ -711,7 +818,15 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
       break
     }
     case 'check': {
-      item.check = step.check
+      if (step.checks === null) {
+        item.check = step.check
+      } else {
+        item.checks = step.checks
+        const problem = checkSetProblem(step.checks)
+        if (problem !== undefined) {
+          errors[`${String(index)}.checks`] = problem
+        }
+      }
       if (step.difficulty.text.trim() !== '') {
         item.difficulty = valueToStored(step.difficulty, `${String(index)}.difficulty`, errors)
       }
@@ -736,7 +851,19 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
     }
     case 'table':
       item.table = step.table
-      if (step.branches.length > 0) {
+      if (step.bySceneType !== null) {
+        item.tableBySceneType = Object.fromEntries(
+          step.bySceneType.map(({ sceneType, table }) => [sceneType, table]),
+        )
+        const problem = sceneTablesProblem(step.bySceneType)
+        if (problem !== undefined) {
+          errors[`${String(index)}.tableBySceneType`] = problem
+        }
+        if (step.branches.length > 0) {
+          errors[`${String(index)}.branches`] =
+            'A table by Scene Type has no branches: delete them or turn the map off.'
+        }
+      } else if (step.branches.length > 0) {
         item.branches = step.branches.map(({ entry, ...outcome }, position) => ({
           ...outcomeToStored(outcome, `${String(index)}.branches.${String(position)}`, errors),
           entry,
@@ -786,6 +913,10 @@ export interface StepGuide {
   count?: string
   /** A check step's check the game system does not have. */
   check?: string
+  /** A check step's set: its size, a repeat, a check the game system lacks or one with other bands. */
+  checks?: string
+  /** Per table by Scene Type row: a Scene Type or table the game system lacks, a repeated Scene Type. */
+  scenes: Record<number, { sceneType?: string; table?: string }>
   /** A check step's difficulty the chosen check does not allow. */
   difficulty?: string
   /** Per outcome (an answer, `otherwise`, a branch or option position): a `next` that goes backward. */
@@ -812,7 +943,7 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
   const misplaced = (next: string, index: number) =>
     next !== '' && next !== END && keys.includes(next) && keys.indexOf(next) <= index
   return steps.map((step, index) => {
-    const guide: StepGuide = { bands: {}, nexts: {}, items: {} }
+    const guide: StepGuide = { bands: {}, scenes: {}, nexts: {}, items: {} }
     const key = keys[index] ?? ''
     if (key === END) {
       guide.key = 'end is reserved for the end of the list.'
@@ -875,6 +1006,28 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
         }
       })
       outcome('otherwise', step.otherwise)
+      step.bySceneType?.forEach(({ sceneType, table }, position) => {
+        const flags: { sceneType?: string; table?: string } = {}
+        if (step.bySceneType?.findIndex((row) => row.sceneType === sceneType) !== position) {
+          flags.sceneType = 'Another row has this Scene Type.'
+        } else if (
+          sceneType !== '' &&
+          context?.sceneTypes &&
+          !context.sceneTypes.some((candidate) => candidate.key === sceneType)
+        ) {
+          flags.sceneType = 'Not a Scene Type of this game system.'
+        }
+        if (
+          table !== '' &&
+          context &&
+          !context.tables.some((candidate) => candidate.key === table)
+        ) {
+          flags.table = 'Not an oracle table of this game system.'
+        }
+        if (Object.keys(flags).length > 0) {
+          guide.scenes[position] = flags
+        }
+      })
     }
     if (step.kind === 'pick') {
       pickOutcomes.forEach((name) => {
@@ -887,21 +1040,28 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
       }
     }
     if (step.kind === 'check') {
-      const chosen = context?.checks.find((check) => check.key === step.check)
-      if (context && step.check !== '' && chosen === undefined) {
+      const keys = checkKeysOf(step)
+      const chosen = context?.checks.find((check) => check.key === keys[0])
+      if (step.checks !== null) {
+        guide.checks = checkSetProblem(step.checks, context)
+      } else if (context && step.check !== '' && chosen === undefined) {
         guide.check = 'Not a check of this game system.'
       }
       const given = step.difficulty.text.trim()
       const literal = step.difficulty.form === 'integer' ? parseInteger(given) : null
-      const range = chosen?.difficulty
-      if (context && chosen !== undefined && range === null && given !== '') {
-        guide.difficulty = 'This check declares no difficulty.'
-      } else if (
-        literal !== null &&
-        range &&
-        ((range.min !== null && literal < range.min) || (range.max !== null && literal > range.max))
-      ) {
-        guide.difficulty = `Outside the range of this check: ${rangeOf(range)}.`
+      for (const key of keys) {
+        const range = context?.checks.find((check) => check.key === key)?.difficulty
+        const which = step.checks === null ? 'this check' : `check "${key}"`
+        if (context && range === null && given !== '') {
+          guide.difficulty ??= `${which.charAt(0).toUpperCase()}${which.slice(1)} declares no difficulty.`
+        } else if (
+          literal !== null &&
+          range &&
+          ((range.min !== null && literal < range.min) ||
+            (range.max !== null && literal > range.max))
+        ) {
+          guide.difficulty ??= `Outside the range of ${which}: ${rangeOf(range)}.`
+        }
       }
       step.outcomes.forEach((entry, position) => {
         outcome(String(position), entry)
@@ -930,8 +1090,38 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
   })
 }
 
-/** The difficulty of the chosen check. A value the check does not take stays visible, to be seen and cleared. */
+/**
+ * The difficulty the check step's checks allow. For a set, the range every check allows at once
+ * (null when one declares none; no default, each check rolls at its own). A value the checks do
+ * not take stays visible, to be seen and cleared.
+ */
 export function checkDifficulty(step: Extract<StepDraft, { kind: 'check' }>, context: StepContext) {
-  const range = context.checks.find((check) => check.key === step.check)?.difficulty ?? null
-  return { range, show: range !== null || step.difficulty.text.trim() !== '' }
+  const ranges = checkKeysOf(step).map(
+    (key) => context.checks.find((check) => check.key === key)?.difficulty ?? null,
+  )
+  const [first] = ranges
+  const shared =
+    step.checks === null || first === null || first === undefined || ranges.includes(null)
+      ? first
+      : {
+          default: null,
+          min: bound(ranges, 'min', Math.max),
+          max: bound(ranges, 'max', Math.min),
+        }
+  const range = shared ?? null
+  return {
+    range,
+    set: step.checks !== null,
+    show: ranges.some(Boolean) || step.difficulty.text.trim() !== '',
+  }
+}
+
+/** The tightest limit among the ranges that have one, null when none does. */
+function bound(
+  ranges: ({ min: number | null; max: number | null } | null)[],
+  end: 'min' | 'max',
+  tightest: (...values: number[]) => number,
+) {
+  const limits = ranges.flatMap((range) => (range?.[end] == null ? [] : [range[end]]))
+  return limits.length === 0 ? null : tightest(...limits)
 }

@@ -205,6 +205,22 @@ final class FlowRunTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function movingOnInOpenPlayOfASceneTypeWithoutClosingStepsGoesOnToThePhaseSceneClosing(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('fight', $this->release, self::at());
+        $campaign->completeFlowStep('opener', self::prompt('Ada'), $this->release, self::at());
+        $campaign->skipFlowStep('response', $this->release, self::at());
+        self::assertSame(['open', null], self::position($campaign));
+
+        $campaign->moveOn('roam', $this->release, self::at());
+
+        self::assertSame(['sceneClosing', 'after'], self::position($campaign));
+        $campaign->skipFlowStep('after', $this->release, self::at());
+        self::assertSame([2, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
+    }
+
+    #[Test]
     public function aPhaseEndedByAnEffectStillGivesTheSceneItsOpenPlay(): void
     {
         $campaign = $this->inPhase('roam');

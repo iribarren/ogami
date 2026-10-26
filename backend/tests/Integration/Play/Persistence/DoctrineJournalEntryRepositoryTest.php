@@ -185,12 +185,13 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
                     $other->rollBack();
                 }
             };
-            $lockedWhenSaved = [];
-            $campaigns = new class($lockedWhenSaved, $held) implements CampaignRepository {
+            /** @var \ArrayObject<int, bool> $lockedWhenSaved */
+            $lockedWhenSaved = new \ArrayObject();
+            $campaigns = new readonly class($lockedWhenSaved, $held) implements CampaignRepository {
                 /**
-                 * @param list<bool> $locked
+                 * @param \ArrayObject<int, bool> $locked
                  */
-                public function __construct(private array &$locked, private readonly \Closure $held)
+                public function __construct(private \ArrayObject $locked, private \Closure $held)
                 {
                 }
 
@@ -226,7 +227,7 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
             $pusher->keep($aCampaign, $pushed, fromTheSheet: true);
             $connection->rollbackSavepoint('sheet');
 
-            self::assertSame([false, true], $lockedWhenSaved, 'A push from the sheet takes the campaign lock before the campaign is saved; a Flow step takes none of its own.');
+            self::assertSame([false, true], $lockedWhenSaved->getArrayCopy(), 'A push from the sheet takes the campaign lock before the campaign is saved; a Flow step takes none of its own.');
         } finally {
             $other->executeStatement('DELETE FROM play_journal_entry WHERE campaign_id = ?', [$campaign]);
             $other->executeStatement('DELETE FROM play_campaign WHERE id = ?', [$campaign]);

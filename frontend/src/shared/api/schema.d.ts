@@ -4745,6 +4745,8 @@ export interface components {
             key: string;
             /** @example Hands */
             label: string;
+            /** @description The options a mark or clear effect picks from; only on a conditions field. */
+            options?: components["schemas"]["CheckConditionOptionResponse"][] | null;
         };
         NarrativeCatalogResponse: {
             tables: components["schemas"]["NarrativeCatalogTableResponse"][];

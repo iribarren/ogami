@@ -14,7 +14,7 @@ final readonly class NarrativeCatalogView
      * @param list<array{key: string, name: string, entries: list<string>}>                                                                    $tables     oracle tables with the keys of their entries
      * @param list<array{key: string, name: string, levels: list<string>}>                                                                     $likelihood likelihood oracles with the keys of their levels
      * @param list<array{key: string, label: string, bands: list<string>, difficulty: array{default: int, min: int|null, max: int|null}|null}> $checks     checks with their band keys and the difficulty the player sets
-     * @param list<array{key: string, label: string}>                                                                                          $fields     the sheet's number and track fields
+     * @param list<array{key: string, label: string, options: list<array{key: string, label: string}>|null}>                                   $fields     the sheet's number, track and conditions fields; a conditions field has its options, the others null
      */
     public function __construct(
         public array $tables,

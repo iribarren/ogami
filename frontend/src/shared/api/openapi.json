@@ -16692,6 +16692,14 @@
                     "label": {
                         "type": "string",
                         "example": "Hands"
+                    },
+                    "options": {
+                        "description": "The options a mark or clear effect picks from; only on a conditions field.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckConditionOptionResponse"
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"

@@ -14,8 +14,9 @@ use App\Formula\Domain\ValueResolver;
 /**
  * What a test roll's formulas read (ADR 0032): the saved draft's sheet and trackers with the sample
  * values sent for the roll, read the way Play's SheetValues reads a Character's and a Campaign's.
- * Only number and track fields and trackers take a sample; a number without one reads its default
- * (else 0 moved inside min..max), a track 0, a tracker its initial value (a clock 0). A derived
+ * Only number, track and conditions fields and trackers take a sample; a number without one reads
+ * its default (else 0 moved inside min..max), a track 0, a conditions field 0 marked (a sample is
+ * how many of its options are marked, as formulas read it), a tracker its initial value (a clock 0). A derived
  * field is computed from the samples when a formula reads it; one whose formula fails has no value,
  * and neither has a formula that reads it. A track without a fixed max has its sample as max.
  */
@@ -31,7 +32,7 @@ final class SampleSheet implements ValueResolver
     private array $computing = [];
 
     /**
-     * @param array<string, int>             $numbers  the value of every number field
+     * @param array<string, int>             $numbers  the value of every number field and the count marked of every conditions field
      * @param array<string, array{int, int}> $tracks   current and max of every track field
      * @param array<string, Formula>         $formulas the formula of every derived field
      * @param array<string, int>             $trackers the value of every tracker
@@ -46,10 +47,10 @@ final class SampleSheet implements ValueResolver
 
     /**
      * @param array<string, mixed> $document       the saved draft
-     * @param mixed                $sheetSamples   the sent "sheet": number and track values by field key
+     * @param mixed                $sheetSamples   the sent "sheet": number and track values, and the count marked of conditions fields, by field key
      * @param mixed                $trackerSamples the sent "trackers": values by tracker key
      *
-     * @throws InvalidTestRoll     when a sample is not an integer within its field's range, or names no number or track field or tracker
+     * @throws InvalidTestRoll     when a sample is not an integer within its field's range, or names no number, track or conditions field or tracker
      * @throws CheckTestRollFailed when the draft's sheet or trackers are not readable
      */
     public static function fromDocument(array $document, mixed $sheetSamples, mixed $trackerSamples): self
@@ -75,8 +76,8 @@ final class SampleSheet implements ValueResolver
             match ($types[$key] ?? null) {
                 null => throw InvalidTestRoll::at('sheet.'.$key, 'is not a field of the sheet'),
                 'derived' => throw InvalidTestRoll::at('sheet.'.$key, 'is derived, so it takes no sample'),
-                'number', 'track' => null,
-                default => throw InvalidTestRoll::at('sheet.'.$key, 'is not a number or track field'),
+                'number', 'track', 'conditions' => null,
+                default => throw InvalidTestRoll::at('sheet.'.$key, 'is not a number, track or conditions field'),
             };
         }
 
@@ -89,6 +90,9 @@ final class SampleSheet implements ValueResolver
                     break;
                 case 'track':
                     $tracks[$key] = self::track($key, $field, $sheetSamples);
+                    break;
+                case 'conditions':
+                    $numbers[$key] = self::marked($key, $field, $sheetSamples);
                     break;
                 case 'derived':
                     $formulas[$key] = self::formula($key, $field['formula'] ?? null);
@@ -192,6 +196,23 @@ final class SampleSheet implements ValueResolver
         }
 
         return self::sample($samples[$key], 'sheet.'.$key, $low, $high);
+    }
+
+    /**
+     * How many options of a conditions field are marked: 0 without a sample, else the sample, up to
+     * the number of options.
+     *
+     * @param array<array-key, mixed> $field
+     * @param array<array-key, mixed> $samples
+     */
+    private static function marked(string $key, array $field, array $samples): int
+    {
+        $options = $field['options'] ?? null;
+        if (!\is_array($options) || !array_is_list($options)) {
+            throw CheckTestRollFailed::unreadable(\sprintf('the conditions field "%s" has no list of options', $key));
+        }
+
+        return \array_key_exists($key, $samples) ? self::sample($samples[$key], 'sheet.'.$key, 0, \count($options)) : 0;
     }
 
     /**

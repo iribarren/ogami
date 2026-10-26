@@ -63,6 +63,22 @@ final class SampleSheetTest extends TestCase
     }
 
     #[Test]
+    public function aConditionsFieldReadsAsHowManyOfItsOptionsAreMarked(): void
+    {
+        /** @var array{sheet: array{fields: list<array<string, mixed>>}} $document */
+        $document = $this->document();
+        $document['sheet']['fields'][] = ['key' => 'strain', 'label' => 'Strain', 'type' => 'derived', 'formula' => '{wounds} * 2 + 1'];
+
+        $unmarked = SampleSheet::fromDocument($document, [], []);
+        $marked = SampleSheet::fromDocument($document, ['wounds' => 2], []);
+        $all = SampleSheet::fromDocument($document, ['wounds' => 3], []);
+
+        self::assertSame([0, 1], [$this->read($unmarked, Reference::field('wounds')), $this->read($unmarked, Reference::field('strain'))]);
+        self::assertSame([2, 5], [$this->read($marked, Reference::field('wounds')), $this->read($marked, Reference::field('strain'))]);
+        self::assertSame(3, $this->read($all, Reference::field('wounds')));
+    }
+
+    #[Test]
     public function aTrackWithoutAFixedMaxTakesItsSampleAsMax(): void
     {
         $sheet = SampleSheet::fromDocument($this->document(), ['open' => 7], []);
@@ -92,7 +108,7 @@ final class SampleSheetTest extends TestCase
     {
         yield 'a key the sheet lacks' => [['ghost' => 1], [], 'sheet.ghost: is not a field of the sheet'];
         yield 'a derived field' => [['edge' => 1], [], 'sheet.edge: is derived, so it takes no sample'];
-        yield 'a text field' => [['name' => 1], [], 'sheet.name: is not a number or track field'];
+        yield 'a text field' => [['name' => 1], [], 'sheet.name: is not a number, track or conditions field'];
         yield 'a string' => [['hands' => '5'], [], 'sheet.hands: must be an integer'];
         yield 'a float' => [['hands' => 5.0], [], 'sheet.hands: must be an integer'];
         yield 'a boolean' => [['hands' => true], [], 'sheet.hands: must be an integer'];
@@ -102,6 +118,9 @@ final class SampleSheetTest extends TestCase
         yield 'a number outside the contract limits' => [['zero' => 1_000_001], [], 'sheet.zero: must be -1000000 to 1000000, got 1000001'];
         yield 'a track below 0' => [['hp' => -1], [], 'sheet.hp: must be 0 to 8, got -1'];
         yield 'a track above its max' => [['hp' => 9], [], 'sheet.hp: must be 0 to 8, got 9'];
+        yield 'a conditions field below 0' => [['wounds' => -1], [], 'sheet.wounds: must be 0 to 3, got -1'];
+        yield 'a conditions field above its options' => [['wounds' => 4], [], 'sheet.wounds: must be 0 to 3, got 4'];
+        yield 'a conditions field that is not an integer' => [['wounds' => '2'], [], 'sheet.wounds: must be an integer'];
         yield 'a track without a max above 999' => [['open' => 1000], [], 'sheet.open: must be 0 to 999, got 1000'];
         yield 'a tracker the draft lacks' => [[], ['ghost' => 1], 'trackers.ghost: is not a tracker of the draft'];
         yield 'a tracker that is not an integer' => [[], ['alarm' => 1.5], 'trackers.alarm: must be an integer'];
@@ -172,6 +191,8 @@ final class SampleSheetTest extends TestCase
         yield 'a number field with a non-integer default' => [['sheet' => ['fields' => [['key' => 'a', 'type' => 'number', 'default' => 'x']]]]];
         yield 'a derived field without a readable formula' => [['sheet' => ['fields' => [['key' => 'a', 'type' => 'derived', 'formula' => '{']]]]];
         yield 'a track with a non-integer max' => [['sheet' => ['fields' => [['key' => 'a', 'type' => 'track', 'max' => 'x']]]]];
+        yield 'a conditions field without a list of options' => [['sheet' => ['fields' => [['key' => 'a', 'type' => 'conditions', 'options' => 'none']]]]];
+        yield 'a conditions field without options' => [['sheet' => ['fields' => [['key' => 'a', 'type' => 'conditions']]]]];
         yield 'trackers that are not a list' => [['trackers' => 'none']];
         yield 'a tracker without a key' => [['trackers' => [['kind' => 'clock', 'segments' => 3]]]];
         yield 'a counter without bounds' => [['trackers' => [['key' => 'a', 'kind' => 'counter']]]];
@@ -228,6 +249,7 @@ final class SampleSheetTest extends TestCase
                 ['key' => 'hp', 'label' => 'HP', 'type' => 'track', 'max' => 8],
                 ['key' => 'open', 'label' => 'Open', 'type' => 'track'],
                 ['key' => 'name', 'label' => 'Name', 'type' => 'text'],
+                ['key' => 'wounds', 'label' => 'Wounds', 'type' => 'conditions', 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'tired', 'label' => 'Tired'], ['key' => 'shaken', 'label' => 'Shaken']]],
                 ['key' => 'edge', 'label' => 'Edge', 'type' => 'derived', 'formula' => '{hands} / 2'],
                 ['key' => 'broken', 'label' => 'Broken', 'type' => 'derived', 'formula' => '{hands} / {zero}'],
                 ['key' => 'reader', 'label' => 'Reader', 'type' => 'derived', 'formula' => '{broken} + 1'],

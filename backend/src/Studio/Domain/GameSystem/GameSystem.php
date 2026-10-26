@@ -271,7 +271,7 @@ final class GameSystem
      *
      * @throws SheetFieldNotFound    when the original key names no field
      * @throws SheetFieldKeyTaken    when the new key belongs to another field
-     * @throws SheetFieldInUse       when a renamed field is referenced outside itself
+     * @throws SheetFieldInUse       when a renamed field is referenced outside itself, or an option it no longer has (removed or renamed) is marked or cleared by an effect
      * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or the sheet is not well-formed
      */
     public function saveSheetField(?string $originalKey, array $field, \DateTimeImmutable $now): void
@@ -290,6 +290,10 @@ final class GameSystem
 
         if (null !== $originalKey && $key !== $originalKey) {
             $this->refuseWhenSheetFieldReferenced($originalKey);
+        }
+
+        if (null !== $originalKey) {
+            $this->refuseWhenConditionOptionsAreReferenced($originalKey, $fields[$position], $field);
         }
 
         $fields[$position] = $field;
@@ -906,6 +910,47 @@ final class GameSystem
         if ([] !== $paths) {
             throw SheetFieldInUse::at(\sprintf('The sheet field "%s"', $key), $paths);
         }
+    }
+
+    /**
+     * An option is identified by its key, so renaming one is a drop plus an add: the effects that
+     * mark or clear a dropped option are listed, and nothing cascades.
+     *
+     * @param array<array-key, mixed> $new
+     *
+     * @throws SheetFieldInUse when an option of the stored field is missing from the new one and an effect names it
+     */
+    private function refuseWhenConditionOptionsAreReferenced(string $field, mixed $stored, array $new): void
+    {
+        $kept = $this->optionKeys($new);
+        foreach ($this->optionKeys(\is_array($stored) ? $stored : []) as $option) {
+            if (\in_array($option, $kept, true)) {
+                continue;
+            }
+
+            $paths = DraftReferences::conditionOptionPathsTo($this->document, $field, $option);
+            if ([] !== $paths) {
+                throw SheetFieldInUse::at(\sprintf('The option "%s" of the sheet field "%s"', $option, $field), $paths);
+            }
+        }
+    }
+
+    /**
+     * @param array<array-key, mixed> $field
+     *
+     * @return list<string> the keys of the options that are objects with a string key
+     */
+    private function optionKeys(array $field): array
+    {
+        $options = $field['options'] ?? null;
+        $keys = [];
+        foreach (\is_array($options) && array_is_list($options) ? $options : [] as $option) {
+            if (\is_array($option) && \is_string($option['key'] ?? null)) {
+                $keys[] = $option['key'];
+            }
+        }
+
+        return $keys;
     }
 
     /**

@@ -81,11 +81,23 @@ final readonly class GetGameSystemNarrativeHandler implements QueryHandler
         $fields = [];
         foreach ($this->keyed($sheet['fields'] ?? null) as [$key, $field]) {
             if (\in_array($field['type'] ?? null, ['number', 'track'], true)) {
-                $fields[] = ['key' => $key, 'label' => $this->text($field, 'label')];
+                $fields[] = ['key' => $key, 'label' => $this->text($field, 'label'), 'options' => null];
+            } elseif ('conditions' === ($field['type'] ?? null)) {
+                $fields[] = ['key' => $key, 'label' => $this->text($field, 'label'), 'options' => $this->options($field['options'] ?? null)];
             }
         }
 
         return new NarrativeCatalogView($tables, $likelihood, $checks, $fields);
+    }
+
+    /**
+     * The options of a conditions field that have a string key, in order; the label is empty when it is not text.
+     *
+     * @return list<array{key: string, label: string}>
+     */
+    private function options(mixed $options): array
+    {
+        return array_map(fn (array $option): array => ['key' => (string) $option[0], 'label' => $this->text($option[1], 'label')], $this->keyed($options));
     }
 
     /**

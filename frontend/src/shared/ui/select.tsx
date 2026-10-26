@@ -55,6 +55,8 @@ interface SelectProps {
   onChange?: (event: { target: { value: string } }) => void
   /** Called as the panel closes; `preventDefault()` keeps focus off the trigger (e.g. to focus an input). */
   onCloseAutoFocus?: (event: Event) => void
+  /** Extra classes of the open panel, e.g. a taller `max-h-…` for a list that should not scroll. */
+  contentClassName?: string
   /** 36px by default; `sm` is the 32px height for dense rows. */
   size?: 'default' | 'sm'
   /** `<option value>` elements, the same shape as `NativeSelect`. */
@@ -71,6 +73,7 @@ interface SelectProps {
  */
 function Select({
   className,
+  contentClassName,
   size = 'default',
   value,
   onChange,
@@ -121,7 +124,10 @@ function Select({
           position="popper"
           onCloseAutoFocus={onCloseAutoFocus}
           sideOffset={4}
-          className="z-50 max-h-[min(20rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[10px] border border-border bg-card p-1 text-card-foreground shadow-lg"
+          className={cn(
+            'z-50 max-h-[min(20rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[10px] border border-border bg-card p-1 text-card-foreground shadow-lg',
+            contentClassName,
+          )}
         >
           <SelectPrimitive.Viewport>
             {options.map((option) => (

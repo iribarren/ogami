@@ -81,7 +81,7 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T7 | 2 | Play backend: translator reads both shapes, `SheetTemplate` budgets, `CharacterCreation` per budget, pinned release response; tests | delegated writer (Sonnet) | [x] | 8cd0e3a |
 | T8 | 3 | Studio sheet: a list of budgets (add, edit, remove), error paths; tests and story | delegated writer (Sonnet) | [x] | |
 | T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer (Sonnet) | [x] | |
-| T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer | [ ] | |
+| T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer (Sonnet) | [x] | |
 | T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer | [ ] | |
 | T12 | 4 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [ ] | |
 | T13 | 4 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [ ] | |
@@ -147,6 +147,7 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-26: Slice 2 review fixes (writer, Sonnet): A-W the malformed-list test now stores the damaged list unchecked and asserts `sheet.pointBudgets: must be a list` from the guard it names (written after the code; the old test threw in its fixture). B-S found unreachable: `PointBudget` refuses a repeated field first ("covers at least one field, each once"), so `SheetTemplate`'s two-budgets message cannot fire for one budget; the translator test now pins the real message and `SheetTemplate` is unchanged.
 - 2026-10-26: T8 done (writer, Sonnet): `SheetPointBudgetPanel` lists `pointBudgets` (label, key, total, fields, range) with add, edit and remove through `useSaveSheetPointBudgetEntry` / `useRemoveSheetPointBudgetEntry` only; the single-budget hooks are deleted (nothing else used them). A new budget's key follows its label with `slugOf` (as conditions options do) until typed, checked against the key rule client side; the key is read-only on edit; label required (a label-less legacy `points` budget is converted by editing it). `sheetPointBudgetAnswer(text, index)` maps `sheet.pointBudgets[i].<key|label|total|min|max|fields>` (edit: its index, add: the last); 409 keeps `ReloadLatest`. Tests (panel 21, `sheetError` 15) were written after the code, so no RED; `vitest run src/studio/sheet` 292 passed. Story shows two budgets.
 - 2026-10-26: T9 done (writer, Sonnet): `creationPlan` takes `pinnedRelease.pointBudgets` (no more `pointBudget` read in `CharactersPanel`, `CharacterStepForm`, `CharacterForm`): rollable = covers a dice field, method choice only when some budget is rollable, roll skips rollable budgets (fields read "Rolled at creation", bounds kept) and spends the others, points spends all; one `aria-live` counter per spent budget, each field bounded by its own budget, Save disabled while any spent budget is over or the method is unchosen. Tests (6 new with a Lore skill budget fixture `twoBudgetCampaign`, 5 existing moved to `pointBudgets`) were written after the code, so no RED (one test of mine failed once on a wrong sum, fixed); `vitest run src/play` 576 passed.
+- 2026-10-26: T10 done (writer, Sonnet): the panel capped at `max-h 20rem` (~320px) is shorter than ten rows (~340px), so the tenth kind hid behind a scroll. `Select` gains a `contentClassName` prop and the effect-kind select of `EffectsEditor` passes `max-h-[min(24rem,…available-height)]`; other selects keep 20rem. jsdom measures no height, so the test checks that all ten kinds are options (in order) and that the panel carries the 24rem cap. RED: the class assertion failed before the change; GREEN after. Chrome check of the real height is left to the slice's Chrome pass.
 
 ## Reviews
 
@@ -157,4 +158,4 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 
 ## Next step
 
-Slice 3 (T8–T10): slice 2 review fixes, Studio budget list, Play counters per budget, S27.
+Slice 3 review, then push and PR; slice 4 (T11–T14).

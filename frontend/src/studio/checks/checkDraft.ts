@@ -33,13 +33,38 @@ export interface BandDraft {
 /** The most bands a check may have, as the publisher. */
 export const maxBands = 10
 
+/**
+ * The form state of a pool: every input is text. The count is one input: digits are an integer,
+ * anything else a formula over the sheet.
+ */
+export interface PoolDraft {
+  count: string
+  sides: string
+  successAt: string
+}
+
+/** How a check rolls: its dice notation and modifier, or a pool of dice counted for successes. */
+export type CheckMode = 'dice' | 'pool'
+
+/** The pool's limits, as the publisher. */
+const poolLimits = { count: 100, formula: 200, sides: 1000 }
+
 /** The form state of one check. */
 export interface CheckDraft {
   key: string
   label: string
   hint: string
+  /** Empty for a pool check, which has no dice. */
   dice: string
+  /** Not sent for a pool check, which refuses a modifier. */
   modifier: string
+  /** Null for a dice check. */
+  pool: PoolDraft | null
+  /**
+   * The check's push as stored, kept whole and sent back unchanged: its editor comes later. Only a
+   * pool check has one.
+   */
+  push?: unknown
   /** Null while the check has no difficulty. */
   difficulty: DifficultyDraft | null
   bands: BandDraft[]
@@ -88,6 +113,9 @@ export type CheckErrors = Partial<
     | 'hint'
     | 'dice'
     | 'modifier'
+    | 'poolCount'
+    | 'poolSides'
+    | 'poolSuccessAt'
     | 'difficulty'
     | 'difficultyLabel'
     | 'difficultyDefault'
@@ -178,9 +206,26 @@ export function blankCheck(): CheckDraft {
     hint: '',
     dice: '',
     modifier: '',
+    pool: null,
     difficulty: null,
     bands: [{ key: 'outcome', label: 'Outcome', upTo: { kind: 'none' } }],
   }
+}
+
+/** The mode a draft is in. */
+export const modeOf = (draft: CheckDraft): CheckMode => (draft.pool === null ? 'dice' : 'pool')
+
+/**
+ * The draft in another mode. Dice drops the pool and its push, which go together; a pool starts
+ * empty. Choosing the mode the draft is in changes nothing.
+ */
+export function switchMode(draft: CheckDraft, mode: CheckMode): CheckDraft {
+  if (modeOf(draft) === mode) {
+    return draft
+  }
+  const next = { ...draft, pool: mode === 'pool' ? { count: '', sides: '', successAt: '' } : null }
+  delete next.push
+  return next
 }
 
 /**
@@ -198,6 +243,7 @@ export function duplicateCheck(source: CheckDraft, existingKeys: string[]): Chec
     ...source,
     key,
     label: `${source.label} (copy)`,
+    pool: source.pool === null ? null : { ...source.pool },
     difficulty: source.difficulty === null ? null : { ...source.difficulty },
     bands: source.bands.map((band) => ({ ...band, upTo: { ...band.upTo } })),
   }
@@ -237,10 +283,50 @@ function readBand(band: unknown): BandDraft | null {
   return { key: band.key, label: band.label, upTo: readUpTo(band.upTo) }
 }
 
+/** The stored pool as form state, or null when it is not exactly a count, sides and success threshold. */
+function readPool(pool: unknown): PoolDraft | null {
+  if (
+    !isObject(pool) ||
+    Object.keys(pool).some((name) => !['count', 'sides', 'successAt'].includes(name))
+  ) {
+    return null
+  }
+  const { count, sides, successAt } = pool
+  if (!Number.isInteger(sides) || !Number.isInteger(successAt)) {
+    return null
+  }
+  let counted: string
+  if (typeof count === 'number' && Number.isInteger(count)) {
+    counted = String(count)
+  } else if (
+    isObject(count) &&
+    Object.keys(count).length === 1 &&
+    typeof count.formula === 'string'
+  ) {
+    counted = count.formula
+  } else {
+    return null
+  }
+  return { count: counted, sides: String(sides), successAt: String(successAt) }
+}
+
 /** The stored check as form state, or null when a property has a shape the form cannot hold. */
 export function readCheck(stored: StoredCheck): CheckDraft | null {
-  const { key, label, hint, dice, modifier, difficulty, bands } = stored
-  if (typeof key !== 'string' || typeof label !== 'string' || typeof dice !== 'string') {
+  const { key, label, hint, dice, modifier, difficulty, bands, pool, push } = stored
+  if (typeof key !== 'string' || typeof label !== 'string') {
+    return null
+  }
+  // Exactly one of dice and pool; a pool check has no modifier, and only it has a push.
+  const pooled = pool !== undefined
+  const read = pooled ? readPool(pool) : null
+  if (
+    pooled
+      ? read === null || dice !== undefined || (modifier ?? null) !== null
+      : typeof dice !== 'string'
+  ) {
+    return null
+  }
+  if (push !== undefined && !pooled) {
     return null
   }
   const optionalText = (value: unknown) =>
@@ -253,7 +339,7 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     return null
   }
 
-  let read: DifficultyDraft | null = null
+  let declared: DifficultyDraft | null = null
   if (difficulty !== undefined && difficulty !== null) {
     if (!isObject(difficulty) || typeof difficulty.label !== 'string') {
       return null
@@ -268,7 +354,7 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
       return null
     }
     const text = (value: unknown) => (typeof value === 'number' ? String(value) : '')
-    read = {
+    declared = {
       label: difficulty.label,
       default: text(difficulty.default),
       min: text(difficulty.min),
@@ -280,9 +366,11 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     key,
     label,
     hint: typeof hint === 'string' ? hint : '',
-    dice,
+    dice: typeof dice === 'string' ? dice : '',
     modifier: typeof modifier === 'string' ? modifier : '',
-    difficulty: read,
+    pool: read,
+    ...(push === undefined ? {} : { push }),
+    difficulty: declared,
     bands: readBands as BandDraft[],
   }
 }
@@ -325,13 +413,14 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
   const key = draft.key.trim()
   const label = draft.label.trim()
   const dice = draft.dice.trim()
+  const pooled = draft.pool !== null
   if (key === '') {
     errors.key = 'Give the check a key.'
   }
   if (label === '') {
     errors.label = 'Give the check a label.'
   }
-  if (dice === '') {
+  if (!pooled && dice === '') {
     errors.dice = 'Write the dice.'
   }
   check.key = key
@@ -340,10 +429,20 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
   if (hint !== '') {
     check.hint = hint
   }
-  check.dice = dice
-  const modifier = draft.modifier.trim()
-  if (modifier !== '') {
-    check.modifier = modifier
+  if (draft.pool === null) {
+    check.dice = dice
+    const modifier = draft.modifier.trim()
+    if (modifier !== '') {
+      check.modifier = modifier
+    }
+  } else {
+    const pool = writePool(draft.pool, errors)
+    if (pool !== null) {
+      check.pool = pool
+    }
+    if (draft.push !== undefined) {
+      check.push = draft.push
+    }
   }
 
   if (draft.difficulty !== null) {
@@ -385,6 +484,57 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
   }
 
   return Object.keys(errors).length > 0 ? { errors } : { check }
+}
+
+/**
+ * The pool to send, or null with the errors found, by the publisher's rules: a count that is an
+ * integer 1..100 or a formula of 1 to 200 characters, sides 2..1000, success at 1..sides.
+ */
+function writePool(pool: PoolDraft, errors: CheckErrors): Record<string, unknown> | null {
+  const written: Record<string, unknown> = {}
+
+  const count = pool.count.trim()
+  if (count === '') {
+    errors.poolCount = 'Give the pool a count.'
+  } else if (integerOf(count) !== null) {
+    const value = integerOf(count) ?? 0
+    if (value < 1 || value > poolLimits.count) {
+      errors.poolCount = `The count must be between 1 and ${String(poolLimits.count)}, or a formula.`
+    }
+    written.count = value
+  } else if (count.length > poolLimits.formula) {
+    errors.poolCount = `The count formula is at most ${String(poolLimits.formula)} characters.`
+  } else {
+    written.count = { formula: count }
+  }
+
+  const sides = pool.sides.trim()
+  const sidesValue = integerOf(sides)
+  if (sides === '') {
+    errors.poolSides = 'Give the pool its sides.'
+  } else if (sidesValue === null) {
+    errors.poolSides = 'Must be a whole number.'
+  } else if (sidesValue < 2 || sidesValue > poolLimits.sides) {
+    errors.poolSides = `Must be between 2 and ${String(poolLimits.sides)}.`
+  }
+  written.sides = sidesValue
+
+  const successAt = pool.successAt.trim()
+  const successValue = integerOf(successAt)
+  if (successAt === '') {
+    errors.poolSuccessAt = 'Give the success threshold.'
+  } else if (successValue === null) {
+    errors.poolSuccessAt = 'Must be a whole number.'
+  } else if (successValue < 1 || (sidesValue !== null && successValue > sidesValue)) {
+    errors.poolSuccessAt = `Must be between 1 and ${sidesValue === null ? 'the sides' : String(sidesValue)}.`
+  }
+  written.successAt = successValue
+
+  return errors.poolCount === undefined &&
+    errors.poolSides === undefined &&
+    errors.poolSuccessAt === undefined
+    ? written
+    : null
 }
 
 /**

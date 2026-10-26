@@ -303,6 +303,37 @@ describe('the sandbox', () => {
   })
 })
 
+describe('the pool size of a pool check', () => {
+  const pool = (count: string) => ({ count, sides: '6', successAt: '5' })
+  const sized = (count: string, changes: Partial<SandboxState> = {}) =>
+    resolveSandbox(state({ pool: pool(count), ...changes })).poolSize
+
+  it('has none for a dice check', () => {
+    expect(resolveSandbox(state()).poolSize).toBeNull()
+  })
+
+  it('is an integer count, with the situational modifier added and held within 1..100', () => {
+    expect(sized('4')).toBe(4)
+    expect(sized('4', { situationalText: '-2' })).toBe(2)
+    expect(sized('4', { situationalText: '-9' })).toBe(1)
+    expect(sized('99', { situationalText: '5' })).toBe(100)
+  })
+
+  it('is a count formula read over the samples, sheet fields and a derived field included', () => {
+    expect(sized('{pow} + {bonus}', { samples: { pow: typed('3') } })).toBe(7)
+    expect(sized('{dex} - 4 + {tracker:heat}')).toBe(8)
+  })
+
+  it('has none while the formula cannot be computed or a sample is malformed', () => {
+    expect(sized('{ghost} + 1')).toBeNull()
+    expect(sized('{pow} +')).toBeNull()
+    expect(sized('{pow} / 0')).toBeNull()
+    expect(sized('{check:difficulty}', { difficulty })).toBeNull()
+    expect(sized('{pow}', { samples: { pow: typed('4.5') } })).toBeNull()
+    expect(sized('')).toBeNull()
+  })
+})
+
 describe('sampleDefaults', () => {
   it('gives each number field the value the sandbox starts it at, held within its range', () => {
     expect(

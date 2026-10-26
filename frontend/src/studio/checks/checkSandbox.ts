@@ -9,7 +9,7 @@ import type { Draft } from '@/shared/sheet/sheetValues'
 import type { SheetFieldView, TrackerReading } from '@/shared/sheet/types'
 
 import type { Sample } from '../sheet/useSheetSamples'
-import type { BandDraft, DifficultyDraft } from './checkDraft'
+import type { BandDraft, DifficultyDraft, PoolDraft } from './checkDraft'
 import type { CheckTestRollRequest, GameSystemChecks } from './useGameSystemChecks'
 
 /** The most a track without a declared max may hold in a test roll, as the server. */
@@ -30,6 +30,8 @@ export interface SandboxState {
   difficultyText: string | null
   situationalText: string
   bands: BandDraft[]
+  /** The form's pool, or null (or absent) for a dice check. */
+  pool?: PoolDraft | null
 }
 
 /** One input of the sandbox: what it shows, what an empty one stands for and what is wrong with it. */
@@ -46,7 +48,7 @@ export interface SandboxInput {
 export type Bound = { kind: 'value'; value: number } | { kind: 'rest' } | { kind: 'unknown' }
 
 /** The request of a roll: the typed samples; an empty input is left out. */
-type SandboxRequest = CheckTestRollRequest & {
+export type SandboxRequest = CheckTestRollRequest & {
   sheet: Record<string, number>
   trackers: Record<string, number>
 }
@@ -59,6 +61,8 @@ export interface Sandbox {
   difficulty: SandboxInput | null
   situational: SandboxInput
   bounds: Bound[]
+  /** The dice a pool check rolls for these samples; null for a dice check or while it cannot be computed. */
+  poolSize: number | null
   /** Set when the computed bounds do not strictly increase. */
   warning: string | null
   /** Null while an input is malformed: nothing is rolled then. */
@@ -266,6 +270,14 @@ export function resolveSandbox(state: SandboxState): Sandbox {
 
   const bounds = bands.map((band, index) => boundOf(band, index === bands.length - 1, read))
 
+  // A count formula reads the sheet as a modifier does: never `{check:…}`.
+  const poolSize =
+    state.pool === null || state.pool === undefined || situationalError !== null
+      ? null
+      : sizeOf(state.pool.count, request.situational ?? 0, (reference) =>
+          reference.kind === 'check' ? undefined : read(reference),
+        )
+
   return {
     fields,
     trackers,
@@ -278,9 +290,34 @@ export function resolveSandbox(state: SandboxState): Sandbox {
       error: situationalError,
     },
     bounds,
+    poolSize,
     warning: nonIncreasing(bounds),
     request: problems.length > 0 ? null : request,
   }
+}
+
+/**
+ * The dice a pool rolls: its count (digits, else a formula over `read`) plus the situational
+ * modifier, held within 1..100 as the server does; null when the count cannot be computed.
+ */
+function sizeOf(
+  text: string,
+  situational: number,
+  read: (reference: Reference) => number | undefined,
+): number | null {
+  const typed = integer(text)
+  let count = typed
+  if (typed === undefined) {
+    try {
+      count = parseFormula(text).evaluate(read)
+    } catch (error) {
+      if (error instanceof InvalidFormula || error instanceof FormulaEvaluationFailed) {
+        return null
+      }
+      throw error
+    }
+  }
+  return count === undefined ? null : Math.min(Math.max(count + situational, 1), 100)
 }
 
 /** The bound of one band for the samples; formulas read through `read`. */

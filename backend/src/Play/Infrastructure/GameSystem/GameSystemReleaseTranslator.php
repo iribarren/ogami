@@ -126,6 +126,7 @@ final readonly class GameSystemReleaseTranslator
     private const int MAX_START_MAX_FORMULA_LENGTH = 200;
     private const int MAX_POINT_BUDGET_LABEL_LENGTH = 60;
     private const int MAX_POINT_BUDGET_TOTAL = 1_000_000;
+    private const int MAX_POINT_BUDGETS = 10;
     private const array FIELD_PROPERTIES = [
         'number' => ['min', 'max', 'default', 'roll'],
         'text' => ['multiline', 'maxLength'],
@@ -912,7 +913,7 @@ final readonly class GameSystemReleaseTranslator
     {
         $sheet = $this->object($view, $value ?? [], 'sheet');
         foreach (array_keys($sheet) as $name) {
-            if (!\in_array($name, ['fields', 'columns', 'groups', 'pointBudget'], true)) {
+            if (!\in_array($name, ['fields', 'columns', 'groups', 'pointBudget', 'pointBudgets'], true)) {
                 throw $this->invalid($view, 'sheet.'.$name, 'unknown property.');
             }
         }
@@ -936,30 +937,71 @@ final readonly class GameSystemReleaseTranslator
 
         $this->assertDerivedFieldsReadable($view, $fields, array_combine(array_keys($fields), $paths), $trackerKeys);
 
+        $budgets = $this->pointBudgets($view, $sheet);
         try {
-            return new SheetTemplate(array_values($fields), $layout, $this->pointBudget($view, $sheet['pointBudget'] ?? null));
+            return new SheetTemplate(array_values($fields), $layout, $budgets);
         } catch (\InvalidArgumentException $invalid) {
-            throw $this->invalid($view, 'sheet.pointBudget', $invalid->getMessage());
+            throw $this->invalid($view, null !== ($sheet['pointBudgets'] ?? null) && [] !== $sheet['pointBudgets'] ? 'sheet.pointBudgets' : 'sheet.pointBudget', $invalid->getMessage());
         }
     }
 
     /**
-     * The point budget of the sheet (ADR 0040), or null when none is declared. Studio checks the
-     * bounds against the fields on publish; Play refuses the shapes it cannot represent.
+     * The point budgets of the sheet (ADR 0040, 0043) as a list: the legacy `pointBudget` as the
+     * key "points", or `pointBudgets` with each key; none when neither is declared. Studio checks
+     * the bounds against the fields on publish; Play refuses the shapes it cannot represent.
+     *
+     * @param array<mixed> $sheet
+     *
+     * @return list<PointBudget>
      */
-    private function pointBudget(PublishedReleaseView $view, mixed $value): ?PointBudget
+    private function pointBudgets(PublishedReleaseView $view, array $sheet): array
     {
-        if (null === $value) {
-            return null;
+        $legacy = $sheet['pointBudget'] ?? null;
+        $listed = $sheet['pointBudgets'] ?? null;
+        if (null === $listed || [] === $listed) {
+            return null === $legacy ? [] : [$this->pointBudget($view, $legacy, 'sheet.pointBudget', false)];
         }
 
-        $path = 'sheet.pointBudget';
+        if (null !== $legacy) {
+            throw $this->invalid($view, 'sheet.pointBudgets', 'cannot be combined with pointBudget.');
+        }
+
+        $list = $this->list($view, $listed, 'sheet.pointBudgets');
+        if (\count($list) > self::MAX_POINT_BUDGETS) {
+            throw $this->invalid($view, 'sheet.pointBudgets', \sprintf('at most %d point budgets.', self::MAX_POINT_BUDGETS));
+        }
+
+        $budgets = [];
+        $keys = [];
+        foreach ($list as $index => $value) {
+            $budget = $this->pointBudget($view, $value, \sprintf('sheet.pointBudgets[%d]', $index), true);
+            if (isset($keys[$budget->key])) {
+                throw $this->invalid($view, \sprintf('sheet.pointBudgets[%d].key', $index), \sprintf('duplicate budget key "%s".', $budget->key));
+            }
+
+            $keys[$budget->key] = true;
+            $budgets[] = $budget;
+        }
+
+        return $budgets;
+    }
+
+    /**
+     * One point budget; a listed one has a key and a label, the legacy one neither is required.
+     */
+    private function pointBudget(PublishedReleaseView $view, mixed $value, string $path, bool $listed): PointBudget
+    {
         $budget = $this->object($view, $value, $path);
-        $this->assertProperties($view, $budget, $path, ['label', 'total', 'fields', 'min', 'max']);
+        $this->assertProperties($view, $budget, $path, $listed ? ['key', 'label', 'total', 'fields', 'min', 'max'] : ['label', 'total', 'fields', 'min', 'max']);
+
+        $key = $listed ? $this->key($view, $budget['key'] ?? throw $this->invalid($view, $path.'.key', 'required.'), $path.'.key') : 'points';
+        if ($listed && null === ($budget['label'] ?? null)) {
+            throw $this->invalid($view, $path.'.label', 'required.');
+        }
 
         $keys = [];
-        foreach ($this->list($view, $budget['fields'] ?? null, $path.'.fields') as $index => $key) {
-            $keys[] = $this->key($view, $key, \sprintf('%s.fields[%d]', $path, $index));
+        foreach ($this->list($view, $budget['fields'] ?? null, $path.'.fields') as $index => $fieldKey) {
+            $keys[] = $this->key($view, $fieldKey, \sprintf('%s.fields[%d]', $path, $index));
         }
 
         if ([] === $keys || \count($keys) > self::MAX_SHEET_FIELDS) {
@@ -972,13 +1014,18 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, $path.'.max', \sprintf('must be at least min (%d).', $min));
         }
 
-        return new PointBudget(
-            $this->optionalInt($view, $budget['total'] ?? null, $path.'.total', 1, self::MAX_POINT_BUDGET_TOTAL) ?? throw $this->invalid($view, $path.'.total', 'required.'),
-            $keys,
-            null === ($budget['label'] ?? null) ? null : $this->boundedString($view, $budget['label'], $path.'.label', self::MAX_POINT_BUDGET_LABEL_LENGTH),
-            $min,
-            $max,
-        );
+        try {
+            return new PointBudget(
+                $this->optionalInt($view, $budget['total'] ?? null, $path.'.total', 1, self::MAX_POINT_BUDGET_TOTAL) ?? throw $this->invalid($view, $path.'.total', 'required.'),
+                $keys,
+                null === ($budget['label'] ?? null) ? null : $this->boundedString($view, $budget['label'], $path.'.label', self::MAX_POINT_BUDGET_LABEL_LENGTH),
+                $min,
+                $max,
+                $key,
+            );
+        } catch (\InvalidArgumentException $invalid) {
+            throw $this->invalid($view, $listed ? 'sheet.pointBudgets' : 'sheet.pointBudget', $invalid->getMessage());
+        }
     }
 
     /**

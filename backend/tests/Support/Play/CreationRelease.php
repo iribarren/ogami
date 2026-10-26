@@ -15,6 +15,7 @@ final class CreationRelease
 {
     public const string KEY = 'creation';
     public const string MIXED_KEY = 'creation-mixed';
+    public const string BUDGETS_KEY = 'creation-budgets';
 
     /**
      * @return array<mixed>
@@ -52,6 +53,32 @@ final class CreationRelease
                 ['key' => 'san', 'label' => 'Sanity', 'type' => 'number', 'min' => 1, 'max' => 99, 'default' => 50],
             ],
             'pointBudget' => ['label' => 'Points', 'total' => 100, 'fields' => ['str', 'san'], 'min' => 15, 'max' => 90],
+        ]);
+    }
+
+    /**
+     * Two point budgets (ADR 0043): Strength and Constitution are rolled or bought with 100 points
+     * (15 to 90 each); Lore and Sneak are skills bought with 5 points, at most 3 each, never rolled.
+     * Luck is always rolled.
+     *
+     * @return array<mixed>
+     */
+    public static function budgetsContent(): array
+    {
+        $content = ReleaseArrays::with(self::content(), 'gameSystem', ['key' => self::BUDGETS_KEY, 'name' => 'Two budgets', 'description' => 'Attribute points and skill points.']);
+
+        return ReleaseArrays::with($content, 'sheet', [
+            'fields' => [
+                ['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'min' => 1, 'max' => 99, 'roll' => ['dice' => '3d6*5']],
+                ['key' => 'con', 'label' => 'Constitution', 'type' => 'number', 'min' => 1, 'max' => 99, 'roll' => ['dice' => '(2d6+6)*5']],
+                ['key' => 'lore', 'label' => 'Lore', 'type' => 'number', 'min' => 0, 'max' => 5],
+                ['key' => 'sneak', 'label' => 'Sneak', 'type' => 'number', 'min' => 0, 'max' => 5],
+                ['key' => 'luck', 'label' => 'Luck', 'type' => 'number', 'min' => 1, 'max' => 99, 'roll' => ['dice' => '3d6*5']],
+            ],
+            'pointBudgets' => [
+                ['key' => 'attributes', 'label' => 'Attribute points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90],
+                ['key' => 'skills', 'label' => 'Skill points', 'total' => 5, 'fields' => ['lore', 'sneak'], 'max' => 3],
+            ],
         ]);
     }
 }

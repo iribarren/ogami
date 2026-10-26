@@ -266,7 +266,7 @@ final class CharacterHandlersTest extends TestCase
             new NumberField('str', 'Strength', min: 1, max: 99, roll: DiceExpression::fromString('3d6*5')),
             new NumberField('luck', 'Luck', min: 1, max: 6, roll: DiceExpression::fromString('1d6')),
             new TrackField('hp', 'Hit points', startMax: Formula::fromString('{str}')),
-        ], budget: new PointBudget(50, ['str'], min: 15, max: 90)));
+        ], budgets: [new PointBudget(50, ['str'], min: 15, max: 90)]));
     }
 
     private function campaignWithNpc(): void

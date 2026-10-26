@@ -70,15 +70,15 @@ final class GameSystemReleaseTranslatorCreationTest extends TestCase
             ],
             $sheet->fields(),
         );
-        self::assertEquals(new PointBudget(460, ['str', 'con'], 'Points', 15, 90), $sheet->budget());
+        self::assertEquals([new PointBudget(460, ['str', 'con'], 'Points', 15, 90)], $sheet->budgets());
     }
 
     #[Test]
     public function aBudgetNeedsOnlyATotalAndFields(): void
     {
-        $budget = $this->translate(['fields' => self::fields(), 'pointBudget' => ['total' => 10, 'fields' => ['str'], 'label' => null, 'min' => null]])->budget();
+        $budget = $this->translate(['fields' => self::fields(), 'pointBudget' => ['total' => 10, 'fields' => ['str'], 'label' => null, 'min' => null]])->budgets();
 
-        self::assertEquals(new PointBudget(10, ['str']), $budget);
+        self::assertEquals([new PointBudget(10, ['str'])], $budget);
     }
 
     #[Test]
@@ -86,9 +86,10 @@ final class GameSystemReleaseTranslatorCreationTest extends TestCase
     {
         $sheet = $this->translate(['fields' => [['key' => 'str', 'label' => 'Strength', 'type' => 'number'], ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'max' => 10]]]);
 
-        self::assertNull($sheet->budget());
+        self::assertSame([], $sheet->budgets());
         self::assertEquals([new NumberField('str', 'Strength'), new TrackField('hp', 'Hit points', max: 10)], $sheet->fields());
-        self::assertNull($this->translate(['fields' => [], 'pointBudget' => null])->budget());
+        self::assertSame([], $this->translate(['fields' => [], 'pointBudget' => null])->budgets());
+        self::assertSame([], $this->translate(['fields' => [], 'pointBudgets' => []])->budgets());
     }
 
     /**

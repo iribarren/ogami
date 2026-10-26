@@ -73,6 +73,7 @@ final class CampaignCharactersApiTest extends WebTestCase
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9101', $content, false));
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', CreationRelease::content(), false));
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9103', CreationRelease::mixedContent(), false));
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9104', CreationRelease::budgetsContent(), false));
     }
 
     #[Test]
@@ -116,6 +117,72 @@ final class CampaignCharactersApiTest extends WebTestCase
         self::assertSame(['3d6*5', '(2d6+6)*5', null, null], [$sheet['str']['roll'], $sheet['con']['roll'], $sheet['role']['roll'], $sheet['hp']['roll']]);
         self::assertSame(['{half}', null, null], [$sheet['hp']['startMax'], $sheet['str']['startMax'], $sheet['half']['startMax']]);
         self::assertSame(['label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90], $pinned['pointBudget'] ?? null);
+        self::assertSame([['key' => 'points', 'label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90]], $pinned['pointBudgets'] ?? null, 'A legacy budget is the key "points".');
+    }
+
+    #[Test]
+    public function thePinnedReleaseExposesSeveralBudgetsAndNoSingleOne(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+
+        $this->client->request('GET', '/api/campaigns/'.$this->createCampaign(CreationRelease::BUDGETS_KEY));
+
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        self::assertNull($pinned['pointBudget']);
+        self::assertSame([
+            ['key' => 'attributes', 'label' => 'Attribute points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90],
+            ['key' => 'skills', 'label' => 'Skill points', 'total' => 5, 'fields' => ['lore', 'sneak'], 'min' => null, 'max' => 3],
+        ], $pinned['pointBudgets'] ?? null);
+    }
+
+    #[Test]
+    public function aCharacterByRollRollsTheAttributesAndSpendsTheSkillPoints(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::BUDGETS_KEY);
+        // Strength 4+5+6 -> 75, Constitution 3+4 -> 65, Luck 1+1+2 -> 20.
+        $this->random->script(4, 5, 6, 3, 4, 1, 1, 2);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 'roll', 'values' => ['lore' => 3, 'sneak' => 2]]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['str' => 75, 'con' => 65, 'lore' => 3, 'sneak' => 2, 'luck' => 20], $this->json()['values'] ?? null);
+    }
+
+    #[Test]
+    public function aCharacterByPointsSpendsBothBudgets(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::BUDGETS_KEY);
+        $this->random->script(3, 3, 3);
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 50, 'con' => 50, 'lore' => 3, 'sneak' => 2]]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['str' => 50, 'con' => 50, 'lore' => 3, 'sneak' => 2, 'luck' => 45], $this->json()['values'] ?? null);
+    }
+
+    #[Test]
+    public function overOneOfTwoBudgetsIsRefusedByItsLabelAndChangesNothing(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign(CreationRelease::BUDGETS_KEY);
+        $this->random->script(1, 1, 1, 1, 1, 1, 1, 1);
+        $url = \sprintf('/api/campaigns/%s/characters', $id);
+
+        $this->client->jsonRequest('POST', $url, ['name' => 'Vi', 'method' => 'roll', 'values' => ['lore' => 3, 'sneak' => 3]]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => '"Skill points" allows 5 points, 6 spent.', 'code' => 'point_budget_exceeded'], $this->json());
+
+        $this->client->jsonRequest('POST', $url, ['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 50, 'con' => 50, 'lore' => 4, 'sneak' => 1]]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => 'Field "lore" of "Skill points" must be 0 to 3 when spending points, got 4.', 'code' => 'outside_creation_bounds'], $this->json());
+
+        $this->client->jsonRequest('POST', $url, ['name' => 'Vi', 'values' => ['lore' => 1, 'sneak' => 1]]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('creation_method_required', $this->json()['code'] ?? null);
+        self::assertSame([], $this->campaignCharacters($id));
     }
 
     #[Test]
@@ -676,10 +743,10 @@ final class CampaignCharactersApiTest extends WebTestCase
         yield 'a value for a rolled field' => [['name' => 'Vi', 'method' => 'roll', 'values' => ['luck' => 50]], CreationRelease::KEY, 'value_set_at_creation', 'Field "luck" is set when the Character is created; send no value for it.'];
         yield 'a value for a rolled budget field when rolling' => [['name' => 'Vi', 'method' => 'roll', 'values' => ['str' => 50]], CreationRelease::KEY, 'value_set_at_creation', 'Field "str" is set when the Character is created; send no value for it.'];
         yield 'a value for a start max track' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 40, 'hp' => ['current' => 5, 'max' => 5]]], CreationRelease::KEY, 'value_set_at_creation', 'Field "hp" is set when the Character is created; send no value for it.'];
-        yield 'a point value below the budget minimum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 10, 'con' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "str" must be 15 to 90 when spending points, got 10.'];
-        yield 'a point value above the budget maximum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 91]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" must be 15 to 90 when spending points, got 91.'];
-        yield 'a missing point value' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" is part of the point budget: give it a value.'];
-        yield 'more points than the budget' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 50, 'con' => 51]], CreationRelease::KEY, 'point_budget_exceeded', 'The point budget allows 100 points, 101 spent.'];
+        yield 'a point value below the budget minimum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 10, 'con' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "str" of "Points" must be 15 to 90 when spending points, got 10.'];
+        yield 'a point value above the budget maximum' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40, 'con' => 91]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" of "Points" must be 15 to 90 when spending points, got 91.'];
+        yield 'a missing point value' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 40]], CreationRelease::KEY, 'outside_creation_bounds', 'Field "con" is part of "Points": give it a value.'];
+        yield 'more points than the budget' => [['name' => 'Vi', 'method' => 'points', 'values' => ['str' => 50, 'con' => 51]], CreationRelease::KEY, 'point_budget_exceeded', '"Points" allows 100 points, 101 spent.'];
     }
 
     #[Test]
@@ -692,7 +759,7 @@ final class CampaignCharactersApiTest extends WebTestCase
 
         $this->client->jsonRequest('POST', $url, ['name' => 'Vi', 'method' => 'roll', 'values' => ['san' => 95]]);
         self::assertResponseStatusCodeSame(422);
-        self::assertSame(['error' => 'Field "san" must be 15 to 90 when creating by roll, got 95.', 'code' => 'outside_creation_bounds'], $this->json());
+        self::assertSame(['error' => 'Field "san" of "Points" must be 15 to 90 when creating by roll, got 95.', 'code' => 'outside_creation_bounds'], $this->json());
         self::assertSame([], $this->campaignCharacters($id));
 
         // 75 + 90 is over the 100 points, which rolling does not count.

@@ -10,6 +10,9 @@ use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Infrastructure\Http\CheckTestRollBandResponse;
+use App\Studio\Infrastructure\Http\CheckTestRollPoolDieResponse;
+use App\Studio\Infrastructure\Http\CheckTestRollPoolResponse;
+use App\Studio\Infrastructure\Http\CheckTestRollPushResponse;
 use App\Studio\Infrastructure\Http\CheckTestRollResponse;
 use App\Studio\Infrastructure\Http\GameSystemCheckController;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
@@ -25,15 +28,22 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * against valid/v2-checks: the check "skill" rolls 1d10 and adds {hands} + {edge} (hands is a number
  * of 0 to 10, default 4; edge is derived, {hands}/2) with a difficulty of 9 to 29 (default 13) and
  * bands bounded by it; "luck" rolls d% against 20 and the alarm clock (6 segments), with no difficulty.
+ * The pool cases save "grit" in the draft: {hands} dice of 6 sides that succeed on 5+ (hands 4 by default),
+ * bands miss up to 0, weak up to 1 and strong above, and a push "Take a Condition".
  */
 #[CoversClass(GameSystemCheckController::class)]
 #[CoversClass(CheckTestRollResponse::class)]
 #[CoversClass(CheckTestRollBandResponse::class)]
+#[CoversClass(CheckTestRollPoolResponse::class)]
+#[CoversClass(CheckTestRollPoolDieResponse::class)]
+#[CoversClass(CheckTestRollPushResponse::class)]
 final class GameSystemCheckTestRollApiTest extends WebTestCase
 {
     private const string PASSWORD = 'secret123';
     private const string BASE = '/api/studio/game-systems';
     private const string PATH = self::BASE.'/mine/checks/skill/test-rolls';
+    private const string GRIT = self::BASE.'/mine/checks/grit/test-rolls';
+    private const string GRIT_PUSH = self::GRIT.'/push';
 
     private KernelBrowser $client;
     private int $releases = 0;
@@ -74,6 +84,9 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertSame([
             'dice' => ['expression' => '1d10', 'total' => 7, 'groups' => [['notation' => '1d10', 'sides' => 10, 'dice' => [['value' => 7, 'kept' => true]], 'subtotal' => 7]]],
+            'pool' => null,
+            'push' => null,
+            'rolledSuccesses' => null,
             'modifier' => 6,
             'situational' => 0,
             'difficulty' => 13,
@@ -312,6 +325,370 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame($status);
         null === $error ? self::assertSame(45, $this->json()['total']) : self::assertTrue(str_starts_with($this->error(), $error), $this->error());
+    }
+
+    #[Test]
+    public function aPoolCheckRollsAPoolSizedFromTheSamplesAndTheSuccessesAreTheTotal(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->scriptRolls(1, 5, 6);
+
+        $this->testRoll(self::GRIT, ['sheet' => ['hands' => 3]]);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([
+            'dice' => null,
+            'pool' => [
+                'size' => 3,
+                'sides' => 6,
+                'successAt' => 5,
+                'count' => 3,
+                'countFormula' => '{hands}',
+                'dice' => [['face' => 1, 'success' => false, 'rerolled' => false], ['face' => 5, 'success' => true, 'rerolled' => false], ['face' => 6, 'success' => true, 'rerolled' => false]],
+                'successes' => 2,
+            ],
+            'push' => ['label' => 'Take a Condition'],
+            'rolledSuccesses' => null,
+            'modifier' => 0,
+            'situational' => 0,
+            'difficulty' => null,
+            'total' => 2,
+            'bands' => [['key' => 'miss', 'label' => 'Miss', 'bound' => 0], ['key' => 'weak', 'label' => 'Weak', 'bound' => 1], ['key' => 'strong', 'label' => 'Strong', 'bound' => null]],
+            'band' => 'strong',
+        ], $this->json());
+    }
+
+    #[Test]
+    public function aNumberCountHasNoFormulaAndACheckWithoutAPushTellsNone(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(['count' => 2, 'sides' => 10, 'successAt' => 8], null);
+        $this->scriptRolls(9, 3);
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertIsArray($roll['pool']);
+        self::assertSame([2, null, 1, null, 'weak'], [$roll['pool']['count'], $roll['pool']['countFormula'], $roll['total'], $roll['push'], $roll['band']]);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int}> the hands sample, the situational modifier, the size rolled
+     */
+    public static function sizes(): iterable
+    {
+        yield 'the situational modifier adds dice' => [3, 4, 7];
+        yield 'or takes them' => [3, -2, 1];
+        yield 'never below one die' => [3, -100, 1];
+        yield 'never above a hundred dice' => [10, 100, 100];
+    }
+
+    #[Test]
+    #[DataProvider('sizes')]
+    public function theSizeIsTheCountPlusTheSituationalModifierKeptInOneToAHundred(int $hands, int $situational, int $size): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->scriptRolls(...array_fill(0, $size, 1));
+
+        $this->testRoll(self::GRIT, ['sheet' => ['hands' => $hands], 'situational' => $situational]);
+
+        self::assertResponseStatusCodeSame(200);
+        $pool = $this->json()['pool'];
+        self::assertIsArray($pool);
+        self::assertSame([$size, $hands], [$pool['size'], $pool['count']]);
+    }
+
+    #[Test]
+    public function aCountThatFailsForTheSamplesIsRefusedAndNothingIsRolled(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        // hands 4 by default: the count divides by zero.
+        $this->saveGrit(['count' => ['formula' => '10 / ({hands} - 4)'], 'sides' => 6, 'successAt' => 5]);
+        // No number is scripted: a roll would fail with a LogicException, not a 422.
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertTrue(str_starts_with($this->error(), 'Check "grit" cannot be test-rolled: '), $this->error());
+    }
+
+    #[Test]
+    public function aPoolCheckWhoseSituationalModifierIsOutOfRangeIsRefused(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+
+        $this->testRoll(self::GRIT, ['situational' => 101]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('situational: must be -100 to 100, got 101', $this->error());
+    }
+
+    #[Test]
+    public function aPushReRollsTheFailedDiceOfTheRollAndDoesNotApplyTheCost(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $before = $this->checks();
+        $this->scriptRolls(6, 2);
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1, 5, 2], 'sheet' => ['hands' => 3]]);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([
+            'dice' => null,
+            'pool' => [
+                'size' => 3,
+                'sides' => 6,
+                'successAt' => 5,
+                'count' => 3,
+                'countFormula' => '{hands}',
+                'dice' => [['face' => 6, 'success' => true, 'rerolled' => true], ['face' => 5, 'success' => true, 'rerolled' => false], ['face' => 2, 'success' => false, 'rerolled' => true]],
+                'successes' => 2,
+            ],
+            'push' => ['label' => 'Take a Condition'],
+            'rolledSuccesses' => 1,
+            'modifier' => 0,
+            'situational' => 0,
+            'difficulty' => null,
+            'total' => 2,
+            'bands' => [['key' => 'miss', 'label' => 'Miss', 'bound' => 0], ['key' => 'weak', 'label' => 'Weak', 'bound' => 1], ['key' => 'strong', 'label' => 'Strong', 'bound' => null]],
+            'band' => 'strong',
+        ], $this->json());
+        self::assertSame($before, $this->checks());
+    }
+
+    #[Test]
+    public function aPushSizesThePoolForTheSituationalModifierOfTheRoll(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->scriptRolls(5);
+
+        // hands 4 and a situational +1: five dice, one of which failed.
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [5, 6, 5, 6, 1], 'situational' => 1]);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertIsArray($roll['pool']);
+        self::assertSame([5, 4, 5], [$roll['total'], $roll['rolledSuccesses'], $roll['pool']['size']]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}> the body
+     */
+    public static function wrongFaces(): iterable
+    {
+        yield 'fewer faces than the size' => [['faces' => [1, 2], 'sheet' => ['hands' => 3]]];
+        yield 'more faces than the size' => [['faces' => [1, 2, 3, 4], 'sheet' => ['hands' => 3]]];
+        yield 'no faces' => [['faces' => []]];
+        yield 'a face of zero' => [['faces' => [0, 2, 3, 4]]];
+        yield 'a face above the sides' => [['faces' => [1, 2, 3, 7]]];
+        yield 'a face that is a string' => [['faces' => [1, '2', 3, 4]]];
+        yield 'a face that is a float' => [['faces' => [1, 2.5, 3, 4]]];
+        yield 'a face that is null' => [['faces' => [1, null, 3, 4]]];
+        yield 'faces that are a number' => [['faces' => 4]];
+        yield 'faces that are an object' => [['faces' => ['a' => 1, 'b' => 2, 'c' => 3, 'd' => 4]]];
+        yield 'faces that are null' => [['faces' => null]];
+        yield 'a sample the sheet lacks' => [['faces' => [1, 2, 3, 4], 'sheet' => ['ghost' => 1]]];
+        yield 'a situational modifier that is no integer' => [['faces' => [1, 2, 3, 4], 'situational' => 'one']];
+        yield 'a difficulty on a check without one' => [['faces' => [1, 2, 3, 4], 'difficulty' => 5]];
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    #[Test]
+    #[DataProvider('wrongFaces')]
+    public function facesThatAreNotTheRollOfThePoolAreRefusedAndNothingIsRolled(array $body): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT_PUSH, $body);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertNotSame('', $this->error());
+    }
+
+    #[Test]
+    public function theMessageOfWrongFacesStartsWithTheirPath(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1, 2], 'sheet' => ['hands' => 3]]);
+        self::assertTrue(str_starts_with($this->error(), 'faces: A pool of this size holds 3 dice, 2 faces given'), $this->error());
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1, 2, 7]]);
+        self::assertSame('faces: ', substr($this->error(), 0, 7));
+    }
+
+    #[Test]
+    public function aCheckWithoutAPushCannotBePushed(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(push: null);
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1, 2, 3, 4]]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('Check "grit" cannot be pushed: it declares no push.', $this->error());
+    }
+
+    #[Test]
+    public function aDiceCheckCannotBePushed(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->scriptRolls();
+
+        $this->testRoll(self::PATH.'/push', ['faces' => [7]]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('Check "skill" cannot be pushed: it declares no push.', $this->error());
+    }
+
+    #[Test]
+    public function aRollWhoseDiceAllSucceededCannotBePushed(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [5, 6, 5, 6]]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('Check "grit" cannot be pushed: no die failed.', $this->error());
+    }
+
+    #[Test]
+    public function aPushWhoseCountFailsForTheSamplesIsRefusedAndNothingIsReRolled(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(['count' => ['formula' => '10 / ({hands} - 4)'], 'sides' => 6, 'successAt' => 5]);
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1, 2, 3, 4]]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertTrue(str_starts_with($this->error(), 'Check "grit" cannot be test-rolled: '), $this->error());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function malformedPushBodies(): iterable
+    {
+        yield 'broken JSON' => ['{"faces": '];
+        yield 'an empty body' => [''];
+        yield 'a list' => ['[1, 2]'];
+        yield 'an empty object' => ['{}'];
+        yield 'an object without faces' => ['{"sheet": {"hands": 3}}'];
+        yield 'null' => ['null'];
+    }
+
+    #[Test]
+    #[DataProvider('malformedPushBodies')]
+    public function aPushBodyWithoutAJsonObjectOfFacesIsABadRequest(string $body): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+
+        $this->client->request('POST', self::GRIT_PUSH, server: ['CONTENT_TYPE' => 'application/json'], content: $body);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertStringContainsString('Send a JSON object with a list "faces"', $this->error());
+    }
+
+    #[Test]
+    public function aPushBodyThatIsNotJsonIsUnsupported(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+
+        $this->client->request('POST', self::GRIT_PUSH, server: ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'], content: 'faces=1');
+
+        self::assertResponseStatusCodeSame(415);
+    }
+
+    #[Test]
+    public function noSessionOrNoGameManagerCannotPush(): void
+    {
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1]]);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->signIn('pat@example.com', ['SOLO_PLAYER']);
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [1]]);
+        self::assertResponseStatusCodeSame(403);
+    }
+
+    #[Test]
+    public function aPushOfAnotherUsersDraftAnUnknownDraftOrAnUnknownCheckIsNotFound(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->client->request('POST', '/api/auth/logout');
+        $this->signIn('bob@example.com', ['GAME_MANAGER']);
+
+        foreach (['/mine/checks/grit', '/nothing/checks/grit'] as $path) {
+            $this->testRoll(self::BASE.$path.'/test-rolls/push', ['faces' => [1]]);
+            self::assertResponseStatusCodeSame(404, $path);
+        }
+
+        $this->client->request('POST', '/api/auth/logout');
+        $this->signIn('ann@example.com', ['GAME_MANAGER'], false);
+        $this->testRoll(self::BASE.'/mine/checks/ghost/test-rolls/push', ['faces' => [1]]);
+        self::assertResponseStatusCodeSame(404);
+        self::assertSame('The draft has no check "ghost".', $this->error());
+    }
+
+    #[Test]
+    public function aPushOfAVersion1DraftIsRefusedWithTheSchemaVersionPath(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('journal', 'valid/contract-doc-example');
+
+        $this->testRoll(self::BASE.'/journal/checks/skill/test-rolls/push', ['faces' => [1]]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith('schemaVersion: ', $this->error());
+    }
+
+    /**
+     * Saves the pool check "grit" in the draft "mine".
+     *
+     * @param array<string, mixed>  $pool
+     * @param ?array<string, mixed> $push
+     */
+    private function saveGrit(array $pool = ['count' => ['formula' => '{hands}'], 'sides' => 6, 'successAt' => 5], ?array $push = ['label' => 'Take a Condition']): void
+    {
+        $check = ['key' => 'grit', 'label' => 'Grit', 'pool' => $pool, 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'weak', 'label' => 'Weak', 'upTo' => 1], ['key' => 'strong', 'label' => 'Strong']]];
+        if (null !== $push) {
+            $check['push'] = $push;
+        }
+
+        $this->client->jsonRequest('POST', self::BASE.'/mine/checks', ['expectedVersion' => $this->checks()['version'], 'check' => $check]);
+        self::assertResponseStatusCodeSame(201);
     }
 
     /**

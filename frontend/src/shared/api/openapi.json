@@ -6368,6 +6368,125 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/checks/{check}/test-rolls/push": {
+            "post": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Push a sandbox roll of a pool check of one of my GameSystem drafts: the client sends the faces of the roll with its samples and gets the failed dice re-rolled; never changes the draft, is never recorded and never applies the push cost",
+                "operationId": "testPushCheck",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "check",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CheckTestPushRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CheckTestRollResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The body is not a JSON object, or has no list \"faces\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key (another user's is not found either), or it has no check with the key in the path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The check cannot be pushed: it declares no push (a dice check never does), or no die of the roll failed. As Play refuses the push of a roll that cannot be pushed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool for these samples (the message starts with \"faces\"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems": {
             "get": {
                 "tags": [
@@ -15685,6 +15804,96 @@
                 },
                 "type": "object"
             },
+            "CheckTestRollPoolDieResponse": {
+                "required": [
+                    "face",
+                    "success",
+                    "rerolled"
+                ],
+                "properties": {
+                    "face": {
+                        "description": "The face the die shows.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "success": {
+                        "description": "Whether the face reaches the pool's success threshold.",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "rerolled": {
+                        "description": "Whether a push re-rolled this die; always false before a push.",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollPoolResponse": {
+                "required": [
+                    "size",
+                    "sides",
+                    "successAt",
+                    "count",
+                    "countFormula",
+                    "dice",
+                    "successes"
+                ],
+                "properties": {
+                    "size": {
+                        "description": "The dice rolled: the count plus the situational modifier, kept between 1 and 100.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "sides": {
+                        "description": "The faces of each die.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "successAt": {
+                        "description": "A die succeeds on this face or higher.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "count": {
+                        "description": "The number of dice the check asked for, before the situational modifier: its number, or what its formula gave for the samples.",
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "countFormula": {
+                        "description": "The formula that gave the count; null when the check gives a number.",
+                        "type": "string",
+                        "example": "{agility} + {stealth}",
+                        "nullable": true
+                    },
+                    "dice": {
+                        "description": "Every die, in roll order. After a push, the dice that failed are re-rolled in place.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckTestRollPoolDieResponse"
+                        }
+                    },
+                    "successes": {
+                        "description": "How many dice succeeded; the total of the check.",
+                        "type": "integer",
+                        "example": 2
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollPushResponse": {
+                "required": [
+                    "label"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "What the push costs, in the words of the check.",
+                        "type": "string",
+                        "example": "Take a Condition"
+                    }
+                },
+                "type": "object"
+            },
             "CheckTestRollBandResponse": {
                 "required": [
                     "key",
@@ -15712,6 +15921,9 @@
             "CheckTestRollResponse": {
                 "required": [
                     "dice",
+                    "pool",
+                    "push",
+                    "rolledSuccesses",
                     "modifier",
                     "situational",
                     "difficulty",
@@ -15721,10 +15933,40 @@
                 ],
                 "properties": {
                     "dice": {
-                        "$ref": "#/components/schemas/RollResponse"
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/RollResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The check's dice as rolled: normalized notation, total and every dice group; null for a pool check."
+                    },
+                    "pool": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckTestRollPoolResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The check's pool as rolled, or as pushed by the push endpoint; null for a dice check."
+                    },
+                    "push": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckTestRollPushResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check."
+                    },
+                    "rolledSuccesses": {
+                        "description": "Only on a pushed roll: the successes the roll had before the push.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
                     },
                     "modifier": {
-                        "description": "The value of the check's modifier formula for the samples; 0 when it has none.",
+                        "description": "The value of the check's modifier formula for the samples; 0 when it has none, and for a pool check.",
                         "type": "integer",
                         "example": 6
                     },
@@ -15740,7 +15982,7 @@
                         "nullable": true
                     },
                     "total": {
-                        "description": "The dice, plus the modifier, plus the situational modifier.",
+                        "description": "The dice, plus the modifier, plus the situational modifier; the successes of a pool.",
                         "type": "integer",
                         "example": 13
                     },
@@ -15755,6 +15997,61 @@
                         "description": "The key of the band reached: the first whose bound is at least the total, else the last.",
                         "type": "string",
                         "example": "success"
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestPushRequest": {
+                "required": [
+                    "faces"
+                ],
+                "properties": {
+                    "faces": {
+                        "description": "The face of each die of the roll to push, in roll order: as many as the pool's size for these samples and situational modifier, each from 1 to the pool's sides (422 otherwise).",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            5,
+                            6,
+                            2
+                        ]
+                    },
+                    "sheet": {
+                        "description": "The sample value of each number and track field by key, as sent to the test roll.",
+                        "type": "object",
+                        "example": {
+                            "hands": 6
+                        },
+                        "nullable": true,
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    },
+                    "trackers": {
+                        "description": "The sample value of each tracker by key, as sent to the test roll.",
+                        "type": "object",
+                        "example": {
+                            "alarm": 2
+                        },
+                        "nullable": true,
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    },
+                    "difficulty": {
+                        "description": "The Check difficulty of the roll, within the check's range; absent or null takes the declared default.",
+                        "type": "integer",
+                        "example": 13,
+                        "nullable": true
+                    },
+                    "situational": {
+                        "description": "The situational modifier of the roll, from -100 to 100; absent or null is 0.",
+                        "type": "integer",
+                        "example": -2,
+                        "nullable": true
                     }
                 },
                 "type": "object"

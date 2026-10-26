@@ -37,6 +37,9 @@ function WithSamples({ gameSystemKey }: { gameSystemKey: string }) {
 
 /** A test roll of `skill` as the API answers it. */
 const rolled = {
+  pool: null,
+  push: null,
+  rolledSuccesses: null,
   dice: {
     expression: '1d10',
     total: 6,
@@ -185,5 +188,84 @@ export const SandboxResult: Story = {
     await userEvent.click(sandbox.getByRole('button', { name: 'Roll the check' }))
     await expect(await sandbox.findByText('Total 13')).toBeVisible()
     await expect(sandbox.getByText('Reached')).toBeVisible()
+  },
+}
+
+/** A pool check with a push, and the roll it gives: dice told by text, a Push button for the failed ones. */
+const pool = {
+  key: 'sneak',
+  label: 'Sneak',
+  pool: { count: { formula: '{pow} + 1' }, sides: 6, successAt: 5 },
+  push: { label: 'Take a Condition' },
+  bands: [
+    { key: 'fail', label: 'Fail', upTo: 0 },
+    { key: 'win', label: 'Win' },
+  ],
+}
+
+const poolBands = [
+  { key: 'fail', label: 'Fail', bound: 0 },
+  { key: 'win', label: 'Win', bound: null },
+]
+
+const poolRoll = {
+  dice: null,
+  pool: {
+    size: 3,
+    sides: 6,
+    successAt: 5,
+    count: 3,
+    countFormula: '{pow} + 1',
+    dice: [
+      { face: 2, success: false, rerolled: false },
+      { face: 6, success: true, rerolled: false },
+      { face: 1, success: false, rerolled: false },
+    ],
+    successes: 1,
+  },
+  push: { label: 'Take a Condition' },
+  rolledSuccesses: null,
+  modifier: 0,
+  situational: 0,
+  difficulty: null,
+  total: 1,
+  bands: poolBands,
+  band: 'win',
+}
+
+/** The pool editor of a stored pool check, and its sandbox rolling and pushing it. */
+export const PoolCheck: Story = {
+  parameters: {
+    api: {
+      [`GET ${base}/checks`]: json({ ...checks, checks: [pool] }),
+      [`GET ${base}/sheet`]: json(sheet),
+      [`POST ${base}/checks/sneak/test-rolls`]: json(poolRoll),
+      [`POST ${base}/checks/sneak/test-rolls/push`]: json({
+        ...poolRoll,
+        pool: {
+          ...poolRoll.pool,
+          dice: [
+            { face: 5, success: true, rerolled: true },
+            { face: 6, success: true, rerolled: false },
+            { face: 3, success: false, rerolled: true },
+          ],
+          successes: 2,
+        },
+        rolledSuccesses: 1,
+        total: 2,
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit sneak' }))
+    await expect(canvas.getByLabelText('Dice pool')).toBeChecked()
+    await expect(canvas.getByLabelText('Pool count')).toHaveValue('{pow} + 1')
+    const sandbox = within(await canvas.findByRole('region', { name: 'Test roll sandbox' }))
+    await userEvent.click(sandbox.getByRole('button', { name: 'Roll the check' }))
+    await expect(await sandbox.findByText('1 success')).toBeVisible()
+    await userEvent.click(sandbox.getByRole('button', { name: 'Push the roll' }))
+    await expect(await sandbox.findByText('Rolled Win, still Win')).toBeVisible()
+    await expect(sandbox.getByText('The cost is not applied in a test roll.')).toBeVisible()
   },
 }

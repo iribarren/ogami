@@ -1131,6 +1131,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/checks/{check}/test-rolls/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push a sandbox roll of a pool check of one of my GameSystem drafts: the client sends the faces of the roll with its samples and gets the failed dice re-rolled; never changes the draft, is never recorded and never applies the push cost */
+        post: operations["testPushCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems": {
         parameters: {
             query?: never;
@@ -4259,6 +4276,64 @@ export interface components {
              */
             situational?: number | null;
         };
+        CheckTestRollPoolDieResponse: {
+            /**
+             * @description The face the die shows.
+             * @example 5
+             */
+            face: number;
+            /**
+             * @description Whether the face reaches the pool's success threshold.
+             * @example true
+             */
+            success: boolean;
+            /**
+             * @description Whether a push re-rolled this die; always false before a push.
+             * @example false
+             */
+            rerolled: boolean;
+        };
+        CheckTestRollPoolResponse: {
+            /**
+             * @description The dice rolled: the count plus the situational modifier, kept between 1 and 100.
+             * @example 5
+             */
+            size: number;
+            /**
+             * @description The faces of each die.
+             * @example 6
+             */
+            sides: number;
+            /**
+             * @description A die succeeds on this face or higher.
+             * @example 5
+             */
+            successAt: number;
+            /**
+             * @description The number of dice the check asked for, before the situational modifier: its number, or what its formula gave for the samples.
+             * @example 4
+             */
+            count: number;
+            /**
+             * @description The formula that gave the count; null when the check gives a number.
+             * @example {agility} + {stealth}
+             */
+            countFormula: string | null;
+            /** @description Every die, in roll order. After a push, the dice that failed are re-rolled in place. */
+            dice: components["schemas"]["CheckTestRollPoolDieResponse"][];
+            /**
+             * @description How many dice succeeded; the total of the check.
+             * @example 2
+             */
+            successes: number;
+        };
+        CheckTestRollPushResponse: {
+            /**
+             * @description What the push costs, in the words of the check.
+             * @example Take a Condition
+             */
+            label: string;
+        };
         CheckTestRollBandResponse: {
             /** @example success */
             key: string;
@@ -4271,9 +4346,19 @@ export interface components {
             bound: number | null;
         };
         CheckTestRollResponse: {
-            dice: components["schemas"]["RollResponse"];
+            /** @description The check's dice as rolled: normalized notation, total and every dice group; null for a pool check. */
+            dice: components["schemas"]["RollResponse"] | null;
+            /** @description The check's pool as rolled, or as pushed by the push endpoint; null for a dice check. */
+            pool: components["schemas"]["CheckTestRollPoolResponse"] | null;
+            /** @description The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check. */
+            push: components["schemas"]["CheckTestRollPushResponse"] | null;
             /**
-             * @description The value of the check's modifier formula for the samples; 0 when it has none.
+             * @description Only on a pushed roll: the successes the roll had before the push.
+             * @example 1
+             */
+            rolledSuccesses: number | null;
+            /**
+             * @description The value of the check's modifier formula for the samples; 0 when it has none, and for a pool check.
              * @example 6
              */
             modifier: number;
@@ -4288,7 +4373,7 @@ export interface components {
              */
             difficulty: number | null;
             /**
-             * @description The dice, plus the modifier, plus the situational modifier.
+             * @description The dice, plus the modifier, plus the situational modifier; the successes of a pool.
              * @example 13
              */
             total: number;
@@ -4299,6 +4384,46 @@ export interface components {
              * @example success
              */
             band: string;
+        };
+        CheckTestPushRequest: {
+            /**
+             * @description The face of each die of the roll to push, in roll order: as many as the pool's size for these samples and situational modifier, each from 1 to the pool's sides (422 otherwise).
+             * @example [
+             *       1,
+             *       5,
+             *       6,
+             *       2
+             *     ]
+             */
+            faces: number[];
+            /**
+             * @description The sample value of each number and track field by key, as sent to the test roll.
+             * @example {
+             *       "hands": 6
+             *     }
+             */
+            sheet?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * @description The sample value of each tracker by key, as sent to the test roll.
+             * @example {
+             *       "alarm": 2
+             *     }
+             */
+            trackers?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * @description The Check difficulty of the roll, within the check's range; absent or null takes the declared default.
+             * @example 13
+             */
+            difficulty?: number | null;
+            /**
+             * @description The situational modifier of the roll, from -100 to 100; absent or null is 0.
+             * @example -2
+             */
+            situational?: number | null;
         };
         GameSystemSummaryResponse2: {
             /** @example my-system */
@@ -10427,6 +10552,96 @@ export interface operations {
                 };
             };
             /** @description A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path: "sheet.hands", "trackers.alarm", "difficulty", "situational"), a formula or the dice cannot be evaluated for these samples (nothing is rolled), the saved draft is not readable, or it has schema version 1 (no checks). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    testPushCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                check: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckTestPushRequest"];
+            };
+        };
+        responses: {
+            /** @description The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckTestRollResponse"];
+                };
+            };
+            /** @description The body is not a JSON object, or has no list "faces". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key (another user's is not found either), or it has no check with the key in the path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The check cannot be pushed: it declares no push (a dice check never does), or no die of the roll failed. As Play refuses the push of a roll that cannot be pushed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool for these samples (the message starts with "faces"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks). */
             422: {
                 headers: {
                     [name: string]: unknown;

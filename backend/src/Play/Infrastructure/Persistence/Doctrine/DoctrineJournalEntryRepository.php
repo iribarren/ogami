@@ -77,7 +77,10 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
      * check has no push part (absent or a JSON null, which reads the same) and, with $asLatest, while
      * no entry of the campaign comes after it in recording order (recordedAt, then id, as
      * latestOfCampaign()), so a concurrent push or record that got there first makes this one fail
-     * instead of overwriting it. Entries are loaded read-only objects (the content is immutable), so
+     * instead of overwriting it. With $asLatest the campaign row is locked first (FOR UPDATE): a
+     * concurrent record that is not committed yet holds FOR KEY SHARE on it through the foreign key
+     * of play_journal_entry.campaign_id, so the lock waits for that record to commit and the
+     * statement after it (a new snapshot under READ COMMITTED) sees the later entry. Entries are loaded read-only objects (the content is immutable), so
      * Doctrine cannot flush this change itself: the loaded copy is detached and the next read loads
      * the update. It runs in the command bus transaction, which rolls back on the exception.
      *
@@ -87,7 +90,12 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
     public function savePush(JournalEntry $pushed, bool $asLatest = false): void
     {
         $loaded = $this->ofId($pushed->id()) ?? throw new \LogicException(\sprintf('Journal entry "%s" is not kept.', $pushed->id()->toString()));
-        $updated = $this->entityManager->getConnection()->executeStatement(
+        $connection = $this->entityManager->getConnection();
+        if ($asLatest) {
+            $connection->fetchOne('SELECT 1 FROM play_campaign WHERE id = :campaign FOR UPDATE', ['campaign' => $loaded->campaignId()->toString()]);
+        }
+
+        $updated = $connection->executeStatement(
             "UPDATE play_journal_entry e SET content = CAST(:content AS jsonb) WHERE e.id = :id AND COALESCE(e.content->'pool'->'push', 'null'::jsonb) = 'null'::jsonb"
             .($asLatest ? ' AND NOT EXISTS ('.self::LATER_ENTRY.')' : ''),
             ['content' => json_encode($pushed->content()->toArray(), \JSON_THROW_ON_ERROR), 'id' => $pushed->id()->toString()],
@@ -98,7 +106,7 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
             return;
         }
 
-        if ($asLatest && false !== $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM play_journal_entry e WHERE e.id = :id AND EXISTS ('.self::LATER_ENTRY.')', ['id' => $pushed->id()->toString()])) {
+        if ($asLatest && false !== $connection->fetchOne('SELECT 1 FROM play_journal_entry e WHERE e.id = :id AND EXISTS ('.self::LATER_ENTRY.')', ['id' => $pushed->id()->toString()])) {
             throw JournalEntryNotTheLatest::entry($pushed->id());
         }
 

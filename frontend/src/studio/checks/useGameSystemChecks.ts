@@ -14,6 +14,7 @@ import type { StoredCheck } from './checkDraft'
 export type GameSystemChecks = components['schemas']['GameSystemChecksResponse']
 export type CheckTestRollRequest = components['schemas']['CheckTestRollRequest']
 export type CheckTestRoll = components['schemas']['CheckTestRollResponse']
+export type CheckTestPushRequest = components['schemas']['CheckTestPushRequest']
 
 /** A refused check write; `paths` says where the draft uses the check when that is why. */
 export class CheckError extends StudioError {
@@ -195,6 +196,34 @@ export function useTestRollCheck(key: string) {
         return data
       }
       throw checkError(response, error, 'Rolling the check')
+    },
+  })
+}
+
+/**
+ * `POST /checks/{check}/test-rolls/push`: pushes a pool roll of the saved check, sent back as the
+ * samples of the roll and the face of each die; nothing is recorded and the cost is not applied.
+ * A refusal (409 no push or no failed die, 422 faces that do not fit) throws with the API's message.
+ */
+export function useTestPushCheck(key: string) {
+  const api = useApiClient()
+
+  return useMutation({
+    mutationFn: async ({
+      check,
+      request,
+    }: {
+      check: string
+      request: CheckTestPushRequest
+    }): Promise<CheckTestRoll> => {
+      const { data, error, response } = await api.POST(
+        '/api/studio/game-systems/{key}/checks/{check}/test-rolls/push',
+        { params: { path: { key, check } }, body: request },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw checkError(response, error, 'Pushing the roll')
     },
   })
 }

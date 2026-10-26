@@ -53,7 +53,7 @@ final class TestRollCheckHandlerTest extends TestCase
 
         $view = $this->roll([7], new TestRollCheck('ann', 'mine', 'skill', [], [], null, null));
 
-        self::assertSame(['1d10', 7], [$view->dice->expression, $view->dice->total]);
+        self::assertSame(['1d10', 7], [$view->dice?->expression, $view->dice?->total]);
         self::assertSame([6, 0, 13, 13], [$view->modifier, $view->situational, $view->difficulty, $view->total]);
         self::assertEquals(
             [new CheckTestRollBandView('fail', 'Fail', 12), new CheckTestRollBandView('success', 'Success', 17), new CheckTestRollBandView('crit', 'Critical success', null)],

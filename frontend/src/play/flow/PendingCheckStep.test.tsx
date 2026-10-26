@@ -23,20 +23,42 @@ function guidedOnGrit(step: FlowStep): Campaign {
   }
 }
 
-/** The Play screen on a Grit step; `sent` collects the bodies the Keep and Push endpoints get. */
-function renderGrit(step: FlowStep, refuse?: Response) {
+/**
+ * The Play screen on a Grit step; `sent` collects the bodies the Keep and Push endpoints get.
+ * `refuse` answers both endpoints, `journal` answers the journal (default: Vi's roll), `unpushable`
+ * pins a Grit that declares no push, and `hold` keeps the commands waiting until it resolves.
+ */
+function renderGrit(
+  step: FlowStep,
+  {
+    refuse,
+    journal = () => Response.json([gritEntry]),
+    unpushable = false,
+    hold,
+  }: {
+    refuse?: Response
+    journal?: FakeHandler
+    unpushable?: boolean
+    hold?: Promise<void>
+  } = {},
+) {
   const sent: { keep: unknown[]; push: unknown[] } = { keep: [], push: [] }
   const afterStep = guidedOnGrit(promptStep)
   const answer =
     (into: unknown[]): FakeHandler =>
     async (request) => {
       into.push(await request.clone().json())
+      await hold
       return refuse?.clone() ?? Response.json(afterStep)
     }
+  const campaign = guidedOnGrit(step)
   renderAppAt(`/play/campaigns/${nightJobCampaign.id}`, {
     'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
-    [`GET ${path}`]: () => Response.json(guidedOnGrit(step)),
-    [`GET ${path}/journal`]: () => Response.json([gritEntry]),
+    [`GET ${path}`]: () =>
+      Response.json(
+        unpushable ? { ...campaign, checks: [{ ...gritCheck, push: null }] } : campaign,
+      ),
+    [`GET ${path}/journal`]: journal,
     [`POST ${path}/flow-run/keep`]: answer(sent.keep),
     [`POST ${path}/flow-run/push`]: answer(sent.push),
   })
@@ -93,7 +115,7 @@ describe('a check step whose roll pends', () => {
     [409, 'Keep or push the pending roll first.'],
     [422, 'The pick is not an option of Wounds.'],
   ])('shows the refusal of %i on the card', async (status, message) => {
-    renderGrit(pendingGritStep, Response.json({ error: message }, { status }))
+    renderGrit(pendingGritStep, { refuse: Response.json({ error: message }, { status }) })
     const user = userEvent.setup()
 
     await user.click(await (await card()).findByRole('button', { name: 'Keep' }))
@@ -102,13 +124,87 @@ describe('a check step whose roll pends', () => {
     expect(await card()).toBeTruthy()
   })
 
-  it('says it is loading while the roll is not in the journal yet', async () => {
-    renderGrit({
+  it.each([
+    [409, 'The roll was pushed already.'],
+    [422, 'The pick "ghost" is not an unmarked option of Wounds.'],
+  ])('shows the refusal of %i of a Push on the card', async (status, message) => {
+    renderGrit(pendingGritStep, { refuse: Response.json({ error: message }, { status }) })
+    const user = userEvent.setup()
+
+    const step = await card()
+    await user.selectOptions(await step.findByLabelText('Pick: Wounds'), 'shaken')
+    await user.click(step.getByRole('button', { name: 'Push' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(step.getByRole('button', { name: 'Keep' })).toBeEnabled()
+  })
+
+  it('disables Push and Keep while a command is under way', async () => {
+    let release: () => void = () => undefined
+    const hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const sent = renderGrit(pendingGritStep, { hold })
+    const user = userEvent.setup()
+
+    const step = await card()
+    await user.selectOptions(await step.findByLabelText('Pick: Wounds'), 'shaken')
+    await user.click(step.getByRole('button', { name: 'Push' }))
+
+    await waitFor(() => {
+      expect(step.getByRole('button', { name: 'Push' })).toBeDisabled()
+    })
+    expect(step.getByRole('button', { name: 'Keep' })).toBeDisabled()
+    expect(sent.push).toHaveLength(1)
+    release()
+    expect(await screen.findByRole('region', { name: 'Current step: Who walks in?' })).toBeVisible()
+  })
+
+  it('says it is loading while the journal is not there yet', async () => {
+    renderGrit(pendingGritStep, { journal: () => new Promise<Response>(() => undefined) })
+
+    expect(await (await card()).findByText('Loading the pending roll…')).toBeInTheDocument()
+  })
+
+  it('still offers Keep when the journal does not hold the pending roll', async () => {
+    const sent = renderGrit({
       ...pendingGritStep,
       pending: { characterId: viCharacter.id, entryId: 'gone' },
     })
+    const user = userEvent.setup()
 
-    expect(await (await card()).findByText('Loading the pending roll…')).toBeInTheDocument()
+    const step = await card()
+    expect(await step.findByText('The pending roll is not in the journal.')).toBeInTheDocument()
+    expect(step.queryByRole('button', { name: 'Push' })).not.toBeInTheDocument()
+    await user.click(step.getByRole('button', { name: 'Keep' }))
+
+    await waitFor(() => {
+      expect(sent.keep).toEqual([{ stepKey: 'sneak' }])
+    })
+  })
+
+  it('still offers Keep when the journal failed to load', async () => {
+    renderGrit(pendingGritStep, {
+      journal: () => Response.json({ error: 'The journal is down.' }, { status: 500 }),
+    })
+
+    const step = await card()
+    expect(await step.findByRole('alert')).toBeInTheDocument()
+    expect(step.getByRole('button', { name: 'Keep' })).toBeEnabled()
+  })
+
+  it('still offers Keep when the roll has no push to offer', async () => {
+    const sent = renderGrit(pendingGritStep, { unpushable: true })
+    const user = userEvent.setup()
+
+    const step = await card()
+    expect(await step.findByRole('button', { name: 'Keep' })).toBeEnabled()
+    expect(step.queryByRole('button', { name: 'Push' })).not.toBeInTheDocument()
+    await user.click(step.getByRole('button', { name: 'Keep' }))
+
+    await waitFor(() => {
+      expect(sent.keep).toEqual([{ stepKey: 'sneak' }])
+    })
   })
 })
 

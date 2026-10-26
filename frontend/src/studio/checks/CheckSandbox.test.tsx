@@ -15,6 +15,9 @@ function json(body: unknown, status = 200): FakeHandler {
 
 /** A test roll of `skill` the way the API answers it. */
 const rolled = {
+  pool: null,
+  push: null,
+  rolledSuccesses: null,
   dice: {
     expression: '1d10',
     total: 6,
@@ -408,5 +411,228 @@ describe('the test roll sandbox', () => {
     const again = within(await screen.findByRole('region', { name: 'Preview' }))
     expect(again.getByLabelText('Hit points current')).toHaveValue(5)
     expect(again.getByLabelText('Hit points max')).toHaveValue(8)
+  })
+})
+
+/** A pool check with a push, its roll (one success of four dice) and the pushed roll the API answers. */
+const raid = {
+  key: 'raid',
+  label: 'Raid',
+  pool: { count: { formula: '{pow} + 1' }, sides: 6, successAt: 5 },
+  push: { label: 'Take a Condition' },
+  bands: [
+    { key: 'fail', label: 'Fail', upTo: 0 },
+    { key: 'partial', label: 'Partial', upTo: 1 },
+    { key: 'win', label: 'Win' },
+  ],
+}
+
+const poolBands = [
+  { key: 'fail', label: 'Fail', bound: 0 },
+  { key: 'partial', label: 'Partial', bound: 1 },
+  { key: 'win', label: 'Win', bound: null },
+]
+
+const die = (face: number, success: boolean, rerolled = false) => ({ face, success, rerolled })
+
+const poolRolled = {
+  dice: null,
+  pool: {
+    size: 4,
+    sides: 6,
+    successAt: 5,
+    count: 4,
+    countFormula: '{pow} + 1',
+    dice: [die(1, false), die(5, true), die(2, false), die(3, false)],
+    successes: 1,
+  },
+  push: { label: 'Take a Condition' },
+  rolledSuccesses: null,
+  modifier: 0,
+  situational: 0,
+  difficulty: null,
+  total: 1,
+  bands: poolBands,
+  band: 'partial',
+}
+
+const poolPushed = {
+  ...poolRolled,
+  pool: {
+    ...poolRolled.pool,
+    dice: [die(6, true, true), die(5, true), die(2, false), die(5, true, true)],
+    successes: 3,
+  },
+  rolledSuccesses: 1,
+  total: 3,
+  band: 'win',
+}
+
+const raidHandlers = (extra: Record<string, FakeHandler> = {}) => ({
+  [`GET ${base}/checks`]: json({ ...checks, checks: [raid] }),
+  ...extra,
+})
+const pushPath = `POST ${base}/checks/raid/test-rolls/push`
+const raidRoll = `POST ${base}/checks/raid/test-rolls`
+
+describe('the test roll sandbox of a pool check', () => {
+  it('tells the pool the samples give, live, from the count formula', async () => {
+    const { user, sandbox } = await editCheck('raid', raidHandlers())
+
+    // pow starts at 0: the formula gives 1.
+    expect(sandbox.getByText('The pool rolls 1 die of 6 sides.')).toBeVisible()
+
+    await user.type(sandbox.getByLabelText('Power'), '3')
+    expect(sandbox.getByText('The pool rolls 4 dice of 6 sides.')).toBeVisible()
+
+    await replaceText(user, sandbox.getByLabelText('Situational modifier'), '2')
+    expect(sandbox.getByText('The pool rolls 6 dice of 6 sides.')).toBeVisible()
+  })
+
+  it('shows every die with its success told by text, the successes and the band', async () => {
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({
+        [raidRoll]: json(poolRolled),
+      }),
+    )
+
+    await user.click(roll(sandbox))
+
+    const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
+    const dice = within(results.getByRole('list', { name: 'Pool dice' })).getAllByRole('listitem')
+    expect(dice.map((item) => item.textContent)).toEqual([
+      '1 (no success)',
+      '5 (success)',
+      '2 (no success)',
+      '3 (no success)',
+    ])
+    expect(results.getByText('1 success')).toBeVisible()
+    expect(results.getByText('4 d6, success on 5+')).toBeVisible()
+    expect(results.getByText('{pow} + 1 = 4')).toBeVisible()
+    expect(results.getByText('Partial', { selector: 'p' })).toBeVisible()
+    expect(results.queryByText(/^Modifier/)).toBeNull()
+    const bands = within(results.getByRole('list', { name: 'Bands' })).getAllByRole('listitem')
+    expect(bands[1]).toHaveAttribute('aria-current', 'true')
+    expect(results.getByText('Take a Condition', { exact: false })).toBeVisible()
+  })
+
+  it('pushes the roll with the same samples and its faces, and shows the pushed roll in the history', async () => {
+    const { sent, record } = calls()
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({
+        [raidRoll]: record('roll', Response.json(poolRolled)),
+        [pushPath]: record('push', Response.json(poolPushed)),
+      }),
+    )
+    await user.type(sandbox.getByLabelText('Power'), '3')
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
+
+    expect(await sandbox.findByText('Rolled Partial, pushed to Win')).toBeVisible()
+    expect(sent.map(({ call }) => call)).toEqual(['roll', 'push'])
+    expect(sent[1]?.body).toEqual({ ...sent[0]?.body, faces: [1, 5, 2, 3] })
+    const [pushed, rolled] = sandbox.getByRole('list', { name: 'Test roll results' }).children
+    expect(pushed).toHaveTextContent('Pushed: Take a Condition')
+    expect(pushed).toHaveTextContent('The cost is not applied in a test roll.')
+    expect(pushed).toHaveTextContent('3 successes')
+    expect(pushed).toHaveTextContent('6 (success)re-rolled')
+    expect(pushed).toHaveTextContent('2 (no success)')
+    // Only the first roll can still be pushed.
+    expect(sandbox.getAllByRole('button', { name: 'Push the roll' })).toHaveLength(1)
+    // The roll stays in the history as it was.
+    expect(rolled).toHaveTextContent('1 success')
+  })
+
+  it('says still when the push keeps the band', async () => {
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({
+        [raidRoll]: json(poolRolled),
+        [pushPath]: json({ ...poolPushed, rolledSuccesses: 1, total: 1, band: 'partial' }),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
+
+    expect(await sandbox.findByText('Rolled Partial, still Partial')).toBeVisible()
+  })
+
+  it('offers no push without a failed die, without a declared push, or for dice', async () => {
+    const allWon = {
+      ...poolRolled,
+      pool: { ...poolRolled.pool, dice: [die(5, true), die(6, true)], successes: 2 },
+    }
+    const { user, sandbox } = await editCheck('raid', raidHandlers({ [raidRoll]: json(allWon) }))
+    await user.click(roll(sandbox))
+    await sandbox.findByRole('list', { name: 'Pool dice' })
+    expect(sandbox.queryByRole('button', { name: 'Push the roll' })).toBeNull()
+
+    const none = await editCheck(
+      'raid',
+      raidHandlers({
+        [raidRoll]: json({ ...poolRolled, push: null }),
+      }),
+    )
+    await none.user.click(roll(none.sandbox))
+    await none.sandbox.findAllByRole('list', { name: 'Pool dice' })
+    expect(none.sandbox.queryByRole('button', { name: 'Push the roll' })).toBeNull()
+  })
+
+  it('offers no push on the result of a dice check', async () => {
+    const { user, sandbox } = await editCheck('skill', {
+      [rollPath]: json({ ...rolled, pool: null, push: null, rolledSuccesses: null }),
+    })
+
+    await user.click(roll(sandbox))
+
+    await sandbox.findByRole('list', { name: 'Test roll results' })
+    expect(sandbox.queryByRole('button', { name: 'Push the roll' })).toBeNull()
+    expect(sandbox.queryByRole('list', { name: 'Pool dice' })).toBeNull()
+  })
+
+  it('shows a refused push in the alert and keeps the roll', async () => {
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({
+        [raidRoll]: json(poolRolled),
+        [pushPath]: json({ error: 'This check declares no push.' }, 409),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
+
+    expect(await sandbox.findByRole('alert')).toHaveTextContent('This check declares no push.')
+    expect(sandbox.getByRole('button', { name: 'Push the roll' })).toBeEnabled()
+    expect(sandbox.getByRole('list', { name: 'Test roll results' }).children).toHaveLength(1)
+  })
+
+  it('disables the push while it is sent', async () => {
+    let answer: (response: Response) => void = () => undefined
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({
+        [raidRoll]: json(poolRolled),
+        [pushPath]: () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve
+          }),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
+
+    await waitFor(() => {
+      expect(sandbox.getByRole('button', { name: 'Push the roll' })).toBeDisabled()
+    })
+    expect(roll(sandbox)).toBeDisabled()
+    answer(Response.json(poolPushed))
+    expect(await sandbox.findByText('Rolled Partial, pushed to Win')).toBeVisible()
+    expect(roll(sandbox)).toBeEnabled()
   })
 })

@@ -1036,3 +1036,210 @@ describe('the checks tab', () => {
     })
   })
 })
+
+/** A pool check with a count formula and a push, as the publisher stores it. */
+const sneak = {
+  key: 'sneak',
+  label: 'Sneak',
+  hint: 'Count the dice you keep',
+  pool: { count: { formula: '{pow} + 1' }, sides: 6, successAt: 5 },
+  push: {
+    label: 'Take a Condition',
+    effects: [{ sheet: { field: 'hp', op: 'subtract', value: 1 } }],
+  },
+  bands: [
+    { key: 'fail', label: 'Fail', upTo: 0 },
+    { key: 'win', label: 'Win' },
+  ],
+}
+
+const withSneak = { ...checks, checks: [...checks.checks, sneak] }
+
+describe('the dice and pool modes of the check editor', () => {
+  it('lists a pool check as a dice pool, editable', async () => {
+    await openChecks({ [`GET ${base}/checks`]: json(withSneak) })
+
+    const row = (await screen.findByRole('button', { name: 'Edit sneak' })).closest('li')
+    expect(row).toHaveTextContent('dice pool')
+    expect(screen.getByRole('button', { name: 'Edit sneak' })).toBeEnabled()
+  })
+
+  it('opens a pool check in pool mode with its count, sides and success threshold, and no modifier', async () => {
+    const { user } = await openChecks({ [`GET ${base}/checks`]: json(withSneak) })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit sneak' }))
+    const form = within(screen.getByRole('form', { name: 'Edit sneak' }))
+
+    expect(form.getByLabelText('Dice pool')).toBeChecked()
+    expect(form.getByLabelText('Pool count')).toHaveValue('{pow} + 1')
+    expect(form.getByLabelText('Pool sides')).toHaveValue('6')
+    expect(form.getByLabelText('Success at')).toHaveValue('5')
+    expect(form.queryByLabelText('Dice')).toBeNull()
+    expect(form.queryByLabelText('Modifier')).toBeNull()
+  })
+
+  it('opens a dice check in dice mode, and switches the inputs with the mode', async () => {
+    const { user } = await openChecks()
+
+    await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+    const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+    expect(form.getByLabelText('Dice roll')).toBeChecked()
+    expect(form.getByLabelText('Dice')).toHaveValue('1d10')
+    expect(form.getByLabelText('Modifier')).toHaveValue('{pow}')
+    expect(form.getByText(/A push goes with the pool/)).toBeVisible()
+
+    await user.click(form.getByLabelText('Dice pool'))
+
+    expect(form.queryByLabelText('Dice')).toBeNull()
+    expect(form.queryByLabelText('Modifier')).toBeNull()
+    expect(form.getByLabelText('Pool count')).toHaveValue('')
+    expect(form.getByLabelText('Pool sides')).toHaveValue('')
+
+    await user.click(form.getByLabelText('Dice roll'))
+
+    expect(form.getByLabelText('Dice')).toHaveValue('1d10')
+    expect(form.queryByLabelText('Pool count')).toBeNull()
+  })
+
+  it('creates a pool check with an integer count and with no dice or modifier', async () => {
+    const { sent, handler } = recorder(Response.json(withSneak, { status: 201 }))
+    const { user } = await openChecks({ [`POST ${base}/checks`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'New check' }))
+    const form = within(screen.getByRole('form', { name: 'New check' }))
+    await typeText(user, form.getByLabelText('Key'), 'grit')
+    await typeText(user, form.getByLabelText('Label'), 'Grit')
+    await user.click(form.getByLabelText('Dice pool'))
+    await typeText(user, form.getByLabelText('Pool count'), ' 3 ')
+    await typeText(user, form.getByLabelText('Pool sides'), '10')
+    await typeText(user, form.getByLabelText('Success at'), '8')
+    await user.click(form.getByRole('button', { name: 'Create check' }))
+
+    expect(sent).toEqual([
+      {
+        expectedVersion: 5,
+        check: {
+          key: 'grit',
+          label: 'Grit',
+          pool: { count: 3, sides: 10, successAt: 8 },
+          bands: [{ key: 'outcome', label: 'Outcome' }],
+        },
+      },
+    ])
+  })
+
+  it('saves a stored pool check with its push exactly as stored', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withSneak, version: 6 }))
+    const { user } = await openChecks({
+      [`GET ${base}/checks`]: json(withSneak),
+      [`PUT ${base}/checks/sneak`]: handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit sneak' }))
+    const form = within(screen.getByRole('form', { name: 'Edit sneak' }))
+    await replaceText(user, form.getByLabelText('Label'), 'Sneak about')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(sent).toEqual([{ expectedVersion: 5, check: { ...sneak, label: 'Sneak about' } }])
+    expect(JSON.stringify((sent[0]?.check as { push: unknown }).push)).toBe(
+      JSON.stringify(sneak.push),
+    )
+  })
+
+  it('drops the pool and its push when the check goes back to dice', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withSneak, version: 6 }))
+    const { user } = await openChecks({
+      [`GET ${base}/checks`]: json(withSneak),
+      [`PUT ${base}/checks/sneak`]: handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit sneak' }))
+    const form = within(screen.getByRole('form', { name: 'Edit sneak' }))
+    await user.click(form.getByLabelText('Dice roll'))
+    await typeText(user, form.getByLabelText('Dice'), '2d6')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(sent).toEqual([
+      {
+        expectedVersion: 5,
+        check: {
+          key: 'sneak',
+          label: 'Sneak',
+          hint: 'Count the dice you keep',
+          dice: '2d6',
+          bands: sneak.bands,
+        },
+      },
+    ])
+  })
+
+  it('saves a dice check as before: no pool, no push', async () => {
+    const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }))
+    const { user } = await openChecks({ [`PUT ${base}/checks/skill`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+    const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+    await user.type(form.getByLabelText('Hint'), '!')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.check).toEqual({ ...checks.checks[0], hint: 'Roll low, add your edge!' })
+    expect(sent[0]?.check).not.toHaveProperty('pool')
+    expect(sent[0]?.check).not.toHaveProperty('push')
+  })
+
+  it('asks for what the pool needs without calling the API', async () => {
+    const { sent, handler } = recorder(Response.json(checks))
+    const { user } = await openChecks({ [`POST ${base}/checks`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'New check' }))
+    const form = within(screen.getByRole('form', { name: 'New check' }))
+    await user.click(form.getByLabelText('Dice pool'))
+    await user.click(form.getByRole('button', { name: 'Create check' }))
+
+    expect(form.getByText('Give the pool a count.')).toBeVisible()
+    expect(form.getByText('Give the pool its sides.')).toBeVisible()
+    expect(form.getByText('Give the success threshold.')).toBeVisible()
+    expect(form.queryByText('Write the dice.')).toBeNull()
+
+    await typeText(user, form.getByLabelText('Pool count'), '101')
+    await typeText(user, form.getByLabelText('Pool sides'), '6')
+    await typeText(user, form.getByLabelText('Success at'), '7')
+    await user.click(form.getByRole('button', { name: 'Create check' }))
+
+    expect(form.getByText('The count must be between 1 and 100, or a formula.')).toBeVisible()
+    expect(form.getByText('Must be between 1 and 6.')).toBeVisible()
+    expect(form.getByLabelText('Pool count')).toBeInvalid()
+    expect(sent).toEqual([])
+  })
+
+  it('advises on the count formula as a modifier is advised on', async () => {
+    const { user } = await openChecks({ [`GET ${base}/checks`]: json(withSneak) })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit sneak' }))
+    const form = within(screen.getByRole('form', { name: 'Edit sneak' }))
+    expect(form.getByText('Reads Power')).toBeVisible()
+
+    await replaceText(user, form.getByLabelText('Pool count'), '{ghost} + 1')
+    expect(await form.findByText(/unknown field "ghost"/)).toBeVisible()
+    await replaceText(user, form.getByLabelText('Pool count'), '{check:difficulty}')
+    expect(await form.findByText(/cannot read a check reference/)).toBeVisible()
+  })
+
+  it('shows the publisher refusal of the count on the count input', async () => {
+    const { user } = await openChecks({
+      [`GET ${base}/checks`]: json(withSneak),
+      [`PUT ${base}/checks/sneak`]: json(
+        { error: 'checks[2].pool.count.formula: unknown field "ghost".' },
+        422,
+      ),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit sneak' }))
+    const form = within(screen.getByRole('form', { name: 'Edit sneak' }))
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText('unknown field "ghost".')).toBeVisible()
+    expect(form.getByLabelText('Pool count')).toBeInvalid()
+  })
+})

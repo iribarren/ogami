@@ -30,14 +30,18 @@ import {
   duplicateCheck,
   followBands,
   mergeBandErrors,
+  modeOf,
   readCheck,
   sameCheck,
+  switchMode,
   writeCheck,
   type BandDraft,
   type BandErrorMap,
   type CheckDraft,
   type CheckErrors,
+  type CheckMode,
   type DifficultyDraft,
+  type PoolDraft,
   type StoredCheck,
 } from './checkDraft'
 import { checkFormulaDiagnostics, checkReads, checkReferences } from './checkFormulaDiagnostics'
@@ -385,6 +389,8 @@ function CheckRow({
   onDeleted: (result: GameSystemChecks) => void
 }) {
   const { key, label, dice } = check
+  // The generated type of a stored check knows dice only; a pool check has a pool instead.
+  const { pool } = check as StoredCheck
   if (typeof key !== 'string') {
     return (
       <li className="px-4 py-3 text-sm text-muted-foreground">
@@ -401,7 +407,9 @@ function CheckRow({
         <p className="list-row-title">{typeof label === 'string' ? label : key}</p>
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="list-row-key break-all">{key}</span>
-          <Badge variant="secondary">{typeof dice === 'string' ? dice : 'no dice'}</Badge>
+          <Badge variant="secondary">
+            {typeof dice === 'string' ? dice : pool === undefined ? 'no dice' : 'dice pool'}
+          </Badge>
           {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
         </p>
       </div>
@@ -632,6 +640,21 @@ function CheckEditor({
     [draft.modifier, catalog],
   )
   const reads = useMemo(() => checkReads(draft.modifier, start), [draft.modifier, start])
+  // The pool's count is a number or a formula over the sheet, read as a modifier is.
+  const count = draft.pool?.count.trim() ?? ''
+  const countIsFormula = count !== '' && !/^-?\d+$/.test(count)
+  const countDiagnostics = useMemo(
+    () =>
+      countIsFormula
+        ? checkFormulaDiagnostics({ formula: count, scope: 'modifier', catalog, difficulty: null })
+        : null,
+    [countIsFormula, count, catalog],
+  )
+  const countReads = useMemo(
+    () => (countIsFormula ? checkReads(count, start) : []),
+    [countIsFormula, count, start],
+  )
+  const modeId = useId()
   const difficultyId = useId()
 
   const position =
@@ -664,6 +687,14 @@ function CheckEditor({
 
   const change = (changes: Partial<CheckDraft>) => {
     setDraft((current) => ({ ...current, ...changes }))
+  }
+  const changePool = (changes: Partial<PoolDraft>) => {
+    setDraft((current) =>
+      current.pool === null ? current : { ...current, pool: { ...current.pool, ...changes } },
+    )
+  }
+  const changeMode = (mode: CheckMode) => {
+    setDraft((current) => switchMode(current, mode))
   }
   const changeBands = useCallback((bands: BandDraft[], order?: (number | null)[]) => {
     setDraft((current) => ({ ...current, bands }))
@@ -787,28 +818,95 @@ function CheckEditor({
                 error={shown.hint}
               />
             </div>
-            <TextField
-              label="Dice"
-              value={draft.dice}
-              onChange={(dice) => {
-                change({ dice })
-              }}
-              error={shown.dice}
-              help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
-            />
-            <div className="space-y-2">
-              <FormulaInput
-                label="Modifier"
-                value={draft.modifier}
-                onChange={(modifier) => {
-                  change({ modifier })
-                }}
-                diagnostics={modifierDiagnostics}
-                references={references}
-                error={shown.modifier}
-              />
-              {reads.length > 0 && <p className="hint">Reads {reads.join(', ')}</p>}
-            </div>
+            <fieldset className="space-y-2 sm:col-span-2" aria-describedby={modeId}>
+              <legend className="text-sm font-medium">Roll type</legend>
+              <div className="flex flex-wrap gap-4">
+                {(
+                  [
+                    ['dice', 'Dice roll'],
+                    ['pool', 'Dice pool'],
+                  ] as const
+                ).map(([mode, name]) => (
+                  <Label key={mode} className="flex items-center gap-2 font-normal">
+                    <input
+                      type="radio"
+                      name={`${modeId}-mode`}
+                      checked={modeOf(draft) === mode}
+                      onChange={() => {
+                        changeMode(mode)
+                      }}
+                    />
+                    {name}
+                  </Label>
+                ))}
+              </div>
+              <p id={modeId} className="hint">
+                A dice roll adds a modifier to its total; a dice pool counts the dice that succeed.
+                A push goes with the pool: switching to Dice roll drops both.
+              </p>
+            </fieldset>
+            {draft.pool === null ? (
+              <>
+                <TextField
+                  label="Dice"
+                  value={draft.dice}
+                  onChange={(dice) => {
+                    change({ dice })
+                  }}
+                  error={shown.dice}
+                  help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
+                />
+                <div className="space-y-2">
+                  <FormulaInput
+                    label="Modifier"
+                    value={draft.modifier}
+                    onChange={(modifier) => {
+                      change({ modifier })
+                    }}
+                    diagnostics={modifierDiagnostics}
+                    references={references}
+                    error={shown.modifier}
+                  />
+                  {reads.length > 0 && <p className="hint">Reads {reads.join(', ')}</p>}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2 sm:col-span-2">
+                  <FormulaInput
+                    label="Pool count"
+                    value={draft.pool.count}
+                    onChange={(value) => {
+                      changePool({ count: value })
+                    }}
+                    diagnostics={countDiagnostics}
+                    references={references}
+                    error={shown.poolCount}
+                  />
+                  <p className="hint">
+                    A number from 1 to 100, or a formula over the sheet such as {'{agility}'} + 1.
+                  </p>
+                  {countReads.length > 0 && <p className="hint">Reads {countReads.join(', ')}</p>}
+                </div>
+                <TextField
+                  label="Pool sides"
+                  value={draft.pool.sides}
+                  onChange={(sides) => {
+                    changePool({ sides })
+                  }}
+                  error={shown.poolSides}
+                />
+                <TextField
+                  label="Success at"
+                  value={draft.pool.successAt}
+                  onChange={(successAt) => {
+                    changePool({ successAt })
+                  }}
+                  error={shown.poolSuccessAt}
+                  help="A die succeeds on this face or higher."
+                />
+              </>
+            )}
           </div>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -887,6 +985,7 @@ function CheckEditor({
           catalog={start}
           bands={draft.bands}
           difficulty={draft.difficulty}
+          pool={draft.pool}
           sampleValues={sampleValues}
           dirty={dirty}
           ensureSaved={async () => {

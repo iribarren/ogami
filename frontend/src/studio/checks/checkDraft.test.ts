@@ -11,6 +11,7 @@ import {
   readCheck,
   sameCheck,
   slugOf,
+  switchMode,
   writeCheck,
   type BandDraft,
   type CheckDraft,
@@ -458,5 +459,166 @@ describe('a band key that follows its label', () => {
     const { bands } = addBand([{ key: 'a', label: 'A', upTo: { kind: 'tracker', value: 'heat' } }])
 
     expect(bands[0]?.upTo).toEqual({ kind: 'tracker', value: 'heat' })
+  })
+})
+
+describe('a pool check', () => {
+  const pushed = {
+    label: 'Take a Condition',
+    effects: [{ sheet: { field: 'stress', op: 'add', value: 1 } }],
+  }
+  const pooled: StoredCheck = {
+    key: 'sneak',
+    label: 'Sneak',
+    pool: { count: 4, sides: 6, successAt: 5 },
+    push: pushed,
+    bands: [
+      { key: 'fail', label: 'Fail', upTo: 0 },
+      { key: 'win', label: 'Win' },
+    ],
+  }
+
+  it('reads an integer count and a formula count into the one count input', () => {
+    expect(drafted(pooled)).toMatchObject({
+      dice: '',
+      pool: { count: '4', sides: '6', successAt: '5' },
+    })
+    expect(
+      drafted({ ...pooled, pool: { count: { formula: '{agility} + 1' }, sides: 6, successAt: 6 } }),
+    ).toMatchObject({ pool: { count: '{agility} + 1', sides: '6', successAt: '6' } })
+  })
+
+  it('reads a dice check with no pool', () => {
+    expect(drafted(stored).pool).toBeNull()
+  })
+
+  it.each([
+    ['dice and a pool', { ...pooled, dice: '1d10' }],
+    ['neither dice nor a pool', { key: 'k', label: 'L', bands: [] }],
+    ['a modifier', { ...pooled, modifier: '{pow}' }],
+    ['a push without a pool', { ...stored, push: pushed }],
+    ['a pool that is not an object', { ...pooled, pool: 4 }],
+    [
+      'a pool with another property',
+      { ...pooled, pool: { count: 4, sides: 6, successAt: 5, x: 1 } },
+    ],
+    ['a count of another shape', { ...pooled, pool: { count: '4', sides: 6, successAt: 5 } }],
+    [
+      'a formula count with another property',
+      { ...pooled, pool: { count: { formula: 'a', x: 1 }, sides: 6, successAt: 5 } },
+    ],
+    [
+      'sides that are not a whole number',
+      { ...pooled, pool: { count: 4, sides: 6.5, successAt: 5 } },
+    ],
+    ['no success threshold', { ...pooled, pool: { count: 4, sides: 6 } }],
+  ])('cannot hold %s', (_name, check) => {
+    expect(readCheck(check)).toBeNull()
+  })
+
+  it('round trips a pool check with an integer count, its push kept as stored', () => {
+    const result = writeCheck(drafted(pooled))
+
+    expect(result).toEqual({ check: pooled })
+    expect(JSON.stringify((result as { check: StoredCheck }).check.push)).toBe(
+      JSON.stringify(pushed),
+    )
+  })
+
+  it('round trips a pool check with a formula count and no push', () => {
+    const formula: StoredCheck = {
+      ...pooled,
+      pool: { count: { formula: '{agility} + {stealth}' }, sides: 10, successAt: 8 },
+    }
+    delete formula.push
+
+    const result = writeCheck(drafted(formula))
+
+    expect(result).toEqual({ check: formula })
+    expect(result).not.toHaveProperty('check.push')
+    expect(result).not.toHaveProperty('check.dice')
+    expect(result).not.toHaveProperty('check.modifier')
+  })
+
+  it('sends the count as an integer when digits are typed and as a formula otherwise', () => {
+    const typed = (count: string) => {
+      const draft = drafted(pooled)
+      const result = writeCheck({ ...draft, pool: { count, sides: '6', successAt: '5' } })
+      return 'check' in result ? result.check.pool : result.errors
+    }
+
+    expect(typed(' 3 ')).toEqual({ count: 3, sides: 6, successAt: 5 })
+    expect(typed(' {hands} ')).toEqual({ count: { formula: '{hands}' }, sides: 6, successAt: 5 })
+  })
+
+  it('refuses what the publisher would, with a message for each input', () => {
+    const errors = (pool: { count: string; sides: string; successAt: string }) => {
+      const result = writeCheck({ ...drafted(pooled), pool })
+      return 'errors' in result ? result.errors : null
+    }
+
+    expect(errors({ count: '', sides: '', successAt: '' })).toMatchObject({
+      poolCount: 'Give the pool a count.',
+      poolSides: 'Give the pool its sides.',
+      poolSuccessAt: 'Give the success threshold.',
+    })
+    expect(errors({ count: '0', sides: '6', successAt: '5' })).toMatchObject({
+      poolCount: 'The count must be between 1 and 100, or a formula.',
+    })
+    expect(errors({ count: '101', sides: '6', successAt: '5' })?.poolCount).toContain('1 and 100')
+    expect(errors({ count: 'x'.repeat(201), sides: '6', successAt: '5' })).toMatchObject({
+      poolCount: 'The count formula is at most 200 characters.',
+    })
+    expect(errors({ count: '4', sides: '1', successAt: '1' })).toMatchObject({
+      poolSides: 'Must be between 2 and 1000.',
+    })
+    expect(errors({ count: '4', sides: '1001', successAt: '5' })?.poolSides).toBe(
+      'Must be between 2 and 1000.',
+    )
+    expect(errors({ count: '4', sides: 'six', successAt: '5' })?.poolSides).toBe(
+      'Must be a whole number.',
+    )
+    expect(errors({ count: '4', sides: '6', successAt: '7' })).toMatchObject({
+      poolSuccessAt: 'Must be between 1 and 6.',
+    })
+    expect(errors({ count: '4', sides: '6', successAt: '0' })?.poolSuccessAt).toBe(
+      'Must be between 1 and 6.',
+    )
+    expect(errors({ count: '4', sides: '6', successAt: '5' })).toBeNull()
+  })
+
+  it('does not ask for dice in pool mode, nor for a pool in dice mode', () => {
+    const asPool = writeCheck({ ...drafted(pooled), dice: '' })
+    const asDice = writeCheck({ ...drafted(stored), dice: '' })
+
+    expect(asPool).not.toHaveProperty('errors.dice')
+    expect(asDice).toHaveProperty('errors.dice', 'Write the dice.')
+    expect(asDice).not.toHaveProperty('errors.poolCount')
+  })
+
+  it('starts a pool empty when switching from dice, and drops the pool and its push going back', () => {
+    const toPool = switchMode(drafted(stored), 'pool')
+    expect(toPool.pool).toEqual({ count: '', sides: '', successAt: '' })
+
+    const toDice = switchMode({ ...drafted(pooled), dice: '1d10' }, 'dice')
+    expect(toDice.pool).toBeNull()
+    expect(toDice).not.toHaveProperty('push')
+    expect(writeCheck(toDice)).toHaveProperty('check.dice', '1d10')
+    expect(writeCheck(toDice)).not.toHaveProperty('check.push')
+    expect(writeCheck(toDice)).not.toHaveProperty('check.pool')
+  })
+
+  it('keeps the pool and its push when the mode is chosen again', () => {
+    const draft = drafted(pooled)
+
+    expect(switchMode(draft, 'pool')).toBe(draft)
+  })
+
+  it('leaves a dice check as it was, with no pool or push written', () => {
+    const result = writeCheck(drafted(stored))
+
+    expect(result).toEqual({ check: stored })
+    expect(result).not.toHaveProperty('check.pool')
+    expect(result).not.toHaveProperty('check.push')
   })
 })

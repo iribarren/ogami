@@ -1,4 +1,6 @@
 import {
+  DISJOINT_DIFFICULTY,
+  checkDifficulty,
   newStep,
   setBandOutcome,
   stepGuides,
@@ -588,6 +590,29 @@ describe('a check set', () => {
     expect(guideOf({ ...checkSet, difficulty: 7 })?.difficulty).toBe(
       'Outside the range of check "skill": 9 to 29.',
     )
+  })
+
+  it('has no range, and says so, when the checks of the set share no difficulty', () => {
+    const apart = {
+      ...stepPickers,
+      checks: stepPickers.checks.map((one) =>
+        one.key === 'skill' ? { ...one, difficulty: { default: 22, min: 20, max: 29 } } : one,
+      ),
+    }
+    const [draft] = stepsToDrafts([{ ...checkSet, difficulty: undefined }])
+    const [typed] = stepsToDrafts([{ ...checkSet, difficulty: 12 }])
+    if (draft?.kind !== 'check' || typed?.kind !== 'check') {
+      throw new Error('a check step was expected')
+    }
+
+    expect(checkDifficulty(draft, apart)).toMatchObject({ range: null, disjoint: true, show: true })
+    expect(checkDifficulty(draft, stepPickers)).toMatchObject({
+      range: { min: 9, max: 15 },
+      disjoint: false,
+    })
+    // Empty is fine; a typed value is flagged, however it sits against each range.
+    expect(stepGuides([draft], apart)[0]?.difficulty).toBeUndefined()
+    expect(stepGuides([typed], apart)[0]?.difficulty).toBe(DISJOINT_DIFFICULTY)
   })
 
   it('flags an outcome for a band the shared bands lack', () => {

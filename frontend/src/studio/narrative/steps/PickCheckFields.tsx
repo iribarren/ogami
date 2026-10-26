@@ -12,6 +12,7 @@ import { OutcomeEditor } from './OutcomeEditor'
 import {
   bandForms,
   checkDifficulty,
+  DISJOINT_DIFFICULTY,
   checkKeysOf,
   countTargets,
   pickModes,
@@ -136,11 +137,19 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
   // The outcomes are keyed by the bands every check of a set shares: those of the first one.
   const chosen = p.context.checks.find((check) => check.key === keys[0])
   const bands = chosen?.bands ?? []
-  const { range, set, show: showDifficulty } = checkDifficulty(step, p.context)
-  // A set offers only the checks with the band keys of the first one picked.
-  const offered = p.context.checks.filter(
-    (check) => chosen === undefined || sameBands(check.bands, chosen.bands),
-  )
+  const { range, disjoint, set, show: showDifficulty } = checkDifficulty(step, p.context)
+  // A set offers the checks with the band keys of the first one picked, and every check it
+  // already holds, so a stored one that does not fit can still be unpicked. A key the game
+  // system lacks is listed by its key and flagged.
+  const offered = [
+    ...p.context.checks.filter(
+      (check) =>
+        chosen === undefined || sameBands(check.bands, chosen.bands) || keys.includes(check.key),
+    ),
+    ...(step.checks ?? [])
+      .filter((key) => !p.context.checks.some((check) => check.key === key))
+      .map((key) => ({ key, name: `${key} (not in this game system)` })),
+  ]
   const at = (band: string) => step.outcomes.findIndex((outcome) => outcome.band === band)
   const strays = step.outcomes.flatMap((outcome, position) =>
     bands.includes(outcome.band) && at(outcome.band) === position ? [] : [position],
@@ -207,6 +216,7 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
               p.onChange({ ...step, difficulty })
             }}
           />
+          {disjoint && <p className="text-sm text-muted-foreground">{DISJOINT_DIFFICULTY}</p>}
           {range && (
             <p className="text-sm text-muted-foreground">
               {set

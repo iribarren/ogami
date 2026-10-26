@@ -927,6 +927,10 @@ export interface StepGuide {
 
 const backward = 'Pick a later step: next only goes forward.'
 
+/** Said when the ranges of a set's checks share no value, so no difficulty suits them all. */
+export const DISJOINT_DIFFICULTY =
+  'No difficulty fits every check of the set: leave it empty, each check rolls at its own.'
+
 /** A difficulty range as text; an open end is said so. */
 export const rangeOf = (range: { min: number | null; max: number | null }) =>
   `${range.min === null ? 'no minimum' : String(range.min)} to ${range.max === null ? 'no maximum' : String(range.max)}`
@@ -1049,6 +1053,9 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
       }
       const given = step.difficulty.text.trim()
       const literal = step.difficulty.form === 'integer' ? parseInteger(given) : null
+      if (context && given !== '' && checkDifficulty(step, context).disjoint) {
+        guide.difficulty = DISJOINT_DIFFICULTY
+      }
       for (const key of keys) {
         const range = context?.checks.find((check) => check.key === key)?.difficulty
         const which = step.checks === null ? 'this check' : `check "${key}"`
@@ -1092,8 +1099,9 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
 
 /**
  * The difficulty the check step's checks allow. For a set, the range every check allows at once
- * (null when one declares none; no default, each check rolls at its own). A value the checks do
- * not take stays visible, to be seen and cleared.
+ * (null when one declares none; no default, each check rolls at its own). When the ranges share
+ * no value there is no range to show: `disjoint` says so instead of an inverted one. A value the
+ * checks do not take stays visible, to be seen and cleared.
  */
 export function checkDifficulty(step: Extract<StepDraft, { kind: 'check' }>, context: StepContext) {
   const ranges = checkKeysOf(step).map(
@@ -1108,9 +1116,11 @@ export function checkDifficulty(step: Extract<StepDraft, { kind: 'check' }>, con
           min: bound(ranges, 'min', Math.max),
           max: bound(ranges, 'max', Math.min),
         }
-  const range = shared ?? null
+  const disjoint = !!shared && shared.min !== null && shared.max !== null && shared.min > shared.max
+  const range = disjoint ? null : (shared ?? null)
   return {
     range,
+    disjoint,
     set: step.checks !== null,
     show: ranges.some(Boolean) || step.difficulty.text.trim() !== '',
   }

@@ -749,27 +749,23 @@ export const sheetWithConditions = {
   ],
 }
 
-/** The sheet with a point budget over Power and Dexterity, spent within 5 to 15 at creation. */
-export const sheetWithPointBudget = {
+/** The sheet with two point budgets: Power on its own, Dexterity on its own. */
+export const sheetWithPointBudgets = {
   ...sheet,
-  version: 8,
-  pointBudget: {
-    label: 'Characteristic points',
-    total: 20,
-    fields: ['pow', 'dex'],
-    min: 5,
-    max: 15,
-  },
+  version: 11,
+  pointBudget: null,
   pointBudgets: [
-    {
-      key: 'points',
-      label: 'Characteristic points',
-      total: 20,
-      fields: ['pow', 'dex'],
-      min: 5,
-      max: 15,
-    },
+    { key: 'attributes', label: 'Attribute points', total: 12, fields: ['pow'], min: 1, max: 5 },
+    { key: 'skills', label: 'Skill points', total: 8, fields: ['dex'], min: null, max: 3 },
   ],
+}
+
+/** The sheet of a legacy budget with no label: it reads as the budget `points`. */
+export const sheetWithLegacyBudget = {
+  ...sheet,
+  version: 12,
+  pointBudget: { label: null, total: 30, fields: ['pow'], min: null, max: null },
+  pointBudgets: [{ key: 'points', label: null, total: 30, fields: ['pow'], min: null, max: null }],
 }
 
 /** A sheet without declared groups: Play lists consecutive fields of one group together. */

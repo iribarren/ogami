@@ -453,6 +453,8 @@ export function EffectsEditor({
       <div className="flex flex-wrap items-center gap-2">
         <Select
           aria-label="New effect kind"
+          // Ten kinds are taller than the default panel: the last would hide behind a scroll.
+          contentClassName="max-h-[min(24rem,var(--radix-select-content-available-height))]"
           value={kind}
           onChange={(event) => {
             setKind(event.target.value as EffectKind)

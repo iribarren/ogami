@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 
 import { EffectsEditor } from './EffectsEditor'
-import { effectsToDrafts, effectsToStored, type EffectKind } from './effectDraft'
+import { effectKinds, effectsToDrafts, effectsToStored, type EffectKind } from './effectDraft'
 import { effectPickers, every } from './effectFixtures'
 import type { StepContext } from './stepContext'
 import { mapStepError, type StepError } from './stepError'
@@ -166,6 +166,25 @@ describe('the effects editor', () => {
 
     expect(card(1).queryByLabelText('Text')).not.toBeInTheDocument()
     expect(latest.written).toEqual([{ kind: 'fillFact', slot: 'target' }])
+  })
+
+  // jsdom measures no height: the test checks the options offered and the panel's height cap.
+  it('offers every effect kind, in a panel tall enough to show the tenth without scrolling', async () => {
+    const user = userEvent.setup()
+    render(<Harness allowSheet />)
+
+    await user.click(screen.getByLabelText('New effect kind'))
+    const list = await screen.findByRole('listbox')
+
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('data-option-value')),
+    ).toEqual([...effectKinds])
+    // Ten rows of about 33px and the padding need 24rem; the default 20rem hid the last row.
+    expect(document.querySelector('[data-slot="select-content"]')).toHaveClass(
+      'max-h-[min(24rem,var(--radix-select-content-available-height))]',
+    )
   })
 
   it('offers the sheet kind only where it is allowed, and keeps one stored elsewhere with a note', async () => {

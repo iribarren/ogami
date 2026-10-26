@@ -33,9 +33,10 @@ final class GameSystemSheetPointBudgetsTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $budgets "pointBudget" and/or "pointBudgets" of the sheet
+     * @param array<string, mixed> $budgets   "pointBudget" and/or "pointBudgets" of the sheet
+     * @param array<string, mixed> $unchecked sheet properties stored without the release checks (a draft restored from a damaged document)
      */
-    private function draft(array $budgets = []): GameSystem
+    private function draft(array $budgets = [], array $unchecked = []): GameSystem
     {
         $sheet = ['fields' => [
             ['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'min' => 1, 'max' => 5],
@@ -44,7 +45,7 @@ final class GameSystemSheetPointBudgetsTest extends TestCase
             ['key' => 'half', 'label' => 'Half', 'type' => 'derived', 'formula' => '{str}/2'],
         ]] + $budgets;
         $source = ReleaseContent::fromArray(ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-minimal'), 'sheet', $sheet))->toArray();
-        $source['sheet'] = $sheet;
+        $source['sheet'] = $sheet + $unchecked;
 
         return GameSystem::createFromRelease(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a71'), 'my-copy', 'My copy', null, 'user-1', $source, new \DateTimeImmutable('2026-10-15T10:00:00'));
     }
@@ -204,9 +205,14 @@ final class GameSystemSheetPointBudgetsTest extends TestCase
     #[Test]
     public function aMalformedStoredListIsRefusedNotAssumed(): void
     {
-        $this->expectException(InvalidReleaseContent::class);
-        $gameSystem = $this->draft(['pointBudgets' => ['not a list' => 1]]);
-        $gameSystem->saveSheetPointBudgetEntry('skills', $this->skills(), $this->now);
+        $gameSystem = $this->draft(unchecked: ['pointBudgets' => ['not a list' => 1]]);
+
+        try {
+            $gameSystem->saveSheetPointBudgetEntry('skills', $this->skills(), $this->now);
+            self::fail('Expected InvalidReleaseContent');
+        } catch (InvalidReleaseContent $invalid) {
+            self::assertSame('sheet.pointBudgets: must be a list', $invalid->getMessage());
+        }
     }
 
     #[Test]

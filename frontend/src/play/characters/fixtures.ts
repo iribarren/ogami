@@ -202,3 +202,31 @@ export const creationCampaign: Campaign = {
   },
   characters: [],
 }
+
+/** The release of `creationCampaign` with Lore added: 8 skill points, at most 3, a second budget no dice cover. */
+export const loreField: SheetField = {
+  ...base,
+  key: 'lore',
+  label: 'Lore',
+  type: 'number',
+  min: 0,
+  max: 5,
+  default: 0,
+}
+
+/** Two budgets: the characteristics, rollable, and the skill points (Lore), which are always spent. */
+export const creationBudgets: Campaign['pinnedRelease']['pointBudgets'] = [
+  { key: 'points', ...creationBudget },
+  { key: 'skills', label: 'Skill points', total: 8, fields: ['lore'], min: null, max: 3 },
+]
+
+/** `creationCampaign` with a second budget no dice field covers. */
+export const twoBudgetCampaign: Campaign = {
+  ...creationCampaign,
+  pinnedRelease: {
+    ...creationCampaign.pinnedRelease,
+    sheet: [...creationSheet, loreField],
+    pointBudget: null,
+    pointBudgets: creationBudgets,
+  },
+}

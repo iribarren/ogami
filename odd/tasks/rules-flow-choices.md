@@ -1,7 +1,7 @@
 # Feature: rules-flow-choices
 
 - **Locator:** `odd/tasks/rules-flow-choices.md` · Engram topic `odd/rules-flow-choices/tasks`
-- **Issue:** #285 · **Branch:** `feat/rules-flow-choices-1-contract` · **Status:** slice 1 in progress
+- **Issue:** #285 · **Branch:** `feat/rules-flow-choices-2-play-sheet-effects` · **Status:** slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B8b ([ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md); `preset-pbta` findings [S11, S12](preset-pbta.md#studio-findings), [P4–P6](preset-pbta.md#playtest-findings))
@@ -62,8 +62,8 @@ Play adds: `characterId` on a choice/prompt answer (required when the picked opt
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0042 (index; status lines of ADR 0017, 0027, 0030, 0035; glossary "Check set"; roadmap B8b link); issue #285 | parent, inline | [x] | 63e7855 |
-| T2 | 1 | Contract: `v2.schema.json`, the contract doc, Studio validator (`Steps` placement, skip option, `checks`, `tableBySceneType`; `Effects` placement message; `StepParts`/`FlowReferences` reach), `DraftReferences` guards (checks, bands, oracle tables, entries, scene types, sheet fields and options), Play translator refuses the new shapes; fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
-| T3a | 2 | Slice 1 review fixes | writer (delegated) | [ ] | |
+| T2 | 1 | Contract: `v2.schema.json`, the contract doc, Studio validator (`Steps` placement, skip option, `checks`, `tableBySceneType`; `Effects` placement message; `StepParts`/`FlowReferences` reach), `DraftReferences` guards (checks, bands, oracle tables, entries, scene types, sheet fields and options), Play translator refuses the new shapes; fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | ee06cbf, 33993c5 |
+| T3a | 2 | Slice 1 review fixes | writer (delegated) | [x] | |
 | T3 | 2 | Play: translator reads sheet effects on choice options and prompts; `StepResult` and handler `characterId` (required/refused); `FlowRun` applies them, a skip applies none; journal sheet change; API and Behat tests | writer (delegated) | [ ] | |
 | T4 | 2 | Choice and prompt step cards ask for the Character when the step can change the sheet (preselected when one); response Characters; fixtures; generated OpenAPI and TS | writer (delegated) | [ ] | |
 | T5a | 3 | Slice 2 review fixes | writer (delegated) | [ ] | |
@@ -93,12 +93,14 @@ Play adds: `characterId` on a choice/prompt answer (required when the picked opt
 
 - 2026-10-26: code map done; four design decisions approved by the user; ADR 0042, issue #285 and this doc created (13 tasks, five slices).
 - 2026-10-26: T2 done (writer, delegated): schema v2 extended in place (`checks`, `tableBySceneType`); Studio `Steps` accepts sheet effects on choice options (not the skip option) and prompts, check sets and the table map; `StepParts::rolledTables` and `DraftReferences` count the new references; Play's translator refuses the three shapes. RED observed (41 failing assertions with the source stashed), GREEN on `tests/Unit/Studio` and the Play translator tests. About 860 changed lines.
+- 2026-10-26: T3a done (writer, delegated): `Steps::list` takes a `setup` flag; a prompt's and a choice option's sheet effects are refused in a Scene Type's setup, allowed in hooks, play and closing; check-set bands compared as key sets. RED observed (2 refusals missing, reordered bands refused, source stashed), GREEN on `tests/Unit/Studio`.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
+| 1 | `review-df1a7a6a6d761b3b` (63e7855..ee06cbf) | Approved, acknowledged. R3 warning: prompt sheet effects are allowed in Scene Type setup lists and hooks, while the contract doc still lists setup effects as an error and no test covers either (`Steps.php:117-118`); fixed in slice 2 (T3a): refused in Scene Type setup, allowed in hooks, both tested. Suggestion: check-set bands compared as ordered lists (`Steps.php:428-431`); fixed in slice 2 (T3a): compared as sets, reordered keys tested. CI fix 33993c5 | [#286](https://github.com/iribarren/ogami/pull/286) |
 
 ## Next step
 
-Slice 1: T2 (writer), then review, push and PR.
+Slice 2: T3a, T3, T4 (writer), then review, push and PR.

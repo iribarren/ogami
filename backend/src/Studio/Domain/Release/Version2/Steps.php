@@ -62,13 +62,13 @@ final class Steps
     /**
      * @return list<array<string, mixed>> canonical steps
      */
-    public static function list(mixed $value, string $path, Catalog $catalog): array
+    public static function list(mixed $value, string $path, Catalog $catalog, bool $setup = false): array
     {
         $steps = [];
         $positions = [];
         foreach (ReleaseFields::sizedList($value, $path, 0, self::MAX_STEPS, 'steps') as $index => $step) {
             $stepPath = \sprintf('%s[%d]', $path, $index);
-            $step = self::step($step, $stepPath, $catalog);
+            $step = self::step($step, $stepPath, $catalog, $setup);
             /** @var string $key */
             $key = $step['key'];
             if (isset($positions[$key])) {
@@ -93,7 +93,7 @@ final class Steps
     /**
      * @return array<string, mixed>
      */
-    private static function step(mixed $value, string $path, Catalog $catalog): array
+    private static function step(mixed $value, string $path, Catalog $catalog, bool $setup): array
     {
         $kind = ReleaseFields::tag($value, $path, 'kind', array_keys(self::KINDS));
         $step = ReleaseFields::object($value, $path, [...self::COMMON, ...self::KINDS[$kind]]);
@@ -115,14 +115,15 @@ final class Steps
         }
 
         // A character step and a prompt step complete with a Character the player picks, so their own effects may change the sheet.
-        $step = [...$step, ...self::outcome($step, $path, $catalog, \in_array($kind, ['character', 'prompt'], true))];
+        // A Scene Type's setup has no Character context (ADR 0042): a prompt there, like a choice option, refuses sheet effects.
+        $step = [...$step, ...self::outcome($step, $path, $catalog, 'character' === $kind || ('prompt' === $kind && !$setup))];
         $step = match ($kind) {
             'prompt' => self::prompt($step, $path, $catalog),
             'character' => $step,
             'oracle' => self::oracle($step, $path, $catalog),
             'table' => self::table($step, $path, $catalog),
             'roll' => self::roll($step, $path, $catalog),
-            'choice' => self::choice($step, $path, $catalog),
+            'choice' => self::choice($step, $path, $catalog, $setup),
             'condition' => self::condition($step, $path, $catalog),
             'pick' => self::pick($step, $path, $catalog),
             'check' => self::check($step, $path, $catalog),
@@ -393,6 +394,22 @@ final class Steps
     }
 
     /**
+     * Whether two maps hold the same keys, in any order.
+     *
+     * @param array<array-key, mixed> $left
+     * @param array<array-key, mixed> $right
+     */
+    private static function sameKeys(array $left, array $right): bool
+    {
+        $leftKeys = array_map(strval(...), array_keys($left));
+        $rightKeys = array_map(strval(...), array_keys($right));
+        sort($leftKeys);
+        sort($rightKeys);
+
+        return $leftKeys === $rightKeys;
+    }
+
+    /**
      * The checks a check step names, by key: exactly one of "check" and "checks" (2 to 10 unique
      * checks with the same band keys).
      *
@@ -426,7 +443,7 @@ final class Steps
             }
 
             $first = array_key_first($checks);
-            if (null !== $first && array_keys($check['bands']) !== array_keys($checks[$first]['bands'])) {
+            if (null !== $first && !self::sameKeys($check['bands'], $checks[$first]['bands'])) {
                 throw InvalidReleaseContent::at($checkPath, \sprintf('check "%s" has other bands than check "%s", the checks of a set share their band keys', $checkKey, $first));
             }
 
@@ -461,7 +478,7 @@ final class Steps
      *
      * @return array<string, mixed>
      */
-    private static function choice(array $step, string $path, Catalog $catalog): array
+    private static function choice(array $step, string $path, Catalog $catalog, bool $setup): array
     {
         $options = [];
         $keys = [];
@@ -481,7 +498,7 @@ final class Steps
                 self::refuseSheetEffects($option['effects'] ?? null, $optionPath.'.effects');
             }
 
-            $options[] = array_filter([...$option, ...self::outcome($option, $optionPath, $catalog, $key !== $skipKey)], static fn (mixed $field): bool => [] !== $field);
+            $options[] = array_filter([...$option, ...self::outcome($option, $optionPath, $catalog, $key !== $skipKey && !$setup)], static fn (mixed $field): bool => [] !== $field);
         }
 
         $step['options'] = $options;

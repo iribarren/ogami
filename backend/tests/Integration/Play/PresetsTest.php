@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Play;
 
+use App\Formula\Domain\Formula;
 use App\Play\Application\GetGameSystemSnapshot;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
+use App\Play\Domain\GameSystem\Flow\ConditionStep;
+use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\FlowView;
+use App\Play\Domain\GameSystem\Flow\SheetEffect;
+use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\ListField;
@@ -364,6 +370,73 @@ final class PresetsTest extends KernelTestCase
         $layout = $sheet->layout();
         self::assertSame([2, [['Identity', 1, 2], ['Stats', 1, 1], ['Conditions', 1, 1], ['Progress', 1, 2]]], [$layout?->columns, array_map(static fn (\App\Play\Domain\GameSystem\Sheet\SheetGroup $group): array => [$group->name, $group->columns, $group->span], $layout->groups ?? [])]);
         self::assertCount(12, $snapshot->checks());
+    }
+
+    #[Test]
+    public function lanternsOfTheMirePublishesOnceWithItsFreeTabletopLicenseCreditsPoolChecksAndTheMysteryFlow(): void
+    {
+        $this->assertPublishesOnce('lanterns-of-the-mire');
+
+        $snapshot = $this->snapshot('lanterns-of-the-mire');
+        self::assertSame('Lanterns of the Mire', $snapshot->name());
+        self::assertSame(1, $snapshot->releaseVersion());
+        self::assertSame('eldritch', $snapshot->theme());
+
+        // The Free Tabletop License (ADR 0021) covers the Year Zero Engine SRD only: the notice disclaims Free League and discloses generative AI.
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringContainsString('not affiliated with, sponsored, or endorsed by Fria Ligan AB', $credits->notice);
+        self::assertStringContainsString("The Year Zero Engine System Reference Document is used under Fria Ligan AB's Free Tabletop License", $credits->notice);
+        self::assertStringContainsString('generative AI', $credits->notice);
+        self::assertSame(['Year Zero Engine Free Tabletop License 1.1', 'https://freeleaguepublishing.com/wp-content/uploads/2026/03/Year-Zero-Engine-License-Agreement-version-1.1.pdf'], [$credits->license, $credits->url]);
+        // The license excludes Free League's brands and other games: the file never names the game it is inspired by.
+        self::assertStringNotContainsStringIgnoringCase('Vaesen', (string) file_get_contents(self::PRESETS.'/lanterns-of-the-mire.json'));
+
+        // Thirteen pool checks of d6 that succeed at 6 (ADR 0041): the skills push a Condition of their kind, Stand Fast does not push.
+        $checks = $snapshot->checks();
+        self::assertCount(13, $checks);
+        foreach ($checks as $check) {
+            self::assertSame([6, 6], [$check->pool?->sides, $check->pool?->successAt], $check->key);
+        }
+        $bodySkills = ['brawl', 'endure', 'haul', 'shoot', 'sneak', 'nimble'];
+        $mindSkills = ['lore', 'inquiry', 'alertness', 'persuade', 'mend', 'insight'];
+        foreach ([...$bodySkills, ...$mindSkills] as $key) {
+            $effects = $snapshot->check($key)?->push->effects ?? [];
+            self::assertCount(1, $effects, $key);
+            self::assertInstanceOf(SheetEffect::class, $effects[0], $key);
+            // A mark without an option: the player picks which Condition to mark.
+            self::assertSame([\in_array($key, $bodySkills, true) ? 'body' : 'mind', SheetOperation::Mark, null], [$effects[0]->field, $effects[0]->op, $effects[0]->value], $key);
+        }
+        self::assertNull($snapshot->check('stand-fast')?->push);
+        $formulas = [];
+        foreach (['brawl', 'inquiry', 'insight', 'stand-fast'] as $key) {
+            $count = $snapshot->check($key)?->pool?->count;
+            $formulas[$key] = $count instanceof Formula ? $count->toString() : $count;
+        }
+        self::assertSame(['brawl' => '{vigour} + {brawl} - {body}', 'inquiry' => '{reason} + {inquiry} - {mind}', 'insight' => '{heart} + {insight} - {mind}', 'stand-fast' => '{reason} + {heart} - {mind}'], $formulas);
+
+        // Two Conditions fields, one per kind of harm, and the four attributes share 12 points.
+        $sheet = $snapshot->sheet();
+        foreach (['body' => ['winded', 'bruised', 'bleeding'], 'mind' => ['rattled', 'dread', 'despair']] as $key => $options) {
+            $conditions = $sheet->field($key);
+            self::assertInstanceOf(ConditionsField::class, $conditions, $key);
+            self::assertSame($options, $conditions->optionKeys(), $key);
+        }
+        $budget = $sheet->budget();
+        self::assertNotNull($budget);
+        self::assertSame([12, ['vigour', 'finesse', 'reason', 'heart']], [$budget->total, $budget->fields]);
+
+        // The mystery is the default flow; Clues and Nightfall track it, and a full Nightfall ends the Investigation after its scene.
+        $flow = $snapshot->defaultFlow();
+        self::assertNotNull($flow);
+        self::assertSame(['a-mystery', ['prologue', 'investigation', 'unmasking']], [$flow->key, array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases)]);
+        self::assertSame(['clues', 'nightfall'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        $nightfall = $flow->phase('investigation')?->sceneClosing->step('condition-1');
+        self::assertInstanceOf(ConditionStep::class, $nightfall);
+        self::assertSame('nightfall', $nightfall->tracker);
+        $last = $nightfall->bands[\count($nightfall->bands) - 1];
+        self::assertContainsOnlyInstancesOf(EndPhaseEffect::class, $last->outcome->effects);
+        self::assertCount(1, $last->outcome->effects);
     }
 
     private function assertPublishesOnce(string $preset): void

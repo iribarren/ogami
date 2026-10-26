@@ -12,6 +12,7 @@ import {
   MAX_BRANCHES,
   MAX_OPTIONS,
   MIN_OPTIONS,
+  newSceneTable,
   newBranch,
   newOption,
   oracleAnswers,
@@ -28,6 +29,8 @@ export type Of<K extends EditedStep['kind']> = Extract<EditedStep, { kind: K }>
 /** What the fields of a branching kind share with the card around them. */
 export interface KindProps {
   context: StepContext
+  /** Whether the list is a Scene Type's setup, where no Character is known. */
+  setup: boolean
   laterKeys: string[]
   guide: StepGuide
   /** The server's messages about this step. */
@@ -135,6 +138,10 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
   const setBranches = (branches: Of<'table'>['branches']) => {
     p.onChange({ ...step, branches })
   }
+  const rows = step.bySceneType
+  const setRows = (bySceneType: Of<'table'>['bySceneType']) => {
+    p.onChange({ ...step, bySceneType })
+  }
 
   return (
     <>
@@ -149,7 +156,108 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
         }}
       />
       <fieldset className="space-y-3">
+        <legend className="text-sm font-medium">Table by Scene Type</legend>
+        {rows === null ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Roll another table in a Scene of a given Scene Type. Hooks, outside a Scene and Scene
+              Types without a row roll the table above.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setRows([newSceneTable()])
+              }}
+            >
+              Roll a table by Scene Type
+            </Button>
+          </>
+        ) : (
+          <>
+            {p.fieldError('tableBySceneType') && (
+              <p role="alert" className="text-sm text-destructive">
+                {p.fieldError('tableBySceneType')}
+              </p>
+            )}
+            {rows.map((row, at) => (
+              // The list is edited in place and has no ids: the position is the identity.
+              <div
+                key={at}
+                role="group"
+                aria-label={`Scene Type row ${String(at + 1)}`}
+                className="space-y-2 rounded-lg p-3 ring-1 ring-foreground/10"
+              >
+                <PickField
+                  label="Scene Type"
+                  value={row.sceneType}
+                  options={p.context.sceneTypes ?? []}
+                  placeholder="Pick a Scene Type"
+                  error={p.guide.scenes[at]?.sceneType}
+                  onChange={(sceneType) => {
+                    setRows(
+                      rows.map((current, to) => (to === at ? { ...current, sceneType } : current)),
+                    )
+                  }}
+                />
+                <PickField
+                  label="Table for this Scene Type"
+                  value={row.table}
+                  options={p.context.tables}
+                  placeholder="Pick a table"
+                  error={p.guide.scenes[at]?.table}
+                  onChange={(table) => {
+                    setRows(
+                      rows.map((current, to) => (to === at ? { ...current, table } : current)),
+                    )
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Delete Scene Type row ${String(at + 1)}`}
+                  onClick={() => {
+                    setRows(rows.filter((_, to) => to !== at))
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRows([...rows, newSceneTable()])
+                }}
+              >
+                Add Scene Type
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRows(null)
+                }}
+              >
+                Turn off the table by Scene Type
+              </Button>
+            </div>
+          </>
+        )}
+      </fieldset>
+      <fieldset className="space-y-3">
         <legend className="text-sm font-medium">Branches</legend>
+        {rows !== null && (
+          <p className="text-sm text-muted-foreground">
+            A table by Scene Type has no branches: its entries differ per table.
+          </p>
+        )}
         {step.branches.map((branch, at) => {
           const number = String(at + 1)
           const { onFields, rest } = splitRow(
@@ -214,7 +322,7 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
           type="button"
           variant="outline"
           size="sm"
-          disabled={step.branches.length >= MAX_BRANCHES}
+          disabled={step.branches.length >= MAX_BRANCHES || rows !== null}
           onClick={() => {
             p.onItems(step.branches.length, (origin) => [...origin, null])
             setBranches([...step.branches, newBranch()])
@@ -297,6 +405,8 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
                 laterKeys={p.laterKeys}
                 nextGuide={p.guide.nexts[at]}
                 errors={rest}
+                // The player picks the Character; a skip has none, so its option cannot change the sheet.
+                allowSheet={!p.setup && (step.skip === '' || option.key !== step.skip)}
                 onChange={(outcome) => {
                   replace(outcome)
                 }}

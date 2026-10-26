@@ -311,7 +311,7 @@ export function effectsToStored(
 export function effectGuides(effects: EffectDraft[], allowSheet: boolean) {
   return effects.map((effect) =>
     effect.kind === 'sheet' && !allowSheet
-      ? 'A sheet effect is only allowed in a character step and in check outcomes.'
+      ? 'A sheet effect is only allowed in a character step, a prompt step (not in a Scene Type setup), a choice option (not the skip option) and check outcomes.'
       : undefined,
   )
 }

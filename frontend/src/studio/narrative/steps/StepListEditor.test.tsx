@@ -24,16 +24,26 @@ function Harness({
   stored,
   errors,
   context = stepPickers,
+  setup,
 }: {
   stored: unknown[]
   errors?: StepError[]
   context?: StepContext
+  setup?: boolean
 }) {
   const [steps, setSteps] = useState(() => stepsToDrafts(stored))
   useEffect(() => {
     latest.written = stepsToItems(steps)
   })
-  return <StepListEditor steps={steps} context={context} errors={errors} onChange={setSteps} />
+  return (
+    <StepListEditor
+      steps={steps}
+      context={context}
+      errors={errors}
+      setup={setup}
+      onChange={setSteps}
+    />
+  )
 }
 
 /** The step at `index` as it would be saved. */
@@ -654,7 +664,7 @@ describe('the step list editor', () => {
       })
     })
 
-    it('allows sheet effects in a character step only', async () => {
+    it('allows sheet effects in a character and a prompt step, not in a roll or a condition', async () => {
       const user = userEvent.setup()
       render(<Harness stored={stepList} />)
       const kinds = async (step: number) =>
@@ -663,12 +673,60 @@ describe('the step list editor', () => {
         )
 
       expect(await kinds(4)).toContain('sheet')
-      expect(await kinds(1)).not.toContain('sheet')
+      expect(await kinds(1)).toContain('sheet')
+      expect(await kinds(2)).not.toContain('sheet')
       expect(
         within(card(2).getByRole('group', { name: 'Band 1 effects' })).getByLabelText(
           'New effect kind',
         ),
       ).not.toHaveTextContent('sheet')
+    })
+
+    it('offers no sheet effect to a prompt step in a Scene Type setup, and flags one already there', async () => {
+      const user = userEvent.setup()
+      const sheet = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
+      render(<Harness setup stored={[{ ...stepList[0], effects: [sheet] }, stepList[3]]} />)
+      const kinds = async (step: number) =>
+        (await listOptions(user, effectsOf(step).getByLabelText('New effect kind'))).map(
+          (option) => option.value,
+        )
+
+      expect(await kinds(1)).not.toContain('sheet')
+      expect(effectsOf(1).getByText(/only allowed in a character step/)).toBeInTheDocument()
+      // A character step keeps its sheet effects in a setup.
+      expect(await kinds(2)).toContain('sheet')
+    })
+
+    it('allows sheet effects in a choice option, not in the option the skip names or in a setup', async () => {
+      const user = userEvent.setup()
+      const sheet = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
+      const choice = { ...stepListBranching[2], mandatory: false, skip: 'left' }
+      const kinds = async (group: string) =>
+        (
+          await listOptions(
+            user,
+            within(screen.getByRole('group', { name: group })).getByLabelText('New effect kind'),
+          )
+        ).map((option) => option.value)
+      const { unmount } = render(<Harness stored={[choice]} />)
+
+      expect(await kinds('Option 1 outcome effects')).not.toContain('sheet')
+      expect(await kinds('Option 2 outcome effects')).toContain('sheet')
+      unmount()
+      const inSetup = render(<Harness setup stored={[choice]} />)
+      expect(await kinds('Option 2 outcome effects')).not.toContain('sheet')
+      inSetup.unmount()
+      // A sheet effect already on the skip option stays and says why it is refused.
+      const options = [
+        { key: 'left', label: 'Left', effects: [sheet] },
+        { key: 'right', label: 'Right' },
+      ]
+      render(<Harness stored={[{ ...choice, options }]} />)
+      expect(
+        within(screen.getByRole('group', { name: 'Option 1 outcome effects' })).getByText(
+          /only allowed in a character step/,
+        ),
+      ).toBeInTheDocument()
     })
 
     it('marks and clears a conditions field of the sheet in a character step, an option or all', async () => {
@@ -877,6 +935,76 @@ describe('the step list editor', () => {
       ).toEqual(['', 'market', 'docks'])
       await chooseOption(user, 'Table', 'moods', card(1))
       expect(saved(0)).toMatchObject({ table: 'moods', branches: [{ entry: '' }] })
+    })
+  })
+
+  describe('the table step by Scene Type', () => {
+    const plain = { key: 't', kind: 'table', title: 'T', table: 'complications' }
+    const row = (number: number) =>
+      within(card(1).getByRole('group', { name: `Scene Type row ${String(number)}` }))
+    const turnedOn = async (user: UserEvent) => {
+      await user.click(card(1).getByRole('button', { name: 'Roll a table by Scene Type' }))
+    }
+
+    it('adds rows of a Scene Type and a table, and writes them as a map next to the default table', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[plain]} />)
+
+      await turnedOn(user)
+      await chooseOption(user, 'Scene Type', 'Chase', row(1))
+      await chooseOption(user, 'Table for this Scene Type', 'Places', row(1))
+      await user.click(card(1).getByRole('button', { name: 'Add Scene Type' }))
+      await chooseOption(user, 'Scene Type', 'Hideout', row(2))
+      await chooseOption(user, 'Table for this Scene Type', 'Moods', row(2))
+
+      expect(saved(0)).toEqual({
+        ...plain,
+        tableBySceneType: { chase: 'places', hideout: 'moods' },
+      })
+    })
+
+    it('flags a Scene Type given twice, refuses an empty row on save and drops the map when turned off', async () => {
+      const user = userEvent.setup()
+      render(<Saver stored={[plain]} />)
+
+      await turnedOn(user)
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(sent.steps).toBeNull()
+      expect(screen.getByText('Pick a Scene Type and a table for every row.')).toBeInTheDocument()
+      await chooseOption(user, 'Scene Type', 'Chase', row(1))
+      await user.click(card(1).getByRole('button', { name: 'Add Scene Type' }))
+      await chooseOption(user, 'Scene Type', 'Chase', row(2))
+      expect(row(2).getByText('Another row has this Scene Type.')).toBeInTheDocument()
+      await user.click(card(1).getByRole('button', { name: 'Turn off the table by Scene Type' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(sent.steps).toEqual([plain])
+    })
+
+    it('has no new branch while a map is there, and refuses the ones a stored map came with', async () => {
+      const user = userEvent.setup()
+      render(
+        <Saver stored={[{ ...stepListBranching[1], tableBySceneType: { chase: 'places' } }]} />,
+      )
+
+      expect(card(1).getByRole('button', { name: 'Add branch' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(sent.steps).toBeNull()
+      expect(
+        screen.getByText(/branches: A table by Scene Type has no branches/),
+      ).toBeInTheDocument()
+    })
+
+    it('shows the map of a stored step and sends it back unchanged', () => {
+      const stored = { ...plain, tableBySceneType: { hideout: 'moods', chase: 'places' } }
+      render(<Harness stored={[stored]} />)
+
+      expect(saved(0)).toEqual(stored)
+      expect(row(1).getByRole('combobox', { name: 'Scene Type' })).toHaveTextContent('Hideout')
+      expect(row(2).getByRole('combobox', { name: 'Table for this Scene Type' })).toHaveTextContent(
+        'Places',
+      )
     })
   })
 
@@ -1361,6 +1489,63 @@ describe('the step list editor', () => {
 
       expect(inside(2, 'Found').getByText(back)).toBeInTheDocument()
       expect(inside(3, 'Outcome fail').getByText(back)).toBeInTheDocument()
+    })
+
+    it('switches a check step to a set, offering only the checks with the bands of the first', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+
+      await user.click(card(2).getByRole('radio', { name: 'A set of checks' }))
+      const offered = () =>
+        within(card(2).getByRole('group', { name: 'Checks of the set' }))
+          .getAllByRole('checkbox')
+          .map((box) => box.parentElement?.textContent)
+      expect(offered()).toEqual(['Skill check', 'Finesse check'])
+      expect(card(2).getByText('A check set needs 2 to 10 distinct checks.')).toBeInTheDocument()
+
+      await user.click(card(2).getByRole('checkbox', { name: 'Finesse check' }))
+      expect(saved(1)).toMatchObject({
+        checks: ['skill', 'finesse'],
+        difficulty: 15,
+      })
+      expect(saved(1)).not.toHaveProperty('check')
+      expect(
+        card(2).getByText(/Must suit every check of the set, from 9 to 15/),
+      ).toBeInTheDocument()
+      // The outcomes are keyed by the shared bands.
+      expect(
+        within(card(2).getByRole('group', { name: 'Outcomes' }))
+          .getAllByRole('button', { name: /^(fail|partial|success)$/ })
+          .map((button) => button.textContent),
+      ).toEqual(['fail', 'partial', 'success'])
+      // With none picked, every check is offered again.
+      await user.click(card(2).getByRole('checkbox', { name: 'Skill check' }))
+      await user.click(card(2).getByRole('checkbox', { name: 'Finesse check' }))
+      expect(offered()).toEqual(['Skill check', 'Luck', 'Finesse check'])
+    })
+
+    it('asks for 2 to 10 checks before saving a set, and goes back to one check', async () => {
+      const user = userEvent.setup()
+      render(<Saver stored={[stepListPickCheck[1]]} />)
+
+      await user.click(screen.getByRole('radio', { name: 'A set of checks' }))
+      expect(screen.getByText('A check set needs 2 to 10 distinct checks.')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(sent.steps).toBeNull()
+
+      await user.click(screen.getByRole('radio', { name: 'One check' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(sent.steps).toEqual([stepListPickCheck[1]])
+    })
+
+    it('opens a stored set and sends it back unchanged', () => {
+      const stored = { key: 'k', kind: 'check', title: 'K', checks: ['skill', 'finesse'] }
+      render(<Harness stored={[stored]} />)
+
+      expect(card(1).getByRole('checkbox', { name: 'Skill check' })).toBeChecked()
+      expect(card(1).getByRole('checkbox', { name: 'Finesse check' })).toBeChecked()
+      expect(saved(0)).toEqual(stored)
     })
 
     it('adds a pick and a check step', async () => {

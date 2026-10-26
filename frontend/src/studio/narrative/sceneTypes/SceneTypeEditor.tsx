@@ -224,6 +224,7 @@ export function SceneTypeEditor({
               <StepListEditor
                 steps={draft.steps[part]}
                 context={context}
+                setup={part === 'setup'}
                 errors={answer.lists[part]}
                 onChange={(steps) => {
                   setDraft((now) => ({ ...now, steps: { ...now.steps, [part]: steps } }))

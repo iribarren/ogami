@@ -6,7 +6,10 @@ import {
   stepList,
   stepListBackward,
   stepListBranching,
+  stepListCheckSet,
   stepListPickCheck,
+  stepListSheetEffects,
+  stepListTableBySceneType,
   stepListWithOtherKinds,
   stepPickers,
 } from '../../fixtures'
@@ -75,5 +78,38 @@ export const ServerError: Story = {
       'sceneTypes[0].play[1].bands[0].upTo: must be an integer',
       'sceneTypes[0].play: at most 50 steps',
     ],
+  },
+}
+
+/** A choice option and a prompt change the sheet; the option the skip names does not offer the effect. */
+export const SheetEffectsOnChoicesAndPrompts: Story = {
+  args: { stored: stepListSheetEffects },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const kinds = (name: string) =>
+      within(canvas.getByRole('group', { name })).getByLabelText('New effect kind')
+    await userEvent.click(kinds('Option 2 outcome effects'))
+    await expect(canvas.queryByRole('option', { name: 'sheet' })).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect(canvas.getByText(/only allowed in a character step/)).toBeInTheDocument()
+  },
+}
+
+/** A check step offering two checks with the same bands; the player picks one when rolling. */
+export const CheckSet: Story = {
+  args: { stored: stepListCheckSet },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('checkbox', { name: 'Finesse check' })).toBeChecked()
+    await expect(canvas.queryByRole('checkbox', { name: 'Luck' })).not.toBeInTheDocument()
+  },
+}
+
+/** A table step with its own table for two Scene Types; it takes no new branch. */
+export const TableBySceneType: Story = {
+  args: { stored: stepListTableBySceneType },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Add branch' })).toBeDisabled()
   },
 }

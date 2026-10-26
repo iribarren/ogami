@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible'
+import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-control'
 
 import { TextField } from '../TextField'
 import { ValueInput } from './BandsEditor'
@@ -11,10 +12,12 @@ import { OutcomeEditor } from './OutcomeEditor'
 import {
   bandForms,
   checkDifficulty,
+  checkKeysOf,
   countTargets,
   pickModes,
   pickOutcomes,
   rangeOf,
+  sameBands,
   setBandOutcome,
   type CheckOutcomeDraft,
   type OutcomeDraft,
@@ -129,9 +132,15 @@ function BandRow({
 }
 
 export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
-  const chosen = p.context.checks.find((check) => check.key === step.check)
+  const keys = checkKeysOf(step)
+  // The outcomes are keyed by the bands every check of a set shares: those of the first one.
+  const chosen = p.context.checks.find((check) => check.key === keys[0])
   const bands = chosen?.bands ?? []
-  const { range, show: showDifficulty } = checkDifficulty(step, p.context)
+  const { range, set, show: showDifficulty } = checkDifficulty(step, p.context)
+  // A set offers only the checks with the band keys of the first one picked.
+  const offered = p.context.checks.filter(
+    (check) => chosen === undefined || sameBands(check.bands, chosen.bands),
+  )
   const at = (band: string) => step.outcomes.findIndex((outcome) => outcome.band === band)
   const strays = step.outcomes.flatMap((outcome, position) =>
     bands.includes(outcome.band) && at(outcome.band) === position ? [] : [position],
@@ -143,16 +152,49 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
 
   return (
     <>
-      <PickField
-        label="Check"
-        value={step.check}
-        options={p.context.checks}
-        placeholder="Pick a check"
-        error={p.fieldError('check') ?? p.guide.check}
-        onChange={(check) => {
-          p.onChange({ ...step, check })
+      <SegmentedControl
+        aria-label="Check mode"
+        value={set ? 'set' : 'single'}
+        onValueChange={(mode) => {
+          if (mode === 'set' && !set) {
+            p.onChange({ ...step, check: '', checks: keys })
+          } else if (mode === 'single' && set) {
+            p.onChange({ ...step, check: keys[0] ?? '', checks: null })
+          }
         }}
-      />
+      >
+        <SegmentedControlItem value="single">One check</SegmentedControlItem>
+        <SegmentedControlItem value="set">A set of checks</SegmentedControlItem>
+      </SegmentedControl>
+      {step.checks === null ? (
+        <PickField
+          label="Check"
+          value={step.check}
+          options={p.context.checks}
+          placeholder="Pick a check"
+          error={p.fieldError('check') ?? p.guide.check}
+          onChange={(check) => {
+            p.onChange({ ...step, check })
+          }}
+        />
+      ) : (
+        <div className="space-y-1">
+          <CheckList
+            legend="Checks of the set"
+            options={offered}
+            value={step.checks}
+            error={p.fieldError('checks') ?? p.guide.checks}
+            onChange={(checks) => {
+              p.onChange({ ...step, checks })
+            }}
+          />
+          <p className="text-sm text-muted-foreground">
+            The player picks one when rolling. Pick 2 to 10 checks with the same bands: once the
+            first is picked, only checks with its bands are offered, since the set shares one
+            difficulty and one outcome per band.
+          </p>
+        </div>
+      )}
       {showDifficulty && (
         <div className="space-y-1">
           <ValueInput
@@ -167,7 +209,9 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
           />
           {range && (
             <p className="text-sm text-muted-foreground">
-              Default {String(range.default)}, from {rangeOf(range)}. Empty uses the default.
+              {set
+                ? `Must suit every check of the set, from ${rangeOf(range)}. Empty uses the default of each.`
+                : `Default ${String(range.default)}, from ${rangeOf(range)}. Empty uses the default.`}
             </p>
           )}
         </div>
@@ -175,14 +219,16 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium">Outcomes</legend>
         {bands.length === 0 && (
-          <p className="text-sm text-muted-foreground">Pick a check to set what each band does.</p>
+          <p className="text-sm text-muted-foreground">
+            Pick {set ? 'the checks' : 'a check'} to set what each band does.
+          </p>
         )}
         {bands.map((band) => {
           const position = at(band)
           const outcome = step.outcomes[position]
           return (
             <BandRow
-              key={`${step.check}/${band}`}
+              key={`${keys[0] ?? ''}/${band}`}
               band={band}
               outcome={outcome ?? { next: '', effects: [], extra: {} }}
               context={p.context}

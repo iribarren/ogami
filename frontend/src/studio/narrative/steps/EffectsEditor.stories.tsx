@@ -51,7 +51,7 @@ export const EveryKind: Story = {
   },
 }
 
-/** The sheet kind is offered where a Character is known, with a dice value among its forms. */
+/** The sheet kind is offered where a Character is known (a character or prompt step, a choice option but its skip, a check outcome), with a dice value among its forms. */
 export const SheetAllowed: Story = {
   args: { stored: every.slice(11), allowSheet: true },
   play: async ({ canvasElement }) => {
@@ -60,7 +60,7 @@ export const SheetAllowed: Story = {
   },
 }
 
-/** Elsewhere the kind is not offered, and a sheet effect already stored there stays, flagged. */
+/** Elsewhere (a Scene Type setup, the skip option of a choice, a roll) the kind is not offered, and a sheet effect already stored there stays, flagged. */
 export const SheetNotAllowed: Story = {
   args: { stored: every.slice(11, 12), allowSheet: false },
   play: async ({ canvasElement }) => {

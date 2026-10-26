@@ -314,6 +314,25 @@ describe('the Scene Type editor', () => {
     })
   })
 
+  it('offers a prompt step a sheet effect in Play and Closing, but not in Setup', async () => {
+    const { user } = await openEditor('quiet')
+    const sheetOffered = async (name: string) => {
+      await user.click(list(name).getByRole('button', { name: 'Add step' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'prompt' }))
+      const kind = card(name, 1).getByLabelText('New effect kind')
+      await user.click(kind)
+      const offered = within(await screen.findByRole('listbox'))
+        .getAllByRole('option')
+        .map((option) => option.getAttribute('data-option-value'))
+      await user.keyboard('{Escape}')
+      return offered.includes('sheet')
+    }
+
+    expect(await sheetOffered('Setup')).toBe(false)
+    expect(await sheetOffered('Play')).toBe(true)
+    expect(await sheetOffered('Closing')).toBe(true)
+  })
+
   it('shows a value that is not a whole number next to it and sends nothing from any list', async () => {
     const saved = recorder(() => Response.json(narrativeScenes))
     const { user } = await openEditor('ambush', { [put]: saved.handler })

@@ -75,6 +75,32 @@ describe('where a validation error is', () => {
     })
   })
 
+  it('places an error about a check set or a table by Scene Type on its step of the Scene Type', () => {
+    const play = [
+      { title: 'Defy disaster', checks: ['skill', 'finesse'] },
+      { title: 'Complication', tableBySceneType: { ambush: 'weather' } },
+    ]
+    const withPlay = { ...names, sceneTypes: [item('ambush', { name: 'Ambush', play })] }
+
+    expect(locateError('sceneTypes[0].play[0].checks[1]', withPlay)).toMatchObject({
+      group: 'Scene Types · Ambush',
+      trail: ['Play', 'Step 1 “Defy disaster”', 'Checks 2'],
+      target: { kind: 'sceneType', sceneType: 'ambush' },
+    })
+    expect(locateError('sceneTypes[0].play[1].tableBySceneType.ambush', withPlay).trail).toEqual([
+      'Play',
+      'Step 2 “Complication”',
+      'Table by scene type',
+      'Ambush',
+    ])
+    expect(locateError('sceneTypes[0].play[0].options[1].effects[0]', withPlay).trail).toEqual([
+      'Play',
+      'Step 1 “Defy disaster”',
+      'Options 2',
+      'Effects 1',
+    ])
+  })
+
   it('links the other sections to their tab', () => {
     const tab = (path: string) => locateError(path, names).target
     expect(tab('trackers[0].max')).toEqual({ kind: 'tab', tab: 'narrative' })

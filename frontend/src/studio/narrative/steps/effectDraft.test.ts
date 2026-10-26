@@ -132,7 +132,7 @@ describe('an effect draft', () => {
 
     expect(effectGuides(effects, false)).toEqual([
       undefined,
-      'A sheet effect is only allowed in a character step and in check outcomes.',
+      'A sheet effect is only allowed in a character step, a prompt step (not in a Scene Type setup), a choice option (not the skip option) and check outcomes.',
     ])
     expect(effectGuides(effects, true)).toEqual([undefined, undefined])
     expect(MAX_EFFECTS).toBe(10)

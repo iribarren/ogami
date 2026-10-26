@@ -105,6 +105,24 @@ const check = {
   ],
 }
 
+const sheetEffect = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
+const checkSet = {
+  key: 'lock',
+  kind: 'check',
+  title: 'Pick the lock',
+  checks: ['skill', 'finesse'],
+  difficulty: 12,
+  outcomes: [{ band: 'fail', next: 'end' }],
+}
+const sceneTable = {
+  key: 'event',
+  kind: 'table',
+  title: 'What happens?',
+  table: 'complications',
+  tableBySceneType: { hideout: 'places', chase: 'moods' },
+  otherwise: { next: 'end' },
+}
+
 function draftOf<K extends EditedStep['kind']>(stored: unknown, kind: K) {
   const [draft] = stepsToDrafts([stored])
   if (draft?.kind !== kind) {
@@ -130,6 +148,16 @@ describe('a step draft', () => {
     check,
     { ...check, difficulty: 12 },
     { ...check, difficulty: { formula: 'heat + 1' } },
+    checkSet,
+    sceneTable,
+    {
+      ...choice,
+      options: [
+        { key: 'left', label: 'Left' },
+        { key: 'right', label: 'Right', effects: [sheetEffect] },
+      ],
+    },
+    { ...prompt, effects: [sheetEffect] },
   ])('gives a $kind step back as it was stored, unknown fields included', (stored) => {
     expect(round(stored)).toEqual({ steps: [stored] })
   })
@@ -495,6 +523,166 @@ describe('a step draft', () => {
         '2.options.0.effects.0.value': 'Use a whole number.',
       },
     })
+  })
+})
+
+describe('a check set', () => {
+  const set = (checks: string[]) => ({ ...draftOf(checkSet, 'check'), checks })
+
+  it('is written as checks and no check, and read back as a set', () => {
+    const draft = draftOf(checkSet, 'check')
+
+    expect(draft).toMatchObject({ check: '', checks: ['skill', 'finesse'] })
+    expect(stepsToItems([set(['luck', 'skill', 'finesse'])])).toEqual({
+      steps: [{ ...checkSet, checks: ['luck', 'skill', 'finesse'] }],
+    })
+  })
+
+  it('leaves a single check as it was, with no checks', () => {
+    expect(draftOf(check, 'check')).toMatchObject({ check: 'skill', checks: null })
+    expect(newStep('check', [])).toMatchObject({ check: '', checks: null })
+  })
+
+  it.each([
+    ['fewer than 2', ['skill']],
+    ['none', []],
+    ['more than 10', Array.from({ length: 11 }, (_, at) => `check-${String(at)}`)],
+    ['a repeat', ['skill', 'skill']],
+  ])('refuses a set with %s and sends nothing', (_, checks) => {
+    expect(stepsToItems([set(checks)])).toEqual({
+      errors: { '0.checks': 'A check set needs 2 to 10 distinct checks.' },
+    })
+  })
+
+  it('keeps a step with both check and checks, or checks that are not names, as stored', () => {
+    expect(stepsToDrafts([{ ...checkSet, check: 'skill' }])[0]?.kind).toBe('stored')
+    expect(stepsToDrafts([{ ...checkSet, checks: ['skill', 2] }])[0]?.kind).toBe('stored')
+  })
+
+  const guideOf = (stored: Record<string, unknown>) =>
+    stepGuides(stepsToDrafts([stored]), stepPickers)[0]
+
+  it('is fine with checks that share their band keys, in any order', () => {
+    expect(guideOf(checkSet)?.checks).toBeUndefined()
+    expect(guideOf({ ...checkSet, checks: ['finesse', 'skill'] })?.checks).toBeUndefined()
+  })
+
+  it('flags a check with other band keys, a check the game system lacks and a bad size', () => {
+    expect(guideOf({ ...checkSet, checks: ['skill', 'luck'] })?.checks).toBe(
+      'Check "luck" has other band keys than the first check of the set.',
+    )
+    expect(guideOf({ ...checkSet, checks: ['skill', 'gone'] })?.checks).toBe(
+      'Not a check of this game system: gone.',
+    )
+    expect(guideOf({ ...checkSet, checks: ['skill'] })?.checks).toBe(
+      'A check set needs 2 to 10 distinct checks.',
+    )
+  })
+
+  it('checks the difficulty against every check of the set', () => {
+    expect(guideOf({ ...checkSet, difficulty: 12 })?.difficulty).toBeUndefined()
+    // Valid for skill (9 to 29) but not for finesse (5 to 15).
+    expect(guideOf({ ...checkSet, difficulty: 20 })?.difficulty).toBe(
+      'Outside the range of check "finesse": 5 to 15.',
+    )
+    expect(guideOf({ ...checkSet, difficulty: 7 })?.difficulty).toBe(
+      'Outside the range of check "skill": 9 to 29.',
+    )
+  })
+
+  it('flags an outcome for a band the shared bands lack', () => {
+    const stored = { ...checkSet, outcomes: [{ band: 'ghost' }] }
+
+    expect(guideOf(stored)?.items).toEqual({ 0: 'Not a band of this check.' })
+  })
+})
+
+describe('a table by Scene Type', () => {
+  const rows = (...pairs: [string, string][]) =>
+    pairs.map(([sceneType, table]) => ({ sceneType, table }))
+  const mapped = (bySceneType: ReturnType<typeof rows> | null, extra = {}) => ({
+    ...draftOf(sceneTable, 'table'),
+    bySceneType,
+    ...extra,
+  })
+
+  it('is read as rows in the stored order and written as a map', () => {
+    expect(draftOf(sceneTable, 'table').bySceneType).toEqual(
+      rows(['hideout', 'places'], ['chase', 'moods']),
+    )
+    expect(draftOf(table, 'table').bySceneType).toBeNull()
+    expect(stepsToItems([mapped(rows(['chase', 'moods']))])).toEqual({
+      steps: [{ ...sceneTable, tableBySceneType: { chase: 'moods' } }],
+    })
+  })
+
+  it('sends no map for a step without one, and a new table step has none', () => {
+    expect(round(table)).toEqual({ steps: [table] })
+    expect(newStep('table', [])).toMatchObject({ bySceneType: null })
+  })
+
+  it('keeps a map that is not text to text as stored', () => {
+    expect(stepsToDrafts([{ ...sceneTable, tableBySceneType: { chase: 3 } }])[0]?.kind).toBe(
+      'stored',
+    )
+    expect(stepsToDrafts([{ ...sceneTable, tableBySceneType: ['chase'] }])[0]?.kind).toBe('stored')
+  })
+
+  it.each([
+    ['an empty map', rows(), 'Add a Scene Type, or turn the table by Scene Type off.'],
+    [
+      'a row with no Scene Type',
+      rows(['', 'moods']),
+      'Pick a Scene Type and a table for every row.',
+    ],
+    ['a row with no table', rows(['chase', '']), 'Pick a Scene Type and a table for every row.'],
+    [
+      'a Scene Type twice',
+      rows(['chase', 'moods'], ['chase', 'places']),
+      'Each Scene Type can appear once.',
+    ],
+  ])('refuses %s and sends nothing', (_, bySceneType, message) => {
+    expect(stepsToItems([mapped(bySceneType)])).toEqual({
+      errors: { '0.tableBySceneType': message },
+    })
+  })
+
+  it('refuses branches with a map, and writes none', () => {
+    const branches = draftOf(table, 'table').branches
+
+    expect(stepsToItems([mapped(rows(['chase', 'moods']), { branches })])).toEqual({
+      errors: {
+        '0.branches': 'A table by Scene Type has no branches: delete them or turn the map off.',
+      },
+    })
+  })
+
+  it('writes the branches again once the map is off', () => {
+    const branches = draftOf(table, 'table').branches
+
+    expect(stepsToItems([mapped(null, { branches })])).toEqual({
+      steps: [{ ...sceneTable, tableBySceneType: undefined, branches: table.branches }],
+    })
+  })
+
+  const guides = (stored: Record<string, unknown>) =>
+    stepGuides(stepsToDrafts([stored]), stepPickers)[0]?.scenes
+
+  it('flags a Scene Type or table the game system lacks and a Scene Type given twice', () => {
+    expect(guides(sceneTable)).toEqual({})
+    expect(
+      guides({
+        ...sceneTable,
+        tableBySceneType: { ghost: 'places', chase: 'nowhere' },
+      }),
+    ).toEqual({
+      0: { sceneType: 'Not a Scene Type of this game system.' },
+      1: { table: 'Not an oracle table of this game system.' },
+    })
+    expect(
+      stepGuides([mapped(rows(['chase', 'moods'], ['chase', 'places']))], stepPickers)[0]
+        ?.scenes[1],
+    ).toEqual({ sceneType: 'Another row has this Scene Type.' })
   })
 })
 

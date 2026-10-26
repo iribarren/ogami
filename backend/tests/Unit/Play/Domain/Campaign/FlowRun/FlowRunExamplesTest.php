@@ -199,9 +199,9 @@ final class FlowRunExamplesTest extends FlowRunTestCase
         self::assertSame(['skip:goal', 'skip:involved', 'phaseEnded:premise', 'skip:action', 'skip:subject', 'skip:lists'], self::history($campaign));
         self::assertSame(['7', 'No'], [self::flowRunOf($campaign)->answers()['check'], self::flowRunOf($campaign)->answers()['control']]);
 
-        // Moving on during the scene ends the adventure, and the Flow, after its scene closing.
+        // Moving on during the scene ends it too, then the adventure and the Flow, after its scene closing.
         $campaign->moveOn('adventure', $release, self::at());
-        $campaign->endFlowScene(3, $release, self::at());
+        self::assertSame(['sceneClosing', 'control'], self::position($campaign));
         $campaign->completeFlowStep('control', StepResult::choice('yes'), $release, self::at());
         $campaign->skipFlowStep('lists', $release, self::at());
         self::assertSame([FlowRunStatus::Completed, 5, 3], [self::flowRunOf($campaign)->status(), $this->value($campaign, $release, 'chaos'), \count($campaign->sessions()[0]->scenes())]);

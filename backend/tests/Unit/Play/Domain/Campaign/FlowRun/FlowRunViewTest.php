@@ -139,8 +139,8 @@ final class FlowRunViewTest extends FlowRunTestCase
         $campaign->pickSceneType('netrun', $this->heist, self::at());
         $campaign->skipFlowStep('floor', $this->heist, self::at());
         self::assertSame('Scene closing: Spend an edge to avoid trouble?', $this->view($campaign)->next);
+        // Moving on in open play ends the scene at once: its closing steps run.
         $campaign->moveOn('the-heist', $this->heist, self::at());
-        $campaign->endFlowScene(4, $this->heist, self::at());
         self::assertSame('complication', $this->view($campaign)->step?->step->key);
         $campaign->skipFlowStep('complication', $this->heist, self::at());
 

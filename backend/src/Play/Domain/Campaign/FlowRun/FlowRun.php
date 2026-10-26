@@ -557,9 +557,10 @@ final class FlowRun
     }
 
     /**
-     * Ends a loop phase by the player's choice: at once at the scene pick (its phase closing runs),
-     * else once the current scene finishes (its closing parts still run) or, in a hook, where the
-     * FlowRun would reach the scene pick.
+     * Ends a loop phase by the player's choice: at once at the scene pick (its phase closing runs).
+     * In a scene it ends the scene too: from open play its closing parts run at once, and while scene
+     * steps wait they run and the scene skips open play into its closing. In a hook the phase ends
+     * where the FlowRun would reach the scene pick.
      *
      * @param string $phaseKey the phase to end, the current one
      *
@@ -592,6 +593,8 @@ final class FlowRun
         $this->phaseEnding ??= 'moveOn';
         if (FlowRunStage::ScenePick === $this->stage) {
             $this->closePhase($context);
+        } elseif (ScenePart::Open === $this->part) {
+            $this->enterPart(ScenePart::Closing, $context);
         }
     }
 
@@ -1421,9 +1424,22 @@ final class FlowRun
         }
     }
 
+    /**
+     * Whether the scene skips open play: a phase the player moved on from ends its scene too.
+     * A phase ended by an Effect still gives the player open play.
+     */
+    private function endsSceneAtOpenPlay(): bool
+    {
+        return 'moveOn' === $this->phaseEnding;
+    }
+
     private function leavePart(FlowRunContext $context): void
     {
         $next = $this->part?->next();
+        if (ScenePart::Open === $next && $this->endsSceneAtOpenPlay()) {
+            $next = $next->next();
+        }
+
         if (!$next instanceof ScenePart) {
             $this->afterScene($context);
         } else {
@@ -1573,7 +1589,7 @@ final class FlowRun
                 return $this->labelAfterScene($release, $flow, $placeholders);
             }
 
-            if (ScenePart::Open === $part) {
+            if (ScenePart::Open === $part && !$this->endsSceneAtOpenPlay()) {
                 return $part->label();
             }
 

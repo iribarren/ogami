@@ -170,6 +170,7 @@ export function GuidedControls({ campaign, flowRun, command }: PartProps) {
             label={endPhaseLabel(flowRun.progress.phase)}
             description={flowRun.progress.phaseDescription}
             trackers={visibleTrackers(campaign)}
+            inScene={flowRun.progress.sceneType !== null}
             disabled={command.isPending}
             onConfirm={() => {
               send({ type: 'moveOn', phase: flowRun.progress?.phaseKey ?? '' })

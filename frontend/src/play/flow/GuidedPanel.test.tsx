@@ -438,6 +438,27 @@ describe('the guided panel', () => {
         expect(sent).toEqual({})
       })
 
+      it('says the scene ends too in a scene, and nothing of it at the scene pick', async () => {
+        const user = userEvent.setup()
+        const sentence = /This scene ends too: its closing steps run, then the phase ends\./
+        const inScene = guided({ ...inOpenPlay, canMoveOn: true })
+        renderGuided(inScene, { 'flow-run/move-on': answering(inScene) })
+
+        await user.click(
+          await (await controls()).findByRole('button', { name: 'End the start phase' }),
+        )
+        expect(within(await screen.findByRole('dialog')).getByText(sentence)).toBeInTheDocument()
+        cleanup()
+
+        renderGuided(endable(), { 'flow-run/move-on': answering(endable()) })
+        await user.click(
+          await (await controls()).findByRole('button', { name: 'End the start phase' }),
+        )
+        const dialog = within(await screen.findByRole('dialog'))
+        expect(dialog.getByText(/You will not come back/)).toBeInTheDocument()
+        expect(dialog.queryByText(sentence)).not.toBeInTheDocument()
+      })
+
       it('sends nothing when cancelled with Keep playing', async () => {
         const user = userEvent.setup()
         const { sent } = renderGuided(endable(), { 'flow-run/move-on': answering(endable()) })

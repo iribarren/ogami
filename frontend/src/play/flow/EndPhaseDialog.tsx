@@ -21,6 +21,7 @@ export function EndPhaseDialog({
   label,
   description,
   trackers,
+  inScene = false,
   disabled,
   onConfirm,
 }: {
@@ -29,6 +30,8 @@ export function EndPhaseDialog({
   /** What the phase is for and when it is done, to judge by; nothing when the release gives none. */
   description?: string | null
   trackers: Tracker[]
+  /** Whether a scene is under way (not the scene pick or a hook): it ends with the phase. */
+  inScene?: boolean
   disabled: boolean
   onConfirm: () => void
 }) {
@@ -49,6 +52,11 @@ export function EndPhaseDialog({
             facts and threads before you go on.
           </DialogDescription>
         </DialogHeader>
+        {inScene && (
+          <p className="text-sm">
+            This scene ends too: its closing steps run, then the phase ends.
+          </p>
+        )}
         {description != null && (
           <p aria-label="Phase description" className="text-sm whitespace-pre-wrap">
             {description}

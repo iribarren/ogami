@@ -175,15 +175,61 @@ final class FlowRunTest extends FlowRunTestCase
         $campaign->pickSceneType('talk', $this->release, self::at());
         self::assertSame([1, 2, FlowRunStage::Scene], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->scenesPlayed(), self::flowRunOf($campaign)->stage()]);
 
-        // Move on during a scene: the scene goes on to its closing parts, then the phase ends.
+        // Move on during a scene: its steps still run, then it skips open play into its closing parts, then the phase ends.
         $campaign->moveOn('roam', $this->release, self::at());
         self::assertSame([true, 'play', 'mood'], [self::flowRunOf($campaign)->phaseEnding(), ...self::position($campaign)]);
-        $this->playTalk($campaign);
+        $campaign->skipFlowStep('mood', $this->release, self::at());
+        self::assertSame(['closing', 'wrap'], self::position($campaign));
+        $campaign->skipFlowStep('wrap', $this->release, self::at());
         self::assertSame(['sceneClosing', 'after'], self::position($campaign));
         $campaign->skipFlowStep('after', $this->release, self::at());
 
         self::assertSame([2, false, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->phaseEnding(), self::flowRunOf($campaign)->stage()]);
         self::assertSame(['phaseEnded', 'roam', 'moveOn'], [array_last(self::flowRunOf($campaign)->history())?->event->value, ...array_values(array_last(self::flowRunOf($campaign)->history())->details ?? [])]);
+    }
+
+    #[Test]
+    public function movingOnInOpenPlayEndsTheSceneAtOnce(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign->skipFlowStep('mood', $this->release, self::at());
+        self::assertSame(['open', null], self::position($campaign));
+
+        $campaign->moveOn('roam', $this->release, self::at());
+
+        self::assertSame(['moveOn', 'closing', 'wrap'], [self::flowRunOf($campaign)->phaseEndingReason(), ...self::position($campaign)]);
+        $campaign->skipFlowStep('wrap', $this->release, self::at());
+        $campaign->skipFlowStep('after', $this->release, self::at());
+        self::assertSame([2, FlowRunStage::ScenePick], [self::flowRunOf($campaign)->phaseIndex(), self::flowRunOf($campaign)->stage()]);
+    }
+
+    #[Test]
+    public function aPhaseEndedByAnEffectStillGivesTheSceneItsOpenPlay(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun) => $flowRun->endPhaseAfterScene());
+
+        $campaign->skipFlowStep('mood', $this->release, self::at());
+
+        self::assertSame(['endPhase', 'open', null], [self::flowRunOf($campaign)->phaseEndingReason(), ...self::position($campaign)]);
+        $campaign->endFlowScene((int) $campaign->currentScene()?->number(), $this->release, self::at());
+        self::assertSame(['closing', 'wrap'], self::position($campaign));
+    }
+
+    #[Test]
+    public function aFlowRunStoredInOpenPlayWithAMovedOnPhaseStillEndsWithEndScene(): void
+    {
+        $campaign = $this->inPhase('roam');
+        $campaign->pickSceneType('talk', $this->release, self::at());
+        $campaign->skipFlowStep('mood', $this->release, self::at());
+        $campaign = Campaigns::withFlowRun($campaign, static fn (FlowRun $flowRun): null => new \ReflectionProperty(FlowRun::class, 'phaseEnding')->setValue($flowRun, 'moveOn'));
+        self::assertSame(['moveOn', 'open'], [self::flowRunOf($campaign)->phaseEndingReason(), self::position($campaign)[0]]);
+
+        $campaign->endFlowScene((int) $campaign->currentScene()?->number(), $this->release, self::at());
+
+        self::assertSame(['closing', 'wrap'], self::position($campaign));
     }
 
     #[Test]

@@ -652,6 +652,15 @@ final readonly class GameSystemReleaseTranslator
 
             $keys[$key] = true;
             $kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind');
+            if ('prompt' === $kind) {
+                $this->refuseUnplayedSheetEffects($view, $step['effects'] ?? null, $stepPath.'.effects');
+            }
+
+            // Studio publishes a table by Scene Type (ADR 0042) but Play does not roll one yet.
+            if ('table' === $kind && isset($step['tableBySceneType'])) {
+                throw $this->invalid($view, $stepPath.'.tableBySceneType', 'a table by Scene Type is not played yet.');
+            }
+
             $common = [
                 'key' => $key,
                 'title' => $this->string($view, $step['title'] ?? null, $stepPath.'.title'),
@@ -714,6 +723,11 @@ final readonly class GameSystemReleaseTranslator
      */
     private function checkStep(PublishedReleaseView $view, array $common, array $step, string $path): CheckStep
     {
+        // Studio publishes a check set (ADR 0042) but Play does not roll one yet.
+        if (isset($step['checks'])) {
+            throw $this->invalid($view, $path.'.checks', 'a check set is not played yet.');
+        }
+
         $outcomes = [];
         foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
             $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
@@ -1608,6 +1622,7 @@ final readonly class GameSystemReleaseTranslator
         foreach ($this->list($view, $options, $path) as $index => $option) {
             $optionPath = \sprintf('%s[%d]', $path, $index);
             $fields = $this->object($view, $option, $optionPath);
+            $this->refuseUnplayedSheetEffects($view, $fields['effects'] ?? null, $optionPath.'.effects');
             $snapshots[] = new ChoiceOption(
                 $this->string($view, $fields['key'] ?? null, $optionPath.'.key'),
                 $this->string($view, $fields['label'] ?? null, $optionPath.'.label'),
@@ -1616,6 +1631,19 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return $snapshots;
+    }
+
+    /**
+     * Studio allows sheet effects on a choice option and a prompt step (ADR 0042); Play does not
+     * apply them yet, as neither result names a Character.
+     */
+    private function refuseUnplayedSheetEffects(PublishedReleaseView $view, mixed $effects, string $path): void
+    {
+        foreach (\is_array($effects) ? $effects : [] as $index => $effect) {
+            if (\is_array($effect) && 'sheet' === ($effect['kind'] ?? null)) {
+                throw $this->invalid($view, \sprintf('%s[%s]', $path, $index), 'a sheet effect on a choice option or a prompt step is not played yet.');
+            }
+        }
     }
 
     /**

@@ -52,7 +52,7 @@ final class Effects
     private const array PUSH_KINDS = ['sheet', 'tracker'];
 
     /**
-     * @param bool $sheet whether the list sits where a Character is known (a check outcome, a character step) and may hold sheet effects
+     * @param bool $sheet whether the list sits where a Character is known (a check outcome, a character or prompt step, a choice option) and may hold sheet effects
      * @param bool $push  whether the list is the cost of a check's push: sheet and tracker effects only, and a mark may leave the option to the player
      *
      * @return list<array<string, mixed>> canonical effects; empty when absent
@@ -205,7 +205,7 @@ final class Effects
                 break;
             case 'sheet':
                 if (!$sheet) {
-                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step (and in the cost of a check push)');
+                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step, in the effects of a choice option (not the skip option) and in the cost of a check push');
                 }
 
                 $effect = self::sheetEffect($effect, $path, $catalog, $push);

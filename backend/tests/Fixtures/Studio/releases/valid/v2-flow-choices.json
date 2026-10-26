@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "flow-choices", "name": "Flow choices", "description": "Sheet effects on a choice option and a prompt, a check set and a table by Scene Type, the way the contract shows them."},
+  "oracles": {
+    "tables": [
+      {"key": "street-trouble", "name": "Street trouble", "entries": [{"text": "A pickpocket"}, {"text": "A brawl"}]},
+      {"key": "wild-trouble", "name": "Wild trouble", "entries": [{"text": "A storm"}, {"text": "A wolf"}]},
+      {"key": "any-trouble", "name": "Any trouble", "entries": [{"text": "A rumour"}, {"text": "A stranger"}]}
+    ],
+    "likelihood": []
+  },
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "town", "name": "Town", "purpose": "Trouble in the streets.", "oracles": [],
+      "setup": [],
+      "play": [
+        {
+          "key": "learned", "kind": "choice", "title": "Did you learn something?", "skip": "no",
+          "options": [
+            {"key": "yes", "label": "Yes", "effects": [{"kind": "sheet", "field": "xp", "op": "add", "value": 1}]},
+            {"key": "no", "label": "No"}
+          ]
+        },
+        {
+          "key": "reflect", "kind": "prompt", "title": "What did it cost you?",
+          "effects": [{"kind": "sheet", "field": "wounds", "op": "mark", "value": "hurt"}]
+        },
+        {
+          "key": "defy", "kind": "check", "title": "Defy disaster", "checks": ["grit", "wits"],
+          "outcomes": [
+            {"band": "miss", "effects": [{"kind": "sheet", "field": "xp", "op": "add", "value": 1}]},
+            {"band": "hit", "next": "end"}
+          ]
+        },
+        {
+          "key": "trouble", "kind": "table", "title": "Trouble", "table": "any-trouble",
+          "tableBySceneType": {"wild": "wild-trouble", "town": "street-trouble"},
+          "otherwise": {"next": "end"}
+        }
+      ],
+      "closing": []
+    },
+    {"key": "wild", "name": "Wild", "purpose": "Trouble on the road.", "oracles": [], "setup": [], "play": [], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "xp", "label": "XP", "type": "number", "min": 0, "max": 5, "default": 0},
+      {"key": "grit", "label": "Grit", "type": "number", "min": -1, "max": 3, "default": 0},
+      {"key": "wits", "label": "Wits", "type": "number", "min": -1, "max": 3, "default": 0},
+      {"key": "wounds", "label": "Wounds", "type": "conditions", "options": [{"key": "hurt", "label": "Hurt"}]}
+    ]
+  },
+  "checks": [
+    {
+      "key": "grit", "label": "Grit move", "dice": "2d6", "modifier": "{grit}",
+      "bands": [{"key": "miss", "label": "Miss", "upTo": 6}, {"key": "hit", "label": "Hit"}]
+    },
+    {
+      "key": "wits", "label": "Wits move", "dice": "2d6", "modifier": "{wits}",
+      "bands": [{"key": "miss", "label": "Miss", "upTo": 6}, {"key": "hit", "label": "Hit"}]
+    },
+    {
+      "key": "luck", "label": "Luck", "dice": "d%",
+      "bands": [{"key": "bad", "label": "Bad", "upTo": 20}, {"key": "good", "label": "Good"}]
+    }
+  ]
+}

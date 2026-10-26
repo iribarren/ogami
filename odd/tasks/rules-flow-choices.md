@@ -61,8 +61,8 @@ Play adds: `characterId` on a choice/prompt answer (required when the picked opt
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | This feature doc; ADR 0042 (index; status lines of ADR 0017, 0027, 0030, 0035; glossary "Check set"; roadmap B8b link); issue #285 | parent, inline | [x] | |
-| T2 | 1 | Contract: `v2.schema.json`, the contract doc, Studio validator (`Steps` placement, skip option, `checks`, `tableBySceneType`; `Effects` placement message; `StepParts`/`FlowReferences` reach), `DraftReferences` guards (checks, bands, oracle tables, entries, scene types, sheet fields and options), Play translator refuses the new shapes; fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [ ] | |
+| T1 | 1 | This feature doc; ADR 0042 (index; status lines of ADR 0017, 0027, 0030, 0035; glossary "Check set"; roadmap B8b link); issue #285 | parent, inline | [x] | 63e7855 |
+| T2 | 1 | Contract: `v2.schema.json`, the contract doc, Studio validator (`Steps` placement, skip option, `checks`, `tableBySceneType`; `Effects` placement message; `StepParts`/`FlowReferences` reach), `DraftReferences` guards (checks, bands, oracle tables, entries, scene types, sheet fields and options), Play translator refuses the new shapes; fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | |
 | T3a | 2 | Slice 1 review fixes | writer (delegated) | [ ] | |
 | T3 | 2 | Play: translator reads sheet effects on choice options and prompts; `StepResult` and handler `characterId` (required/refused); `FlowRun` applies them, a skip applies none; journal sheet change; API and Behat tests | writer (delegated) | [ ] | |
 | T4 | 2 | Choice and prompt step cards ask for the Character when the step can change the sheet (preselected when one); response Characters; fixtures; generated OpenAPI and TS | writer (delegated) | [ ] | |
@@ -92,6 +92,7 @@ Play adds: `characterId` on a choice/prompt answer (required when the picked opt
 ## Progress
 
 - 2026-10-26: code map done; four design decisions approved by the user; ADR 0042, issue #285 and this doc created (13 tasks, five slices).
+- 2026-10-26: T2 done (writer, delegated): schema v2 extended in place (`checks`, `tableBySceneType`); Studio `Steps` accepts sheet effects on choice options (not the skip option) and prompts, check sets and the table map; `StepParts::rolledTables` and `DraftReferences` count the new references; Play's translator refuses the three shapes. RED observed (41 failing assertions with the source stashed), GREEN on `tests/Unit/Studio` and the Play translator tests. About 860 changed lines.
 
 ## Reviews
 

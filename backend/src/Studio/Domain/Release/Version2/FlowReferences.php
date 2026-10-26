@@ -215,7 +215,7 @@ final class FlowReferences
             /** @var iterable<string, list<array<string, mixed>>> $lists */
             foreach ($lists as $path => $steps) {
                 foreach ($steps as $index => $step) {
-                    $rollTable(StepParts::rolledTable($step));
+                    array_map($rollTable, StepParts::rolledTables($step));
                     foreach (StepParts::effects($step, \sprintf('%s[%d]', $path, $index)) as $effect) {
                         $reachSceneType(StepParts::effectSceneType($effect));
                     }

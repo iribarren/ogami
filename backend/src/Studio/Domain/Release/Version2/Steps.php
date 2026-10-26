@@ -14,6 +14,8 @@ use App\Studio\Domain\Release\ReleaseFields;
  * "kind". Keys are unique within the list and "end" is reserved; every "next" names a later step of
  * the same list or "end", so a part only moves forward.
  *
+ * @phpstan-import-type CheckShape from Catalog
+ *
  * @internal
  */
 final class Steps
@@ -26,6 +28,8 @@ final class Steps
     public const int MAX_TABLE_BRANCHES = 1000;
     public const int MAX_PICK_COUNT = 10;
     public const int MAX_INSPIRATION = 5;
+    public const int MIN_CHECK_SET = 2;
+    public const int MAX_CHECK_SET = 10;
     public const string END = 'end';
 
     /** What a pick or a condition count ranges over. */
@@ -37,13 +41,13 @@ final class Steps
     private const array KINDS = [
         'prompt' => ['inspiration' => false],
         'oracle' => ['oracle' => true, 'likelihood' => false, 'branches' => false],
-        'table' => ['table' => true, 'branches' => false, 'otherwise' => false],
+        'table' => ['table' => true, 'tableBySceneType' => false, 'branches' => false, 'otherwise' => false],
         'roll' => ['dice' => true, 'bands' => false],
         'choice' => ['options' => true, 'skip' => false],
         'condition' => ['tracker' => false, 'count' => false, 'bands' => true],
         'pick' => ['of' => true, 'tags' => false, 'mode' => true, 'count' => false, 'branches' => false],
         'character' => [],
-        'check' => ['check' => true, 'difficulty' => false, 'outcomes' => false],
+        'check' => ['check' => false, 'checks' => false, 'difficulty' => false, 'outcomes' => false],
     ];
 
     private const array PICK_BRANCHES = ['found' => false, 'none' => false];
@@ -110,8 +114,8 @@ final class Steps
             throw InvalidReleaseContent::at($path.'.mandatory', 'a condition step is never mandatory');
         }
 
-        // A character step completes with a Character, so its own effects may change the sheet.
-        $step = [...$step, ...self::outcome($step, $path, $catalog, 'character' === $kind)];
+        // A character step and a prompt step complete with a Character the player picks, so their own effects may change the sheet.
+        $step = [...$step, ...self::outcome($step, $path, $catalog, \in_array($kind, ['character', 'prompt'], true))];
         $step = match ($kind) {
             'prompt' => self::prompt($step, $path, $catalog),
             'character' => $step,
@@ -235,6 +239,14 @@ final class Steps
             throw InvalidReleaseContent::at($path.'.table', \sprintf('unknown oracle table "%s"', $table));
         }
 
+        if (isset($step['tableBySceneType'])) {
+            if (isset($step['branches'])) {
+                throw InvalidReleaseContent::at($path.'.branches', 'not allowed with tableBySceneType, the entries differ per table');
+            }
+
+            $step['tableBySceneType'] = self::tableBySceneType($step['tableBySceneType'], $path.'.tableBySceneType', $catalog);
+        }
+
         if (isset($step['branches'])) {
             $branches = [];
             $entries = [];
@@ -262,6 +274,39 @@ final class Steps
         }
 
         return $step;
+    }
+
+    /**
+     * The tables a table step rolls per Scene Type (ADR 0042): one or more known Scene Types, each
+     * naming a known table, in key order so the canonical form does not depend on the author's order.
+     *
+     * @return array<string, string>
+     */
+    private static function tableBySceneType(mixed $value, string $path, Catalog $catalog): array
+    {
+        if (!\is_array($value) || ([] !== $value && array_is_list($value))) {
+            throw InvalidReleaseContent::at($path, 'must be an object');
+        }
+
+        if ([] === $value) {
+            throw InvalidReleaseContent::at($path, 'at least 1 Scene Type, 0 given');
+        }
+
+        $tables = [];
+        foreach ($value as $sceneType => $table) {
+            $entryPath = $path.'.'.$sceneType;
+            $sceneType = Effects::sceneType((string) $sceneType, $entryPath, $catalog);
+            $table = ReleaseFields::key($table, $entryPath);
+            if (!$catalog->hasTable($table)) {
+                throw InvalidReleaseContent::at($entryPath, \sprintf('unknown oracle table "%s"', $table));
+            }
+
+            $tables[$sceneType] = $table;
+        }
+
+        ksort($tables);
+
+        return $tables;
     }
 
     /**
@@ -294,8 +339,9 @@ final class Steps
     }
 
     /**
-     * A check step names a check of the release; its difficulty is fixed by an integer, a tracker or
-     * a flow formula, and each outcome names a band of the check, once.
+     * A check step names one check of the release or a set of them the player picks from (ADR 0042);
+     * its difficulty is fixed by an integer, a tracker or a flow formula, and each outcome names a
+     * band the checks share, once.
      *
      * @param array<string, mixed> $step
      *
@@ -303,15 +349,24 @@ final class Steps
      */
     private static function check(array $step, string $path, Catalog $catalog): array
     {
-        $checkKey = ReleaseFields::key($step['check'], $path.'.check');
-        $check = $catalog->check($checkKey) ?? throw InvalidReleaseContent::at($path.'.check', \sprintf('unknown check "%s"', $checkKey));
+        $checks = self::stepChecks($step, $path, $catalog);
+        $keys = array_keys($checks);
+        // The checks of a set share their band keys, so any of them tells the bands of the step.
+        $bands = $checks[$keys[0]]['bands'];
+        $named = 1 === \count($keys) ? \sprintf('check "%s"', $keys[0]) : \sprintf('checks "%s"', implode('", "', $keys));
 
         if (isset($step['difficulty'])) {
             $difficultyPath = $path.'.difficulty';
-            $range = $check['difficulty'] ?? throw InvalidReleaseContent::at($difficultyPath, \sprintf('check "%s" declares no difficulty', $checkKey));
-            $step['difficulty'] = \is_int($step['difficulty'])
-                ? self::fixedDifficulty($step['difficulty'], $difficultyPath, $checkKey, $range)
-                : Effects::reference($step['difficulty'], $difficultyPath, $catalog);
+            foreach ($checks as $checkKey => $check) {
+                $range = $check['difficulty'] ?? throw InvalidReleaseContent::at($difficultyPath, \sprintf('check "%s" declares no difficulty', $checkKey));
+                if (\is_int($step['difficulty'])) {
+                    self::fixedDifficulty($step['difficulty'], $difficultyPath, $checkKey, $range);
+                }
+            }
+
+            if (!\is_int($step['difficulty'])) {
+                $step['difficulty'] = Effects::reference($step['difficulty'], $difficultyPath, $catalog);
+            }
         }
 
         if (isset($step['outcomes'])) {
@@ -320,8 +375,8 @@ final class Steps
                 $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
                 $outcome = ReleaseFields::object($outcome, $outcomePath, self::CHECK_OUTCOME);
                 $band = ReleaseFields::key($outcome['band'], $outcomePath.'.band');
-                if (!isset($check['bands'][$band])) {
-                    throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('unknown band "%s" of check "%s"', $band, $checkKey));
+                if (!isset($bands[$band])) {
+                    throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('unknown band "%s" of %s', $band, $named));
                 }
 
                 if (isset($outcomes[$band])) {
@@ -335,6 +390,53 @@ final class Steps
         }
 
         return $step;
+    }
+
+    /**
+     * The checks a check step names, by key: exactly one of "check" and "checks" (2 to 10 unique
+     * checks with the same band keys).
+     *
+     * @param array<string, mixed> $step
+     *
+     * @return non-empty-array<string, CheckShape>
+     */
+    private static function stepChecks(array $step, string $path, Catalog $catalog): array
+    {
+        if (isset($step['check']) && isset($step['checks'])) {
+            throw InvalidReleaseContent::at($path.'.checks', 'give either check or checks, not both');
+        }
+
+        if (!isset($step['checks'])) {
+            if (!isset($step['check'])) {
+                throw InvalidReleaseContent::at($path.'.check', 'required, give check or checks');
+            }
+
+            $checkKey = ReleaseFields::key($step['check'], $path.'.check');
+
+            return [$checkKey => $catalog->check($checkKey) ?? throw InvalidReleaseContent::at($path.'.check', \sprintf('unknown check "%s"', $checkKey))];
+        }
+
+        $checks = [];
+        foreach (ReleaseFields::sizedList($step['checks'], $path.'.checks', self::MIN_CHECK_SET, self::MAX_CHECK_SET, 'checks') as $index => $key) {
+            $checkPath = \sprintf('%s.checks[%d]', $path, $index);
+            $checkKey = ReleaseFields::key($key, $checkPath);
+            $check = $catalog->check($checkKey) ?? throw InvalidReleaseContent::at($checkPath, \sprintf('unknown check "%s"', $checkKey));
+            if (isset($checks[$checkKey])) {
+                throw InvalidReleaseContent::at($checkPath, \sprintf('duplicate check "%s"', $checkKey));
+            }
+
+            $first = array_key_first($checks);
+            if (null !== $first && array_keys($check['bands']) !== array_keys($checks[$first]['bands'])) {
+                throw InvalidReleaseContent::at($checkPath, \sprintf('check "%s" has other bands than check "%s", the checks of a set share their band keys', $checkKey, $first));
+            }
+
+            $checks[$checkKey] = $check;
+        }
+
+        // sizedList() guarantees the minimum of the set.
+        \assert([] !== $checks);
+
+        return $checks;
     }
 
     /**
@@ -363,6 +465,7 @@ final class Steps
     {
         $options = [];
         $keys = [];
+        $skipKey = \is_string($step['skip'] ?? null) ? $step['skip'] : null;
         foreach (ReleaseFields::sizedList($step['options'], $path.'.options', self::MIN_OPTIONS, self::MAX_OPTIONS, 'options') as $index => $option) {
             $optionPath = \sprintf('%s.options[%d]', $path, $index);
             $option = ReleaseFields::object($option, $optionPath, self::OPTION);
@@ -373,7 +476,12 @@ final class Steps
 
             $keys[$key] = true;
             ReleaseFields::text($option['label'], $optionPath.'.label', 1, self::MAX_TITLE_LENGTH);
-            $options[] = array_filter([...$option, ...self::outcome($option, $optionPath, $catalog)], static fn (mixed $field): bool => [] !== $field);
+            // The option may change the sheet of a Character the player picks, which a skip never has (ADR 0042).
+            if ($key === $skipKey) {
+                self::refuseSheetEffects($option['effects'] ?? null, $optionPath.'.effects');
+            }
+
+            $options[] = array_filter([...$option, ...self::outcome($option, $optionPath, $catalog, $key !== $skipKey)], static fn (mixed $field): bool => [] !== $field);
         }
 
         $step['options'] = $options;
@@ -387,6 +495,23 @@ final class Steps
         }
 
         return $step;
+    }
+
+    /**
+     * Refuses a sheet effect in the effects of the option a choice's skip names: a skip completes
+     * without a Character.
+     */
+    private static function refuseSheetEffects(mixed $effects, string $path): void
+    {
+        if (!\is_array($effects)) {
+            return;
+        }
+
+        foreach ($effects as $index => $effect) {
+            if (\is_array($effect) && 'sheet' === ($effect['kind'] ?? null)) {
+                throw InvalidReleaseContent::at(\sprintf('%s[%s]', $path, $index), 'a sheet effect is not allowed on the option the skip names, a skip completes without a Character');
+            }
+        }
     }
 
     /**

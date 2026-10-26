@@ -739,9 +739,9 @@
       }
     },
     "checkStep": {
-      "description": "Rolls a check for a Character and branches on the outcome band; a band without an entry in outcomes continues.",
+      "description": "Rolls a check for a Character and branches on the outcome band; a band without an entry in outcomes continues. Names exactly one check, or a set of 2 to 10 checks with the same band keys the player picks from (ADR 0042); the domain checks the keys and the shared bands.",
       "type": "object",
-      "required": ["key", "kind", "title", "check"],
+      "required": ["key", "kind", "title"],
       "additionalProperties": false,
       "properties": {
         "key": { "$ref": "#/$defs/stepKey" },
@@ -752,9 +752,16 @@
         "mandatory": { "$ref": "#/$defs/optionalFlag" },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" },
-        "check": { "description": "Key of a check of the release.", "$ref": "#/$defs/key" },
+        "check": { "description": "Key of a check of the release. Exactly one of check or checks.", "anyOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }] },
+        "checks": {
+          "description": "Keys of 2 to 10 unique checks of the release with the same band keys. Exactly one of check or checks.",
+          "type": ["array", "null"],
+          "minItems": 2,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/key" }
+        },
         "difficulty": {
-          "description": "Fixes the difficulty; only for a check that declares one.",
+          "description": "Fixes the difficulty; only for a check (every check of a set) that declares one.",
           "anyOf": [{ "$ref": "#/$defs/difficultyValue" }, { "$ref": "#/$defs/trackerRef" }, { "$ref": "#/$defs/formulaRef" }, { "type": "null" }]
         },
         "outcomes": {
@@ -771,7 +778,23 @@
             }
           }
         }
-      }
+      },
+      "oneOf": [
+        {
+          "required": ["check"],
+          "properties": {
+            "check": { "type": "string" },
+            "checks": { "type": "null" }
+          }
+        },
+        {
+          "required": ["checks"],
+          "properties": {
+            "checks": { "type": "array" },
+            "check": { "type": "null" }
+          }
+        }
+      ]
     },
     "characterStep": {
       "description": "Completes with the Character the player picks, or creates from the step.",
@@ -861,7 +884,14 @@
         "mandatory": { "$ref": "#/$defs/optionalFlag" },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" },
-        "table": { "description": "An oracle table key.", "$ref": "#/$defs/key" },
+        "table": { "description": "An oracle table key; the table rolled when tableBySceneType does not name the current Scene Type.", "$ref": "#/$defs/key" },
+        "tableBySceneType": {
+          "description": "Scene Type key to oracle table key (ADR 0042), 1 entry or more; the domain checks that each key is a Scene Type and each value a table, and that there are no branches with it.",
+          "type": ["object", "null"],
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/key" },
+          "additionalProperties": { "$ref": "#/$defs/key" }
+        },
         "branches": {
           "type": ["array", "null"],
           "maxItems": 1000,

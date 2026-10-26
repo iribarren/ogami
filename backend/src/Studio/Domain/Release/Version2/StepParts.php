@@ -205,13 +205,35 @@ final class StepParts
     }
 
     /**
-     * The oracle table a "table" step rolls, or null.
+     * The oracle tables a "table" step may roll: its default and every table of its scene type map
+     * (ADR 0042); empty for any other step.
      *
      * @param array<string, mixed> $step
+     *
+     * @return list<string>
      */
-    public static function rolledTable(array $step): ?string
+    public static function rolledTables(array $step): array
     {
-        return 'table' === ($step['kind'] ?? null) ? self::string($step['table'] ?? null) : null;
+        if ('table' !== ($step['kind'] ?? null)) {
+            return [];
+        }
+
+        $tables = [self::string($step['table'] ?? null)];
+        foreach (self::objectValues($step['tableBySceneType'] ?? null) as $table) {
+            $tables[] = $table;
+        }
+
+        return array_values(array_unique($tables));
+    }
+
+    /**
+     * The values of a canonical key => string map, in key order; empty for anything else.
+     *
+     * @return list<string>
+     */
+    private static function objectValues(mixed $map): array
+    {
+        return \is_array($map) ? array_values(array_filter($map, \is_string(...))) : [];
     }
 
     /**

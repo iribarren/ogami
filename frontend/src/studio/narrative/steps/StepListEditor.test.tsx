@@ -11,7 +11,7 @@ import {
   stepPickers,
 } from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
-import { stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
+import { DISJOINT_DIFFICULTY, stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
 import type { StepContext } from './stepContext'
 import { clientStepErrors, mapStepError, type StepError } from './stepError'
 import { chooseOption, listOptions } from '@/test/chooseOption'
@@ -1522,6 +1522,48 @@ describe('the step list editor', () => {
       await user.click(card(2).getByRole('checkbox', { name: 'Skill check' }))
       await user.click(card(2).getByRole('checkbox', { name: 'Finesse check' }))
       expect(offered()).toEqual(['Skill check', 'Luck', 'Finesse check'])
+    })
+
+    it('lists every check a stored set holds, so a misfit or unknown one can be unpicked', async () => {
+      const user = userEvent.setup()
+      const stored = {
+        key: 'k',
+        kind: 'check',
+        title: 'K',
+        checks: ['skill', 'finesse', 'luck', 'gone'],
+      }
+      render(<Harness stored={[stored]} />)
+
+      // Luck has other bands than Skill and would not be offered; it is held, so it is.
+      expect(card(1).getByRole('checkbox', { name: 'Luck' })).toBeChecked()
+      expect(
+        card(1).getByRole('checkbox', { name: 'gone (not in this game system)' }),
+      ).toBeChecked()
+      await user.click(card(1).getByRole('checkbox', { name: 'Luck' }))
+      await user.click(card(1).getByRole('checkbox', { name: 'gone (not in this game system)' }))
+
+      expect(saved(0)).toMatchObject({ checks: ['skill', 'finesse'] })
+      // Once unpicked, the band filter applies again.
+      expect(card(1).queryByRole('checkbox', { name: 'Luck' })).not.toBeInTheDocument()
+      expect(card(1).queryByRole('checkbox', { name: /gone/ })).not.toBeInTheDocument()
+    })
+
+    it('says no difficulty fits a set whose checks share none, instead of an inverted range', () => {
+      const context = {
+        ...stepPickers,
+        checks: stepPickers.checks.map((check) =>
+          check.key === 'skill'
+            ? { ...check, difficulty: { default: 22, min: 20, max: 29 } }
+            : check,
+        ),
+      }
+      const stored = { key: 'k', kind: 'check', title: 'K', checks: ['skill', 'finesse'] }
+      render(<Harness stored={[stored]} context={context} />)
+
+      expect(card(1).getByText(DISJOINT_DIFFICULTY)).toBeInTheDocument()
+      expect(card(1).queryByText(/from 20 to 15/)).not.toBeInTheDocument()
+      // Nothing typed, nothing blocked.
+      expect(saved(0)).toEqual(stored)
     })
 
     it('asks for 2 to 10 checks before saving a set, and goes back to one check', async () => {

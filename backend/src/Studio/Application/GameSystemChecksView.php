@@ -12,10 +12,11 @@ namespace App\Studio\Application;
 final readonly class GameSystemChecksView
 {
     /**
-     * @param list<array<array-key, mixed>> $checks   the checks as stored, in order
-     * @param list<CheckFieldView>          $fields   the sheet fields a formula may read, in order
-     * @param list<CheckTrackerView>        $trackers the draft's trackers
-     * @param array<string, list<string>>   $usages   the paths of the check steps that name each check, by check key; empty for an unused check
+     * @param list<array<array-key, mixed>>  $checks     the checks as stored, in order
+     * @param list<CheckFieldView>           $fields     the sheet fields a formula may read, in order
+     * @param list<CheckTrackerView>         $trackers   the draft's trackers
+     * @param list<CheckConditionsFieldView> $conditions the draft's conditions fields with their options, which a push cost marks or clears
+     * @param array<string, list<string>>    $usages     the paths of the check steps that name each check, by check key; empty for an unused check
      */
     public function __construct(
         public int $version,
@@ -23,6 +24,7 @@ final readonly class GameSystemChecksView
         public array $checks,
         public array $fields,
         public array $trackers,
+        public array $conditions,
         public array $usages,
     ) {
     }

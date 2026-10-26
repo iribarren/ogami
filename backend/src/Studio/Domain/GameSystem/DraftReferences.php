@@ -121,7 +121,8 @@ final class DraftReferences
     /**
      * The places that name this tracker: flow "trackers", "tracker" effects and their values, a
      * condition's tracker, band bounds, check step difficulties, {tracker:key} placeholders, a
-     * likelihood oracle's chaos, table entry effects, derived sheet fields and checks.
+     * likelihood oracle's chaos, table entry effects, derived sheet fields and checks (modifier,
+     * pool count formula, bands and the effects of a push).
      *
      * @param array<string, mixed> $document
      *
@@ -201,9 +202,9 @@ final class DraftReferences
 
     /**
      * The places that name this sheet field key: derived field formulas, start max formulas, the
-     * point budget's field list, check modifiers and band
+     * point budget's field list, check modifiers, pool count formulas and band
      * formulas reading {key} or {key.max}, and sheet effects whose "field" is the key or whose
-     * {formula} value reads it, in steps, outcomes and table entries. Flow formulas read trackers
+     * {formula} value reads it, in steps, outcomes, table entries and the cost of a check's push. Flow formulas read trackers
      * only, so they never name a field.
      *
      * @param array<string, mixed> $document
@@ -233,6 +234,8 @@ final class DraftReferences
         foreach (self::objects($document['checks'] ?? null) as $index => $check) {
             $path = \sprintf('checks[%d]', $index);
             $paths += self::sheetFormulaPaths($check['modifier'] ?? null, $key, $path.'.modifier');
+            $count = \is_array($check['pool'] ?? null) ? $check['pool']['count'] ?? null : null;
+            $paths += self::sheetFormulaPaths(\is_array($count) ? $count['formula'] ?? null : null, $key, $path.'.pool.count.formula');
             foreach (self::objects($check['bands'] ?? null) as $bandIndex => $band) {
                 $upTo = $band['upTo'] ?? null;
                 $paths += self::sheetFormulaPaths(\is_array($upTo) ? $upTo['formula'] ?? null : null, $key, \sprintf('%s.bands[%d].upTo.formula', $path, $bandIndex));
@@ -374,6 +377,11 @@ final class DraftReferences
         foreach (self::objects($document['checks'] ?? null) as $index => $check) {
             $path = \sprintf('checks[%d]', $index);
             yield from self::formulaReferences($check['modifier'] ?? null, $path);
+            $count = \is_array($check['pool'] ?? null) ? $check['pool']['count'] ?? null : null;
+            yield from self::formulaReferences(\is_array($count) ? $count['formula'] ?? null : null, $path.'.pool.count.formula');
+            if (\is_array($check['push'] ?? null)) {
+                yield from self::effectsReferences($check['push'], $path.'.push');
+            }
             foreach (self::objects($check['bands'] ?? null) as $bandIndex => $band) {
                 yield from self::valueReferences($band['upTo'] ?? null, \sprintf('%s.bands[%d]', $path, $bandIndex));
             }
@@ -558,7 +566,7 @@ final class DraftReferences
 
     /**
      * Everything that may carry "effects", by path: each step, each of its outcomes, its
-     * "otherwise" and each table entry.
+     * "otherwise", each table entry and the push of each check.
      *
      * @param array<string, mixed> $document
      *
@@ -578,6 +586,12 @@ final class DraftReferences
         foreach (self::objects($oracles['tables'] ?? null) as $tableIndex => $table) {
             foreach (self::objects($table['entries'] ?? null) as $entryIndex => $entry) {
                 yield \sprintf('oracles.tables[%d].entries[%d]', $tableIndex, $entryIndex) => $entry;
+            }
+        }
+
+        foreach (self::objects($document['checks'] ?? null) as $index => $check) {
+            if (\is_array($check['push'] ?? null)) {
+                yield \sprintf('checks[%d].push', $index) => $check['push'];
             }
         }
     }

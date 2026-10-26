@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within, type BoundFunctions, type queries } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -1241,5 +1241,249 @@ describe('the dice and pool modes of the check editor', () => {
 
     expect(await form.findByText('unknown field "ghost".')).toBeVisible()
     expect(form.getByLabelText('Pool count')).toBeInvalid()
+  })
+})
+
+/** A pool check that cannot be pushed yet, and the conditions field a push cost may mark. */
+const raid = {
+  key: 'raid',
+  label: 'Raid',
+  pool: { count: { formula: '{pow} + 1' }, sides: 6, successAt: 5 },
+  bands: [
+    { key: 'fail', label: 'Fail', upTo: 0 },
+    { key: 'win', label: 'Win' },
+  ],
+}
+
+const withRaid = {
+  ...checks,
+  checks: [...checks.checks, raid],
+  conditions: [
+    {
+      key: 'physical',
+      label: 'Physical',
+      options: [
+        { key: 'hurt', label: 'Hurt' },
+        { key: 'exhausted', label: 'Exhausted' },
+      ],
+    },
+  ],
+}
+
+describe('the push of a pool check in the check editor', () => {
+  async function editRaid(check: Record<string, unknown> = raid, handlers = {}) {
+    const opened = await openChecks({
+      [`GET ${base}/checks`]: json({ ...withRaid, checks: [...checks.checks, check] }),
+      ...handlers,
+    })
+    await opened.user.click(await screen.findByRole('button', { name: 'Edit raid' }))
+    const form = within(screen.getByRole('form', { name: 'Edit raid' }))
+    const effect = (number: number) =>
+      within(form.getByRole('group', { name: `Effect ${String(number)}` }))
+    return { ...opened, form, effect }
+  }
+
+  const addEffect = async (
+    user: ReturnType<typeof userEvent.setup>,
+    form: BoundFunctions<typeof queries>,
+    kind: string,
+  ) => {
+    await chooseOption(user, 'New effect kind', kind, form)
+    await user.click(form.getByRole('button', { name: 'Add effect' }))
+  }
+
+  it('offers the push only in Pool mode, off until it is switched on', async () => {
+    const { user, form } = await editRaid()
+
+    expect(form.getByLabelText('Can be pushed')).not.toBeChecked()
+    expect(form.queryByLabelText('Cost label')).toBeNull()
+
+    await user.click(form.getByLabelText('Can be pushed'))
+    expect(form.getByLabelText('Cost label')).toHaveValue('')
+    expect(form.getByText('No effects.')).toBeVisible()
+
+    await user.click(form.getByLabelText('Dice roll'))
+    expect(form.queryByLabelText('Can be pushed')).toBeNull()
+    expect(form.queryByLabelText('Cost label')).toBeNull()
+  })
+
+  it('does not offer it on a dice check', async () => {
+    await openChecks()
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Edit skill' }))
+
+    expect(screen.queryByLabelText('Can be pushed')).toBeNull()
+  })
+
+  it('saves the cost label and effects of every shape: mark with an option, mark with the pick, clear all, a number and a tracker', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withRaid, version: 6 }))
+    const { user, form, effect } = await editRaid(raid, { [`PUT ${base}/checks/raid`]: handler })
+
+    await user.click(form.getByLabelText('Can be pushed'))
+    await typeText(user, form.getByLabelText('Cost label'), 'Take a Condition')
+    await addEffect(user, form, 'sheet')
+    await chooseOption(user, 'Sheet field', 'physical', effect(1))
+    await chooseOption(user, 'Option', 'Hurt', effect(1))
+    await addEffect(user, form, 'sheet')
+    await chooseOption(user, 'Sheet field', 'physical', effect(2))
+    await addEffect(user, form, 'sheet')
+    await chooseOption(user, 'Sheet field', 'physical', effect(3))
+    await chooseOption(user, 'Operation', 'clear', effect(3))
+    await addEffect(user, form, 'sheet')
+    await chooseOption(user, 'Sheet field', 'hp', effect(4))
+    await chooseOption(user, 'Operation', 'subtract', effect(4))
+    await addEffect(user, form, 'tracker')
+    await chooseOption(user, 'Tracker', 'heat', effect(5))
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({
+      expectedVersion: 5,
+      check: {
+        ...raid,
+        push: {
+          label: 'Take a Condition',
+          effects: [
+            { kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' },
+            { kind: 'sheet', field: 'physical', op: 'mark' },
+            { kind: 'sheet', field: 'physical', op: 'clear' },
+            { kind: 'sheet', field: 'hp', op: 'subtract', value: 1 },
+            { kind: 'tracker', tracker: 'heat', op: 'add', value: 1 },
+          ],
+        },
+      },
+    })
+  })
+
+  it('offers the player’s pick on a mark of the cost, and only sheet and tracker effects', async () => {
+    const { user, form, effect } = await editRaid({
+      ...raid,
+      push: { label: 'Pay', effects: [{ kind: 'sheet', field: 'physical', op: 'mark' }] },
+    })
+
+    expect(
+      (await listOptions(user, form.getByLabelText('New effect kind'))).map((kind) => kind.value),
+    ).toEqual(['tracker', 'sheet'])
+    expect(
+      (await listOptions(user, effect(1).getByRole('combobox', { name: 'Option' }))).map(
+        (option) => option.label,
+      ),
+    ).toEqual(['The player picks', 'Hurt', 'Exhausted'])
+    expect(
+      (await listOptions(user, effect(1).getByRole('combobox', { name: 'Sheet field' }))).map(
+        (option) => option.label,
+      ),
+    ).toEqual(['Pick a sheet field', 'Power', 'Hit points', 'Physical'])
+  })
+
+  it('reads a stored push into the form and saves it unchanged', async () => {
+    const stored = {
+      ...raid,
+      push: {
+        label: 'Take a Condition',
+        effects: [
+          { kind: 'sheet', field: 'physical', op: 'clear', value: 'hurt' },
+          { kind: 'tracker', tracker: 'heat', op: 'add', value: { formula: '{tracker:heat} + 1' } },
+        ],
+      },
+    }
+    const { sent, handler } = recorder(Response.json({ ...withRaid, version: 6 }))
+    const { user, form, effect } = await editRaid(stored, { [`PUT ${base}/checks/raid`]: handler })
+
+    expect(form.getByLabelText('Can be pushed')).toBeChecked()
+    expect(form.getByLabelText('Cost label')).toHaveValue('Take a Condition')
+    expect(effect(1).getByRole('combobox', { name: 'Option' })).toHaveTextContent('Hurt')
+    await replaceText(user, form.getByLabelText('Cost label'), 'Pay')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({
+      expectedVersion: 5,
+      check: { ...stored, push: { ...stored.push, label: 'Pay' } },
+    })
+  })
+
+  it('drops the push when it is switched off', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withRaid, version: 6 }))
+    const { user, form } = await editRaid(
+      { ...raid, push: { label: 'Pay', effects: [] } },
+      { [`PUT ${base}/checks/raid`]: handler },
+    )
+
+    await user.click(form.getByLabelText('Can be pushed'))
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({ expectedVersion: 5, check: raid })
+  })
+
+  it('asks for the cost label without calling the API', async () => {
+    const { sent, handler } = recorder(Response.json(withRaid))
+    const { user, form } = await editRaid(raid, { [`PUT ${base}/checks/raid`]: handler })
+
+    await user.click(form.getByLabelText('Can be pushed'))
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText('Give the push a cost label.')).toBeVisible()
+    expect(form.getByLabelText('Cost label')).toBeInvalid()
+    expect(sent).toHaveLength(0)
+  })
+
+  it('shows the publisher refusals on the cost label and on the effect they name', async () => {
+    const { user, form, effect } = await editRaid(
+      {
+        ...raid,
+        push: {
+          label: 'Pay',
+          effects: [
+            { kind: 'sheet', field: 'physical', op: 'mark' },
+            { kind: 'sheet', field: 'hp', op: 'add', value: 1 },
+          ],
+        },
+      },
+      {
+        [`PUT ${base}/checks/raid`]: json(
+          { error: 'checks[2].push.effects[1].value: must be an integer.' },
+          422,
+        ),
+      },
+    )
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await effect(2).findByText('must be an integer.')).toBeVisible()
+    expect(effect(1).queryByText('must be an integer.')).toBeNull()
+  })
+
+  it('shows a refusal of the label on the cost label', async () => {
+    const { user, form } = await editRaid(
+      { ...raid, push: { label: 'Pay', effects: [] } },
+      { [`PUT ${base}/checks/raid`]: json({ error: 'checks[2].push.label: is too long.' }, 422) },
+    )
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText('is too long.')).toBeVisible()
+    expect(form.getByLabelText('Cost label')).toBeInvalid()
+  })
+
+  it('keeps an effect it cannot edit as stored, read-only', async () => {
+    const stored = { ...raid, push: { label: 'Pay', effects: [{ kind: 'teleport', to: 'moon' }] } }
+    const { sent, handler } = recorder(Response.json({ ...withRaid, version: 6 }))
+    const { user, form } = await editRaid(stored, { [`PUT ${base}/checks/raid`]: handler })
+
+    expect(form.getByText(/kind or shape this editor cannot edit/)).toBeVisible()
+    await replaceText(user, form.getByLabelText('Label'), 'Raid!')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({ expectedVersion: 5, check: { ...stored, label: 'Raid!' } })
   })
 })

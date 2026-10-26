@@ -121,7 +121,31 @@ final class GameSystemCheckApiTest extends WebTestCase
         self::assertSame('{check:difficulty}-1', self::at($checks, 'checks.0.bands.0.upTo.formula'));
         self::assertSame([['key' => 'hands', 'label' => 'Hands', 'type' => 'number', 'max' => null], ['key' => 'edge', 'label' => 'Edge', 'type' => 'derived', 'max' => null]], $checks['fields']);
         self::assertSame([['key' => 'alarm', 'label' => 'Alarm', 'initial' => 0]], $checks['trackers']);
+        // A draft without conditions fields reads without any.
+        self::assertSame([], $checks['conditions']);
         self::assertSame(['skill' => ['sceneTypes[0].play[0].check'], 'luck' => []], $checks['usages']);
+    }
+
+    #[Test]
+    public function thePoolChecksAndTheConditionsFieldsWithTheirOptionsAreRead(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-dice-pools');
+
+        $this->client->request('GET', self::BASE.'/mine/checks');
+
+        self::assertResponseIsSuccessful();
+        $checks = $this->json();
+        self::assertSame(['sneak', 'brawl'], $this->keys($checks));
+        self::assertSame(['count' => ['formula' => '{agility} + {stealth} - {physical}'], 'sides' => 6, 'successAt' => 6], self::at($checks, 'checks.0.pool'));
+        self::assertSame('Take a physical Condition', self::at($checks, 'checks.0.push.label'));
+        self::assertSame([
+            ['key' => 'physical', 'label' => 'Physical conditions', 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'exhausted', 'label' => 'Exhausted']]],
+            ['key' => 'mental', 'label' => 'Mental conditions', 'options' => [['key' => 'shaken', 'label' => 'Shaken']]],
+        ], $checks['conditions']);
+        // A conditions field is not a field a formula reads as a number, here.
+        self::assertSame(['agility', 'stealth', 'strain'], [self::at($checks, 'fields.0.key'), self::at($checks, 'fields.1.key'), self::at($checks, 'fields.2.key')]);
+        self::assertNull(self::at($checks, 'fields.3'));
     }
 
     #[Test]

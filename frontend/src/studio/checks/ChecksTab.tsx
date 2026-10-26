@@ -19,6 +19,7 @@ import { Label } from '@/shared/ui/label'
 import type { SampleValues } from '../sheet/useSheetSamples'
 import { BandsEditor, type BandSource } from './BandsEditor'
 import { CheckSandbox } from './CheckSandbox'
+import { PushEditor } from './PushEditor'
 import { TextField } from '../narrative/TextField'
 import { FormulaInput } from '../sheet/FormulaInput'
 import { previewTemplate } from '../sheet/previewTemplate'
@@ -42,10 +43,12 @@ import {
   type CheckMode,
   type DifficultyDraft,
   type PoolDraft,
+  type PushDraft,
   type StoredCheck,
 } from './checkDraft'
 import { checkFormulaDiagnostics, checkReads, checkReferences } from './checkFormulaDiagnostics'
 import { checkAnswer } from './checkError'
+import { pushContext } from './pushContext'
 import { sampleDefaults } from './checkSandbox'
 import {
   CheckError,
@@ -388,9 +391,7 @@ function CheckRow({
   onMove: (target: number) => void
   onDeleted: (result: GameSystemChecks) => void
 }) {
-  const { key, label, dice } = check
-  // The generated type of a stored check knows dice only; a pool check has a pool instead.
-  const { pool } = check as StoredCheck
+  const { key, label, dice, pool } = check
   if (typeof key !== 'string') {
     return (
       <li className="px-4 py-3 text-sm text-muted-foreground">
@@ -654,6 +655,7 @@ function CheckEditor({
     () => (countIsFormula ? checkReads(count, start) : []),
     [countIsFormula, count, start],
   )
+  const costContext = useMemo(() => pushContext(start), [start])
   const modeId = useId()
   const difficultyId = useId()
 
@@ -692,6 +694,9 @@ function CheckEditor({
     setDraft((current) =>
       current.pool === null ? current : { ...current, pool: { ...current.pool, ...changes } },
     )
+  }
+  const changePush = (push: PushDraft | null) => {
+    setDraft((current) => (current.pool === null ? current : { ...current, push }))
   }
   const changeMode = (mode: CheckMode) => {
     setDraft((current) => switchMode(current, mode))
@@ -958,6 +963,18 @@ function CheckEditor({
               </div>
             )}
           </div>
+          {draft.pool !== null && (
+            <PushEditor
+              push={draft.push}
+              context={costContext}
+              labelError={shown.pushLabel}
+              effectErrors={shown.pushEffects ?? []}
+              onChange={changePush}
+              onRestructure={() => {
+                setErrors((current) => ({ ...current, pushEffects: undefined }))
+              }}
+            />
+          )}
           <BandsEditor
             bands={draft.bands}
             onChange={changeBands}

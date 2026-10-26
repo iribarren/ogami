@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 
 import { EffectsEditor } from './EffectsEditor'
-import { effectsToDrafts, effectsToStored } from './effectDraft'
+import { effectsToDrafts, effectsToStored, type EffectKind } from './effectDraft'
 import { effectPickers, every } from './effectFixtures'
+import type { StepContext } from './stepContext'
 import { mapStepError, type StepError } from './stepError'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { replaceText, typeText } from '@/test/typeText'
@@ -16,10 +17,16 @@ function Harness({
   stored = [],
   allowSheet = false,
   errors = [],
+  context = effectPickers,
+  kinds,
+  allowPick,
 }: {
   stored?: unknown[]
   allowSheet?: boolean
   errors?: StepError[]
+  context?: StepContext
+  kinds?: readonly EffectKind[]
+  allowPick?: boolean
 }) {
   const [effects, setEffects] = useState(() => effectsToDrafts(stored))
   useEffect(() => {
@@ -29,8 +36,10 @@ function Harness({
     <EffectsEditor
       label="Effects"
       effects={effects}
-      context={effectPickers}
+      context={context}
       allowSheet={allowSheet}
+      kinds={kinds}
+      allowPick={allowPick}
       errors={errors}
       onChange={setEffects}
     />
@@ -243,5 +252,118 @@ describe('the effects editor', () => {
     expect(card(1).getByRole('alert')).toHaveTextContent('unknown kind')
     expect(screen.getByText('at most 10 effects')).toBeInTheDocument()
     expect(screen.getByText('gone')).toBeInTheDocument()
+  })
+})
+
+describe('the effects editor with conditions fields', () => {
+  const conditions: StepContext = {
+    ...effectPickers,
+    sheetFields: [
+      ...effectPickers.sheetFields,
+      {
+        key: 'physical',
+        name: 'Physical',
+        options: [
+          { key: 'hurt', name: 'Hurt' },
+          { key: 'exhausted', name: 'Exhausted' },
+        ],
+      },
+    ],
+  }
+
+  const ops = (user: ReturnType<typeof userEvent.setup>) =>
+    listOptions(user, card(1).getByRole('combobox', { name: 'Operation' }))
+
+  it('offers mark and clear on a conditions field, never add, subtract or set', async () => {
+    const user = userEvent.setup()
+    render(<Harness allowSheet context={conditions} />)
+    await add(user, 'sheet')
+
+    expect((await ops(user)).map((option) => option.value)).toEqual(['add', 'subtract', 'set'])
+    await chooseOption(user, 'Sheet field', 'physical', card(1))
+
+    expect((await ops(user)).map((option) => option.value)).toEqual(['mark', 'clear'])
+    expect(latest.written).toEqual([{ kind: 'sheet', field: 'physical', op: 'mark' }])
+    await chooseOption(user, 'Sheet field', 'hands', card(1))
+    expect((await ops(user)).map((option) => option.value)).toEqual(['add', 'subtract', 'set'])
+    expect(latest.written).toEqual([{ kind: 'sheet', field: 'hands', op: 'add', value: 1 }])
+  })
+
+  it('picks the option from the field’s options, and a clear may take them all', async () => {
+    const user = userEvent.setup()
+    render(<Harness allowSheet context={conditions} />)
+    await add(user, 'sheet')
+    await chooseOption(user, 'Sheet field', 'physical', card(1))
+
+    const options = await listOptions(user, card(1).getByRole('combobox', { name: 'Option' }))
+    expect(options).toEqual([
+      { label: 'Pick an option', value: '' },
+      { label: 'Hurt', value: 'hurt' },
+      { label: 'Exhausted', value: 'exhausted' },
+    ])
+    await chooseOption(user, 'Option', 'Hurt', card(1))
+    expect(latest.written).toEqual([
+      { kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' },
+    ])
+
+    await chooseOption(user, 'Operation', 'clear', card(1))
+    expect(latest.written).toEqual([
+      { kind: 'sheet', field: 'physical', op: 'clear', value: 'hurt' },
+    ])
+    await chooseOption(user, 'Option', 'All options', card(1))
+    expect(latest.written).toEqual([{ kind: 'sheet', field: 'physical', op: 'clear' }])
+  })
+
+  it('lets the player pick on a mark only where allowPick is set', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <Harness
+        allowSheet
+        context={conditions}
+        stored={[{ kind: 'sheet', field: 'physical', op: 'mark' }]}
+      />,
+    )
+    expect(
+      (await listOptions(user, card(1).getByRole('combobox', { name: 'Option' }))).map(
+        (option) => option.label,
+      ),
+    ).not.toContain('The player picks')
+    unmount()
+
+    render(
+      <Harness
+        allowSheet
+        allowPick
+        context={conditions}
+        stored={[{ kind: 'sheet', field: 'physical', op: 'mark' }]}
+      />,
+    )
+    expect(
+      (await listOptions(user, card(1).getByRole('combobox', { name: 'Option' }))).map(
+        (option) => option.label,
+      ),
+    ).toContain('The player picks')
+    expect(latest.written).toEqual([{ kind: 'sheet', field: 'physical', op: 'mark' }])
+  })
+
+  it('keeps a stored option the field no longer has, and a number field’s effect as it was', () => {
+    const stored = [
+      { kind: 'sheet', field: 'physical', op: 'mark', value: 'gone' },
+      { kind: 'sheet', field: 'hands', op: 'add', value: 2 },
+    ]
+    render(<Harness allowSheet context={conditions} stored={stored} />)
+
+    expect(latest.written).toEqual(stored)
+    expect(card(1).getByRole('combobox', { name: 'Option' })).toHaveTextContent('gone')
+    expect(card(2).queryByRole('combobox', { name: 'Option' })).not.toBeInTheDocument()
+  })
+
+  it('offers only the kinds it is given', async () => {
+    const user = userEvent.setup()
+    render(<Harness allowSheet kinds={['sheet', 'tracker']} context={conditions} />)
+
+    const kinds = await listOptions(user, screen.getByLabelText('New effect kind'))
+
+    expect(kinds.map((option) => option.value)).toEqual(['tracker', 'sheet'])
   })
 })

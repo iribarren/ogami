@@ -13,13 +13,14 @@ use OpenApi\Attributes as OA;
  * version a client sends back as the expected version of its next check write. Every check write
  * answers with this.
  */
-#[OA\Schema(required: ['version', 'schemaVersion', 'checks', 'fields', 'trackers', 'usages'])]
+#[OA\Schema(required: ['version', 'schemaVersion', 'checks', 'fields', 'trackers', 'conditions', 'usages'])]
 final readonly class GameSystemChecksResponse
 {
     /**
-     * @param list<array<array-key, mixed>> $checks
-     * @param list<CheckFieldResponse>      $fields
-     * @param list<CheckTrackerResponse>    $trackers
+     * @param list<array<array-key, mixed>>      $checks
+     * @param list<CheckFieldResponse>           $fields
+     * @param list<CheckTrackerResponse>         $trackers
+     * @param list<CheckConditionsFieldResponse> $conditions
      */
     private function __construct(
         #[OA\Property(description: 'The draft\'s version: send it as "expectedVersion" with the next check write.', example: 3)]
@@ -32,6 +33,8 @@ final readonly class GameSystemChecksResponse
         public array $fields,
         #[OA\Property(description: 'The draft\'s trackers, which a formula or band bound may read.', type: 'array', items: new OA\Items(ref: new Model(type: CheckTrackerResponse::class)))]
         public array $trackers,
+        #[OA\Property(description: 'The draft\'s conditions fields with their options, which the effects of a push cost mark or clear.', type: 'array', items: new OA\Items(ref: new Model(type: CheckConditionsFieldResponse::class)))]
+        public array $conditions,
         #[OA\Property(description: 'Where the check steps of the draft name each check, by check key (e.g. "sceneTypes[0].play[0].check"); a used check cannot be renamed or deleted.', type: 'object', example: ['skill' => ['sceneTypes[0].play[0].check']], additionalProperties: new OA\AdditionalProperties(type: 'array', items: new OA\Items(type: 'string')))]
         public \stdClass $usages,
     ) {
@@ -45,6 +48,7 @@ final readonly class GameSystemChecksResponse
             $view->checks,
             array_map(CheckFieldResponse::fromView(...), $view->fields),
             array_map(CheckTrackerResponse::fromView(...), $view->trackers),
+            array_map(CheckConditionsFieldResponse::fromView(...), $view->conditions),
             (object) $view->usages,
         );
     }

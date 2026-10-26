@@ -4089,6 +4089,36 @@ export interface components {
              */
             database: "ok" | "down";
         };
+        /** @description The pool rolls count (plus the situational modifier, 1 to 100) dice of `sides` sides; each die showing at least `successAt` is a success, and the total is the number of successes. */
+        GameSystemCheckPool: {
+            /** @description The number of dice: an integer from 1 to 100, or a formula over the sheet (1 to 200 characters, read as a modifier). */
+            count: number | {
+                /** @example {agility}+{brawl} */
+                formula: string;
+            };
+            /**
+             * @description Faces of each die, 2 to 1,000.
+             * @example 10
+             */
+            sides: number;
+            /**
+             * @description A die showing this or more is a success, 1 to `sides`.
+             * @example 6
+             */
+            successAt: number;
+        };
+        /** @description Only on a check with a pool. A push is offered when a die failed. */
+        GameSystemCheckPush: {
+            /**
+             * @description What the push costs, in the words of the check.
+             * @example Take a Condition
+             */
+            label: string;
+            /** @description The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one. */
+            effects: {
+                [key: string]: unknown;
+            }[];
+        };
         /** @description Integers between -1,000 and 1,000 with min <= default <= max. */
         GameSystemCheckDifficulty: {
             /** @example Difficulty Value */
@@ -4124,7 +4154,7 @@ export interface components {
                 formula: string;
             };
         };
-        /** @description Total = dice + modifier + situational modifier; the outcome is the first band whose bound is at least the total. */
+        /** @description Rolls dice or a pool, exactly one of `dice` and `pool`. With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier). The outcome is the first band whose bound is at least the total. */
         GameSystemCheck: {
             /**
              * @description Unique among the draft's checks: a-z, 0-9 and "-".
@@ -4136,12 +4166,16 @@ export interface components {
             /** @description Shown to the player when they roll. */
             hint?: string | null;
             /**
-             * @description Dice notation, at most 100 characters.
+             * @description Dice notation, at most 100 characters. Absent on a pool check.
              * @example 1d10
              */
-            dice: string;
+            dice?: string | null;
+            /** @description The dice pool rolled instead of `dice`; absent on a dice check. */
+            pool?: components["schemas"]["GameSystemCheckPool"] | null;
+            /** @description What a player may pay to push a failed pool roll; only with `pool`. */
+            push?: components["schemas"]["GameSystemCheckPush"] | null;
             /**
-             * @description A formula over the sheet and trackers (1 to 200 characters) added to the roll.
+             * @description A formula over the sheet and trackers (1 to 200 characters) added to the roll. Refused with a pool.
              * @example {hands}+{edge}
              */
             modifier?: string | null;
@@ -4186,6 +4220,25 @@ export interface components {
              */
             initial: number | null;
         };
+        CheckConditionOptionResponse: {
+            /**
+             * @description The option's key, the "value" of a mark or clear effect.
+             * @example shaken
+             */
+            key: string;
+            /** @example Shaken */
+            label: string;
+        };
+        CheckConditionsFieldResponse: {
+            /**
+             * @description The field's key, the "field" of a mark or clear effect.
+             * @example conditions
+             */
+            key: string;
+            /** @example Conditions */
+            label: string;
+            options: components["schemas"]["CheckConditionOptionResponse"][];
+        };
         GameSystemChecksResponse: {
             /**
              * @description The draft's version: send it as "expectedVersion" with the next check write.
@@ -4203,6 +4256,8 @@ export interface components {
             fields: components["schemas"]["CheckFieldResponse"][];
             /** @description The draft's trackers, which a formula or band bound may read. */
             trackers: components["schemas"]["CheckTrackerResponse"][];
+            /** @description The draft's conditions fields with their options, which the effects of a push cost mark or clear. */
+            conditions: components["schemas"]["CheckConditionsFieldResponse"][];
             /**
              * @description Where the check steps of the draft name each check, by check key (e.g. "sceneTypes[0].play[0].check"); a used check cannot be renamed or deleted.
              * @example {

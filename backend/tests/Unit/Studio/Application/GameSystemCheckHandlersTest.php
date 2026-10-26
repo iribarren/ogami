@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Studio\Application;
 
+use App\Studio\Application\CheckConditionOptionView;
+use App\Studio\Application\CheckConditionsFieldView;
 use App\Studio\Application\CheckFieldView;
 use App\Studio\Application\CheckTrackerView;
 use App\Studio\Application\DeleteCheck;
@@ -94,13 +96,52 @@ final class GameSystemCheckHandlersTest extends TestCase
     }
 
     #[Test]
+    public function theConditionsFieldsAreReadWithTheirOptionsAndLegacyDraftsHaveNone(): void
+    {
+        $this->draft('pools', 'valid/v2-dice-pools');
+
+        $view = $this->checks('ann', 'pools');
+
+        self::assertEquals([
+            new CheckConditionsFieldView('physical', 'Physical conditions', [new CheckConditionOptionView('hurt', 'Hurt'), new CheckConditionOptionView('exhausted', 'Exhausted')]),
+            new CheckConditionsFieldView('mental', 'Mental conditions', [new CheckConditionOptionView('shaken', 'Shaken')]),
+        ], $view->conditions);
+        // A draft stored before conditions fields existed reads without any.
+        $this->draft('legacy');
+        self::assertSame([], $this->checks('ann', 'legacy')->conditions);
+    }
+
+    #[Test]
+    public function aMalformedConditionsFieldIsReadDefensively(): void
+    {
+        $draft = $this->draft('broken', 'valid/v2-dice-pools');
+        $document = ReleaseArrays::with($draft->document(), 'sheet', ['fields' => [
+            'text',
+            ['type' => 'conditions', 'label' => 'No key', 'options' => [['key' => 'a']]],
+            ['key' => 'plain', 'type' => 'number'],
+            ['key' => 'noOptions', 'type' => 'conditions', 'label' => 4],
+            ['key' => 'wrongOptions', 'type' => 'conditions', 'options' => 'x'],
+            ['key' => 'mixed', 'type' => 'conditions', 'label' => 'Mixed', 'options' => ['junk', ['label' => 'No key'], ['key' => 'b'], ['key' => 'c', 'label' => 'C'], ['key' => 7]]],
+        ]]);
+        $draft->restore($document, $this->clock->now());
+
+        $view = $this->checks('ann', 'broken');
+
+        self::assertEquals([
+            new CheckConditionsFieldView('noOptions', '', []),
+            new CheckConditionsFieldView('wrongOptions', '', []),
+            new CheckConditionsFieldView('mixed', 'Mixed', [new CheckConditionOptionView('b', ''), new CheckConditionOptionView('c', 'C')]),
+        ], $view->conditions);
+    }
+
+    #[Test]
     public function aSchemaVersion1DraftReadsAsEmpty(): void
     {
         $this->draft('my-journal', 'valid/contract-doc-example');
 
         $view = $this->checks('ann', 'my-journal');
 
-        self::assertSame([1, [], [], [], []], [$view->schemaVersion, $view->checks, $view->fields, $view->trackers, $view->usages]);
+        self::assertSame([1, [], [], [], [], []], [$view->schemaVersion, $view->checks, $view->fields, $view->trackers, $view->conditions, $view->usages]);
     }
 
     #[Test]
@@ -148,7 +189,7 @@ final class GameSystemCheckHandlersTest extends TestCase
 
             $view = $this->checks('ann', 'broken');
 
-            self::assertSame([[], [], [], []], [$view->checks, $view->fields, $view->trackers, $view->usages]);
+            self::assertSame([[], [], [], [], []], [$view->checks, $view->fields, $view->trackers, $view->conditions, $view->usages]);
         }
     }
 

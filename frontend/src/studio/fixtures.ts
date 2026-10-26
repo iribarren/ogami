@@ -752,6 +752,7 @@ export const checks = {
     { key: 'hp', label: 'Hit points', type: 'track', max: 12 },
   ],
   trackers: [{ key: 'heat', label: 'Heat', initial: 0 }],
+  conditions: [],
   usages: { skill: ['sceneTypes[0].play[0].check'], luck: [] },
 }
 
@@ -762,5 +763,6 @@ export const checksV1 = {
   checks: [],
   fields: [],
   trackers: [],
+  conditions: [],
   usages: {},
 }

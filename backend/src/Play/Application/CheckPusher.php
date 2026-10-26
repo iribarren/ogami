@@ -114,6 +114,12 @@ final readonly class CheckPusher
      */
     public function keep(Campaign $campaign, JournalEntry $pushed, bool $fromTheSheet): void
     {
+        if ($fromTheSheet) {
+            // Before the Campaign save: the entry's guard needs the campaign lock, and taking it after
+            // the save's weaker lock would be an upgrade that can deadlock with a concurrent record.
+            $this->entries->lockCampaignForPush($campaign->id());
+        }
+
         $this->campaigns->save($campaign);
         try {
             // The latest rule is checked again where the push is kept: an entry recorded meanwhile wins.

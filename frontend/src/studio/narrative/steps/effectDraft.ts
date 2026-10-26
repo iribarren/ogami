@@ -35,6 +35,9 @@ export type EffectKind = (typeof effectKinds)[number]
 
 export const trackerOps = ['add', 'set'] as const
 export const sheetOps = ['add', 'subtract', 'set'] as const
+/** The ops of a sheet effect on a conditions field, the only ones it takes (ADR 0041). */
+export const conditionOps = ['mark', 'clear'] as const
+export type SheetOp = (typeof sheetOps)[number] | (typeof conditionOps)[number]
 
 /** The value forms of a tracker effect and of a sheet effect (only the latter takes dice). */
 export const trackerForms = [
@@ -62,9 +65,18 @@ export type EffectDraft =
       op: 'add' | 'subtract' | 'set'
       value: ValueDraft
     })
+  | (Extra & {
+      kind: 'sheet'
+      field: string
+      /** On a conditions field. */
+      op: 'mark' | 'clear'
+      /** The option key; '' leaves it out: a clear takes them all, a mark in a push cost lets the player pick. */
+      option: string
+    })
   | { kind: 'stored'; stored: unknown }
 
 export type EditedEffect = Exclude<EffectDraft, { kind: 'stored' }>
+export type SheetEffect = Extract<EditedEffect, { kind: 'sheet' }>
 
 /** The fields each kind knows besides `kind`; anything else is kept in `extra`. */
 export const effectFields: Record<EffectKind, readonly string[]> = {
@@ -142,6 +154,19 @@ export function effectToDraft(stored: unknown): EffectDraft {
     }
     case 'sheet': {
       const field = required(stored, 'field')
+      const conditionOp = oneOf(conditionOps, stored.op)
+      if (conditionOp !== null) {
+        // A mark or clear names an option as a key, or none.
+        const option =
+          stored.value === undefined || stored.value === null
+            ? ''
+            : typeof stored.value === 'string'
+              ? stored.value
+              : null
+        return field === null || option === null
+          ? unreadable
+          : { kind, field, op: conditionOp, option, extra }
+      }
       const op = oneOf(sheetOps, stored.op)
       const value = readValue(stored.value, sheetForms)
       return field === null || op === null || value === null
@@ -179,6 +204,32 @@ export function newEffect(kind: EffectKind): EditedEffect {
   }
 }
 
+/** The sheet effect with another op: switching between the two families starts the other's value. */
+export function sheetWithOp(effect: SheetEffect, op: SheetOp): SheetEffect {
+  const { extra, field } = effect
+  if (op === 'mark' || op === 'clear') {
+    return { kind: 'sheet', extra, field, op, option: 'option' in effect ? effect.option : '' }
+  }
+  const one: ValueDraft = { form: 'integer', text: '1' }
+  return { kind: 'sheet', extra, field, op, value: 'value' in effect ? effect.value : one }
+}
+
+/**
+ * The sheet effect on another field. `conditions` says the field is a conditions field: the op
+ * follows (mark/clear for it, add/subtract/set for any other) and an option picked for the
+ * previous field goes.
+ */
+export function sheetWithField(
+  effect: SheetEffect,
+  field: string,
+  conditions: boolean,
+): SheetEffect {
+  const onConditions = effect.op === 'mark' || effect.op === 'clear'
+  const next =
+    onConditions === conditions ? effect : sheetWithOp(effect, conditions ? 'mark' : 'add')
+  return 'option' in next ? { ...next, field, option: '' } : { ...next, field }
+}
+
 /** The non-empty ones of the optional fields: an empty text or list means the same as absent (`extra` keeps one a stored effect had). */
 const given = (fields: Record<string, string | string[]>) =>
   Object.fromEntries(Object.entries(fields).filter(([, value]) => value.length > 0))
@@ -188,6 +239,15 @@ function effectToStored(effect: EffectDraft, path: string, errors: FieldErrors):
     return effect.stored
   }
   const { extra, kind } = effect
+  if (effect.kind === 'sheet' && 'option' in effect) {
+    return {
+      ...extra,
+      kind,
+      field: effect.field,
+      op: effect.op,
+      ...(effect.option === '' ? {} : { value: effect.option }),
+    }
+  }
   switch (effect.kind) {
     case 'tracker':
     case 'sheet':

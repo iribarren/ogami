@@ -31,6 +31,14 @@ interface JournalEntryRepository
      */
     public function savePush(JournalEntry $pushed, bool $asLatest = false): void;
 
+    /**
+     * Locks the campaign row until the transaction ends, so a push from the sheet that is about to
+     * save the Campaign and then its entry (savePush() with $asLatest) waits for a concurrent record
+     * of the campaign instead of upgrading a weaker lock later and deadlocking with it. Called
+     * before the Campaign is saved; a repository without transactions has nothing to lock.
+     */
+    public function lockCampaignForPush(CampaignId $campaignId): void;
+
     public function ofId(JournalEntryId $id): ?JournalEntry;
 
     /**

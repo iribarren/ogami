@@ -11,6 +11,7 @@ describe('checkAnswer', () => {
     ['pool.count.formula', 'poolCount'],
     ['pool.sides', 'poolSides'],
     ['pool.successAt', 'poolSuccessAt'],
+    ['push.label', 'pushLabel'],
     ['difficulty', 'difficulty'],
     ['difficulty.label', 'difficultyLabel'],
     ['difficulty.default', 'difficultyDefault'],
@@ -22,6 +23,32 @@ describe('checkAnswer', () => {
       form: null,
     })
   })
+
+  it.each([
+    ['push.effects', null, 'effects'],
+    ['push.effects[3]', 3, null],
+    ['push.effects[1].field', 1, 'field'],
+    ['push.effects[1].op', 1, 'op'],
+    ['push.effects[0].value', 0, 'value'],
+    ['push.effects[0].value.formula', 0, 'value'],
+    ['push.effects[2].tracker', 2, 'tracker'],
+  ])('puts checks[2].%s on the effect of the push', (path, effect, field) => {
+    expect(checkAnswer(`checks[2].${path}: is wrong`, 2)).toEqual({
+      fields: {
+        pushEffects: [{ index: null, band: null, effect, field, message: 'is wrong' }],
+      },
+      form: null,
+    })
+  })
+
+  it.each(['push', 'push.colour', 'push.effects.x'])(
+    'shows checks[2].%s as a form message, whole',
+    (path) => {
+      const text = `checks[2].${path}: is wrong`
+
+      expect(checkAnswer(text, 2)).toEqual({ fields: {}, form: text })
+    },
+  )
 
   it('keeps the message whole, colons and line breaks included', () => {
     expect(checkAnswer('checks[0].dice: unknown token: "x"\nsecond line', 0)).toEqual({

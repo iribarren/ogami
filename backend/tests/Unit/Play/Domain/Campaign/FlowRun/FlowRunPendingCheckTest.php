@@ -128,7 +128,7 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
     {
         $release = $this->gritRelease();
         $campaign = $this->pending($release);
-        $before = clone $campaign;
+        $before = $this->deepCopy($campaign);
 
         try {
             $campaign->resolvePendingFlowCheck('pass', null, $release, self::at());
@@ -145,7 +145,7 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
     {
         $release = $this->gritRelease();
         $campaign = $this->pending($release);
-        $before = clone $campaign;
+        $before = $this->deepCopy($campaign);
 
         try {
             $campaign->resolvePendingFlowCheck('pass', 'strong', $release, self::at());
@@ -169,7 +169,7 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
         $failing = new TrackerEffect('heat', TrackerOperation::Add, Formula::fromString('{tracker:heat} / 0'));
         $release = CheckStepReleases::release(CheckStepReleases::step('grit', outcomes: ['weak' => new Outcome('fumble', [$failing]), 'strong' => new Outcome('pass', [$failing])]));
         $campaign = $this->pending($release);
-        $before = clone $campaign;
+        $before = $this->deepCopy($campaign);
 
         try {
             $campaign->resolvePendingFlowCheck('sneak', $pushedBandKey, $release, self::at());
@@ -197,7 +197,7 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
     {
         $release = $this->gritRelease();
         $campaign = $this->inScene($release);
-        $before = clone $campaign;
+        $before = $this->deepCopy($campaign);
 
         foreach ([static fn (): array => $campaign->resolvePendingFlowCheck('sneak', null, $release, self::at()), static fn (): PendingCheck => $campaign->pendingFlowCheck('sneak', $release, self::at())] as $command) {
             try {
@@ -220,7 +220,7 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
     {
         $release = $this->gritRelease();
         $campaign = $this->pending($release);
-        $before = clone $campaign;
+        $before = $this->deepCopy($campaign);
 
         try {
             $command($campaign, $release);
@@ -345,5 +345,17 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
         $campaign->completeFlowStep('sneak', $this->rolled($release, 'grit', 1, 5, 2), $release, self::at(), entryId: self::ENTRY);
 
         return $campaign;
+    }
+
+    /**
+     * A copy that shares no object with the campaign, so a change to the campaign's FlowRun cannot
+     * reach it (clone is shallow).
+     */
+    private function deepCopy(Campaign $campaign): Campaign
+    {
+        $copy = unserialize(serialize($campaign));
+        \assert($copy instanceof Campaign);
+
+        return $copy;
     }
 }

@@ -17,6 +17,7 @@ import {
   type CheckDraft,
   type StoredCheck,
 } from './checkDraft'
+import { effectsToDrafts } from '../narrative/steps/effectDraft'
 
 const stored: StoredCheck = {
   key: 'skill',
@@ -602,7 +603,7 @@ describe('a pool check', () => {
 
     const toDice = switchMode({ ...drafted(pooled), dice: '1d10' }, 'dice')
     expect(toDice.pool).toBeNull()
-    expect(toDice).not.toHaveProperty('push')
+    expect(toDice.push).toBeNull()
     expect(writeCheck(toDice)).toHaveProperty('check.dice', '1d10')
     expect(writeCheck(toDice)).not.toHaveProperty('check.push')
     expect(writeCheck(toDice)).not.toHaveProperty('check.pool')
@@ -612,6 +613,93 @@ describe('a pool check', () => {
     const draft = drafted(pooled)
 
     expect(switchMode(draft, 'pool')).toBe(draft)
+  })
+
+  it('reads a push into a label and its effects, keeping an effect it cannot edit as stored', () => {
+    const draft = drafted({
+      ...pooled,
+      push: {
+        label: 'Take a Condition',
+        effects: [
+          { kind: 'sheet', field: 'physical', op: 'mark' },
+          { kind: 'tracker', tracker: 'dread', op: 'add', value: 1 },
+          { kind: 'weird' },
+        ],
+      },
+    })
+
+    expect(draft.push?.label).toBe('Take a Condition')
+    expect(draft.push?.effects.map((effect) => effect.kind)).toEqual(['sheet', 'tracker', 'stored'])
+    expect(draft.push?.effects[0]).toMatchObject({ field: 'physical', op: 'mark', option: '' })
+  })
+
+  it.each([
+    ['a push that is not an object', { ...pooled, push: 'Pay' }],
+    ['a push without a label', { ...pooled, push: { effects: [] } }],
+    ['a push label that is not text', { ...pooled, push: { label: 3 } }],
+    ['push effects that are not a list', { ...pooled, push: { label: 'Pay', effects: 'none' } }],
+    ['a push with another property', { ...pooled, push: { label: 'Pay', extra: 1 } }],
+  ])('cannot hold %s', (_name, check) => {
+    expect(readCheck(check)).toBeNull()
+  })
+
+  it('round trips a push with a label only, with effects of every shape of the cost, and with none', () => {
+    const effects = [
+      { kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' },
+      { kind: 'sheet', field: 'physical', op: 'mark' },
+      { kind: 'sheet', field: 'mental', op: 'clear' },
+      { kind: 'sheet', field: 'physical', op: 'clear', value: 'hurt' },
+      { kind: 'sheet', field: 'agility', op: 'subtract', value: { formula: '{agility} / 2' } },
+      { kind: 'tracker', tracker: 'dread', op: 'add', value: 1 },
+    ]
+    for (const push of [{ label: 'Pay' }, { label: 'Take a Condition', effects }]) {
+      const check = { ...pooled, push }
+
+      expect(writeCheck(drafted(check))).toEqual({ check })
+    }
+  })
+
+  it('writes the push label trimmed, and leaves empty effects out', () => {
+    const draft = drafted(pooled)
+    draft.push = { label: '  Take a Condition ', effects: [] }
+
+    expect(writeCheck(draft)).toHaveProperty('check.push', { label: 'Take a Condition' })
+  })
+
+  it('asks for the cost label, within 100 characters, and for whole numbers in the effects', () => {
+    const draft = drafted(pooled)
+    draft.push = { label: ' ', effects: [] }
+    expect(writeCheck(draft)).toHaveProperty('errors.pushLabel', 'Give the push a cost label.')
+
+    draft.push = { label: 'x'.repeat(101), effects: [] }
+    expect(writeCheck(draft)).toHaveProperty(
+      'errors.pushLabel',
+      'The label is at most 100 characters.',
+    )
+
+    const [effect] = effectsToDrafts([{ kind: 'tracker', tracker: 'dread', op: 'add', value: 1 }])
+    if (effect?.kind !== 'tracker') {
+      throw new Error('Expected a tracker effect.')
+    }
+    draft.push = { label: 'Pay', effects: [{ ...effect, value: { form: 'integer', text: 'x' } }] }
+    const result = writeCheck(draft)
+    expect(result).toHaveProperty('errors.pushEffects', [
+      { index: null, band: null, effect: 0, field: 'value', message: 'Use a whole number.' },
+    ])
+    expect(result).not.toHaveProperty('errors.pushLabel')
+  })
+
+  it('writes no push for a check that is not a pool check, and a duplicate does not share its effects', () => {
+    const dice = drafted(stored)
+    expect(dice.push).toBeNull()
+    expect(writeCheck({ ...dice, push: { label: 'Pay', effects: [] } })).not.toHaveProperty(
+      'check.push',
+    )
+
+    const source = drafted({ ...pooled, push: { label: 'Pay', effects: [{ kind: 'endPhase' }] } })
+    const copy = duplicateCheck(source, [])
+    copy.push?.effects.push(...effectsToDrafts([{ kind: 'endPhase' }]))
+    expect(source.push?.effects).toHaveLength(1)
   })
 
   it('leaves a dice check as it was, with no pool or push written', () => {

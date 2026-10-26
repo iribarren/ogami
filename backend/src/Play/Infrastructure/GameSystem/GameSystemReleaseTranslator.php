@@ -274,6 +274,10 @@ final readonly class GameSystemReleaseTranslator
             $this->assertCheckStepMatchesItsCheck($view, $node, $path, $snapshot);
         }
 
+        if ('table' === $kind) {
+            $this->assertTableMapIsKnown($view, $node, $path, $snapshot);
+        }
+
         if ('sheet' === $kind) {
             $this->assertSheetEffectReadsTheSheet($view, $node, $path, $snapshot);
         }
@@ -317,6 +321,29 @@ final readonly class GameSystemReleaseTranslator
                 if (!$snapshot->tracker($reference->key) instanceof Tracker) {
                     throw $this->invalid($view, $path.'.'.$name, \sprintf('unknown tracker "%s".', $reference->key));
                 }
+            }
+        }
+    }
+
+    /**
+     * The Scene Types a table step's map keys are Scene Types of the release and the tables it
+     * names are oracle tables of the release (ADR 0042): an unknown one would fail when rolled, not
+     * when the release loads. Studio checks this on publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $step
+     */
+    private function assertTableMapIsKnown(PublishedReleaseView $view, array $step, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $map = $step['tableBySceneType'] ?? null;
+        foreach ($map instanceof \stdClass ? (array) $map : (\is_array($map) ? $map : []) as $sceneType => $table) {
+            $sceneType = (string) $sceneType;
+            $mapPath = $path.'.tableBySceneType.'.$sceneType;
+            if (!$snapshot->sceneType($sceneType) instanceof SceneType) {
+                throw $this->invalid($view, $mapPath, \sprintf('unknown Scene Type "%s".', $sceneType));
+            }
+
+            if (\is_string($table) && !$snapshot->hasOracleTable($table)) {
+                throw $this->invalid($view, $mapPath, \sprintf('unknown oracle table "%s".', $table));
             }
         }
     }

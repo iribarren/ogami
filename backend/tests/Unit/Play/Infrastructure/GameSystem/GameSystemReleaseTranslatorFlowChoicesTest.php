@@ -57,6 +57,8 @@ final class GameSystemReleaseTranslatorFlowChoicesTest extends TestCase
         yield 'an empty table map' => [[[...$table, 'tableBySceneType' => []]], 'sceneTypes[0].play[0].tableBySceneType: must map at least one Scene Type.'];
         yield 'a table map with branches' => [[[...$table, 'tableBySceneType' => ['wild' => 'wild-trouble'], 'branches' => [['entry' => 'a', 'next' => 'x']]]], $at.'.tableBySceneType: cannot go with branches.'];
         yield 'a table map to something else than a table key' => [[[...$table, 'tableBySceneType' => ['wild' => 5]]], $at.'.tableBySceneType.wild: must be a string.'];
+        yield 'a table map of a Scene Type the release lacks' => [[[...$table, 'tableBySceneType' => ['ghost' => 'wild-trouble']]], $at.'.tableBySceneType.ghost: unknown Scene Type "ghost".'];
+        yield 'a table map to a table the release lacks' => [[[...$table, 'tableBySceneType' => ['wild' => 'ghost-trouble']]], $at.'.tableBySceneType.wild: unknown oracle table "ghost-trouble".'];
     }
 
     /**

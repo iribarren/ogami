@@ -37,7 +37,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * pool checks "grit" and "nerve" (3d6, success on 5+, bands miss, weak up to 1 and strong, both
  * pushable at the cost of 1 stress) and "steady" (the same bands, no push). Every Scene Type has a
  * step "roll-it" followed by the prompt "after": "duo" offers the set grit and nerve, "single" grit
- * alone, "wide" the set grit and steady; "town" and "wild" roll the table "trouble" (the table "any",
+ * alone, "wide" the set grit and steady, "ranged" the set brawn (difficulty 1 to 5) and wits (6 to 10); "town" and "wild" roll the table "trouble" (the table "any",
  * and "wild" in a Scene of the Scene Type "wild"). Ada is in the scene.
  */
 #[CoversClass(FlowRunController::class)]
@@ -237,6 +237,53 @@ final class CampaignFlowCheckSetsAndTablesApiTest extends WebTestCase
     }
 
     /**
+     * @return iterable<string, array{string, int}> the check picked and a difficulty valid for the other check only
+     */
+    public static function difficultiesOfTheOtherCheck(): iterable
+    {
+        yield 'brawn, a difficulty of wits' => ['brawn', 8];
+        yield 'wits, a difficulty of brawn' => ['wits', 3];
+    }
+
+    #[Test]
+    #[DataProvider('difficultiesOfTheOtherCheck')]
+    public function aDifficultyValidOnlyForTheOtherCheckOfTheSetIsRefusedAndNothingChanges(string $picked, int $difficulty): void
+    {
+        $this->inScene('ranged');
+        $before = $this->campaign();
+
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada', 'checkKey' => $picked, 'difficulty' => $difficulty]);
+
+        $range = 'brawn' === $picked ? '1 to 5' : '6 to 10';
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(\sprintf('Difficulty %d is outside %s of check "%s".', $difficulty, $range, $picked), $this->error());
+        self::assertSame($before, $this->campaign());
+        self::assertSame([], $this->journal());
+    }
+
+    /**
+     * @return iterable<string, array{string, int}> the check picked and a difficulty of its range
+     */
+    public static function difficultiesOfThePickedCheck(): iterable
+    {
+        yield 'brawn, 3' => ['brawn', 3];
+        yield 'wits, 8' => ['wits', 8];
+    }
+
+    #[Test]
+    #[DataProvider('difficultiesOfThePickedCheck')]
+    public function aDifficultyValidForThePickedCheckOfTheSetIsAccepted(string $picked, int $difficulty): void
+    {
+        $this->inScene('ranged');
+        $this->random->script(5, 6, 5);
+
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada', 'checkKey' => $picked, 'difficulty' => $difficulty]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$picked, $difficulty]], array_map(static fn (array $entry): array => [self::at($entry, 'content', 'checkKey'), self::at($entry, 'content', 'difficulty')], $this->journal()));
+    }
+
+    /**
      * The release "sets": valid/v2-dice-pools with the checks, tables and Scene Types above.
      *
      * @return array<string, mixed>
@@ -254,6 +301,8 @@ final class CampaignFlowCheckSetsAndTablesApiTest extends WebTestCase
             ['key' => 'grit', 'label' => 'Grit', 'pool' => $pool, 'bands' => $bands, 'push' => $push],
             ['key' => 'nerve', 'label' => 'Nerve', 'pool' => $pool, 'bands' => $bands, 'push' => $push],
             ['key' => 'steady', 'label' => 'Steady', 'pool' => $pool, 'bands' => $bands],
+            ['key' => 'brawn', 'label' => 'Brawn', 'pool' => $pool, 'bands' => $bands, 'difficulty' => ['label' => 'Opposition', 'default' => 2, 'min' => 1, 'max' => 5]],
+            ['key' => 'wits', 'label' => 'Wits', 'pool' => $pool, 'bands' => $bands, 'difficulty' => ['label' => 'Opposition', 'default' => 7, 'min' => 6, 'max' => 10]],
         ]);
         $after = ['key' => 'after', 'kind' => 'prompt', 'title' => 'After'];
         $check = static fn (array $keys): array => [['key' => 'roll-it', 'kind' => 'check', 'title' => 'Roll it'] + $keys, $after];
@@ -262,6 +311,7 @@ final class CampaignFlowCheckSetsAndTablesApiTest extends WebTestCase
             'duo' => $check(['checks' => ['grit', 'nerve']]),
             'single' => $check(['check' => 'grit']),
             'wide' => $check(['checks' => ['grit', 'steady']]),
+            'ranged' => $check(['checks' => ['brawn', 'wits']]),
             'town' => $trouble,
             'wild' => $trouble,
         ];

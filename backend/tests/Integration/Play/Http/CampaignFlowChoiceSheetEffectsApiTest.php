@@ -142,10 +142,10 @@ final class CampaignFlowChoiceSheetEffectsApiTest extends WebTestCase
     public static function refusedAnswers(): iterable
     {
         yield 'an option with sheet effects and no Character' => ['choose', ['stepKey' => 'learned', 'optionKey' => 'yes'], 'Step "learned" is a choice step: it needs "characterId".'];
-        yield 'an option with sheet effects and an unknown Character' => ['choose', ['stepKey' => 'learned', 'optionKey' => 'yes', 'characterId' => 'ghost'], 'Character step "learned" has no Character "ghost" in the campaign.'];
+        yield 'an option with sheet effects and an unknown Character' => ['choose', ['stepKey' => 'learned', 'optionKey' => 'yes', 'characterId' => 'ghost'], 'Choice step "learned" has no Character "ghost" in the campaign.'];
         yield 'an option without sheet effects and a Character' => ['choose', ['stepKey' => 'learned', 'optionKey' => 'maybe', 'characterId' => 'char-ada'], 'Step "learned" is a choice step: it takes no "characterId".'];
         yield 'a prompt with sheet effects and no Character' => ['cost', ['stepKey' => 'cost', 'text' => 'Ouch'], 'Step "cost" is a prompt step: it needs "characterId".'];
-        yield 'a prompt with sheet effects and an unknown Character' => ['cost', ['stepKey' => 'cost', 'text' => 'Ouch', 'characterId' => 'ghost'], 'Character step "cost" has no Character "ghost" in the campaign.'];
+        yield 'a prompt with sheet effects and an unknown Character' => ['cost', ['stepKey' => 'cost', 'text' => 'Ouch', 'characterId' => 'ghost'], 'Prompt step "cost" has no Character "ghost" in the campaign.'];
         yield 'a prompt without sheet effects and a Character' => ['plain', ['stepKey' => 'note', 'text' => 'Fine', 'characterId' => 'char-ada'], 'Step "note" is a prompt step: it takes no "characterId".'];
     }
 

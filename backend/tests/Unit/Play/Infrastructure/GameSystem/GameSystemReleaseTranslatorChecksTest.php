@@ -142,7 +142,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         self::assertSame(['caught', 'through'], array_map(static fn (CheckBand $band): string => $band->key, $check->bands));
         $step = $snapshot->sceneType('infiltration')?->play->step('sneak-by');
         self::assertInstanceOf(CheckStep::class, $step);
-        self::assertSame(['slip-past', null, ['caught']], [$step->check, $step->difficulty, array_keys($step->outcomes)]);
+        self::assertSame(['slip-past', null, ['caught']], [$step->singleCheck(), $step->difficulty, array_keys($step->outcomes)]);
     }
 
     #[Test]
@@ -153,7 +153,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         self::assertEquals(
             new CheckStep(
                 'pick-lock', 'Pick the lock', null, null, false, null, [],
-                'skill',
+                ['skill'],
                 Formula::fromString('{tracker:alarm}+9'),
                 ['fail' => new Outcome(null, [new TrackerEffect('alarm', TrackerOperation::Add, 1)]), 'crit' => new Outcome('end')],
             ),
@@ -166,7 +166,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
     {
         $step = $this->checkStepIn(['difficulty' => null, 'outcomes' => null]);
 
-        self::assertEquals(new CheckStep('pick-lock', 'Pick the lock', null, null, false, null, [], 'skill', null, []), $step);
+        self::assertEquals(new CheckStep('pick-lock', 'Pick the lock', null, null, false, null, [], ['skill'], null, []), $step);
     }
 
     #[Test]

@@ -1,4 +1,10 @@
-import { gritCheck, lostMineCampaign, skillCheck } from '../campaigns/fixtures'
+import {
+  gripCheck,
+  gritCheck,
+  lostMineCampaign,
+  skillCheck,
+  sneakCheck,
+} from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
 import { gritEntry } from '../journal/fixtures'
@@ -36,6 +42,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     pick: null,
     fills: [],
     check: null,
+    checks: [],
     difficulty: null,
     difficultyFixed: false,
     characters: [],
@@ -117,6 +124,16 @@ export const checkStep = step({
   title: 'Slip past the guard',
   prompt: 'Roll to get by unseen.',
   check: skillCheck.key,
+  characters: [{ id: viCharacter.id, name: viCharacter.name }],
+})
+
+/** A `check` step offering the check set Sneak and Grip (pool checks): the player picks which one Vi rolls. */
+export const checkSetStep = step({
+  key: 'sneak',
+  kind: 'check',
+  title: 'Slip past the guard',
+  prompt: 'Roll to get by unseen.',
+  checks: [sneakCheck.key, gripCheck.key],
   characters: [{ id: viCharacter.id, name: viCharacter.name }],
 })
 

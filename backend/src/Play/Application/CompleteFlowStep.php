@@ -24,6 +24,7 @@ final readonly class CompleteFlowStep implements Command
      * @param string|null       $characterId character step: the id of the Character of the campaign the player brings; check step: the Character who rolls
      * @param int|null          $difficulty  check step: the Check difficulty, only when the step does not fix one; null for the check's default
      * @param int|null          $situational check step: the Situational modifier, from -100 to 100; null for none
+     * @param string|null       $checkKey    check step with a check set: the check of the set to roll (required there, refused on a single-check step)
      */
     public function __construct(
         public string $campaignId,
@@ -38,6 +39,7 @@ final readonly class CompleteFlowStep implements Command
         public ?string $characterId = null,
         public ?int $difficulty = null,
         public ?int $situational = null,
+        public ?string $checkKey = null,
     ) {
     }
 }

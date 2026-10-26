@@ -30,7 +30,8 @@ function describePool(pool: NonNullable<CampaignCheck['pool']>) {
 const situationalRange = { min: -100, max: 100 }
 
 /**
- * Rolls a check: the check (a select when there are several), its Check difficulty when it
+ * Rolls a check: the check (a select when there are several; with `pickCheck` none is preselected
+ * and the player must choose, as for a check set), its Check difficulty when it
  * declares one, the Situational modifier, and, when `characters` is given, the Character. A
  * `fixedDifficulty` (a check step that fixes it) is shown, not asked. The form only collects; the
  * caller sends. An empty difficulty is left out, so the check's default applies, and so is a zero modifier.
@@ -39,6 +40,7 @@ export function CheckForm({
   checks,
   characters,
   fixedDifficulty = null,
+  pickCheck = false,
   pending,
   error,
   onSubmit,
@@ -46,12 +48,14 @@ export function CheckForm({
   checks: CampaignCheck[]
   characters?: { id: string; name: string }[]
   fixedDifficulty?: number | null
+  /** Whether the player must choose among `checks`, none being preselected. */
+  pickCheck?: boolean
   pending: boolean
   error?: string
   onSubmit: (roll: CheckRoll) => void
 }) {
   const id = useId()
-  const [checkKey, setCheckKey] = useState(checks[0]?.key ?? '')
+  const [checkKey, setCheckKey] = useState(pickCheck ? '' : (checks[0]?.key ?? ''))
   const check = checks.find(({ key }) => key === checkKey)
   const [difficulty, setDifficulty] = useState(String(check?.difficulty?.default ?? ''))
   const [situational, setSituational] = useState('0')
@@ -116,6 +120,7 @@ export function CheckForm({
                 chooseCheck(event.target.value)
               }}
             >
+              {pickCheck && <option value="">Choose a check</option>}
               {checks.map(({ key, label }) => (
                 <option key={key} value={key}>
                   {label}

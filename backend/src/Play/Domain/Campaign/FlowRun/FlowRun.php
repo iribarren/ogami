@@ -296,8 +296,9 @@ final class FlowRun
             [$outcome, $answer] = [$option->outcome, $option->label];
         } elseif ($step instanceof TableStep) {
             $rolled = $result->table?->steps() ?? [];
-            if (!isset($rolled[0]) || $rolled[0]->tableKey() !== $step->table) {
-                throw InvalidStepResult::otherTable($step->key, $step->table);
+            $table = $step->tableFor($this->sceneType);
+            if (!isset($rolled[0]) || $rolled[0]->tableKey() !== $table) {
+                throw InvalidStepResult::otherTable($step->key, $table);
             }
 
             $outcome = $step->outcomeFor($context->release->rolledEntry($rolled[0])?->key);
@@ -329,6 +330,7 @@ final class FlowRun
             $newlyPicked = new PickedItems(ItemKind::Character, [$id]);
         } elseif ($step instanceof CheckStep) {
             $check = $result->check ?? throw InvalidStepResult::missingField($step->key, StepKind::Check, 'check');
+            $checkKey = self::pickedCheck($step, $result->checkKey);
             $this->assertCanRoll($step, $result->characterId ?? '', $context);
             $fixed = null === $step->difficulty ? null : $context->evaluate($step->difficulty);
             if (null !== $fixed && $fixed !== $check->difficulty) {
@@ -336,8 +338,8 @@ final class FlowRun
             }
 
             $outcome = $step->outcomeFor($check->band->key);
-            if ($this->pushable($step, $check, $context)) {
-                $this->pendingCheck = new PendingCheck($step->key, $entryId ?? throw new \LogicException(\sprintf('The roll of check step "%s" pends without its journal entry.', $step->key)), (string) $result->characterId, $check->difficulty, $check->band->key);
+            if ($this->pushable($checkKey, $check, $context)) {
+                $this->pendingCheck = new PendingCheck($step->key, $entryId ?? throw new \LogicException(\sprintf('The roll of check step "%s" pends without its journal entry.', $step->key)), (string) $result->characterId, $check->difficulty, $check->band->key, $step->isSet() ? $checkKey : null);
 
                 return [];
             }
@@ -411,7 +413,7 @@ final class FlowRun
     {
         $pending = $this->pendingCheckAt($stepKey, $context);
         $step = $this->currentStep($context->release, $context->flow);
-        $check = $step instanceof CheckStep ? $context->release->check($step->check) : null;
+        $check = $step instanceof CheckStep ? $context->release->check($pending->checkKeyFor($step)) : null;
         if (!$step instanceof CheckStep || !$check instanceof Check) {
             throw new \LogicException(\sprintf('The roll of step "%s" pends on a check the release declares.', $pending->stepKey));
         }
@@ -727,7 +729,7 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description, FlowRunStatus::Paused === $this->status ? null : $this->sceneNumber),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null, $this->pendingCheck) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null, $this->pendingCheck, $step instanceof TableStep ? $step->tableFor($this->sceneType) : null) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
@@ -910,12 +912,30 @@ final class FlowRun
     }
 
     /**
+     * The check a roll of the step uses: the one a single-check step names (which takes no pick), or
+     * the one of its set the player picked. The one place that decides it, for the FlowRun and for the
+     * command that rolls.
+     *
+     * @throws InvalidStepResult when a set step is given none, a single-check step is given one, or the one given is not in the set
+     */
+    public static function pickedCheck(CheckStep $step, ?string $picked): string
+    {
+        if (!$step->isSet()) {
+            return null === $picked ? $step->anyCheck() : throw InvalidStepResult::unexpectedField($step->key, StepKind::Check, 'checkKey');
+        }
+
+        $picked ?? throw InvalidStepResult::missingField($step->key, StepKind::Check, 'checkKey');
+
+        return \in_array($picked, $step->checks, true) ? $picked : throw InvalidStepResult::notInTheSet($step->key, $picked);
+    }
+
+    /**
      * Whether a check step's roll waits for Keep or Push: a pool roll with a die that failed, of a
      * check that declares a push.
      */
-    private function pushable(CheckStep $step, CheckResult $result, FlowRunContext $context): bool
+    private function pushable(string $checkKey, CheckResult $result, FlowRunContext $context): bool
     {
-        return $context->release->check($step->check)?->push instanceof CheckPush && $result->pool instanceof PoolResult && $result->pool->roll->failures() > 0;
+        return $context->release->check($checkKey)?->push instanceof CheckPush && $result->pool instanceof PoolResult && $result->pool->roll->failures() > 0;
     }
 
     /**
@@ -971,7 +991,7 @@ final class FlowRun
 
         $characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::of($step), 'characterId');
         if (null === $context->characterName($characterId)) {
-            throw InvalidStepResult::unknownCharacter($step->key, $characterId);
+            throw InvalidStepResult::unknownSheetCharacter($step->key, StepKind::of($step), $characterId);
         }
     }
 
@@ -1662,7 +1682,7 @@ final class FlowRun
     private function nextOf(StepList $steps, Step $step, GameSystemSnapshot $release): Step|false|null
     {
         $outcomes = StepEffects::outcomes($step);
-        if ($step instanceof CheckStep && \count($outcomes) < \count($release->check($step->check)->bands ?? [])) {
+        if ($step instanceof CheckStep && \count($outcomes) < \count($release->check($step->anyCheck())->bands ?? [])) {
             $outcomes[] = null;
         }
 

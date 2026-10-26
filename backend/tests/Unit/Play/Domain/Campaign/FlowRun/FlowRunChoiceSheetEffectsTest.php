@@ -85,10 +85,10 @@ final class FlowRunChoiceSheetEffectsTest extends FlowRunTestCase
     public static function refusedResults(): iterable
     {
         yield 'an option with sheet effects and no Character' => ['learned', StepResult::choice('yes'), 'Step "learned" is a choice step: it needs "characterId".'];
-        yield 'an option with sheet effects and an unknown Character' => ['learned', StepResult::choice('yes', 'ghost'), 'Character step "learned" has no Character "ghost" in the campaign.'];
+        yield 'an option with sheet effects and an unknown Character' => ['learned', StepResult::choice('yes', 'ghost'), 'Choice step "learned" has no Character "ghost" in the campaign.'];
         yield 'an option without sheet effects and a Character' => ['learned', StepResult::choice('maybe', 'ida'), 'Step "learned" is a choice step: it takes no "characterId".'];
         yield 'a prompt with sheet effects and no Character' => ['cost', StepResult::prompt('Ouch'), 'Step "cost" is a prompt step: it needs "characterId".'];
-        yield 'a prompt with sheet effects and an unknown Character' => ['cost', StepResult::prompt('Ouch', 'ghost'), 'Character step "cost" has no Character "ghost" in the campaign.'];
+        yield 'a prompt with sheet effects and an unknown Character' => ['cost', StepResult::prompt('Ouch', 'ghost'), 'Prompt step "cost" has no Character "ghost" in the campaign.'];
         yield 'a prompt without sheet effects and a Character' => ['note', StepResult::prompt('Fine', 'ida'), 'Step "note" is a prompt step: it takes no "characterId".'];
     }
 

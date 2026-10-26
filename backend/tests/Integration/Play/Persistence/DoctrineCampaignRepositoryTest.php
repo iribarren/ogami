@@ -216,6 +216,8 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'a pending check without an entry' => [['pendingCheck' => ['entryId' => null] + $pending] + $active, 'Stored campaign FlowRun: "entryId" must be a string.'];
         yield 'a pending check with a difficulty that is no integer' => [['pendingCheck' => ['difficulty' => '13'] + $pending] + $active, 'Stored campaign FlowRun: "difficulty" must be an integer.'];
         yield 'a pending check with a blank band' => [['pendingCheck' => ['bandKey' => ' '] + $pending] + $active, 'Stored campaign FlowRun: "pendingCheck" is invalid: A pending check needs a bandKey.'];
+        yield 'a pending check with a check key that is no string' => [['pendingCheck' => ['checkKey' => 5] + $pending] + $active, 'Stored campaign FlowRun: "checkKey" must be a string.'];
+        yield 'a pending check with a blank check key' => [['pendingCheck' => ['checkKey' => ' '] + $pending] + $active, 'Stored campaign FlowRun: "pendingCheck" is invalid: A pending check needs a checkKey.'];
         yield 'a pending check of another step' => [['pendingCheck' => $pending] + ['stepKey' => 'plan'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
         yield 'a pending check while guidance is paused' => [['pendingCheck' => $pending] + ['status' => 'paused'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
         yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
@@ -325,14 +327,12 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
-    public function aPendingCheckRoundTripsWithTheWholeFlowRun(): void
+    #[DataProvider('pendingChecks')]
+    public function aPendingCheckRoundTripsWithTheWholeFlowRun(?string $checkKey): void
     {
         $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
-        $base = $this->guidedCampaign($id->toString());
-        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
-        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', 13, 'weak');
-        $flowRun = FlowRun::reconstitute(FlowRunStatus::Active, $run->phaseIndex(), FlowRunStage::Scene, 1, 1, 'legwork', ScenePart::Setup, 'case', $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), null, null, $run->switchCount(), $run->history(), null, $run->phaseOpened(), $run->sessionOpeningDue(), null, false, $pending);
-        $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
+        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', 13, 'weak', $checkKey);
+        $campaign = $this->withPendingCheck($id, $pending);
         $this->repository->add($campaign);
         $this->forgetLoaded();
 
@@ -340,7 +340,49 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         self::assertEquals($campaign, $loaded);
         self::assertEquals($pending, $loaded?->flowRun()?->pendingCheck());
-        self::assertEquals(['stepKey' => 'case', 'entryId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'characterId' => 'ada', 'difficulty' => 13, 'bandKey' => 'weak'], $this->storedFlowRun($id->toString())['pendingCheck']);
+        self::assertEquals(['stepKey' => 'case', 'entryId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'characterId' => 'ada', 'difficulty' => 13, 'bandKey' => 'weak', 'checkKey' => $checkKey], $this->storedFlowRun($id->toString())['pendingCheck']);
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function pendingChecks(): iterable
+    {
+        yield 'of a single-check step, which keeps no check' => [null];
+        yield 'of a check set, which keeps the picked check' => ['nerve'];
+    }
+
+    /**
+     * A pending roll stored before check sets (ADR 0042) has no checkKey: it reads as a roll of the
+     * step's own check.
+     */
+    #[Test]
+    public function aPendingCheckStoredBeforeCheckSetsReadsWithoutACheckKey(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', 13, 'weak');
+        $this->repository->add($this->withPendingCheck($id, $pending));
+        $legacy = $this->storedFlowRun($id->toString());
+        $stored = $legacy['pendingCheck'];
+        self::assertIsArray($stored);
+        unset($stored['checkKey']);
+        $legacy['pendingCheck'] = $stored;
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($pending, $loaded?->flowRun()?->pendingCheck());
+        self::assertNull($loaded?->flowRun()?->pendingCheck()?->checkKey);
+    }
+
+    private function withPendingCheck(CampaignId $id, PendingCheck $pending): Campaign
+    {
+        $base = $this->guidedCampaign($id->toString());
+        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
+        $flowRun = FlowRun::reconstitute(FlowRunStatus::Active, $run->phaseIndex(), FlowRunStage::Scene, 1, 1, 'legwork', ScenePart::Setup, 'case', $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), null, null, $run->switchCount(), $run->history(), null, $run->phaseOpened(), $run->sessionOpeningDue(), null, false, $pending);
+
+        return Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
     }
 
     #[Test]

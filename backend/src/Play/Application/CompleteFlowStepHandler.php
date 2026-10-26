@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\CheckStepPending;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
+use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunNotActive;
 use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowStepView;
@@ -123,7 +124,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $step = $view->step;
 
         $at = $this->clock->now();
-        [$result, $content] = $this->resultOf($command, $step, $campaign, $release, $at);
+        [$result, $content] = $this->resultOf($command, $view, $campaign, $release, $at);
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
         $changes = $campaign->completeFlowStep($step->key, $result, $release, $at, $this->random, $entry->id()->toString());
         $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($result, $campaign, $changes));
@@ -156,12 +157,14 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     /**
      * @return array{StepResult, JournalEntryContent} the result the FlowRun takes and the journal content
      */
-    private function resultOf(CompleteFlowStep $command, Step $step, Campaign $campaign, GameSystemSnapshot $release, \DateTimeImmutable $at): array
+    private function resultOf(CompleteFlowStep $command, FlowStepView $view, Campaign $campaign, GameSystemSnapshot $release, \DateTimeImmutable $at): array
     {
+        $step = $view->step;
+
         return match (true) {
             $step instanceof PromptStep => $this->prompt($command, $step, $campaign),
             $step instanceof RollStep => $this->roll($command, $step),
-            $step instanceof TableStep => $this->table($command, $step, $release),
+            $step instanceof TableStep => $this->table($command, $step, $view->table ?? $step->table, $release),
             $step instanceof OracleStep => $this->oracle($command, $step, $campaign, $release),
             $step instanceof ChoiceStep => $this->choice($command, $step, $campaign),
             $step instanceof PickStep => $this->pick($command, $step, $campaign),
@@ -200,12 +203,12 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     /**
      * @return array{StepResult, JournalEntryContent}
      */
-    private function table(CompleteFlowStep $command, TableStep $step, GameSystemSnapshot $release): array
+    private function table(CompleteFlowStep $command, TableStep $step, string $table, GameSystemSnapshot $release): array
     {
         $this->refuseFieldsOtherThan($command, $step);
-        $result = $release->resolveOracleTable($step->table, $this->random);
+        $result = $release->resolveOracleTable($table, $this->random);
 
-        return [StepResult::table($result), OracleTableContent::fromResult($step->table, $release->oracleTableNames()[$step->table], $result, $release->rolledSceneTypes($result))];
+        return [StepResult::table($result), OracleTableContent::fromResult($table, $release->oracleTableNames()[$table], $result, $release->rolledSceneTypes($result))];
     }
 
     /**
@@ -256,7 +259,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
 
         $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::of($step), 'characterId');
         if (null === ($campaign->itemNames(ItemKind::Character, [$id])[0] ?? null)) {
-            throw InvalidStepResult::unknownCharacter($step->key, $id);
+            throw InvalidStepResult::unknownSheetCharacter($step->key, StepKind::of($step), $id);
         }
 
         return $id;
@@ -300,7 +303,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     }
 
     /**
-     * Performs the step's check for the Character. The FlowRun validates first (the Character in the
+     * Performs the step's check (the one of its set the player picked) for the Character. The FlowRun validates first (the Character in the
      * scene, the difficulty the step fixes), then the check evaluates everything before it rolls, so a
      * refused or unevaluable check rolls nothing and records nothing.
      *
@@ -308,14 +311,15 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      */
     private function check(CompleteFlowStep $command, CheckStep $step, Campaign $campaign, GameSystemSnapshot $release, \DateTimeImmutable $at): array
     {
-        $this->refuseFieldsOtherThan($command, $step, 'characterId', 'difficulty', 'situational');
+        $this->refuseFieldsOtherThan($command, $step, 'characterId', 'difficulty', 'situational', 'checkKey');
         $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::Check, 'characterId');
+        $checkKey = FlowRun::pickedCheck($step, $command->checkKey);
         $difficulty = $campaign->flowCheckDifficulty($step->key, $id, $command->difficulty, $release, $at);
-        $check = $release->check($step->check) ?? throw new \LogicException(\sprintf('The pinned release has no check "%s".', $step->check));
+        $check = $release->check($checkKey) ?? throw new \LogicException(\sprintf('The pinned release has no check "%s".', $checkKey));
         $character = $campaign->character(CharacterId::fromString($id)) ?? throw InvalidStepResult::unknownCharacter($step->key, $id);
         $result = $check->perform($this->random, SheetValues::of($release->sheet(), $character->values(), $campaign->trackerValuesOf($release)), $difficulty, $command->situational ?? 0);
 
-        return [StepResult::check($id, $result), CheckContent::fromResult($id, $character->name(), $check, $result, ReferenceLabels::of($release))];
+        return [StepResult::check($id, $result, $step->isSet() ? $checkKey : null), CheckContent::fromResult($id, $character->name(), $check, $result, ReferenceLabels::of($release))];
     }
 
     /**
@@ -325,7 +329,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      */
     private function refuseFieldsOtherThan(CompleteFlowStep $command, Step $step, string ...$allowed): void
     {
-        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId, 'difficulty' => $command->difficulty, 'situational' => $command->situational];
+        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId, 'difficulty' => $command->difficulty, 'situational' => $command->situational, 'checkKey' => $command->checkKey];
         foreach ($given as $field => $value) {
             if (null !== $value && !\in_array($field, $allowed, true)) {
                 throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), $field);

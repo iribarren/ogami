@@ -37,6 +37,28 @@ function renderStep(step: FlowStep, characters: Campaign['characters'] = [viChar
   return sent
 }
 
+/** Like `renderStep`, with the campaign's Characters changeable after mount. */
+function renderChangingStep(step: FlowStep) {
+  const sent: unknown[] = []
+  let characters: Campaign['characters'] = []
+  const { queryClient } = renderAppAt(`/play/campaigns/${lostMineCampaign.id}`, {
+    'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+    [`GET ${path}`]: () => Response.json({ ...guidedWithCharacters(atStep(step)), characters }),
+    [`GET ${path}/journal`]: () => Response.json([]),
+    [`POST ${path}/flow-run/answer`]: async (request) => {
+      sent.push(await request.clone().json())
+      return Response.json(guidedWithCharacters(atStep(promptStep)))
+    },
+  })
+  return {
+    sent,
+    gainCharacters: async (next: Campaign['characters']) => {
+      characters = next
+      await queryClient.invalidateQueries()
+    },
+  }
+}
+
 async function card(step: FlowStep) {
   return within(await screen.findByRole('region', { name: `Current step: ${step.title}` }))
 }
@@ -127,6 +149,25 @@ describe('a prompt that changes a sheet', () => {
     await user.type(step.getByLabelText('Your answer'), 'A scar')
     await user.click(step.getByRole('button', { name: 'Record' }))
 
+    await waitFor(() => {
+      expect(sent).toEqual([{ stepKey: 'cost', text: 'A scar', characterId: viCharacter.id }])
+    })
+  })
+
+  it('answers with the only Character when the campaign gains it after the step shows', async () => {
+    const user = userEvent.setup()
+    const { sent, gainCharacters } = renderChangingStep(sheetPromptStep)
+
+    const step = await card(sheetPromptStep)
+    await user.type(step.getByLabelText('Your answer'), 'A scar')
+    expect(step.getByRole('button', { name: 'Record' })).toBeDisabled()
+
+    await gainCharacters([viCharacter])
+
+    await waitFor(() => {
+      expect(step.getByLabelText('Character')).toHaveValue(viCharacter.id)
+    })
+    await user.click(step.getByRole('button', { name: 'Record' }))
     await waitFor(() => {
       expect(sent).toEqual([{ stepKey: 'cost', text: 'A scar', characterId: viCharacter.id }])
     })

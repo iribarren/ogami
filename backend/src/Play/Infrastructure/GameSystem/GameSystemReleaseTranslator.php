@@ -137,6 +137,7 @@ final readonly class GameSystemReleaseTranslator
 
     // The check limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
     private const int MAX_CHECKS = 50;
+    private const int MAX_CHECK_SET = 10;
     private const int MAX_CHECK_BANDS = 10;
     private const int MAX_BAND_LABEL_LENGTH = 80;
     private const int MAX_CHECK_LABEL_LENGTH = 100;
@@ -321,20 +322,40 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * A check step names a check of the release, fixes a difficulty only for a check that declares
-     * one (a literal within its min..max), and has an Outcome only for a band of the check. Studio
+     * A check step names a check of the release (or a set of them, ADR 0042, whose checks share their
+     * band keys), fixes a difficulty only for a check that declares one (a literal within its
+     * min..max, for every check of a set), and has an Outcome only for a band of the check. Studio
      * checks this on publish; the stored content is not trusted.
      *
      * @param array<array-key, mixed> $step
      */
     private function assertCheckStepMatchesItsCheck(PublishedReleaseView $view, array $step, string $path, GameSystemSnapshot $snapshot): void
     {
-        $key = $step['check'] ?? null;
-        $check = \is_string($key) ? $snapshot->check($key) : null;
-        if (!$check instanceof Check) {
-            throw $this->invalid($view, $path.'.check', \sprintf('unknown check "%s".', \is_string($key) ? $key : ''));
-        }
+        $paths = isset($step['checks']) && \is_array($step['checks']) ? array_map(static fn (int $index): string => \sprintf('%s.checks[%d]', $path, $index), array_keys($step['checks'])) : [$path.'.check'];
+        $keys = isset($step['checks']) && \is_array($step['checks']) ? array_values($step['checks']) : [$step['check'] ?? null];
+        $first = null;
+        foreach ($keys as $index => $key) {
+            $check = \is_string($key) ? $snapshot->check($key) : null;
+            if (!$check instanceof Check) {
+                throw $this->invalid($view, $paths[$index], \sprintf('unknown check "%s".', \is_string($key) ? $key : ''));
+            }
 
+            $bandKeys = array_map(static fn (CheckBand $band): string => $band->key, $check->bands);
+            sort($bandKeys);
+            if (null !== $first && $bandKeys !== $first) {
+                throw $this->invalid($view, $paths[$index], \sprintf('check "%s" has other band keys than the first check of the set.', $check->key));
+            }
+
+            $first ??= $bandKeys;
+            $this->assertCheckStepFitsCheck($view, $step, $path, $check);
+        }
+    }
+
+    /**
+     * @param array<array-key, mixed> $step
+     */
+    private function assertCheckStepFitsCheck(PublishedReleaseView $view, array $step, string $path, Check $check): void
+    {
         $difficulty = $step['difficulty'] ?? null;
         if (null !== $difficulty) {
             $range = $check->difficulty ?? throw $this->invalid($view, $path.'.difficulty', \sprintf('check "%s" declares no difficulty.', $check->key));
@@ -652,11 +673,6 @@ final readonly class GameSystemReleaseTranslator
 
             $keys[$key] = true;
             $kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind');
-            // Studio publishes a table by Scene Type (ADR 0042) but Play does not roll one yet.
-            if ('table' === $kind && isset($step['tableBySceneType'])) {
-                throw $this->invalid($view, $stepPath.'.tableBySceneType', 'a table by Scene Type is not played yet.');
-            }
-
             $common = [
                 'key' => $key,
                 'title' => $this->string($view, $step['title'] ?? null, $stepPath.'.title'),
@@ -680,6 +696,7 @@ final readonly class GameSystemReleaseTranslator
                     table: $this->string($view, $step['table'] ?? null, $stepPath.'.table'),
                     branches: $this->tableBranches($view, $step['branches'] ?? [], $stepPath.'.branches'),
                     otherwise: null === ($step['otherwise'] ?? null) ? null : $this->outcome($view, $step['otherwise'], $stepPath.'.otherwise'),
+                    tableBySceneType: $this->tableBySceneType($view, $step, $stepPath),
                 ),
                 'roll' => new RollStep(...$common, dice: $this->string($view, $step['dice'] ?? null, $stepPath.'.dice'), bands: $this->bands($view, $step['bands'] ?? [], $stepPath.'.bands')),
                 'choice' => new ChoiceStep(
@@ -714,16 +731,46 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
+     * The table each Scene Type rolls instead of the step's default (ADR 0042); none when the step
+     * has no map. Studio checks the keys on publish and refuses branches with a map, but the stored
+     * content is not trusted: a map without entries, or with branches, would roll other tables than
+     * the branches were written for.
+     *
+     * @param array<mixed> $step
+     *
+     * @return array<string, string>
+     */
+    private function tableBySceneType(PublishedReleaseView $view, array $step, string $path): array
+    {
+        if (!isset($step['tableBySceneType'])) {
+            return [];
+        }
+
+        $path .= '.tableBySceneType';
+        $map = $this->object($view, $step['tableBySceneType'], $path);
+        if ([] === $map) {
+            throw $this->invalid($view, $path, 'must map at least one Scene Type.');
+        }
+
+        if ([] !== ($step['branches'] ?? [])) {
+            throw $this->invalid($view, $path, 'cannot go with branches.');
+        }
+
+        $tables = [];
+        foreach ($map as $sceneType => $table) {
+            $tables[(string) $sceneType] = $this->string($view, $table, $path.'.'.$sceneType);
+        }
+
+        return $tables;
+    }
+
+    /**
      * @param array{key: string, title: string, prompt: ?string, tip: ?string, mandatory: bool, next: ?string, effects: list<Effect>} $common
      * @param array<mixed>                                                                                                            $step
      */
     private function checkStep(PublishedReleaseView $view, array $common, array $step, string $path): CheckStep
     {
-        // Studio publishes a check set (ADR 0042) but Play does not roll one yet.
-        if (isset($step['checks'])) {
-            throw $this->invalid($view, $path.'.checks', 'a check set is not played yet.');
-        }
-
+        $checks = $this->checkKeys($view, $step, $path);
         $outcomes = [];
         foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
             $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
@@ -738,10 +785,36 @@ final readonly class GameSystemReleaseTranslator
 
         return new CheckStep(
             ...$common,
-            check: $this->string($view, $step['check'] ?? null, $path.'.check'),
+            checks: $checks,
             difficulty: null === ($step['difficulty'] ?? null) ? null : $this->value($view, $step['difficulty'], $path.'.difficulty'),
             outcomes: $outcomes,
         );
+    }
+
+    /**
+     * The key of the step's check, or the keys of its check set (ADR 0042): "check" or "checks", never
+     * both, and a set of 2 to 10 distinct keys. The stored content is not trusted.
+     *
+     * @param array<mixed> $step
+     *
+     * @return non-empty-list<string>
+     */
+    private function checkKeys(PublishedReleaseView $view, array $step, string $path): array
+    {
+        if (!isset($step['checks'])) {
+            return [$this->string($view, $step['check'] ?? null, $path.'.check')];
+        }
+
+        if (isset($step['check'])) {
+            throw $this->invalid($view, $path, 'must set exactly one of check and checks.');
+        }
+
+        $keys = $this->keys($view, $step['checks'], $path.'.checks');
+        if (\count($keys) < 2 || \count($keys) > self::MAX_CHECK_SET || \count(array_unique($keys)) !== \count($keys)) {
+            throw $this->invalid($view, $path.'.checks', \sprintf('must list 2 to %d distinct checks.', self::MAX_CHECK_SET));
+        }
+
+        return $keys;
     }
 
     private function itemCount(PublishedReleaseView $view, mixed $count, string $path): ItemCount

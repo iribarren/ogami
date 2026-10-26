@@ -56,6 +56,11 @@ final class InvalidStepResult extends \DomainException
         return new self(\sprintf('Step "%s" fixes the check difficulty at %d: it takes no other.', $step, $difficulty));
     }
 
+    public static function notInTheSet(string $step, string $check): self
+    {
+        return new self(\sprintf('Check step "%s" has no check "%s" in its set.', $step, $check));
+    }
+
     public static function notInTheCast(string $step, string $id): self
     {
         return new self(\sprintf('Check step "%s" rolls for a Character in the scene (in the session party outside one): Character "%s" is not.', $step, $id));
@@ -84,6 +89,12 @@ final class InvalidStepResult extends \DomainException
     public static function unknownCharacter(string $step, string $id): self
     {
         return new self(\sprintf('Character step "%s" has no Character "%s" in the campaign.', $step, $id));
+    }
+
+    /** A choice or prompt step that changes a sheet names a Character the campaign lacks. */
+    public static function unknownSheetCharacter(string $step, StepKind $kind, string $id): self
+    {
+        return new self(\sprintf('%s step "%s" has no Character "%s" in the campaign.', ucfirst($kind->value), $step, $id));
     }
 
     public static function pickCount(string $step, int $min, int $max, int $given): self

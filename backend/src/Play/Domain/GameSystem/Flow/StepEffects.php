@@ -39,7 +39,7 @@ final readonly class StepEffects
     {
         return [
             ...$step->effects,
-            ...$step instanceof TableStep ? $tableEffects($step->table) : [],
+            ...$step instanceof TableStep ? array_merge([], ...array_map($tableEffects, $step->tables())) : [],
             ...array_merge([], ...array_map(static fn (?Outcome $outcome): array => $outcome->effects ?? [], self::outcomes($step))),
         ];
     }

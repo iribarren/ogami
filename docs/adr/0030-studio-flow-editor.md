@@ -1,6 +1,6 @@
 # 0030. Studio flow editor
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0042](0042-flow-choices-check-sets-and-scene-tables.md)
 - **Date:** 2026-10-16
 
 ## Context

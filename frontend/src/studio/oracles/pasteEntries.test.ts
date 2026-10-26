@@ -1,5 +1,5 @@
 import { applyPaste, parsePaste, pasteStart } from './pasteEntries'
-import { toDraft, type OracleTable, type TableDraft } from './tableDraft'
+import { toDraft, type TableDraft } from './tableDraft'
 
 const ranged = (entries: [number, number][], dice = '1d8'): TableDraft =>
   toDraft({
@@ -7,7 +7,7 @@ const ranged = (entries: [number, number][], dice = '1d8'): TableDraft =>
     name: 'Omens',
     dice,
     entries: entries.map(([min, max]) => ({ min, max, text: String(min) })),
-  } as OracleTable)
+  })
 
 /** The draft with an entry's max replaced, e.g. by text the editor cannot read. */
 const withMax = (draft: TableDraft, max: string): TableDraft => ({
@@ -16,7 +16,7 @@ const withMax = (draft: TableDraft, max: string): TableDraft => ({
 })
 
 const weighted = (): TableDraft =>
-  toDraft({ key: 'mood', name: 'Mood', entries: [{ weight: 2, text: 'Calm' }] } as OracleTable)
+  toDraft({ key: 'mood', name: 'Mood', entries: [{ weight: 2, text: 'Calm' }] })
 
 describe('pasteStart', () => {
   it('follows the last max when adding, and the dice minimum when replacing', () => {

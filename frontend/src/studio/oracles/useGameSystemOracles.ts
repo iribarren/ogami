@@ -9,7 +9,7 @@ import {
   StudioError,
   studioError,
 } from '../useGameSystems'
-import type { OracleTable, SaveTable } from './tableDraft'
+import type { SaveTable } from './tableDraft'
 
 export type GameSystemOracles = components['schemas']['GameSystemOraclesResponse']
 export type OracleTableItem = components['schemas']['OracleTableItemResponse']
@@ -94,7 +94,7 @@ export function useCreateOracleTable(key: string) {
     async ({ expectedVersion, table }: { expectedVersion: number; table: SaveTable }) => {
       const { data, error, response } = await api.POST(
         '/api/studio/game-systems/{key}/oracle-tables',
-        { params: { path: { key } }, body: { expectedVersion, table: table as OracleTable } },
+        { params: { path: { key } }, body: { expectedVersion, table } },
       )
       if (data !== undefined) {
         return data
@@ -123,7 +123,7 @@ export function useSaveOracleTable(key: string) {
         '/api/studio/game-systems/{key}/oracle-tables/{table}',
         {
           params: { path: { key, table: current } },
-          body: { expectedVersion, table: table as OracleTable },
+          body: { expectedVersion, table },
         },
       )
       if (data !== undefined) {

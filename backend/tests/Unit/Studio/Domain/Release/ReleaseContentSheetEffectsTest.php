@@ -145,7 +145,7 @@ final class ReleaseContentSheetEffectsTest extends TestCase
         yield 'an unknown operation' => [$effect.'.op', 'toggle', $at.'.op: must be one of "add", "subtract", "set", "mark", "clear"'];
         yield 'mark without a value in an outcome' => [$effect, $sheet('physical', 'mark'), $at.'.value: a mark without an option is allowed only in the cost of a push'];
         yield 'add without a value' => [$effect, $sheet('agility', 'add'), $at.'.value: required'];
-        yield 'mark in a step\'s own effects' => ['sceneTypes.0.play.1.effects', [$sheet('physical', 'clear')], 'sceneTypes[0].play[1].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step'];
+        yield 'mark in a check step\'s own effects' => ['sceneTypes.0.play.0.effects', [$sheet('physical', 'clear')], 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step'];
         yield 'mark in a push with an unknown option' => ['checks.0.push.effects.0', $sheet('physical', 'mark', ...['value' => 'ghost']), 'checks[0].push.effects[0].value: unknown option "ghost" of conditions field "physical"'];
         yield 'mark in a push on a number field' => ['checks.0.push.effects.0', $sheet('agility', 'mark'), 'checks[0].push.effects[0].op: field "agility" is a number field, mark and clear change conditions fields only'];
         yield 'mark in a push on an unknown field' => ['checks.0.push.effects.0', $sheet('ghost', 'mark'), 'checks[0].push.effects[0].field: unknown sheet field "ghost"'];

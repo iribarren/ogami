@@ -35,8 +35,9 @@ final class DraftReferences
 
     /**
      * The places that name this oracle key: Scene Type and flow "oracles", the table of an "oracle"
-     * phase selection, "oracle" and "table" steps, "prompt" inspiration, a likelihood oracle's
-     * random event table and the nested table of a table entry.
+     * phase selection, "oracle" and "table" steps (the default table and each table of
+     * "tableBySceneType"), "prompt" inspiration, a likelihood oracle's random event table and the
+     * nested table of a table entry.
      *
      * @param array<string, mixed> $document
      * @param string|null          $exceptTable a table whose own entries do not count (the one being replaced or deleted)
@@ -68,6 +69,14 @@ final class DraftReferences
             } elseif ('prompt' === $kind && self::names($step['inspiration'] ?? null, $key)) {
                 $paths[] = $path.'.inspiration';
             }
+
+            if ('table' === $kind) {
+                foreach (self::tablesBySceneType($step) as $sceneType => $table) {
+                    if ($key === $table) {
+                        $paths[] = \sprintf('%s.tableBySceneType.%s', $path, $sceneType);
+                    }
+                }
+            }
         }
 
         $oracles = \is_array($document['oracles'] ?? null) ? $document['oracles'] : [];
@@ -94,7 +103,8 @@ final class DraftReferences
     }
 
     /**
-     * The branches of "table" steps that name this entry of this table.
+     * The branches of "table" steps that name this entry of this table. A step with
+     * "tableBySceneType" has no branches (ADR 0042), so the map adds nothing here.
      *
      * @param array<string, mixed> $document
      *
@@ -286,8 +296,8 @@ final class DraftReferences
     }
 
     /**
-     * The check steps that name this check: the "check" of each, in Scene Type parts and flow
-     * phase hooks.
+     * The check steps that name this check: the "check" of each or its place in "checks", in Scene
+     * Type parts and flow phase hooks.
      *
      * @param array<string, mixed> $document
      *
@@ -297,8 +307,18 @@ final class DraftReferences
     {
         $paths = [];
         foreach (self::steps($document) as $path => $step) {
-            if ('check' === ($step['kind'] ?? null) && $key === ($step['check'] ?? null)) {
+            if ('check' !== ($step['kind'] ?? null)) {
+                continue;
+            }
+
+            if ($key === ($step['check'] ?? null)) {
                 $paths[] = $path.'.check';
+            }
+
+            foreach (\is_array($step['checks'] ?? null) ? $step['checks'] : [] as $index => $check) {
+                if ($key === $check) {
+                    $paths[] = \sprintf('%s.checks[%d]', $path, $index);
+                }
             }
         }
 
@@ -306,7 +326,7 @@ final class DraftReferences
     }
 
     /**
-     * The outcomes of check steps naming this check that name this band: their "band".
+     * The outcomes of check steps naming this check, alone or in a set, that name this band: their "band".
      *
      * @param array<string, mixed> $document
      *
@@ -316,7 +336,7 @@ final class DraftReferences
     {
         $paths = [];
         foreach (self::steps($document) as $path => $step) {
-            if ('check' !== ($step['kind'] ?? null) || $check !== ($step['check'] ?? null)) {
+            if ('check' !== ($step['kind'] ?? null) || ($check !== ($step['check'] ?? null) && !\in_array($check, self::strings($step['checks'] ?? null), true))) {
                 continue;
             }
 
@@ -438,6 +458,12 @@ final class DraftReferences
 
         if ('check' === $kind) {
             yield from self::valueReferences($step['difficulty'] ?? null, $path);
+        }
+
+        if ('table' === $kind) {
+            foreach (array_keys(self::tablesBySceneType($step)) as $sceneType) {
+                yield [self::SCENE_TYPE, (string) $sceneType, \sprintf('%s.tableBySceneType.%s', $path, $sceneType)];
+            }
         }
 
         yield from self::effectsReferences($step, $path);
@@ -711,6 +737,26 @@ final class DraftReferences
     private static function strings(mixed $value): array
     {
         return \is_array($value) && array_is_list($value) ? array_values(array_filter($value, \is_string(...))) : [];
+    }
+
+    /**
+     * The "tableBySceneType" of a table step: Scene Type key => table key, string pairs only.
+     *
+     * @param array<array-key, mixed> $step
+     *
+     * @return array<string, string>
+     */
+    private static function tablesBySceneType(array $step): array
+    {
+        $map = $step['tableBySceneType'] ?? null;
+        $tables = [];
+        foreach (\is_array($map) ? $map : [] as $sceneType => $table) {
+            if (\is_string($table)) {
+                $tables[(string) $sceneType] = $table;
+            }
+        }
+
+        return $tables;
     }
 
     private static function names(mixed $keys, string $key): bool

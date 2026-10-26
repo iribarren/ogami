@@ -535,4 +535,70 @@ final class DraftReferencesTest extends TestCase
         self::assertSame([], DraftReferences::bandPathsTo($document, 'luck', 'fail'));
         self::assertSame(['sceneTypes[0].setup[0].outcomes[0].band'], DraftReferences::bandPathsTo($document, 'luck', 'crit'));
     }
+
+    /**
+     * The canonical valid/v2-flow-choices (ADR 0042): in Town, play[0] is a choice with a sheet effect
+     * on its first option, play[1] a prompt with one, play[2] a check over grit and wits and play[3]
+     * a table with a map.
+     *
+     * @return array<string, mixed>
+     */
+    private function flowChoices(): array
+    {
+        /** @var array<string, mixed> $document */
+        $document = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-flow-choices'))->toArray();
+
+        return $document;
+    }
+
+    #[Test]
+    public function everyTableOfATableByScenetypeMapIsReferencedAtItsEntry(): void
+    {
+        $document = $this->flowChoices();
+
+        self::assertSame(['sceneTypes[0].play[3]'], DraftReferences::oraclePathsTo($document, 'any-trouble'));
+        self::assertSame(['sceneTypes[0].play[3].tableBySceneType.wild'], DraftReferences::oraclePathsTo($document, 'wild-trouble'));
+        self::assertSame(['sceneTypes[0].play[3].tableBySceneType.town'], DraftReferences::oraclePathsTo($document, 'street-trouble'));
+    }
+
+    #[Test]
+    public function theScenetypesOfAMapAreReferencedAndATableStepHasNoBranchesToCount(): void
+    {
+        $document = $this->flowChoices();
+
+        self::assertSame(['sceneTypes[0].play[3].tableBySceneType.wild'], DraftReferences::sceneTypePathsTo($document, 'wild'));
+        self::assertSame(['sceneTypes[0].play[3].tableBySceneType.wild'], DraftReferences::narrativePathsTo($document, NarrativeSection::SceneTypes, 'wild'));
+        self::assertSame([], DraftReferences::narrativePathsTo($document, NarrativeSection::SceneTypes, 'town'), 'The own steps of Town do not block it.');
+        self::assertSame([], DraftReferences::entryPathsTo($document, 'any-trouble', 'a-rumour'));
+        self::assertSame([], DraftReferences::entryPathsTo($document, 'wild-trouble', 'a-storm'));
+    }
+
+    #[Test]
+    public function everyCheckOfASetAndItsBandsAreReferenced(): void
+    {
+        $document = $this->flowChoices();
+
+        self::assertSame(['sceneTypes[0].play[2].checks[0]'], DraftReferences::checkPathsTo($document, 'grit'));
+        self::assertSame(['sceneTypes[0].play[2].checks[1]'], DraftReferences::checkPathsTo($document, 'wits'));
+        self::assertSame([], DraftReferences::checkPathsTo($document, 'luck'));
+        foreach (['grit', 'wits'] as $check) {
+            self::assertSame(['sceneTypes[0].play[2].outcomes[0].band'], DraftReferences::bandPathsTo($document, $check, 'miss'));
+            self::assertSame(['sceneTypes[0].play[2].outcomes[1].band'], DraftReferences::bandPathsTo($document, $check, 'hit'));
+        }
+
+        self::assertSame([], DraftReferences::bandPathsTo($document, 'luck', 'miss'));
+    }
+
+    #[Test]
+    public function aSheetEffectOnAChoiceOptionOrAPromptCountsForItsFieldAndConditionOption(): void
+    {
+        $document = $this->flowChoices();
+
+        self::assertEqualsCanonicalizing(
+            ['sceneTypes[0].play[0].options[0].effects[0]', 'sceneTypes[0].play[2].outcomes[0].effects[0]'],
+            DraftReferences::sheetFieldPathsTo($document, 'xp'),
+        );
+        self::assertSame(['sceneTypes[0].play[1].effects[0]'], DraftReferences::sheetFieldPathsTo($document, 'wounds'));
+        self::assertSame(['sceneTypes[0].play[1].effects[0]'], DraftReferences::conditionOptionPathsTo($document, 'wounds', 'hurt'));
+    }
 }
